@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import {
+  AccountIdentityArtifactSchema,
+  AccountIdentityHistoryArtifactSchema,
+} from "../schemas-src/routes/account-identity.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../src/account-identity-history.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -80,7 +85,10 @@ test("GET /accounts/{ss58}/identity returns the account's identity (#4328)", asy
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountIdentityArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.account, SS58);
   assert.equal(body.data.has_identity, true);
@@ -103,7 +111,10 @@ test("GET /accounts/{ss58}/identity is schema-stable when the store is cold", as
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountIdentityArtifactSchema),
+  );
   assert.equal(body.data.account, SS58);
   assert.equal(body.data.has_identity, false);
 });
@@ -116,7 +127,10 @@ test("GET /accounts/{ss58}/identity-history returns the identity timeline (#4328
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountIdentityHistoryArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.account, SS58);
   assert.equal(body.data.entry_count, 1);
@@ -139,7 +153,10 @@ test("GET /accounts/{ss58}/identity-history is schema-stable when the store is c
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountIdentityHistoryArtifactSchema),
+  );
   assert.equal(body.data.account, SS58);
   assert.equal(body.data.entry_count, 0);
   assert.deepEqual(body.data.entries, []);

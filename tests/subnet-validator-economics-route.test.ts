@@ -1,3 +1,13 @@
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  SubnetValidatorEconomicsArtifactSchema,
+  ValidatorEconomicsRankingArtifactSchema,
+  SubnetValidatorEconomicsHistoryArtifactSchema,
+} from "../schemas-src/routes/validator-economics.ts";
+import { parseJsonBody } from "./row-type.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -452,17 +462,20 @@ describe("handleSubnetValidatorEconomics", () => {
     const { env } = envWith({ neurons: [permitted(0)] });
     const res = await call("/api/v1/subnets/99999/validator-economics", env);
     assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.equal((body.error as Row).code, "invalid_netuid");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_netuid");
   });
 
   test("wraps the payload in the standard success envelope with meta", async () => {
     const { env } = envWith({ neurons: [permitted(0)] });
     const res = await call("/api/v1/subnets/7/validator-economics", env);
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetValidatorEconomicsArtifactSchema),
+    );
     assert.equal(body.ok, true);
-    assert.equal((body.data as Row).netuid, 7);
+    assert.equal(body.data.netuid, 7);
     assert.equal(typeof body.meta, "object");
   });
 });
@@ -786,17 +799,17 @@ describe("handleValidatorEconomicsRanking", () => {
   test("rejects an unsupported sort by name", async () => {
     const res = await call("?sort=nonsense", env);
     assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     // The message names the supported set, so a caller can correct the request
     // without reading the docs. It no longer echoes the rejected value back:
     // the router derives the sentence from the published enum (#10218) rather
     // than interpolating whatever arrived, which is one fewer place a caller's
     // string is reflected and one fewer copy of the vocabulary.
     assert.match(
-      String((body.error as Row).message),
+      String(body.error.message),
       /^sort must be one of: earning_floor_cost_tao,/,
     );
-    assert.equal((body.meta as Row).parameter, "sort");
+    assert.equal(body.meta.parameter, "sort");
   });
 
   test("rejects a limit above the published ceiling", async () => {
@@ -812,9 +825,12 @@ describe("handleValidatorEconomicsRanking", () => {
   test("accepts a supported sort and returns the standard envelope", async () => {
     const res = await call("?sort=validator_headroom&limit=5", env);
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ValidatorEconomicsRankingArtifactSchema),
+    );
     assert.equal(body.ok, true);
-    assert.equal((body.data as Row).sort, "validator_headroom");
+    assert.equal(body.data.sort, "validator_headroom");
   });
 
   test("treats an absent filter as BOTH and an explicit false as false", async () => {
@@ -842,8 +858,11 @@ describe("validator-economics routing", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
-    assert.equal((body.data as Row).netuid, 7);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetValidatorEconomicsArtifactSchema),
+    );
+    assert.equal(body.data.netuid, 7);
   });
 
   test("dispatches the cross-subnet ranking", async () => {
@@ -853,9 +872,12 @@ describe("validator-economics routing", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
-    assert.equal(typeof (body.data as Row).sort, "string");
-    assert.equal(Array.isArray((body.data as Row).rows), true);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ValidatorEconomicsRankingArtifactSchema),
+    );
+    assert.equal(typeof body.data.sort, "string");
+    assert.equal(Array.isArray(body.data.rows), true);
   });
 
   test("the ranking's query validation applies through the router too", async () => {
@@ -1108,8 +1130,8 @@ describe("handleSubnetValidatorEconomicsHistory", () => {
       env,
     );
     assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.match(String((body.error as Row).message), /window must be one of/);
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.match(String(body.error.message), /window must be one of/);
   });
 
   test("rejects a netuid outside the u16 range", async () => {
@@ -1118,8 +1140,8 @@ describe("handleSubnetValidatorEconomicsHistory", () => {
       env,
     );
     assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.equal((body.error as Row).code, "invalid_netuid");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_netuid");
   });
 
   test("defaults the window and returns the standard envelope", async () => {
@@ -1128,9 +1150,12 @@ describe("handleSubnetValidatorEconomicsHistory", () => {
       env,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetValidatorEconomicsHistoryArtifactSchema),
+    );
     assert.equal(body.ok, true);
-    assert.equal((body.data as Row).window, "30d");
+    assert.equal(body.data.window, "30d");
   });
 
   test("is reachable through the router", async () => {
@@ -1142,7 +1167,10 @@ describe("handleSubnetValidatorEconomicsHistory", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
-    assert.equal((body.data as Row).window, "7d");
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetValidatorEconomicsHistoryArtifactSchema),
+    );
+    assert.equal(body.data.window, "7d");
   });
 });

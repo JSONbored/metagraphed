@@ -9,7 +9,12 @@ import {
   ADDRESS_MAPPING_FIELD_SOURCES,
 } from "../src/address-mapping.ts";
 import { handleRequest } from "../workers/api.ts";
-import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { EvmAddressMappingArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
+import { mockEnv, parseJsonBody, type AnyFn, type Row } from "./row-type.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -366,7 +371,10 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(EvmAddressMappingArtifactSchema),
+        );
         assert.equal(body.data.ss58, GOLDEN_SS58);
       },
     );
@@ -385,7 +393,10 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(EvmAddressMappingArtifactSchema),
+        );
         assert.equal(body.ok, true);
         assert.equal(body.data.schema_version, 1);
         assert.equal(body.data.h160, H160);
@@ -407,7 +418,10 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(EvmAddressMappingArtifactSchema),
+        );
         assert.equal(body.data.ss58, null);
       },
     );
@@ -424,7 +438,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_h160");
   });
 });

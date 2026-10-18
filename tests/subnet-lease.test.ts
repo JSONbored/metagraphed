@@ -1,3 +1,9 @@
+import { parseJsonBody } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetLeaseArtifactSchema } from "../schemas-src/routes/subnet-lease.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -649,7 +655,10 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SubnetLeaseArtifactSchema),
+        );
         assert.equal(body.ok, true);
         assert.equal(body.data.schema_version, 1);
         assert.equal(body.data.netuid, 7);
@@ -670,7 +679,10 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SubnetLeaseArtifactSchema),
+        );
         assert.equal(body.data.leased, null);
       },
     );
@@ -699,7 +711,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           {},
         );
         assert.equal(res.status, 400);
-        const body = await res.json();
+        const body = await parseJsonBody(res, ErrorEnvelopeSchema);
         assert.equal(body.ok, false);
         assert.equal(body.error.code, "invalid_netuid");
         assert.equal(limiterCalls, 0);
@@ -722,7 +734,10 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SubnetLeaseArtifactSchema),
+        );
         assert.equal(body.data.netuid, 65535);
         assert.ok(rpcStorageKey!.endsWith("ffff"));
       },
@@ -811,7 +826,10 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SubnetLeaseArtifactSchema),
+        );
         assert.equal(body.data.leased, false);
       },
     );

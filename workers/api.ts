@@ -5581,7 +5581,11 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * early returns, and wrapping it from outside is what makes the label
  * unforgettable rather than 40 more places to remember.
  */
-export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   env = withArchiveObjects(env);
   return withResponseTiming(async () => {
     try {
@@ -5617,7 +5621,11 @@ export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
  * producer entirely: it would evict answers that had not changed and, worse,
  * hold answers across a decode publish that had.
  */
-async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
+async function dispatchCached(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   const url = new URL(request.url);
   // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
   // reach one entry instead of computing the same body under two keys.
@@ -5666,7 +5674,11 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
   });
 }
 
-async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
+async function dispatchRequest(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
@@ -6248,8 +6260,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // added; the fix was to stop shipping workers-og in any live Worker at
   // all, not to relocate the render into a second Worker). See
   // src/og-image.ts's own header for the full rationale.
-  if (url.pathname === "/og.png" || url.pathname === "/og") {
-    return handleOgImage(request, env, url, { readR2Object });
+  {
+    const ogImage = await handleOgImage(request, env, url, { readR2Object });
+    if (ogImage) return ogImage;
   }
 
   // Per-entity cards (#11075): /og/subnets/{netuid}.png, /og/accounts/{ss58}.png.
@@ -8569,26 +8582,12 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * were charged against what they got, and dropping it turns a settled payment
  * into one the caller has no record of.
  */
-/**
- * GENERIC, and passthrough on purpose.
- *
- * `dispatchRequest` infers `any` (its handler union bottoms out in one), so
- * `handleRequest` has always returned `any` and ~1,230 `(await
- * handleRequest(...)).json()` reads across eight test files depend on it. An
- * annotation of `Promise<Response>` here is more accurate AND propagates that
- * accuracy up the whole dispatch chain, which surfaces every one of them at
- * once -- a real finding, and not one a payments change should carry.
- *
- * So this returns what its work returns, plus the rejection it may substitute.
- * That is the honest type for a transparent wrapper either way; tightening
- * `dispatchRequest` is its own change, filed separately.
- */
-async function withX402<T extends Response>(
+async function withX402(
   request: Request,
   env: Env,
   pathname: string,
-  work: () => Promise<T>,
-): Promise<T | Response> {
+  work: () => Promise<Response>,
+): Promise<Response> {
   const gate = await enforceX402(request, env, pathname);
   if (gate && "reject" in gate) return gate.reject;
   const response = await work();
@@ -8793,7 +8792,7 @@ async function handleNetworkScopedRequest(
   url: URL,
   network: typeof DEFAULT_NETWORK,
   ctx: Ctx = {},
-) {
+): Promise<Response> {
   const isApiPath =
     url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/");
 
@@ -10473,7 +10472,10 @@ async function createWebhookSubscription(
   );
 }
 
-function validateWebhookSubscriptionToken(request: Request, env: Env) {
+function validateWebhookSubscriptionToken(
+  request: Request,
+  env: Env,
+): { ok: true } | { ok: false; response: Response } {
   const configured = env.METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN;
   if (typeof configured !== "string" || configured.length === 0) {
     return {

@@ -2,6 +2,18 @@
 // Exercises trajectory, uptime, leaderboards, and compare without routing
 // through workers/api.ts.
 
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetTrajectoryArtifactSchema } from "../schemas-src/routes/subnet-trajectory.ts";
+import { EconomicsTrendsArtifactSchema } from "../schemas-src/routes/economics-trends.ts";
+import { UptimeArtifactSchema } from "../schemas-src/routes/health-surfaces.ts";
+import { RegistryLeaderboardsArtifactSchema } from "../schemas-src/routes/registry-summary-leaderboards.ts";
+import { CompareArtifactSchema } from "../schemas-src/routes/compare.ts";
+import { CompareValidatorsArtifactSchema } from "../schemas-src/routes/compare-validators.ts";
 import assert from "node:assert/strict";
 import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach, vi } from "vitest";
@@ -38,7 +50,13 @@ import {
 } from "../workers/request-handlers/analytics-routes.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import {} from "../src/neuron-history.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import {
+  assertJsonObject,
+  mockEnv,
+  parseJsonBody,
+  requiredHeader,
+  type Row,
+} from "./row-type.ts";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
@@ -67,9 +85,18 @@ function viaRouter(path: string, env: unknown = {}) {
   );
 }
 
-async function json(res: Response): Promise<Row> {
+async function json<Schema extends z.ZodType>(res: Response, schema: Schema) {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, successEnvelopeSchema(schema));
+  assert.equal(body.ok, true);
+  return body;
+}
+
+// These partial tier fixtures exercise projection and timestamps. Missing
+// metrics remain unknown; validate the envelope, then check the exact evidence.
+async function partialTierJson(res: Response) {
+  assert.equal(res.status, 200, `expected 200, got ${res.status}`);
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
   assert.equal(body.ok, true);
   return body;
 }
@@ -101,9 +128,9 @@ function storeEnv(rows: Row[], opts: { throws?: boolean } = {}) {
   };
 }
 
-async function errorJson(res: Response, status = 400): Promise<Row> {
+async function errorJson(res: Response, status = 400) {
   assert.equal(res.status, status, `expected ${status}, got ${res.status}`);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.ok, false);
   return body;
 }
@@ -171,6 +198,7 @@ describe("handleTrajectory", () => {
   test("returns schema-stable empty trajectory when the tier is cold", async () => {
     const body = await json(
       await handleTrajectory(req("/"), mockEnv(), NETUID, url("/")),
+      SubnetTrajectoryArtifactSchema,
     );
     assert.equal(body.data.netuid, NETUID);
     assert.deepEqual(body.data.points, []);
@@ -223,11 +251,8 @@ describe("handleTrajectory", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    assert.ok(
-      res.headers
-        .get("content-disposition")!
-        .includes('filename="subnet-7-trajectory.csv"'),
-    );
+    const disposition = requiredHeader(res, "content-disposition");
+    assert.ok(disposition.includes('filename="subnet-7-trajectory.csv"'));
     const text = await res.text();
     const lines = text.split("\r\n");
     assert.equal(
@@ -329,8 +354,11 @@ describe("handleTrajectory", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /application\/json/);
-    const body = (await res.json()) as Row;
+    assert.match(requiredHeader(res, "content-type"), /application\/json/);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
+    );
     assert.equal(body.data.point_count, 1);
   });
 
@@ -348,7 +376,10 @@ describe("handleTrajectory", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
+    );
     assert.equal(body.data.netuid, NETUID);
   });
 
@@ -367,7 +398,10 @@ describe("handleTrajectory", () => {
       url(`/api/v1/subnets/${NETUID}/trajectory`),
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
+    );
     assert.deepEqual(body.data.points, []);
   });
 });
@@ -376,6 +410,7 @@ describe("handleEconomicsTrends", () => {
   test("returns schema-stable empty series when the tier is cold", async () => {
     const body = await json(
       await handleEconomicsTrends(req("/"), mockEnv(), url("/")),
+      EconomicsTrendsArtifactSchema,
     );
     assert.equal(body.data.day_count, 0);
     assert.deepEqual(body.data.days, []);
@@ -415,11 +450,8 @@ describe("handleEconomicsTrends", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    assert.ok(
-      res.headers
-        .get("content-disposition")!
-        .includes('filename="economics-trends.csv"'),
-    );
+    const disposition = requiredHeader(res, "content-disposition");
+    assert.ok(disposition.includes('filename="economics-trends.csv"'));
     const text = await res.text();
     const lines = text.split("\r\n");
     assert.equal(
@@ -512,8 +544,11 @@ describe("handleEconomicsTrends", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /application\/json/);
-    const body = (await res.json()) as Row;
+    assert.match(requiredHeader(res, "content-type"), /application\/json/);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(EconomicsTrendsArtifactSchema),
+    );
     assert.equal(body.data.day_count, 1);
   });
 
@@ -527,7 +562,10 @@ describe("handleEconomicsTrends", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(EconomicsTrendsArtifactSchema),
+    );
     assert.equal(body.data.day_count, 0);
   });
 
@@ -545,7 +583,10 @@ describe("handleEconomicsTrends", () => {
       url("/api/v1/economics/trends"),
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(EconomicsTrendsArtifactSchema),
+    );
     assert.deepEqual(body.data.days, []);
   });
 });
@@ -559,6 +600,7 @@ describe("handleUptime", () => {
         NETUID,
         url(`/api/v1/subnets/${NETUID}/uptime`),
       ),
+      UptimeArtifactSchema,
     );
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.window, "90d");
@@ -590,6 +632,7 @@ describe("handleUptime", () => {
         url(`/api/v1/subnets/${NETUID}/trajectory`),
         ctx,
       ),
+      SubnetTrajectoryArtifactSchema,
     );
     assert.equal(trajectory.data.point_count, 1);
     const trends = await json(
@@ -599,6 +642,7 @@ describe("handleUptime", () => {
         url("/api/v1/economics/trends?window=30d"),
         ctx,
       ),
+      EconomicsTrendsArtifactSchema,
     );
     assert.equal((trends.data.days as unknown[]).length, 1);
   });
@@ -613,6 +657,7 @@ describe("handleUptime", () => {
         url(`/api/v1/subnets/${NETUID}/trajectory`),
         ctx,
       ),
+      SubnetTrajectoryArtifactSchema,
     );
     assert.equal(body.data.point_count, 0);
   });
@@ -643,6 +688,7 @@ describe("handleUptime", () => {
         url(`/api/v1/subnets/${NETUID}/uptime`),
         ctx,
       ),
+      UptimeArtifactSchema,
     );
     assert.equal((body.data.surfaces as unknown[]).length, 1);
   });
@@ -657,6 +703,7 @@ describe("handleUptime", () => {
         url(`/api/v1/subnets/${NETUID}/uptime`),
         ctx,
       ),
+      UptimeArtifactSchema,
     );
     assert.deepEqual(body.data.surfaces, []);
   });
@@ -689,6 +736,7 @@ describe("handleUptime", () => {
         NETUID,
         url(`/api/v1/subnets/${NETUID}/uptime`),
       ),
+      UptimeArtifactSchema,
     );
     assert.equal(body.data.netuid, NETUID);
     assert.deepEqual(body.data.surfaces, []);
@@ -710,6 +758,7 @@ describe("handleUptime", () => {
         NETUID,
         url(`/api/v1/subnets/${NETUID}/uptime`),
       ),
+      UptimeArtifactSchema,
     );
     assert.equal(body.data.netuid, NETUID);
     assert.deepEqual(body.data.surfaces, []);
@@ -752,11 +801,8 @@ describe("handleUptime", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    assert.ok(
-      res.headers
-        .get("content-disposition")!
-        .includes(`filename="subnet-${NETUID}-uptime.csv"`),
-    );
+    const disposition = requiredHeader(res, "content-disposition");
+    assert.ok(disposition.includes(`filename="subnet-${NETUID}-uptime.csv"`));
     const lines = (await res.text()).split("\r\n");
     assert.equal(
       lines[0],
@@ -810,6 +856,7 @@ describe("handleLeaderboards", () => {
         mockEnv(env),
         url("/api/v1/registry/leaderboards"),
       ),
+      RegistryLeaderboardsArtifactSchema,
     );
     assert.ok(typeof body.data.boards === "object");
     assert.ok(Object.keys(body.data.boards).length > 0);
@@ -828,6 +875,7 @@ describe("handleLeaderboards", () => {
         mockEnv(env),
         url("/api/v1/registry/leaderboards"),
       ),
+      RegistryLeaderboardsArtifactSchema,
     );
     assert.deepEqual(body.data.boards["healthiest"], []);
     assert.deepEqual(body.data.boards["fastest-rpc"], []);
@@ -870,6 +918,7 @@ describe("handleLeaderboards", () => {
         mockEnv(env),
         url("/api/v1/registry/leaderboards?board=most-complete&limit=5"),
       ),
+      RegistryLeaderboardsArtifactSchema,
     );
     assert.equal(body.data.board, "most-complete");
     assert.ok(Array.isArray(body.data.boards["most-complete"]));
@@ -907,6 +956,7 @@ describe("handleCompare", () => {
         mockEnv(env),
         url("/api/v1/compare?netuids=1,7&dimensions=structure"),
       ),
+      CompareArtifactSchema,
     );
     assert.deepEqual(body.data.requested_netuids, [1, 7]);
     assert.deepEqual(body.data.dimensions, ["structure"]);
@@ -926,6 +976,7 @@ describe("handleCompare", () => {
         mockEnv(env),
         url("/api/v1/compare?netuids=1,1,7"),
       ),
+      CompareArtifactSchema,
     );
     assert.deepEqual(body.data.requested_netuids, [1, 7]);
   });
@@ -964,10 +1015,12 @@ describe("handleCompare", () => {
         mockEnv(env),
         url("/api/v1/compare?netuids=7&dimensions=health"),
       ),
+      CompareArtifactSchema,
     );
     pg.control.answers = [];
     assert.deepEqual(tier.paths, []);
     assert.equal(body.data.subnets[0].netuid, 7);
+    assert.ok(body.data.subnets[0].health);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
   });
 
@@ -985,6 +1038,7 @@ describe("handleCompare", () => {
         mockEnv(env),
         url("/api/v1/compare?netuids=7&dimensions=health"),
       ),
+      CompareArtifactSchema,
     );
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(body.data.subnets[0].found, true);
@@ -1055,9 +1109,11 @@ describe("handleCompare", () => {
         mockEnv(realEnv),
         url(`/api/v1/compare?netuids=${NETUID}&dimensions=health`),
       ),
+      CompareArtifactSchema,
     );
     assert.equal(body.data.subnets[0].netuid, NETUID);
     assert.equal(body.data.subnets[0].found, true);
+    assert.ok(body.data.subnets[0].health);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
     pg.control.answers = [];
   });
@@ -1105,11 +1161,12 @@ describe("handleCompareValidators", () => {
         mockEnv(env),
         url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`),
       ),
+      CompareValidatorsArtifactSchema,
     );
     assert.equal(body.data.netuid, null);
     assert.equal(body.data.validator_count, 2);
     assert.deepEqual(
-      body.data.validators.map((v: Row) => v.hotkey),
+      body.data.validators.map((v) => v.hotkey),
       [HOTKEY_A, HOTKEY_B],
     );
     for (const validator of body.data.validators) {
@@ -1128,9 +1185,10 @@ describe("handleCompareValidators", () => {
           `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B},${HOTKEY_A}`,
         ),
       ),
+      CompareValidatorsArtifactSchema,
     );
     assert.deepEqual(
-      body.data.validators.map((v: Row) => v.hotkey),
+      body.data.validators.map((v) => v.hotkey),
       [HOTKEY_A, HOTKEY_B],
     );
   });
@@ -1155,7 +1213,7 @@ describe("handleCompareValidators", () => {
         });
       },
     };
-    const body = await json(
+    const body = await partialTierJson(
       await handleCompareValidators(
         req("/"),
         mockEnv(env),
@@ -1164,8 +1222,26 @@ describe("handleCompareValidators", () => {
     );
     assert.deepEqual(requestedPaths, ["/api/v1/internal/validator-details"]);
     assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.validators[0].subnet_context.netuid, 7);
-    assert.equal(body.data.validators[0].subnet_context.uid, 3);
+    assert.ok(Array.isArray(body.data.validators));
+    const validator: unknown = body.data.validators[0];
+    assertJsonObject(validator);
+    assert.ok(validator.subnet_context);
+    assertJsonObject(validator.subnet_context);
+    assert.equal(validator.subnet_context.netuid, 7);
+    assert.equal(validator.subnet_context.uid, 3);
+    assert.deepEqual(validator.subnet_context, {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 100,
+    });
+    for (const field of [
+      "apy_estimate_eligible_subnet_count",
+      "total_stake_tao",
+      "total_emission_tao",
+      "subnet_count",
+    ]) {
+      assert.equal(validator[field], null, field);
+    }
   });
 
   test("generated_at tracks the latest captured_at across mixed-order per-hotkey responses", async () => {
@@ -1189,7 +1265,7 @@ describe("handleCompareValidators", () => {
         });
       },
     };
-    const body = await json(
+    const body = await partialTierJson(
       await handleCompareValidators(
         req("/"),
         mockEnv(env),
@@ -1199,6 +1275,19 @@ describe("handleCompareValidators", () => {
       ),
     );
     assert.equal(body.meta.generated_at, "2026-06-22T00:00:00.000Z");
+    assert.ok(Array.isArray(body.data.validators));
+    assert.equal(body.data.validators.length, 3);
+    body.data.validators.forEach((validator: unknown) => {
+      assertJsonObject(validator);
+      assert.equal(validator.subnet_count, 0);
+      for (const field of [
+        "apy_estimate_eligible_subnet_count",
+        "total_stake_tao",
+        "total_emission_tao",
+      ]) {
+        assert.equal(validator[field], null, field);
+      }
+    });
   });
 
   // #6325: REST and MCP share the identical composeValidatorComparison
@@ -1215,6 +1304,7 @@ describe("handleCompareValidators", () => {
           `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}&netuid=7`,
         ),
       ),
+      CompareValidatorsArtifactSchema,
     );
 
     const compareValidatorsTool = MCP_TOOLS.find(

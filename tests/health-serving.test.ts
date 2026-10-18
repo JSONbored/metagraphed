@@ -37,9 +37,32 @@ import {
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { HEALTH_RANK } from "../src/endpoint-score.ts";
 import { HealthStatusSchema } from "../schemas-src/shared.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { HealthSummaryArtifactSchema } from "../schemas-src/routes/health.ts";
+import {
+  BulkHealthTrendsArtifactSchema,
+  GlobalIncidentsArtifactSchema,
+  HealthSubnetArtifactSchema,
+  HealthTrendsArtifactSchema,
+  UptimeArtifactSchema,
+} from "../schemas-src/routes/health-surfaces.ts";
+import { RpcPoolsArtifactSchema } from "../schemas-src/routes/providers-rpc.ts";
+import { SubnetOverviewArtifactSchema } from "../schemas-src/routes/subnet-overview.ts";
+import {
+  AgentCatalogArtifactSchema,
+  AgentCatalogSubnetArtifactSchema,
+} from "../schemas-src/routes/agent-catalog.ts";
+import {
+  SubnetDetailArtifactSchema,
+  type EndpointResource,
+  type SubnetDetailArtifact,
+} from "../schemas-src/routes/subnet-detail.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
 
 // A recent prober run time for live KV fixtures that must pass resolveLiveHealth's
 // freshness gate (KV health:current is rejected when last_run_at is older than the
@@ -1676,7 +1699,17 @@ describe("worker live health serving", () => {
             surface_count: 58,
             status_counts: { ok: 57, degraded: 1 },
           },
-          subnets: [{ netuid: 0, status: "ok" }],
+          subnets: [
+            {
+              netuid: 0,
+              status: "ok",
+              surface_count: 1,
+              ok_count: 1,
+              degraded_count: 0,
+              failed_count: 0,
+              unknown_count: 0,
+            },
+          ],
         },
       }),
     });
@@ -1686,7 +1719,10 @@ describe("worker live health serving", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthSummaryArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.data.scope, "operational");
     assert.equal(body.meta.operational_observed_at, FRESH_RUN);
@@ -1707,7 +1743,10 @@ describe("worker live health serving", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthTrendsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
     assert.deepEqual(body.data.windows["7d"].surfaces, []);
@@ -1731,7 +1770,7 @@ describe("worker live health serving", () => {
     );
     assert.equal(res.status, 400);
     assert.equal(queried, false);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "cacheBust");
   });
@@ -1748,7 +1787,10 @@ describe("worker live health serving", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(BulkHealthTrendsArtifactSchema),
+    );
     assert.equal(body.meta.artifact_path, "/metagraph/health/trends.json");
     assert.equal(body.data.observed_at, "2026-06-11T00:00:00.000Z");
     assert.equal(body.data.windows["7d"].subnet_count, 0);
@@ -1770,22 +1812,38 @@ describe("worker live health serving", () => {
           {
             id: "finney-rpc",
             kind: "subtensor-rpc",
+            endpoint_count: 2,
+            eligible_count: 2,
             endpoints: [
               {
                 id: "live",
                 kind: "subtensor-rpc",
+                url: "https://live.example.com",
+                provider: "fixture",
                 auth_required: false,
                 public_safe: true,
                 pool_eligible: true,
                 status: "ok",
+                score: 0,
+                observed_at: null,
+                last_ok: null,
+                health_source: "probe-derived",
+                health_stale: false,
               },
               {
                 id: "dead",
                 kind: "subtensor-rpc",
+                url: "https://dead.example.com",
+                provider: "fixture",
                 auth_required: false,
                 public_safe: true,
                 pool_eligible: true,
                 status: "ok",
+                score: 0,
+                observed_at: null,
+                last_ok: null,
+                health_source: "probe-derived",
+                health_stale: false,
               },
             ],
           },
@@ -1809,12 +1867,19 @@ describe("worker live health serving", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(RpcPoolsArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.meta.operational_observed_at, FRESH_RUN);
     const endpoints = body.data.pools[0].endpoints;
-    const live = endpoints.find((e: Row) => e.id === "live");
-    const dead = endpoints.find((e: Row) => e.id === "dead");
+    const live = endpoints.find((endpoint) => endpoint.id === "live");
+    const dead = endpoints.find((endpoint) => endpoint.id === "dead");
+    assert.ok(live);
+    assert.ok(dead);
+    assert.equal(body.data.pools[0].endpoint_count, 2);
+    assert.equal(body.data.pools[0].eligible_count, 1);
     assert.equal(live.pool_eligible, true);
     assert.equal(dead.pool_eligible, false);
     assert.equal(dead.status, "failed");
@@ -1830,7 +1895,26 @@ describe("worker live health serving", () => {
         pools: [
           {
             id: "finney-rpc",
-            endpoints: [{ id: "dead", pool_eligible: true, status: "ok" }],
+            kind: "subtensor-rpc",
+            endpoint_count: 1,
+            eligible_count: 1,
+            endpoints: [
+              {
+                id: "dead",
+                kind: "subtensor-rpc",
+                url: "https://dead.example.com",
+                provider: "fixture",
+                auth_required: false,
+                public_safe: true,
+                pool_eligible: true,
+                status: "ok",
+                score: 0,
+                observed_at: null,
+                last_ok: null,
+                health_source: "probe-derived",
+                health_stale: false,
+              },
+            ],
           },
         ],
       }),
@@ -1843,8 +1927,13 @@ describe("worker live health serving", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(RpcPoolsArtifactSchema),
+    );
     assert.equal(body.data.pools[0].endpoints[0].pool_eligible, true);
+    assert.equal(body.data.pools[0].endpoint_count, 1);
+    assert.equal(body.data.pools[0].eligible_count, 1);
   });
 });
 
@@ -2585,8 +2674,21 @@ describe("composed-artifact health overlays", () => {
 
 describe("worker live health overlay on composed routes", () => {
   const seedComposedArchive = ({
-    overview = { netuid: 7, health: null },
-    catalog = { netuid: 7, services: [] },
+    overview = {
+      schema_version: 1,
+      generated_at: "2026-06-12T21:00:00.000Z",
+      netuid: 7,
+      profile: null,
+      health: null,
+      counts: { surfaces: 0, endpoints: 0, candidates: 0 },
+    },
+    catalog = {
+      schema_version: 1,
+      generated_at: "2026-06-12T21:00:00.000Z",
+      netuid: 7,
+      service_count: 0,
+      services: [],
+    },
   } = {}) => ({
     async get(key: string) {
       if (String(key).includes("overview/7.json")) {
@@ -2626,7 +2728,11 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOverviewArtifactSchema),
+    );
+    assert.ok(body.data.health);
     assert.equal(body.data.health.status, "failed");
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.meta.operational_observed_at, FRESH_RUN);
@@ -2649,7 +2755,10 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AgentCatalogSubnetArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.meta.operational_observed_at, FRESH_RUN);
   });
@@ -2670,7 +2779,11 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).meta.source, "live-cron-prober");
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AgentCatalogArtifactSchema),
+    );
+    assert.equal(body.meta.source, "live-cron-prober");
   });
 
   test("live overlays preserve missing composed artifact 404s", async () => {
@@ -2695,7 +2808,8 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(overview.status, 404);
-    assert.equal((await overview.json()).ok, false);
+    const overviewBody = await parseJsonBody(overview, ErrorEnvelopeSchema);
+    assert.equal(overviewBody.ok, false);
 
     const catalog = await handleRequest(
       req("/api/v1/agent-catalog/999999"),
@@ -2703,7 +2817,8 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(catalog.status, 404);
-    assert.equal((await catalog.json()).ok, false);
+    const catalogBody = await parseJsonBody(catalog, ErrorEnvelopeSchema);
+    assert.equal(catalogBody.ok, false);
   });
 
   test("composed routes fall back to the static artifact when KV+D1 are cold", async () => {
@@ -2716,10 +2831,56 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.notEqual((await res.json()).meta.source, "live-cron-prober");
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOverviewArtifactSchema),
+    );
+    assert.notEqual(body.meta.source, "live-cron-prober");
   });
 
-  const seedDetailArchive = (detail: Row) => ({
+  const detailEndpointDefaults = {
+    auth_required: false,
+    public_safe: true,
+    layer: "subnet-app",
+    operator: "p",
+    surface_key: "srf-s1fixture0000",
+    score: 0,
+    publication_state: "monitored",
+    monitoring_status: "monitored",
+    monitoring_policy: {
+      enabled: true,
+      expect: "json",
+      method: "GET",
+      source: "fixture",
+    },
+    last_ok: null,
+  } as const;
+  function detailFixture(endpoints: EndpointResource[]): SubnetDetailArtifact {
+    const gaps = { gap_notes: [], missing_kinds: [], supported_kinds: [] };
+    return {
+      schema_version: 1,
+      generated_at: "2026-06-12T21:00:00.000Z",
+      candidate_surfaces: [],
+      surfaces: [],
+      gaps,
+      subnet: {
+        netuid: 7,
+        name: "Subnet 7",
+        slug: "subnet-7",
+        status: "active",
+        subnet_type: "application",
+        coverage_level: "native-only",
+        curation_level: "native",
+        curation: { level: "native", review_state: "unreviewed" },
+        links: [],
+        provenance: {},
+        surface_count: 0,
+        gaps,
+      },
+      endpoints,
+    };
+  }
+  const seedDetailArchive = (detail: SubnetDetailArtifact) => ({
     async get(key: string) {
       if (!String(key).includes("subnets/7.json")) return null;
       return {
@@ -2734,31 +2895,26 @@ describe("worker live health overlay on composed routes", () => {
   });
 
   test("/api/v1/subnets/7 overlays per-endpoint health live (no longer baked)", async () => {
-    const detail = {
-      schema_version: 1,
-      generated_at: "2026-06-12T21:00:00.000Z",
-      subnet: { netuid: 7 },
-      summary: { by_status: { ok: 1 }, pool_eligible_count: 1 },
-      endpoints: [
-        {
-          id: "endpoint-s1",
-          surface_id: "s1",
-          netuid: 7,
-          kind: "subnet-api",
-          url: "https://s1",
-          provider: "p",
-          status: "ok",
-          classification: "live",
-          health_source: "probe-derived",
-          health_stale: false,
-          observed_at: "2026-06-12T21:00:00.000Z",
-          last_ok: "2026-06-12T21:00:00.000Z",
-          last_checked: "2026-06-12T21:00:00.000Z",
-          latency_ms: 900,
-          pool_eligible: true,
-        },
-      ],
-    };
+    const detail = detailFixture([
+      {
+        ...detailEndpointDefaults,
+        id: "endpoint-s1",
+        surface_id: "s1",
+        netuid: 7,
+        kind: "subnet-api",
+        url: "https://s1",
+        provider: "p",
+        status: "ok",
+        classification: "live",
+        health_source: "probe-derived",
+        health_stale: false,
+        observed_at: "2026-06-12T21:00:00.000Z",
+        last_ok: "2026-06-12T21:00:00.000Z",
+        last_checked: "2026-06-12T21:00:00.000Z",
+        latency_ms: 900,
+        pool_eligible: true,
+      },
+    ]);
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
@@ -2769,7 +2925,7 @@ describe("worker live health overlay on composed routes", () => {
               surface_id: "s1",
               netuid: 7,
               status: "failed",
-              classification: "down",
+              classification: "dead",
               latency_ms: 5,
               last_ok: "2026-06-12T23:00:00.000Z",
               last_checked: "2026-06-13T00:00:00.000Z",
@@ -2785,34 +2941,41 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const ep = (await res.clone().json()).data.endpoints[0];
+    const clonedBody = await parseJsonBody(
+      res.clone(),
+      successEnvelopeSchema(SubnetDetailArtifactSchema),
+    );
+    assert.ok(clonedBody.data.endpoints);
+    const ep = clonedBody.data.endpoints[0];
     assert.equal(ep.status, "failed"); // live status, not the baked "ok"
     assert.equal(ep.health_source, "live-cron-prober");
     assert.equal(ep.health_stale, false);
     assert.equal(ep.pool_eligible, false); // live failed → ineligible
     assert.equal(ep.observed_at, "2026-06-13T00:00:00.000Z");
-    assert.equal((await res.json()).meta.source, "live-cron-prober");
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetDetailArtifactSchema),
+    );
+    assert.equal(body.meta.source, "live-cron-prober");
   });
 
   test("/api/v1/subnets/7 endpoints read `unknown` when the live store is cold", async () => {
-    const detail = {
-      subnet: { netuid: 7 },
-      endpoints: [
-        {
-          id: "endpoint-s1",
-          surface_id: "s1",
-          netuid: 7,
-          kind: "subnet-api",
-          url: "https://s1",
-          provider: "p",
-          status: "ok",
-          health_source: "probe-derived",
-          health_stale: false,
-          observed_at: "2026-06-12T21:00:00.000Z",
-          pool_eligible: true,
-        },
-      ],
-    };
+    const detail = detailFixture([
+      {
+        ...detailEndpointDefaults,
+        id: "endpoint-s1",
+        surface_id: "s1",
+        netuid: 7,
+        kind: "subnet-api",
+        url: "https://s1",
+        provider: "p",
+        status: "ok",
+        health_source: "probe-derived",
+        health_stale: false,
+        observed_at: "2026-06-12T21:00:00.000Z",
+        pool_eligible: true,
+      },
+    ]);
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: seedDetailArchive(detail),
     });
@@ -2822,31 +2985,34 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const ep = (await res.json()).data.endpoints[0];
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetDetailArtifactSchema),
+    );
+    assert.ok(body.data.endpoints);
+    const ep = body.data.endpoints[0];
     assert.equal(ep.status, "unknown"); // never the baked "ok"
     assert.equal(ep.health_source, "unavailable");
     assert.equal(ep.health_stale, true);
   });
 
   test("raw /metagraph/subnets/7.json overlays per-endpoint health live too", async () => {
-    const detail = {
-      subnet: { netuid: 7 },
-      endpoints: [
-        {
-          id: "endpoint-s1",
-          surface_id: "s1",
-          netuid: 7,
-          kind: "subnet-api",
-          url: "https://s1",
-          provider: "p",
-          status: "ok",
-          health_source: "probe-derived",
-          health_stale: false,
-          observed_at: "2026-06-12T21:00:00.000Z",
-          pool_eligible: true,
-        },
-      ],
-    };
+    const detail = detailFixture([
+      {
+        ...detailEndpointDefaults,
+        id: "endpoint-s1",
+        surface_id: "s1",
+        netuid: 7,
+        kind: "subnet-api",
+        url: "https://s1",
+        provider: "p",
+        status: "ok",
+        health_source: "probe-derived",
+        health_stale: false,
+        observed_at: "2026-06-12T21:00:00.000Z",
+        pool_eligible: true,
+      },
+    ]);
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: kvWith({
         "health:current": {
@@ -2857,7 +3023,7 @@ describe("worker live health overlay on composed routes", () => {
               surface_id: "s1",
               netuid: 7,
               status: "degraded",
-              classification: "slow",
+              classification: "live",
               latency_ms: 50,
               last_ok: "2026-06-12T23:00:00.000Z",
               last_checked: "2026-06-13T00:00:00.000Z",
@@ -2873,7 +3039,8 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, SubnetDetailArtifactSchema);
+    assert.ok(body.endpoints);
     // Raw artifact path is no longer byte-identical: operational health is live.
     assert.equal(body.endpoints[0].status, "degraded");
     assert.equal(body.endpoints[0].health_source, "live-cron-prober");
@@ -2888,7 +3055,10 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthSummaryArtifactSchema),
+    );
     assert.equal(body.meta.source, "unavailable");
     assert.equal(body.data.global.surface_count, 0);
     assert.deepEqual(body.data.subnets, []);
@@ -2902,7 +3072,10 @@ describe("worker live health overlay on composed routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthSubnetArtifactSchema),
+    );
     assert.equal(body.data.summary.status, "unknown");
     assert.equal(body.data.health_source, "unavailable");
     assert.equal(body.meta.source, "unavailable");
@@ -2919,7 +3092,10 @@ describe("worker live health overlay on composed routes", () => {
       env as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOverviewArtifactSchema),
+    );
     assert.equal(body.data.health, null);
   });
 });
@@ -3154,7 +3330,10 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(UptimeArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "1y");
     assert.equal(body.data.observed_at, UPTIME_RUN);
@@ -3171,7 +3350,10 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(UptimeArtifactSchema),
+    );
     assert.equal(body.data.window, "90d");
     assert.deepEqual(body.data.surfaces, []);
   });
@@ -3185,7 +3367,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
         {},
       );
       assert.equal(res.status, 400);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "invalid_query");
       // Derived from the loop's own value: the echo (#10316) is the caller's
       // input, so a literal here would only ever be right for one iteration.
@@ -3651,7 +3833,10 @@ describe("global incidents route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(GlobalIncidentsArtifactSchema),
+    );
     assert.equal(Array.isArray(body.data.surfaces), true);
     assert.equal(body.data.summary.incident_count, 0);
     assert.equal(body.meta.source, "live-cron-prober");

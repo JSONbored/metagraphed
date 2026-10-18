@@ -8,7 +8,11 @@ import {
 } from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainAxonRemovalsArtifactSchema } from "../schemas-src/routes/chain-network-rollups.ts";
+
+const responseSchema = successEnvelopeSchema(ChainAxonRemovalsArtifactSchema);
 
 const OBS = 1_700_000_000_000;
 
@@ -287,7 +291,7 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
@@ -317,7 +321,7 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
     assert.equal(body.data.intensity_distribution, null);
@@ -367,7 +371,7 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.subnet_count, 0);
   });
 
@@ -410,9 +414,13 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
+    const contentDisposition = res.headers.get("content-disposition");
+    assert.ok(contentDisposition);
     assert.match(
-      res.headers.get("content-disposition"),
+      contentDisposition,
       /attachment; filename="chain-axon-removals\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
@@ -429,7 +437,9 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
   });
 
   test("emits a header-only CSV on a cold store", async () => {
@@ -439,7 +449,9 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal((await res.text()).trim(), AXON_REMOVALS_CSV_HEADER);
   });
 
@@ -453,7 +465,9 @@ describe("GET /api/v1/chain/axon-removals", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal(await res.text(), ""); // HEAD carries no body
   });
 
@@ -524,12 +538,18 @@ describe("chain/axon-removals edge cache", () => {
     assert.equal(res.status, 200);
     // #4909/#6013: account_events is retired, so even this "warm" store mock
     // never reaches the response -- subnet_count stays 0.
-    assert.equal((await res.json()).data.subnet_count, 0);
+    assert.equal(
+      (await parseJsonBody(res, responseSchema)).data.subnet_count,
+      0,
+    );
     await Promise.all(waits);
     assert.equal(store.size, 1);
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 0);
+    assert.equal(
+      (await parseJsonBody(cached, responseSchema)).data.subnet_count,
+      0,
+    );
   });
 });
 

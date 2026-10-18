@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { ACCOUNT_ROOT_CLAIM_FIELD_SOURCES } from "../src/account-root-claim.ts";
 import { test, vi, afterEach } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -21,7 +27,8 @@ test("GET /accounts/{ss58}/root-claim returns 400 for an invalid ss58", async ()
     {},
   );
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error.code, "invalid_ss58");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "invalid_ss58");
 });
 
 test("GET /accounts/{ss58}/root-claim returns null fields on RPC failure", async () => {
@@ -37,7 +44,10 @@ test("GET /accounts/{ss58}/root-claim returns null fields on RPC failure", async
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountRootClaimArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.claim_type, null);
@@ -61,7 +71,8 @@ test("GET /accounts/{ss58}/root-claim applies per-client RPC rate limiting", asy
     {},
   );
   assert.equal(res.status, 429);
-  assert.equal((await res.json()).error.code, "root_claim_rate_limited");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "root_claim_rate_limited");
 });
 
 test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows", async () => {
@@ -87,8 +98,13 @@ test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows"
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(limiterKey!, /^root-claim:/);
-  assert.equal((await res.json()).data.hotkeys, null);
+  assert.ok(limiterKey);
+  assert.match(limiterKey, /^root-claim:/);
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountRootClaimArtifactSchema),
+  );
+  assert.equal(body.data.hotkeys, null);
 });
 
 test("GET /accounts/{ss58}/root-claim validates runtime before a KV hit", async () => {
@@ -129,8 +145,12 @@ test("GET /accounts/{ss58}/root-claim validates runtime before a KV hit", async 
     {},
   );
   assert.equal(res.status, 200);
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountRootClaimArtifactSchema),
+  );
   // Cached body plus provenance (#9108), attached outside the cache.
-  assert.deepEqual((await res.json()).data, {
+  assert.deepEqual(body.data, {
     ...cached,
     field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
   });

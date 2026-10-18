@@ -847,7 +847,9 @@ export function distributionStatsSchema(
  * measurement, never an error -- which is why every one of these resolves to a
  * schema-stable empty card rather than null.
  */
-export function subnetHistoryArtifactSchema(point: z.ZodType) {
+export function subnetHistoryArtifactSchema<PointSchema extends z.ZodType>(
+  point: PointSchema,
+) {
   return z
     .object({
       schema_version: z.int(),
@@ -876,7 +878,9 @@ export function subnetHistoryArtifactSchema(point: z.ZodType) {
  * but the loader is reachable without them and a schema that promised numbers
  * would be wrong on that path.
  */
-export function subnetEntryListSchema(entry: z.ZodType) {
+export function subnetEntryListSchema<EntrySchema extends z.ZodType>(
+  entry: EntrySchema,
+) {
   return z
     .object({
       schema_version: z.int(),

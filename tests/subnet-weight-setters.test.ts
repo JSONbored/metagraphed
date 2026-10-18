@@ -1,3 +1,9 @@
+import { parseJsonBody } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetWeightSettersArtifactSchema } from "../schemas-src/routes/subnet-weights.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -263,7 +269,10 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetWeightSettersArtifactSchema),
+    );
     assert.equal(body.data.window, "7d");
   });
 
@@ -287,7 +296,7 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.meta.parameter, "window");
   });
 
@@ -300,7 +309,10 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetWeightSettersArtifactSchema),
+    );
     assert.equal(body.data.setter_count, 0);
     assert.deepEqual(body.data.setters, []);
   });

@@ -7,7 +7,11 @@ import {
 } from "../src/chain-alpha-volume.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainAlphaVolumeArtifactSchema } from "../schemas-src/routes/chain-alpha-volume.ts";
+
+const responseSchema = successEnvelopeSchema(ChainAlphaVolumeArtifactSchema);
 
 const OBS = 1_700_000_000_000;
 
@@ -355,7 +359,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     };
     const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.window, "24h");
     assert.equal(body.data.subnet_count, 0);
@@ -383,7 +387,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
     assert.equal(body.data.volume_distribution, null);
@@ -447,9 +451,13 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
+    const contentDisposition = res.headers.get("content-disposition");
+    assert.ok(contentDisposition);
     assert.match(
-      res.headers.get("content-disposition"),
+      contentDisposition,
       /attachment; filename="chain-alpha-volume\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
@@ -469,7 +477,9 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
   });
 
   test("emits a header-only CSV on a cold store", async () => {
@@ -479,7 +489,9 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal(
       (await res.text()).trim(),
       "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_volume_usd,sell_volume_usd,total_volume_usd,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
@@ -496,7 +508,9 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal(await res.text(), ""); // HEAD carries no body
   });
 
@@ -568,7 +582,7 @@ describe("chain/alpha-volume edge cache", () => {
       );
     const res = await call();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     // #4909/#6013: account_events is retired, so even this "warm" store mock
     // never reaches the response -- subnet_count stays 0.
     assert.equal(body.data.subnet_count, 0);
@@ -577,7 +591,10 @@ describe("chain/alpha-volume edge cache", () => {
     // A second request is served from that cached entry (the mocked match() returns it).
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 0);
+    assert.equal(
+      (await parseJsonBody(cached, responseSchema)).data.subnet_count,
+      0,
+    );
 
     // An explicit ?limit gets its own key, built from the PARSED value (#10060)
     // -- so `?limit=020` and `?limit=20` are one request and one entry rather

@@ -2,7 +2,11 @@ import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.
 installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { z } from "zod";
+import {
+  buildEconomicsArtifact,
+  createLocalArtifactEnv,
+} from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildAccountsList } from "../src/accounts-list.ts";
 import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
@@ -14,7 +18,34 @@ import {
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
-import { jsonBody, mockEnv, type Row } from "./row-type.ts";
+import {
+  assertJsonObject as assertObject,
+  mockEnv,
+  parseJsonBody,
+  requiredHeader,
+  type Row,
+} from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import * as meta from "../schemas-src/routes/meta-contracts.ts";
+import * as chain from "../schemas-src/routes/chain-events.ts";
+import * as ownership from "../schemas-src/routes/subnet-ownership-history.ts";
+import * as conviction from "../schemas-src/routes/subnet-conviction.ts";
+import * as subnets from "../schemas-src/routes/subnets.ts";
+import * as detail from "../schemas-src/routes/subnet-detail.ts";
+import * as economics from "../schemas-src/routes/economics.ts";
+import * as candidateSchemas from "../schemas-src/routes/candidates-evidence.ts";
+import * as endpoints from "../schemas-src/routes/endpoints-pools.ts";
+import * as coverage from "../schemas-src/routes/coverage.ts";
+import * as profiles from "../schemas-src/routes/subnet-profiles.ts";
+import * as providers from "../schemas-src/routes/providers-rpc.ts";
+import * as curation from "../schemas-src/routes/curation-gaps.ts";
+import * as evidence from "../schemas-src/routes/evidence-search.ts";
+import * as enrichment from "../schemas-src/routes/review-enrichment.ts";
+import * as review from "../schemas-src/routes/review-gaps-profile.ts";
+import * as healthSchemas from "../schemas-src/routes/health-surfaces.ts";
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import {
@@ -23,11 +54,56 @@ import {
 } from "../src/decode-watermark.ts";
 
 const env = createLocalArtifactEnv() as Row;
+const ProjectedSubnetsArtifactSchema = subnets.SubnetsArtifactSchema.extend({
+  subnets: subnets.SubnetIndexEntrySchema.pick({
+    netuid: true,
+    name: true,
+    slug: true,
+  }).array(),
+});
 
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
 // not a `globalThis` property -- so stubbing/restoring it for a test needs
 // this cast (matches workers/request-handlers/analytics.ts's own precedent).
 const globalWithCaches = globalThis as unknown as { caches: Row | undefined };
+
+function assertArray(value: unknown): asserts value is unknown[] {
+  assert.ok(Array.isArray(value));
+}
+
+function endpointFixture(
+  id: string,
+  status: detail.EndpointResource["status"],
+): detail.EndpointResource {
+  return {
+    id,
+    surface_id: id,
+    surface_key: `srf-${id}`,
+    netuid: 7,
+    kind: "subnet-api",
+    layer: "subnet-app",
+    url: `https://${id}.example.com`,
+    provider: "fixture",
+    operator: "fixture",
+    auth_required: false,
+    public_safe: true,
+    publication_state: "monitored",
+    monitoring_status: "monitored",
+    monitoring_policy: {
+      enabled: true,
+      expect: "json",
+      method: "GET",
+      source: "fixture",
+    },
+    status,
+    health_source: "probe-derived",
+    health_stale: false,
+    observed_at: null,
+    last_ok: null,
+    pool_eligible: false,
+    score: 0,
+  };
+}
 
 function r2ArchiveFixture(artifactsByKey: Row) {
   return {
@@ -54,7 +130,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.equal((await jsonBody(response)).ok, true);
+    const responseBody = await parseJsonBody(
+      response,
+      successEnvelopeSchema(meta.BuildSummaryArtifactSchema),
+    );
+    assert.equal(responseBody.ok, true);
   });
 
   test("applies a dedicated rate limiter before forwarding chain-events to DATA_API", async () => {
@@ -83,7 +163,8 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 429);
-    assert.equal((await response.json()).error.code, "data_rate_limited");
+    const responseBody = await parseJsonBody(response, ErrorEnvelopeSchema);
+    assert.equal(responseBody.error.code, "data_rate_limited");
     assert.equal(response.headers.get("x-ratelimit-limit"), "60");
     assert.equal(rateCalls, 1);
     assert.equal(dataCalls, 0);
@@ -196,9 +277,9 @@ describe("Worker runtime", () => {
               );
             }
             if (path === "/api/v1/internal/keys/usage") {
-              usageBodies.push(
-                (await request.clone().json()) as Record<string, unknown>,
-              );
+              const usageBody: unknown = await request.clone().json();
+              assertObject(usageBody);
+              usageBodies.push(usageBody);
             }
             return new Response(JSON.stringify({ ok: true }), { status: 200 });
           },
@@ -367,7 +448,10 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
     assert.ok(response.headers.get("etag"));
     assert.equal(queries.length, 1, "the lakehouse was never queried");
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(chain.ChainEventsStatsArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.schema_version, 1);
     assert.equal(body.data.window_blocks, 500);
@@ -414,7 +498,10 @@ describe("Worker runtime", () => {
         1,
         "second request must not re-read the tier",
       );
-      const body = await second.json();
+      const body = await parseJsonBody(
+        second,
+        successEnvelopeSchema(chain.ChainEventsStatsArtifactSchema),
+      );
       assert.equal(body.data.window_blocks, 500);
       // The tier label survives the cache: it travels WITH the payload, so a
       // hit cannot report a different store than the miss did.
@@ -543,7 +630,10 @@ describe("Worker runtime", () => {
         "metagraph/state-archive/v1/subnet_ownership_history/current.json",
       ),
     );
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(ownership.SubnetOwnershipHistoryArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 7);
     assert.deepEqual(body.data.ownership_changes, []);
@@ -574,7 +664,10 @@ describe("Worker runtime", () => {
     );
     assert.equal(response.status, 200);
     assert.ok(calls.length > 0, "the chain was never read");
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(conviction.SubnetConvictionArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 1);
     assert.deepEqual(body.data.leaderboard, []);
@@ -604,9 +697,9 @@ describe("Worker runtime", () => {
     );
     assert.equal(response.status, 200);
     assert.equal(queries.length, 1, "the lakehouse was never queried");
-    assert.match(response.headers.get("content-type"), /text\/csv/);
+    assert.match(requiredHeader(response, "content-type"), /text\/csv/);
     assert.match(
-      response.headers.get("content-disposition") ?? "",
+      requiredHeader(response, "content-disposition"),
       /attachment; filename="/,
     );
     const lines = (await response.text()).trim().split("\r\n");
@@ -630,7 +723,7 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /text\/csv/);
+    assert.match(requiredHeader(response, "content-type"), /text\/csv/);
     assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
   });
 
@@ -664,7 +757,7 @@ describe("Worker runtime", () => {
         {},
       );
       assert.equal(response.status, 200);
-      assert.match(response.headers.get("content-type"), /text\/csv/);
+      assert.match(requiredHeader(response, "content-type"), /text\/csv/);
       assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
     } finally {
       globalWithCaches.caches = undefined;
@@ -695,7 +788,7 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 400);
-    const body = await response.json();
+    const body = await parseJsonBody(response, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "methd");
@@ -715,7 +808,7 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 400);
-    const body = await response.json();
+    const body = await parseJsonBody(response, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "pallet");
@@ -743,7 +836,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).ok, true);
+    const responseBody = await parseJsonBody(
+      response,
+      successEnvelopeSchema(chain.ChainEventsFeedArtifactSchema),
+    );
+    assert.equal(responseBody.ok, true);
   });
 
   test("chain-events/stats ignores ?format=csv and keeps the JSON envelope", async () => {
@@ -767,8 +864,12 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /application\/json/);
-    assert.equal((await response.json()).ok, true);
+    assert.match(requiredHeader(response, "content-type"), /application\/json/);
+    const responseBody = await parseJsonBody(
+      response,
+      successEnvelopeSchema(chain.ChainEventsStatsArtifactSchema),
+    );
+    assert.equal(responseBody.ok, true);
   });
 
   test("a HEAD chain-events probe gets the bodiless 200, not a 405", async () => {
@@ -819,12 +920,12 @@ describe("Worker runtime", () => {
       response.headers.get("x-metagraph-degraded"),
       "tier_unavailable",
     );
-    const degraded = (await response.json()) as {
-      ok: boolean;
-      data?: { events?: unknown[] };
-    };
+    const degraded = await parseJsonBody(
+      response,
+      successEnvelopeSchema(chain.ChainEventsFeedArtifactSchema),
+    );
     assert.equal(degraded.ok, true);
-    assert.deepEqual(degraded.data?.events, []);
+    assert.deepEqual(degraded.data.events, []);
   });
 
   test("degrades when the DATA_API binding is absent", async () => {
@@ -854,7 +955,10 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("x-metagraph-cache-profile"), "standard");
     assert.ok(response.headers.get("etag"));
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(detail.SubnetDetailArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.subnet.netuid, 7);
     // published_at is null when no control KV pointer is bound.
@@ -879,7 +983,10 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(detail.SubnetDetailArtifactSchema),
+    );
     assert.equal(body.meta.published_at, publishedAt);
     // generated_at is now served LIVE as the real publish time (serve-time overlay);
     // the baked epoch marker (issue #349) is never exposed to consumers.
@@ -904,7 +1011,10 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(meta.BuildSummaryArtifactSchema),
+    );
     // The committed build-summary body carries published_at:null; serve overlays
     // the real publish pointer so a body-reading agent sees genuine freshness.
     assert.equal(body.data.published_at, publishedAt);
@@ -915,15 +1025,20 @@ describe("Worker runtime", () => {
   });
 
   test("/api/v1/economics serves the live KV blob (meta.source: live-kv)", async () => {
-    const liveBlob = {
-      schema_version: 1,
-      contract_version: CONTRACT_VERSION,
-      generated_at: "1970-01-01T00:00:00.000Z",
-      captured_at: new Date(Date.now() - 60_000).toISOString(), // fresh
+    const archive = await env.METAGRAPH_ARCHIVE.get("latest/economics.json");
+    assert.ok(archive);
+    const baseline = economics.EconomicsArtifactSchema.parse(
+      await archive.json(),
+    );
+    const subnet = baseline.subnets.find((row) => row.netuid === 7);
+    assert.ok(subnet, "the generated economics fixture includes subnet 7");
+    const liveBlob = buildEconomicsArtifact({
+      subnets: [{ netuid: 7, slug: "x", name: "X" }],
+      economicsByNetuid: new Map([[7, { ...subnet, alpha_price_tao: 1 }]]),
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      capturedAt: new Date(Date.now() - 60_000).toISOString(), // fresh
       network: "finney",
-      summary: { subnet_count: 1, with_economics_count: 1 },
-      subnets: [{ netuid: 7, slug: "x", name: "X", emission_share: 1 }],
-    };
+    });
     const liveEnv = {
       ...env,
       METAGRAPH_CONTROL: {
@@ -942,7 +1057,10 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(economics.EconomicsArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-kv");
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(body.data.summary.with_economics_count, 1);
@@ -957,7 +1075,10 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(economics.EconomicsArtifactSchema),
+    );
     assert.equal(body.meta.source, "r2-fallback");
     assert.ok(Array.isArray(body.data.subnets));
   });
@@ -986,7 +1107,10 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(economics.EconomicsArtifactSchema),
+    );
     assert.equal(body.meta.source, "r2-fallback");
   });
 
@@ -1010,7 +1134,8 @@ describe("Worker runtime", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "application/json");
     assert.ok(response.headers.get("etag"));
-    const card = await response.json();
+    const card: unknown = await response.json();
+    assertObject(card);
     // The committed card carries published_at:null; serve overlays the real
     // publish pointer. generated_at (the build marker, epoch-0 in CI / real in a
     // production refresh) must not be clobbered by the overlay; content_hash +
@@ -1018,7 +1143,8 @@ describe("Worker runtime", () => {
     assert.equal(card.published_at, publishedAt);
     assert.notEqual(card.generated_at, publishedAt);
     assert.ok(card.content_hash, "card must keep its content_hash");
-    assert.ok(card.serverInfo?.name, "card must keep serverInfo");
+    assertObject(card.serverInfo);
+    assert.ok(card.serverInfo.name, "card must keep serverInfo");
 
     // Cold (no KV pointer): published_at stays null, card still serves.
     const cold = await handleRequest(
@@ -1027,7 +1153,9 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(cold.status, 200);
-    assert.equal((await cold.json()).published_at, null);
+    const coldCard: unknown = await cold.json();
+    assertObject(coldCard);
+    assert.equal(coldCard.published_at, null);
   });
 
   test("serves a health readiness probe", async () => {
@@ -1037,7 +1165,9 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body: unknown = await response.json();
+    assertObject(body);
+    assertObject(body.bindings);
     assert.equal(body.status, "ok");
     assert.equal(body.service, "metagraphed");
     assert.equal(body.bindings.assets, true);
@@ -1083,7 +1213,9 @@ describe("Worker runtime", () => {
         {},
       );
       assert.equal(response.status, 200);
-      const body = await response.json();
+      const body: unknown = await response.json();
+      assertObject(body);
+      assertObject(body.bindings);
       assert.equal(body.bindings.archive, true);
       assert.equal(body.bindings.r2, mode !== "native");
     }
@@ -1110,7 +1242,8 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 504);
-    assert.equal((await response.json()).error.code, "r2_timeout");
+    const responseBody = await parseJsonBody(response, ErrorEnvelopeSchema);
+    assert.equal(responseBody.error.code, "r2_timeout");
   });
 
   test("renders a self-hosted SVG health badge for a subnet", async () => {
@@ -1125,7 +1258,7 @@ describe("Worker runtime", () => {
       "image/svg+xml; charset=utf-8",
     );
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
-    const etag = response.headers.get("etag");
+    const etag = requiredHeader(response, "etag");
     assert.ok(etag);
     const svg = await response.text();
     assert.match(svg, /^<svg/);
@@ -1166,7 +1299,11 @@ describe("Worker runtime", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
     assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
-    assert.equal((await response.json()).subnet.netuid, 7);
+    const responseBody = await parseJsonBody(
+      response,
+      detail.SubnetDetailArtifactSchema,
+    );
+    assert.equal(responseBody.subnet.netuid, 7);
 
     const candidates = await handleRequest(
       new Request("https://metagraph.sh/metagraph/candidates.json"),
@@ -1176,7 +1313,11 @@ describe("Worker runtime", () => {
     assert.equal(candidates.status, 200);
     assert.equal(candidates.headers.get("x-metagraph-artifact-source"), "r2");
     assert.equal(candidates.headers.get("x-metagraph-storage-tier"), "r2");
-    assert.equal(Array.isArray((await candidates.json()).candidates), true);
+    const candidatesBody = await parseJsonBody(
+      candidates,
+      candidateSchemas.CandidatesArtifactSchema,
+    );
+    assert.equal(Array.isArray(candidatesBody.candidates), true);
 
     const reviewQueue = await handleRequest(
       new Request("https://metagraph.sh/metagraph/review-queue.json"),
@@ -1186,7 +1327,11 @@ describe("Worker runtime", () => {
     assert.equal(reviewQueue.status, 200);
     assert.equal(reviewQueue.headers.get("x-metagraph-artifact-source"), "r2");
     assert.equal(reviewQueue.headers.get("x-metagraph-storage-tier"), "r2");
-    assert.equal(Array.isArray((await reviewQueue.json()).candidates), true);
+    const reviewQueueBody = await parseJsonBody(
+      reviewQueue,
+      candidateSchemas.CandidatesArtifactSchema,
+    );
+    assert.equal(Array.isArray(reviewQueueBody.candidates), true);
 
     const missingArchive = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
@@ -1196,10 +1341,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(missingArchive.status, 404);
-    assert.equal(
-      (await missingArchive.json()).error.code,
-      "r2_binding_missing",
+    const missingArchiveBody = await parseJsonBody(
+      missingArchive,
+      ErrorEnvelopeSchema,
     );
+    assert.equal(missingArchiveBody.error.code, "r2_binding_missing");
 
     const assetMissing = await env.ASSETS.fetch(
       new Request("https://assets.local/metagraph/nope.json"),
@@ -1216,7 +1362,13 @@ describe("Worker runtime", () => {
             return Response.json({
               schema_version: 1,
               generated_at: "1970-01-01T00:00:00.000Z",
-              endpoints: [{ id: "local-fallback", status: "unknown" }],
+              source: "fixture",
+              summary: {
+                endpoint_count: 1,
+                monitored_count: 1,
+                pool_eligible_count: 0,
+              },
+              endpoints: [endpointFixture("local-fallback", "unknown")],
             });
           },
         },
@@ -1236,13 +1388,18 @@ describe("Worker runtime", () => {
       "static-assets",
     );
     assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
-    assert.equal((await response.json()).endpoints[0].id, "local-fallback");
+    const responseBody = await parseJsonBody(
+      response,
+      endpoints.EndpointsArtifactSchema,
+    );
+    assert.equal(responseBody.endpoints[0].id, "local-fallback");
   });
 
   test("serves coverage/subnets from R2 (R2-only, no committed copy)", async () => {
+    const archive = await env.METAGRAPH_ARCHIVE.get("latest/coverage.json");
+    assert.ok(archive);
     const fresh = {
-      schema_version: 1,
-      generated_at: "1970-01-01T00:00:00.000Z",
+      ...coverage.CoverageArtifactSchema.parse(await archive.json()),
       native_snapshot_captured_at: "2026-06-14T14:06:28.000Z",
     };
 
@@ -1270,8 +1427,9 @@ describe("Worker runtime", () => {
     );
     assert.equal(warm.status, 200);
     assert.equal(warm.headers.get("x-metagraph-artifact-source"), "r2");
+    const warmBody = await parseJsonBody(warm, coverage.CoverageArtifactSchema);
     assert.equal(
-      (await warm.json()).native_snapshot_captured_at,
+      warmBody.native_snapshot_captured_at,
       "2026-06-14T14:06:28.000Z",
     );
 
@@ -1600,6 +1758,7 @@ describe("Worker runtime", () => {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
       network: "finney",
+      source: { kind: "fixture" },
       subnets: [],
     };
     const response = await handleRequest(
@@ -1625,7 +1784,11 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
     assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
     assert.deepEqual(r2KeysRequested, ["latest/metagraph/latest.json"]);
-    assert.equal((await response.json()).network, "finney");
+    const responseBody = await parseJsonBody(
+      response,
+      subnets.SubnetsArtifactSchema,
+    );
+    assert.equal(responseBody.network, "finney");
   });
 
   test("serves raw R2-backed schema snapshot artifacts", async () => {
@@ -1666,7 +1829,11 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
     assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
     assert.deepEqual(r2KeysRequested, ["latest/schemas/example-openapi.json"]);
-    assert.equal((await response.json()).title, "Example API");
+    const responseBody = await parseJsonBody(
+      response,
+      profiles.SchemaSnapshotSchema,
+    );
+    assert.equal(responseBody.title, "Example API");
   });
 
   test("rejects raw artifact paths outside public contracts before storage lookup", async () => {
@@ -1699,8 +1866,9 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("x-metagraph-error-code"), "not_found");
     assert.deepEqual(assetRequests, []);
     assert.deepEqual(r2KeysRequested, []);
+    const responseBody = await parseJsonBody(response, ErrorEnvelopeSchema);
     assert.equal(
-      (await response.json()).meta.artifact_path,
+      responseBody.meta.artifact_path,
       "/metagraph/internal/control.json",
     );
   });
@@ -1722,7 +1890,7 @@ describe("Worker runtime", () => {
     );
     const cached = await handleRequest(
       new Request("https://metagraph.sh/api/v1/contracts", {
-        headers: { "if-none-match": source.headers.get("etag") },
+        headers: { "if-none-match": requiredHeader(source, "etag") },
       }),
       env as unknown as Env,
       {},
@@ -1793,7 +1961,7 @@ describe("Worker runtime", () => {
         {},
       );
       assert.equal(response.status, 400);
-      const body = await response.json();
+      const body = await parseJsonBody(response, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, parameter);
     }
@@ -1806,7 +1974,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(subnets.SubnetsArtifactSchema),
+    );
+    assert.ok(body.meta.pagination);
     assert.equal(body.meta.pagination.collection, "subnets");
     assert.equal(body.meta.pagination.limit, 1);
     assert.equal(body.meta.pagination.sort, "netuid");
@@ -1821,7 +1993,12 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(ProjectedSubnetsArtifactSchema),
+    );
+    assert.ok(body.meta.pagination);
+    assertObject(body.meta.projection);
     assert.equal(body.meta.pagination.collection, "subnets");
     assert.ok(body.meta.pagination.returned > 0);
     assert.ok(body.meta.pagination.returned <= 2);
@@ -1854,7 +2031,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(missingRoute.status, 404);
-    assert.equal((await missingRoute.json()).error.code, "not_found");
+    const missingRouteBody = await parseJsonBody(
+      missingRoute,
+      ErrorEnvelopeSchema,
+    );
+    assert.equal(missingRouteBody.error.code, "not_found");
 
     const missingArtifact = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/999999"),
@@ -1862,8 +2043,12 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(missingArtifact.status, 404);
+    const missingArtifactBody = await parseJsonBody(
+      missingArtifact,
+      ErrorEnvelopeSchema,
+    );
     assert.equal(
-      (await missingArtifact.json()).meta.artifact_path,
+      missingArtifactBody.meta.artifact_path,
       "/metagraph/subnets/999999.json",
     );
 
@@ -1873,7 +2058,8 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(noAssets.status, 404);
-    assert.equal((await noAssets.json()).error.code, "not_found");
+    const noAssetsBody = await parseJsonBody(noAssets, ErrorEnvelopeSchema);
+    assert.equal(noAssetsBody.error.code, "not_found");
 
     const staticFallback = await handleRequest(
       new Request("https://metagraph.sh/static.json"),
@@ -1917,6 +2103,17 @@ describe("Worker runtime", () => {
                   contract_version: CONTRACT_VERSION,
                   generated_at: "1970-01-01T00:00:00.000Z",
                   source: "generated-artifact-diff",
+                  artifacts: { added: [], modified: [], removed: [] },
+                  subnets: { added: [], removed: [], renamed: [] },
+                  summary: {
+                    artifact_added_count: 0,
+                    artifact_modified_count: 0,
+                    artifact_removed_count: 0,
+                    coverage_delta: null,
+                    netuid_added_count: 0,
+                    netuid_removed_count: 0,
+                    netuid_renamed_count: 0,
+                  },
                 };
               },
             };
@@ -1926,7 +2123,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).meta.source, "r2");
+    const responseBody = await parseJsonBody(
+      response,
+      successEnvelopeSchema(meta.ChangelogArtifactSchema),
+    );
+    assert.equal(responseBody.meta.source, "r2");
 
     const r2Miss = await handleRequest(
       new Request("https://metagraph.sh/api/v1/changelog"),
@@ -1952,14 +2153,31 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(r2Miss.status, 404);
-    assert.equal((await r2Miss.json()).error.code, "artifact_not_found");
+    const r2MissBody = await parseJsonBody(r2Miss, ErrorEnvelopeSchema);
+    assert.equal(r2MissBody.error.code, "artifact_not_found");
   });
 
   test("serves operational endpoint indexes from R2", async () => {
     const r2KeysRequested: string[] = [];
+    // This storage-routing fixture has no surface identity. A complete endpoint
+    // would activate the independent live-health overlay and change provenance.
+    const StoredEndpointIndexFixtureSchema =
+      endpoints.EndpointsArtifactSchema.extend({
+        endpoints: detail.EndpointResourceSchema.pick({
+          id: true,
+          status: true,
+          provider: true,
+        }).array(),
+      });
     const endpointArtifact = {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
+      source: "fixture",
+      summary: {
+        endpoint_count: 1,
+        monitored_count: 1,
+        pool_eligible_count: 0,
+      },
       endpoints: [
         {
           id: "endpoint-r2",
@@ -1992,7 +2210,10 @@ describe("Worker runtime", () => {
     );
 
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = await parseJsonBody(
+      response,
+      successEnvelopeSchema(StoredEndpointIndexFixtureSchema),
+    );
     assert.equal(body.meta.source, "r2");
     assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);
     assert.equal(body.data.endpoints[0].id, "endpoint-r2");
@@ -2017,7 +2238,8 @@ describe("Worker runtime", () => {
     );
 
     assert.equal(missing.status, 404);
-    assert.equal((await missing.json()).error.code, "artifact_not_found");
+    const missingBody = await parseJsonBody(missing, ErrorEnvelopeSchema);
+    assert.equal(missingBody.error.code, "artifact_not_found");
   });
 
   test("keeps RPC proxy disabled and blocks unsafe methods", async () => {
@@ -2035,7 +2257,8 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(disabled.status, 501);
-    assert.equal((await disabled.json()).error.code, "rpc_proxy_disabled");
+    const disabledBody = await parseJsonBody(disabled, ErrorEnvelopeSchema);
+    assert.equal(disabledBody.error.code, "rpc_proxy_disabled");
 
     const invalid = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", {
@@ -2056,10 +2279,11 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(invalidRequest.status, 400);
-    assert.equal(
-      (await invalidRequest.json()).error.code,
-      "rpc_invalid_request",
+    const invalidRequestBody = await parseJsonBody(
+      invalidRequest,
+      ErrorEnvelopeSchema,
     );
+    assert.equal(invalidRequestBody.error.code, "rpc_invalid_request");
 
     const blocked = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", {
@@ -2075,7 +2299,8 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(blocked.status, 403);
-    assert.equal((await blocked.json()).error.code, "rpc_method_blocked");
+    const blockedBody = await parseJsonBody(blocked, ErrorEnvelopeSchema);
+    assert.equal(blockedBody.error.code, "rpc_method_blocked");
 
     const tooLargeByHeader = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", {
@@ -2117,8 +2342,12 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(noPoolArtifact.status, 404);
+    const noPoolArtifactBody = await parseJsonBody(
+      noPoolArtifact,
+      ErrorEnvelopeSchema,
+    );
     assert.equal(
-      (await noPoolArtifact.json()).meta.artifact_path,
+      noPoolArtifactBody.meta.artifact_path,
       "/metagraph/rpc/pools.json",
     );
 
@@ -2199,10 +2428,11 @@ describe("Worker runtime", () => {
           {},
         );
         assert.equal(unsafeEndpoint.status, 502);
-        assert.equal(
-          (await unsafeEndpoint.json()).error.code,
-          "rpc_endpoint_unsafe",
+        const unsafeEndpointBody = await parseJsonBody(
+          unsafeEndpoint,
+          ErrorEnvelopeSchema,
         );
+        assert.equal(unsafeEndpointBody.error.code, "rpc_endpoint_unsafe");
       }
       assert.equal(unsafeFetchCalled, false);
     } finally {
@@ -2271,7 +2501,8 @@ describe("Worker runtime", () => {
           {},
         );
         assert.equal(response.status, 502);
-        assert.equal((await response.json()).error.code, "rpc_endpoint_unsafe");
+        const responseBody = await parseJsonBody(response, ErrorEnvelopeSchema);
+        assert.equal(responseBody.error.code, "rpc_endpoint_unsafe");
       }
 
       const response = await handleRequest(
@@ -2412,10 +2643,11 @@ describe("Worker runtime", () => {
         {},
       );
       assert.equal(wssResponse.status, 400);
-      assert.equal(
-        (await wssResponse.json()).error.code,
-        "rpc_websocket_unsupported",
+      const wssResponseBody = await parseJsonBody(
+        wssResponse,
+        ErrorEnvelopeSchema,
       );
+      assert.equal(wssResponseBody.error.code, "rpc_websocket_unsupported");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -2427,224 +2659,251 @@ describe("Worker runtime", () => {
     const subnetsObject = await env.METAGRAPH_ARCHIVE.get(
       "latest/subnets.json",
     );
-    const latestHealthHistoryDate = String(
-      (await subnetsObject.json()).generated_at,
-    ).slice(0, 10);
-    const checks: [string, (body: Row) => boolean][] = [
-      [
+    assert.ok(subnetsObject);
+    const latestHealthHistoryDate = subnets.SubnetsArtifactSchema.parse(
+      await subnetsObject.json(),
+    ).generated_at.slice(0, 10);
+    function checkRoute<Schema extends z.ZodType>(
+      url: string,
+      schema: Schema,
+      predicate: (body: z.output<Schema>) => boolean,
+    ) {
+      return async () => {
+        const response = await handleRequest(
+          new Request(url),
+          env as unknown as Env,
+          {},
+        );
+        assert.equal(response.status, 200, url);
+        const body = await parseJsonBody(response, schema);
+        assert.equal(predicate(body), true, url);
+      };
+    }
+    const checks = [
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets?netuid=7",
-        (body) => body.data.subnets.every((row: Row) => row.netuid === 7),
-      ],
-      [
+        successEnvelopeSchema(subnets.SubnetsArtifactSchema),
+        (body) => body.data.subnets.every((row) => row.netuid === 7),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/surfaces?kind=openapi",
-        (body) =>
-          body.data.surfaces.every((row: Row) => row.kind === "openapi"),
-      ],
-      [
+        successEnvelopeSchema(endpoints.SurfacesArtifactSchema),
+        (body) => body.data.surfaces.every((row) => row.kind === "openapi"),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/providers?authority=official",
+        successEnvelopeSchema(providers.ProvidersArtifactSchema),
         (body) =>
-          body.data.providers.every((row: Row) => row.authority === "official"),
-      ],
-      [
+          body.data.providers.every((row) => row.authority === "official"),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/candidates?state=schema-valid",
+        successEnvelopeSchema(candidateSchemas.CandidatesArtifactSchema),
         (body) =>
-          body.data.candidates.every(
-            (row: Row) => row.state === "schema-valid",
-          ),
-      ],
-      [
+          body.data.candidates.every((row) => row.state === "schema-valid"),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/curation?coverage_level=probed",
+        successEnvelopeSchema(curation.CurationArtifactSchema),
         (body) =>
-          body.data.curation.every(
-            (row: Row) => row.coverage_level === "probed",
-          ),
-      ],
-      [
+          body.data.curation.every((row) => row.coverage_level === "probed"),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/gaps?curation_level=adapter-backed",
+        successEnvelopeSchema(curation.GapsArtifactSchema),
         (body) =>
           body.data.gaps.every(
-            (row: Row) => row.curation_level === "adapter-backed",
+            (row) => row.curation_level === "adapter-backed",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/profiles?curation_level=adapter-backed",
+        successEnvelopeSchema(profiles.SubnetProfilesArtifactSchema),
         (body) =>
           body.data.profiles.length > 0 &&
           body.data.profiles.every(
-            (row: Row) => row.curation_level === "adapter-backed",
+            (row) => row.curation_level === "adapter-backed",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/evidence?q=allways",
+        successEnvelopeSchema(candidateSchemas.EvidenceLedgerArtifactSchema),
         (body) => body.data.claims.length > 0,
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/source-snapshots?q=native",
+        successEnvelopeSchema(evidence.SourceSnapshotsArtifactSchema),
         (body) => body.data.sources.length > 0,
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/search?q=allways",
+        successEnvelopeSchema(evidence.SearchArtifactSchema),
         (body) => body.data.documents.length > 0,
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets?limit=2&sort=netuid&order=desc",
+        successEnvelopeSchema(subnets.SubnetsArtifactSchema),
         (body) =>
           body.data.subnets.length === 2 &&
-          body.meta.pagination.returned === 2 &&
+          body.meta.pagination?.returned === 2 &&
           body.meta.pagination.next_cursor === 2 &&
           body.data.subnets[0].netuid > body.data.subnets[1].netuid,
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
+        successEnvelopeSchema(endpoints.SubnetSurfacesArtifactSchema),
         (body) =>
           body.data.surfaces.length <= 3 &&
           body.data.surfaces.every(
-            (surface: Row) =>
-              surface.netuid === 7 && surface.kind === "subnet-api",
+            (surface) => surface.netuid === 7 && surface.kind === "subnet-api",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets/7/candidates?limit=2",
+        successEnvelopeSchema(candidateSchemas.SubnetCandidatesArtifactSchema),
         (body) =>
           body.data.candidates.length <= 2 &&
-          body.data.candidates.every(
-            (candidate: Row) => candidate.netuid === 7,
-          ),
-      ],
-      [
+          body.data.candidates.every((candidate) => candidate.netuid === 7),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/adapter-candidates?recommended_adapter_kind=generic-openapi-or-custom",
+        successEnvelopeSchema(enrichment.ReviewAdapterCandidatesArtifactSchema),
         (body) =>
           body.data.candidates.length > 0 &&
           body.data.candidates.every(
-            (candidate: Row) =>
+            (candidate) =>
               candidate.recommended_adapter_kind ===
               "generic-openapi-or-custom",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/adapter-candidates?operational_kinds=openapi",
+        successEnvelopeSchema(enrichment.ReviewAdapterCandidatesArtifactSchema),
         (body) =>
           body.data.candidates.length > 0 &&
-          body.data.candidates.every((candidate: Row) =>
+          body.data.candidates.every((candidate) =>
             candidate.operational_kinds.includes("openapi"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/adapter-candidates?reason_codes=existing-adapter",
+        successEnvelopeSchema(enrichment.ReviewAdapterCandidatesArtifactSchema),
         (body) =>
           body.data.candidates.length > 0 &&
-          body.data.candidates.every((candidate: Row) =>
+          body.data.candidates.every((candidate) =>
             candidate.reason_codes.includes("existing-adapter"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_level=partial",
+        successEnvelopeSchema(review.ReviewProfileCompletenessArtifactSchema),
         (body) =>
           body.data.profiles.length > 0 &&
           body.data.profiles.every(
-            (profile: Row) => profile.identity_level === "partial",
+            (profile) => profile.identity_level === "partial",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         // identity_promotion is a transient, drainable queue — once every
         // subnet's source-repo identity is curated it is legitimately empty
         // (as the SN20/53/89/95… enrichment did). Assert the filter only ever
         // returns matching profiles, not that any remain.
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
+        successEnvelopeSchema(review.ReviewProfileCompletenessArtifactSchema),
         (body) =>
           Array.isArray(body.data.profiles) &&
-          body.data.profiles.every((profile: Row) =>
+          body.data.profiles.every((profile) =>
             profile.identity_promotion_kinds.includes("source-repo"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/enrichment-queue?identity_level=partial",
+        successEnvelopeSchema(enrichment.ReviewEnrichmentQueueArtifactSchema),
         (body) =>
           body.data.queue.length > 0 &&
-          body.data.queue.every(
-            (entry: Row) => entry.identity_level === "partial",
-          ),
-      ],
-      [
+          body.data.queue.every((entry) => entry.identity_level === "partial"),
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=openapi",
+        successEnvelopeSchema(enrichment.ReviewEnrichmentQueueArtifactSchema),
         (body) =>
           body.data.queue.length > 0 &&
-          body.data.queue.every((entry: Row) =>
+          body.data.queue.every((entry) =>
             entry.direct_submission_kinds.includes("openapi"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/enrichment-queue?missing_kinds=source-repo",
+        successEnvelopeSchema(enrichment.ReviewEnrichmentQueueArtifactSchema),
         (body) =>
           body.data.queue.length > 0 &&
-          body.data.queue.every((entry: Row) =>
+          body.data.queue.every((entry) =>
             entry.missing_kinds.includes("source-repo"),
           ),
-      ],
-      // #6240: review-gap-priorities advertised sort=missing_kinds but had no matching filter, unlike the
-      // enrichment-queue/enrichment-targets siblings that already narrow on the exact same array field.
-      [
+      ),
+      // #6240: missing_kinds must filter the review-gap queue too.
+      checkRoute(
         "https://metagraph.sh/api/v1/review/gaps?missing_kinds=openapi",
+        successEnvelopeSchema(review.ReviewGapPrioritiesArtifactSchema),
         (body) =>
           body.data.priorities.length > 0 &&
-          body.data.priorities.every((entry: Row) =>
+          body.data.priorities.every((entry) =>
             entry.missing_kinds.includes("openapi"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets/1/gaps?missing_kinds=sse",
+        successEnvelopeSchema(review.SubnetGapsArtifactSchema),
         (body) =>
-          body.data.priorities.every((entry: Row) =>
+          body.data.priorities.every((entry) =>
             entry.missing_kinds.includes("sse"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=openapi",
+        successEnvelopeSchema(
+          enrichment.ReviewEnrichmentEvidenceArtifactSchema,
+        ),
         (body) =>
           body.data.entries.length > 0 &&
-          body.data.entries.every((entry: Row) =>
+          body.data.entries.every((entry) =>
             entry.missing_kinds.includes("openapi"),
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/review/enrichment-targets?target_type=surface-candidate&kind=openapi",
+        successEnvelopeSchema(enrichment.ReviewEnrichmentTargetsArtifactSchema),
         (body) =>
           body.data.targets.length > 0 &&
           body.data.targets.every(
-            (target: Row) =>
+            (target) =>
               target.target_type === "surface-candidate" &&
               target.kind === "openapi",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
+        successEnvelopeSchema(healthSchemas.HealthSubnetArtifactSchema),
         (body) =>
           body.data.surfaces.every(
-            (surface: Row) => surface.netuid === 7 && surface.status === "ok",
+            (surface) => surface.netuid === 7 && surface.status === "ok",
           ),
-      ],
-      [
+      ),
+      checkRoute(
         `https://metagraph.sh/api/v1/health/history/${latestHealthHistoryDate}?limit=2`,
+        successEnvelopeSchema(healthSchemas.HealthHistoryArtifactSchema),
         (body) =>
           body.data.date === latestHealthHistoryDate &&
           body.data.surfaces.length <= 2 &&
-          body.meta.pagination.collection === "surfaces",
-      ],
-      [
+          body.meta.pagination?.collection === "surfaces",
+      ),
+      checkRoute(
         "https://metagraph.sh/api/v1/providers/allways",
+        successEnvelopeSchema(providers.ProviderArtifactSchema),
         (body) => body.data.provider.id === "allways",
-      ],
+      ),
     ];
-
-    for (const [url, predicate] of checks) {
-      const response = await handleRequest(
-        new Request(url),
-        env as unknown as Env,
-        {},
-      );
-      assert.equal(response.status, 200, url);
-      assert.equal(predicate(await response.json()), true, url);
-    }
+    for (const check of checks) await check();
   });
 
   test("rejects malformed documented query parameters", async () => {
@@ -2680,7 +2939,8 @@ describe("Worker runtime", () => {
         response.headers.get("x-metagraph-error-code"),
         "invalid_query",
       );
-      assert.equal((await response.json()).error.code, "invalid_query");
+      const responseBody = await parseJsonBody(response, ErrorEnvelopeSchema);
+      assert.equal(responseBody.error.code, "invalid_query");
     }
   });
 
@@ -2758,8 +3018,10 @@ describe("Worker runtime", () => {
       );
       assert.equal(first.status, 400);
       assert.equal(second.status, 400);
-      assert.equal((await first.json()).meta.parameter, "junk");
-      assert.equal((await second.json()).meta.parameter, "junk");
+      const firstBody = await parseJsonBody(first, ErrorEnvelopeSchema);
+      assert.equal(firstBody.meta.parameter, "junk");
+      const secondBody = await parseJsonBody(second, ErrorEnvelopeSchema);
+      assert.equal(secondBody.meta.parameter, "junk");
       assert.equal(r2Gets, 0, "invalid list queries do not read R2 overlays");
       assert.equal(store.size, 0, "invalid list queries are not cached");
       assert.deepEqual(cachePutKeys, []);
@@ -2796,7 +3058,7 @@ describe("Worker runtime", () => {
       );
       await Promise.resolve();
       const firstBody = await first.text();
-      const etag = first.headers.get("etag");
+      const etag = requiredHeader(first, "etag");
       assert.equal(first.status, 200);
       assert.equal(puts, 1, "a pure-artifact 200 GET should be cached");
       assert.equal(matchHits, 0, "first GET is a cache miss");
@@ -2889,9 +3151,9 @@ describe("Agent discovery surfaces", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /text\/html/);
+    assert.match(requiredHeader(response, "content-type"), /text\/html/);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
-    const link = response.headers.get("link");
+    const link = requiredHeader(response, "link");
     assert.match(link, /rel="api-catalog"/);
     assert.match(link, /rel="service-desc"/);
     assert.match(link, /rel="service-doc"/);
@@ -2905,7 +3167,7 @@ describe("Agent discovery surfaces", () => {
       {},
     );
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("link"), /rel="api-catalog"/);
+    assert.match(requiredHeader(response, "link"), /rel="api-catalog"/);
     assert.equal(await response.text(), "");
   });
 
@@ -2921,27 +3183,39 @@ describe("Agent discovery surfaces", () => {
       "application/linkset+json",
     );
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
-    const body = await response.json();
-    assert.equal(Array.isArray(body.linkset), true);
-    const context = body.linkset[0];
+    const body: unknown = await response.json();
+    assertObject(body);
+    const linkset = body.linkset;
+    assertArray(linkset);
+    const context = linkset[0];
+    assertObject(context);
+    const descriptors = context["service-desc"];
+    assertArray(descriptors);
+    const descriptor = descriptors[0];
+    assertObject(descriptor);
+    const documents = context["service-doc"];
+    assertArray(documents);
+    const document = documents[0];
+    assertObject(document);
+    const statuses = context.status;
+    assertArray(statuses);
+    const status = statuses[0];
+    assertObject(status);
     // Anchor + the relations the API-catalog spec requires (service-desc,
     // service-doc); each target carries an absolute href on the request origin.
     assert.equal(context.anchor, "https://api.metagraph.sh/api/v1");
     assert.equal(
-      context["service-desc"][0].href,
+      descriptor.href,
       "https://api.metagraph.sh/metagraph/openapi.json",
     );
-    assert.equal(
-      context["service-doc"][0].href,
-      "https://api.metagraph.sh/llms.txt",
-    );
+    assert.equal(document.href, "https://api.metagraph.sh/llms.txt");
     assert.ok(
-      context["service-doc"].some(
-        (entry: Row) =>
-          entry.href === "https://api.metagraph.sh/agent-workflows.md",
-      ),
+      documents.some((entry) => {
+        assertObject(entry);
+        return entry.href === "https://api.metagraph.sh/agent-workflows.md";
+      }),
     );
-    assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
+    assert.equal(status.href, "https://api.metagraph.sh/health");
   });
 
   test("api-catalog hrefs are canonical (api.metagraph.sh), not the request host", async () => {
@@ -2954,13 +3228,22 @@ describe("Agent discovery surfaces", () => {
       {} as unknown as Env,
       {},
     );
-    const body = await response.json();
-    assert.equal(body.linkset[0].anchor, "https://api.metagraph.sh/api/v1");
+    const body: unknown = await response.json();
+    assertObject(body);
+    const linkset = body.linkset;
+    assertArray(linkset);
+    const context = linkset[0];
+    assertObject(context);
+    const descriptors = context["service-desc"];
+    assertArray(descriptors);
+    const descriptor = descriptors[0];
+    assertObject(descriptor);
+    assert.equal(context.anchor, "https://api.metagraph.sh/api/v1");
     assert.equal(
-      body.linkset[0]["service-desc"][0].href,
+      descriptor.href,
       "https://api.metagraph.sh/metagraph/openapi.json",
     );
-    const link = response.headers.get("link");
+    const link = requiredHeader(response, "link");
     assert.match(
       link,
       /<https:\/\/api\.metagraph\.sh\/metagraph\/openapi\.json>; rel="service-desc"/,
@@ -2980,14 +3263,19 @@ describe("Agent discovery surfaces", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "application/json");
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
-    const tools = await response.json();
-    assert.equal(Array.isArray(tools), true);
+    const tools: unknown = await response.json();
+    assertArray(tools);
     assert.ok(tools.length >= 14);
     for (const tool of tools) {
+      assertObject(tool);
       assert.equal(tool.type, "function");
-      assert.equal(typeof tool.function.name, "string");
-      assert.equal(typeof tool.function.description, "string");
-      assert.equal(tool.function.parameters.type, "object");
+      const definition = tool.function;
+      assertObject(definition);
+      assert.equal(typeof definition.name, "string");
+      assert.equal(typeof definition.description, "string");
+      const parameters = definition.parameters;
+      assertObject(parameters);
+      assert.equal(parameters.type, "object");
     }
   });
 
@@ -3000,11 +3288,14 @@ describe("Agent discovery surfaces", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const tools = await response.json();
-    assert.equal(Array.isArray(tools), true);
+    const tools: unknown = await response.json();
+    assertArray(tools);
     for (const tool of tools) {
+      assertObject(tool);
       assert.equal(typeof tool.name, "string");
-      assert.equal(tool.input_schema.type, "object");
+      const inputSchema = tool.input_schema;
+      assertObject(inputSchema);
+      assert.equal(inputSchema.type, "object");
       assert.equal("parameters" in tool, false);
     }
   });
@@ -3018,26 +3309,40 @@ describe("Agent discovery surfaces", () => {
       {},
     );
     assert.equal(indexResponse.status, 200);
-    const index = await indexResponse.json();
-    assert.equal(index.executor.endpoint, "https://api.metagraph.sh/mcp");
-    assert.equal(index.executor.jsonrpc_method, "tools/call");
+    const index: unknown = await indexResponse.json();
+    assertObject(index);
+    const executor = index.executor;
+    assertObject(executor);
+    const specs = index.specs;
+    assertObject(specs);
+    assertArray(index.tools);
+    assert.equal(executor.endpoint, "https://api.metagraph.sh/mcp");
+    assert.equal(executor.jsonrpc_method, "tools/call");
     assert.equal(
-      index.specs.openai,
+      specs.openai,
       "https://api.metagraph.sh/.well-known/agent-tools/openai.json",
     );
-    assert.ok(Array.isArray(index.tools) && index.tools.length >= 14);
+    assert.ok(index.tools.length >= 14);
 
     // The api-catalog linkset advertises the index under describedby.
-    const catalog = await (
+    const catalog: unknown = await (
       await handleRequest(
         new Request("https://api.metagraph.sh/.well-known/api-catalog"),
         {} as unknown as Env,
         {},
       )
     ).json();
-    const describedby = catalog.linkset[0].describedby.map(
-      (entry: Row) => entry.href,
-    );
+    assertObject(catalog);
+    const linkset = catalog.linkset;
+    assertArray(linkset);
+    const context = linkset[0];
+    assertObject(context);
+    const descriptions = context.describedby;
+    assertArray(descriptions);
+    const describedby = descriptions.map((entry) => {
+      assertObject(entry);
+      return entry.href;
+    });
     assert.ok(
       describedby.includes(
         "https://api.metagraph.sh/.well-known/agent-tools/index.json",
@@ -3052,8 +3357,8 @@ describe("Agent discovery surfaces", () => {
       {},
     );
     assert.equal(response.status, 200);
-    const tools = await response.json();
-    assert.equal(Array.isArray(tools), true);
+    const tools: unknown = await response.json();
+    assertArray(tools);
     assert.ok(tools.length >= 14);
   });
 

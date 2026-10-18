@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { RuntimeVersionsArtifactSchema } from "../schemas-src/routes/runtime-versions.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
@@ -204,7 +207,10 @@ describe("GET /api/v1/runtime via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(RuntimeVersionsArtifactSchema),
+    );
     assert.equal(body.data.transition_count, 0);
     assert.deepEqual(body.data.transitions, []);
   });

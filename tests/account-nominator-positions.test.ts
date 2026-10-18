@@ -14,6 +14,9 @@ import {
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.ts";
 import { handleRequest } from "../workers/api.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountPositionsArtifactSchema } from "../schemas-src/routes/account-positions.ts";
+import { parseJsonBody } from "./row-type.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -26,7 +29,10 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionsArtifactSchema),
+    );
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.position_count, 0);
     assert.equal(body.data.total_stake_alpha, 0);
@@ -76,7 +82,10 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(dataApiCalls, 0, "the DATA_API leg is gone, not merely quiet");
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionsArtifactSchema),
+    );
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.position_count, 0);
     assert.deepEqual(body.data.positions, []);

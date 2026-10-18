@@ -7,19 +7,29 @@ import {
 } from "../workers/request-handlers/saved-queries.ts";
 import { handleRequest } from "../workers/api.ts";
 import { SAVED_QUERY_HANDLERS } from "../src/saved-queries.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody } from "./row-type.ts";
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { RunSavedQueryOutputSchema } from "../schemas-src/mcp-tools/query-tools.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-async function json(res: Response, expectedStatus = 200): Promise<Row> {
+async function json<Schema extends z.ZodType>(
+  res: Response,
+  schema: Schema,
+  expectedStatus = 200,
+): Promise<z.output<Schema>> {
   assert.equal(
     res.status,
     expectedStatus,
     `expected ${expectedStatus}, got ${res.status}`,
   );
-  return res.json();
+  return parseJsonBody(res, schema);
 }
 
 describe("handleSavedQueryRequest", () => {
@@ -38,6 +48,7 @@ describe("handleSavedQueryRequest", () => {
           "https://api.metagraph.sh/api/v1/queries/subnet-leaderboard?board=highest-emission&limit=5",
         ),
       ),
+      successEnvelopeSchema(RunSavedQueryOutputSchema),
     );
     assert.equal(body.ok, true);
     assert.equal(body.data.query_id, "subnet-leaderboard");
@@ -57,6 +68,7 @@ describe("handleSavedQueryRequest", () => {
           mockEnv(),
           new URL(`https://api.metagraph.sh/api/v1/queries/${bad}`),
         ),
+        ErrorEnvelopeSchema,
         404,
       );
       assert.equal(body.ok, false, `${bad} should answer, not throw`);
@@ -71,6 +83,7 @@ describe("handleSavedQueryRequest", () => {
         mockEnv(),
         new URL("https://api.metagraph.sh/api/v1/queries/not-a-real-template"),
       ),
+      ErrorEnvelopeSchema,
       404,
     );
     assert.equal(body.ok, false);
@@ -84,6 +97,7 @@ describe("handleSavedQueryRequest", () => {
         mockEnv(),
         new URL("https://api.metagraph.sh/api/v1/queries/"),
       ),
+      ErrorEnvelopeSchema,
       404,
     );
     assert.equal(body.error.code, "not_found");
@@ -98,6 +112,7 @@ describe("handleSavedQueryRequest", () => {
           "https://api.metagraph.sh/api/v1/queries/subnet-leaderboard?board=not-a-board",
         ),
       ),
+      ErrorEnvelopeSchema,
       400,
     );
     assert.equal(body.error.code, "invalid_params");
@@ -147,6 +162,7 @@ describe("handleSavedQueryRequest", () => {
         {} as unknown as Env,
         {},
       ),
+      successEnvelopeSchema(RunSavedQueryOutputSchema),
     );
     assert.equal(body.data.query_id, "chain-registrations-window");
     assert.equal(body.data.params.window, "30d");

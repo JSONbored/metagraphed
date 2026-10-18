@@ -6,8 +6,10 @@ import {
   unavailableAccountPortfolioCapital,
 } from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountPortfolioArtifactSchema } from "../schemas-src/routes/account-portfolio.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // Unit prices isolate membership/count/stamp assertions from independent
 // emission pricing, which a separate describe block exercises below.
@@ -300,7 +302,10 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
     assert.equal(body.data.position_count, 0);
     assert.equal(body.data.total_stake_tao, null);
     assert.deepEqual(body.data.positions, []);

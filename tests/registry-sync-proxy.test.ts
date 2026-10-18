@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 // Unit tests for the /api/v1/internal/registry-sync proxy (workers/api.ts's
 // handleRegistrySyncProxy), which forwards to the dedicated registry-sync
 // Worker via the REGISTRY_SYNC_API service binding. The downstream Worker
@@ -104,5 +106,6 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "registry_sync_unavailable");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "registry_sync_unavailable");
 });

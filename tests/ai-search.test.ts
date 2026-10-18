@@ -4,7 +4,14 @@ import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { z } from "zod";
-import { SemanticSearchArtifactSchema } from "../schemas-src/routes/ai-native.ts";
+import {
+  AskArtifactSchema,
+  SemanticSearchArtifactSchema,
+} from "../schemas-src/routes/ai-native.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import {
   EMBED_MODEL,
   ASK_MODEL,
@@ -32,7 +39,7 @@ import {
   USAGE_EVENT_DISTINCT_ID,
 } from "../src/usage-telemetry.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type AnyFn, type Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
@@ -1240,7 +1247,10 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SemanticSearchArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.meta.source, "ai-live");
     assert.ok(body.data.results.length > 0);
@@ -1262,7 +1272,7 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.match(body.error.message, /may only be provided once/);
   });
@@ -1274,8 +1284,11 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.ok(body.data.results.every((r: Row) => r.type === "subnet"));
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SemanticSearchArtifactSchema),
+    );
+    assert.ok(body.data.results.every((r) => r.type === "subnet"));
   });
 
   test("semantic with an unknown ?type= is a 400", async () => {
@@ -1285,7 +1298,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_query");
   });
 
   test("ask with an unknown type is a 400", async () => {
@@ -1299,7 +1313,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_request");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_request");
   });
 
   test("enabled ask returns a 200 envelope with citations", async () => {
@@ -1313,7 +1328,10 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AskArtifactSchema),
+    );
     assert.ok(body.data.citations.length > 0);
   });
 
@@ -1324,7 +1342,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_query");
   });
 
   test("ask with invalid JSON is a 400", async () => {
@@ -1334,7 +1353,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_json");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "invalid_json");
   });
 
   test("ask rejects oversized Content-Length before parsing", async () => {
@@ -1351,7 +1371,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "payload_too_large");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "payload_too_large");
   });
 
   test("ask rejects oversized streamed bodies while reading", async () => {
@@ -1378,7 +1399,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "payload_too_large");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "payload_too_large");
   });
 
   test("GET /api/v1/ask is a 405", async () => {
@@ -1400,7 +1422,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 429);
-    assert.equal((await res.json()).error.code, "rate_limited");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rate_limited");
     // The AI 429 now advertises quota like the webhook/alert-trigger limiters do,
     // sourced from the AI_RATE_LIMITER binding (limit 20 / period 60).
     assert.equal(res.headers.get("retry-after"), "60");
@@ -1504,7 +1527,8 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 502);
-    assert.equal((await res.json()).error.code, "ai_error");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "ai_error");
   });
 
   test("ask backend failure degrades to 502", async () => {
@@ -2240,13 +2264,23 @@ describe("AI request telemetry runs in the Worker background lifetime", () => {
               readHealthKv: async () => null,
             },
           );
-          const body = (await response.json()) as Row;
-          assert.equal(body.result.isError, false);
+          const body: unknown = await response.json();
+          assert.ok(body && typeof body === "object" && "result" in body);
+          const result = body.result;
+          assert.ok(
+            result && typeof result === "object" && "isError" in result,
+          );
+          assert.equal(result.isError, false);
           const embedding = calls.find((c) => c.event === "$ai_embedding");
           assert.ok(embedding, "semantic embedding must remain instrumented");
           assert.equal(embedding.distinct_id, "github:example");
           if (tool === "find_subnet_for_task") {
-            assert.equal(body.result.structuredContent.discovery, "semantic");
+            assert.ok("structuredContent" in result);
+            const content = result.structuredContent;
+            assert.ok(
+              content && typeof content === "object" && "discovery" in content,
+            );
+            assert.equal(content.discovery, "semantic");
           }
         });
       });

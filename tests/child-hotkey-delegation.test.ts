@@ -11,8 +11,16 @@ import {
 } from "../src/child-hotkey-delegation.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  AccountChildrenArtifactSchema,
+  AccountParentsArtifactSchema,
+} from "../schemas-src/routes/account-child-delegation.ts";
 import type { Row } from "./row-type.ts";
-import { mockEnv } from "./row-type.ts";
+import { mockEnv, parseJsonBody } from "./row-type.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -626,7 +634,10 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountChildrenArtifactSchema),
+      );
       assert.equal(body.ok, true);
       assert.equal(body.data.account, KNOWN_SS58);
       assert.deepEqual(body.data.subnets, []);
@@ -652,7 +663,10 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountParentsArtifactSchema),
+      );
       assert.deepEqual(body.data.subnets, []);
     } finally {
       restore();
@@ -688,7 +702,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
         {},
       );
       assert.equal(res.status, 400);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.ok, false);
       assert.equal(body.error.code, "invalid_ss58");
       assert.equal(limiterCalls, 0);
@@ -840,7 +854,10 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountChildrenArtifactSchema),
+      );
       assert.deepEqual(body.data.subnets, []);
     } finally {
       restore();
@@ -865,7 +882,10 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountParentsArtifactSchema),
+      );
       assert.deepEqual(body.data.subnets, []);
     } finally {
       restore();

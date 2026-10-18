@@ -1,3 +1,11 @@
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  ExtrinsicDetailArtifactSchema,
+  ExtrinsicsFeedArtifactSchema,
+} from "../schemas-src/routes/extrinsics.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -14,7 +22,7 @@ import {
 } from "../src/extrinsics.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { DAY_MS } from "../workers/config.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -603,6 +611,11 @@ test("EXTRINSIC_READ_COLUMNS lists the served extrinsic columns", () => {
 
 // ---- Route/integration (#1345) ---------------------------------------------
 
+const feedResponseSchema = successEnvelopeSchema(ExtrinsicsFeedArtifactSchema);
+const detailResponseSchema = successEnvelopeSchema(
+  ExtrinsicDetailArtifactSchema,
+);
+
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
@@ -653,7 +666,10 @@ test("GET /extrinsics rejects an over-cap limit + unsupported params", async () 
     {},
   );
   assert.equal(over.status, 400);
-  assert.equal((await over.json()).error.code, "invalid_query");
+  assert.equal(
+    (await parseJsonBody(over, ErrorEnvelopeSchema)).error.code,
+    "invalid_query",
+  );
 
   const bad = await handleRequest(
     req("/api/v1/extrinsics?bogus=1"),
@@ -678,7 +694,7 @@ test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async
       {},
     );
     assert.equal(res.status, 400, query);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
   }
 });
@@ -691,7 +707,7 @@ test("GET /extrinsics/{hash} is schema-stable when cold (extrinsic:null, never 4
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, detailResponseSchema);
   assert.equal(body.data.ref, hash);
   assert.equal(body.data.extrinsic, null);
 });
@@ -703,7 +719,7 @@ test("GET /extrinsics/{block}-{index} is schema-stable when cold (#1848)", async
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, detailResponseSchema);
   assert.equal(body.data.ref, "777-0");
   assert.equal(body.data.extrinsic, null);
   // The events embed (#1849) is always present + empty when the ref is cold.
@@ -744,7 +760,7 @@ for (const badRef of [
       badRef,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, detailResponseSchema);
     assert.equal(body.data.ref, badRef);
     assert.equal(
       body.data.extrinsic,
@@ -764,7 +780,7 @@ test("GET /extrinsics is schema-stable when the store is cold (never 404)", asyn
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, feedResponseSchema);
   assert.equal(body.data.extrinsic_count, 0);
   assert.equal(Array.isArray(body.data.extrinsics), true);
 });

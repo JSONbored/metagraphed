@@ -1791,6 +1791,7 @@ assert.equal(
   "GET /mcp must open the SSE stream for a subscribed session",
 );
 assert.equal(streamRes.headers.get("content-type"), "text/event-stream");
+assert.ok(streamRes.body, "GET /mcp SSE response must carry a body");
 const reader = streamRes.body.getReader();
 
 const firehoseStub = chainFirehoseHubNS.get(
@@ -1920,6 +1921,7 @@ const statusStream = await mcpRaw(null, {
   envOverride: lifecycleEnv,
 });
 assert.equal(statusStream.status, 200, "status subscription must open SSE");
+assert.ok(statusStream.body, "status subscription SSE must carry a body");
 const statusReader = statusStream.body.getReader();
 
 const statusHubStub = subnetStatusHubNS.get(

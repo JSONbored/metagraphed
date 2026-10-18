@@ -30,8 +30,11 @@ import {
 import { SubnetOwnershipHistoryArtifactSchema } from "../schemas-src/routes/subnet-ownership-history.ts";
 import { SubnetConvictionArtifactSchema } from "../schemas-src/routes/subnet-conviction.ts";
 import { SubnetLeaseHistoryArtifactSchema } from "../schemas-src/routes/subnet-lease.ts";
-import { mockEnv } from "./row-type.ts";
-import type { Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -64,14 +67,39 @@ function envWith(mode: "ok" | "down" | "unconfigured") {
   ) as unknown as Env;
 }
 
-const FAMILY = [
-  "/api/v1/chain-events",
-  "/api/v1/chain-events/stats",
-  "/api/v1/blocks/8700000/chain-events",
-  "/api/v1/subnets/1/ownership-history",
-  "/api/v1/subnets/1/conviction",
-  "/api/v1/subnets/1/lease/history",
-];
+const FAMILY_CASES = [
+  ["chain-events", "/api/v1/chain-events", ChainEventsFeedArtifactSchema],
+  [
+    "chain-events/stats",
+    "/api/v1/chain-events/stats",
+    ChainEventsStatsArtifactSchema,
+  ],
+  [
+    "block chain-events",
+    "/api/v1/blocks/8700000/chain-events",
+    BlockChainEventsArtifactSchema,
+  ],
+  [
+    "ownership-history",
+    "/api/v1/subnets/1/ownership-history",
+    SubnetOwnershipHistoryArtifactSchema,
+  ],
+  [
+    "conviction",
+    "/api/v1/subnets/1/conviction",
+    SubnetConvictionArtifactSchema,
+  ],
+  [
+    "lease/history",
+    "/api/v1/subnets/1/lease/history",
+    SubnetLeaseHistoryArtifactSchema,
+  ],
+] as const;
+const FAMILY = FAMILY_CASES.map(([, path]) => path);
+const feedSchema = successEnvelopeSchema(ChainEventsFeedArtifactSchema);
+const ownershipSchema = successEnvelopeSchema(
+  SubnetOwnershipHistoryArtifactSchema,
+);
 
 describe("degradedChainEventsPayload", () => {
   test("every proxied route has a schema-stable empty", () => {
@@ -168,35 +196,7 @@ describe("degradedChainEventsPayload", () => {
 // that fails its own contract would break generated clients precisely when the
 // tier is already down.
 describe("every degraded payload satisfies its published schema", () => {
-  const cases: [string, string, { parse: (v: unknown) => unknown }][] = [
-    ["chain-events", "/api/v1/chain-events", ChainEventsFeedArtifactSchema],
-    [
-      "chain-events/stats",
-      "/api/v1/chain-events/stats",
-      ChainEventsStatsArtifactSchema,
-    ],
-    [
-      "block chain-events",
-      "/api/v1/blocks/8700000/chain-events",
-      BlockChainEventsArtifactSchema,
-    ],
-    [
-      "ownership-history",
-      "/api/v1/subnets/1/ownership-history",
-      SubnetOwnershipHistoryArtifactSchema,
-    ],
-    [
-      "conviction",
-      "/api/v1/subnets/1/conviction",
-      SubnetConvictionArtifactSchema,
-    ],
-    [
-      "lease/history",
-      "/api/v1/subnets/1/lease/history",
-      SubnetLeaseHistoryArtifactSchema,
-    ],
-  ];
-  for (const [name, path, schema] of cases) {
+  for (const [name, path, schema] of FAMILY_CASES) {
     test(`${name} parses against its own contract`, () => {
       const payload = degradedChainEventsPayload(
         new URL(`https://api.metagraph.sh${path}`),
@@ -392,9 +392,9 @@ describe("handleChainEventsFamily", () => {
       {},
     );
     assert.equal(res.status, 503);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
-    assert.equal((body.error as Row).code, "data_tier_unavailable");
+    assert.equal(body.error.code, "data_tier_unavailable");
   });
 
   test("a mapped path degrades and names the failed tier, not the live one", async () => {
@@ -406,8 +406,8 @@ describe("handleChainEventsFamily", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-degraded"), "tier_unavailable");
-    const body = (await res.json()) as Row;
-    assert.equal((body.meta as Row).source, "data-worker-unavailable");
+    const body = await parseJsonBody(res, feedSchema);
+    assert.equal(body.meta.source, "data-worker-unavailable");
   });
 
   // Real rows, so NOT marked degraded and NOT barred from the edge cache --
@@ -430,16 +430,16 @@ describe("handleChainEventsFamily", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
-    const body = (await res.json()) as Row;
-    assert.equal((body.meta as Row).source, "lakehouse-cold-tier");
-    assert.equal((body.data as Row).count, 1);
+    const body = await parseJsonBody(res, ownershipSchema);
+    assert.equal(body.meta.source, "lakehouse-cold-tier");
+    assert.equal(body.data.count, 1);
   });
 });
 
 describe("the family degrades instead of erroring", () => {
   for (const mode of ["down", "unconfigured"] as const) {
     test(`every route answers 200 + degraded when the tier ${mode}s`, async () => {
-      for (const path of FAMILY) {
+      for (const [, path, schema] of FAMILY_CASES) {
         const res = await handleRequest(req(path), envWith(mode));
         assert.equal(res.status, 200, `${path} under ${mode}`);
         assert.equal(
@@ -447,7 +447,7 @@ describe("the family degrades instead of erroring", () => {
           "tier_unavailable",
           `${path} under ${mode} must be marked degraded`,
         );
-        const body = (await res.json()) as Row;
+        const body = await parseJsonBody(res, successEnvelopeSchema(schema));
         assert.equal(body.ok, true, `${path} under ${mode}`);
       }
     });
@@ -464,17 +464,17 @@ describe("the family degrades instead of erroring", () => {
     );
     assert.equal(res.status, 400);
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
-    assert.equal((body.error as Row).code, "invalid_query");
+    assert.equal(body.error.code, "invalid_query");
   });
 
   test("a healthy tier is untouched", async () => {
     const res = await handleRequest(req("/api/v1/chain-events"), envWith("ok"));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
-    const body = (await res.json()) as Row;
-    assert.equal((body.data as Row).count, 1);
+    const body = await parseJsonBody(res, feedSchema);
+    assert.equal(body.data.count, 1);
   });
 });
 
@@ -768,8 +768,8 @@ describe("the chain-events edge cache is read through the parse", () => {
       } as Env);
       assert.equal(second.status, 200);
       assert.equal(second.headers.get("x-metagraph-degraded"), null);
-      const body = (await second.json()) as Row;
-      assert.equal((body.data as Row).count, 1);
+      const body = await parseJsonBody(second, feedSchema);
+      assert.equal(body.data.count, 1);
     } finally {
       globalWithCaches.caches = original;
     }
@@ -795,9 +795,9 @@ describe("the chain-events edge cache is read through the parse", () => {
         envWith("ok"),
       );
       assert.equal(res.status, 200);
-      const body = (await res.json()) as Row;
+      const body = await parseJsonBody(res, feedSchema);
       assert.equal(
-        (body.data as Row).count,
+        body.data.count,
         1,
         "recomputed from the tier rather than served under an unknown source",
       );

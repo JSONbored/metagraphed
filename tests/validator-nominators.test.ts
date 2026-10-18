@@ -9,8 +9,12 @@ import {
 } from "../src/validator-nominators.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 import { ValidatorNominatorsArtifactSchema } from "../schemas-src/routes/validator-nominators.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 
 // One GROUP BY coldkey, event_kind row.
 function row(
@@ -386,7 +390,13 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
       env as unknown as Env,
       {},
     );
-    return { res, body: await res.json() };
+    const body = res.ok
+      ? await parseJsonBody(
+          res,
+          successEnvelopeSchema(ValidatorNominatorsArtifactSchema),
+        )
+      : await parseJsonBody(res, ErrorEnvelopeSchema);
+    return { res, body };
   };
 
   test("is schema-stable when the store is cold (never 404)", async () => {
@@ -399,6 +409,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
       env,
     );
     assert.equal(res.status, 200);
+    assert.ok(body.ok);
     assert.deepEqual(body.data.nominators, []);
     assert.equal(body.data.nominator_count, 0);
   });

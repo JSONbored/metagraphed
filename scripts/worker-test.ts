@@ -1,3 +1,7 @@
+import {
+  ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import assert from "node:assert/strict";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -58,7 +62,10 @@ assert.equal(
   "POST should not be allowed for artifact API routes",
 );
 assert.equal(apiPost.headers.get("allow"), "GET, HEAD, OPTIONS");
-assert.equal(((await apiPost.json()) as Row).error.code, "method_not_allowed");
+assert.equal(
+  ErrorEnvelopeSchema.parse(await apiPost.json()).error.code,
+  "method_not_allowed",
+);
 
 const unknown = await handleRequest(
   new Request("https://metagraph.sh/api/v1/does-not-exist"),
@@ -73,10 +80,12 @@ const source = await handleRequest(
   env,
   {},
 );
+const sourceEtag = source.headers.get("etag");
+assert.ok(sourceEtag, "contracts response must carry an ETag");
 const cached = await handleRequest(
   new Request("https://metagraph.sh/api/v1/contracts", {
     headers: {
-      "if-none-match": source.headers.get("etag"),
+      "if-none-match": sourceEtag,
     },
   }),
   env,
@@ -122,7 +131,10 @@ assert.equal(
   200,
   "Worker should fall back to R2 with KV latest pointer",
 );
-assert.equal(((await r2Fallback.json()) as Row).meta.source, "r2");
+assert.equal(
+  SuccessEnvelopeSchema.parse(await r2Fallback.json()).meta.source,
+  "r2",
+);
 
 const disabledRpc = await handleRequest(
   new Request("https://metagraph.sh/rpc/v1/finney", { method: "POST" }),
@@ -131,7 +143,7 @@ const disabledRpc = await handleRequest(
 );
 assert.equal(disabledRpc.status, 501, "RPC proxy must be disabled by default");
 assert.equal(
-  ((await disabledRpc.json()) as Row).error.code,
+  ErrorEnvelopeSchema.parse(await disabledRpc.json()).error.code,
   "rpc_proxy_disabled",
 );
 
@@ -160,7 +172,7 @@ const blockedRpc = await handleRequest(
 );
 assert.equal(blockedRpc.status, 403, "unsafe RPC methods must be blocked");
 assert.equal(
-  ((await blockedRpc.json()) as Row).error.code,
+  ErrorEnvelopeSchema.parse(await blockedRpc.json()).error.code,
   "rpc_method_blocked",
 );
 
@@ -241,7 +253,7 @@ for (const unsafeUrl of [
       `unsafe endpoint ${unsafeUrl} should be rejected before fetch`,
     );
     assert.equal(
-      ((await unsafeRpc.json()) as Row).error.code,
+      ErrorEnvelopeSchema.parse(await unsafeRpc.json()).error.code,
       "rpc_endpoint_unsafe",
     );
     assert.equal(
@@ -365,7 +377,7 @@ try {
     "the /wss route is not HTTP-proxyable and must be rejected, not 500",
   );
   assert.equal(
-    ((await wssRejected.json()) as Row).error.code,
+    ErrorEnvelopeSchema.parse(await wssRejected.json()).error.code,
     "rpc_websocket_unsupported",
   );
 } finally {
@@ -404,6 +416,7 @@ try {
     await Promise.resolve();
     const firstBody = await first.text();
     const etag = first.headers.get("etag");
+    assert.ok(etag, "schemas response must carry an ETag");
     assert.equal(first.status, 200, "schemas GET should be 200");
     assert.equal(puts, 1, "a pure-artifact 200 GET should be cached");
     assert.equal(matchHits, 0, "first GET is a cache miss");

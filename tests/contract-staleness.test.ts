@@ -5,11 +5,16 @@
 // x-metagraph-stale-contract header. We simulate the drift by pinning a FUTURE
 // live contract version, so every current artifact lags it.
 
+import assert from "node:assert/strict";
 import { describe, expect, it } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { contractStaleness } from "../workers/responses.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetsArtifactSchema } from "../schemas-src/routes/subnets.ts";
 
+const responseSchema = successEnvelopeSchema(SubnetsArtifactSchema);
 const ARTIFACT_ROUTE = "https://metagraph.sh/api/v1/subnets";
 
 describe("serve-time contract staleness (#1001)", () => {
@@ -32,10 +37,11 @@ describe("serve-time contract staleness (#1001)", () => {
       env as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
 
     expect(res.status).toBe(200);
     expect(body.meta.stale_contract).toBeTruthy();
+    assert.ok(body.meta.stale_contract);
     expect(body.meta.stale_contract.live).toBe("2099-01-01.1");
     expect(typeof body.meta.stale_contract.built_under).toBe("string");
     expect(body.meta.stale_contract.built_under).not.toBe("2099-01-01.1");
@@ -63,7 +69,7 @@ describe("serve-time contract staleness (#1001)", () => {
       env as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
 
     expect(res.status).toBe(200);
     expect(body.meta.stale_contract).toBeUndefined();

@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountEventsArtifactSchema } from "../schemas-src/routes/account-events-feed.ts";
+import { SubnetEventsArtifactSchema } from "../schemas-src/routes/subnet-events.ts";
 import { handleRequest } from "../workers/api.ts";
 import * as feeds from "../src/indexed-account-feeds.ts";
 import { nativeAccountRow } from "./helpers/native-account-row.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 const PAYER = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -42,7 +49,14 @@ for (const kind of ["TransactionFeePaid", "TransactionFeePaidWithAlpha"]) {
           {},
         );
         assert.equal(response.status, 200);
-        const body = await response.json();
+        const body = await parseJsonBody(
+          response,
+          successEnvelopeSchema(
+            scope === "account"
+              ? AccountEventsArtifactSchema
+              : SubnetEventsArtifactSchema,
+          ),
+        );
         assert.equal(body.data.event_count, rows.length);
         if (rows.length) {
           const [event] = body.data.events;
@@ -101,7 +115,7 @@ test("REST event feeds reject fee-kind lookalikes before the indexed read", asyn
           {},
         );
         assert.equal(response.status, 400);
-        const body = await response.json();
+        const body = await parseJsonBody(response, ErrorEnvelopeSchema);
         assert.equal(body.error.code, "invalid_query");
         assert.equal(body.meta.parameter, "kind");
       }

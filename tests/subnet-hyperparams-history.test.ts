@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetHyperparamsHistoryArtifactSchema } from "../schemas-src/routes/subnet-hyperparameters.ts";
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 
@@ -219,7 +222,10 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters/history via the Worker", 
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetHyperparamsHistoryArtifactSchema),
+    );
     assert.equal(body.data.netuid, 86);
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);

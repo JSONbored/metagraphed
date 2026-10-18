@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetOverviewArtifactSchema } from "../schemas-src/routes/subnet-overview.ts";
+import { RegistrySummaryArtifactSchema } from "../schemas-src/routes/registry-summary-leaderboards.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 const env = createLocalArtifactEnv();
 const get = (path: string) =>
@@ -15,9 +22,13 @@ describe("per-subnet overview route", () => {
   test("composes profile + health + curation + gaps + counts in one call", async () => {
     const res = await get("/api/v1/subnets/7/overview");
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOverviewArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 7);
+    assert.ok(body.data.profile);
     assert.equal(body.data.profile.netuid, 7);
     assert.equal(typeof body.data.health, "object");
     assert.equal(typeof body.data.counts.surfaces, "number");
@@ -28,13 +39,18 @@ describe("per-subnet overview route", () => {
   test("resolves through a slug alias (allways -> 7)", async () => {
     const res = await get("/api/v1/subnets/allways/overview");
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.netuid, 7);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOverviewArtifactSchema),
+    );
+    assert.equal(body.data.netuid, 7);
   });
 
   test("an unknown slug returns 404 subnet_not_found", async () => {
     const res = await get("/api/v1/subnets/not-a-real-subnet/overview");
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subnet_not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "subnet_not_found");
   });
 });
 
@@ -42,7 +58,10 @@ describe("registry summary route", () => {
   test("returns registry-wide stats, top subnets, and recent changes", async () => {
     const res = await get("/api/v1/registry/summary");
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(RegistrySummaryArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(typeof body.data.subnet_count, "number");
     assert.equal(body.data.subnet_count > 0, true);

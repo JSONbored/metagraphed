@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
+import {
+  ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { WebhookSubscriptionArtifactSchema } from "../schemas-src/routes/webhooks.ts";
 import { describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // Minimal in-memory KV mock matching the Workers KV surface the worker uses.
 function makeKv() {
@@ -53,6 +59,29 @@ const postSub = (env: Row, body: unknown) =>
     {},
   );
 
+async function createdSubscription(response: Response) {
+  const body = await parseJsonBody(response, SuccessEnvelopeSchema);
+  const { id, secret } = body.data;
+  assert.ok(typeof id === "string");
+  assert.ok(typeof secret === "string");
+  const data: typeof body.data & { id: string; secret: string } = {
+    ...body.data,
+    id,
+    secret,
+  };
+  return { ...body, data };
+}
+
+async function subscriptionJson(response: Response) {
+  const body = await parseJsonBody(
+    response,
+    successEnvelopeSchema(WebhookSubscriptionArtifactSchema),
+  );
+  const { delivery } = body.data;
+  assert.ok(delivery);
+  return { ...body, data: { ...body.data, delivery } };
+}
+
 describe("webhook subscription routes", () => {
   test("creates a subscription and stores it in KV", async () => {
     const kv = makeKv();
@@ -62,12 +91,15 @@ describe("webhook subscription routes", () => {
     });
     assert.equal(res.status, 201);
     assert.equal(res.headers.get("cache-control"), "no-store");
-    const body = await res.json();
+    const body = await createdSubscription(res);
     assert.equal(body.ok, true);
     assert.match(body.data.id, /^[0-9a-f-]{36}$/);
     assert.match(body.data.secret, /^[0-9a-f]{64}$/);
     assert.deepEqual(body.data.filters, { netuids: [7] });
-    assert.equal(body.data.delivery.signature_header, "x-metagraph-signature");
+    const delivery = body.data.delivery;
+    assert.ok(delivery && typeof delivery === "object");
+    assert.ok("signature_header" in delivery);
+    assert.equal(delivery.signature_header, "x-metagraph-signature");
     // Persisted under the prefix.
     assert.equal(kv.store.has(`webhooks:sub:${body.data.id}`), true);
   });
@@ -78,7 +110,8 @@ describe("webhook subscription routes", () => {
       url: "https://hooks.example.com/mg",
       secret: "my-very-own-secret-value",
     });
-    assert.equal((await res.json()).data.secret, "my-very-own-secret-value");
+    const body = await createdSubscription(res);
+    assert.equal(body.data.secret, "my-very-own-secret-value");
   });
 
   test("rejects a private/non-https URL with 400", async () => {
@@ -86,7 +119,8 @@ describe("webhook subscription routes", () => {
       url: "https://169.254.169.254/latest/meta-data",
     });
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_subscription");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_subscription");
   });
 
   test("rejects invalid JSON with 400", async () => {
@@ -103,7 +137,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_json");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_json");
   });
 
   test("rejects subscription creation without the subscription token", async () => {
@@ -117,7 +152,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 401);
-    assert.equal((await res.json()).error.code, "unauthorized");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "unauthorized");
   });
 
   // Security hardening (#3: authenticate BEFORE touching the untrusted payload).
@@ -139,7 +175,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 401);
-    assert.equal((await res.json()).error.code, "unauthorized");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "unauthorized");
     // Nothing should have been persisted for an unauthenticated caller.
     assert.equal(kv.store.size, 0);
   });
@@ -155,7 +192,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 401);
-    assert.equal((await res.json()).error.code, "unauthorized");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "unauthorized");
   });
 
   // The reorder must NOT break the authenticated body path: a VALID token with a
@@ -175,7 +213,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_json");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_json");
   });
 
   test("disables subscription creation when the subscription token is unconfigured", async () => {
@@ -196,7 +235,7 @@ describe("webhook subscription routes", () => {
     );
     assert.equal(res.status, 503);
     assert.equal(
-      (await res.json()).error.code,
+      (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
       "webhook_subscriptions_disabled",
     );
     assert.equal(kv.store.size, 0);
@@ -207,25 +246,27 @@ describe("webhook subscription routes", () => {
       url: "https://hooks.example.com/mg",
     });
     assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "webhooks_unavailable");
   });
 
   test("GET returns the subscription without the secret", async () => {
     const kv = makeKv();
-    const created = await (
+    const created = await createdSubscription(
       await postSub(envWith(kv), {
         url: "https://hooks.example.com/mg",
-      })
-    ).json();
+      }),
+    );
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
       envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await subscriptionJson(res);
     assert.equal(body.data.url, "https://hooks.example.com/mg");
-    assert.equal(body.data.secret, undefined);
+    const secret = "secret" in body.data ? body.data.secret : undefined;
+    assert.equal(secret, undefined);
     // A healthy subscription with no parked deliveries reports "ok".
     assert.deepEqual(body.data.delivery, {
       status: "ok",
@@ -237,9 +278,9 @@ describe("webhook subscription routes", () => {
 
   test("GET surfaces parked-delivery health (retrying + dead-letter)", async () => {
     const kv = makeKv();
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     const id = created.data.id;
     kv.store.set(
       `webhooks:delivery:${id}:event-pending`,
@@ -272,10 +313,11 @@ describe("webhook subscription routes", () => {
       envWith(kv) as unknown as Env,
       {},
     );
-    const { delivery } = (await res.json()).data;
+    const { delivery } = (await subscriptionJson(res)).data;
     assert.equal(delivery.status, "dead_letter");
     assert.equal(delivery.pending, 1);
     assert.equal(delivery.dead_letter, 1);
+    assert.ok(delivery.last_failure);
     assert.equal(delivery.last_failure.event_id, "event-dead"); // latest attempt
     assert.equal(delivery.last_failure.attempts, 8);
     assert.equal(delivery.last_failure.reason, "http-503");
@@ -289,9 +331,9 @@ describe("webhook subscription routes", () => {
       seen.push(options);
       return originalList(options);
     };
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     const id = created.data.id;
     for (let i = 0; i < 300; i += 1) {
       kv.store.set(
@@ -314,28 +356,28 @@ describe("webhook subscription routes", () => {
 
     assert.equal(res.status, 200);
     assert.equal(seen[0].limit, 256);
-    assert.equal((await res.json()).data.delivery.pending, 256);
+    assert.equal((await subscriptionJson(res)).data.delivery.pending, 256);
   });
 
   test("GET delivery health degrades to ok when the store lacks list()", async () => {
     const kv = makeKv();
     delete (kv as Row).list; // local-dev KV mock without list support
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
       envWith(kv) as unknown as Env,
       {},
     );
-    assert.equal((await res.json()).data.delivery.status, "ok");
+    assert.equal((await subscriptionJson(res)).data.delivery.status, "ok");
   });
 
   test("GET delivery health degrades to ok when a KV list throws", async () => {
     const kv = makeKv();
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     kv.list = async () => {
       throw new Error("kv list down");
     };
@@ -345,16 +387,16 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.delivery.status, "ok");
+    assert.equal((await subscriptionJson(res)).data.delivery.status, "ok");
   });
 
   test("DELETE requires the matching secret", async () => {
     const kv = makeKv();
-    const created = await (
+    const created = await createdSubscription(
       await postSub(envWith(kv), {
         url: "https://hooks.example.com/mg",
-      })
-    ).json();
+      }),
+    );
     const id = created.data.id;
 
     const denied = await handleRequest(
@@ -389,7 +431,8 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subscription_not_found");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "subscription_not_found");
   });
 
   test("OPTIONS preflight advertises the webhook methods", async () => {
@@ -399,11 +442,12 @@ describe("webhook subscription routes", () => {
       {},
     );
     assert.equal(res.status, 204);
-    assert.match(res.headers.get("access-control-allow-methods"), /DELETE/);
-    assert.match(
-      res.headers.get("access-control-allow-headers"),
-      /x-metagraph-webhook-secret/,
-    );
+    const allowMethods = res.headers.get("access-control-allow-methods");
+    assert.ok(allowMethods);
+    assert.match(allowMethods, /DELETE/);
+    const allowHeaders = res.headers.get("access-control-allow-headers");
+    assert.ok(allowHeaders);
+    assert.match(allowHeaders, /x-metagraph-webhook-secret/);
   });
 });
 
@@ -424,7 +468,7 @@ describe("webhook subscription rate limiting", () => {
     );
     assert.equal(res.status, 429);
     assert.equal(
-      (await res.json()).error.code,
+      (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
       "webhook_subscription_rate_limited",
     );
     assert.equal(res.headers.get("retry-after"), "60");
@@ -473,9 +517,9 @@ describe("webhook subscription rate limiting", () => {
 
   test("delete: 429 when the limiter rejects, and the subscription survives", async () => {
     const kv = makeKv();
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     const id = created.data.id;
     const limiter = reject();
     const res = await handleRequest(
@@ -546,9 +590,9 @@ describe("webhook subscription rate limiting", () => {
 
   test("delete: 200 when the limiter allows the request", async () => {
     const kv = makeKv();
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     const id = created.data.id;
     const limiter = allow();
     const res = await handleRequest(
@@ -575,7 +619,9 @@ describe("SSE change feed", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/event-stream/);
     assert.equal(res.headers.get("cache-control"), "no-store");
     const text = await res.text();
     assert.match(text, /event: snapshot/);
@@ -636,7 +682,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "not_found");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "not_found");
   });
 
   test("405 for an unsupported method on the collection root", async () => {
@@ -648,8 +695,11 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 405);
-    assert.equal((await res.json()).error.code, "method_not_allowed");
-    assert.match(res.headers.get("allow"), /POST, GET, DELETE/);
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "method_not_allowed");
+    const allow = res.headers.get("allow");
+    assert.ok(allow);
+    assert.match(allow, /POST, GET, DELETE/);
   });
 
   test("413 when the content-length header exceeds the body limit", async () => {
@@ -667,7 +717,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "payload_too_large");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "payload_too_large");
   });
 
   test("413 when the decoded body byte length exceeds the limit", async () => {
@@ -689,7 +740,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "payload_too_large");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "payload_too_large");
   });
 
   test("503 when KV put fails during creation", async () => {
@@ -701,7 +753,8 @@ describe("webhook route edge cases", () => {
       url: "https://hooks.example.com/mg",
     });
     assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "webhooks_unavailable");
   });
 
   test("400 invalid_subscription_id on GET with a malformed id", async () => {
@@ -711,7 +764,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_subscription_id");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_subscription_id");
   });
 
   test("400 invalid_subscription_id on DELETE with a malformed id", async () => {
@@ -721,7 +775,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_subscription_id");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_subscription_id");
   });
 
   test("404 on DELETE of an unknown subscription id", async () => {
@@ -737,14 +792,15 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subscription_not_found");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "subscription_not_found");
   });
 
   test("503 when KV delete fails", async () => {
     const kv = makeKv();
-    const created = await (
-      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
-    ).json();
+    const created = await createdSubscription(
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" }),
+    );
     kv.delete = async () => {
       throw new Error("kv delete down");
     };
@@ -757,7 +813,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, "webhooks_unavailable");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "webhooks_unavailable");
   });
 
   test("readWebhookSubscription swallows a throwing KV get → 404", async () => {
@@ -773,7 +830,8 @@ describe("webhook route edge cases", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subscription_not_found");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "subscription_not_found");
   });
 });
 
@@ -813,7 +871,7 @@ const dispatch = (env: Row, event: unknown, token = DISPATCH_TOKEN) =>
 
 async function seedSubscription(kv: ReturnType<typeof makeKv>, url: string) {
   const res = await postSub(envWith(kv), { url });
-  return ((await res.json()) as Row).data as Row;
+  return (await createdSubscription(res)).data;
 }
 
 /** A fetch double that answers the DoH lookup with a real public address and
@@ -855,7 +913,9 @@ describe("webhook fan-out route", () => {
     );
 
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body: unknown = await res.json();
+    assert.ok(body && typeof body === "object");
+    assert.ok("ok" in body && "subscriptions" in body && "enqueued" in body);
     assert.equal(body.ok, true);
     assert.equal(body.subscriptions, 2);
     assert.equal(body.enqueued, 2);
@@ -1254,16 +1314,14 @@ describe("what the consumer writes is what the status surface reads", () => {
     );
   }
 
-  const deliveryOf = async (kv: ReturnType<typeof makeKv>, id: string) =>
-    (
-      await (
-        await handleRequest(
-          req(`/api/v1/webhooks/subscriptions/${id}`),
-          envWith(kv) as unknown as Env,
-          {},
-        )
-      ).json()
-    ).data.delivery;
+  const deliveryOf = async (kv: ReturnType<typeof makeKv>, id: string) => {
+    const response = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`),
+      envWith(kv) as unknown as Env,
+      {},
+    );
+    return (await subscriptionJson(response)).data.delivery;
+  };
 
   test("a delivered event reports ok, not retrying", async () => {
     // The loudest symptom: a subscription whose every event landed reported
@@ -1294,6 +1352,7 @@ describe("what the consumer writes is what the status surface reads", () => {
     });
 
     const delivery = await deliveryOf(kv, sub.id);
+    assert.ok(delivery.last_failure);
     assert.equal(delivery.status, "dead_letter");
     assert.equal(delivery.dead_letter, 1);
     assert.equal(delivery.pending, 0);
@@ -1322,12 +1381,15 @@ describe("what the consumer writes is what the status surface reads", () => {
     assert.equal(delivery.status, "retrying");
     assert.equal(delivery.pending, 1);
     assert.equal(delivery.dead_letter, 0);
+    assert.ok(delivery.last_failure);
     assert.equal(delivery.last_failure.reason, "timeout");
     assert.equal(delivery.last_failure.attempts, 2, "the queue's own counter");
+    const { next_attempt_at, last_attempt_at } = delivery.last_failure;
+    assert.ok(typeof next_attempt_at === "string");
+    assert.ok(typeof last_attempt_at === "string");
     // 5 min doubling per attempt: the second attempt waits 10 minutes.
     assert.equal(
-      Date.parse(delivery.last_failure.next_attempt_at) -
-        Date.parse(delivery.last_failure.last_attempt_at),
+      Date.parse(next_attempt_at) - Date.parse(last_attempt_at),
       10 * 60 * 1000,
     );
   });
@@ -1359,6 +1421,7 @@ describe("what the consumer writes is what the status surface reads", () => {
     );
 
     const delivery = await deliveryOf(kv, sub.id);
+    assert.ok(delivery.last_failure);
     assert.equal(delivery.last_failure.event_id, "evt_1");
     assert.equal(delivery.dead_letter, 1);
     assert.equal(delivery.pending, 0, "the delivered one is neither");

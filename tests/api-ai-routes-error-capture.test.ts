@@ -7,9 +7,10 @@
 // separate small file rather than folded into tests/ai-search.test.ts: that
 // file's other ~80 tests already exercise these same routes.
 import assert from "node:assert/strict";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { afterEach, test } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 const { handleRequest } = await import("../workers/api.ts");
 const { createLocalArtifactEnv } = await import("../scripts/lib.ts");
@@ -51,7 +52,8 @@ test("a semantic-search backend failure returns a clean 502 with error code ai_e
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "ai_error");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "ai_error");
 });
 
 test("a semantic-search backend failure reaches PostHog as $exception, tagged by the same route", async () => {

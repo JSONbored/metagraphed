@@ -3,7 +3,8 @@ import { afterEach, test, vi } from "vitest";
 import { loadAccountRootClaim } from "../src/account-root-claim.ts";
 import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
 import { handleRequest } from "../workers/api.ts";
-import { mockEnv } from "./row-type.ts";
+import { mockEnv, parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const HASH = `0x${"12".repeat(32)}`;
@@ -237,11 +238,13 @@ test("REST returns coherent unsupported metadata without legacy storage reads", 
     {},
   );
   assert.equal(response.status, 200);
-  const body = await response.json();
+  const body = await parseJsonBody(
+    response,
+    successEnvelopeSchema(AccountRootClaimArtifactSchema),
+  );
   assert.equal(body.data.compatibility.status, "unsupported");
   assert.equal(body.data.hotkeys, null);
   assert.equal(calls.length, 2);
-  AccountRootClaimArtifactSchema.parse(body.data);
 });
 
 test("legacy missing claimable map is an explicitly supported empty map", async () => {

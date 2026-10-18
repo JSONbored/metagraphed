@@ -10,6 +10,8 @@ import { beforeEach, test, vi } from "vitest";
 import { resetModuleState } from "../src/module-state-registry.ts";
 beforeEach(() => resetModuleState());
 import { handleRequest } from "../workers/api.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 function post({ method = "POST" } = {}) {
   return new Request(
@@ -73,7 +75,8 @@ test("forwards the request to DATA_API and relays its response body + status", a
   assert.equal(receivedToken, "shared-secret");
   assert.equal(receivedPath, "/api/v1/internal/account-identity-sync");
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), {
+  const body: unknown = await res.json();
+  assert.deepEqual(body, {
     ok: true,
     account_identity_written: 460,
     history_appended: 2,
@@ -95,7 +98,8 @@ test("relays a non-2xx upstream status (e.g. 401) unchanged", async () => {
     {},
   );
   assert.equal(res.status, 401);
-  assert.deepEqual(await res.json(), { error: "unauthorized" });
+  const body: unknown = await res.json();
+  assert.deepEqual(body, { error: "unauthorized" });
 });
 
 test("returns 502 when the upstream response body is unreadable", async () => {
@@ -111,10 +115,8 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal(
-    (await res.json()).error.code,
-    "account_identity_sync_unavailable",
-  );
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "account_identity_sync_unavailable");
 });
 
 test("unreadable identity response reports safe stage and never replays the write", async () => {
