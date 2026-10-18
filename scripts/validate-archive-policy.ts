@@ -27,6 +27,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import { d1BundleSourceColumns } from "./archive-policy-d1-source.ts";
+import type { SchemaObject } from "./snapshot-d1-schema.ts";
 import {
   validateArchiveBundles,
   type ArchiveBundleContract,
@@ -225,15 +227,54 @@ export function compare(tables: string[]): {
   };
 }
 
-function main(): void {
+/** Audit both committed source contracts without selecting a deployed service. */
+export async function validateBundleSnapshots(input: {
+  logical: readonly BundleSourceColumn[];
+  physical: readonly SchemaObject[];
+  catalog: readonly BundleCatalogColumn[];
+  policies: Readonly<Record<string, string>>;
+  contracts: Readonly<Record<string, ArchiveBundleContract>>;
+  mappings: readonly ArchiveBundleMapping[];
+}): Promise<string[]> {
+  const tables = input.mappings.flatMap((mapping) =>
+    input.contracts[mapping.contract]?.sourceDialect === "d1"
+      ? Object.values(mapping.sources)
+      : [],
+  );
+  let d1Source: BundleSourceColumn[] = [];
+  const problems: string[] = [];
+  try {
+    d1Source = await d1BundleSourceColumns(input.physical, tables);
+  } catch (error) {
+    problems.push(
+      `D1 bundle source snapshot: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  return [
+    ...problems,
+    ...validateArchiveBundles({
+      source: input.logical,
+      d1Source,
+      catalog: input.catalog,
+      policies: input.policies,
+      contracts: input.contracts,
+      mappings: input.mappings,
+    }),
+  ];
+}
+
+async function main(): Promise<void> {
   const snapshot = JSON.parse(
     readFileSync(path.join(repoRoot, "generated/db/schema.json"), "utf8"),
   ) as BundleSourceColumn[];
   const tables = neonTables(snapshot);
   const { unclassified, stale, pending } = compare(tables);
 
-  const problems = validateArchiveBundles({
-    source: snapshot,
+  const problems = await validateBundleSnapshots({
+    logical: snapshot,
+    physical: JSON.parse(
+      readFileSync(path.join(repoRoot, "generated/db/d1-schema.json"), "utf8"),
+    ) as SchemaObject[],
     catalog: JSON.parse(
       readFileSync(
         path.join(repoRoot, "generated/lakehouse/schema.json"),
@@ -297,4 +338,8 @@ function main(): void {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] === fileURLToPath(import.meta.url))
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
