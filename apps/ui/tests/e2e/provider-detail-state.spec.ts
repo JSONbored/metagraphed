@@ -142,7 +142,9 @@ test.describe("Provider services and independent probe states", () => {
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await more.click();
     const section = page.locator("section#surfaces");
-    const recovery = section.getByRole("alert").filter({ hasText: "Previously accepted rows retained" });
+    const recovery = section
+      .getByRole("alert")
+      .filter({ hasText: "Previously accepted rows retained" });
     await expect(recovery).toBeVisible();
     await expect(section).toContainText("2 services loaded of 3 catalog results");
     await expect(section).toContainText("current freshness unverified");
@@ -189,7 +191,9 @@ test.describe("Provider services and independent probe states", () => {
     const retained = page.locator("#surfaces").getByRole("alert");
     await expect(retained).toContainText("Previously accepted rows retained");
     await expect(page.locator("#surfaces .mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(1);
-    await expect(page.locator("section#surfaces")).toContainText("Previously accepted rows retained");
+    await expect(page.locator("section#surfaces")).toContainText(
+      "Previously accepted rows retained",
+    );
     await expect(page.locator("section#surfaces")).toContainText("current freshness unverified");
     fail = false;
     await retained.getByRole("button", { name: "Retry", exact: true }).click();
