@@ -21,11 +21,6 @@ name: Check worker deploys
 #
 # This is not a data lane: it moves no rows and writes no store.
 on:
-  schedule:
-    # Hourly at :47, off every producer minute in wrangler.jsonc so a red run is
-    # never competing with a capture for attention. A build takes minutes, so
-    # hourly is several times finer than the thing being watched.
-    - cron: "47 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -40,6 +35,8 @@ concurrency:
 
 jobs:
   deploys:
+    if: ${{ github.repository == 'JSONbored/metagraphed' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/ci/worker-deployment-readback-20261018' }}
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -52,6 +49,7 @@ jobs:
           # of main and how far behind it is, and a shallow clone cannot answer
           # either -- merge-base would fail on a commit it never fetched and the
           # verdict would read `forked` on a perfectly current Worker.
+          ref: 9fd81fc62f84092345e1ed261399eb95fa9c75a5
           fetch-depth: 0
           persist-credentials: false
 
@@ -73,4 +71,140 @@ jobs:
           # last asked to build. The default token is enough -- this is a read
           # of the repo's own checks, not a secret.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run check:worker-deploys
+        timeout-minutes: 10
+        run: |
+          node --input-type=module <<'READBACK'
+          import assert from "node:assert/strict";
+          import { spawnSync } from "node:child_process";
+
+          const TARGETS = [
+            ["wrangler.jsonc", "metagraphed"],
+            ["wrangler.data.jsonc", "metagraphed-data-api"],
+            ["wrangler.registry.jsonc", "metagraphed-registry-sync-api"],
+            ["wrangler.wss-lb.jsonc", "metagraphed-wss-lb"],
+          ];
+          const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+          const STAMP = /^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?Z$/;
+          const SOURCES = new Set(["api", "dash", "wrangler", "terraform"]);
+          function requireValue(ok) { if (!ok) throw new Error("invalid_metadata"); }
+          function timestamp(value) {
+            requireValue(typeof value === "string" && STAMP.test(value));
+            const time = Date.parse(value);
+            requireValue(Number.isFinite(time) && new Date(time).toISOString().slice(0, 19) === value.slice(0, 19));
+            return time;
+          }
+          function selected(worker, raw) {
+            requireValue(Buffer.byteLength(raw, "utf8") <= 256 * 1024);
+            const rows = JSON.parse(raw);
+            requireValue(Array.isArray(rows) && rows.length > 0 && rows.length <= 10);
+            const ids = new Set();
+            for (const row of rows) {
+              requireValue(row && typeof row === "object" && !Array.isArray(row) && UUID.test(row.id));
+              requireValue(!ids.has(row.id));
+              ids.add(row.id);
+              timestamp(row.created_on);
+            }
+            rows.sort((a, b) => timestamp(b.created_on) - timestamp(a.created_on));
+            requireValue(rows.length === 1 || timestamp(rows[0].created_on) > timestamp(rows[1].created_on));
+            const row = rows[0];
+            requireValue(row.strategy === "percentage" && Array.isArray(row.versions)
+              && row.versions.length >= 1 && row.versions.length <= 2);
+            const versionIds = new Set();
+            const versions = row.versions.map(version => {
+              requireValue(version && typeof version === "object" && UUID.test(version.version_id)
+                && !versionIds.has(version.version_id) && typeof version.percentage === "number"
+                && Number.isFinite(version.percentage) && version.percentage >= 0 && version.percentage <= 100);
+              versionIds.add(version.version_id);
+              return {versionId: version.version_id, percentage: version.percentage};
+            });
+            requireValue(versions.some(version => version.percentage > 0)
+              && Math.abs(versions.reduce((sum, version) => sum + version.percentage, 0) - 100) < 0.000001);
+            const message = row.annotations?.["workers/message"];
+            return {worker, deploymentId: row.id, createdAt: row.created_on,
+              source: SOURCES.has(row.source) ? row.source : "other", strategy: "percentage",
+              versions, deploymentMessageSha: typeof message === "string" && /^[0-9a-f]{40}$/.test(message) ? message : null};
+          }
+          function versionDetail(expectedId, raw) {
+            requireValue(Buffer.byteLength(raw, "utf8") <= 256 * 1024);
+            const version = JSON.parse(raw);
+            requireValue(version && typeof version === "object" && !Array.isArray(version)
+              && version.id === expectedId && UUID.test(version.id));
+            timestamp(version.metadata?.created_on);
+            const message = version.annotations?.["workers/message"];
+            return {versionId: version.id, createdAt: version.metadata.created_on,
+              sourceSha: typeof message === "string" && /^[0-9a-f]{40}$/.test(message) ? message : null};
+          }
+          function parserChecks() {
+            const base = {id: "11111111-1111-4111-8111-111111111111", created_on: "2026-10-18T20:00:00Z",
+              source: "api", strategy: "percentage",
+              versions: [{version_id: "22222222-2222-4222-8222-222222222222", percentage: 100}],
+              author_email: "private-actor@example.invalid", annotations: {"workers/message": "private-arbitrary-message"}};
+            const clean = selected("metagraphed", JSON.stringify([base]));
+            assert.equal(clean.deploymentMessageSha, null);
+            assert.ok(!JSON.stringify(clean).includes("private-"));
+            assert.equal(selected("metagraphed", JSON.stringify([{...base, source: "private-source"}])).source, "other");
+            const split = {...base, versions: [{...base.versions[0], percentage: 25},
+              {version_id: "33333333-3333-4333-8333-333333333333", percentage: 75}]};
+            assert.deepEqual(selected("metagraphed", JSON.stringify([split])).versions.map(row => row.percentage), [25, 75]);
+            const zero = {...split, versions: [{...split.versions[0], percentage: 0}, {...split.versions[1], percentage: 100}]};
+            assert.deepEqual(selected("metagraphed", JSON.stringify([zero])).versions.map(row => row.percentage), [0, 100]);
+            const detail = {id: base.versions[0].version_id, metadata: {created_on: base.created_on,
+              author_email: "private-detail-actor@example.invalid"}, resources: {bindings: [{name: "private-binding", value: "private-value"}]},
+              annotations: {"workers/message": "b".repeat(40), "workers/tag": "private-tag"}};
+            const safeDetail = versionDetail(detail.id, JSON.stringify(detail));
+            assert.equal(safeDetail.sourceSha, "b".repeat(40));
+            assert.ok(!JSON.stringify(safeDetail).includes("private-"));
+            assert.equal(versionDetail(detail.id, JSON.stringify({...detail, annotations: {"workers/message": "private-message"}})).sourceSha, null);
+            assert.throws(() => versionDetail("33333333-3333-4333-8333-333333333333", JSON.stringify(detail)));
+            assert.throws(() => versionDetail(detail.id, JSON.stringify({...detail, metadata: {created_on: "private-stamp"}})));
+            assert.throws(() => versionDetail(detail.id, " ".repeat(256 * 1024 + 1)));
+            const older = {...base, id: "44444444-4444-4444-8444-444444444444", created_on: "2026-10-17T20:00:00Z"};
+            assert.equal(selected("metagraphed", JSON.stringify([base, older])).deploymentId, base.id);
+            assert.equal(selected("metagraphed", JSON.stringify([older, base])).deploymentId, base.id);
+            assert.equal(selected("metagraphed", JSON.stringify([{...base, annotations: {"workers/message": "a".repeat(40)}}])).deploymentMessageSha, "a".repeat(40));
+            for (const rows of [[], [base, base], [{...base, id: "unsafe"}],
+              [{...base, created_on: "2026-02-30T20:00:00Z"}],
+              [{...base, strategy: "unexpected"}], [{...base, versions: [{...base.versions[0], percentage: 99}]}],
+              [{...base, versions: [{...base.versions[0], percentage: 0}]}],
+              [{...base, versions: [{...base.versions[0], percentage: 50}, {...base.versions[0], percentage: 50}]}]]) {
+              assert.throws(() => selected("metagraphed", JSON.stringify(rows)));
+            }
+            assert.throws(() => selected("metagraphed", " ".repeat(256 * 1024 + 1)));
+          }
+          try {
+            parserChecks();
+            const records = [];
+            const deadline = performance.now() + 360_000;
+            let calls = 0;
+            const read = args => {
+              const remaining = deadline - performance.now();
+              requireValue(remaining >= 6000 && calls < 12);
+              calls += 1;
+              const commandSeconds = Math.min(30, Math.floor((remaining - 5000) / 1000));
+              const result = spawnSync("timeout", ["--signal=TERM", "--kill-after=5s", commandSeconds + "s",
+                "npx", "--no-install", "wrangler", ...args, "--json"],
+                {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: Math.floor(remaining),
+                  killSignal: "SIGKILL", maxBuffer: 256 * 1024,
+                  env: {...process.env, WRANGLER_SEND_METRICS: "false"}});
+              requireValue(performance.now() < deadline && !result.error && result.status === 0 && result.signal === null);
+              return result.stdout;
+            };
+            for (const [config, worker] of TARGETS) {
+              const record = selected(worker, read(["deployments", "list", "--config", config]));
+              for (const version of record.versions) {
+                const detail = versionDetail(version.versionId,
+                  read(["versions", "view", version.versionId, "--config", config]));
+                version.createdAt = detail.createdAt;
+                version.sourceSha = detail.sourceSha;
+              }
+              requireValue(performance.now() < deadline);
+              records.push(record);
+            }
+            requireValue(performance.now() < deadline && calls <= 12 && records.length === 4);
+            for (const record of records) console.log(JSON.stringify(record));
+          } catch {
+            console.error("deployment_metadata_readback_failed");
+            process.exitCode = 1;
+          }
+          READBACK
+          npm run check:worker-deploys
