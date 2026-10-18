@@ -1,20 +1,23 @@
-import { codegen } from "@graphql-codegen/core";
-import * as typescriptPlugin from "@graphql-codegen/typescript";
-import * as typescriptResolversPlugin from "@graphql-codegen/typescript-resolvers";
-import { gqlPluckFromCodeString } from "@graphql-tools/graphql-tag-pluck";
 import { promises as fs } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-import {
-  buildASTSchema,
-  lexicographicSortSchema,
-  parse,
-  printSchema,
-  Source,
-} from "graphql";
+import { printSchema } from "graphql";
 import codegenConfig from "../codegen.ts";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
 import { repoRoot } from "./lib.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
+
+// Use one native require-resolved graph for type generation. This also keeps
+// GraphQL class identities shared when callers use a transformed ESM loader.
+// The declaration builder and its ESM printer above exchange only SDL text
+// with this graph; their GraphQLSchema instance never crosses that boundary.
+const requireForCodegen = createRequire(import.meta.url);
+const { codegen } = requireForCodegen("@graphql-codegen/core") as typeof import("@graphql-codegen/core");
+const { getCachedDocumentNodeFromSchema } = requireForCodegen("@graphql-codegen/plugin-helpers") as typeof import("@graphql-codegen/plugin-helpers");
+const typescriptPlugin = requireForCodegen("@graphql-codegen/typescript") as typeof import("@graphql-codegen/typescript");
+const typescriptResolversPlugin = requireForCodegen("@graphql-codegen/typescript-resolvers") as typeof import("@graphql-codegen/typescript-resolvers");
+const { gqlPluckFromCodeString } = requireForCodegen("@graphql-tools/graphql-tag-pluck") as typeof import("@graphql-tools/graphql-tag-pluck");
+const { buildASTSchema, lexicographicSortSchema, parse, Source } = requireForCodegen("graphql") as typeof import("graphql");
 
 // Runs the supported @graphql-codegen/core API with explicit plugins against
 // the fixed local SDL module (types-epic D, #7862). Loading a single code string
@@ -125,21 +128,20 @@ async function generateGraphqlTypeOutput(
     );
   }
 
-  // Pluck and this caller can load different GraphQL module realms. Rebuild
-  // Source from its data so the original parser keeps its name and location.
+  // Preserve the plucked source's text, name and location as data. Parsing,
+  // sorting, Core and the plugins all use the same native GraphQL graph.
   const plucked = sources[0];
   const source = new Source(plucked.body, plucked.name, plucked.locationOffset);
-  // CLI's loader uses sort:true. Preserve its lexicographic ordering and pass
-  // a plain, location-free AST to Core rather than a realm-bound Schema/Source.
-  // Core builds its own schema instance for its plugins, as its public API
-  // supports. Canonical byte equality with the CLI remains required.
+  // CLI's loader uses sort:true. Supplying the sorted schemaAst keeps Core
+  // from rebuilding its type map and changing canonical resolver-map order.
   const schemaAst = lexicographicSortSchema(
     buildASTSchema(parse(source), { assumeValidSDL: true }),
   );
   const outputConfig = codegenConfig.generates[GRAPHQL_TYPES_PATH];
   const content = await codegen({
     filename: GRAPHQL_TYPES_PATH,
-    schema: parse(printSchema(schemaAst), { noLocation: true }),
+    schema: getCachedDocumentNodeFromSchema(schemaAst),
+    schemaAst,
     documents: [],
     plugins: outputConfig.plugins.map((plugin) => ({ [plugin]: {} })),
     pluginMap: {

@@ -137,7 +137,7 @@ test("the fixed pipeline preserves plugin order, scalar and context settings", a
   ).toEqual(["typescript", "typescript-resolvers"]);
 
   const output = await typesFromCommittedModule(
-    moduleFor("scalar JSON\ntype Query { zulu: JSON! alpha: String! }"),
+    moduleFor("scalar JSON\ntype Alpha { value: String }\ntype Query { zulu: JSON! alpha: String! item: Alpha }"),
   );
   expect(output.filename).toBe("generated/graphql/types.ts");
   expect(output.content).toContain("JSON: { input: unknown; output: unknown; }");
@@ -148,6 +148,19 @@ test("the fixed pipeline preserves plugin order, scalar and context settings", a
     output.content.indexOf("  zulu:"),
   );
   expect(output.content).toContain("Record<string, any>");
+  // A rebuild can insert String on first use in Alpha before reaching Query.
+  // Preserve the CLI's sorted schema type map in both resolver mappings.
+  for (const name of ["ResolversTypes", "ResolversParentTypes"]) {
+    const mapping = output.content
+      .split(`export type ${name} = ResolversObject<{`)[1]
+      ?.split("}>;")[0];
+    expect(mapping).toBeDefined();
+    expect(mapping).toContain("  Query:");
+    expect(mapping).toContain("  String:");
+    expect(mapping!.indexOf("  Query:")).toBeLessThan(
+      mapping!.indexOf("  String:"),
+    );
+  }
   expect(childProcess.exec).not.toHaveBeenCalled();
   expect(childProcess.spawn).not.toHaveBeenCalled();
 });
