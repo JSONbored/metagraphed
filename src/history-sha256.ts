@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { Buffer } from "node:buffer";
 
 /** Preserve exact UTF-8 strings and byte views used by immutable history keys. */
 export function historySha256(value: string | Uint8Array): string {
@@ -31,9 +30,10 @@ export function boundedHistoryJsonSha256(
   maxDepth: number,
 ): string | null {
   const digest = createHash("sha256");
+  const encoder = new TextEncoder();
   let remaining = maxBytes;
   function emit(text: string): boolean {
-    const bytes = Buffer.byteLength(text);
+    const bytes = encoder.encode(text).byteLength;
     if (bytes > remaining) return false;
     remaining -= bytes;
     digest.update(text);

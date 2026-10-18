@@ -482,11 +482,13 @@ export const collectionSnapshotParamSchema = () =>
       "Opt into checked collection paging: send `start` at cursor 0, then " +
         "echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or " +
         "follow the returned Link URLs. A changed result or query returns " +
-        "400 invalid_query; restart from cursor 0. This does not retain old " +
+        "REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; " +
+        "restart from cursor 0. This does not retain old " +
         "rows or continue across mutations. Checked requests bypass page caches. " +
         `At most ${CATALOG_MATCHED_ROWS_MAX} matching rows, ${CATALOG_HASH_BYTES_MAX} canonical bytes and ${CATALOG_HASH_DEPTH_MAX} nesting levels can be verified; narrow filters on catalog_budget_exceeded. ` +
         "Omit for legacy offset paging.",
-    );
+    )
+    .meta({ examples: ["start"] });
 /**
  * The `block_number.event_index` pagination cursor.
  *
