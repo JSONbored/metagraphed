@@ -179,6 +179,77 @@ test.describe("account detail query states", () => {
     await expect(relationships).not.toContainText("τ");
   });
 
+  for (const { width, height } of [
+    { width: 375, height: 812 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ]) {
+    for (const theme of ["light", "dark"]) {
+      test(`keeps Root-only activity distinct from absent position records at ${width}px in ${theme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height });
+        await page.addInitScript((value) => localStorage.setItem("mg-theme", value), theme);
+        await page.route(`**/api/v1/accounts/${SS58}/positions`, (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            headers: { "access-control-allow-origin": "*" },
+            body: JSON.stringify({
+              ok: true,
+              data: {
+                ss58: SS58,
+                captured_at: "2026-07-05T00:00:00Z",
+                position_count: 0,
+                total_stake_alpha: 0,
+                positions: [],
+              },
+              meta: {},
+            }),
+          }),
+        );
+        await page.route(`**/api/v1/accounts/${SS58}/stake-flow?*`, (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            headers: { "access-control-allow-origin": "*" },
+            body: JSON.stringify({
+              ok: true,
+              data: {
+                ss58: SS58,
+                window: "30d",
+                total_staked_tao: 25,
+                total_unstaked_tao: 0,
+                net_flow_tao: 25,
+                gross_flow_tao: 25,
+                direction: "accumulating",
+                subnet_count: 1,
+                subnets: [{ netuid: 0, staked_tao: 25, unstaked_tao: 0 }],
+              },
+              meta: {},
+            }),
+          }),
+        );
+
+        await gotoThroughRestart(page, ROUTE);
+        const positions = page.locator("#positions");
+        await expect(positions).toContainText("No position relationships recorded in this response.");
+        await expect(positions).toContainText("Root holdings are not covered");
+        await expect(positions).toContainText("do not establish wallet holdings");
+        await expect(positions).toContainText("Relationship snapshot");
+        await expect(positions).not.toContainText("Share of holdings");
+        const capital = page.locator(".mg-fact").filter({ hasText: "Staked value" });
+        await expect(capital).toContainText("—");
+        await expect(capital).not.toContainText("τ");
+        await expect(page.locator('#flow a[href="/subnets/0"]')).toBeVisible();
+        await expect(page.getByText("No positions recorded for this account.")).toHaveCount(0);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        ).toBe(true);
+      });
+    }
+  }
+
   test("does not report empty holdings when a successful response declines coverage", async ({
     page,
   }) => {
