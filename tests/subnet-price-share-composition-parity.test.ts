@@ -132,10 +132,10 @@ describe("price-share route and mirror parity", () => {
   });
 
   it("rejects a caller-controlled MCP window and GraphQL network argument", async () => {
-    expect(
-      GetSubnetPriceShareCompositionInputSchema.safeParse({ window: "all" })
-        .success,
-    ).toBe(false);
+    const input = GetSubnetPriceShareCompositionInputSchema.safeParse({
+      window: "all",
+    });
+    expect(input.success).toBe(false);
     const response = await graphql(
       `{ subnet_price_share_composition(network: test) { quality } }`,
       env(),
