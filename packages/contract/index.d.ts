@@ -9732,6 +9732,8 @@ export interface components {
             /** @enum {string} */
             order?: "asc" | "desc";
             returned: number;
+            /** @description Present only for page_snapshot paging. Echo as page_snapshot on subsequent pages; a changed collection or query requires a restart. */
+            snapshot?: string;
             sort?: string | null;
             total: number;
         };
@@ -14408,6 +14410,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14525,6 +14528,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14653,6 +14657,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14781,6 +14786,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14924,6 +14930,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15083,6 +15090,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15235,6 +15243,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15357,6 +15366,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15489,6 +15499,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15636,6 +15647,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15790,6 +15802,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15929,6 +15942,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16057,6 +16071,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16188,6 +16203,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16363,6 +16379,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16489,6 +16506,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16615,6 +16633,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16773,6 +16792,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16914,6 +16934,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17065,6 +17086,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17212,6 +17234,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17363,6 +17386,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17495,6 +17519,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17646,6 +17671,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17793,6 +17819,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17940,6 +17967,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18075,6 +18103,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18221,6 +18250,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18372,6 +18402,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18516,6 +18547,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18667,6 +18699,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18800,6 +18833,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18929,6 +18963,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19007,6 +19042,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -19107,6 +19144,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19226,6 +19264,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19348,6 +19387,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19508,6 +19548,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19648,6 +19689,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19779,6 +19821,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19892,6 +19935,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20031,6 +20075,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20149,6 +20194,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20265,6 +20311,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -20334,6 +20382,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20700,6 +20749,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20817,6 +20867,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20945,6 +20996,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21062,6 +21114,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21173,6 +21226,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21309,6 +21363,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21465,6 +21520,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21592,6 +21648,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21707,6 +21764,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21833,6 +21891,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21989,6 +22048,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22128,6 +22188,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22250,6 +22311,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22384,6 +22446,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22538,6 +22601,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22674,6 +22738,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22804,6 +22869,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22930,6 +22996,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23061,6 +23128,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23205,6 +23273,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23328,6 +23397,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23464,6 +23534,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23587,6 +23658,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23728,6 +23800,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23851,6 +23924,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23988,6 +24062,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24116,6 +24191,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24233,6 +24309,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24368,6 +24445,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24501,6 +24579,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24638,6 +24717,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24778,6 +24858,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24901,6 +24982,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25033,6 +25115,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25106,6 +25189,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "callable_count" | "completeness_score" | "example_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -25188,6 +25273,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25350,6 +25436,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25484,6 +25571,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25600,6 +25688,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25717,6 +25806,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25882,6 +25972,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26032,6 +26123,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26152,6 +26244,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26282,6 +26375,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26427,6 +26521,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26578,6 +26673,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26768,6 +26864,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26850,6 +26947,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -26909,6 +27008,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27041,6 +27141,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27166,6 +27267,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27294,6 +27396,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27466,6 +27569,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27621,6 +27725,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27744,6 +27849,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27867,6 +27973,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28047,6 +28154,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28241,6 +28349,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28385,6 +28494,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28531,6 +28641,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28681,6 +28792,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28857,6 +28969,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28990,6 +29103,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29117,6 +29231,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29248,6 +29363,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29360,6 +29476,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29471,6 +29588,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29592,6 +29710,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29758,6 +29877,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29901,6 +30021,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30045,6 +30166,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30205,6 +30327,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30348,6 +30471,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30477,6 +30601,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30625,6 +30750,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30769,6 +30895,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30913,6 +31040,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31071,6 +31199,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31203,6 +31332,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31346,6 +31476,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31495,6 +31626,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31643,6 +31775,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31784,6 +31917,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31910,6 +32044,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32051,6 +32186,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32172,6 +32308,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32325,6 +32462,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32398,6 +32536,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "path" | "contract_version";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -32495,6 +32635,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32638,6 +32779,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32718,6 +32860,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -32843,6 +32987,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32978,6 +33123,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33105,6 +33251,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33182,6 +33329,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33248,6 +33397,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33375,6 +33525,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33499,6 +33650,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33577,6 +33729,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33674,6 +33828,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33799,6 +33954,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33885,6 +34041,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33963,6 +34121,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34047,6 +34206,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34147,6 +34308,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34241,6 +34403,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34327,6 +34491,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34407,6 +34572,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34466,6 +34633,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34578,6 +34746,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34697,6 +34866,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34854,6 +35024,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34992,6 +35163,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -36646,6 +36818,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "captured_at" | "netuid" | "surface_id";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -36707,6 +36881,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -36953,6 +37128,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37030,6 +37206,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37091,6 +37269,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37233,6 +37412,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37314,6 +37494,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37372,6 +37554,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37509,6 +37692,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37589,6 +37773,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37658,6 +37844,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37792,6 +37979,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37869,6 +38057,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37933,6 +38123,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38060,6 +38251,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38179,6 +38371,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38289,6 +38482,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38421,6 +38615,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38557,6 +38752,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38675,6 +38871,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38758,6 +38955,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -38941,6 +39140,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39023,6 +39223,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39079,6 +39281,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39223,6 +39426,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39315,6 +39519,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39409,6 +39615,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39530,6 +39737,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39667,6 +39875,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39748,6 +39957,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39830,6 +40041,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39963,6 +40175,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40044,6 +40257,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40128,6 +40343,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40217,6 +40433,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40346,6 +40564,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40441,6 +40660,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40579,6 +40800,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40658,6 +40880,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40718,6 +40942,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40803,6 +41028,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40927,6 +41154,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41026,6 +41254,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41092,6 +41322,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41176,6 +41407,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41277,6 +41510,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41432,6 +41666,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41578,6 +41813,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41704,6 +41940,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41782,6 +42019,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41835,6 +42074,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41913,6 +42153,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41963,6 +42205,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42078,6 +42321,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42201,6 +42445,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42342,6 +42587,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42468,6 +42714,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42543,6 +42790,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -42602,6 +42851,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42718,6 +42968,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -42784,6 +43036,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43148,6 +43401,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43267,6 +43521,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43382,6 +43637,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43503,6 +43759,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43583,6 +43840,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -43650,6 +43909,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43836,6 +44096,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43955,6 +44216,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44085,6 +44347,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44285,6 +44548,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44425,6 +44689,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44561,6 +44826,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44699,6 +44965,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44837,6 +45104,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44934,6 +45202,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45028,6 +45298,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45186,6 +45457,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45318,6 +45590,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45398,6 +45671,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45460,6 +45735,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45537,6 +45813,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45678,6 +45956,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45761,6 +46040,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45838,6 +46119,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45971,6 +46253,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46098,6 +46381,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46228,6 +46512,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46348,6 +46633,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46479,6 +46765,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46624,6 +46911,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46750,6 +47038,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46881,6 +47170,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46997,6 +47287,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47123,6 +47414,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47242,6 +47534,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47369,6 +47662,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47505,6 +47799,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47668,6 +47963,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47809,6 +48105,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47940,6 +48237,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48081,6 +48379,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48434,6 +48733,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48584,6 +48884,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48726,6 +49027,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48844,6 +49146,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49016,6 +49319,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49135,6 +49439,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49587,6 +49892,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49706,6 +50012,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49821,6 +50128,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49940,6 +50248,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50104,6 +50413,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50223,6 +50533,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50341,6 +50652,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50460,6 +50772,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50582,6 +50895,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50701,6 +51015,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50826,6 +51141,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50907,6 +51223,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -50971,6 +51289,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51049,6 +51368,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "date" | "completeness_score" | "surface_count" | "endpoint_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -51108,6 +51429,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51242,6 +51564,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51394,6 +51717,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51539,6 +51863,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51699,6 +52024,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51831,6 +52157,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51955,6 +52282,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52097,6 +52425,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52253,6 +52582,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52372,6 +52702,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52507,6 +52838,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52650,6 +52982,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52774,6 +53107,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52931,6 +53265,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53078,6 +53413,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53191,6 +53527,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53274,6 +53611,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -53329,6 +53668,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53452,6 +53792,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53613,6 +53954,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53780,6 +54122,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53908,6 +54251,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54050,6 +54394,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54233,6 +54578,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54361,6 +54707,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54476,6 +54823,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },

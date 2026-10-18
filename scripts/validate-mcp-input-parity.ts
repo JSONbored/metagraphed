@@ -14,6 +14,7 @@
 // Compared against the EMITTED inputSchema, not the Zod source: that is what
 // agents receive, and it is where a rename shows up.
 import assert from "node:assert/strict";
+import { REST_ONLY_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
 import { readFileSync } from "node:fs";
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
@@ -40,9 +41,9 @@ const MCP_TRANSPORT_ARGS = new Set([
   "fields",
 ]);
 
-/** Query parameters a tool has no use for. `format` selects CSV; a tool
- * returns structuredContent. */
-const NOT_FOR_TOOLS = new Set(["format"]);
+/** REST-only controls: CSV format and checked-page metadata/Link continuation.
+ * MCP forwarding and restart semantics are not implemented by this REST change. */
+const NOT_FOR_TOOLS = new Set(REST_ONLY_QUERY_PARAMETERS);
 
 /**
  * Declared divergences: `tool.argument` -> why.
