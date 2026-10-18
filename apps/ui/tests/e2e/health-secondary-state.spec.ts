@@ -70,14 +70,20 @@ test.describe("Health secondary query states", () => {
   test("keeps unavailable health instruments distinct from no incidents or no probes", async ({
     page,
   }) => {
-    let shouldFail = true;
+    let recoverIncidents = false;
+    let incidentRequests = 0;
+    let trendRequests = 0;
+    let failedTrendResponses = 0;
     for (const pattern of [
       "**/api/v1/incidents*",
       "**/api/v1/health/trends*",
       "**/api/v1/self-health*",
     ]) {
       await page.route(pattern, async (route) => {
-        if (!shouldFail) {
+        const path = new URL(route.request().url()).pathname;
+        if (path === "/api/v1/incidents") incidentRequests += 1;
+        if (path === "/api/v1/health/trends") trendRequests += 1;
+        if (recoverIncidents && path === "/api/v1/incidents") {
           await route.continue();
           return;
         }
@@ -89,18 +95,25 @@ test.describe("Health secondary query states", () => {
             error: { code: "fixture_failure", message: "Health fixture failed" },
           }),
         });
+        if (path === "/api/v1/health/trends") failedTrendResponses += 1;
       });
     }
 
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/health");
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    // The eager errors replace the taller pending incident table. Settle that
+    // layout before entering the section that admits the deferred trends read.
+    await expect(page.getByText("Couldn't load recorded incidents")).toBeVisible();
+    await expect(page.getByText("Couldn't load self-health")).toBeVisible();
     await page.evaluate(() => {
       document.documentElement.style.scrollBehavior = "auto";
     });
-    await page
-      .locator("section#by-subnet")
-      .evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const bySubnet = page.locator("section#by-subnet");
+    await bySubnet.scrollIntoViewIfNeeded();
+    await expect(bySubnet).toBeInViewport();
+    await expect.poll(() => trendRequests).toBe(1);
+    await expect.poll(() => failedTrendResponses).toBe(1);
 
     await expect(page.getByRole("alert")).toHaveCount(3);
     await expect(page.getByText("Couldn't load recorded incidents")).toBeVisible();
@@ -116,10 +129,18 @@ test.describe("Health secondary query states", () => {
       page.getByText("Recorded incidents are temporarily unavailable · probe-derived"),
     ).toBeVisible();
 
-    shouldFail = false;
+    recoverIncidents = true;
     const incidentError = page.getByRole("alert").filter({ hasText: "recorded incidents" });
     await incidentError.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect.poll(() => incidentRequests).toBe(2);
     await expect(incidentError).toHaveCount(0);
     await expect(page.getByRole("table", { name: "Recorded surface incidents" })).toBeVisible();
+    await expect(
+      page.getByText("No incident records are currently open in this window."),
+    ).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(2);
+    await expect(page.getByText("Couldn't load subnet uptime")).toBeVisible();
+    await expect(page.getByText("Couldn't load self-health")).toBeVisible();
+    expect(trendRequests).toBe(1);
   });
 });
