@@ -113,11 +113,7 @@ describe("accountRootClaimQuery", () => {
     },
   );
 
-  it.each([
-    "unverified_runtime",
-    "rpc_or_decode_failure",
-    "legacy_limit_exceeded",
-  ] as const)(
+  it.each(["unverified_runtime", "rpc_or_decode_failure", "legacy_limit_exceeded"] as const)(
     "retains unavailable %s without fabricating zero accounting",
     async (reason) => {
       resolveWith({
@@ -186,10 +182,9 @@ describe("accountRootClaimQuery", () => {
     ]);
     expect(accountRootClaimQuery(HOTKEY).queryKey).not.toEqual(options.queryKey);
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      `/api/v1/accounts/${ALICE}/root-claim`,
-      { signal: expect.any(AbortSignal) },
-    );
+    expect(mockedApiFetch).toHaveBeenCalledWith(`/api/v1/accounts/${ALICE}/root-claim`, {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it("propagates API failures instead of fabricating a supported empty record", async () => {

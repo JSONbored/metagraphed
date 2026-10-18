@@ -48,6 +48,12 @@ jobs:
           npx prettier --write src/lib/metagraphed/queries.ts src/lib/metagraphed/types.ts src/lib/metagraphed/queries.account-root-claim.test.ts
           git diff -- src/lib/metagraphed/queries.ts src/lib/metagraphed/types.ts src/lib/metagraphed/queries.account-root-claim.test.ts
 
+      - name: Check required ratchet formatting and lint
+        if: ${{ !cancelled() }}
+        run: |
+          npx prettier --check scripts/validate-unreferenced-exports.ts
+          npx eslint scripts/validate-unreferenced-exports.ts
+
       - name: Lint three-file source
         if: ${{ !cancelled() }}
         working-directory: apps/ui

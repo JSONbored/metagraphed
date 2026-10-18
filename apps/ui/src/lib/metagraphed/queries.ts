@@ -6185,10 +6185,7 @@ export const accountRootClaimQuery = (ss58: string) =>
   queryOptions({
     queryKey: k("account-root-claim", ss58),
     queryFn: ({ signal }) =>
-      apiFetch<RootClaim>(
-        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`,
-        { signal },
-      ),
+      apiFetch<RootClaim>(`/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`, { signal }),
     staleTime: STALE_MED,
   });
 
