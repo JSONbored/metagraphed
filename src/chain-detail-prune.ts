@@ -371,19 +371,37 @@ export async function pruneChainDetail(
         // Each completed prefix is safe: its detail and coverage disappear
         // together. A later failure preserves its entire chunk and reports
         // failure without claiming that the whole requested window finished.
+        const coverageFirst = floor + offset;
+        const coverageLast = Math.min(
+          deletedBelow,
+          coverageFirst + D1_PRUNE_BLOCKS_PER_TRANSACTION,
+        );
         await d1.transaction(
           PRUNE_TABLES.flatMap((table) => {
             const account = table === "chain_detail_account_events";
             const first = (account ? accountFloor : floor) + offset;
             const end = account ? accountDeletedBelow : deletedBelow;
             if (first >= end) return [];
+            const last = Math.min(end, first + D1_PRUNE_BLOCKS_PER_TRANSACTION);
+            const values = [first, last];
+            let guard = "";
+            if (account) {
+              // Recheck coverage inside this batch: a replay may have
+              // advertised older children after the initial bounds read.
+              // Covered children can retire only with their coverage here.
+              guard =
+                " AND (block_number < COALESCE((SELECT MIN(block_number) FROM chain_detail_blocks), ?)";
+              values.push(last);
+              if (coverageFirst < coverageLast) {
+                guard += " OR (block_number >= ? AND block_number < ?)";
+                values.push(coverageFirst, coverageLast);
+              }
+              guard += ")";
+            }
             return [
               {
-                text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
-                values: [
-                  first,
-                  Math.min(end, first + D1_PRUNE_BLOCKS_PER_TRANSACTION),
-                ],
+                text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?${guard}`,
+                values,
               },
             ];
           }),

@@ -1,0 +1,59 @@
+name: Account prune guard native red and control
+
+on:
+  push:
+    branches:
+      - ci/account-prune-guard-qualification-20261018
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-prune-guard-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain exact native formatting
+        run: |
+          npx prettier --write src/chain-detail-prune.ts tests/retention-d1.test.ts .github/workflows/prune-guard-qualification.yml .github/scripts/qualify-account-prune-guard.ts
+          git diff -- src/chain-detail-prune.ts tests/retention-d1.test.ts .github/workflows/prune-guard-qualification.yml .github/scripts/qualify-account-prune-guard.ts
+      - name: Lint final source and regression fixtures
+        run: npx eslint src/chain-detail-prune.ts tests/retention-d1.test.ts
+      - name: Cold typecheck
+        run: npm run typecheck -- --incremental false
+      - name: Validate canonical and diagnostic workflow policies
+        run: npm run validate:workflows
+      - name: Build existing local fixture artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+      - name: Prove baseline failures and candidate native regressions
+        run: node .github/scripts/qualify-account-prune-guard.ts
+      - name: Retain only native formatted source and synthetic receipt
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: account-prune-guard-native-source
+          path: |
+            src/chain-detail-prune.ts
+            tests/retention-d1.test.ts
+            prune-guard-reports/source-receipt.json
+          retention-days: 1
+          if-no-files-found: error
