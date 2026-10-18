@@ -64,7 +64,6 @@ environment, then run required schema, parity, route, coverage and UI/browser
 checks. No generated output is hand-edited. Source regressions are prepared;
 they were not executed on Mac.
 
-
 ## Applicable feeds and transport boundaries
 
 The canonical `API_QUERY_COLLECTIONS` and published `api-index.json` identify

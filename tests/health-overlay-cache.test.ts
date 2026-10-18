@@ -250,7 +250,10 @@ async function walkCatalogFixture(
     const body = JSON.parse(text) as Row;
     await Promise.all(waits);
     const memory = process.memoryUsage();
-    sampledHeapHighWaterBytes = Math.max(sampledHeapHighWaterBytes, memory.heapUsed);
+    sampledHeapHighWaterBytes = Math.max(
+      sampledHeapHighWaterBytes,
+      memory.heapUsed,
+    );
     sampledRssHighWaterBytes = Math.max(sampledRssHighWaterBytes, memory.rss);
     if (response.status === 400) {
       assert.equal(guarded, true);
@@ -306,24 +309,27 @@ test("native catalog fixture measurements compare guarded and legacy cold/warm c
       url: `https://example.invalid/${n}`,
       source_urls: [`https://example.invalid/${"source/".repeat(75)}${n}`],
     }));
-    const rows = path === "endpoints"
-      ? buildEndpointResourceArtifact({
-          surfaces,
-          healthSurfaces: [],
-          generatedAt: "2026-09-01T00:00:00Z",
-          contractVersion: "fixture",
-          source: "test",
-        }).endpoints
-      : surfaces.map((row) => ProviderSchema.parse({
-          schema_version: 1,
-          id: row.id,
-          name: row.name,
-          kind: "infrastructure-provider",
-          authority: "community",
-          website_url: row.url,
-          public_notes: "Source note. ".repeat(50),
-          netuids: [],
-        }));
+    const rows =
+      path === "endpoints"
+        ? buildEndpointResourceArtifact({
+            surfaces,
+            healthSurfaces: [],
+            generatedAt: "2026-09-01T00:00:00Z",
+            contractVersion: "fixture",
+            source: "test",
+          }).endpoints
+        : surfaces.map((row) =>
+            ProviderSchema.parse({
+              schema_version: 1,
+              id: row.id,
+              name: row.name,
+              kind: "infrastructure-provider",
+              authority: "community",
+              website_url: row.url,
+              public_notes: "Source note. ".repeat(50),
+              netuids: [],
+            }),
+          );
     const expected = rows.map((row) => row.id);
     for (let sample = 0; sample < 3; sample += 1) {
       // Alternate order so all guarded observations are not always warmer.
@@ -336,7 +342,10 @@ test("native catalog fixture measurements compare guarded and legacy cold/warm c
           assert.deepEqual(result.ids, expected);
           assert.equal(new Set(result.ids).size, count);
           assert.equal(result.requests, Math.ceil(count / 200));
-          assert.equal(result.artifactReads, phase === "warm" ? 0 : result.requests);
+          assert.equal(
+            result.artifactReads,
+            phase === "warm" ? 0 : result.requests,
+          );
           const { ids: _ids, ...measurement } = result;
           console.log(
             "CATALOG_WALK_FIXTURE",
@@ -365,7 +374,10 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
     surface_id: `row-${n}`,
     status: "ok",
   }));
-  const changed = [...rows.slice(1), { id: "new-row", surface_id: "new-row", status: "ok" }];
+  const changed = [
+    ...rows.slice(1),
+    { id: "new-row", surface_id: "new-row", status: "ok" },
+  ];
   for (const guarded of [false, true]) {
     installCaches();
     const fixture = catalogFixture("endpoints", rows);
@@ -378,16 +390,25 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
       assert.equal(result.requests, 2);
       const restarted = await walkCatalogFixture(fixture, true, 4);
       assert.equal(restarted.outcome, "complete");
-      assert.deepEqual(restarted.ids, changed.map((row) => row.id));
+      assert.deepEqual(
+        restarted.ids,
+        changed.map((row) => row.id),
+      );
       assert.equal(restarted.requests, 3);
     } else {
       // Equal length and a terminal cursor do not certify completeness.
       assert.equal(result.outcome, "complete");
       assert.equal(result.ids.length, changed.length);
-      assert.notDeepEqual(result.ids, changed.map((row) => row.id));
+      assert.notDeepEqual(
+        result.ids,
+        changed.map((row) => row.id),
+      );
     }
     const { ids: _ids, ...measurement } = result;
-    console.log("CATALOG_CHURN_FIXTURE", JSON.stringify({ scenario: "one-change", guarded, ...measurement }));
+    console.log(
+      "CATALOG_CHURN_FIXTURE",
+      JSON.stringify({ scenario: "one-change", guarded, ...measurement }),
+    );
   }
 
   const cache = installCaches();
@@ -399,7 +420,10 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
       if (page === 1) {
         revision += 1;
         fixture.replace(
-          rows.map((row) => ({ ...row, last_checked: new Date(Date.now() + revision).toISOString() })),
+          rows.map((row) => ({
+            ...row,
+            last_checked: new Date(Date.now() + revision).toISOString(),
+          })),
           `fixture-generation-${revision}`,
         );
       }
@@ -410,5 +434,13 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
   }
   assert.equal(requests, 4);
   assert.equal(cache.size, 2, "rejected continuations never seed the cache");
-  console.log("CATALOG_CHURN_FIXTURE", JSON.stringify({ scenario: "persistent-change", attempts: 2, requests, complete: false }));
+  console.log(
+    "CATALOG_CHURN_FIXTURE",
+    JSON.stringify({
+      scenario: "persistent-change",
+      attempts: 2,
+      requests,
+      complete: false,
+    }),
+  );
 });

@@ -370,9 +370,17 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
   await page.route("**/api/v1/endpoints?*", async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get("limit") === "1") {
-      await route.fulfill(matchedCatalogFixture(url, "endpoints", ROWS, {
-        data: { summary: { endpoint_count: ROWS.length, monitored_count: 449, by_status: { ok: 449, unknown: 1 } } },
-      }));
+      await route.fulfill(
+        matchedCatalogFixture(url, "endpoints", ROWS, {
+          data: {
+            summary: {
+              endpoint_count: ROWS.length,
+              monitored_count: 449,
+              by_status: { ok: 449, unknown: 1 },
+            },
+          },
+        }),
+      );
       return;
     }
     expect(url.searchParams.get("q")).toBe(QUERY);
@@ -400,7 +408,9 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
   expect(reads).toHaveLength(2);
   expect(reads[1]).toMatchObject({ cursor: "2", status: 400 });
   expect(reads[1].snapshot).toMatch(/^v1\.[0-9a-f]{64}$/);
-  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toHaveCount(0);
+  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toHaveCount(
+    0,
+  );
 
   await page.getByRole("button", { name: "refresh", exact: true }).click();
   await expect(directory).toContainText("1 loaded of 1 matching");
