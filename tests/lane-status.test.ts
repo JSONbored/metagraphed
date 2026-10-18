@@ -7,7 +7,9 @@
 // quiet for five and a half hours while the route it protects silently went
 // back to scanning 4,374 MB per request.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, test, vi } from "vitest";
+import { parse } from "yaml";
 import {
   EXPECTED_LANES,
   KNOWN_STALE,
@@ -34,6 +36,73 @@ function at(offsetMs: number): string {
 const COMPLETED = "account-events-rollup-status.json";
 const DECODE = "decode-run-status.json";
 const SUMMARY = "account-summary-status.json";
+
+test("the scheduled sweep scopes dedicated D1 credentials to its status read", () => {
+  const workflow = parse(
+    readFileSync(
+      new URL("../.github/workflows/check-lane-status.yml", import.meta.url),
+      "utf8",
+    ),
+  );
+  const job = workflow.jobs.lanes;
+  const steps = job.steps as {
+    run?: string;
+    env?: Record<string, string>;
+  }[];
+  const check = steps.find((step) => step.run === "npm run check:lane-status");
+  assert.ok(check);
+  assert.equal(workflow.env, undefined);
+  assert.equal(job.env, undefined);
+  assert.deepEqual(workflow.permissions, { contents: "read" });
+  assert.deepEqual(check.env, {
+    CLOUDFLARE_ACCOUNT_ID: "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
+    CLOUDFLARE_D1_API_TOKEN: "${{ secrets.CLOUDFLARE_D1_API_TOKEN }}",
+    LIVE_ALERT_WEBHOOK_URL: "${{ secrets.LIVE_ALERT_WEBHOOK_URL }}",
+  });
+  for (const step of steps) {
+    if (step !== check) assert.equal(step.env, undefined);
+  }
+});
+
+test("an unauthorized status read stops without retries, verdicts or alerts", async () => {
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+  vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-general-token");
+  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-token");
+  vi.stubEnv(
+    "CLOUDFLARE_D1_DATABASE_ID",
+    "11111111-1111-1111-1111-111111111111",
+  );
+  vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "https://alerts.example.test/hook");
+  const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+    assert.equal(
+      String(url),
+      `https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/d1/database/11111111-1111-1111-1111-111111111111/query`,
+    );
+    assert.equal(
+      new Headers(init?.headers).get("authorization"),
+      "Bearer fixture-d1-token",
+    );
+    return new Response("Forbidden", { status: 403 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const output = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation(() => true);
+  const errors = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation(() => true);
+  const exit = vi.spyOn(process, "exit").mockImplementation(() => {
+    throw new Error("unexpected verdict exit");
+  });
+
+  await assert.rejects(checkLaneStatus(), {
+    message: "D1 maintenance request failed with HTTP 403",
+  });
+  assert.equal(fetcher.mock.calls.length, 1);
+  assert.equal(output.mock.calls.length, 0);
+  assert.equal(errors.mock.calls.length, 0);
+  assert.equal(exit.mock.calls.length, 0);
+});
 
 test("the lane sweep reads D1 once and still fails on missing producers", async () => {
   vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
