@@ -659,16 +659,33 @@ describe("checked SDK catalog walks", () => {
   });
   test("checked fetchAll rejects a failed continuation without returning partial rows or retrying", async () => {
     const fetchMock = stubFetch(async () => {
-      if (fetchMock.mock.calls.length === 1) return jsonResponse(page(["a"], 0, 2));
-      return jsonResponse({ ok: false,
-        error: { code: "invalid_query", message: "Narrow filters" },
-        meta: { parameter: "page_snapshot", catalog_paging: { reason: "catalog_budget_exceeded" } },
-      }, 503);
+      if (fetchMock.mock.calls.length === 1)
+        return jsonResponse(page(["a"], 0, 2));
+      return jsonResponse(
+        {
+          ok: false,
+          error: { code: "invalid_query", message: "Narrow filters" },
+          meta: {
+            parameter: "page_snapshot",
+            catalog_paging: { reason: "catalog_budget_exceeded" },
+          },
+        },
+        503,
+      );
     });
     const client = createMetagraphedClient({ retry: true });
-    await expect(client.fetchAll("/api/v1/endpoints", { query: { page_snapshot: "start" } })).rejects.toMatchObject({ code: "catalog_budget_exceeded", message: "Narrow filters" });
+    await expect(
+      client.fetchAll("/api/v1/endpoints", {
+        query: { page_snapshot: "start" },
+      }),
+    ).rejects.toMatchObject({
+      code: "catalog_budget_exceeded",
+      message: "Narrow filters",
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1][0].searchParams.get("page_snapshot")).toBe(token);
+    expect(fetchMock.mock.calls[1][0].searchParams.get("page_snapshot")).toBe(
+      token,
+    );
     expect(fetchMock.mock.calls[1][0].searchParams.get("cursor")).toBe("1");
   });
 });

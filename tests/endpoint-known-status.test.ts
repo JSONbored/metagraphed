@@ -13,7 +13,11 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
 } from "../src/kv-keys.ts";
-import { API_ROUTES, API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
+import {
+  API_ROUTES,
+  API_QUERY_COLLECTIONS,
+  QUERY_ENUMS,
+} from "../src/contracts.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
@@ -1050,8 +1054,12 @@ test("all six REST catalog routes preserve checked links, projections, published
     const declaration = API_ROUTES.find((entry) => entry.id === operation);
     assert.ok(declaration, operation);
     if (!declaration.csv_response) {
-      assert.match(csv.headers.get("content-type") ?? "", /application\/json/, path);
-      const json = await csv.json() as Row;
+      assert.match(
+        csv.headers.get("content-type") ?? "",
+        /application\/json/,
+        path,
+      );
+      const json = (await csv.json()) as Row;
       assert.equal(json.meta.pagination.snapshot, receipt, path);
       assert.deepEqual(json.data[key], [{ id: values[0].id }], path);
       continue;
