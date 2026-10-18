@@ -24,7 +24,14 @@ describe("checked catalog fixture boundary", () => {
     const second = JSON.parse(matchedCatalogFixture(request, "endpoints", rows).body);
     expect(second.data.endpoints).toEqual([rows[1]]);
     expect(second.meta.pagination.next_cursor).toBeNull();
-    expect(matchedCatalogFixture(request, "endpoints", rows.slice(1)).status).toBe(400);
+    const rejected = matchedCatalogFixture(request, "endpoints", rows.slice(1));
+    expect(rejected.status).toBe(400);
+    expect(JSON.parse(rejected.body)).toMatchObject({
+      ok: false,
+      error: { code: "invalid_query" },
+      meta: { parameter: "page_snapshot" },
+    });
+    expect(JSON.parse(rejected.body).error).not.toHaveProperty("parameter");
     request.searchParams.set("q", "different-query");
     expect(matchedCatalogFixture(request, "endpoints", rows).status).toBe(400);
   });
