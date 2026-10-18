@@ -96,7 +96,9 @@ function fixture(previous = false) {
       ),
     );
     const pages = Number(db.prepare("PRAGMA page_count").get()!.page_count);
-    const free = Number(db.prepare("PRAGMA freelist_count").get()!.freelist_count);
+    const free = Number(
+      db.prepare("PRAGMA freelist_count").get()!.freelist_count,
+    );
     const size = Number(db.prepare("PRAGMA page_size").get()!.page_size);
     allocated.push(pages * size);
     active.push((pages - free) * size);
@@ -217,7 +219,9 @@ test("mixed timestamps, untouched netuids, stale-only shards, daily histories an
         6,
       );
       for (const f of [before, after]) {
-        f.db.exec("CREATE TABLE member_changes(kind TEXT,netuid INTEGER,uid INTEGER)");
+        f.db.exec(
+          "CREATE TABLE member_changes(kind TEXT,netuid INTEGER,uid INTEGER)",
+        );
         for (const kind of ["INSERT", "UPDATE", "DELETE"]) {
           const value = kind === "DELETE" ? "OLD" : "NEW";
           f.db.exec(
@@ -254,7 +258,8 @@ test("mixed timestamps, untouched netuids, stale-only shards, daily histories an
     ],
   );
   assert.equal(
-    after.db.prepare("SELECT received_rows FROM neurons_passes").get()!.received_rows,
+    after.db.prepare("SELECT received_rows FROM neurons_passes").get()!
+      .received_rows,
     5,
   );
   assert.equal(
