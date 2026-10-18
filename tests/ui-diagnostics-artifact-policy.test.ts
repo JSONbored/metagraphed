@@ -10,9 +10,8 @@ test("UI artifacts retain native browser evidence without raw server debug logs"
       "utf8",
     ),
   );
-  const uploads = workflow.jobs.ui.steps.filter(
-    (step: { uses?: string }) =>
-      step.uses?.startsWith("actions/upload-artifact@"),
+  const uploads = workflow.jobs.ui.steps.filter((step: { uses?: string }) =>
+    step.uses?.startsWith("actions/upload-artifact@"),
   ) as { if?: string; with: { name: string; path: string } }[];
 
   assert.equal(uploads.length, 1);
