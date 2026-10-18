@@ -38,31 +38,80 @@ publication succeeded; verify the later artifact upload and served PNG separatel
 
 The Worker serves that binary artifact at `/og.png` or `/og`. Discovery HTML and
 the edge cache use the shared `CARD_VERSION`. Entity cards retain their lazy
-runtime renderer and bounded registry read, with R2 keys under
-`cache/og/v<version>/<kind>/<subject>-<facts digest>.png`. An unchanged entity
+runtime renderer and bounded registry read. Their edge keys include the renderer
+version, facts digest and full qualified artwork identity. An unchanged entity
 therefore gets new artwork after a renderer version change. Old cache objects
 need no purge. Public entity URLs remain stable, and third-party recrawl is
 outside these internal cache guarantees.
 
 An entity with a declared logo is complete only after that logo has loaded.
-Complete R2 objects record `entity_logo: included` in custom metadata; an older
-object without this marker is regenerated on demand when a logo is expected.
+Complete edge responses record `entity_logo: included`; an older response
+without this marker is regenerated on demand when a logo is expected.
 An unavailable logo still produces a readable monogram, but that response gets
-`public, max-age=60` with no stale-while-revalidate and is not stored in R2.
+`public, max-age=60` with no stale-while-revalidate and is not stored as complete.
 A later request can recover the logo with unchanged facts and URL. Intentional
 no-logo cards keep their ordinary long cache and remain compatible with older
 objects. An uncached HEAD request does no image work and uses the short lifetime
 when a logo has not yet been verified. Crawlers control their own recrawl timing.
 
-Logo reads accept only credential-free direct HTTPS requests to `metagraph.sh`, with redirects
-disabled, a three-second deadline covering headers and body, and the publisher's
-512 KiB byte limit enforced on the stream. PNG, JPEG, GIF and vector SVG retain
-their actual MIME when inlined. Missing/unsupported MIME, mismatched raster
-signatures and SVGs with embedded images or external resources are declined.
-This validates format headers and bounds; raster decoding remains the renderer's
-job. WebP and ICO originals require a supported derivative and currently produce
-the same short-lived monogram. None of these failures establishes a completed
-R2 image or triggers a background logo probe.
+Original identity URLs remain available to browser and registry consumers.
+Sharing artwork comes from the existing `build:logo-thumbnails` pipeline: its
+version-two display manifest binds each original's SHA-256 to a bounded PNG,
+whose immutable path carries both source and output hashes. Both card caches
+resolve that identity before cache lookup. Replacing a curated file
+at the same original URL therefore changes the completed card identity;
+unchanged source and verified output reuse the derivative.
+
+UI metadata retains the curated original path and appends the full SHA-256 from
+the generated `display/sharing-identity.json` to its existing renderer-version
+parameter. This conservative release stamp covers the versioned sharing policy
+and sorted exact source/output records, so any artwork change rotates all
+declared-logo card URLs. Cards without a declared logo keep their ordinary
+renderer version. The small stamp is shared by server rendering and client
+navigation without bundling the full manifest into every page. Renderers still
+resolve each current per-logo identity and verify its bytes; a stamped URL does
+not promise a historical rendering of that release. The existing builder and
+checker generate and verify the stamp with the display manifest and PNGs.
+
+PNG sharing derivatives are at most 256 pixels per side and 512 KiB. The builder
+decodes PNG, JPEG, GIF, WebP and safe SVG originals using the existing image
+tooling. It supports validated PNG-backed ICO frames; DIB-backed ICO remains
+unsupported and fails explicitly. Active SVG features and external resources
+are refused before decoding; permitted embedded raster data remains bounded.
+Conversion failure cannot claim a successful manifest or replace a known-good
+sharing identity. This is generated output, not a hand-maintained logo map.
+
+Worker reads retain credential-free direct HTTPS, owned-origin, manual-redirect,
+timeout and streamed-byte bounds. UI reads use the existing ASSETS binding.
+Before either renderer records completion, the fetched PNG must match the
+manifest's output size, signature and SHA-256. A declared logo with a missing,
+invalid or mismatched derivative stays expected: a readable fallback receives a
+short lifetime and no completed cache write. Intentional absence stays distinct.
+An uncached HEAD performs no logo fetch or render. Failures do not add background
+probes or arbitrary image hosts.
+
+Generate and check the manifest and artwork together in the native environment:
+
+```sh
+npm run build:logo-thumbnails
+npm run validate:logo-thumbnails
+```
+
+For a native review artifact, use the existing `sync-contract-artifacts.yml`
+workflow with all three explicit inputs: `mode=generate-only`,
+`artifact_preset=logos` and `source_sha=<full reviewed commit SHA>`. That fixed
+preset runs the existing logo builder and checker without lifecycle scripts,
+production credentials or deployment. It returns an allowlisted binary patch
+including new PNGs, with source, workflow, manifest and output hash receipts.
+The default preset remains contract generation; normal sync behavior stays
+unchanged. The current source has 176 original paths and 169 unique source
+hashes, so aliases share immutable PNGs instead of duplicating objects.
+
+Source review does not generate or publish those files. Native generation,
+format/identity regressions and actual Worker raster output must be qualified
+before coordinated derivative publication and compatible API/UI deployment.
+Track source/CI, generated-file hashes, publication, deployed routing and served
+image receipts separately; an older deployed consumer may retain its old cache.
 
 Subnet identifiers have their own field beside the title rather than taking a
 fact slot. Account cards show one abbreviated address and destination context,

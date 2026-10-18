@@ -9,6 +9,7 @@ import {
 } from "./og-card";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
+import sharingIdentity from "../../../public/logos/display/sharing-identity.json" with { type: "json" };
 
 describe("OG display text boundaries", () => {
   it("preserves ordinary word cuts while normalizing and keeping supplementary characters intact", () => {
@@ -42,7 +43,7 @@ describe("OG display text boundaries", () => {
 // motivated it, not just the happy path.
 
 describe("firstPartyLogoPath — the registry's own curated logo", () => {
-  it("accepts both shapes the registry actually stores", () => {
+  it("accepts the registry source policy including nested original logos", () => {
     // Subnets: a content-addressed cache entry (all 60 that have a logo).
     expect(firstPartyLogoPath(`https://metagraph.sh/logos/cache/${"a".repeat(64)}.png`)).toBe(
       `/logos/cache/${"a".repeat(64)}.png`,
@@ -50,6 +51,20 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     // Providers: a slug (102 of 138).
     expect(firstPartyLogoPath("https://metagraph.sh/logos/404-gen.png")).toBe("/logos/404-gen.png");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/albedo.svg")).toBe("/logos/albedo.svg");
+    expect(firstPartyLogoPath("custom://METAGRAPH.SH/logos/albedo.svg")).toBe("/logos/albedo.svg");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/example.ico")).toBe("/logos/example.ico");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/example.gif")).toBe("/logos/example.gif");
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/brands/mark.png")).toBe(
+      "/logos/brands/mark.png",
+    );
+    expect(firstPartyLogoPath("/logos/brands/display/mark.png")).toBe(
+      "/logos/brands/display/mark.png",
+    );
+    expect(firstPartyLogoPath("/logos/brands/sharing/mark.png")).toBe(
+      "/logos/brands/sharing/mark.png",
+    );
+    const sharingPath = `/logos/sharing/v1/${"a".repeat(64)}-${"b".repeat(64)}.png`;
+    expect(firstPartyLogoPath(sharingPath)).toBe(sharingPath);
   });
 
   it("takes the light/dark object form the same way BrandIcon does", () => {
@@ -58,13 +73,14 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     );
   });
 
-  it("refuses anything that is not ours, and anything off the two shapes", () => {
+  it("refuses anything that is not ours or outside the source policy", () => {
     // A third-party host, even at a path that would otherwise match: the asset
     // is read from OUR ASSETS binding, so the origin is not the caller's.
     expect(firstPartyLogoPath("https://evil.example/logos/404-gen.png")).toBeNull();
     // Traversal cannot be spelled — the name charset excludes ".".
     expect(firstPartyLogoPath("https://metagraph.sh/logos/../../secret.png")).toBeNull();
-    expect(firstPartyLogoPath("https://metagraph.sh/logos/nested/dir/x.png")).toBeNull();
+    expect(firstPartyLogoPath("https://metagraph.sh/logos/display/nested/dir/x.png")).toBeNull();
+    expect(firstPartyLogoPath("/logos/sharing/mark.png")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/logos/script.svg.js")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/index.html")).toBeNull();
     expect(firstPartyLogoPath(null, undefined, "")).toBeNull();
@@ -94,6 +110,7 @@ describe("logoHostFrom — our own host is not an identity", () => {
 
   it("still reduces a third-party URL, and accepts a bare host", () => {
     expect(logoHostFrom("https://Apex.Macrocosmos.ai/path?q=1")).toBe("apex.macrocosmos.ai");
+    expect(logoHostFrom("custom://Apex.Macrocosmos.ai/path")).toBe("apex.macrocosmos.ai");
     expect(logoHostFrom("chutes.ai")).toBe("chutes.ai");
     expect(logoHostFrom("not a url", "https://tao.bot")).toBe("tao.bot");
   });
@@ -163,11 +180,48 @@ describe("buildOgImageUrl", () => {
     }
   });
 
-  it("carries the first-party logo path as logop, which the renderer prefers", () => {
+  it("retains the curated original path and includes the complete sharing-release SHA", () => {
+    const release = { version: 1, sha256: "a".repeat(64) };
     const url = new URL(
-      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }),
+      buildOgImageUrl({ title: "404-GEN", logoPath: "/logos/404-gen.png", entity: true }, release),
     );
     expect(url.searchParams.get("logop")).toBe("/logos/404-gen.png");
+    expect(url.searchParams.getAll("v")).toEqual([`${OG_CARD_VERSION}-${release.sha256}`]);
+    expect(firstPartyLogoPath(url.searchParams.get("logop"))).toBe(url.searchParams.get("logop"));
+  });
+
+  it("rotates declared-logo URLs with a sharing release and reuses unchanged releases", () => {
+    const a = { version: 1, sha256: "a".repeat(64) };
+    const b = { version: 1, sha256: "b".repeat(64) };
+    const options = { title: "Example", logoPath: "/logos/example.ico" };
+    const first = buildOgImageUrl(options, a);
+    expect(buildOgImageUrl(options, a)).toBe(first);
+    expect(buildOgImageUrl(options, b)).not.toBe(first);
+    expect(new URL(first).searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${a.sha256}`);
+    const next = new URL(buildOgImageUrl(options, b));
+    expect(next.searchParams.get("v")).toBe(`${OG_CARD_VERSION}-${b.sha256}`);
+    expect(next.searchParams.get("logop")).toBe(options.logoPath);
+    expect(new URL(first).searchParams.get("logop")).toBe(options.logoPath);
+    const noLogo = { title: "Example", logoHost: "example.com" };
+    expect(buildOgImageUrl(noLogo, a)).toBe(buildOgImageUrl(noLogo, b));
+  });
+
+  it("retains declared logo intent without inventing a malformed release identity", () => {
+    const options = { title: "Example", logoPath: "/logos/example.webp" };
+    for (const identity of [
+      null,
+      [],
+      "a".repeat(64),
+      { version: 1 },
+      { version: 2, sha256: "a".repeat(64) },
+      { version: 1, sha256: 1 },
+      { version: 1, sha256: "a".repeat(63) },
+      { version: 1, sha256: "A".repeat(64) },
+    ]) {
+      const url = new URL(buildOgImageUrl(options, identity));
+      expect(url.searchParams.get("logop")).toBe(options.logoPath);
+      expect(url.searchParams.getAll("v")).toEqual([OG_CARD_VERSION]);
+    }
   });
 
   it("omits every absent field so the card's own fallbacks apply", () => {
@@ -272,5 +326,18 @@ describe("ogImageMeta", () => {
     );
     expect(urls.size).toBe(1);
     expect(new URL([...urls][0]!).searchParams.get("v")).toBe(OG_CARD_VERSION);
+  });
+
+  it("uses the generated sharing release in both metadata image tags", () => {
+    const options = { title: "Example", logoPath: "/logos/example.webp" };
+    expect(sharingIdentity.version).toBe(1);
+    expect(sharingIdentity.sha256).toMatch(/^[0-9a-f]{64}$/);
+    const image = buildOgImageUrl(options);
+    const params = new URL(image).searchParams;
+    expect(params.get("logop")).toBe(options.logoPath);
+    expect(params.get("v")).toBe(`${OG_CARD_VERSION}-${sharingIdentity.sha256}`);
+    const meta = ogImageMeta(options);
+    expect(meta).toContainEqual({ property: "og:image", content: image });
+    expect(meta).toContainEqual({ name: "twitter:image", content: image });
   });
 });

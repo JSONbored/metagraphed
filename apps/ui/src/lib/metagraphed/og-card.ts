@@ -1,6 +1,8 @@
 import { SITE_ORIGIN } from "./identity";
 import { OG_CARD_VERSION, OG_LIMITS } from "./og-card-limits";
 import { clampOgText } from "./og-display-text";
+import sharingIdentity from "../../../public/logos/display/sharing-identity.json" with { type: "json" };
+import { isOgLogoSourcePath } from "../../../../../src/og-logo-path.ts";
 
 // Builds the /og card URL a route puts in its own og:image (#8489).
 //
@@ -8,7 +10,8 @@ import { clampOgText } from "./og-display-text";
 // card on the Worker): that file pulls in the satori/workers-og types and the
 // full markup, and route files are client-bundled -- importing the renderer
 // just to build a URL would drag the card into every page's JS. This module is
-// ~60 lines of string building with no dependencies.
+// string building plus a small generated sharing-release stamp. The full
+// per-logo manifest and artwork verification stay in the server renderer.
 //
 // The two files therefore share a CONTRACT, not code: the param names written
 // here must match the ones `readCardParams` reads there. Both sides name the
@@ -74,7 +77,10 @@ export interface OgCardOptions {
  * naturally and the URL stays short -- the endpoint refuses an over-long query
  * outright, and every param is bounded on both sides from OG_LIMITS.
  */
-export function buildOgImageUrl(options: OgCardOptions): string {
+export function buildOgImageUrl(
+  options: OgCardOptions,
+  logoIdentity: unknown = sharingIdentity,
+): string {
   // Clamped HERE as well as in the renderer, from the same shared bounds. The
   // renderer truncates anyway, so an over-long value only ever bought a longer
   // URL -- and once the first-party logo path joined the query (#11204) that
@@ -82,12 +88,12 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   // MAX_QUERY_LENGTH, which answers 414 and unfurls with no image at all.
   const params = new URLSearchParams({
     title: clampOgText(options.title, OG_LIMITS.title),
-    v: OG_CARD_VERSION,
+    v: options.logoPath ? sharingLogoVersion(logoIdentity) : OG_CARD_VERSION,
   });
-  const subtitle = clampOgText(options.subtitle, OG_LIMITS.subtitle);
-  if (subtitle) params.set("subtitle", subtitle);
-  const eyebrow = clampOgText(options.eyebrow, OG_LIMITS.eyebrow);
-  if (eyebrow) params.set("eyebrow", eyebrow);
+  for (const key of ["subtitle", "eyebrow"] as const) {
+    const value = clampOgText(options[key], OG_LIMITS[key]);
+    if (value) params.set(key, value);
+  }
   if (options.accent === "agent") params.set("accent", "agent");
   if (options.logoPath) params.set("logop", options.logoPath);
   if (options.logoHost) params.set("logo", options.logoHost.slice(0, OG_LIMITS.logoHost));
@@ -104,9 +110,11 @@ export function buildOgImageUrl(options: OgCardOptions): string {
     const value = clampOgText(stat.value, OG_LIMITS.statValue);
     // Both halves required, matching readCardParams: a value with no label is
     // unreadable, and a label with no value is an empty promise.
-    if (!label || !value) return;
-    params.set(`stat${index + 1}`, label);
-    params.set(`stat${index + 1}v`, value);
+    if (label && value) {
+      const key = `stat${index + 1}`;
+      params.set(key, label);
+      params.set(`${key}v`, value);
+    }
   });
   let identifier = clampOgText(options.identifier, OG_LIMITS.identifier);
   if (identifier) {
@@ -124,6 +132,19 @@ export function buildOgImageUrl(options: OgCardOptions): string {
   return `${SITE_ORIGIN}/og?${params.toString()}`;
 }
 
+function sharingLogoVersion(identity: unknown): string {
+  if (typeof identity !== "object" || identity === null || Array.isArray(identity)) {
+    return OG_CARD_VERSION;
+  }
+  const release = identity as Record<string, unknown>;
+  const sha256 = release.version === 1 && release.sha256;
+  return typeof sha256 === "string" && /^[0-9a-f]{64}$/.test(sha256)
+    ? `${OG_CARD_VERSION}-${sha256}`
+    : OG_CARD_VERSION;
+}
+
+type LogoCandidate = string | { light?: string; dark?: string } | null | undefined;
+
 /**
  * Reduce whatever logo-ish value a route has to the bare HOST the card accepts.
  *
@@ -136,62 +157,43 @@ export function buildOgImageUrl(options: OgCardOptions): string {
  * card resolves to the icon the page itself would show. Returns null when
  * nothing usable is present, and the card falls back to a monogram.
  */
-export function logoHostFrom(
-  ...candidates: Array<string | { light?: string; dark?: string } | null | undefined>
-): string | null {
-  for (const candidate of candidates) {
-    const raw =
-      typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light ?? null);
-    if (!raw) continue;
-    try {
-      // Accept a bare host too, not just an absolute URL.
-      const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
-      // OUR host is never an identity signal. The registry caches an entity's
-      // logo at metagraph.sh/logos/cache/<sha>.<ext>, and reducing that to a
-      // host asks the favicon proxy for METAGRAPHED's icon — so an entity that
-      // has a curated logo would wear our mark, or (as today, since the proxy
-      // has no icon for us) fall through to a monogram. Those URLs are handled
-      // by firstPartyLogoPath instead; here they must not shadow the entity's
-      // own website, which is the next-best identity we have.
-      if (url.hostname && !isFirstPartyHost(url.hostname)) return url.hostname.toLowerCase();
-    } catch {
-      // Unparseable candidate — try the next one rather than failing the card.
-    }
-  }
-  return null;
+export function logoHostFrom(...candidates: LogoCandidate[]): string | null {
+  return findLogo(candidates, false);
 }
 
 const SITE_HOST = new URL(SITE_ORIGIN).hostname.toLowerCase();
 
-function isFirstPartyHost(hostname: string): boolean {
-  return hostname.toLowerCase() === SITE_HOST;
-}
-
 /**
- * The two shapes the registry's own logo assets take: a subnet's
- * content-addressed cache entry, and a provider's slug.
+ * Owned original logo paths and their immutable sharing PNGs.
  *
- * Mirrors `LOGO_ASSET_PATH` in src/lib/og-image.ts, which validates the param
- * again on the way in — /og is a public endpoint and must never trust a
- * caller, including us. The name charset excludes `.`, so `..` cannot be
- * spelled and the path can only ever name an image this repo ships.
+ * The renderer repeats the shared discovery check at its public boundary.
+ * The name charset excludes traversal and generated display assets.
  */
-const LOGO_ASSET_PATH =
-  /^\/logos\/(?:cache\/[0-9a-f]{64}|[a-z0-9][a-z0-9-]{0,62})\.(?:png|svg|jpg|jpeg|webp)$/;
+const SHARING_LOGO_PATH = /^\/logos\/sharing\/v1\/[0-9a-f]{64}-[0-9a-f]{64}\.png$/;
 
 /** The first candidate that is one of OUR OWN logo assets, as a path. */
-export function firstPartyLogoPath(
-  ...candidates: Array<string | { light?: string; dark?: string } | null | undefined>
-): string | null {
+export function firstPartyLogoPath(...candidates: LogoCandidate[]): string | null {
+  return findLogo(candidates, true);
+}
+
+function findLogo(candidates: LogoCandidate[], firstParty: boolean): string | null {
   for (const candidate of candidates) {
-    const raw =
-      typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light ?? null);
+    const raw = typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light);
     if (!raw) continue;
     try {
-      const url = new URL(raw, SITE_ORIGIN);
-      if (!isFirstPartyHost(url.hostname)) continue;
-      if (LOGO_ASSET_PATH.test(url.pathname)) {
-        return url.pathname;
+      // Owned assets resolve relative to us; external identity accepts bare hosts.
+      const { hostname, pathname } = new URL(
+        firstParty || raw.includes("://") ? raw : `https://${raw}`,
+        firstParty ? SITE_ORIGIN : undefined,
+      );
+      const host = hostname.toLowerCase();
+      if (!host || (host === SITE_HOST) !== firstParty) continue;
+      if (
+        !firstParty ||
+        (pathname.startsWith("/logos/") &&
+          (isOgLogoSourcePath(pathname.slice(7)) || SHARING_LOGO_PATH.test(pathname)))
+      ) {
+        return firstParty ? pathname : host;
       }
     } catch {
       // Unparseable candidate — try the next one.
@@ -230,6 +232,10 @@ export function healthFromStatusCounts(
   return warning || ok > 0 ? "warn" : "down";
 }
 
+function ogImageProperty(suffix: string, content: string) {
+  return { property: `og:image${suffix}`, content };
+}
+
 /** The og:image + twitter:image meta a route's head() returns. */
 export function ogImageMeta(
   options: OgCardOptions,
@@ -241,17 +247,17 @@ export function ogImageMeta(
   // reader announces for an unfurl and what several platforms show as the
   // caption, and the card's own copy is exactly the right text: it IS what the
   // image says. Built the same way server.ts builds its own.
-  const image = new URL(url);
-  const title = image.searchParams.get("title") ?? "";
-  const subtitle = image.searchParams.get("subtitle");
-  const identifier = image.searchParams.get("identifier");
+  const params = new URL(url).searchParams;
+  const title = params.get("title") ?? "";
+  const subtitle = params.get("subtitle");
+  const identifier = params.get("identifier");
   const subject = identifier && identifier !== title ? `${title} — ${identifier}` : title;
   const alt = subtitle ? `${subject} — ${subtitle}` : subject;
   return [
-    { property: "og:image", content: url },
-    { property: "og:image:width", content: "1200" },
-    { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: alt },
+    ogImageProperty("", url),
+    ogImageProperty(":width", "1200"),
+    ogImageProperty(":height", "630"),
+    ogImageProperty(":alt", alt),
     { name: "twitter:image", content: url },
     { name: "twitter:image:alt", content: alt },
   ];

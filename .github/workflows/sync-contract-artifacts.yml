@@ -40,6 +40,11 @@ on:
         type: choice
         options: [sync, generate-only, resolve-lock]
         default: sync
+      artifact_preset:
+        description: Fixed output family for generate-only; contracts remains the default
+        type: choice
+        options: [contracts, logos]
+        default: contracts
       source_sha:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
         type: string
@@ -185,10 +190,19 @@ jobs:
       - name: Resolve immutable source
         id: source
         env:
+          ARTIFACT_PRESET: ${{ inputs.artifact_preset }}
           REQUESTED_SHA: ${{ inputs.source_sha }}
           DISPATCH_SHA: ${{ github.sha }}
         shell: bash
         run: |
+          preset="${ARTIFACT_PRESET:-contracts}"
+          case "$preset" in
+            contracts) kind=contract ;;
+            logos) kind=logo ;;
+            *) echo "Unsupported artifact preset" >&2; exit 1 ;;
+          esac
+          echo "preset=$preset" >> "$GITHUB_OUTPUT"
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
           source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
           [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
             echo "source_sha must be a full 40-character commit SHA" >&2
@@ -217,29 +231,46 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install generation dependencies
+        if: steps.source.outputs.preset == 'contracts'
         run: npm ci
 
+      - name: Install logo generation dependencies without lifecycle scripts
+        if: steps.source.outputs.preset == 'logos'
+        run: npm ci --ignore-scripts
+
       - name: Generate contracts from committed seeds
+        if: steps.source.outputs.preset == 'contracts'
         # Inline assignment keeps this explicitly non-production; no capture,
         # probe, publishing, observability or deployment secrets are supplied.
         run: METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build
 
       - name: Generate client bundles
+        if: steps.source.outputs.preset == 'contracts'
         run: npm run build --workspace=packages/client
 
       - name: Generate API reference
+        if: steps.source.outputs.preset == 'contracts'
         working-directory: apps/ui
         run: node scripts/generate-openapi-docs.ts
 
+      - name: Generate logo derivatives with the existing builder
+        if: steps.source.outputs.preset == 'logos'
+        run: npm run build:logo-thumbnails
+
+      - name: Check generated logo derivatives
+        if: steps.source.outputs.preset == 'logos'
+        run: npm run validate:logo-thumbnails
+
       - name: Capture allowlisted patch and receipt
         env:
+          ARTIFACT_PRESET: ${{ steps.source.outputs.preset }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           WORKFLOW_SHA: ${{ github.workflow_sha }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
         shell: bash
         run: |
           python3 - <<'PY_GENERATED_CONTRACT_RECEIPT'
-          import hashlib, json, os, pathlib, stat, subprocess
+          import hashlib, json, os, pathlib, re, stat, subprocess
 
           def git(*args):
               return subprocess.check_output(["git", *args])
@@ -247,9 +278,25 @@ jobs:
           def sha256(body):
               return hashlib.sha256(body).hexdigest()
 
+          def names(body):
+              return {p for p in body.decode().split("\0") if p}
+
+          def regular(name):
+              path = pathlib.Path(name)
+              for parent in [path, *path.parents]:
+                  if parent.is_symlink():
+                      raise SystemExit("Symlink in generated path: " + name)
+              if path.exists() and (not stat.S_ISREG(path.stat().st_mode) or path.stat().st_mode & 0o111):
+                  raise SystemExit("Non-regular or executable generated output: " + name)
+              return path
+
           source = os.environ["SOURCE_SHA"]
           if git("rev-parse", "HEAD").decode().strip() != source:
               raise SystemExit("Generation changed source HEAD")
+          preset = os.environ.get("ARTIFACT_PRESET") or "contracts"
+          if preset not in {"contracts", "logos"}:
+              raise SystemExit("Unsupported artifact preset")
+          kind = "logo" if preset == "logos" else "contract"
           exact = {
               "public/metagraph/openapi.json",
               "public/metagraph/contracts.json",
@@ -271,25 +318,50 @@ jobs:
               # contract output. Report its drift without publishing it.
               "public/metagraph/operational-surfaces.json",
           }
+          logo_root = "apps/ui/public/logos/"
+          sharing_root = logo_root + "sharing/v1/"
+          manifest_path = logo_root + "display/manifest.json"
+          identity_path = logo_root + "display/sharing-identity.json"
+          sharing_path = re.compile(re.escape(sharing_root) + r"[0-9a-f]{64}-[0-9a-f]{64}\.png\Z")
+          display_path = re.compile(re.escape(logo_root + "display/") + r"(?:[a-z0-9][a-z0-9-]*/)*[a-z0-9][a-z0-9-]*\.webp\Z")
 
           def allowed(name):
+              if preset == "logos":
+                  return name in {manifest_path, identity_path} or bool(display_path.fullmatch(name) or sharing_path.fullmatch(name))
               return name in exact or name.startswith(docs)
 
-          # Include ignored, generated client source, but never whole ignored
-          # trees (node_modules, R2 staging, captures, or runtime secrets).
-          candidates = exact | {str(p) for p in pathlib.Path(docs).rglob("*") if p.is_file() or p.is_symlink()}
+          if preset == "logos":
+              excluded = set()
+              candidates = set()
+              for directory in [logo_root + "display", logo_root + "sharing"]:
+                  regular_directory = pathlib.Path(directory)
+                  for parent in [regular_directory, *regular_directory.parents]:
+                      if parent.is_symlink():
+                          raise SystemExit("Symlink in generated directory: " + directory)
+                  for path in regular_directory.rglob("*"):
+                      if path.is_file() or path.is_symlink():
+                          name = str(path)
+                          if not allowed(name):
+                              raise SystemExit("Unexpected logo output path: " + name)
+                          candidates.add(name)
+          else:
+              # Include ignored client source, never whole ignored build/secret trees.
+              candidates = exact | {str(p) for p in pathlib.Path(docs).rglob("*") if p.is_file() or p.is_symlink()}
           for name in sorted(candidates):
               path = pathlib.Path(name)
-              for parent in [path, *path.parents]:
-                  if parent.is_symlink():
-                      raise SystemExit("Symlink in generated path: " + name)
-              if path.exists():
-                  if not stat.S_ISREG(path.stat().st_mode):
+              if preset == "logos":
+                  path = regular(name)
+              else:
+                  for parent in [path, *path.parents]:
+                      if parent.is_symlink():
+                          raise SystemExit("Symlink in generated path: " + name)
+                  if path.exists() and not stat.S_ISREG(path.stat().st_mode):
                       raise SystemExit("Non-file generated path: " + name)
+              if path.exists():
                   subprocess.run(["git", "add", "--intent-to-add", "--force", "--", name], check=True)
 
-          changed = set(git("diff", "--no-renames", "--name-only", "-z", "HEAD").decode().rstrip("\0").split("\0")) - {""}
-          untracked = set(git("ls-files", "--others", "--exclude-standard", "-z").decode().rstrip("\0").split("\0")) - {""}
+          changed = names(git("diff", "--no-renames", "--name-only", "-z", "HEAD"))
+          untracked = names(git("ls-files", "--others", "--exclude-standard", "-z"))
           dirty = sorted(changed | untracked)
           unexpected = [p for p in dirty if not allowed(p) and p not in excluded]
           if unexpected:
@@ -300,13 +372,58 @@ jobs:
               if old and old.split(b" ", 1)[0] != b"100644":
                   raise SystemExit("Non-regular base mode in patch: " + name)
               path = pathlib.Path(name)
-              if path.exists() and path.stat().st_mode & 0o111:
+              if preset == "logos":
+                  if name.startswith(sharing_root) and old:
+                      raise SystemExit("Existing immutable sharing output changed: " + name)
+                  regular(name)
+              elif path.exists() and path.stat().st_mode & 0o111:
                   raise SystemExit("Executable generated output: " + name)
           patch = git("diff", "--binary", "--no-renames", "HEAD", "--", *selected) if selected else b""
           diffstat = git("diff", "--stat", "HEAD", "--", *selected) if selected else b""
           hashes = {p: sha256(pathlib.Path(p).read_bytes()) if pathlib.Path(p).exists() else None for p in selected}
+          commands = ["npm ci", "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build", "npm run build --workspace=packages/client", "cd apps/ui && node scripts/generate-openapi-docs.ts"]
+          logo_receipt = {}
+          if preset == "logos":
+              commands = ["npm ci --ignore-scripts", "npm run build:logo-thumbnails", "npm run validate:logo-thumbnails"]
+              manifest = json.loads(regular(manifest_path).read_text())
+              identity = json.loads(regular(identity_path).read_text())
+              entries = manifest["entries"]
+              original_hashes = {}
+              output_hashes = {}
+              display_hashes = {}
+              for entry in entries:
+                  original = logo_root + entry["source_path"]
+                  output = logo_root + entry["sharing_path"]
+                  display = logo_root + "display/" + entry["display_path"]
+                  if not sharing_path.fullmatch(output):
+                      raise SystemExit("Unexpected manifest sharing path: " + output)
+                  if not display_path.fullmatch(display):
+                      raise SystemExit("Unexpected manifest display path: " + display)
+                  old = git("show", "HEAD:" + original)
+                  original_bytes = regular(original).read_bytes()
+                  if old != original_bytes:
+                      raise SystemExit("Original logo changed: " + original)
+                  original_hashes[original] = sha256(original_bytes)
+                  output_hashes[output] = sha256(regular(output).read_bytes())
+                  display_hashes[display] = sha256(regular(display).read_bytes())
+                  if original_hashes[original] != entry["source_sha256"] or output_hashes[output] != entry["sharing_sha256"] or display_hashes[display] != entry["display_sha256"]:
+                      raise SystemExit("Manifest byte identity mismatch: " + original)
+              if any(p.startswith(sharing_root) and p not in output_hashes for p in selected):
+                  raise SystemExit("New sharing output is not selected by the manifest")
+              logo_receipt = {
+                  "manifest_entries": len(entries),
+                  "unique_sharing_paths": len(output_hashes),
+                  "manifest_sha256": sha256(regular(manifest_path).read_bytes()),
+                  "sharing_identity": identity,
+                  "sharing_identity_sha256": sha256(regular(identity_path).read_bytes()),
+                  "original_sha256": original_hashes,
+                  "sharing_output_sha256": output_hashes,
+                  "display_output_sha256": display_hashes,
+                  "sharing_policy": manifest["sharing"],
+              }
           receipt = {
               "status": "success",
+              "artifact_preset": preset,
               "source_sha": source,
               "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
               "workflow_sha": os.environ["WORKFLOW_SHA"],
@@ -318,21 +435,17 @@ jobs:
               "npm": subprocess.check_output(["npm", "--version"]).decode().strip(),
               "lock_sha256": sha256(pathlib.Path("package-lock.json").read_bytes()),
               "source_lock_sha256": sha256(git("show", "HEAD:package-lock.json")),
-              "commands": [{"command": c, "outcome": "success"} for c in [
-                  "npm ci",
-                  "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build",
-                  "npm run build --workspace=packages/client",
-                  "cd apps/ui && node scripts/generate-openapi-docs.ts",
-              ]],
+              "commands": [{"command": c, "outcome": "success"} for c in commands],
               "dirty_paths": dirty,
               "excluded_paths": [p for p in dirty if p in excluded],
               "changed_paths": selected,
               "patch_sha256": sha256(patch),
               "output_sha256": hashes,
+              **logo_receipt,
           }
-          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "generated-contract-output"
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / ("generated-" + kind + "-output")
           output.mkdir()
-          (output / "generated-contract.patch").write_bytes(patch)
+          (output / ("generated-" + kind + ".patch")).write_bytes(patch)
           (output / "changed-paths.json").write_text(json.dumps(selected, indent=2) + "\n")
           (output / "diffstat.txt").write_bytes(diffstat)
           (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
@@ -341,8 +454,8 @@ jobs:
       - name: Upload review patch only
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: generated-contract-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/generated-contract-output
+          name: generated-${{ steps.source.outputs.kind }}-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/generated-${{ steps.source.outputs.kind }}-output
           if-no-files-found: error
           retention-days: 7
 
