@@ -1635,7 +1635,9 @@ describe("analytics edge cache", () => {
           "/validator-operator-directory-principal-unavailable/",
         ),
       ]);
-      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
     },
   );
 
@@ -1702,7 +1704,9 @@ describe("analytics edge cache", () => {
       assert.deepEqual(cache.putKeys, [
         expectedKey("global-validators-principal-unavailable", path, search),
       ]);
-      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
     },
   );
 
@@ -1819,7 +1823,9 @@ describe("analytics edge cache", () => {
           ),
         ),
       );
-      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
     },
   );
 
