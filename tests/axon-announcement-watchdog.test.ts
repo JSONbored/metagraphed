@@ -208,6 +208,53 @@ describe("the fleet-wide guard", () => {
   test("nothing flagged is not fleet-wide", () => {
     assert.equal(isFleetWide([]), false);
   });
+
+  test("measured churn does not manufacture or enlarge a capture cluster", () => {
+    const churn = Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+      ...finding(i + 1),
+      kind: "churn-replaced" as const,
+      lossesViaReuse: 50,
+      lossesSameHotkey: 0,
+    }));
+    assert.equal(isFleetWide(churn), false);
+    assert.equal(isFleetWide([...churn, finding(101)]), false);
+    assert.equal(
+      isFleetWide([
+        ...churn,
+        ...Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) =>
+          finding(i + 101),
+        ),
+      ]),
+      true,
+      "churn cannot hide four remaining unexplained drops",
+    );
+  });
+
+  test("subnets emptying together remain capture suspects", () => {
+    assert.equal(
+      isFleetWide(
+        Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+          ...finding(i + 1),
+          kind: "subnet-turned-over" as const,
+          neurons: 2,
+        })),
+      ),
+      true,
+    );
+  });
+
+  test("drops on different capture days do not manufacture a simultaneous cluster", () => {
+    const suspects = Array.from({ length: AXON_FLEET_WIDE_FLAGS }, (_, i) => ({
+      ...finding(i + 1),
+      date: `2026-08-${15 + i}`,
+    }));
+    assert.equal(isFleetWide(suspects), false);
+    assert.equal(
+      isFleetWide([...suspects, finding(101), finding(102), finding(103)]),
+      true,
+      "four unexplained drops on one day still meet the unchanged threshold",
+    );
+  });
 });
 
 describe("evaluateAxonAnnouncements and axonDetail", () => {
@@ -968,6 +1015,190 @@ describe("the tick reports the mechanism it measured", () => {
     // it closes on the first `ok` and churn keeps the lane off it.
     assert.equal(verdictValue(), "ok");
   });
+
+  test("the four measured churn findings retain every detail without a capture alarm", async () => {
+    // Every loss is measured deregistration churn. Stable membership fixtures
+    // isolate the aggregate classification from turnover, and different loss
+    // counts ensure that all four findings retain their own durable detail.
+    const measured = [
+      [37, 63, 3, 71],
+      [22, 190, 16, 216],
+      [101, 26, 8, 39],
+      [102, 24, 14, 27],
+    ];
+    answer(
+      measured.flatMap(([netuid, baseline, current]) =>
+        rowsFor(netuid, then(flat(8, baseline), [current, 256])),
+      ),
+      measured.map(([netuid, , , losses]) => ({
+        netuid,
+        via_reuse: losses,
+        same_hotkey: 0,
+      })),
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.flagged, true);
+    assert.equal(result.churn_only, true);
+    assert.equal(result.explained_membership_only, true);
+    assert.equal(result.fleet_wide, false);
+    assert.equal(result.alerted, false);
+    assert.equal(recordException.mock.calls.length, 0);
+    assert.equal(verdictValue(), "ok");
+    assert.equal((result.findings as AxonFinding[]).length, 4);
+    for (const [netuid, baseline, current, losses] of measured) {
+      assert.ok(verdict().includes(`SN${netuid} ${current}/${baseline} axons`));
+      assert.ok(verdict().includes(`${losses} of ${losses} losses`));
+    }
+  });
+
+  test("three churn findings cannot turn one real withdrawal into a capture failure", async () => {
+    const churnIds = [22, 37, 102];
+    answer(
+      [
+        ...churnIds.flatMap((netuid) =>
+          rowsFor(netuid, then(flat(8, 80), [14, 256])),
+        ),
+        ...rowsFor(101, then(flat(8, 223), [129, 256])),
+      ],
+      [
+        ...churnIds.map((netuid) => ({
+          netuid,
+          via_reuse: 67,
+          same_hotkey: 0,
+        })),
+        { netuid: 101, via_reuse: 0, same_hotkey: 94 },
+      ],
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.flagged, true);
+    assert.equal(result.alerted, true);
+    assert.equal(result.fleet_wide, false);
+    assert.equal(result.explained_membership_only, false);
+    assert.equal(verdictValue(), "stale");
+    assert.equal(recordException.mock.calls.length, 1);
+    const event = recordException.mock.calls[0] as unknown as [
+      unknown,
+      { errorCode: string; error: Error },
+    ];
+    assert.equal(event[1].errorCode, "axon_announcements_dropped");
+    assert.match(event[1].error.message, /94 miner\(s\) stopped announcing/);
+    assert.doesNotMatch(event[1].error.message, /capture failing/);
+    assert.equal((result.findings as AxonFinding[]).length, 4);
+  });
+
+  test("four simultaneous empty metagraphs still raise the capture alarm", async () => {
+    const ids = [20, 21, 22, 23];
+    answer(
+      ids.flatMap((netuid) => rowsFor(netuid, then(flat(8, 200), [0, 2]))),
+      ids.map((netuid) => ({ netuid, via_reuse: 200, same_hotkey: 0 })),
+    );
+    const recordException = vi.fn(async () => true);
+    const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+      now: () => Date.parse("2026-10-02T19:36:00Z"),
+      recordException: recordException as never,
+    });
+    assert.equal(result.fleet_wide, true);
+    assert.equal(result.alerted, true);
+    assert.equal(result.explained_membership_only, false);
+    assert.equal(verdictValue(), "stale");
+    assert.equal(recordException.mock.calls.length, 1);
+    const event = recordException.mock.calls[0] as unknown as [
+      unknown,
+      { errorCode: string; error: Error },
+    ];
+    assert.equal(event[1].errorCode, "axon_capture_suspect");
+    assert.match(event[1].error.message, /At least 4 subnets/);
+    assert.match(event[1].error.message, /the subnet turned over/);
+  });
+
+  test.each([
+    { actionable: 4, fleetWide: true, errorCode: "axon_capture_suspect" },
+    {
+      actionable: 3,
+      fleetWide: false,
+      errorCode: "axon_announcements_dropped",
+    },
+  ])(
+    "$actionable same-day actionable findings plus churn preserve paging and every detail",
+    async ({ actionable, fleetWide, errorCode }) => {
+      const turnover = actionable === 4;
+      answer(
+        [
+          ...[40, 41, 42, 44].flatMap((netuid) =>
+            rowsFor(netuid, then(flat(8, 100), [20, 256])),
+          ),
+          ...(turnover ? rowsFor(43, then(flat(8, 100), [0, 2])) : []),
+        ],
+        [
+          { netuid: 40, via_reuse: 0, same_hotkey: 80, distinct_ips: 2 },
+          // No mechanism row for SN41: an unread cause remains actionable.
+          { netuid: 42, via_reuse: 0, same_hotkey: 80, moved_unroutable: 80 },
+          { netuid: 44, via_reuse: 80, same_hotkey: 0 },
+          ...(turnover ? [{ netuid: 43, via_reuse: 100, same_hotkey: 0 }] : []),
+        ],
+      );
+      const recordException = vi.fn(async () => true);
+      const result = await runAxonAnnouncementWatchdog(pgMockEnv(), {
+        now: () => Date.parse("2026-09-01T12:00:00Z"),
+        recordException: recordException as never,
+      });
+      const findings = result.findings as AxonFinding[];
+      assert.equal(result.flagged, true);
+      assert.equal(result.fleet_wide, fleetWide);
+      assert.equal(result.churn_only, false);
+      assert.equal(result.explained_membership_only, false);
+      assert.equal(result.alerted, true);
+      assert.equal(verdictValue(), "stale");
+      assert.equal(findings.length, actionable + 1);
+      assert.ok(findings.every((finding) => finding.date === "2026-09-01"));
+      assert.deepEqual(
+        findings.map((finding) => [finding.netuid, finding.kind]),
+        [
+          ...(turnover ? [[43, "subnet-turned-over"]] : []),
+          [40, "announcements-withdrawn"],
+          [41, "mechanism-unknown"],
+          [42, "moved-unroutable"],
+          [44, "churn-replaced"],
+        ],
+      );
+      assert.equal(recordException.mock.calls.length, 1);
+      const event = recordException.mock.calls[0] as unknown as [
+        unknown,
+        { errorCode: string; error: Error },
+      ];
+      assert.equal(event[1].errorCode, errorCode);
+      const message = event[1].error.message;
+      const detail = verdict();
+      for (const text of [
+        "SN40 20/100 axons (20%, 80 miner(s) stopped announcing from 2 addresses)",
+        "SN41 20/100 axons (20%, mechanism UNREAD",
+        "SN42 20/100 axons (20%, 80 of 80 still announce",
+        "SN44 20/100 axons (20%, churn-replaced: 80 of 80 losses",
+        ...(turnover
+          ? ["SN43 0/100 axons (0%, neurons 2/256 -- the subnet turned over)"]
+          : []),
+      ]) {
+        assert.ok(detail.includes(text), `durable detail omitted ${text}`);
+        assert.ok(message.includes(text), `exception detail omitted ${text}`);
+      }
+      if (fleetWide) {
+        assert.match(message, /At least 4 subnets/);
+        assert.match(message, /metagraph capture failing/);
+        assert.doesNotMatch(message, /At least 5 subnets|5 subnets dropped/);
+      } else {
+        assert.match(message, /stopped publishing an axon/);
+        assert.doesNotMatch(message, /capture failing/);
+      }
+    },
+  );
 
   test("CHURN MIXED WITH A WITHDRAWAL is still stale, and still pages", async () => {
     // The bar that keeps #11367's change from suppressing a real fault. Churn
