@@ -528,7 +528,10 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
-    const body = await parseJsonBody(res, successEnvelopeSchema(TopHoldersArtifactSchema));
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(TopHoldersArtifactSchema),
+    );
     // The generic {ss58} route's response shape has no `accounts` array --
     // if dispatch were wrong this would 200 with a single-account shape instead.
     assert.equal(Array.isArray(body.data.accounts), true);

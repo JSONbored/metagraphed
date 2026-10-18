@@ -2383,8 +2383,7 @@ describe("Worker runtime", () => {
       checkRoute(
         "https://metagraph.sh/api/v1/surfaces?kind=openapi",
         successEnvelopeSchema(endpoints.SurfacesArtifactSchema),
-        (body) =>
-          body.data.surfaces.every((row) => row.kind === "openapi"),
+        (body) => body.data.surfaces.every((row) => row.kind === "openapi"),
       ),
       checkRoute(
         "https://metagraph.sh/api/v1/providers?authority=official",
@@ -2451,8 +2450,7 @@ describe("Worker runtime", () => {
         (body) =>
           body.data.surfaces.length <= 3 &&
           body.data.surfaces.every(
-            (surface) =>
-              surface.netuid === 7 && surface.kind === "subnet-api",
+            (surface) => surface.netuid === 7 && surface.kind === "subnet-api",
           ),
       ),
       checkRoute(

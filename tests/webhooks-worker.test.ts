@@ -442,10 +442,7 @@ describe("webhook subscription routes", () => {
     assert.match(allowMethods, /DELETE/);
     const allowHeaders = res.headers.get("access-control-allow-headers");
     assert.ok(allowHeaders);
-    assert.match(
-      allowHeaders,
-      /x-metagraph-webhook-secret/,
-    );
+    assert.match(allowHeaders, /x-metagraph-webhook-secret/);
   });
 });
 

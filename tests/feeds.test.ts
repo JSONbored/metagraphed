@@ -13,7 +13,12 @@ import {
 } from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { mockEnv, parseJsonBody, requiredHeader, type Row } from "./row-type.ts";
+import {
+  mockEnv,
+  parseJsonBody,
+  requiredHeader,
+  type Row,
+} from "./row-type.ts";
 import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 
 async function jsonItems(res: Response): Promise<unknown[]> {
@@ -1101,7 +1106,10 @@ describe("feeds — handleFeedRequest", () => {
   test("registry feed defaults to JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry");
     assert.equal(res.status, 200);
-    assert.match(requiredHeader(res, "content-type"), /application\/feed\+json/);
+    assert.match(
+      requiredHeader(res, "content-type"),
+      /application\/feed\+json/,
+    );
     assert.match(requiredHeader(res, "cache-control"), /max-age=600/);
     const parsed = JSON.parse(text);
     assert.equal(parsed.version, "https://jsonfeed.org/version/1.1");
@@ -1115,7 +1123,10 @@ describe("feeds — handleFeedRequest", () => {
     const rss = await feed("/api/v1/feeds/registry.rss", {
       accept: "application/feed+json",
     });
-    assert.match(requiredHeader(rss.res, "content-type"), /application\/rss\+xml/);
+    assert.match(
+      requiredHeader(rss.res, "content-type"),
+      /application\/rss\+xml/,
+    );
     assert.match(rss.text, /<rss version="2\.0"/);
     const atom = await feed("/api/v1/feeds/incidents.atom");
     assert.match(
@@ -1310,7 +1321,10 @@ describe("feeds — handleFeedRequest", () => {
   test("gaps feed serves ranked enrichment targets as JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/gaps");
     assert.equal(res.status, 200);
-    assert.match(requiredHeader(res, "content-type"), /application\/feed\+json/);
+    assert.match(
+      requiredHeader(res, "content-type"),
+      /application\/feed\+json/,
+    );
     const parsed = JSON.parse(text);
     assert.equal(parsed.feed_url, "https://api.metagraph.sh/api/v1/feeds/gaps");
     assert.equal(parsed.home_page_url, "https://metagraph.sh/gaps");
@@ -1320,7 +1334,10 @@ describe("feeds — handleFeedRequest", () => {
 
   test("gaps feed supports .rss and ?tag= lane filtering", async () => {
     const rss = await feed("/api/v1/feeds/gaps.rss");
-    assert.match(requiredHeader(rss.res, "content-type"), /application\/rss\+xml/);
+    assert.match(
+      requiredHeader(rss.res, "content-type"),
+      /application\/rss\+xml/,
+    );
     assert.match(rss.text, /SN7 Allways — Submit openapi evidence/);
     const filtered = await feed("/api/v1/feeds/gaps?tag=direct-submission");
     const parsed = JSON.parse(filtered.text);

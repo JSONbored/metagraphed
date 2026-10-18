@@ -4,9 +4,7 @@ import {
   successEnvelopeSchema,
 } from "../schemas-src/envelope.ts";
 import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
-import {
-  GetEconomicsOutputSchema,
-} from "../schemas-src/mcp-tools/get-economics.ts";
+import { GetEconomicsOutputSchema } from "../schemas-src/mcp-tools/get-economics.ts";
 import {
   mcpAccountContext,
   withMcpAccount,
@@ -238,10 +236,7 @@ describe("economics: REST and MCP resolve one snapshot", () => {
     // Not a performance assertion: two independently-timed reads of one key is the
     // structure that let the surfaces drift apart in the first place.
     const { env, reads } = makeEnv();
-    await restEconomics(
-      env,
-      successEnvelopeSchema(EconomicsArtifactSchema),
-    );
+    await restEconomics(env, successEnvelopeSchema(EconomicsArtifactSchema));
     await mcpEconomics(env);
     const economicsReads = reads.filter((key) => key === KV_ECONOMICS_CURRENT);
     assert.ok(

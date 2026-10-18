@@ -8,20 +8,12 @@ import {
   SuccessEnvelopeSchema,
   successEnvelopeSchema,
 } from "../schemas-src/envelope.ts";
-import {
-  SubnetTrajectoryArtifactSchema,
-} from "../schemas-src/routes/subnet-trajectory.ts";
-import {
-  EconomicsTrendsArtifactSchema,
-} from "../schemas-src/routes/economics-trends.ts";
+import { SubnetTrajectoryArtifactSchema } from "../schemas-src/routes/subnet-trajectory.ts";
+import { EconomicsTrendsArtifactSchema } from "../schemas-src/routes/economics-trends.ts";
 import { UptimeArtifactSchema } from "../schemas-src/routes/health-surfaces.ts";
-import {
-  RegistryLeaderboardsArtifactSchema,
-} from "../schemas-src/routes/registry-summary-leaderboards.ts";
+import { RegistryLeaderboardsArtifactSchema } from "../schemas-src/routes/registry-summary-leaderboards.ts";
 import { CompareArtifactSchema } from "../schemas-src/routes/compare.ts";
-import {
-  CompareValidatorsArtifactSchema,
-} from "../schemas-src/routes/compare-validators.ts";
+import { CompareValidatorsArtifactSchema } from "../schemas-src/routes/compare-validators.ts";
 import assert from "node:assert/strict";
 import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach, vi } from "vitest";

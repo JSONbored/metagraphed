@@ -1,12 +1,8 @@
 import type { z } from "zod";
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
-import {
-  GetEconomicsOutputSchema,
-} from "../schemas-src/mcp-tools/get-economics.ts";
-import {
-  GetFreshnessOutputSchema,
-} from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
+import { GetEconomicsOutputSchema } from "../schemas-src/mcp-tools/get-economics.ts";
+import { GetFreshnessOutputSchema } from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {

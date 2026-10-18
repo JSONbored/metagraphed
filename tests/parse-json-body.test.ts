@@ -28,10 +28,12 @@ describe("parseJsonBody", () => {
       Awaited<ReturnType<typeof handleRequest>>
     >().toEqualTypeOf<Response>();
     expectTypeOf<Awaited<ReturnType<RawFetch>>>().toEqualTypeOf<Response>();
-    expectTypeOf<Awaited<ReturnType<DeployedFetch>>>().toEqualTypeOf<Response>();
-    expectTypeOf<Awaited<ReturnType<typeof handleOgImage>>>().toEqualTypeOf<
-      Response | null
-    >();
+    expectTypeOf<
+      Awaited<ReturnType<DeployedFetch>>
+    >().toEqualTypeOf<Response>();
+    expectTypeOf<
+      Awaited<ReturnType<typeof handleOgImage>>
+    >().toEqualTypeOf<Response | null>();
 
     vi.stubGlobal("caches", undefined);
     const env = mockEnv();
@@ -104,7 +106,10 @@ describe("parseJsonBody", () => {
     );
     const response = new Response(JSON.stringify(errorEnvelope));
     await response.text();
-    await assert.rejects(parseJsonBody(response, ErrorEnvelopeSchema), TypeError);
+    await assert.rejects(
+      parseJsonBody(response, ErrorEnvelopeSchema),
+      TypeError,
+    );
   });
 
   test("infers transformed output and supports async schemas", async () => {

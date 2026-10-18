@@ -5,9 +5,7 @@ import {
 } from "../schemas-src/envelope.ts";
 import { parseJsonBody } from "./row-type.ts";
 import { CompareArtifactSchema } from "../schemas-src/routes/compare.ts";
-import {
-  CompareValidatorsArtifactSchema,
-} from "../schemas-src/routes/compare-validators.ts";
+import { CompareValidatorsArtifactSchema } from "../schemas-src/routes/compare-validators.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 
@@ -365,7 +363,10 @@ describe("GET /api/v1/compare", () => {
     assert.equal(status, 200);
     assert.equal(body.ok, true);
     assert.deepEqual(body.data.requested_netuids, [1, 7, 64]);
-    assert.deepEqual(body.data.subnets.map((s) => s.netuid), [1, 7, 64]);
+    assert.deepEqual(
+      body.data.subnets.map((s) => s.netuid),
+      [1, 7, 64],
+    );
     assert.deepEqual(body.data.dimensions, [
       "structure",
       "economics",

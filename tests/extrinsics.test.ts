@@ -612,7 +612,9 @@ test("EXTRINSIC_READ_COLUMNS lists the served extrinsic columns", () => {
 // ---- Route/integration (#1345) ---------------------------------------------
 
 const feedResponseSchema = successEnvelopeSchema(ExtrinsicsFeedArtifactSchema);
-const detailResponseSchema = successEnvelopeSchema(ExtrinsicDetailArtifactSchema);
+const detailResponseSchema = successEnvelopeSchema(
+  ExtrinsicDetailArtifactSchema,
+);
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);

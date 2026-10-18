@@ -16,9 +16,7 @@
 // with old rows while a busy one lost recent ones — and "the newest N changes"
 // would be neither. The ordering test below is what pins that.
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
-import {
-  EmissionGateChangesArtifactSchema,
-} from "../schemas-src/routes/emission-gate-changes.ts";
+import { EmissionGateChangesArtifactSchema } from "../schemas-src/routes/emission-gate-changes.ts";
 import { parseJsonBody } from "./row-type.ts";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";

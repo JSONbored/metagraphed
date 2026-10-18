@@ -7,15 +7,9 @@ import {
   HealthPercentilesArtifactSchema,
   HealthIncidentsArtifactSchema,
 } from "../schemas-src/routes/health-surfaces.ts";
-import {
-  SubnetTrajectoryArtifactSchema,
-} from "../schemas-src/routes/subnet-trajectory.ts";
-import {
-  RegistryLeaderboardsArtifactSchema,
-} from "../schemas-src/routes/registry-summary-leaderboards.ts";
-import {
-  SubnetMetagraphArtifactSchema,
-} from "../schemas-src/routes/subnet-metagraph.ts";
+import { SubnetTrajectoryArtifactSchema } from "../schemas-src/routes/subnet-trajectory.ts";
+import { RegistryLeaderboardsArtifactSchema } from "../schemas-src/routes/registry-summary-leaderboards.ts";
+import { SubnetMetagraphArtifactSchema } from "../schemas-src/routes/subnet-metagraph.ts";
 import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
 import {
   EmissionPipelineArtifactSchema,
@@ -2143,7 +2137,10 @@ describe("emission-pipeline route", () => {
   test("economics field_sources follows the serving tier", async () => {
     const live = await getJson(
       "https://api.metagraph.sh/api/v1/economics?limit=1",
-      envWithEconomics({ chain_state: CHAIN_STATE, subnets: ECONOMICS_SUBNETS }),
+      envWithEconomics({
+        chain_state: CHAIN_STATE,
+        subnets: ECONOMICS_SUBNETS,
+      }),
       successEnvelopeSchema(EconomicsArtifactSchema),
     );
     assert.equal(live.status, 200);

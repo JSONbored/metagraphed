@@ -750,10 +750,7 @@ describe("the projection signal reaches the tripwire from the routes", () => {
     const data = body.data ?? {};
     assertJsonObject(data);
     for (const required of ["subnet", "surfaces", "gaps"]) {
-      assert.ok(
-        !data[required],
-        `${required} should have been projected away`,
-      );
+      assert.ok(!data[required], `${required} should have been projected away`);
     }
     const artifact = "/metagraph/subnets/{netuid}.json";
     await assert.rejects(

@@ -2356,7 +2356,9 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
       env,
     );
     assert.equal(res.status, 200);
-    const body = successEnvelopeSchema(NeuronDetailArtifactSchema).parse(rawBody);
+    const body = successEnvelopeSchema(NeuronDetailArtifactSchema).parse(
+      rawBody,
+    );
     assert.equal(body.data.neuron, null);
   });
 
