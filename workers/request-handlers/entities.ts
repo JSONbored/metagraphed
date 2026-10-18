@@ -221,6 +221,11 @@ import {
   loadPipelineHistory,
 } from "../../src/emission-pipeline-history.ts";
 import {
+  buildSubnetPriceShareComposition,
+  loadSubnetPriceShareComposition,
+} from "../../src/subnet-price-share-composition.ts";
+
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -6435,6 +6440,19 @@ export async function handleChainConcentrationHistory(
     { data, meta: { contract_version: contractVersion(env) } },
     "short",
   );
+}
+
+// #11550: one bounded read of estimated artifact-normalized price shares.
+export async function handleSubnetPriceShareComposition(request: Request, env: Env, url: URL) {
+  const validationError = validateResponseFormat(url);
+  if (validationError) return analyticsQueryError(validationError);
+  const nowMs = Date.now();
+  const rows = await loadSubnetPriceShareComposition(
+    readStore(env, SUBNET_SNAPSHOT_TABLES), { nowMs },
+  );
+  const data = buildSubnetPriceShareComposition(rows, { nowMs });
+  const response = await envelopeResponse(request, { data, meta: { contract_version: contractVersion(env) } }, "short");
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // GET /api/v1/subnets/{netuid}/emission-pipeline/history (#9625): one subnet's

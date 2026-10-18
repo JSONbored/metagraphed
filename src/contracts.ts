@@ -1956,6 +1956,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Estimated artifact-normalized moving-price share composition over up to 56 closed UTC days, with six fixed netuid series and an exact residual. Numeric shares must share a persisted writer timestamp and satisfy six-decimal normalization checks; this is not completed-pass certification or proof of complete chain coverage. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "SubnetPriceShareCompositionArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-emission-pipeline-history",
     "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
     "One subnet's stored pipeline inputs and legacy price share OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted pipeline inputs alongside its legacy emission_share daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. " +
@@ -4207,6 +4214,17 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "subnet-price-share-composition",
+    "GET",
+    "/api/v1/chain/subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "short",
+    ["chain"],
+    [],
+    [],
+  ),
+  route(
     "subnet-emission-pipeline-history",
     "GET",
     "/api/v1/subnets/{netuid}/emission-pipeline/history",
@@ -5474,6 +5492,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // served MAINNET holders. Same posture as /accounts/{ss58}/positions below,
   // which reads the first of those two tables.
   "/api/v1/subnets/{netuid}/holders",
+  "/api/v1/chain/subnet-price-share-composition",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6369,6 +6388,7 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   // not recognise, so /api/v1/ask leads with `Generate` and says what it
   // generates.
   ask: "Generate a grounded answer with citations",
+  "subnet-price-share-composition": "Fetch an estimated subnet price-share timeline",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
   "subnet-health": "Fetch probe-derived health for one subnet",

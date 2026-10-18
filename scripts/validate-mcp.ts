@@ -2441,6 +2441,7 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_chain_weights", HARNESS_SERVES_NO_ROWS],
   ["get_emission_changes", HARNESS_SERVES_NO_ROWS],
   ["get_emission_pipeline_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_price_share_composition", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

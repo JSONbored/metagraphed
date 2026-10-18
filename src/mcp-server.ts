@@ -724,6 +724,14 @@ import {
   GetPipelineHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline-history.ts";
 import {
+  GetSubnetPriceShareCompositionInputSchema,
+  GetSubnetPriceShareCompositionOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-price-share-composition.ts";
+import {
+  buildSubnetPriceShareComposition,
+  loadSubnetPriceShareComposition,
+} from "./subnet-price-share-composition.ts";
+import {
   GetDeregistrationHistoryInputSchema,
   GetDeregistrationHistoryOutputSchema,
   type GetDeregistrationHistoryInput,
@@ -10973,6 +10981,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_price_share_composition",
+    title: "Get estimated subnet price-share composition",
+    description: "Fetch estimated_observed_price_set composition over up to 56 closed UTC days and six fixed netuids, not project identities. Uses one bounded snapshot read; malformed, mixed, partially normalized or truncated dates are omitted. Other artifact-normalized price share is the exact residual of one after selected shares, not a network total. Writer timestamp consistency is not source-artifact identity or completed-pass certification. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    inputSchema: inputJsonSchema(GetSubnetPriceShareCompositionInputSchema),
+    async handler(_args: z.infer<typeof GetSubnetPriceShareCompositionInputSchema>, ctx: McpCtx) {
+      const nowMs = Date.now();
+      return buildSubnetPriceShareComposition(await loadSubnetPriceShareComposition(
+        readStore(ctx.env, SUBNET_SNAPSHOT_TABLES), { nowMs },
+      ), { nowMs });
+    },
+  },
+  {
     name: "get_emission_pipeline_history",
     title: "Get a subnet's emission-pipeline series",
     description:
@@ -15636,6 +15656,7 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_chain_holders: () => outputJsonSchema(GetChainHoldersOutputSchema),
   get_chain_concentration_history: () =>
     outputJsonSchema(GetChainConcentrationHistoryOutputSchema),
+  get_subnet_price_share_composition: () => outputJsonSchema(GetSubnetPriceShareCompositionOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>
