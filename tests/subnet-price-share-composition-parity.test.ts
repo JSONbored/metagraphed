@@ -51,7 +51,7 @@ function env() {
   });
 }
 
-async function graphql(query: string, source: Env) {
+async function queryGraphQL(query: string, source: Env) {
   return handleGraphQLRequest(
     new Request("https://api.metagraph.sh/api/v1/graphql", {
       method: "POST",
@@ -87,7 +87,7 @@ describe("price-share route and mirror parity", () => {
       const rest = (await jsonBody(response)).data;
       const parsed = SubnetPriceShareCompositionArtifactSchema.parse(rest);
       expect(parsed).toEqual(rest);
-      const gqlResponse = await graphql(
+      const gqlResponse = await queryGraphQL(
         `{ subnet_price_share_composition { ${selection} } }`,
         source,
       );
@@ -115,7 +115,7 @@ describe("price-share route and mirror parity", () => {
   );
 
   it("memoizes repeated GraphQL aliases within one request and declares read complexity", async () => {
-    const response = await graphql(
+    const response = await queryGraphQL(
       `{ a: subnet_price_share_composition { point_count }
       b: subnet_price_share_composition { point_count } }`,
       env(),
@@ -136,7 +136,7 @@ describe("price-share route and mirror parity", () => {
       window: "all",
     });
     expect(input.success).toBe(false);
-    const response = await graphql(
+    const response = await queryGraphQL(
       `{ subnet_price_share_composition(network: test) { quality } }`,
       env(),
     );
