@@ -5,7 +5,7 @@
 
 import { clampToolLimit } from "../workers/request-params.ts";
 import {
-  applyMcpQueryFilters,
+  applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt,
   BOOLEAN_WORDS,
   withBooleanWords,
   type Row,
@@ -182,7 +182,7 @@ export function subnetEndpointsQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
-  return url;
+  return catalogQueryUrl(url, args, () => `/api/v1/subnets/${requireNetuid(args)}/endpoints`);
 }
 
 export interface SubnetEndpointsListResult {
@@ -194,6 +194,7 @@ export interface SubnetEndpointsListResult {
   limit: unknown;
   cursor: unknown;
   next_cursor: unknown;
+  snapshot?: string;
   sort: unknown;
   order: unknown;
 }
@@ -258,9 +259,7 @@ export async function loadSubnetEndpointsList(
     "endpoints",
     SUBNET_ENDPOINTS_QUERY_FILTER_NAMES,
   );
-  if (transformed.error) {
-    throw subnetEndpointsMcpError("invalid_params", transformed.error.message);
-  }
+  if (transformed.error) throw catalogQueryError(transformed.error);
   const data = transformed.data as Record<string, unknown>;
   const meta = transformed.meta as Record<string, unknown>;
   const page = (meta.pagination as Record<string, unknown>) || {};
@@ -275,6 +274,7 @@ export async function loadSubnetEndpointsList(
     limit: page.limit ?? rowLen,
     cursor: page.cursor ?? 0,
     next_cursor: page.next_cursor ?? null,
+    ...catalogPageReceipt(page),
     sort: page.sort ?? null,
     order: page.order ?? null,
   };

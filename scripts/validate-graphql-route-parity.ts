@@ -27,7 +27,7 @@ import {
   hasArgumentCodec,
 } from "../schemas-src/graphql/argument-divergences.ts";
 import { fieldsArgumentApplies } from "../schemas-src/graphql/query-arguments.ts";
-import { REST_ONLY_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
+import { GRAPHQL_EXCLUDED_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
 import { extractSdl } from "./validate-graphql-component-parity.ts";
 
 type Json = Record<string, unknown>;
@@ -473,7 +473,7 @@ for (const field of queryType.fields) {
   for (const [name, parameter] of published) {
     if (parameter.in !== "query") continue;
     if (declaredArguments.has(name)) continue;
-    if (REST_ONLY_QUERY_PARAMETERS.includes(name)) continue;
+    if (GRAPHQL_EXCLUDED_QUERY_PARAMETERS.includes(name)) continue;
     if (name === "fields" && returnsProjectableType(field.type)) continue;
     const key = `${field.name}.${name}`;
     // Same registry, third reader (#10772). `DECLARED_UNPUBLISHED_ARGUMENTS`

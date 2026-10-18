@@ -87,6 +87,16 @@ export function withCacheStatus(
   );
 }
 
+/** Checked catalog pages must be validated again, including by browser caches. */
+export function withNoStore(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store");
+  headers.set("x-metagraph-cache-profile", "no-store");
+  return new Response(NULL_BODY_STATUSES.has(response.status) ? null : response.body, {
+    status: response.status, statusText: response.statusText, headers,
+  });
+}
+
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes

@@ -9481,6 +9481,7 @@ async function handleApiRequest(
   }
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
+  const checkedCatalog = url.searchParams.has("page_snapshot");
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold
@@ -9491,6 +9492,7 @@ async function handleApiRequest(
   const edgeCacheable =
     request.method === "GET" &&
     !wantsCsv &&
+    !checkedCatalog &&
     isStaticEdgeCacheEligible(matched, network)
       ? cacheableWith(
           new Request(
@@ -9508,6 +9510,7 @@ async function handleApiRequest(
   const overlayCacheStore =
     request.method === "GET" &&
     !wantsCsv &&
+    !checkedCatalog &&
     network.isDefault &&
     CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
       ? edgeCacheStore()
@@ -9799,6 +9802,7 @@ async function handleApiRequest(
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: artifactPath,
       parameter: transformed.error.parameter,
+      ...(transformed.error.reason ? { catalog_paging: { reason: transformed.error.reason } } : {}),
     });
   }
   // Advertise the page chain via an RFC 8288 Link header on paginated list
@@ -9847,7 +9851,10 @@ async function handleApiRequest(
       matched.cache as CacheProfile,
       request,
       transformed.meta.projection?.fields,
-      linkValue ? { link: linkValue } : {},
+      {
+        ...(linkValue ? { link: linkValue } : {}),
+        ...(checkedCatalog ? { "cache-control": "no-store", "x-metagraph-cache-profile": "no-store" } : {}),
+      },
       {
         stream: matched.id === "endpoints" || matched.id === "subnet-endpoints",
       },
@@ -9997,6 +10004,9 @@ async function handleApiRequest(
       // entries, so a live-overlay response with no artifact behind it simply
       // omits them rather than asserting a tier it did not read.
       ...artifactDiagnosticHeaders(artifact),
+      ...(checkedCatalog
+        ? { "cache-control": "no-store", "x-metagraph-cache-profile": "no-store" }
+        : {}),
     },
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes

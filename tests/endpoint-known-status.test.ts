@@ -71,7 +71,7 @@ async function rest(
 async function mcp(
   name: string,
   args: Row,
-  blob = artifact(),
+  blob: Row = artifact(),
   live: Row | null = null,
 ) {
   const response = await handleMcpRequest(
@@ -820,4 +820,38 @@ describe("catalog-wide known endpoint status", () => {
       globalCache.caches = previous;
     }
   });
+});
+
+test("all eight classified MCP catalogs forward checked receipts, bind subjects and report churn", async () => {
+  const cases = [
+    ["list_endpoints", {}, "endpoints"],
+    ["list_rpc_endpoints", {}, "endpoints"],
+    ["list_provider_endpoints", { slug: "fixture" }, "endpoints"],
+    ["get_subnet_endpoints", { netuid: 0 }, "endpoints"],
+    ["list_subnet_endpoints", { netuid: 0 }, "endpoints"],
+    ["list_surfaces", {}, "surfaces"],
+    ["get_subnet_surfaces", { netuid: 0 }, "surfaces"],
+    ["list_subnet_surfaces", { netuid: 0 }, "surfaces"],
+  ] as const;
+  for (const [name, base, key] of cases) {
+    const values = rows.slice(0, 3).map((row) => ({ ...row, kind: "subtensor-rpc" }));
+    const blob = { ...artifact(values), surfaces: values };
+    const first = await mcp(name, { ...base, limit: 2, page_snapshot: "start" }, blob);
+    assert.equal(first.result.isError, false, name);
+    const content = first.result.structuredContent;
+    assert.match(content.snapshot, /^v1\.[0-9a-f]{64}$/, name);
+    assert.equal(content.total, 3, name);
+    assert.equal(content[key].length, 2, name);
+    const next = await mcp(name, { ...base, limit: 2, cursor: content.next_cursor, page_snapshot: content.snapshot }, blob);
+    assert.equal(next.result.structuredContent.snapshot, content.snapshot, name);
+    assert.deepEqual(next.result.structuredContent[key].map((row: Row) => row.id), [values[2].id], name);
+    const changed = { ...blob, [key]: values.map((row, i) => i === 2 ? { ...row, latency_ms: 999 } : row) };
+    const rejected = await mcp(name, { ...base, limit: 2, cursor: 2, page_snapshot: content.snapshot }, changed);
+    assert.equal(rejected.result.isError, true, name);
+    assert.equal(rejected.result.structuredContent.error.code, "catalog_restart_required", name);
+    assert.equal(rejected.result.structuredContent.error.parameter, "page_snapshot", name);
+    assert.deepEqual(rejected.result.structuredContent.error.catalog_paging, { reason: "catalog_changed" }, name);
+    const invalid = await mcp(name, { ...base, page_snapshot: "invalid" }, blob);
+    assert.equal(invalid.result.isError, true, name);
+  }
 });

@@ -28,6 +28,8 @@ import {
   providerSlugSchema,
   sortSchema,
   McpListPageFields,
+  McpCatalogPageFields,
+  McpCatalogPageControls,
   McpUnsortedPageFields,
 } from "./shared.ts";
 import {
@@ -58,6 +60,7 @@ const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
  * where the difference is visible instead of being averaged away.
  */
 export const ENDPOINT_LIST_FILTERS = {
+  ...McpCatalogPageControls,
   q: querySchema().optional(),
   known_status: z
     .boolean()
@@ -142,6 +145,7 @@ export const ListEndpointsOutputSchema = EndpointsArtifactSchema.extend({
   // The page block the MCP loader adds on top of the route's artifact --
   // undeclared until #10790, when `.strict()` first rejected it.
   ...McpListPageFields,
+    ...McpCatalogPageFields,
   endpoints: projectableRows(EndpointsArtifactSchema.shape.endpoints),
 });
 export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
@@ -179,6 +183,7 @@ export const GetSubnetEndpointsOutputSchema =
     // The page block the MCP loader adds on top of the route's artifact --
     // undeclared until #10790, when `.strict()` first rejected it.
     ...McpUnsortedPageFields,
+    ...McpCatalogPageFields,
     endpoints: projectableRows(SubnetEndpointsArtifactSchema.shape.endpoints),
   });
 export type GetSubnetEndpointsOutput = z.infer<

@@ -1,3 +1,4 @@
+import { CatalogPageRecovery } from "@/components/metagraphed/catalog-page-recovery";
 import { useMemo } from "react";
 import {
   useInfiniteQuery,
@@ -18,7 +19,7 @@ import {
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
-import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
+import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -262,7 +263,7 @@ export function ProviderDetail() {
             const reads: Promise<unknown>[] = [
               providerResult.refetch(),
               endpoints.refetch(),
-              restartCatalogResults(queryClient, catalogOptions.queryKey),
+              restartCatalogResults(queryClient, catalogOptions),
             ];
             void Promise.all(reads);
           },
@@ -290,10 +291,12 @@ export function ProviderDetail() {
                 context="provider endpoint probes"
               />
             ) : null}
-            {surfaces.isError && !surfaces.isFetchNextPageError ? (
+            {surfaces.error && mergedSurfaces.length > 0 ? (
+              <CatalogPageRecovery error={surfaces.error} onRestart={() => void restartCatalogResults(queryClient, catalogOptions)} pending={surfaces.isFetching} />
+            ) : surfaces.isError ? (
               <ErrorState
                 error={surfaces.error}
-                onRetry={() => void restartCatalogResults(queryClient, catalogOptions.queryKey)}
+                onRetry={() => void restartCatalogResults(queryClient, catalogOptions)}
                 context="provider surfaces"
               />
             ) : null}
@@ -329,15 +332,16 @@ export function ProviderDetail() {
           </>
         }
         legend={
-          surfaces.hasNextPage || surfaces.isFetchNextPageError || cursorInvalid ? (
+          !surfaces.error && (surfaces.hasNextPage || cursorInvalid) ? (
             <div className="[&_button]:min-h-11">
               <LoadMore
                 hasMore={surfaces.hasNextPage}
-                isLoading={surfaces.isFetchingNextPage}
+                isLoading={surfaces.isFetching}
                 onLoadMore={() => {
+                  if (surfaces.isFetching) return;
                   if (surfaces.error instanceof CatalogRestartRequired)
-                    void restartCatalogResults(queryClient, catalogOptions.queryKey);
-                  else void surfaces.fetchNextPage();
+                    void restartCatalogResults(queryClient, catalogOptions);
+                  else void surfaces.fetchNextPage({ cancelRefetch: false });
                 }}
                 shown={mergedSurfaces.length}
                 total={total}
@@ -348,17 +352,17 @@ export function ProviderDetail() {
           ) : undefined
         }
         footnote={
-          surfaces.isPending
+          catalogRetentionNotice(surfaces, mergedSurfaces.length) ?? (surfaces.isPending
             ? "Loading registered services · registry"
             : `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`} · registry` +
               (surfaces.isError
-                ? " · service read failed; previously loaded rows remain visible"
+                ? " · service read failed; previously accepted rows retained; current freshness unverified"
                 : "") +
               (endpoints.isPending
                 ? " · probe readings loading"
                 : endpoints.isError
                   ? " · probe readings unavailable"
-                  : " · latest probes joined only where identity matches")
+                  : " · latest probes joined only where identity matches"))
         }
       />
 

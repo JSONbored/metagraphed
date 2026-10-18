@@ -4,7 +4,7 @@
 // /metagraph/surfaces/{netuid}.json artifact.
 
 import { clampToolLimit } from "../workers/request-params.ts";
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -132,7 +132,7 @@ export function subnetSurfacesQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
-  return url;
+  return catalogQueryUrl(url, args, () => `/api/v1/subnets/${requireNetuid(args)}/surfaces`);
 }
 
 export interface SubnetSurfacesListResult {
@@ -144,6 +144,7 @@ export interface SubnetSurfacesListResult {
   limit: unknown;
   cursor: unknown;
   next_cursor: unknown;
+  snapshot?: string;
   sort: unknown;
   order: unknown;
 }
@@ -192,9 +193,7 @@ export async function loadSubnetSurfacesList(
     "curated-surfaces",
     SUBNET_SURFACES_QUERY_FILTER_NAMES,
   );
-  if (transformed.error) {
-    throw subnetSurfacesMcpError("invalid_params", transformed.error.message);
-  }
+  if (transformed.error) throw catalogQueryError(transformed.error);
   const data = transformed.data as Record<string, unknown>;
   const meta = transformed.meta as Record<string, unknown>;
   const page = (meta.pagination as Record<string, unknown>) || {};
@@ -209,6 +208,7 @@ export async function loadSubnetSurfacesList(
     limit: page.limit ?? rowLen,
     cursor: page.cursor ?? 0,
     next_cursor: page.next_cursor ?? null,
+    ...catalogPageReceipt(page),
     sort: page.sort ?? null,
     order: page.order ?? null,
   };

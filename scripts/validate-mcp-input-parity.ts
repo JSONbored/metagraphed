@@ -15,6 +15,7 @@
 // agents receive, and it is where a rename shows up.
 import assert from "node:assert/strict";
 import { REST_ONLY_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
+import { CHECKED_CATALOG_MCP_TOOLS } from "../src/mcp-tool-exposures.ts";
 import { readFileSync } from "node:fs";
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
@@ -41,8 +42,7 @@ const MCP_TRANSPORT_ARGS = new Set([
   "fields",
 ]);
 
-/** REST-only controls: CSV format and checked-page metadata/Link continuation.
- * MCP forwarding and restart semantics are not implemented by this REST change. */
+/** Representation-only controls; checked catalog forwarding is classified below. */
 const NOT_FOR_TOOLS = new Set(REST_ONLY_QUERY_PARAMETERS);
 
 /**
@@ -573,7 +573,7 @@ for (const tool of listToolDefinitions()) {
 
   const unreachable: string[] = [];
   for (const parameter of parameters.query) {
-    if (NOT_FOR_TOOLS.has(parameter)) continue;
+    if (NOT_FOR_TOOLS.has(parameter) || (parameter === "page_snapshot" && !CHECKED_CATALOG_MCP_TOOLS.has(tool.name))) continue;
     if (MCP_TRANSPORT_ARGS.has(parameter)) continue;
     if (args.includes(parameter)) continue;
     const key = `${tool.name}.${parameter}`;

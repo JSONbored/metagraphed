@@ -28,22 +28,42 @@ This is a consistency check, not a retained frozen snapshot, a keyset cursor,
 an authorization token, or a guarantee of progress while data keeps changing.
 It identifies content, not a certified publication or chain-capture pass;
 identical content can reproduce the same digest after an intervening change.
-No old rows are stored; any matching-row mutation can require a restart. The
-digest is computed only for opted-in requests, with work proportional to the
-filtered row payload. CPU/memory and cache/freshness behavior need native
-measurement before rollout. A cached guarded page still belongs to its stated
-content generation; a cache miss after a mutation can require a restart.
+The server retains no snapshot; any matching-row mutation can require a restart.
+Checked requests bypass ordinary static/overlay/analytics page caches and return
+`Cache-Control: no-store`. The current effective rows are validated on every
+request, including unchanged publication or health stamps with changed row values.
+Legacy cache keys, behavior and numeric offsets remain unchanged.
 
 The additive REST parameter and optional metadata field preserve existing
-numeric cursor types and unguarded responses. MCP tools and GraphQL do not
-advertise this mode until forwarding, output and restart contracts are
-implemented there. Their existing offset behavior is preserved.
+numeric cursor types and unguarded responses. Eight MCP tools expose the same
+optional `page_snapshot` control and return `snapshot` beside `next_cursor`:
+`list_endpoints`, `list_rpc_endpoints`, `list_provider_endpoints`,
+`get_subnet_endpoints`, `list_subnet_endpoints`, `list_surfaces`,
+`get_subnet_surfaces` and `list_subnet_surfaces`. Their checked identity uses the
+canonical mainnet REST route and validated provider/netuid subject, including Root 0.
+Other MCP collections and GraphQL retain legacy offsets without this guarantee.
+
+REST failures retain `400 invalid_query` and `meta.parameter`; the additive
+`meta.catalog_paging.reason` distinguishes `catalog_changed`,
+`catalog_budget_exceeded` and `catalog_unavailable`. MCP structured errors carry
+`parameter`, `catalog_paging` and respectively `catalog_restart_required`,
+`catalog_budget_exceeded` or `artifact_unavailable`. Invalid inputs remain
+`invalid_params`. SDK errors preserve the envelope and use these same typed codes.
 
 The endpoint, API catalog and provider views opt in through their shared
 infinite-query helper. A mismatch stops continuation without automatic retries.
-Refresh cancels pending pages, clears accumulated rows and starts at cursor zero
-with the same filters. Late responses cannot append to the new query generation.
-Each continuation must preserve both the first snapshot and total.
+Restart results cancels pending pages and requests exactly one fresh first page
+with the same filters. It replaces accepted rows atomically only on success.
+Continuation/restart failure retains accepted rows and their counts with an
+explicit freshness-unverified notice. Recovery remains keyboard/touch accessible;
+continuation is unavailable during replacement. Late responses cannot append to
+the new query generation. Each continuation preserves the first snapshot and total.
+
+Both TypeScript SDK iterators validate checked receipts, totals, row counts and
+cursor progress before yielding, and forward the version with the offset. They
+copy caller options. `fetchAll` throws on a failed walk rather than returning
+partial rows. Checked SDK requests bypass ETag caches and implicit transport/status
+retries, including bodyless 304 recovery; legacy SDK behavior is preserved.
 
 Those tables' CSV action starts a fresh checked walk and downloads only after
 it completes. It preserves filters, shown columns and client sorting. Changed
@@ -53,16 +73,21 @@ of row JSON; users can narrow filters after a limit error. Provider probe column
 still merge separately cached endpoint evidence: the guard certifies the catalog
 row walk, not one atomic capture spanning both sources.
 
-The digest streams canonical rows already loaded by the collection handler. It
-adds no storage queries, but costs linear CPU and per-row serialization on every
-guarded cache miss. Existing artifact hashes do not cover all live overlays and
-cannot safely replace that identity. Native cost and churn measurements remain
-required; this source patch alone does not certify rollout acceptance for #12094.
+The canonical writer streams the existing v1 encoding, bounding checked work to
+**5,000 matched rows**, **16,777,216 canonical UTF-8 bytes** (query identity,
+complete ordered rows and newline separators), and **64 nested levels** (root
+level zero). These inclusive limits are declared once in `src/route-limits.ts`.
+Row count is checked before sorting. Strings are escaped in bounded chunks with
+surrogate pairs preserved; exhaustion returns no digest or partial page. Over-budget
+errors tell callers to narrow filters. Projections and smaller page sizes cannot
+hide oversized effective results. The limits bound hashing/checked matching rows,
+not the pre-existing artifact download, parsing or filtering cost. They introduce
+no history/database read and claim no production CPU or peak-heap guarantee.
 
-Regenerate OpenAPI/types/client and relevant docs in the authorized native
-environment, then run required schema, parity, route, coverage and UI/browser
-checks. No generated output is hand-edited. Source regressions are prepared;
-they were not executed on Mac.
+Native exact-bound/worst-case fixtures and required schema, parity, route,
+coverage and UI/browser checks qualify this source. Regenerate contracts using
+the existing native pipeline; never hand-edit generated output. Separate API/UI
+deployment receipts remain necessary before issue closure.
 
 ## Applicable feeds and transport boundaries
 
@@ -108,8 +133,8 @@ Economics, health, dated health history, trajectory, endpoint/pool/incidents
 and RPC views contain observations or serve-time overlays. Their token binds
 served matching rows; it does not certify a finalized capture or one atomic
 observation across sources. A global stamp outside those rows can change while
-the token remains valid. There is no time-based token lease: old cached content
-may remain coherent while stale, and a miss may reject an older token. Changing
+the token remains valid. There is no time-based token lease; checked requests
+revalidate the effective result rather than accepting a cached page. Changing
 or reverting source content can reproduce an earlier digest.
 
 MCP has 33 shared-pager calls across 31 modules, including the generic inline
@@ -117,7 +142,8 @@ pagers in `mcp-server.ts`. Manual `list_subnets`, `search_subnets` and
 `find_subnets_by_capability` retain their offsets; `applySubnetListQuery` also
 pages snapshot, health, trajectory, endpoint/candidate/evidence/surface,
 fixture, freshness, agent-catalog and coverage-depth views. These transports
-preserve legacy behavior and make no checked-walk guarantee. The capped
+preserve legacy behavior. Only the eight explicitly classified endpoint/surface
+tools above offer checked walks; other tools make no such guarantee. The capped
 `list_enrichment_targets` recommendation is not a continuation feed; the
 separate `list_review_enrichment_targets` catalog is. GraphQL collection and
 nested-list offsets likewise do not advertise the REST snapshot control.
@@ -135,7 +161,8 @@ with finite local artifact/KV sources. It emits `CATALOG_WALK_FIXTURE` receipts
 for 1,200 producer-shaped endpoints and 160 schema-checked providers, 200-row
 pages, three alternating-order samples, legacy and guarded walks, and cold
 versus immediately warm cache. Returned IDs must exactly equal the fixture
-population; a warmed walk must avoid artifact reads. Source bytes, response
+population; warmed legacy walks must avoid artifact reads, while every checked
+page must re-read its artifact and must not populate the page cache. Source bytes, response
 bytes, page counts, cache entries, wall time, process CPU, heap/RSS baselines,
 sampled increases/high-water values and heap deltas are recorded. Timing and
 memory never decide pass/fail.
@@ -155,17 +182,14 @@ performance. R2/KV network latency is absent; local JSON parsing is included.
 The Map cache does not model TTL expiry, colos, eviction or eventual consistency.
 Process CPU includes other process work, CI coverage/GC affect observations,
 and between-page heap/RSS samples can miss allocation peaks. Repeated cold
-pages still verify the complete matching content; warm URL hits use the
-existing cache. A larger diagnostic timing alone does not justify weakening
+pages still verify the complete matching content; legacy warm URL hits use the
+existing cache. Checked warm requests revalidate the complete result. A larger diagnostic timing alone does not justify weakening
 that check or introducing another cache/controller.
 
-Production acceptance requires passive evidence from existing invocations at
-a known deployed revision: bounded sampled CPU/wall/error observations for
-these paths, distinguishing guarded/legacy and cache/source/freshness states
-where already recorded. Existing client export completion/restart/failure
-receipts would be needed to estimate walk success across health transitions;
-request totals cannot substitute for walk correlation. If those fields or
-client receipts are absent, that evidence is unavailable without separately
-reviewed instrumentation. No production load test, new traffic, fleet query or
-memory-peak claim follows from these fixtures. Keep #12094 open until that
-remaining acceptance is explicitly resolved.
+Release acceptance requires the exact source's native full and PR-context checks,
+all applicable owner criteria above, and separate API/UI deployment identities.
+Finite fixture CPU/wall/memory observations describe that runner only. Production
+CPU distributions, peak heap and fleet walk-completion rates are not required by
+the owner acceptance comment and are not inferred from these fixtures. No
+production stress, fleet query, migration or data/access change is part of this fix.
+Keep #12094 open until the actual acceptance and deployment evidence is complete.

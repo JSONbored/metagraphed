@@ -1,3 +1,4 @@
+import { CatalogPageRecovery } from "@/components/metagraphed/catalog-page-recovery";
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -15,7 +16,7 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
-import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
+import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -123,7 +124,7 @@ export function ApisCatalogPage() {
   const refreshAll = () => {
     void Promise.all([
       coverage.refetch(),
-      ...(catalogNearViewport ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : []),
+      ...(catalogNearViewport ? [restartCatalogResults(queryClient, catalogOptions)] : []),
     ]);
   };
 
@@ -319,7 +320,7 @@ export function ApisCatalogPage() {
               feed.isError ? (
                 <ErrorState
                   error={feed.error}
-                  onRetry={() => void restartCatalogResults(queryClient, catalogOptions.queryKey)}
+                  onRetry={() => void restartCatalogResults(queryClient, catalogOptions)}
                   context="verified interfaces"
                 />
               ) : undefined
@@ -366,22 +367,25 @@ export function ApisCatalogPage() {
         }
         footnote={
           <>
-            {!catalogNearViewport
+            {catalogRetentionNotice(feed, rows.length) ?? (!catalogNearViewport
               ? "verified interface catalog · registry "
               : feed.isPending
                 ? "Loading verified interfaces · registry "
                 : feed.isError
-                  ? "Verified interfaces are temporarily unavailable · registry "
-                  : `${formatNumber(rows.length)} shown · facets applied server-side · registry `}
+                  ? rows.length > 0 ? "Previously accepted interfaces retained · current freshness unverified · registry " : "Verified interfaces are temporarily unavailable · registry "
+                  : `${formatNumber(rows.length)} shown · facets applied server-side · registry `)}
             {/* A cursor feed has no terminal range to repeat beneath the table. */}
-            {feed.hasNextPage || (feed.error && surfaces.length > 0) ? (
+            {feed.error && surfaces.length > 0 ? (
+              <CatalogPageRecovery error={feed.error} onRestart={() => void restartCatalogResults(queryClient, catalogOptions)} pending={feed.isFetching} />
+            ) : feed.hasNextPage ? (
               <LoadMore
                 hasMore={feed.hasNextPage}
-                isLoading={feed.isFetchingNextPage}
+                isLoading={feed.isFetching}
                 onLoadMore={() => {
+                  if (feed.isFetching) return;
                   if (feed.error instanceof CatalogRestartRequired)
-                    void restartCatalogResults(queryClient, catalogOptions.queryKey);
-                  else void feed.fetchNextPage();
+                    void restartCatalogResults(queryClient, catalogOptions);
+                  else void feed.fetchNextPage({ cancelRefetch: false });
                 }}
                 shown={surfaces.length}
                 error={feed.error}

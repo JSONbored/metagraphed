@@ -5,7 +5,7 @@ import {
   DEFAULT_CHAIN_NETWORK,
 } from "../src/chain-network.ts";
 import { createRequestCounter } from "../src/request-counters.ts";
-import { ifNoneMatchSatisfied, withCacheStatus } from "./http.ts";
+import { ifNoneMatchSatisfied, withCacheStatus, withNoStore } from "./http.ts";
 import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
 import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
@@ -283,6 +283,7 @@ export async function withStampedEdgeCache(
   resolveCacheStamp: (env: Env) => Promise<string | null>,
 ): Promise<Response> {
   const isHead = request.method === "HEAD";
+  const checkedCatalog = new URL(request.url).searchParams.has("page_snapshot");
   // Only opt HEAD into the GET cache path for handlers that accept the
   // normalized request. Legacy zero-arg builders may close over the original
   // HEAD request and return a bodyless response, which must not seed the GET
@@ -298,7 +299,7 @@ export async function withStampedEdgeCache(
   // it as unconditionally present, which would be true at compile time but
   // false at this test-runtime.
   const cache =
-    cacheRequest.method === "GET"
+    cacheRequest.method === "GET" && !checkedCatalog
       ? (globalThis as { caches?: CacheStorage }).caches?.default
       : null;
   // Cheap freshness read. On a hit this + the cache match is the whole request
@@ -369,6 +370,7 @@ export async function withStampedEdgeCache(
   } else if (labelled && moved.unmeasured) {
     response = withDegradedHeader(built);
   }
+  if (checkedCatalog) response = withNoStore(response);
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
   // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (

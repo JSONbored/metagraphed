@@ -1,3 +1,4 @@
+import { CatalogPageRecovery } from "@/components/metagraphed/catalog-page-recovery";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -20,7 +21,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/endpoint-directory-controls";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
-import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
+import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -130,12 +131,12 @@ export function EndpointsPage() {
   });
   const directoryKey = JSON.stringify([search.q, search.status, search.kind, search.provider]);
   const retryFeed = () => {
-    if (canSearch) void restartCatalogResults(queryClient, catalogOptions.queryKey);
+    if (canSearch) void restartCatalogResults(queryClient, catalogOptions);
   };
   const loadNextPage = () => {
-    if (canSearch) {
+    if (canSearch && !feed.isFetching) {
       if (feed.error instanceof CatalogRestartRequired) retryFeed();
-      else void feed.fetchNextPage();
+      else void feed.fetchNextPage({ cancelRefetch: false });
     }
   };
   const summaryQuery = useQuery({ ...endpointsSummaryQuery(), retry: 0 });
@@ -177,7 +178,7 @@ export function EndpointsPage() {
   );
   const refreshAll = () => {
     void Promise.all([
-      ...(canSearch ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : []),
+      ...(canSearch ? [restartCatalogResults(queryClient, catalogOptions)] : []),
       summaryQuery.refetch(),
       pools.refetch(),
       incidents.refetch(),
@@ -450,12 +451,12 @@ export function EndpointsPage() {
           // "1545 of 1545 - end of list" strip directly beneath it was the
           // same fact twice, in two vocabularies (#11696). An error still
           // shows, because a feed that stopped early is not the end of a list.
-          !canSearch ? null : feed.isRefetchError && rows.length > 0 ? (
-            <ErrorState error={feed.error} onRetry={retryFeed} context="endpoint refresh" />
+          !canSearch ? null : feed.error && rows.length > 0 ? (
+            <CatalogPageRecovery error={feed.error} onRestart={retryFeed} pending={feed.isFetching} />
           ) : feed.hasNextPage || (feed.error && rows.length > 0) ? (
             <LoadMore
               hasMore={feed.hasNextPage}
-              isLoading={feed.isFetchingNextPage}
+              isLoading={feed.isFetching}
               onLoadMore={loadNextPage}
               shown={rows.length}
               total={matchedTotal ?? undefined}
@@ -468,13 +469,13 @@ export function EndpointsPage() {
             ? "Search needs attention · endpoint results have not been requested"
             : searchWaiting
               ? "Waiting for search input · results update shortly"
-              : feed.isPending
+              : catalogRetentionNotice(feed, rows.length) ?? (feed.isPending
                 ? "Searching the endpoint catalog · probe-derived"
                 : feed.isError
                   ? rows.length > 0
-                    ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
+                    ? "Refresh failed · previously accepted endpoints retained · current freshness unverified"
                     : "Endpoint results are temporarily unavailable · probe-derived"
-                  : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`
+                  : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`)
         }
       />
 

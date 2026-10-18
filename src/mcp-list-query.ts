@@ -38,6 +38,32 @@
 // accident.
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "./route-limits.ts";
+import { collectionSnapshotParamSchema } from "../schemas-src/query-params.ts";
+import type { QueryError } from "./route-query.ts";
+
+/** Keep checked MCP scopes on the actual mainnet public route and subject. */
+export function catalogQueryUrl(url: URL, args: Record<string, unknown> | null | undefined, publicPath: () => string): URL {
+  if (args?.page_snapshot === undefined) return url;
+  const parsed = collectionSnapshotParamSchema().safeParse(args.page_snapshot);
+  if (!parsed.success) throw catalogQueryError({ parameter: "page_snapshot", message: "page_snapshot must be start or a v1 content receipt." });
+  url.pathname = publicPath();
+  url.searchParams.set("page_snapshot", parsed.data);
+  return url;
+}
+
+export function catalogQueryError(error: QueryError): Error & { toolError: true; code: string; parameter: string; catalog_paging?: { reason: NonNullable<QueryError["reason"]> } } {
+  return Object.assign(new Error(error.message), {
+    toolError: true as const,
+    code: error.reason === "catalog_changed" ? "catalog_restart_required" : error.reason === "catalog_budget_exceeded" ? "catalog_budget_exceeded" : error.reason === "catalog_unavailable" ? "artifact_unavailable" : "invalid_params",
+    parameter: error.parameter,
+    ...(error.reason ? { catalog_paging: { reason: error.reason } } : {}),
+  });
+}
+
+/** Optional on legacy responses, mandatory once a checked input was accepted. */
+export function catalogPageReceipt(page: { snapshot?: unknown } | undefined): { snapshot?: string } {
+  return typeof page?.snapshot === "string" ? { snapshot: page.snapshot } : {};
+}
 
 /**
  * `applyQueryFilters` with the MCP page default applied.

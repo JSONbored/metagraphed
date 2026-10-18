@@ -18,7 +18,7 @@ import {
   DECLARED_UNPUBLISHED_ARGUMENTS,
   type ArgumentCodec,
 } from "./argument-divergences.ts";
-import { REST_ONLY_QUERY_PARAMETERS } from "../query-params.ts";
+import { GRAPHQL_EXCLUDED_QUERY_PARAMETERS } from "../query-params.ts";
 
 /** One published argument, written the way the SDL writes it. */
 export interface QueryArgument {
@@ -226,7 +226,7 @@ export function deriveQueryArguments(
   }
   for (const parameter of published) {
     if (parameter.in !== "query") continue;
-    if (REST_ONLY_QUERY_PARAMETERS.includes(parameter.name)) continue;
+    if (GRAPHQL_EXCLUDED_QUERY_PARAMETERS.includes(parameter.name)) continue;
     if (unpublished(parameter.name)) continue;
     if (parameter.name === "fields" && options.returnsProjectable) continue;
     const base = scalarFor(parameter);

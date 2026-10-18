@@ -20,6 +20,7 @@ import { ENDPOINT_LIST_FILTERS } from "./endpoints-catalog.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListPageFields,
+  McpCatalogPageFields,
   McpSubnetListArtifactStamp,
   kindSchema,
   limitSchema,
@@ -63,6 +64,7 @@ export const ListSubnetEndpointsOutputSchema =
     endpoints: projectableRows(SubnetEndpointsArtifactSchema.shape.endpoints),
     ...McpSubnetListArtifactStamp,
     ...McpListPageFields,
+    ...McpCatalogPageFields,
   });
 export type ListSubnetEndpointsOutput = z.infer<
   typeof ListSubnetEndpointsOutputSchema
@@ -99,6 +101,7 @@ export const ListSubnetSurfacesOutputSchema = SubnetSurfacesArtifactSchema.pick(
 ).extend({
   ...McpSubnetListArtifactStamp,
   ...McpListPageFields,
+    ...McpCatalogPageFields,
 });
 export type ListSubnetSurfacesOutput = z.infer<
   typeof ListSubnetSurfacesOutputSchema

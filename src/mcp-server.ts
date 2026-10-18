@@ -287,7 +287,7 @@ import { MCP_TIERED_RATE_LIMIT } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { searchMatchingRows } from "../workers/list-query.ts";
-import { applyMcpQueryFilters } from "./mcp-list-query.ts";
+import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentDataApiTierFallbackGeneration,
@@ -5460,7 +5460,7 @@ function applySubnetListQuery(
   // applyQueryFilters' unknown-collection passthrough, which would omit
   // total/returned/cursor entirely.
   const rows = data?.[dataKey];
-  const body = Array.isArray(rows) ? data : { ...data, [dataKey]: [] };
+  const body = Array.isArray(rows) || args?.page_snapshot !== undefined ? data : { ...data, [dataKey]: [] };
   const queryUrl = new URL(`https://mcp.internal/${collection}`);
   if (defaultLimit !== null && args?.limit == null) {
     queryUrl.searchParams.set("limit", String(defaultLimit));
@@ -5471,6 +5471,7 @@ function applySubnetListQuery(
     if (value === undefined || value === null || value === "") continue;
     queryUrl.searchParams.set(key, String(value));
   }
+  catalogQueryUrl(queryUrl, args, () => `/api/v1/subnets/${requireNetuid(args)}/${dataKey}`);
   const transformed = applyMcpQueryFilters(
     body,
     queryUrl,
@@ -5481,7 +5482,7 @@ function applySubnetListQuery(
     ).filter((name) => !subjectKeys.includes(name)),
   );
   if (transformed.error) {
-    throw toolError("invalid_params", transformed.error.message);
+    throw catalogQueryError(transformed.error);
   }
   const page = transformed.meta?.pagination as Row | undefined;
   return {
@@ -5493,6 +5494,7 @@ function applySubnetListQuery(
           cursor: page.cursor,
           limit: page.limit,
           next_cursor: page.next_cursor,
+          ...catalogPageReceipt(page),
         }
       : {}),
   };
@@ -13779,7 +13781,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // corrupted one) must still report an empty list, not fall through
       // applyQueryFilters' own "unknown collection" passthrough (which would
       // omit total/returned/cursor entirely).
-      if (!Array.isArray(data?.endpoints)) {
+      if (args.page_snapshot === undefined && !Array.isArray(data?.endpoints)) {
         data = { ...data, endpoints: [] };
       }
       // Delegate filter/sort/projection/pagination to the shared
@@ -13813,6 +13815,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (fields) queryUrl.searchParams.set("fields", fields);
       if (limit !== null) queryUrl.searchParams.set("limit", String(limit));
       if (cursor > 0) queryUrl.searchParams.set("cursor", String(cursor));
+      catalogQueryUrl(queryUrl, args, () => "/api/v1/endpoints");
       const transformed = applyMcpQueryFilters(
         data,
         queryUrl,
@@ -13820,7 +13823,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ENDPOINTS_QUERY_FILTER_NAMES,
       );
       if (transformed.error) {
-        throw toolError("invalid_params", transformed.error.message);
+        throw catalogQueryError(transformed.error);
       }
       // config/data_key are guaranteed here (the "endpoints" collection always
       // exists and data.endpoints is always an array by this point, thanks to
@@ -13839,6 +13842,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         cursor: page?.cursor ?? cursor,
         limit: page?.limit ?? rows.length,
         next_cursor: page?.next_cursor ?? null,
+        ...catalogPageReceipt(page),
         sort: page?.sort ?? null,
         order: page?.order ?? null,
       };
@@ -17557,6 +17561,8 @@ async function dispatchTool(
             // block is shaped to later carry an x402 challenge as one more
             // member rather than a second error vocabulary.
             ...(error.payment ? { payment: error.payment } : {}),
+            ...(typeof error.parameter === "string" ? { parameter: error.parameter } : {}),
+            ...(error.catalog_paging ? { catalog_paging: error.catalog_paging } : {}),
           },
         },
         isError: true,
