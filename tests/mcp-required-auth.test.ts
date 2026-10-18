@@ -141,11 +141,11 @@ describe("required authentication at the public MCP router", () => {
           [],
           "no account lookup, quota or artifact dispatch",
         );
-        const body: unknown = await res.json();
-        assertJsonObject(body);
-        assert.ok(typeof body.error_description === "string");
+        const responseBody: unknown = await res.json();
+        assertJsonObject(responseBody);
+        assert.ok(typeof responseBody.error_description === "string");
         assert.match(
-          body.error_description,
+          responseBody.error_description,
           /Authentication required to use Metagraphed MCP/,
         );
       }
