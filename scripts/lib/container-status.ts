@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { stripJsonComments } from "../lib.ts";
+import { stripJsonComments } from "./jsonc.ts";
 import { d1AdminBatch, d1AdminCredentials } from "./d1-admin.ts";
 
 export const CONTAINER_STATUS_PREFIX = "container-status/v1/";
