@@ -12506,28 +12506,15 @@
             "degraded": {
               "reason": "unavailable"
             },
-            "newest_day": "2026-06-01",
-            "oldest_day": "2026-06-01",
+            "newest_day": null,
+            "oldest_day": null,
             "other_label": "Other artifact-normalized price share",
-            "point_count": 1,
-            "points": [
-              {
-                "captured_at": "2026-06-01T00:00:00.000Z",
-                "day": "2026-06-01",
-                "other_share": 0.5,
-                "shares": [
-                  0.5
-                ]
-              }
-            ],
+            "point_count": null,
+            "points": [],
             "quality": "estimated_observed_price_set",
             "row_limit": 16384,
             "schema_version": 1,
-            "series": [
-              {
-                "netuid": 7
-              }
-            ],
+            "series": [],
             "window_days": 56
           },
           "meta": {

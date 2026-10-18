@@ -332,7 +332,10 @@ describe("bounded snapshot query on a disposable SQLite fixture", () => {
       );
       expect(calls).toBe(1);
       expect(result).toEqual([]);
-      console.info("#11550 fixture query plan", { bindings, plan });
+      console.info(
+        "#11550 fixture query plan",
+        JSON.stringify({ bindings, plan }),
+      );
     } finally {
       sqlite.close();
     }
@@ -356,10 +359,21 @@ describe("bounded snapshot query on a disposable SQLite fixture", () => {
       sqlite.exec("COMMIT");
       const rows = await load({ query }, options);
       expect(rows).toHaveLength(PRICE_SHARE_COMPOSITION_ROWS + 1);
-      expect(
-        new TextEncoder().encode(JSON.stringify(rows)).byteLength,
-      ).toBeLessThan(2 * 1024 * 1024);
+      const serializedBytes = new TextEncoder().encode(
+        JSON.stringify(rows),
+      ).byteLength;
+      expect(serializedBytes).toBeLessThan(2 * 1024 * 1024);
       expect(build(rows!, options).points).toEqual([]);
+      console.info(
+        "#11550 fixture row bound",
+        JSON.stringify({
+          inserted: PRICE_SHARE_COMPOSITION_ROWS + 2,
+          returned: rows?.length,
+          retained_limit: PRICE_SHARE_COMPOSITION_ROWS,
+          sentinel_rows: 1,
+          serialized_bytes: serializedBytes,
+        }),
+      );
     } finally {
       sqlite.close();
     }
