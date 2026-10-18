@@ -167,10 +167,11 @@ test.each(unqualifiedPolicies)(
         ...metadata,
       },
     });
-    const build = vi.fn((_request: Request) =>
-      new Response("current observations", {
-        headers: { "cache-control": "public, max-age=17" },
-      }),
+    const build = vi.fn(
+      (_request: Request) =>
+        new Response("current observations", {
+          headers: { "cache-control": "public, max-age=17" },
+        }),
     );
     const first = await deliver(new Request(TARGET), build);
     assert.equal(first.headers.get("x-metagraph-cache"), "miss");
