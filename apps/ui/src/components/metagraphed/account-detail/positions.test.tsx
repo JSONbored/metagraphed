@@ -61,7 +61,7 @@ describe("PositionsSection refresh failures", () => {
         const failed = await render(client);
         expect(failed).toContain(`role="status">${NOTICE}`);
         expect(failed).toContain("Retry refresh");
-        expect(failed).toContain("2026-07-05");
+        expect(failed).toContain("7/5/2026");
         expect(failed).toContain("do not establish wallet holdings");
         expect(failed).not.toContain("Position snapshots unavailable");
         expect(failed).toContain(
