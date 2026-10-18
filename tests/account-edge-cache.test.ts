@@ -24,6 +24,7 @@ import { isMainnetOnlyApiPath } from "../workers/api.ts";
 import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { AccountEventsArtifactSchema } from "../schemas-src/routes/account-events-feed.ts";
+import { AccountPortfolioArtifactSchema } from "../schemas-src/routes/account-portfolio.ts";
 import { readFileSync } from "node:fs";
 
 const openapi = JSON.parse(
@@ -243,10 +244,18 @@ describe("the account edge cache", () => {
 
     const first = await get(path, env);
     assert.equal(first.status, 200);
-    assert.deepEqual((await first.json()).data, portfolio);
+    const firstBody = await parseJsonBody(
+      first,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
+    assert.deepEqual(firstBody.data, portfolio);
     await Promise.resolve();
     const repeat = await get(path.replace("/api/v1/", "/api/v1/finney/"), env);
-    assert.deepEqual((await repeat.json()).data, portfolio);
+    const repeatBody = await parseJsonBody(
+      repeat,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
+    assert.deepEqual(repeatBody.data, portfolio);
     assert.equal(reads, 1);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(

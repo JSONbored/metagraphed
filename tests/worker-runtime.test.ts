@@ -1505,7 +1505,7 @@ describe("Worker runtime", () => {
             {},
           );
           assert.equal(response.status, 503);
-          const body = await response.json();
+          const body = await parseJsonBody(response, ErrorEnvelopeSchema);
           assert.equal(body.error.code, "artifact_principal_unavailable");
           assert.equal(body.meta.artifact_path, path);
           assert.equal(Object.hasOwn(body, "accounts"), false);
@@ -1585,10 +1585,8 @@ describe("Worker runtime", () => {
             {},
           );
           assert.equal(response.status, 503);
-          assert.equal(
-            (await response.json()).error.code,
-            "artifact_principal_unavailable",
-          );
+          const body = await parseJsonBody(response, ErrorEnvelopeSchema);
+          assert.equal(body.error.code, "artifact_principal_unavailable");
         }
         const accepted = await handleRequest(
           request,
@@ -1657,10 +1655,8 @@ describe("Worker runtime", () => {
         {},
       );
       assert.equal(response.status, 503);
-      assert.equal(
-        (await response.json()).error.code,
-        "artifact_principal_unavailable",
-      );
+      const body = await parseJsonBody(response, ErrorEnvelopeSchema);
+      assert.equal(body.error.code, "artifact_principal_unavailable");
     }
   });
 
@@ -1687,7 +1683,7 @@ describe("Worker runtime", () => {
           {},
         );
         assert.equal(response.status, 503);
-        const body = await response.json();
+        const body = await parseJsonBody(response, ErrorEnvelopeSchema);
         assert.equal(body.error.code, "artifact_principal_unavailable");
         assert.equal(Object.hasOwn(body, "validators"), false);
       }
@@ -1735,10 +1731,8 @@ describe("Worker runtime", () => {
             {},
           );
           assert.equal(response.status, 404);
-          assert.equal(
-            (await response.json()).error.code,
-            "artifact_computed_live",
-          );
+          const body = await parseJsonBody(response, ErrorEnvelopeSchema);
+          assert.equal(body.error.code, "artifact_computed_live");
         }
       }
       assert.equal(
