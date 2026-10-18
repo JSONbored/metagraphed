@@ -29,9 +29,7 @@ const workflow = parse(source);
 const steps = workflow.jobs.refresh.steps as Step[];
 const guard = steps.find((step) => step.id === "publication-request");
 const publishSteps = workflow.jobs.publish.steps as Step[];
-const decision = publishSteps.find(
-  (step) => step.id === "cloudflare-secrets",
-)!;
+const decision = publishSteps.find((step) => step.id === "cloudflare-secrets")!;
 
 // Execute the live shell guard and live publication decision. No checkout,
 // build, credential lookup, publisher or network command runs in this fixture.
@@ -66,7 +64,11 @@ function selection(ref: string, mode: string) {
 }
 
 test("production publication refuses branch and tag dispatches before any write decision", () => {
-  for (const ref of ["refs/heads/fix/reviewed-change", "refs/tags/v1.0.0", ""]) {
+  for (const ref of [
+    "refs/heads/fix/reviewed-change",
+    "refs/tags/v1.0.0",
+    "",
+  ]) {
     const result = selection(ref, "publish");
     assert.equal(result.status, 1, ref);
     assert.match(
@@ -80,7 +82,10 @@ test("production publication refuses branch and tag dispatches before any write 
 test("main publication and explicit dry runs retain their existing decisions", () => {
   const publish = selection("refs/heads/main", "publish");
   assert.equal(publish.status, 0);
-  assert.equal(publish.output, "publish=true\nkv_publish=true\ndry_run=false\n");
+  assert.equal(
+    publish.output,
+    "publish=true\nkv_publish=true\ndry_run=false\n",
+  );
   for (const ref of ["refs/heads/main", "refs/heads/fix/reviewed-change"]) {
     const dry = selection(ref, "dry-run");
     assert.equal(dry.status, 0, ref);
@@ -154,7 +159,7 @@ test("the workflow validator rejects missing or moved guards and notification af
     const valid = validate();
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
     const guardBlock = source.match(
-      /      - name: Validate registry publication request\n[\s\S]*?(?=      - name: Checkout\n)/,
+      / {6}- name: Validate registry publication request\n[\s\S]*?(?= {6}- name: Checkout\n)/,
     )![0];
     const withoutGuard = source.replace(guardBlock, "");
     assert.notEqual(withoutGuard, source);
@@ -170,10 +175,9 @@ test("the workflow validator rejects missing or moved guards and notification af
     writeFileSync(
       path.join(directory, workflowPath),
       withoutGuard.slice(0, publishStart) +
-        withoutGuard.slice(publishStart).replace(
-          "    steps:\n",
-          "    steps:\n" + guardBlock,
-        ),
+        withoutGuard
+          .slice(publishStart)
+          .replace("    steps:\n", "    steps:\n" + guardBlock),
     );
     const relocated = validate();
     assert.equal(relocated.status, 1);
@@ -198,4 +202,3 @@ test("the workflow validator rejects missing or moved guards and notification af
     rmSync(directory, { recursive: true, force: true });
   }
 });
-

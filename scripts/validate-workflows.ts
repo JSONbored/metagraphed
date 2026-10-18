@@ -507,4 +507,3 @@ function stepBlock(content: string, stepName: string): string {
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-
