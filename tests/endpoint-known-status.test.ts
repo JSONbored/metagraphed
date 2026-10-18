@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import { catalogQueryUrl, catalogQueryError, catalogPageReceipt } from "../src/mcp-list-query.ts";
+import {
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+} from "../src/mcp-list-query.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
@@ -908,29 +912,86 @@ test("all eight classified MCP catalogs forward checked receipts, bind subjects 
 test("MCP checked receipts cannot cross a provider, subnet or public route with identical rows", async () => {
   const blob = { ...artifact(rows.slice(0, 3)), surfaces: rows.slice(0, 3) };
   for (const [from, to] of [
-    [["list_provider_endpoints", { slug: "fixture" }], ["list_provider_endpoints", { slug: "another" }]],
-    [["get_subnet_endpoints", { netuid: 0 }], ["list_subnet_endpoints", { netuid: 1 }]],
-    [["list_endpoints", {}], ["list_rpc_endpoints", {}]],
-    [["get_subnet_surfaces", { netuid: 0 }], ["list_subnet_surfaces", { netuid: 1 }]],
+    [
+      ["list_provider_endpoints", { slug: "fixture" }],
+      ["list_provider_endpoints", { slug: "another" }],
+    ],
+    [
+      ["get_subnet_endpoints", { netuid: 0 }],
+      ["list_subnet_endpoints", { netuid: 1 }],
+    ],
+    [
+      ["list_endpoints", {}],
+      ["list_rpc_endpoints", {}],
+    ],
+    [
+      ["get_subnet_surfaces", { netuid: 0 }],
+      ["list_subnet_surfaces", { netuid: 1 }],
+    ],
   ] as const) {
-    const first = await mcp(from[0], { ...from[1], limit: 2, page_snapshot: "start" }, blob);
+    const first = await mcp(
+      from[0],
+      { ...from[1], limit: 2, page_snapshot: "start" },
+      blob,
+    );
     assert.equal(first.result.isError, false, from[0]);
-    const rejected = await mcp(to[0], { ...to[1], limit: 2, cursor: 2, page_snapshot: first.result.structuredContent.snapshot }, blob);
+    const rejected = await mcp(
+      to[0],
+      {
+        ...to[1],
+        limit: 2,
+        cursor: 2,
+        page_snapshot: first.result.structuredContent.snapshot,
+      },
+      blob,
+    );
     assert.equal(rejected.result.isError, true, to[0]);
-    assert.equal(rejected.result.structuredContent.error.code, "catalog_restart_required", to[0]);
+    assert.equal(
+      rejected.result.structuredContent.error.code,
+      "catalog_restart_required",
+      to[0],
+    );
   }
 });
 
 test("checked MCP errors distinguish missing catalogs, exceeded budgets and invalid controls", async () => {
   const missing = await mcp("list_endpoints", { page_snapshot: "start" }, {});
-  assert.equal(missing.result.structuredContent.error.code, "artifact_unavailable");
-  assert.deepEqual(missing.result.structuredContent.error.catalog_paging, { reason: "catalog_unavailable" });
-  const tooMany = await mcp("list_endpoints", { page_snapshot: "start", limit: 1 }, artifact(Array.from({ length: 5001 }, (_, i) => ({ ...rows[0], id: String(i) }))));
-  assert.equal(tooMany.result.structuredContent.error.code, "catalog_budget_exceeded");
-  assert.match(tooMany.result.structuredContent.error.message, /Narrow filters/);
+  assert.equal(
+    missing.result.structuredContent.error.code,
+    "artifact_unavailable",
+  );
+  assert.deepEqual(missing.result.structuredContent.error.catalog_paging, {
+    reason: "catalog_unavailable",
+  });
+  const tooMany = await mcp(
+    "list_endpoints",
+    { page_snapshot: "start", limit: 1 },
+    artifact(
+      Array.from({ length: 5001 }, (_, i) => ({ ...rows[0], id: String(i) })),
+    ),
+  );
+  assert.equal(
+    tooMany.result.structuredContent.error.code,
+    "catalog_budget_exceeded",
+  );
+  assert.match(
+    tooMany.result.structuredContent.error.message,
+    /Narrow filters/,
+  );
   assert.equal(tooMany.result.structuredContent.endpoints, undefined);
-  assert.throws(() => catalogQueryUrl(new URL("https://mcp.internal/endpoints"), { page_snapshot: "bad" }, () => "/api/v1/endpoints"), { code: "invalid_params", parameter: "page_snapshot" });
-  assert.equal(catalogQueryError({ parameter: "cursor", message: "bad cursor" }).code, "invalid_params");
+  assert.throws(
+    () =>
+      catalogQueryUrl(
+        new URL("https://mcp.internal/endpoints"),
+        { page_snapshot: "bad" },
+        () => "/api/v1/endpoints",
+      ),
+    { code: "invalid_params", parameter: "page_snapshot" },
+  );
+  assert.equal(
+    catalogQueryError({ parameter: "cursor", message: "bad cursor" }).code,
+    "invalid_params",
+  );
   assert.deepEqual(catalogPageReceipt(undefined), {});
   assert.deepEqual(catalogPageReceipt({ snapshot: 3 }), {});
 });

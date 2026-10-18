@@ -16,7 +16,10 @@ vi.mock("pg", () => pg.module);
 import { withStampedEdgeCache } from "../workers/edge-cache.ts";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
-import { EXPOSED_RESPONSE_HEADERS_VALUE, withNoStore } from "../workers/http.ts";
+import {
+  EXPOSED_RESPONSE_HEADERS_VALUE,
+  withNoStore,
+} from "../workers/http.ts";
 import {
   DEGRADED_HEADER,
   DEGRADED_TIER_UNAVAILABLE,

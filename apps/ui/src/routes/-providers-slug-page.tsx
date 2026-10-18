@@ -360,7 +360,11 @@ export function ProviderDetail() {
           ) : undefined
         }
         footnote={
-          catalogRetentionNotice(surfaces, mergedSurfaces.length, `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`}`) ??
+          catalogRetentionNotice(
+            surfaces,
+            mergedSurfaces.length,
+            `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`}`,
+          ) ??
           (surfaces.isPending
             ? "Loading registered services · registry"
             : `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`} · registry` +

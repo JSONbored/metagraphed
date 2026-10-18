@@ -133,7 +133,11 @@ export function catalogRetentionNotice(
   if (!count) return undefined;
   const prefix = acceptedScope ? acceptedScope + " · " : "";
   if (state.isFetching && !state.isFetchingNextPage)
-    return prefix + "Refreshing results · previously accepted rows retained · current freshness unverified";
-  if (state.isError) return prefix + "Previously accepted rows retained · current freshness unverified";
+    return (
+      prefix +
+      "Refreshing results · previously accepted rows retained · current freshness unverified"
+    );
+  if (state.isError)
+    return prefix + "Previously accepted rows retained · current freshness unverified";
   return undefined;
 }

@@ -59,9 +59,7 @@ export function catalogQueryUrl(
   return url;
 }
 
-export function catalogQueryError(
-  error: QueryError,
-): Error & {
+export function catalogQueryError(error: QueryError): Error & {
   toolError: true;
   code: string;
   parameter: string;

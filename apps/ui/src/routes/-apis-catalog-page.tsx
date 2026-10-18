@@ -371,7 +371,11 @@ export function ApisCatalogPage() {
         }
         footnote={
           <>
-            {catalogRetentionNotice(feed, rows.length, `${formatNumber(rows.length)} shown · ${feed.data?.pages[0]?.meta.pagination?.total ?? "unknown"} matching`) ??
+            {catalogRetentionNotice(
+              feed,
+              rows.length,
+              `${formatNumber(rows.length)} shown · ${feed.data?.pages[0]?.meta.pagination?.total ?? "unknown"} matching`,
+            ) ??
               (!catalogNearViewport
                 ? "verified interface catalog · registry "
                 : feed.isPending

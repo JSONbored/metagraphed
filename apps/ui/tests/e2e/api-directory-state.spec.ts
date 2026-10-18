@@ -549,7 +549,9 @@ test.describe("endpoint discovery", () => {
     await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
     state.failFeed = true;
     await page.getByRole("button", { name: "refresh", exact: true }).click();
-    const error = directory.getByRole("alert").filter({ hasText: "Previously accepted rows retained" });
+    const error = directory
+      .getByRole("alert")
+      .filter({ hasText: "Previously accepted rows retained" });
     await expect(error).toBeVisible();
     await expect(directory).toContainText("current freshness unverified");
     await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(3);

@@ -288,7 +288,12 @@ import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { searchMatchingRows } from "../workers/list-query.ts";
 import { CatalogPagingFailureSchema } from "../schemas-src/query-params.ts";
-import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+} from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentDataApiTierFallbackGeneration,
@@ -5461,7 +5466,10 @@ function applySubnetListQuery(
   // applyQueryFilters' unknown-collection passthrough, which would omit
   // total/returned/cursor entirely.
   const rows = data?.[dataKey];
-  const body = Array.isArray(rows) || args?.page_snapshot !== undefined ? data : { ...data, [dataKey]: [] };
+  const body =
+    Array.isArray(rows) || args?.page_snapshot !== undefined
+      ? data
+      : { ...data, [dataKey]: [] };
   const queryUrl = new URL(`https://mcp.internal/${collection}`);
   if (defaultLimit !== null && args?.limit == null) {
     queryUrl.searchParams.set("limit", String(defaultLimit));
@@ -5472,7 +5480,11 @@ function applySubnetListQuery(
     if (value === undefined || value === null || value === "") continue;
     queryUrl.searchParams.set(key, String(value));
   }
-  catalogQueryUrl(queryUrl, args, () => `/api/v1/subnets/${requireNetuid(args)}/${dataKey}`);
+  catalogQueryUrl(
+    queryUrl,
+    args,
+    () => `/api/v1/subnets/${requireNetuid(args)}/${dataKey}`,
+  );
   const transformed = applyMcpQueryFilters(
     body,
     queryUrl,
@@ -17529,7 +17541,9 @@ async function dispatchTool(
   } catch (rawError) {
     const error = rawError as Row;
     if (error?.toolError) {
-      const catalogFailure = CatalogPagingFailureSchema.safeParse(error.catalog_paging);
+      const catalogFailure = CatalogPagingFailureSchema.safeParse(
+        error.catalog_paging,
+      );
       // Classified AND captured, for the one family that is both (#10641).
       // Keyed on the MARKER, never on the code: `ai_unavailable` is also what
       // requireAi throws for "no AI binding here", which is an expected
@@ -17563,8 +17577,12 @@ async function dispatchTool(
             // block is shaped to later carry an x402 challenge as one more
             // member rather than a second error vocabulary.
             ...(error.payment ? { payment: error.payment } : {}),
-            ...(typeof error.parameter === "string" ? { parameter: error.parameter } : {}),
-            ...(catalogFailure.success ? { catalog_paging: catalogFailure.data } : {}),
+            ...(typeof error.parameter === "string"
+              ? { parameter: error.parameter }
+              : {}),
+            ...(catalogFailure.success
+              ? { catalog_paging: catalogFailure.data }
+              : {}),
           },
         },
         isError: true,

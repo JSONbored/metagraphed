@@ -142,7 +142,7 @@ describe("first-party checked catalog consumers", () => {
     fetchApi.mockResolvedValueOnce(response(["c"], 2, 3));
     await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", {})).rejects.toBeInstanceOf(
       CatalogRestartRequired,
-  catalogRetentionNotice,
+      catalogRetentionNotice,
     );
     expect(fetchApi).toHaveBeenCalledTimes(2);
   });
@@ -220,7 +220,13 @@ it("labels retained results during failed or pending replacement while preservin
   const state = { isFetching: false, isFetchingNextPage: false, isError: false };
   expect(catalogRetentionNotice(state, 2, "2 of 3")).toBeUndefined();
   expect(catalogRetentionNotice({ ...state, isError: true }, 0)).toBeUndefined();
-  expect(catalogRetentionNotice({ ...state, isError: true }, 2, "2 of 3")).toBe("2 of 3 · Previously accepted rows retained · current freshness unverified");
-  expect(catalogRetentionNotice({ ...state, isFetching: true }, 2, "2 of 3")).toMatch(/^2 of 3 · Refreshing results/);
-  expect(catalogRetentionNotice({ ...state, isFetching: true, isFetchingNextPage: true }, 2)).toBeUndefined();
+  expect(catalogRetentionNotice({ ...state, isError: true }, 2, "2 of 3")).toBe(
+    "2 of 3 · Previously accepted rows retained · current freshness unverified",
+  );
+  expect(catalogRetentionNotice({ ...state, isFetching: true }, 2, "2 of 3")).toMatch(
+    /^2 of 3 · Refreshing results/,
+  );
+  expect(
+    catalogRetentionNotice({ ...state, isFetching: true, isFetchingNextPage: true }, 2),
+  ).toBeUndefined();
 });

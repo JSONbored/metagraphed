@@ -92,6 +92,52 @@ function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
   );
 }
 
+/** Keep checked paging errors consistent across REST, MCP and SDK consumers. */
+function responseErrorCode(envelope: ErrorEnvelope | undefined): string | undefined {
+  switch (envelope?.meta?.catalog_paging?.reason) {
+    case "catalog_changed": return "catalog_restart_required";
+    case "catalog_budget_exceeded": return "catalog_budget_exceeded";
+    case "catalog_unavailable": return "artifact_unavailable";
+    default: return envelope?.error?.code;
+  }
+}
+
+/** Validate before yielding; update only the iterator's private query copy. */
+function nextPageCursor(
+  page: unknown,
+  query: Record<string, unknown>,
+  state: { total?: number; collection?: string },
+): unknown {
+  const body = page as { data?: Record<string, unknown>; meta?: { pagination?: {
+    snapshot?: unknown; cursor?: unknown; total?: unknown; returned?: unknown;
+    collection?: unknown; next_cursor?: unknown;
+  } } } | null;
+  const p = body?.meta?.pagination;
+  if (query.page_snapshot === undefined) return p?.next_cursor;
+  const fail = () => { throw new MetagraphedError(
+    "Catalog page could not be verified. Restart results from the first page.",
+    409, "catalog_restart_required",
+  ); };
+  const rows = typeof p?.collection === "string" ? body?.data?.[p.collection] : undefined;
+  const cursor = query.cursor === undefined ? 0 : Number(query.cursor);
+  if (!p || !Array.isArray(rows) || typeof p.snapshot !== "string" ||
+    !/^v1[.][0-9a-f]{64}$/.test(p.snapshot) ||
+    (query.page_snapshot !== "start" && p.snapshot !== query.page_snapshot) ||
+    !Number.isSafeInteger(cursor) || cursor < 0 ||
+    (query.page_snapshot === "start" && cursor !== 0) || p.cursor !== cursor ||
+    p.returned !== rows.length || !Number.isSafeInteger(p.total) ||
+    (state.total !== undefined && p.total !== state.total) ||
+    (state.collection !== undefined && p.collection !== state.collection)) return fail();
+  const total = p.total as number;
+  const end = cursor + rows.length;
+  if (total < end || (p.next_cursor === null ? end !== total :
+    rows.length === 0 || p.next_cursor !== end || end >= total)) return fail();
+  query.page_snapshot = p.snapshot;
+  state.total = total;
+  state.collection = p.collection as string;
+  return p.next_cursor;
+}
+
 async function readJsonBody(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) {
@@ -146,6 +192,7 @@ export async function metagraphedFetch<Path extends ApiPath>(
   }
   const response = await fetch(url, {
     ...init,
+    ...(url.searchParams.has("page_snapshot") ? { cache: "no-store" as const } : {}),
     method: "GET",
     headers: {
       accept: "application/json",
@@ -153,6 +200,8 @@ export async function metagraphedFetch<Path extends ApiPath>(
     },
     signal: resolveSignal(signal, timeoutMs),
   });
+  if (url.searchParams.has("page_snapshot") && response.status === 304)
+    throw new MetagraphedError("Checked catalog requires a current response body. Restart results.", 304, "catalog_restart_required");
   const body = await readJsonBody(response);
   if (!response.ok) {
     const envelope = isErrorEnvelope(body) ? body : undefined;
@@ -160,7 +209,7 @@ export async function metagraphedFetch<Path extends ApiPath>(
       envelope?.error?.message ??
         `GET ${url.pathname} failed with status ${response.status}`,
       response.status,
-      envelope?.error?.code,
+      responseErrorCode(envelope),
       envelope,
     );
   }
@@ -178,6 +227,7 @@ export async function* metagraphedPaginate<Path extends ApiPath>(
   const baseQuery: Record<string, unknown> = {
     ...(options.query as Record<string, unknown> | undefined),
   };
+  const state: { total?: number; collection?: string } = {};
   let cursor: unknown = baseQuery.cursor;
   for (;;) {
     if (cursor !== undefined && cursor !== null) {
@@ -187,10 +237,8 @@ export async function* metagraphedPaginate<Path extends ApiPath>(
       ...options,
       query: baseQuery as unknown as QueryParams<Path>,
     });
+    const next = nextPageCursor(page, baseQuery, state);
     yield page;
-    const next = (
-      page as { meta?: { pagination?: { next_cursor?: unknown } } }
-    )?.meta?.pagination?.next_cursor;
     if (next === undefined || next === null) {
       return;
     }
@@ -247,7 +295,7 @@ export async function metagraphedRpc<Result = unknown>(
       envelope?.error?.message ??
         `RPC ${request.method} failed with status ${response.status}`,
       response.status,
-      envelope?.error?.code,
+      responseErrorCode(envelope),
       envelope,
     );
   }
@@ -624,15 +672,16 @@ export function createMetagraphedClient(
       pathParams as Record<string, string | number> | undefined,
       query as Record<string, unknown> | undefined,
     );
+    const checked = url.searchParams.has("page_snapshot");
     let attempt = 0;
     let retriedUncachedNotModified = false;
     for (;;) {
       const requestHeaders = mergeRequestHeaders(clientOptions.headers, headers);
       const key = buildEtagCacheKey(url, requestHeaders);
-      const cached = !retriedUncachedNotModified && store ? store.get(key) : undefined;
+      const cached = !checked && !retriedUncachedNotModified && store ? store.get(key) : undefined;
       if (cached) {
         requestHeaders["if-none-match"] = cached.etag;
-      } else if (retriedUncachedNotModified) {
+      } else if (checked || retriedUncachedNotModified) {
         delete requestHeaders["if-none-match"];
         delete requestHeaders["if-modified-since"];
       }
@@ -640,6 +689,7 @@ export function createMetagraphedClient(
       try {
         response = await fetchImpl(url, {
           ...init,
+          ...(checked ? { cache: "no-store" as const } : {}),
           method: "GET",
           headers: requestHeaders,
           signal: resolveSignal(signal, timeoutMs),
@@ -651,7 +701,7 @@ export function createMetagraphedClient(
         if (signal && signal.aborted) {
           throw error;
         }
-        if (retry && attempt < retry.retries) {
+        if (!checked && retry && attempt < retry.retries) {
           await sleep(retryDelayMs(undefined, attempt, retry), signal);
           attempt += 1;
           continue;
@@ -659,6 +709,10 @@ export function createMetagraphedClient(
         throw error;
       }
       if (response.status === 304) {
+        if (checked) throw new MetagraphedError(
+          "Checked catalog requires a current response body. Restart results.",
+          304, "catalog_restart_required",
+        );
         if (cached) {
           return cached.body as JsonResponse<Path>;
         }
@@ -675,7 +729,7 @@ export function createMetagraphedClient(
         continue;
       }
       if (
-        retry &&
+        !checked && retry &&
         retry.statuses.includes(response.status) &&
         attempt < retry.retries
       ) {
@@ -690,11 +744,11 @@ export function createMetagraphedClient(
           envelope?.error?.message ??
             "GET " + url.pathname + " failed with status " + response.status,
           response.status,
-          envelope?.error?.code,
+          responseErrorCode(envelope),
           envelope,
         );
       }
-      if (store) {
+      if (!checked && store) {
         const etag = response.headers.get("etag");
         if (etag) {
           store.set(key, { etag, body });
@@ -711,6 +765,7 @@ export function createMetagraphedClient(
     const baseQuery: Record<string, unknown> = {
       ...(options.query as Record<string, unknown> | undefined),
     };
+    const state: { total?: number; collection?: string } = {};
     let cursor: unknown = baseQuery.cursor;
     for (;;) {
       if (cursor !== undefined && cursor !== null) {
@@ -720,10 +775,8 @@ export function createMetagraphedClient(
         ...options,
         query: baseQuery as unknown as QueryParams<Path>,
       });
+      const next = nextPageCursor(page, baseQuery, state);
       yield page;
-      const next = (
-        page as { meta?: { pagination?: { next_cursor?: unknown } } }
-      )?.meta?.pagination?.next_cursor;
       if (next === undefined || next === null) {
         return;
       }
