@@ -111,9 +111,7 @@ describe("PositionsSection observation clocks", () => {
         expect(html).toContain("Source snapshot 7/1/2026");
         expect(html).toContain("Latest recorded stake activity 7/5/2026");
         expect(html).toContain(
-          captured_at
-            ? "Relationship snapshot 7/4/2026"
-            : "Relationship capture time unavailable.",
+          captured_at ? "Relationship snapshot 7/4/2026" : "Relationship capture time unavailable.",
         );
         expect(html).toContain("Position relationship coverage is unavailable.");
         expect(html).toContain("Root holdings are not covered");
