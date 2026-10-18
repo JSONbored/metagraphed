@@ -38,7 +38,7 @@ jobs:
       - name: Check every lakehouse lane's newest completed pass
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
         # No `tee`: piping a report into tee discards the script's exit status,
         # which is how a scheduled sweep in this repo came to be unable to fail.
