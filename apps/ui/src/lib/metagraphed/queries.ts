@@ -345,7 +345,7 @@ import type {
 } from "./types";
 
 const STALE_SHORT = 30_000;
-const STALE_MED = 60_000;
+export const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
 
 const MAX_TRAJECTORY_POINTS = 104;
@@ -10071,7 +10071,7 @@ export function validateNextCursor(
 }
 
 /** Pages on the infinite query carry the validation flag for the UI. */
-type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
+export type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
 
 async function fetchInfinitePage<T>(
   path: string,
@@ -10178,29 +10178,6 @@ export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
     staleTime: STALE_SHORT,
   });
 
-/** Server-driven cursor-paginated subnets. */
-/** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("surfaces-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/surfaces",
-        "surfaces",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      // Normalize on the infinite-query path so provider_slug, curation_level
-      // (from authority), provider, last_verified_at, and the provider filter
-      // are populated — same mapping the non-paginated surfacesQuery applies.
-      return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
-    },
-    getNextPageParam,
-    staleTime: STALE_MED,
-  });
-
 function asString(v: unknown): string | undefined {
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
@@ -10275,7 +10252,7 @@ const UNREAD_ENDPOINT_FIELDS = [
   "pool_eligibility_reasons",
 ] as const;
 
-function normalizeEndpoint(raw: unknown): Endpoint {
+export function normalizeEndpoint(raw: unknown): Endpoint {
   if (!raw || typeof raw !== "object") return raw as Endpoint;
   const e = raw as Record<string, unknown>;
   const lean: Record<string, unknown> = { ...e };
@@ -10294,7 +10271,7 @@ function normalizeEndpoint(raw: unknown): Endpoint {
   } as Endpoint;
 }
 
-function normalizeSurface(raw: unknown): Surface {
+export function normalizeSurface(raw: unknown): Surface {
   if (!raw || typeof raw !== "object") return raw as Surface;
   const s = raw as Record<string, unknown>;
   return {
@@ -10388,25 +10365,6 @@ export const endpointsSummaryQuery = () =>
         },
       };
     },
-    staleTime: STALE_MED,
-  });
-
-/** Cursor-paginated endpoints, for the directory's own server-side facets. */
-export const endpointsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("endpoints-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/endpoints",
-        "endpoints",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      return { ...page, data: page.data.map(normalizeEndpoint) } as InfinitePage<Endpoint>;
-    },
-    getNextPageParam,
     staleTime: STALE_MED,
   });
 

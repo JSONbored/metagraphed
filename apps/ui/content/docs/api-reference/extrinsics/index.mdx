@@ -5,15 +5,15 @@ description: Every Extrinsics endpoint in the metagraphed API, with its method a
 
 6 endpoints.
 
-- [Extrinsic Detail](/docs/api-reference/extrinsics/extrinsic-detail) — `GET /api/v1/extrinsics/{hash}`  
+- [Extrinsic Detail](/docs/api-reference/extrinsics/extrinsic-detail) — `GET /api/v1/extrinsics/{hash}`\
   Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite \<block_number>-\<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable).
-- [Extrinsic Detail By Network](/docs/api-reference/extrinsics/extrinsic-detail-by-network) — `GET /api/v1/{network}/extrinsics/{hash}`  
+- [Extrinsic Detail By Network](/docs/api-reference/extrinsics/extrinsic-detail-by-network) — `GET /api/v1/{network}/extrinsics/{hash}`\
   Network-scoped form of /api/v1/extrinsics/\{hash} — prefix the route with a network to choose which chain answers it.
-- [Extrinsics Feed](/docs/api-reference/extrinsics/extrinsics-feed) — `GET /api/v1/extrinsics`  
+- [Extrinsics Feed](/docs/api-reference/extrinsics/extrinsics-feed) — `GET /api/v1/extrinsics`\
   Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (\<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=\<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range).
-- [Extrinsics Feed By Network](/docs/api-reference/extrinsics/extrinsics-feed-by-network) — `GET /api/v1/{network}/extrinsics`  
+- [Extrinsics Feed By Network](/docs/api-reference/extrinsics/extrinsics-feed-by-network) — `GET /api/v1/{network}/extrinsics`\
   Network-scoped form of /api/v1/extrinsics — prefix the route with a network to choose which chain answers it.
-- [Governance Config Changes](/docs/api-reference/extrinsics/governance-config-changes) — `GET /api/v1/governance/config-changes`  
+- [Governance Config Changes](/docs/api-reference/extrinsics/governance-config-changes) — `GET /api/v1/governance/config-changes`\
   Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet).
-- [Sudo Calls](/docs/api-reference/extrinsics/sudo-calls) — `GET /api/v1/sudo`  
+- [Sudo Calls](/docs/api-reference/extrinsics/sudo-calls) — `GET /api/v1/sudo`\
   Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'.

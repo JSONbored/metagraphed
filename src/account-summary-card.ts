@@ -44,6 +44,7 @@ import {
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { readStore } from "./read-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
+import { ArtifactReadTimeoutError } from "./artifact-read-budget.ts";
 
 /**
  * The registration read, character-for-character the one DATA_API's D1 leg
@@ -141,25 +142,34 @@ export async function answerAccountSummary(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<AccountSummaryAnswer> {
-  const [cold, registrations] = await Promise.all([
-    loadAccountSummaryColdTier(env, ss58),
-    loadAccountRegistrationsFromStore(env, ss58),
-  ]);
-  if (!cold.declined && registrations) {
-    return {
-      kind: "answer",
-      data: buildAccountSummary(ss58, { ...cold, registrations }),
-    };
+  try {
+    const [cold, registrations] = await Promise.all([
+      loadAccountSummaryColdTier(env, ss58),
+      loadAccountRegistrationsFromStore(env, ss58),
+    ]);
+    if (!cold.declined && registrations) {
+      return {
+        kind: "answer",
+        data: buildAccountSummary(ss58, { ...cold, registrations }),
+      };
+    }
+    if (registrations === null || hasRetainedHistoryStore(env)) {
+      // #9386: carry WHY. This decline used to be a bare `{ kind: "gap" }`, so a route
+      // failing half its requests produced a typed 503 that named no cause and left the
+      // mechanism -- timeout, scan budget, HTTP error -- to be guessed at from outside.
+      const reasons = [
+        ...(cold.declined ?? []),
+        ...(registrations === null ? ["registrations: store read failed"] : []),
+      ];
+      return { kind: "gap", reasons };
+    }
+    return { kind: "miss" };
+  } catch (error) {
+    if (error instanceof ArtifactReadTimeoutError) {
+      // A configured archive was attempted. Its timeout is an unavailable
+      // summary even when no indexed-history owner is configured.
+      return { kind: "gap", reasons: [error.message] };
+    }
+    throw error;
   }
-  if (registrations === null || hasRetainedHistoryStore(env)) {
-    // #9386: carry WHY. This decline used to be a bare `{ kind: "gap" }`, so a route
-    // failing half its requests produced a typed 503 that named no cause and left the
-    // mechanism -- timeout, scan budget, HTTP error -- to be guessed at from outside.
-    const reasons = [
-      ...(cold.declined ?? []),
-      ...(registrations === null ? ["registrations: store read failed"] : []),
-    ];
-    return { kind: "gap", reasons };
-  }
-  return { kind: "miss" };
 }

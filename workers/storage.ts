@@ -144,7 +144,9 @@ export function logEvent(
   }
 }
 
-export function r2TimeoutMs(env: ArtifactEnv): number {
+export function r2TimeoutMs(
+  env: Pick<ArtifactEnv, "METAGRAPH_R2_TIMEOUT_MS">,
+): number {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
 }

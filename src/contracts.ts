@@ -17,6 +17,7 @@ import {
 } from "./compute-declaration-figures.ts";
 import { z } from "zod";
 import {
+  collectionSnapshotParamSchema,
   fieldsSchema,
   filterTokenSchema,
   limitSchema,
@@ -7408,6 +7409,7 @@ export function listQuerySchema(
   shape.fields = fieldsSchema().optional();
   shape.limit = limitSchema(MAX_LIMIT).optional();
   shape.cursor = numericCursorSchema().optional();
+  shape.page_snapshot = collectionSnapshotParamSchema().optional();
   // A collection that declares no sort keys publishes `enum: []`, which
   // `z.enum()` cannot express — it stays absent rather than being invented.
   const sortFields = config.sort_fields as string[];
@@ -8037,6 +8039,10 @@ function listQuery(collection: string, options: { exclude?: string[] } = {}) {
         // one is safe across an inserting table.
         name: "cursor",
         schema: parameterSchema(numericCursorSchema()),
+      },
+      {
+        name: "page_snapshot",
+        schema: parameterSchema(collectionSnapshotParamSchema()),
       },
       {
         name: "sort",

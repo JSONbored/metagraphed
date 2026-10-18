@@ -218,6 +218,35 @@ describe("catalog-wide known endpoint status", () => {
     }
   });
 
+  test("guarded REST pages reject a changed health-status matching set", async () => {
+    const params = {
+      known_status: "true",
+      fields: "id,status",
+      limit: "2",
+      page_snapshot: "start",
+    };
+    const first = await rest(params);
+    assert.equal(first.response.status, 200);
+    const snapshot = first.body.meta.pagination.snapshot;
+    assert.match(snapshot, /^v1\.[0-9a-f]{64}$/);
+    const nextParams = { ...params, page_snapshot: snapshot, cursor: "2" };
+    const unchanged = await rest(nextParams);
+    assert.equal(unchanged.response.status, 200);
+    assert.equal(unchanged.body.data.endpoints[0].id, "endpoint-277");
+    const changed = rows.map((row) =>
+      row.id === "endpoint-275" ? { ...row, status: "unknown" } : row,
+    );
+    const rejected = await rest(
+      nextParams,
+      "/api/v1/endpoints",
+      envFor(artifact(changed)),
+    );
+    assert.equal(rejected.response.status, 400);
+    assert.equal(rejected.body.error.code, "invalid_query");
+    assert.equal(rejected.body.meta.parameter, "page_snapshot");
+    assert.equal(rejected.body.data, null);
+  });
+
   test("combines exact root netuid, q, health and capability facets without changing freshness", async () => {
     const result = await rest({
       known_status: "true",

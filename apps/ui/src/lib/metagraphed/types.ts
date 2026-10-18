@@ -73,6 +73,7 @@ export type SurfaceKind = ApiSchema<"SurfaceKind">;
 export type Classification = ApiSchema<"Classification">;
 
 export interface ApiPagination {
+  snapshot?: string;
   collection?: string;
   total?: number;
   returned?: number;

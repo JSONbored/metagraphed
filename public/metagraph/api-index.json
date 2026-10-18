@@ -2870,6 +2870,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -3063,6 +3071,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -3193,6 +3209,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -3361,6 +3385,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -3511,6 +3543,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -3729,6 +3769,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -3940,6 +3988,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -4101,6 +4157,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -4250,6 +4314,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -4364,6 +4436,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -4588,6 +4668,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -4749,6 +4837,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -4857,6 +4953,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -5227,6 +5331,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -5360,6 +5472,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -5459,6 +5579,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -5582,6 +5710,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -5711,6 +5847,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -5876,6 +6020,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -6056,6 +6208,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -6304,6 +6464,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -6484,6 +6652,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -6745,6 +6921,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -6884,6 +7068,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -7034,6 +7226,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -7169,6 +7369,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -7358,6 +7566,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -13108,6 +13324,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -13177,6 +13401,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -13265,6 +13497,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -13470,6 +13710,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -13587,6 +13835,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -13695,6 +13951,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -13841,6 +14105,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -13929,6 +14201,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
@@ -14058,6 +14338,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -14152,6 +14440,14 @@
           }
         },
         {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
+          }
+        },
+        {
           "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
@@ -14214,6 +14510,14 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Opt into checked collection paging: send `start` at cursor 0, then echo meta.pagination.snapshot with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Omit for legacy offset paging.",
+          "name": "page_snapshot",
+          "schema": {
+            "pattern": "^(start|v1\\.[0-9a-f]{64})$",
+            "type": "string"
           }
         },
         {
