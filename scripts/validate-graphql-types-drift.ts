@@ -5,7 +5,7 @@ import { repoRoot } from "./lib.ts";
 
 // Drift gate for generated/graphql/types.ts (types-epic D, #7862) — same
 // shape as validate-generated-client.ts: compare the committed file against
-// a freshly-computed-in-memory expected value (generate(config, false),
+// a freshly-computed-in-memory expected value (the shared Core pipeline,
 // never written to disk), so this validator can never itself go stale
 // relative to what `npm run build:graphql-types` would produce.
 const outputs = await generateGraphqlTypes({ silent: true });

@@ -1,18 +1,25 @@
-import { generate } from "@graphql-codegen/cli";
+import { codegen } from "@graphql-codegen/core";
+import { getCachedDocumentNodeFromSchema } from "@graphql-codegen/plugin-helpers";
+import * as typescriptPlugin from "@graphql-codegen/typescript";
+import * as typescriptResolversPlugin from "@graphql-codegen/typescript-resolvers";
+import { gqlPluckFromCodeString } from "@graphql-tools/graphql-tag-pluck";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { printSchema } from "graphql";
+import {
+  buildASTSchema,
+  lexicographicSortSchema,
+  parse,
+  printSchema,
+} from "graphql";
 import codegenConfig from "../codegen.ts";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
 import { repoRoot } from "./lib.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
 
-// Runs @graphql-codegen/cli's programmatic API against codegen.ts
-// (types-epic D, #7862). `generate(config, false)` returns the generated
-// output in-memory instead of writing it -- used directly here (single
-// source of truth for "what should generated/graphql/types.ts contain"),
-// and reused by validate-graphql-types-drift.ts's stale-check so the two
-// scripts can never compute a different "expected" content.
+// Runs the supported @graphql-codegen/core API with explicit plugins against
+// the fixed local SDL module (types-epic D, #7862). Loading a single code string
+// directly keeps config discovery, glob expansion and remote loaders out of
+// this pipeline. Build and drift validation share this exact output function.
 //
 // ## The SDL is the first output (#10214)
 //
@@ -45,7 +52,9 @@ import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.t
 // source text would be a second, worse printer.
 
 /** Where the emitted SDL module lands, repo-relative. */
-export const GRAPHQL_SCHEMA_PATH = "generated/graphql/schema.ts";
+export const GRAPHQL_SCHEMA_PATH = codegenConfig.schema;
+
+const GRAPHQL_TYPES_PATH = "generated/graphql/types.ts";
 
 const OPENAPI_PATH = "public/metagraph/openapi.json";
 
@@ -54,9 +63,9 @@ const OPENAPI_PATH = "public/metagraph/openapi.json";
  * escapes just added would themselves be escaped). Ten descriptions carry a
  * backtick today (Zod `.describe()` prose like "Distinct from `generated_at`"),
  * so emitting raw would truncate the literal at the first one. The COOKED
- * value -- what the runtime, codegen's graphql-tag-pluck (which parses the
- * module and resolves escapes), and every gate that imports `SDL` sees -- is
- * byte-identical to the printed SDL.
+ * value -- what the runtime and every gate that imports `SDL` sees -- is
+ * byte-identical to the printed SDL. Codegen's raw pluck behavior is preserved
+ * separately; it does not fully cook template escapes.
  */
 function asTemplateLiteral(sdl: string): string {
   return sdl
@@ -97,33 +106,84 @@ ${asTemplateLiteral(sdl)}\`;
   return { filename: GRAPHQL_SCHEMA_PATH, content };
 }
 
-export async function generateGraphqlTypes(
-  options: { silent?: boolean } = {},
-): Promise<{ filename: string; content: string }[]> {
-  const schemaModule = await generateGraphqlSchemaModule();
-  const typeOutputs = await generate(
-    { ...codegenConfig, cwd: repoRoot, silent: options.silent ?? false },
-    false,
+/**
+ * Read only GraphQL text from the fixed module. The same pure pluck API used
+ * by Codegen's code-file loader preserves its existing raw escape behavior
+ * without executing the module. A missing/invalid SDL cannot fall back to
+ * importing source code. This is not a template-cooking correctness change.
+ */
+async function generateGraphqlTypeOutput(
+  schemaModuleContent: string,
+): Promise<{ filename: string; content: string }> {
+  const sources = await gqlPluckFromCodeString(
+    path.join(repoRoot, GRAPHQL_SCHEMA_PATH),
+    schemaModuleContent,
   );
-  return [schemaModule, ...typeOutputs];
+  if (sources.length !== 1) {
+    throw new Error(
+      `Expected exactly one GraphQL SDL in ${GRAPHQL_SCHEMA_PATH}; found ${sources.length}.`,
+    );
+  }
+
+  // CLI's loader uses sort:true. Preserve its lexicographic ordering, its
+  // schema document conversion, and the import defaults passed to Core.
+  const schemaAst = lexicographicSortSchema(
+    buildASTSchema(parse(sources[0]), { assumeValidSDL: true }),
+  );
+  const outputConfig = codegenConfig.generates[GRAPHQL_TYPES_PATH];
+  const content = await codegen({
+    filename: GRAPHQL_TYPES_PATH,
+    schema: getCachedDocumentNodeFromSchema(schemaAst),
+    schemaAst,
+    documents: [],
+    plugins: outputConfig.plugins.map((plugin) => ({ [plugin]: {} })),
+    pluginMap: {
+      typescript: typescriptPlugin,
+      "typescript-resolvers": typescriptResolversPlugin,
+    },
+    config: {
+      ...outputConfig.config,
+      emitLegacyCommonJSImports: true,
+      importExtension: "",
+    },
+    emitLegacyCommonJSImports: true,
+    importExtension: "",
+  });
+  return { filename: GRAPHQL_TYPES_PATH, content };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  // The schema module is written BEFORE codegen runs, because codegen reads
-  // it from disk. Calling generateGraphqlTypes() here instead would hand
-  // codegen the COMMITTED schema -- right for the drift gate, where a stale
-  // schema.ts must fail on its own entry, and exactly wrong for a build.
+async function readSchemaModule(): Promise<string> {
+  return fs.readFile(path.join(repoRoot, GRAPHQL_SCHEMA_PATH), "utf8");
+}
+
+export async function generateGraphqlTypes(
+  // Kept for existing callers; Core itself emits no progress output.
+  _options: { silent?: boolean } = {},
+): Promise<{ filename: string; content: string }[]> {
+  const schemaModule = await generateGraphqlSchemaModule();
+  const typeOutput = await generateGraphqlTypeOutput(
+    await readSchemaModule(),
+  );
+  return [schemaModule, typeOutput];
+}
+
+export async function buildGraphqlTypes(): Promise<void> {
+  // Write the fresh schema before reading the fixed module for type output.
+  // Drift validation deliberately reads the committed schema without writes.
   const schemaModule = await generateGraphqlSchemaModule();
   const target = path.join(repoRoot, schemaModule.filename);
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.writeFile(target, schemaModule.content, "utf8");
-  const outputs = await generate(
-    { ...codegenConfig, cwd: repoRoot, silent: false },
-    false,
+  const output = await generateGraphqlTypeOutput(
+    await readSchemaModule(),
   );
-  for (const output of outputs) {
-    await fs.mkdir(path.dirname(output.filename), { recursive: true });
-    await fs.writeFile(output.filename, output.content, "utf8");
-  }
+  await fs.mkdir(path.dirname(path.join(repoRoot, output.filename)), {
+    recursive: true,
+  });
+  await fs.writeFile(path.join(repoRoot, output.filename), output.content, "utf8");
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await buildGraphqlTypes();
   console.log("Generated GraphQL schema module and resolver/argument types.");
 }

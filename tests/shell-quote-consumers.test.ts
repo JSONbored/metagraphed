@@ -1,12 +1,10 @@
 import childProcess from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import codegenConfig from "../codegen.ts";
 
 interface ShellQuote {
   parse(command: string): unknown[];
@@ -16,12 +14,8 @@ interface ShellQuote {
 type LaunchEditor = (file: string, editor: string) => void;
 
 const rootRequire = createRequire(import.meta.url);
-const codegenRequire = createRequire(
-  rootRequire.resolve("@graphql-codegen/cli"),
-);
 const editorRequire = createRequire(rootRequire.resolve("launch-editor"));
 const shellQuote = rootRequire("shell-quote") as ShellQuote;
-const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const temporaryRoots: string[] = [];
 
 function temporaryRoot(): string {
@@ -47,8 +41,8 @@ beforeEach(() => {
       throw new Error(`Unexpected child-process call: ${method}`);
     });
   }
-  // Codegen imports exec by name. Publish the same stubs to native ESM before
-  // importing its public entry, including when an external module is cached.
+  // Publish the same stubs to native ESM before importing a consumer,
+  // including when an external module is cached.
   syncBuiltinESMExports();
 });
 
@@ -60,9 +54,8 @@ afterEach(() => {
   }
 });
 
-test("both consumers resolve the shared reader and retain ordinary argument round trips", () => {
+test("launch-editor resolves the shared reader and retains ordinary argument round trips", () => {
   const sharedPath = rootRequire.resolve("shell-quote");
-  expect(codegenRequire.resolve("shell-quote")).toBe(sharedPath);
   expect(editorRequire.resolve("shell-quote")).toBe(sharedPath);
 
   const args = [
@@ -73,70 +66,6 @@ test("both consumers resolve the shared reader and retain ordinary argument roun
     "",
   ];
   expect(shellQuote.parse(shellQuote.quote(args))).toEqual(args);
-});
-
-test("the repository's local SDL generates without configured shell hooks", async () => {
-  expect(codegenConfig.schema).toBe("generated/graphql/schema.ts");
-  expect(Object.hasOwn(codegenConfig, "hooks")).toBe(false);
-  const configuredOutput =
-    codegenConfig.generates["generated/graphql/types.ts"];
-  if (
-    typeof configuredOutput !== "object" ||
-    configuredOutput === null ||
-    Array.isArray(configuredOutput)
-  ) {
-    throw new Error("Expected the configured TypeScript output");
-  }
-  expect(Object.hasOwn(configuredOutput, "hooks")).toBe(false);
-
-  const output = path.join(temporaryRoot(), "output types.ts");
-  const { generate } = await import("@graphql-codegen/cli");
-  const generated: { filename: string; content: string }[] = await generate(
-    {
-      ...codegenConfig,
-      cwd: repoRoot,
-      silent: true,
-      generates: { [output]: configuredOutput },
-    },
-    false,
-  );
-
-  expect(generated.map((file) => file.filename)).toEqual([output]);
-  expect(generated[0].content).toContain("export type Query");
-  expect(childProcess.exec).not.toHaveBeenCalled();
-});
-
-test("Codegen quotes an ordinary output path before passing a string hook to exec", async () => {
-  const root = temporaryRoot();
-  const schema = path.join(root, "local schema.graphql");
-  const output = path.join(root, "output types.ts");
-  writeFileSync(schema, "type Query { greeting: String! }\n");
-  const child = new EventEmitter() as childProcess.ChildProcess;
-  vi.mocked(childProcess.exec).mockImplementation((...args) => {
-    const callback = args.at(-1);
-    if (typeof callback === "function") callback(null, "", "");
-    return child;
-  });
-  syncBuiltinESMExports();
-
-  const { generate } = await import("@graphql-codegen/cli");
-  await generate({
-    cwd: repoRoot,
-    schema,
-    silent: true,
-    generates: { [output]: { plugins: ["typescript"] } },
-    hooks: { beforeOneFileWrite: ["consumer-compatibility-fixture"] },
-  });
-
-  expect(childProcess.exec).toHaveBeenCalledTimes(1);
-  const command = vi.mocked(childProcess.exec).mock.calls[0][0];
-  expect(shellQuote.parse(command)).toEqual([
-    "consumer-compatibility-fixture",
-    output,
-  ]);
-  expect(readFileSync(output, "utf8")).toContain(
-    "greeting: Scalars['String']['output']",
-  );
 });
 
 test.each([
