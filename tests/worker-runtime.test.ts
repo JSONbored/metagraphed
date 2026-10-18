@@ -1506,6 +1506,34 @@ describe("Worker runtime", () => {
     }
   });
 
+  test("raw comparison declines malformed containers and envelopes carrying legacy capital", async () => {
+    const capital = { total_stake_tao: 123, apy_estimate: 0.5 };
+    for (const data of [
+      { validators: capital },
+      { validators: [null, capital] },
+      { validators: [[capital]] },
+      { data: [capital] },
+      { data: { validators: capital } },
+      [capital],
+    ]) {
+      for (const network of ["", "finney/"]) {
+        const response = await handleRequest(
+          new Request(`https://metagraph.sh/metagraph/${network}compare/validators.json`),
+          {
+            METAGRAPH_ARCHIVE: {
+              get: async () => ({ json: async () => data }),
+            },
+          } as unknown as Env,
+          {},
+        );
+        assert.equal(response.status, 503);
+        const body = await response.json();
+        assert.equal(body.error.code, "artifact_principal_unavailable");
+        assert.equal(Object.hasOwn(body, "validators"), false);
+      }
+    }
+  });
+
   test("generic principal-sensitive route variants cannot revive stored or cached capital", async () => {
     const previousCaches = globalWithCaches.caches;
     let cacheReads = 0;

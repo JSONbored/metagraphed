@@ -624,7 +624,7 @@ test.each([false, true])("history strips only existing financial point fields wi
     validator_permit: false,
   };
   const sparse = { snapshot_date: "2026-10-16", total_emission_tao: null };
-  const history = { take_u16: 11796, points: [point, sparse, null] };
+  const history = { take_u16: 11796, points: [point, sparse] };
   const body = wrapped ? { data: history, meta: { source: "capture" } } : history;
   const expected = {
     ...history,
@@ -635,7 +635,7 @@ test.each([false, true])("history strips only existing financial point fields wi
       rewards_per_1000_alpha: null,
       stake_share: null,
       dividend_efficiency: null,
-    }, sparse, null],
+    }, sparse],
   };
   const { result, before, after } = await readValidatorPayload(
     `/api/v1/testnet/validators/${VALIDATOR_HOTKEY}/history?window=30d`,
@@ -680,8 +680,8 @@ test("the capital guard stays scoped to the neurons flag", async () => {
 test.each([
   { path: "/api/v1/validators", body: {}, decline: true },
   { path: "/api/v1/validators/operators", body: { operators: [null, {}] }, decline: true },
-  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, body: { points: null }, decline: false },
-  { path: "/api/v1/compare/validators", body: { validators: null }, decline: false },
+  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, body: { points: null }, decline: true },
+  { path: "/api/v1/compare/validators", body: { validators: null }, decline: true },
 ])("missing collections do not become fabricated measurements on $path", async ({ path, body, decline }) => {
   const { result, before, after } = await readValidatorPayload(path, body);
   assert.deepEqual(result, decline ? null : body);
@@ -932,5 +932,42 @@ test("the reusable normalizer has no fallback counter side effects", () => {
   assert.equal(detail.total_stake_tao, 12);
   assert.equal(currentDataApiTierFallbackGeneration(), before);
   const comparison = { validators: [null, {}], generated_at: "comparison-clock" };
-  assert.deepEqual(normalizeNeuronCapitalForRoute("/api/v1/compare/validators", comparison), comparison);
+  assert.equal(normalizeNeuronCapitalForRoute("/api/v1/compare/validators", comparison), null);
+});
+
+test.each([
+  { path: `/api/v1/accounts/${VALIDATOR_HOTKEY}/portfolio`, key: "positions" },
+  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, key: "points" },
+  { path: "/api/v1/compare/validators", key: "validators" },
+  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}`, key: "subnets" },
+])("malformed complete collections decline without leaking capital on $path", async ({ path, key }) => {
+  const capital = { total_stake_tao: 123, apy_estimate: 0.5, stake_alpha: 42, yield: 0.2 };
+  for (const collection of [null, false, 7, "unknown", capital, [null], [false], [[capital]]]) {
+    const payload = { [key]: collection, captured_at: "independent-clock" };
+    for (const body of [payload, { data: payload, meta: { source: "capture" } }]) {
+      const original = structuredClone(body);
+      const { result, before, after } = await readValidatorPayload(path, body);
+      assert.equal(result, null);
+      assert.equal(after, before + 1);
+      assert.deepEqual(body, original);
+    }
+  }
+});
+
+test.each([
+  "/api/v1/accounts",
+  "/api/v1/accounts/directory",
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}/portfolio`,
+  "/api/v1/validators",
+  "/api/v1/validators/operators",
+  `/api/v1/validators/${VALIDATOR_HOTKEY}`,
+  `/api/v1/validators/${VALIDATOR_HOTKEY}/history`,
+  "/api/v1/compare/validators",
+])("malformed top-level arrays and envelopes cannot bypass capital policy on %s", async (path) => {
+  const capital = { total_stake_tao: 123, apy_estimate: 0.5 };
+  for (const body of [[capital], { data: [capital] }, { data: null }, { data: 123 }]) {
+    const { result, before, after } = await readValidatorPayload(path, body);
+    assert.equal(result, null);
+    assert.equal(after, before + 1);
+  }
 });

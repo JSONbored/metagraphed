@@ -176,6 +176,10 @@ function hasLegacyValidatorCapital(value: unknown): boolean {
   );
 }
 
+function isRecordCollection(value: unknown): value is Record<string, unknown>[] {
+  return Array.isArray(value) && value.every((row) => asJsonObject(row) !== null);
+}
+
 /**
  * Normalize a flat artifact or response envelope without source reads or side
  * effects. The caller supplies its matched canonical API route template.
@@ -188,7 +192,9 @@ export function normalizeNeuronCapitalForRoute(
 ): Record<string, unknown> | null {
   const policy = NEURON_CAPITAL_POLICIES.get(canonicalRoutePath);
   if (policy === undefined) return body;
+  if (asJsonObject(body) === null) return null;
   const wrapped = asJsonObject(body.data);
+  if (Object.hasOwn(body, "data") && wrapped === null) return null;
   const payload = wrapped ?? body;
   if (policy === "account-list") {
     // Both the page and its nested membership slices may already be capped by
@@ -201,6 +207,7 @@ export function normalizeNeuronCapitalForRoute(
   if (policy === "portfolio") {
     // The portfolio carries the full hotkey membership, so it can preserve
     // observations while removing unsupported capital and principal ratios.
+    if (!isRecordCollection(payload.positions)) return null;
     const guarded = unavailableAccountPortfolioCapital(payload);
     return wrapped ? { ...body, data: guarded } : guarded;
   }
@@ -248,6 +255,12 @@ export function normalizeNeuronCapitalForRoute(
     return legacy ? null : body;
   }
   if (policy === "validator-detail") {
+    if (
+      Object.hasOwn(payload, "subnets") &&
+      !isRecordCollection(payload.subnets)
+    ) {
+      return null;
+    }
     const guarded = {
       ...payload,
       ...unavailableValidatorCapital(),
@@ -258,40 +271,34 @@ export function normalizeNeuronCapitalForRoute(
     };
     return wrapped ? { ...body, data: guarded } : guarded;
   }
-  if (policy === "validator-history" && Array.isArray(payload.points)) {
+  if (policy === "validator-history") {
+    if (!isRecordCollection(payload.points)) return null;
     const guarded = {
       ...payload,
-      points: payload.points.map((value) => {
-        const point = asJsonObject(value);
-        if (point === null) return value;
-        return unavailableValidatorHistoryCapital(point);
-      }),
+      points: payload.points.map(unavailableValidatorHistoryCapital),
     };
     return wrapped ? { ...body, data: guarded } : guarded;
   }
-  if (policy === "validator-comparison" && Array.isArray(payload.validators)) {
-    const unavailable = unavailableValidatorCapital();
-    const guarded = {
-      ...payload,
-      validators: payload.validators.map((value) => {
-        const validator = asJsonObject(value);
-        if (validator === null) return value;
-        const comparison = { ...validator };
-        for (const field of [
-          "total_stake_tao",
-          "apy_estimate",
-          "apy_estimate_eligible_subnet_count",
-        ]) {
-          if (Object.hasOwn(comparison, field)) {
-            comparison[field] = unavailable[field];
-          }
+  // Comparison is the remaining policy after the seven handlers above.
+  if (!isRecordCollection(payload.validators)) return null;
+  const unavailable = unavailableValidatorCapital();
+  const guarded = {
+    ...payload,
+    validators: payload.validators.map((validator) => {
+      const comparison = { ...validator };
+      for (const field of [
+        "total_stake_tao",
+        "apy_estimate",
+        "apy_estimate_eligible_subnet_count",
+      ]) {
+        if (Object.hasOwn(comparison, field)) {
+          comparison[field] = unavailable[field];
         }
-        return comparison;
-      }),
-    };
-    return wrapped ? { ...body, data: guarded } : guarded;
-  }
-  return body;
+      }
+      return comparison;
+    }),
+  };
+  return wrapped ? { ...body, data: guarded } : guarded;
 }
 
 function canonicalNeuronRoute(request: Request): string {
