@@ -52,4 +52,3 @@ export async function writeChainDetailD1(
   }
   return results;
 }
-

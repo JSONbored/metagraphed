@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, lstatSync } from "node:fs";
 
 const base = "4411b7cba04221610f989e74a479380f85e17ed6";
 const sources = new Map([
@@ -11,6 +11,38 @@ const sources = new Map([
 ]);
 const tests = ["tests/chain-detail-d1.test.ts", "tests/chain-detail-native-payloads.test.ts"];
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+
+if (process.argv[2] === "--verify-uploaded") {
+  const root = "atomic-artifact-readback";
+  const walk = (path: string): string[] => readdirSync(path).flatMap((name) => {
+    const file = path + "/" + name;
+    const meta = lstatSync(file);
+    assert.equal(meta.isSymbolicLink(), false);
+    return meta.isDirectory() ? walk(file) : [file.slice(root.length + 1)];
+  });
+  const expected = [...sources.keys(), ...tests, "atomic-payload-reports/source-receipt.json"].sort();
+  assert.deepEqual(walk(root).sort(), expected);
+  const receiptPath = "atomic-payload-reports/source-receipt.json";
+  const downloaded = readFileSync(root + "/" + receiptPath, "utf8");
+  assert.equal(downloaded, readFileSync(receiptPath, "utf8"));
+  const receipt = JSON.parse(downloaded);
+  assert.equal(receipt.base_commit, base);
+  assert.equal(receipt.production_actions, false);
+  assert.deepEqual(Object.keys(receipt.files).sort(), [...sources.keys(), ...tests].sort());
+  for (const [path, hash] of Object.entries(receipt.files)) {
+    assert.equal(digest(readFileSync(root + "/" + path, "utf8")), hash);
+    assert.equal(digest(readFileSync(path, "utf8")), hash);
+  }
+  assert.equal(receipt.baseline.failed, 2);
+  assert.equal(receipt.baseline.passed, 1);
+  assert.equal(receipt.candidate.failed, 0);
+  assert.equal(receipt.candidate.passed, 25);
+  console.log(JSON.stringify({ phase: "persisted-artifact-readback",
+    exact_members: expected.length, source_hashes_match: true,
+    receipt_matches_generated_bytes: true, production_actions: false }));
+  process.exit(0);
+}
+
 const candidates = new Map([...sources.keys()].map((path) => [path, readFileSync(path, "utf8")]));
 const baselines = new Map<string, string>();
 for (const [path, expected] of sources) {

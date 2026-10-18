@@ -114,4 +114,3 @@ export async function writeNativePayload(
     throw new Error("Native chain detail payload conflict");
   return prefix + "d1";
 }
-

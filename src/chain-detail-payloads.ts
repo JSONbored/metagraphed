@@ -175,4 +175,3 @@ export async function restoreChainDetailPayloads(
   }
   return output;
 }
-

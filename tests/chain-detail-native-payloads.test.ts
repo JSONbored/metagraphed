@@ -258,22 +258,55 @@ test("inline native writes preserve BOM and replay without any storage binding",
 });
 
 test("planned native chunks remain unpublished until the enclosing transaction commits", async () => {
-  const f = fixture(), bytes = new Uint8Array(1_490_001).fill(7), h = hash(bytes);
+  const f = fixture(),
+    bytes = new Uint8Array(1_490_001).fill(7),
+    h = hash(bytes);
   const plan: ProducerStatement[] = [];
   try {
-    const ref = await writeNativePayload(null, h, bytes.length, bytes, "raw", plan);
+    const ref = await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      bytes,
+      "raw",
+      plan,
+    );
     assert.match(ref, /:raw:d1$/);
     assert.equal(plan.length, 3);
-    assert.equal(f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!.n, 0);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      0,
+    );
     const store = createD1Store(f.db as unknown as D1StoreBinding);
     await store.transaction(plan);
-    assert.deepEqual(await readNativePayload(f.env, h, bytes.length, "d1"), bytes);
+    assert.deepEqual(
+      await readNativePayload(f.env, h, bytes.length, "d1"),
+      bytes,
+    );
     const replay: ProducerStatement[] = [];
-    assert.equal(await writeNativePayload(null, h, bytes.length, bytes, "raw", replay), ref);
+    assert.equal(
+      await writeNativePayload(null, h, bytes.length, bytes, "raw", replay),
+      ref,
+    );
     await store.transaction(replay);
-    assert.equal(f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!.n, 2);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      2,
+    );
     const inline: ProducerStatement[] = [];
-    assert.match(await writeNativePayload(null, hash(new Uint8Array([1])), 1, new Uint8Array([1]), "raw", inline), /inline:AQ==$/);
+    assert.match(
+      await writeNativePayload(
+        null,
+        hash(new Uint8Array([1])),
+        1,
+        new Uint8Array([1]),
+        "raw",
+        inline,
+      ),
+      /inline:AQ==$/,
+    );
     assert.deepEqual(inline, []);
   } finally {
     f.sql.close();
@@ -281,37 +314,85 @@ test("planned native chunks remain unpublished until the enclosing transaction c
 });
 
 test("conflicting planned chunk bytes abort the complete enclosing transaction", async () => {
-  const f = fixture(), bytes = new Uint8Array(140000), h = hash(bytes);
+  const f = fixture(),
+    bytes = new Uint8Array(140000),
+    h = hash(bytes);
   try {
     await writeNativePayload(f.env, h, bytes.length, bytes, "raw");
-    const before = f.sql.prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks").all();
+    const before = f.sql
+      .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+      .all();
     f.sql.exec("CREATE TABLE business_marker(value TEXT NOT NULL)");
     const plan: ProducerStatement[] = [];
-    await writeNativePayload(null, h, bytes.length, new Uint8Array(140000).fill(1), "raw", plan);
-    plan.unshift({ text: "INSERT INTO business_marker VALUES (?)", values: ["must rollback"] });
-    await assert.rejects(createD1Store(f.db as unknown as D1StoreBinding).transaction(plan), /NOT NULL/);
-    assert.equal(f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n, 0);
-    assert.deepEqual(f.sql.prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks").all(), before);
+    await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      new Uint8Array(140000).fill(1),
+      "raw",
+      plan,
+    );
+    plan.unshift({
+      text: "INSERT INTO business_marker VALUES (?)",
+      values: ["must rollback"],
+    });
+    await assert.rejects(
+      createD1Store(f.db as unknown as D1StoreBinding).transaction(plan),
+      /NOT NULL/,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n,
+      0,
+    );
+    assert.deepEqual(
+      f.sql
+        .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+        .all(),
+      before,
+    );
   } finally {
     f.sql.close();
   }
 });
 
 test("extra stored parts abort planned publication without modifying original chunks", async () => {
-  const f = fixture(), bytes = new Uint8Array(140000), h = hash(bytes);
+  const f = fixture(),
+    bytes = new Uint8Array(140000),
+    h = hash(bytes);
   try {
     await writeNativePayload(f.env, h, bytes.length, bytes, "raw");
-    f.sql.prepare("INSERT INTO chain_detail_payload_chunks VALUES (?,1,'AA==')").run(h);
-    const before = f.sql.prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part").all();
+    f.sql
+      .prepare("INSERT INTO chain_detail_payload_chunks VALUES (?,1,'AA==')")
+      .run(h);
+    const before = f.sql
+      .prepare(
+        "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part",
+      )
+      .all();
     f.sql.exec("CREATE TABLE business_marker(value TEXT NOT NULL)");
     const plan: ProducerStatement[] = [];
     await writeNativePayload(null, h, bytes.length, bytes, "raw", plan);
-    plan.unshift({ text: "INSERT INTO business_marker VALUES (?)", values: ["must rollback"] });
-    await assert.rejects(createD1Store(f.db as unknown as D1StoreBinding).transaction(plan), /CHECK/);
-    assert.equal(f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n, 0);
-    assert.deepEqual(f.sql.prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part").all(), before);
+    plan.unshift({
+      text: "INSERT INTO business_marker VALUES (?)",
+      values: ["must rollback"],
+    });
+    await assert.rejects(
+      createD1Store(f.db as unknown as D1StoreBinding).transaction(plan),
+      /CHECK/,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n,
+      0,
+    );
+    assert.deepEqual(
+      f.sql
+        .prepare(
+          "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part",
+        )
+        .all(),
+      before,
+    );
   } finally {
     f.sql.close();
   }
 });
-
