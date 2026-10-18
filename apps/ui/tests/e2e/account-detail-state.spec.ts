@@ -71,7 +71,11 @@ test.describe("account detail query states", () => {
     await Promise.all(completedReads);
     await expect(positions.locator(".mg-dt-skeleton")).toHaveCount(0);
     await expect(counterparties).not.toHaveAttribute("aria-busy", "true");
-    await expect(page.getByRole("link", { name: /Trishool/i })).toBeVisible();
+    await expect(positions.getByRole("link", { name: "Apex", exact: true })).toBeVisible();
+    await expect(positions.getByRole("link", { name: "Apex", exact: true })).toHaveAttribute(
+      "href",
+      "/subnets/1",
+    );
   });
 
   test("keeps unavailable account records actionable rather than calling them empty", async ({
@@ -132,6 +136,7 @@ test.describe("account detail query states", () => {
         contentType: "application/json",
         headers: { "access-control-allow-origin": "*" },
         body: JSON.stringify({
+          ok: true,
           data: {
             ss58: SS58,
             captured_at: "2026-07-05T00:00:00Z",
@@ -183,6 +188,7 @@ test.describe("account detail query states", () => {
         contentType: "application/json",
         headers: { "access-control-allow-origin": "*" },
         body: JSON.stringify({
+          ok: true,
           data: {
             ss58: SS58,
             captured_at: null,

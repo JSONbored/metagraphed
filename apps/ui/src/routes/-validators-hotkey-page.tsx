@@ -254,6 +254,9 @@ export function ValidatorDetailPage() {
             <p className="max-w-prose text-13 text-ink-muted">
               {VALIDATOR_PRINCIPAL_UNAVAILABLE} Historical capital and yield charts are also
               unavailable. Membership weights are shown per subnet without a currency unit.
+              Native emission uses each subnet's own units: TAO on Root and native alpha on
+              other subnets. Those units are not interchangeable. Trust, dividends and permits
+              describe operation, not an investment return.
             </p>
           }
         />
@@ -270,7 +273,7 @@ export function ValidatorDetailPage() {
               rowHref={(row) => `/subnets/${row.netuid}`}
               link={RouterLink}
               source="validator-subnet"
-              paginate={false}
+              pageSize={25}
               mobile="cards"
               dense
               storageKey="validator-memberships-columns"
