@@ -1490,23 +1490,11 @@ jobs:
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         run: npm run test:e2e --workspace=apps/ui
 
-      # The e2e server is a LOCAL `wrangler dev` on this runner (playwright.config.ts's
-      # webServer), not a deployed Worker -- so when it dies there is nothing in the
-      # Cloudflare dashboard to read, and the only record is the log file wrangler
-      # names on its way out.
-      #
-      # Without this the failure is undiagnosable. Observed three times across main
-      # and a feature branch: wrangler prints a bare `✘ [ERROR]` with an EMPTY body,
-      # the process exits ~20 page-loads in, and every subsequent navigation fails
-      # ERR_EMPTY_RESPONSE -> ERR_CONNECTION_REFUSED. The reported test is just
-      # whichever route was in flight, which is why it looks like a different
-      # "overflow" failure each run. The actual reason goes to this file and dies
-      # with the runner.
-      #
       # A flaky test can make this step green after its retry. Retain the first
-      # failure's error-context and server logs too: #12741's successful retry
-      # otherwise discarded the evidence needed to distinguish an interrupted
-      # asset request from a page bug. This changes neither assertions nor retries.
+      # failure's native report and error-context too: #12741's successful retry
+      # otherwise discarded evidence of an interrupted asset request. This changes
+      # neither assertions nor retries. Raw Wrangler debug logs can include local
+      # proxy authentication data and must stay outside the uploaded artifact.
       - name: Pin e2e diagnostic receipt
         if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
         run: |
@@ -1550,13 +1538,12 @@ jobs:
           }, null, 2) + "\n");
           NODE
 
-      - name: Upload e2e server + report diagnostics
+      - name: Upload e2e report diagnostics
         if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ui-e2e-diagnostics
           path: |
-            ~/.config/.wrangler/logs/*.log
             apps/ui/playwright-report/**
             apps/ui/test-results/**
           retention-days: 7
