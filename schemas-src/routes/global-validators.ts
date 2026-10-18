@@ -49,7 +49,7 @@ const GlobalValidatorSubnetSchema = z
       .number()
       .min(0)
       .describe(
-        "This row's emission on the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field. Renamed from `emission_tao` in #10514.",
+        "This row's observed emission on the subnet named by the sibling `netuid`. It remains independent of the legacy voting-weight field and does not establish investment yield. Renamed from `emission_tao` in #10514.",
       ),
     validator_trust: z.number().nullable(),
   })

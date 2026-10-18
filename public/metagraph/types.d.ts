@@ -2333,7 +2333,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. */
+        /** @description Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
         get: operations["domains"];
         put?: never;
         post?: never;
@@ -2350,7 +2350,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). */
+        /** @description Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
         get: operations["domainSummary"];
         put?: never;
         post?: never;
@@ -2369,7 +2369,7 @@ export interface paths {
         };
         /**
          * List per-subnet validator and economic metrics
-         * @description List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
+         * @description List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is the legacy price share descending. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.
          */
         get: operations["economics"];
         put?: never;
@@ -2387,7 +2387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
+        /** @description Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the legacy snapshot values. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold. */
         get: operations["economicsTrends"];
         put?: never;
         post?: never;
@@ -4131,7 +4131,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. */
+        /** @description Fetch one subnet's emission-pipeline series. One subnet's stored pipeline inputs and legacy price share OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted pipeline inputs alongside its legacy emission_share daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
         get: operations["subnetEmissionPipelineHistory"];
         put?: never;
         post?: never;
@@ -7722,6 +7722,7 @@ export interface components {
             subnets: {
                 economics?: {
                     alpha_price_tao?: number | null;
+                    /** @description Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
                     emission_share?: number | null;
                     miner_count?: number;
                     miner_readiness?: number | null;
@@ -8251,6 +8252,7 @@ export interface components {
             netuids: number[];
             schema_version: number;
             subnet_count: number;
+            /** @description Sum of available legacy emission_share values for member subnets; this does not re-normalize the stored denominator. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
             total_emission_share: number | null;
             /** @description This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. The economics tier carries a price for every subnet, so a member without one is a data defect and is excluded from the total. */
             total_stake_tao: number | null;
@@ -8312,6 +8314,7 @@ export interface components {
                 alpha_price_tao_weighted?: number | null;
                 alpha_price_usd_median?: number | null;
                 alpha_price_usd_weighted?: number | null;
+                /** @description Arithmetic mean of available legacy emission_share values for the day. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
                 mean_emission_share?: number | null;
                 miner_count?: number | null;
                 snapshot_date: string;
@@ -8425,7 +8428,7 @@ export interface components {
                 distance_to_bar: number | null;
                 /** @description PUBLISHED, NOT INFERRED. A subnet far enough below the bar has its gated share underflow to exactly 0, so an enabled-but-deeply-gated subnet and a disabled one both read final_share: 0 -- this flag is the only thing that separates them. */
                 emission_enabled: boolean;
-                /** @description Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received. */
+                /** @description Reconstructed v440 Stage-1 price share over the eligible non-root set at chain_state.block. This is distinct from the artifact-normalized emission_share on economics and legacy snapshot routes. It is not final TAO emission; inspect final_share and verification.verified. */
                 emission_share: number | null;
                 /** @description Stage 7, measured: the TAO that reached the subnet by chain buys instead. */
                 excess_tao: number | null;
@@ -9732,6 +9735,8 @@ export interface components {
             /** @enum {string} */
             order?: "asc" | "desc";
             returned: number;
+            /** @description Present only for page_snapshot paging. Echo as page_snapshot on subsequent pages; a changed collection or query requires a restart. */
+            snapshot?: string;
             sort?: string | null;
             total: number;
         };
@@ -9769,6 +9774,7 @@ export interface components {
             captured_at: string | null;
             day: string;
             emission_enabled: boolean | null;
+            /** @description Stored beside pipeline inputs; pipeline_block does not certify this value against that block's runtime eligible set. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
             emission_share: number | null;
             /** @description Chain buys. */
             excess_tao: number | null;
@@ -9936,6 +9942,7 @@ export interface components {
                     completeness_delta?: number | null;
                     completeness_score?: number | null;
                     emission_enabled?: boolean | null;
+                    /** @description Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
                     emission_share?: number | null;
                     grade?: string | null;
                     latency_ms?: number | null;
@@ -10016,6 +10023,10 @@ export interface components {
         ResponseMeta: {
             artifact_path?: string;
             cache?: components["schemas"]["CacheProfile"];
+            catalog_paging?: {
+                /** @enum {string} */
+                reason: "catalog_changed" | "catalog_budget_exceeded" | "catalog_unavailable";
+            };
             contract_version: string;
             /** @description Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness. */
             generated_at?: string | null;
@@ -11635,6 +11646,7 @@ export interface components {
             alpha_price_usd?: number;
             block?: number | null;
             emission_enabled?: boolean | null;
+            /** @description Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
             emission_share?: number | null;
             excess_tao?: number | null;
             first_emission_block?: number | null;
@@ -13152,6 +13164,7 @@ export interface components {
                 alpha_price_tao?: number | null;
                 completeness_score?: number | null;
                 date: string;
+                /** @description Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
                 emission_share?: number | null;
                 endpoint_count?: number | null;
                 miner_count?: number | null;
@@ -14398,6 +14411,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -14408,6 +14424,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14515,6 +14532,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -14525,6 +14545,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14643,6 +14664,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -14653,6 +14677,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14771,6 +14796,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -14781,6 +14809,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -14914,6 +14943,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -14924,6 +14956,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15073,6 +15106,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15083,6 +15119,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15225,6 +15262,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15235,6 +15275,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15347,6 +15388,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15357,6 +15401,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15479,6 +15524,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15489,6 +15537,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15626,6 +15675,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15636,6 +15688,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15780,6 +15833,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15790,6 +15846,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -15919,6 +15976,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -15929,6 +15989,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16047,6 +16108,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16057,6 +16121,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16178,6 +16243,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16188,6 +16256,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16353,6 +16422,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16363,6 +16435,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16479,6 +16552,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16489,6 +16565,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16605,6 +16682,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16615,6 +16695,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16763,6 +16844,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16773,6 +16857,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -16904,6 +16989,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -16914,6 +17002,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17055,6 +17144,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17065,6 +17157,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17202,6 +17295,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17212,6 +17308,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17353,6 +17450,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17363,6 +17463,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17485,6 +17586,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17495,6 +17599,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17636,6 +17741,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17646,6 +17754,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17783,6 +17892,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17793,6 +17905,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -17930,6 +18043,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -17940,6 +18056,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18065,6 +18182,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18075,6 +18195,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18211,6 +18332,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18221,6 +18345,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18362,6 +18487,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18372,6 +18500,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18506,6 +18635,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18516,6 +18648,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18657,6 +18790,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18667,6 +18803,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18790,6 +18927,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18800,6 +18940,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -18919,6 +19060,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -18929,6 +19073,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19007,6 +19152,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -19097,6 +19244,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19107,6 +19257,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19216,6 +19367,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19226,6 +19380,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19338,6 +19493,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19348,6 +19506,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19498,6 +19657,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19508,6 +19670,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19638,6 +19801,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19648,6 +19814,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19769,6 +19936,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19779,6 +19949,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -19882,6 +20053,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -19892,6 +20066,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20021,6 +20196,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20031,6 +20209,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20139,6 +20318,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20149,6 +20331,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20265,6 +20448,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -20324,6 +20509,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20334,6 +20522,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20690,6 +20879,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20700,6 +20892,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20807,6 +21000,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20817,6 +21013,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -20935,6 +21132,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -20945,6 +21145,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21052,6 +21253,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21062,6 +21266,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21163,6 +21368,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21173,6 +21381,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21299,6 +21508,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21309,6 +21521,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21455,6 +21668,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21465,6 +21681,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21582,6 +21799,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21592,6 +21812,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21697,6 +21918,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21707,6 +21931,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21823,6 +22048,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21833,6 +22061,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -21979,6 +22208,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -21989,6 +22221,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22118,6 +22351,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22128,6 +22364,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22240,6 +22477,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22250,6 +22490,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22374,6 +22615,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22384,6 +22628,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22528,6 +22773,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22538,6 +22786,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22664,6 +22913,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22674,6 +22926,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22794,6 +23047,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22804,6 +23060,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -22920,6 +23177,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -22930,6 +23190,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23051,6 +23312,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23061,6 +23325,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23195,6 +23460,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23205,6 +23473,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23318,6 +23587,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23328,6 +23600,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23454,6 +23727,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23464,6 +23740,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23577,6 +23854,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23587,6 +23867,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23718,6 +23999,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23728,6 +24012,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23841,6 +24126,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23851,6 +24139,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -23978,6 +24267,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -23988,6 +24280,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24106,6 +24399,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24116,6 +24412,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24223,6 +24520,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24233,6 +24533,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24358,6 +24659,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24368,6 +24672,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24491,6 +24796,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24501,6 +24809,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24628,6 +24937,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24638,6 +24950,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24768,6 +25081,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24778,6 +25094,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -24891,6 +25208,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -24901,6 +25221,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25023,6 +25344,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25033,6 +25357,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25106,6 +25431,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "callable_count" | "completeness_score" | "example_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -25178,6 +25505,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25188,6 +25518,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25340,6 +25671,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25350,6 +25684,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25474,6 +25809,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25484,6 +25822,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25590,6 +25929,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25600,6 +25942,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25707,6 +26050,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25717,6 +26063,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -25872,6 +26219,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -25882,6 +26232,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26022,6 +26373,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26032,6 +26386,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26142,6 +26497,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26152,6 +26510,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26272,6 +26631,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26282,6 +26644,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26417,6 +26780,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26427,6 +26793,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26568,6 +26935,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26578,6 +26948,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26758,6 +27129,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26768,6 +27142,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -26850,6 +27225,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -26899,6 +27276,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -26909,6 +27289,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27031,6 +27412,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27041,6 +27425,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27156,6 +27541,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27166,6 +27554,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27284,6 +27673,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27294,6 +27686,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27456,6 +27849,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27466,6 +27862,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27611,6 +28008,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27621,6 +28021,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27734,6 +28135,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27744,6 +28148,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -27857,6 +28262,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -27867,6 +28275,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28037,6 +28446,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28047,6 +28459,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28231,6 +28644,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28241,6 +28657,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28375,6 +28792,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28385,6 +28805,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28521,6 +28942,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28531,6 +28955,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28671,6 +29096,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28681,6 +29109,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28847,6 +29276,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28857,6 +29289,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -28980,6 +29413,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -28990,6 +29426,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29107,6 +29544,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29117,6 +29557,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29238,6 +29679,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29248,6 +29692,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29350,6 +29795,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29360,6 +29808,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29461,6 +29910,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29471,6 +29923,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29582,6 +30035,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29592,6 +30048,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29748,6 +30205,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29758,6 +30218,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -29891,6 +30352,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -29901,6 +30365,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30035,6 +30500,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30045,6 +30513,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30195,6 +30664,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30205,6 +30677,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30338,6 +30811,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30348,6 +30824,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30467,6 +30944,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30477,6 +30957,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30615,6 +31096,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30625,6 +31109,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30759,6 +31244,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30769,6 +31257,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -30903,6 +31392,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -30913,6 +31405,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31061,6 +31554,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31071,6 +31567,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31193,6 +31690,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31203,6 +31703,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31336,6 +31837,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31346,6 +31850,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31485,6 +31990,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31495,6 +32003,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31633,6 +32142,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31643,6 +32155,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31774,6 +32287,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31784,6 +32300,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -31900,6 +32417,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -31910,6 +32430,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32041,6 +32562,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32051,6 +32575,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32162,6 +32687,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32172,6 +32700,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32315,6 +32844,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32325,6 +32857,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32398,6 +32931,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "path" | "contract_version";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -32485,6 +33020,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32495,6 +33033,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32628,6 +33167,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32638,6 +33180,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32718,6 +33261,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -32833,6 +33378,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32843,6 +33391,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -32968,6 +33517,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -32978,6 +33530,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33095,6 +33648,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33105,6 +33661,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33182,6 +33739,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33238,6 +33797,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33248,6 +33810,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33365,6 +33928,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33375,6 +33941,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33489,6 +34056,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33499,6 +34069,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33577,6 +34148,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33664,6 +34237,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33674,6 +34250,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33789,6 +34366,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33799,6 +34379,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -33885,6 +34466,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -33953,6 +34536,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -33963,6 +34549,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34047,6 +34634,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34137,6 +34726,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34147,6 +34739,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34241,6 +34834,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34317,6 +34912,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34327,6 +34925,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34407,6 +35006,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -34456,6 +35057,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34466,6 +35070,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34568,6 +35173,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34578,6 +35186,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34687,6 +35296,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34697,6 +35309,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34844,6 +35457,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34854,6 +35470,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -34982,6 +35599,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -34992,6 +35612,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -36646,6 +37267,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "captured_at" | "netuid" | "surface_id";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -36697,6 +37320,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -36707,6 +37333,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -36943,6 +37570,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -36953,6 +37583,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37030,6 +37661,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37081,6 +37714,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37091,6 +37727,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37223,6 +37860,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37233,6 +37873,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37314,6 +37955,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37362,6 +38005,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37372,6 +38018,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37499,6 +38146,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37509,6 +38159,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37589,6 +38240,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37648,6 +38301,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37658,6 +38314,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37782,6 +38439,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37792,6 +38452,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -37869,6 +38530,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -37923,6 +38586,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -37933,6 +38599,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38050,6 +38717,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38060,6 +38730,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38169,6 +38840,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38179,6 +38853,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38279,6 +38954,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38289,6 +38967,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38411,6 +39090,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38421,6 +39103,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38547,6 +39230,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38557,6 +39243,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38665,6 +39352,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38675,6 +39365,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -38758,6 +39449,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -38931,6 +39624,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -38941,6 +39637,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39023,6 +39720,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39069,6 +39768,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39079,6 +39781,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39213,6 +39916,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39223,6 +39929,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39315,6 +40022,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39399,6 +40108,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39409,6 +40121,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39520,6 +40233,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39530,6 +40246,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39657,6 +40374,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39667,6 +40387,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39748,6 +40469,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -39820,6 +40543,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39830,6 +40556,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -39953,6 +40680,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -39963,6 +40693,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40044,6 +40775,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40118,6 +40851,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -40128,6 +40864,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40217,6 +40954,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40336,6 +41075,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -40346,6 +41088,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40441,6 +41184,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40569,6 +41314,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -40579,6 +41327,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40658,6 +41407,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40708,6 +41459,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -40718,6 +41472,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -40803,6 +41558,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -40917,6 +41674,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -40927,6 +41687,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41026,6 +41787,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41082,6 +41845,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41092,6 +41858,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41176,6 +41943,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41267,6 +42036,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41277,6 +42049,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41422,6 +42195,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41432,6 +42208,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41568,6 +42345,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41578,6 +42358,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41694,6 +42475,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41704,6 +42488,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41782,6 +42567,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41825,6 +42612,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41835,6 +42625,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -41913,6 +42704,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -41953,6 +42746,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -41963,6 +42759,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42068,6 +42865,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42078,6 +42878,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42191,6 +42992,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42201,6 +43005,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42332,6 +43137,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42342,6 +43150,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42458,6 +43267,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42468,6 +43280,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42543,6 +43356,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -42592,6 +43407,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42602,6 +43420,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -42718,6 +43537,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -42774,6 +43595,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -42784,6 +43608,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43138,6 +43963,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43148,6 +43976,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43257,6 +44086,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43267,6 +44099,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43372,6 +44205,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43382,6 +44218,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43493,6 +44330,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43503,6 +44343,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43583,6 +44424,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -43640,6 +44483,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43650,6 +44496,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43826,6 +44673,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43836,6 +44686,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -43945,6 +44796,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -43955,6 +44809,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44075,6 +44930,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44085,6 +44943,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44275,6 +45134,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44285,6 +45147,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44415,6 +45278,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44425,6 +45291,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44551,6 +45418,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44561,6 +45431,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44689,6 +45560,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44699,6 +45573,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44827,6 +45702,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -44837,6 +45715,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -44934,6 +45813,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45018,6 +45899,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45028,6 +45912,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45176,6 +46061,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45186,6 +46074,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45308,6 +46197,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45318,6 +46210,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45398,6 +46291,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45450,6 +46345,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45460,6 +46358,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45537,6 +46436,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45668,6 +46569,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45678,6 +46582,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45761,6 +46666,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -45828,6 +46735,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45838,6 +46748,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -45961,6 +46872,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -45971,6 +46885,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46088,6 +47003,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46098,6 +47016,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46218,6 +47137,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46228,6 +47150,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46338,6 +47261,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46348,6 +47274,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46469,6 +47396,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46479,6 +47409,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46614,6 +47545,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46624,6 +47558,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46740,6 +47675,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46750,6 +47688,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46871,6 +47810,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46881,6 +47823,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -46987,6 +47930,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -46997,6 +47943,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47113,6 +48060,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47123,6 +48073,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47232,6 +48183,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47242,6 +48196,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47359,6 +48314,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47369,6 +48327,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47495,6 +48454,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47505,6 +48467,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47658,6 +48621,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47668,6 +48634,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47799,6 +48766,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47809,6 +48779,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -47930,6 +48901,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -47940,6 +48914,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48071,6 +49046,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -48081,6 +49059,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48424,6 +49403,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -48434,6 +49416,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48574,6 +49557,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -48584,6 +49570,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48716,6 +49703,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -48726,6 +49716,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -48834,6 +49825,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -48844,6 +49838,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49006,6 +50001,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49016,6 +50014,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49125,6 +50124,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49135,6 +50137,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49577,6 +50580,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49587,6 +50593,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49696,6 +50703,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49706,6 +50716,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49811,6 +50822,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49821,6 +50835,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -49930,6 +50945,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -49940,6 +50958,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50094,6 +51113,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50104,6 +51126,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50213,6 +51236,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50223,6 +51249,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50331,6 +51358,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50341,6 +51371,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50450,6 +51481,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50460,6 +51494,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50572,6 +51607,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50582,6 +51620,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50691,6 +51730,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50701,6 +51743,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50816,6 +51859,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50826,6 +51872,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -50907,6 +51954,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -50961,6 +52010,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -50971,6 +52023,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51049,6 +52102,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "date" | "completeness_score" | "surface_count" | "endpoint_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -51098,6 +52153,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51108,6 +52166,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51232,6 +52291,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51242,6 +52304,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51384,6 +52447,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51394,6 +52460,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51529,6 +52596,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51539,6 +52609,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51689,6 +52760,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51699,6 +52773,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51821,6 +52896,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51831,6 +52909,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -51945,6 +53024,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -51955,6 +53037,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52087,6 +53170,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52097,6 +53183,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52243,6 +53330,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52253,6 +53343,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52362,6 +53453,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52372,6 +53466,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52497,6 +53592,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52507,6 +53605,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52640,6 +53739,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52650,6 +53752,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52764,6 +53867,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52774,6 +53880,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -52921,6 +54028,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -52931,6 +54041,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53068,6 +54179,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53078,6 +54192,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53181,6 +54296,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53191,6 +54309,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53274,6 +54393,8 @@ export interface operations {
                 limit?: number;
                 /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
+                /** @description Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging. */
+                page_snapshot?: string;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
@@ -53319,6 +54440,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53329,6 +54453,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53442,6 +54567,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53452,6 +54580,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53603,6 +54732,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53613,6 +54745,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53770,6 +54903,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53780,6 +54916,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -53898,6 +55035,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -53908,6 +55048,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54040,6 +55181,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -54050,6 +55194,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54223,6 +55368,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -54233,6 +55381,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54351,6 +55500,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -54361,6 +55513,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },
@@ -54466,6 +55619,9 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "observed_through": "2026-06-01T00:00:00.000Z",
@@ -54476,6 +55632,7 @@ export interface operations {
                      *           "next_cursor": 1,
                      *           "order": "asc",
                      *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "sort": "example",
                      *           "total": 1
                      *         },

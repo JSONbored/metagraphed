@@ -123,7 +123,7 @@ const AccountPositionHistoryPointSchema = z
     emission_tao: z
       .number()
       .describe(
-        "This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure.",
+        "This row's observed emission in the subnet named by the sibling `netuid`, alpha-denominated outside root under the legacy on-chain name (#2550/#8945). netuid 0 (root) is genuine TAO. It remains independent of the legacy voting-weight field and does not establish investment yield. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure.",
       ),
     rank: z.number().nullable(),
     trust: z.number().nullable(),

@@ -17,6 +17,10 @@
 //     handleRequest()+createLocalArtifactEnv() for all 5 pilot routes (see
 //     tests/zod-schemas.test.ts).
 import { z } from "zod";
+import {
+  collectionSnapshotSchema,
+  CatalogPagingFailureSchema,
+} from "./query-params.ts";
 
 export const CacheProfileSchema = z.enum(["short", "standard", "static"]);
 export type CacheProfile = z.infer<typeof CacheProfileSchema>;
@@ -35,6 +39,12 @@ export const PaginationMetaSchema = z
     cursor: z.int().min(0),
     limit: z.int().min(0),
     next_cursor: z.int().min(0).nullable(),
+    snapshot: collectionSnapshotSchema()
+      .optional()
+      .describe(
+        "Present only for page_snapshot paging. Echo as page_snapshot on " +
+          "subsequent pages; a changed collection or query requires a restart.",
+      ),
     order: z.enum(["asc", "desc"]).optional(),
     returned: z.int().min(0),
     sort: z.string().nullable().optional(),
@@ -107,6 +117,7 @@ export const GenericArtifactSchema = z.lazy(() => ArtifactBaseSchema);
 
 export const ResponseMetaSchema = z
   .object({
+    catalog_paging: CatalogPagingFailureSchema.optional(),
     artifact_path: z.string().optional(),
     cache: CacheProfileSchema.optional(),
     contract_version: z.string(),

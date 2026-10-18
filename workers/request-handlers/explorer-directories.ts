@@ -9,6 +9,13 @@ import {
   readCurrentValidatorDirectory,
 } from "../../src/explorer-directory-current.ts";
 import { metagraphMeta } from "../responses.ts";
+
+// Both entry points must skip bodies cached before capital became unavailable.
+export const ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL =
+  "account-holder-directory-principal-unavailable";
+export const VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL =
+  "validator-operator-directory-principal-unavailable";
+
 export async function handleValidatorOperatorDirectory(
   request: Request,
   env: Env,

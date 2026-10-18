@@ -23,6 +23,11 @@
 import { z } from "zod";
 import { DAY_PATTERN, MAX_OFFSET } from "../workers/request-params.ts";
 import { ENVELOPE_SECTIONS } from "./artifact-sections.ts";
+import {
+  CATALOG_MATCHED_ROWS_MAX,
+  CATALOG_HASH_BYTES_MAX,
+  CATALOG_HASH_DEPTH_MAX,
+} from "../src/route-limits.ts";
 
 /**
  * A subnet id. Bounded because it genuinely is: `netuid` is a u16 on chain, and
@@ -444,6 +449,46 @@ export const numericCursorSchema = () =>
         "shift it, so prefer the keyset cursor where a tool offers one.",
     )
     .meta({ examples: [0, 100] });
+
+const COLLECTION_SNAPSHOT_PATTERN = "v1\\.[0-9a-f]{64}";
+
+/** Representation controls that are not MCP arguments. */
+export const REST_ONLY_QUERY_PARAMETERS: readonly string[] = ["format"];
+/** GraphQL retains its existing cursor contract. */
+export const GRAPHQL_EXCLUDED_QUERY_PARAMETERS: readonly string[] = [
+  ...REST_ONLY_QUERY_PARAMETERS,
+  "page_snapshot",
+];
+
+export const CatalogPagingFailureSchema = z
+  .object({
+    reason: z.enum([
+      "catalog_changed",
+      "catalog_budget_exceeded",
+      "catalog_unavailable",
+    ]),
+  })
+  .strict();
+
+/** A content identity, not a retained snapshot or an authorization token. */
+export const collectionSnapshotSchema = () =>
+  z.string().regex(new RegExp(`^${COLLECTION_SNAPSHOT_PATTERN}$`));
+
+export const collectionSnapshotParamSchema = () =>
+  z
+    .string()
+    .regex(new RegExp(`^(start|${COLLECTION_SNAPSHOT_PATTERN})$`))
+    .describe(
+      "Opt into checked collection paging: send `start` at cursor 0, then " +
+        "echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or " +
+        "follow the returned Link URLs. A changed result or query returns " +
+        "REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; " +
+        "restart from cursor 0. This does not retain old " +
+        "rows or continue across mutations. Checked requests bypass page caches. " +
+        `At most ${CATALOG_MATCHED_ROWS_MAX} matching rows, ${CATALOG_HASH_BYTES_MAX} canonical bytes and ${CATALOG_HASH_DEPTH_MAX} nesting levels can be verified; narrow filters on catalog_budget_exceeded. ` +
+        "Omit for legacy offset paging.",
+    )
+    .meta({ examples: ["start"] });
 /**
  * The `block_number.event_index` pagination cursor.
  *

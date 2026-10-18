@@ -1,5 +1,13 @@
 # ADR 0023 — v440 emission pipeline: what we publish, what `emission_share` means, and the reconstruction rule
 
+> Correction for #11552: the legacy economics artifact and snapshot
+> `emission_share` normalize all reported alpha prices, including priced Root.
+> They do not retain historical eligibility inputs and are not certified
+> runtime Stage 1. Statements below equating the legacy value with Stage 1
+> record the original proposal and are superseded by this correction.
+> The live pipeline's reconstructed field remains a separate value over its
+> pinned eligible non-root set. Wire names and legacy arithmetic do not change.
+
 - **Status:** Proposed
 - **Date:** 2026-07-30
 - **Relates to:** #8741 (this ADR), #8739 (the epic it scopes), #8740 (the source

@@ -18,6 +18,8 @@ import {
   numericCursorSchema,
   offsetSchema,
   orderSchema,
+  collectionSnapshotSchema,
+  collectionSnapshotParamSchema,
 } from "../query-params.ts";
 import { MAX_LIMIT } from "../../workers/request-params.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
@@ -254,6 +256,14 @@ export const McpListPageFields = {
     .describe("Null on the last page -- absence of a next page, not zero."),
   sort: z.string().nullable(),
   order: z.string().nullable(),
+};
+
+/** Opt-in controls/receipt for the classified endpoint and surface catalogs. */
+export const McpCatalogPageControls = {
+  page_snapshot: collectionSnapshotParamSchema().optional(),
+};
+export const McpCatalogPageFields = {
+  snapshot: collectionSnapshotSchema().optional(),
 };
 
 /**

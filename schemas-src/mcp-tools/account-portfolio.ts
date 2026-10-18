@@ -33,10 +33,9 @@ export type GetAccountPortfolioInput = z.infer<
 // fix: the copy declared `positions` as a bare open array and
 // `stake_concentration` as a bare open object, so an agent was told nothing
 // about either. The route schema types every position and carries the
-// descriptions that matter for reading the numbers correctly -- that the totals
-// are genuine TAO converted through each subnet's SPOT price rather than a sum
-// of incomparable alpha, and that the valuation can lag the live economics tier
-// by up to ~24h because it is marked from the daily rollup.
+// descriptions that distinguish emission observations from unavailable
+// principal, yields and concentration. Only the independent emission total
+// uses each subnet's price; voting weight is never a holdings valuation.
 //
 // Verified against production before the switch: the live tool's response
 // satisfies this schema.

@@ -55,4 +55,3 @@ export function nominatorRail(
     .sort((a, b) => b.value - a.value)
     .slice(0, limit);
 }
-

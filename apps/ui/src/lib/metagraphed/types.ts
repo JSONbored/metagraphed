@@ -73,6 +73,7 @@ export type SurfaceKind = ApiSchema<"SurfaceKind">;
 export type Classification = ApiSchema<"Classification">;
 
 export interface ApiPagination {
+  snapshot?: string;
   collection?: string;
   total?: number;
   returned?: number;
@@ -84,6 +85,7 @@ export interface ApiPagination {
 }
 
 export interface ApiMeta {
+  catalog_paging?: ApiComponents["schemas"]["ResponseMeta"]["catalog_paging"];
   artifact_path?: string;
   cache?: string;
   contract_version?: string;
@@ -1360,32 +1362,30 @@ export interface AccountPrometheus {
 }
 
 /**
- * One neuron position a wallet holds on a subnet, from
- * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
- * Score cells are null when absent; `yield` is null with zero stake.
+ * One registered neuron membership from /api/v1/accounts/{ss58}/portfolio.
+ * Legacy monetary names do not qualify quantity provenance: capital and
+ * capital-derived returns remain unavailable, including in old cached data.
  */
 export interface PortfolioPosition {
   netuid: number;
   uid: number | null;
   role: "validator" | "miner" | null;
   active?: boolean;
-  /** ALPHA on every non-root subnet (metagraphed#10514). The card's own
-   * `total_stake_tao` IS priced TAO -- summing these will not reach it. */
+  /** Unavailable: neuron voting weight does not establish native principal. */
   stake_alpha: number | null;
   emission_alpha: number | null;
   rank: number | null;
   trust: number | null;
   incentive: number | null;
   dividends: number | null;
-  /** Emission-per-stake return (a fraction; null with zero stake). */
+  /** Unavailable without an authoritative principal denominator. */
   yield: number | null;
   [key: string]: unknown;
 }
 
 /**
- * Stake-concentration lens over a wallet's per-subnet stake (Gini / normalized
- * HHI / Nakamoto coefficient), from the portfolio's `stake_concentration`. Null
- * when the wallet holds no stake (a cold or all-zero distribution).
+ * Legacy capital-concentration shape. The portfolio normalizer always returns
+ * null because its neuron memberships do not establish wallet holdings.
  */
 export interface PortfolioConcentration {
   holders: number | null;
@@ -1395,12 +1395,6 @@ export interface PortfolioConcentration {
   [key: string]: unknown;
 }
 
-/**
- * A wallet's cross-subnet neuron portfolio from /api/v1/accounts/{ss58}/portfolio:
- * every position's economics + yield plus wallet-level aggregates (totals, role
- * counts, overall return, stake concentration). Richer than the registrations-only
- * AccountSubnets footprint.
- */
 export interface AccountStakeMovesSubnet {
   netuid: number;
   movements: number;
@@ -1537,13 +1531,18 @@ export interface AccountStakeFlow {
   subnets: AccountStakeFlowSubnet[];
   [key: string]: unknown;
 }
+/**
+ * Registered-hotkey memberships, scores, emission and source counts/clocks.
+ * A bounded positions array cannot supply missing whole-result counts.
+ */
 export interface AccountPortfolio {
   ss58: string;
   captured_at?: string | null;
-  subnet_count: number;
-  position_count: number;
-  validator_count: number;
-  miner_count: number;
+  subnet_count: number | null;
+  position_count: number | null;
+  validator_count: number | null;
+  miner_count: number | null;
+  /** Unavailable without an authoritative principal quantity contract. */
   total_stake_tao: number | null;
   total_emission_tao: number | null;
   overall_yield: number | null;
@@ -2791,7 +2790,8 @@ export interface GlobalValidatorSubnet {
   uid: number;
   /** Legacy UI key for membership voting weight, not TAO or delegated principal. */
   stake_tao: number | null;
-  emission_tao: number;
+  /** Legacy UI key for subnet-native emission; unknown remains null. */
+  emission_tao: number | null;
   validator_trust: number | null;
 }
 
@@ -2877,28 +2877,26 @@ export interface GlobalValidators<Validator = GlobalValidator> {
 }
 
 /**
- * #8252: one row of the site-wide accounts leaderboard (GET /api/v1/accounts)
- * — the collection-level counterpart to /api/v1/validators, generalized to
- * every currently-registered hotkey (miners included), not just
- * validator_permit=1 rows. Shares the validator row's aggregate shape; it
- * carries no take/APY/nominator fields (those are validator-only concepts).
+ * One registered-hotkey row (GET /api/v1/accounts), including miners.
+ * Membership counts and emission are independent of the unavailable capital
+ * fields. A hotkey row does not aggregate a coldkey's wallet holdings.
  */
 export interface AccountListEntry {
   hotkey: string;
   coldkey: string | null;
-  coldkey_count: number;
-  subnet_count: number;
-  uid_count: number;
-  validator_count: number;
-  miner_count: number;
-  total_stake_tao: number;
-  total_emission_tao: number;
+  coldkey_count: number | null;
+  subnet_count: number | null;
+  uid_count: number | null;
+  validator_count: number | null;
+  miner_count: number | null;
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
   stake_dominance: number | null;
   latest_captured_at: string | null;
   latest_block_number: number | null;
 }
 
-/** Compact account row carried by the website's single-snapshot directory. */
+/** Compact registered-hotkey row in the website's single-snapshot directory. */
 export type AccountHolderDirectoryEntry = Pick<
   AccountListEntry,
   | "hotkey"
@@ -2910,14 +2908,14 @@ export type AccountHolderDirectoryEntry = Pick<
   | "stake_dominance"
 >;
 
-/** All fixed account rankings needed by /accounts, derived together. */
+/** Independent reach/emission rankings; the legacy stake ranking stays empty. */
 export interface AccountHolderDirectory {
   schema_version?: number;
   captured_at?: string;
   block_number?: number;
-  account_count: number;
-  limit: number;
-  priced_registered_stake_tao: number;
+  account_count: number | null;
+  limit: number | null;
+  priced_registered_stake_tao: number | null;
   rankings: {
     stake: AccountHolderDirectoryEntry[];
     emission: AccountHolderDirectoryEntry[];

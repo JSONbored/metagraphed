@@ -5,18 +5,10 @@
 // /api/v1/validators — but is NOT validator-scoped: every registered hotkey
 // appears here, miners included, with a role breakdown per entry.
 //
-// Scope limitation vs the competitor benchmark this issue cites (Account /
-// Free / Delegated / Total / Last-Update): "Free" (spendable TAO balance) and
-// therefore "Total" (Free + Delegated) are NOT derivable from account_events
-// or neurons — this codebase has no balance-tracking tier; the only place
-// balance is known at all is a per-address LIVE RPC query
-// (loadAccountBalance, src/account-balance.ts), which doesn't scale to a
-// full-table leaderboard (one RPC round trip per row). total_stake_tao below
-// is the "Delegated" analog: for a validator hotkey this is the FULL stake
-// pool delegated to it by every nominator (migrations/0007_neurons.sql's own
-// stake_tao definition); for a miner hotkey it's typically just its own small
-// self-stake. Named total_stake_tao, not delegated_tao, to stay accurate
-// rather than imply a guarantee this data doesn't back for every row.
+// This neuron-derived directory does not establish wallet balances or capital.
+// The metagraph's stake_tao is voting weight (alpha + tao_weight * root), not
+// independent principal. Neither a subnet price nor a root membership establishes
+// holdings value. Keep capital keys null, including for observed zero weight.
 //
 // Also distinct from account_events: this leaderboard deliberately only
 // covers CURRENTLY-registered hotkeys (neurons is a live snapshot, overwritten
@@ -78,18 +70,8 @@ function nonNegativeInt(value: unknown): number | null {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
-// for why, and for the overflow guard that lived in only one of the nine copies
-// this used to be.
-
-function round(value: number | null, dp = 6): number | null {
-  /* v8 ignore next -- defensive: this module's one caller (applyStakeDominance)
-     only ever divides a nonNegativeOrZero() result by an already-Number.isFinite-
-     and->0-checked denominator, so this branch is provably unreachable today. */
-  if (value == null || !Number.isFinite(value)) return null;
-  const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
-}
+// Emission sums run in rao-integer BigInt space, not float space -- see
+// src/lib/rao.ts for why, and for the shared overflow guard.
 
 function primaryColdkey(coldkeys: Map<string, number>): string | null {
   const ranked = [...coldkeys.entries()].sort(
@@ -101,10 +83,8 @@ function primaryColdkey(coldkeys: Map<string, number>): string | null {
 export interface AccountsListSubnetEntry {
   netuid: number;
   uid: number;
-  /** ALPHA on every non-root subnet, and named so (#10514). The sibling
-   * `total_stake_tao` on the entry above IS priced TAO, and two fields sharing
-   * a `_tao` suffix across different units is the trap this rename removes. */
-  stake_alpha: number;
+  /** Unavailable: metagraph voting weight does not establish alpha principal. */
+  stake_alpha: number | null;
   emission_alpha: number;
 }
 
@@ -114,7 +94,6 @@ interface AccountAccumulator {
   netuids: Set<number>;
   uidCount: number;
   validatorCount: number;
-  stakeTotalRao: bigint;
   emissionTotalRao: bigint;
   latestCapturedAt: number | null;
   latestBlockNumber: number | null;
@@ -129,12 +108,30 @@ export interface AccountsListEntry {
   uid_count: number;
   validator_count: number;
   miner_count: number;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   latest_captured_at: string | null;
   latest_block_number: number | null;
   subnets: AccountsListSubnetEntry[];
-  stake_dominance?: number | null;
+  stake_dominance: number | null;
+}
+
+/** A legacy page's financial selection cannot be repaired after truncation. */
+export function hasLegacyAccountsListCapital(value: unknown): boolean {
+  const data = recordOrNull(value);
+  if (!data || !Array.isArray(data.accounts)) return true;
+  return data.accounts.some((entry) => {
+    const account = recordOrNull(entry);
+    return (
+      !account ||
+      account.total_stake_tao !== null ||
+      account.stake_dominance !== null ||
+      !Array.isArray(account.subnets) ||
+      account.subnets.some(
+        (subnet) => recordOrNull(subnet)?.stake_alpha !== null,
+      )
+    );
+  });
 }
 
 // A finite non-negative price, or null. Zero is a legal price (a fully
@@ -149,13 +146,7 @@ function nullablePositivePrice(
 
 function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
   const subnets = entry.subnets
-    .sort(
-      (a, b) =>
-        b.stake_alpha - a.stake_alpha ||
-        b.emission_alpha - a.emission_alpha ||
-        a.netuid - b.netuid ||
-        a.uid - b.uid,
-    )
+    .sort((a, b) => a.netuid - b.netuid || a.uid - b.uid)
     .slice(0, ACCOUNTS_LIST_SUBNET_LIMIT);
   return {
     hotkey: entry.hotkey,
@@ -165,35 +156,13 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
     uid_count: entry.uidCount,
     validator_count: entry.validatorCount,
     miner_count: entry.uidCount - entry.validatorCount,
-    total_stake_tao: round9NonNegative(raoBigToTao(entry.stakeTotalRao)),
+    total_stake_tao: null,
+    stake_dominance: null,
     total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
     subnets,
   };
-}
-
-// Network-wide share of an account's total_stake_tao — the "how much of the
-// network's registered stake sits behind this one hotkey" figure. Sums the
-// already-rounded per-account totals (rao-precision, see buildAccountEntry),
-// mirroring buildGlobalValidators' applyStakeDominance exactly.
-function applyStakeDominance(
-  accounts: AccountsListEntry[],
-): AccountsListEntry[] {
-  const networkStakeRao = accounts.reduce(
-    (sum, entry) => sum + toRaoBig(entry.total_stake_tao),
-    0n,
-  );
-  const networkStakeTotal = raoBigToTao(networkStakeRao);
-  if (!(networkStakeTotal > 0) || !Number.isFinite(networkStakeTotal)) {
-    return accounts.map((entry) => ({ ...entry, stake_dominance: null }));
-  }
-  return accounts.map((entry) => ({
-    ...entry,
-    stake_dominance: round(
-      nonNegativeOrZero(entry.total_stake_tao) / networkStakeTotal,
-    ),
-  }));
 }
 
 const ACCOUNTS_LIST_SORT_FIELDS: Record<string, string> = {
@@ -251,7 +220,6 @@ export function buildAccountsSnapshot(
     const uid = nonNegativeInt(row?.uid);
     if (!hotkey || netuid == null || uid == null) continue;
 
-    const stake = nonNegativeOrZero(row?.stake_tao);
     const emission = nonNegativeOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     const capturedAt =
@@ -266,7 +234,6 @@ export function buildAccountsSnapshot(
         netuids: new Set(),
         uidCount: 0,
         validatorCount: 0,
-        stakeTotalRao: 0n,
         emissionTotalRao: 0n,
         latestCapturedAt: null,
         latestBlockNumber: null,
@@ -286,7 +253,6 @@ export function buildAccountsSnapshot(
     const price =
       netuid === 0 ? 1 : nullablePositivePrice(priceByNetuid.get(netuid));
     if (price != null) {
-      entry.stakeTotalRao += toRaoBig(stake * price);
       entry.emissionTotalRao += toRaoBig(emission * price);
     }
     if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
@@ -315,7 +281,7 @@ export function buildAccountsSnapshot(
     entry.subnets.push({
       netuid,
       uid,
-      stake_alpha: round9NonNegative(stake),
+      stake_alpha: null,
       emission_alpha: round9NonNegative(emission),
     });
   }
@@ -323,9 +289,7 @@ export function buildAccountsSnapshot(
   return {
     captured_at: toIso(latestCapturedAt),
     block_number: latestBlockNumber,
-    accounts: applyStakeDominance(
-      [...accountsByHotkey.values()].map(buildAccountEntry),
-    ),
+    accounts: [...accountsByHotkey.values()].map(buildAccountEntry),
   };
 }
 
@@ -358,6 +322,7 @@ export function buildAccountsList(
     ACCOUNTS_LIST_LIMIT_MAX,
   );
   const snapshot = buildAccountsSnapshot(rows, { priceByNetuid });
+  // Legacy financial sort names stay accepted; unavailable values tie by hotkey.
   const accounts = [...snapshot.accounts].sort(
     (a, b) =>
       accountSortValue(b, normalizedSort) -
@@ -394,12 +359,12 @@ export async function loadAccountsList(
   const [rows, priceByNetuid] = await Promise.all([
     runner(
       "SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, " +
-        "stake_tao, block_number, captured_at FROM neurons " +
+        "block_number, captured_at FROM neurons " +
         "WHERE hotkey IS NOT NULL " +
-        "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
+        "ORDER BY hotkey ASC, netuid ASC, uid ASC",
       [],
     ),
-    // #9051: TAO-price the cross-subnet totals from the snapshot stores mirror.
+    // #9051: retain the emission-only pricing from the snapshot stores mirror.
     loadStoreAlphaPricesByNetuid(runner),
   ]);
   return buildAccountsList(rows, { sort, limit, priceByNetuid });

@@ -345,7 +345,7 @@ import type {
 } from "./types";
 
 const STALE_SHORT = 30_000;
-const STALE_MED = 60_000;
+export const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
 
 const MAX_TRAJECTORY_POINTS = 104;
@@ -2840,49 +2840,32 @@ function normalizeAccountRegistration(raw: unknown): AccountRegistration | null 
   return registration.netuid != null || registration.uid != null ? registration : null;
 }
 
-// One cross-subnet neuron position (#3491). Strict on render fields — object/junk
-// economic cells coerce to null (never NaN or `[object Object]`), an unknown role
-// drops to null — and a row with no numeric netuid is discarded.
+// One recorded neuron membership. The legacy stake field can be voting weight;
+// neither a native-alpha principal nor a return denominator is established.
+// Use an allowlist so legacy capital aliases cannot survive normalization.
 export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | null {
   if (!isRecord(raw)) return null;
   const netuid = firstFiniteNumber(raw.netuid);
   if (netuid == null) return null;
   const role = firstString(raw.role);
   return {
-    ...(raw as object),
     netuid,
     uid: firstFiniteNumber(raw.uid) ?? null,
     role: role === "validator" || role === "miner" ? role : null,
     active: booleanValue(raw.active),
-    stake_alpha: firstFiniteNumber(raw.stake_alpha) ?? null,
+    stake_alpha: null,
     emission_alpha: firstFiniteNumber(raw.emission_alpha) ?? null,
     rank: firstFiniteNumber(raw.rank) ?? null,
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
-// The portfolio's stake-concentration lens (#3491).
-export function normalizePortfolioConcentration(raw: unknown): PortfolioConcentration | null {
-  if (!isRecord(raw)) return null;
-  const holders = firstFiniteNumber(raw.holders) ?? null;
-  const gini = firstFiniteNumber(raw.gini) ?? null;
-  const hhi_normalized = firstFiniteNumber(raw.hhi_normalized) ?? null;
-  const nakamoto_coefficient = firstFiniteNumber(raw.nakamoto_coefficient) ?? null;
-  // Cold / empty distribution: a zero-holder object, or one with no populated
-  // lens fields (e.g. `{}` or all-null), is not a real concentration card — the
-  // backend emits null there, and so do we (the ConcentrationMetrics
-  // null-when-empty contract). Guards a malformed body from rendering a non-null
-  // card built entirely from nulls.
-  if (
-    holders === 0 ||
-    (holders == null && gini == null && hhi_normalized == null && nakamoto_coefficient == null)
-  ) {
-    return null;
-  }
-  return { ...(raw as object), holders, gini, hhi_normalized, nakamoto_coefficient };
+// Capital concentration remains unavailable even in a finite legacy payload.
+export function normalizePortfolioConcentration(_raw: unknown): PortfolioConcentration | null {
+  return null;
 }
 
 function accountEventString(value: unknown): string | undefined {
@@ -3603,22 +3586,25 @@ export const accountPortfolioQuery = (ss58: string) =>
       });
       const d = isRecord(res.data) ? res.data : {};
       const positions = Array.isArray(d.positions)
-        ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
-            const normalized = normalizePortfolioPosition(position);
-            return normalized ? [normalized] : [];
-          })
+        ? d.positions
+            .flatMap((position) => {
+              const normalized = normalizePortfolioPosition(position);
+              return normalized ? [normalized] : [];
+            })
+            .sort((a, b) => a.netuid - b.netuid || (a.uid ?? -1) - (b.uid ?? -1))
+            .slice(0, MAX_ACCOUNT_POSITIONS)
         : [];
       return {
         data: {
           ss58: firstString(d.ss58) ?? ss58,
           captured_at: firstString(d.captured_at) ?? null,
-          subnet_count: firstFiniteNumber(d.subnet_count) ?? positions.length,
-          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
-          validator_count: firstFiniteNumber(d.validator_count) ?? 0,
-          miner_count: firstFiniteNumber(d.miner_count) ?? 0,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          position_count: firstFiniteNumber(d.position_count) ?? null,
+          validator_count: firstFiniteNumber(d.validator_count) ?? null,
+          miner_count: firstFiniteNumber(d.miner_count) ?? null,
+          total_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
-          overall_yield: firstFiniteNumber(d.overall_yield) ?? null,
+          overall_yield: null,
           stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
           positions,
         } as AccountPortfolio,
@@ -8458,7 +8444,10 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
     stake_tao:
       coerceFiniteNumber(Object.hasOwn(raw, "stake_alpha") ? raw.stake_alpha : raw.stake_tao) ??
       null,
-    emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
+    emission_tao:
+      coerceFiniteNumber(
+        Object.hasOwn(raw, "emission_alpha") ? raw.emission_alpha : raw.emission_tao,
+      ) ?? null,
     validator_trust:
       raw.validator_trust == null ? null : (coerceFiniteNumber(raw.validator_trust) ?? null),
   };
@@ -8985,10 +8974,8 @@ export const validatorOperatorDirectoryQuery = () =>
     staleTime: STALE_SHORT,
   });
 
-// #8252: site-wide accounts leaderboard -- the collection-level counterpart
-// to validatorsQuery above, generalized to every registered hotkey (miners
-// included) rather than just validator_permit=1 rows. Same aggregate row
-// shape minus the validator-only take/APY/nominator fields.
+// Registered-hotkey membership/emission directory. Numeric legacy capital
+// fields cannot establish principal, even when a snapshot clock is present.
 function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
   if (!isRecord(raw)) return null;
   const hotkey = firstString(raw.hotkey);
@@ -8996,14 +8983,14 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
   return {
     hotkey,
     coldkey: firstString(raw.coldkey) ?? null,
-    coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
-    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
-    uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
-    validator_count: coerceFiniteNumber(raw.validator_count) ?? 0,
-    miner_count: coerceFiniteNumber(raw.miner_count) ?? 0,
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
-    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
-    stake_dominance: coerceFiniteNumber(raw.stake_dominance) ?? null,
+    coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? null,
+    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? null,
+    uid_count: coerceFiniteNumber(raw.uid_count) ?? null,
+    validator_count: coerceFiniteNumber(raw.validator_count) ?? null,
+    miner_count: coerceFiniteNumber(raw.miner_count) ?? null,
+    total_stake_tao: null,
+    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? null,
+    stake_dominance: null,
     latest_captured_at: firstString(raw.latest_captured_at) ?? null,
     latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
   };
@@ -9037,11 +9024,11 @@ export function normalizeAccountHolderDirectory(raw: unknown): AccountHolderDire
     schema_version: coerceFiniteNumber(data.schema_version),
     captured_at: coerceString(data.captured_at),
     block_number: coerceFiniteNumber(data.block_number),
-    account_count: coerceFiniteNumber(data.account_count) ?? 0,
-    limit: coerceFiniteNumber(data.limit) ?? 0,
-    priced_registered_stake_tao: coerceFiniteNumber(data.priced_registered_stake_tao) ?? 0,
+    account_count: coerceFiniteNumber(data.account_count) ?? null,
+    limit: coerceFiniteNumber(data.limit) ?? null,
+    priced_registered_stake_tao: null,
     rankings: {
-      stake: normalizeRanking(rankings.stake),
+      stake: [],
       emission: normalizeRanking(rankings.emission),
       reach: normalizeRanking(rankings.reach),
     },
@@ -10092,7 +10079,7 @@ export function validateNextCursor(
 }
 
 /** Pages on the infinite query carry the validation flag for the UI. */
-type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
+export type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
 
 async function fetchInfinitePage<T>(
   path: string,
@@ -10199,29 +10186,6 @@ export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
     staleTime: STALE_SHORT,
   });
 
-/** Server-driven cursor-paginated subnets. */
-/** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("surfaces-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/surfaces",
-        "surfaces",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      // Normalize on the infinite-query path so provider_slug, curation_level
-      // (from authority), provider, last_verified_at, and the provider filter
-      // are populated — same mapping the non-paginated surfacesQuery applies.
-      return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
-    },
-    getNextPageParam,
-    staleTime: STALE_MED,
-  });
-
 function asString(v: unknown): string | undefined {
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
@@ -10296,7 +10260,7 @@ const UNREAD_ENDPOINT_FIELDS = [
   "pool_eligibility_reasons",
 ] as const;
 
-function normalizeEndpoint(raw: unknown): Endpoint {
+export function normalizeEndpoint(raw: unknown): Endpoint {
   if (!raw || typeof raw !== "object") return raw as Endpoint;
   const e = raw as Record<string, unknown>;
   const lean: Record<string, unknown> = { ...e };
@@ -10315,7 +10279,7 @@ function normalizeEndpoint(raw: unknown): Endpoint {
   } as Endpoint;
 }
 
-function normalizeSurface(raw: unknown): Surface {
+export function normalizeSurface(raw: unknown): Surface {
   if (!raw || typeof raw !== "object") return raw as Surface;
   const s = raw as Record<string, unknown>;
   return {
@@ -10409,25 +10373,6 @@ export const endpointsSummaryQuery = () =>
         },
       };
     },
-    staleTime: STALE_MED,
-  });
-
-/** Cursor-paginated endpoints, for the directory's own server-side facets. */
-export const endpointsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("endpoints-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/endpoints",
-        "endpoints",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      return { ...page, data: page.data.map(normalizeEndpoint) } as InfinitePage<Endpoint>;
-    },
-    getNextPageParam,
     staleTime: STALE_MED,
   });
 

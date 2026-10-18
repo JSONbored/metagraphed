@@ -11,11 +11,13 @@ import {
   edgeCardCache,
   cardKey,
   factsDigest,
-  handleEntityOgImage,
+  handleEntityOgImage as handleEntityCard,
   matchEntityCard,
   renderEntityMarkup,
   subnetFacts,
 } from "../src/og-entity-card.ts";
+import { resolveOgLogo } from "../src/og-logo-manifest.ts";
+import { logoManifestFixture } from "./helpers/og-logo-fixture.ts";
 
 const FALLBACK_PNG = readFileSync(
   new URL("../public/brand/og-fallback.png", import.meta.url),
@@ -41,7 +43,18 @@ const OK_ARTIFACT = async () => ({ ok: true, data: INDEX });
  * real `fetch`, where the outbound-fetch guard refuses them -- which happens to
  * exercise the right path, but by accident and only while that guard exists. */
 const NO_LOGO = async () => null;
-const PNG = new Uint8Array([137, 80, 78, 71]).buffer;
+const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
+const LOGO_MANIFEST = logoManifestFixture(PNG);
+const handleEntityOgImage: typeof handleEntityCard = (
+  request,
+  env,
+  url,
+  deps,
+) =>
+  handleEntityCard(request, env, url, {
+    logoManifest: LOGO_MANIFEST,
+    ...deps,
+  });
 
 describe("which paths are entity cards", () => {
   test("subnet and account paths match", () => {
@@ -550,6 +563,8 @@ describe("the logo is inlined, and only from our own cache", () => {
   const artifact = async () => ({ ok: true, data: INDEX });
 
   test("a logo on our cache is fetched and inlined", async () => {
+    const logo = resolveOgLogo(INDEX.subnets[0].logo_url, LOGO_MANIFEST);
+    assert.ok(logo.intent === "expected" && logo.qualified);
     let asked: string | null = null;
     let markup = "";
     await handleEntityOgImage(
@@ -561,7 +576,7 @@ describe("the logo is inlined, and only from our own cache", () => {
         readArtifact: artifact,
         fetchLogo: async (u) => {
           asked = u;
-          return new Uint8Array([1, 2, 3]).buffer;
+          return PNG;
         },
         render: async (m) => {
           markup = m;
@@ -569,8 +584,9 @@ describe("the logo is inlined, and only from our own cache", () => {
         },
       },
     );
-    assert.equal(asked, "https://metagraph.sh/logos/cache/x.png");
-    assert.ok(markup.includes("data:image/png;base64,"));
+    assert.equal(asked, logo.url);
+    const dataUri = `data:image/png;base64,${Buffer.from(PNG).toString("base64")}`;
+    assert.ok(markup.includes(dataUri));
   });
 
   test("a logo that will not load falls back to the mark, not to failure", async () => {
@@ -598,10 +614,8 @@ describe("the logo is inlined, and only from our own cache", () => {
     assert.ok(markup.includes(">64<"), "the netuid badge is drawn instead");
   });
 
-  test("the digest keys on the logo URL, not on its bytes", async () => {
-    // The URL is already content-addressed by the logo cache, so a new logo is
-    // a new URL. Hashing megabytes of PNG per request to learn the same thing
-    // would be absurd.
+  test("the facts digest remains stable while artwork is inlined", async () => {
+    // Qualified artwork also has its complete manifest identity in cardKey.
     const a = subnetFacts(INDEX, 64)!;
     const b = { ...a, logo: "data:image/png;base64,DIFFERENT" };
     assert.equal(factsDigest(a), factsDigest(b));

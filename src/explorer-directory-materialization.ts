@@ -6,7 +6,10 @@ import {
   KV_EXPLORER_DIRECTORIES_CURRENT,
   explorerDirectoriesSnapshotKey,
 } from "./kv-keys.ts";
-import type { buildAccountHolderDirectory } from "./account-holder-directory.ts";
+import {
+  hasLegacyAccountHolderCapital,
+  type buildAccountHolderDirectory,
+} from "./account-holder-directory.ts";
 import {
   hasLegacyValidatorOperatorCapital,
   type buildValidatorOperatorDirectory,
@@ -60,7 +63,9 @@ export function materializationFromUnknown(
   value: unknown,
 ): ExplorerDirectoryMaterialization | null {
   const parsed = ExplorerDirectoryMaterializationSchema.safeParse(value);
-  return parsed.success && !hasLegacyValidatorOperatorCapital(parsed.data.validators)
+  return parsed.success &&
+    !hasLegacyAccountHolderCapital(parsed.data.accounts) &&
+    !hasLegacyValidatorOperatorCapital(parsed.data.validators)
     ? parsed.data
     : null;
 }

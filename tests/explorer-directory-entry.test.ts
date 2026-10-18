@@ -8,7 +8,7 @@ import {
   EXPLORER_DIRECTORY_ENTRIES,
   handleDefaultExplorerDirectory,
 } from "../workers/explorer-directory-entry.ts";
-import { API_ROUTES } from "../src/contracts.ts";
+import { API_ROUTES, CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import {
@@ -32,7 +32,23 @@ function fixture() {
     ...buildAccountHolderDirectory([], { priceByNetuid: new Map() }),
     ...stamp,
   };
-  const validators = { ...buildValidatorOperatorDirectory(null), ...stamp };
+  const validators = {
+    ...buildValidatorOperatorDirectory({
+      validators: [
+        {
+          hotkey: "recorded-validator",
+          coldkey: "recorded-owner",
+          coldkey_count: 1,
+          subnet_count: 2,
+          uid_count: 2,
+          total_emission_tao: 4,
+          nominator_count: 3,
+          take: 0.18,
+        },
+      ],
+    }),
+    ...stamp,
+  };
   const values = new Map<string, unknown>([
     [KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT, accounts],
     [KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT, validators],
@@ -82,6 +98,7 @@ describe("default directory entry", () => {
         id: entry.id,
         artifact_path: entry.artifactTemplate,
       });
+      expect(entry.cacheLabel).toBe(`${entry.id}-principal-unavailable`);
     }
   });
 
@@ -147,58 +164,106 @@ describe("default directory entry", () => {
     expect(f.get).not.toHaveBeenCalled();
   });
 
-  test("shares the original cache key and advances to the next snapshot within the existing minute bound", async () => {
-    const f = fixture();
-    const cache = cacheFixture();
-    const first = await handleDefaultExplorerDirectory(request(), f.env, f.ctx);
-    expect(first!.headers.get("x-metagraph-cache")).toBe("miss");
-    await Promise.all(f.pending);
-    const general = await api.fetch(request(), f.env, f.ctx);
-    expect(general.headers.get("x-metagraph-cache")).toBe("hit");
-    expect(
-      f.get.mock.calls.filter(
-        ([key]) => key === KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
-      ),
-    ).toHaveLength(1);
-    const advanced = {
-      ...f.accounts,
-      captured_at: new Date(NOW + 60_000).toISOString(),
-      block_number: 8_983_010,
-    };
-    f.values.set(KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT, advanced);
-    vi.mocked(Date.now).mockReturnValue(NOW + 61_000);
-    const next = await handleDefaultExplorerDirectory(request(), f.env, f.ctx);
-    expect(next!.headers.get("x-metagraph-cache")).toBe("miss");
-    expect(await next!.json()).toMatchObject({ data: advanced });
-    expect(cache.match.mock.calls[0][0].url).not.toBe(
-      cache.match.mock.calls[2][0].url,
-    );
-  });
+  test.each(
+    EXPLORER_DIRECTORY_ENTRIES.flatMap((entry) =>
+      [123, 0].map((capital) => ({ entry, capital })),
+    ),
+  )(
+    "$entry.id skips legacy capital $capital and shares the corrected cache within the minute bound",
+    async ({ entry, capital }) => {
+      const f = fixture();
+      const cache = cacheFixture();
+      const account = entry.path === ACCOUNT_PATH;
+      const data = account ? f.accounts : f.validators;
+      const kvKey = account
+        ? KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT
+        : KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT;
+      const legacy = account
+        ? { ...f.accounts, priced_registered_stake_tao: capital }
+        : {
+            ...f.validators,
+            operators: f.validators.operators.map((operator) => ({
+              ...operator,
+              total_stake_tao: capital,
+              apy_estimate: capital,
+              stake_dominance: capital,
+            })),
+          };
+      const legacyKey =
+        `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+          CONTRACT_VERSION,
+        )}/${encodeURIComponent(`minute:${Math.floor(NOW / 60_000)}`)}/${entry.id}${entry.path}`;
+      cache.values.set(legacyKey, Response.json({ data: legacy }));
+      const first = await handleDefaultExplorerDirectory(
+        request(entry.path),
+        f.env,
+        f.ctx,
+      );
+      expect(first!.headers.get("x-metagraph-cache")).toBe("miss");
+      expect(await first!.json()).toMatchObject({ data });
+      await Promise.all(f.pending);
+      const general = await api.fetch(request(entry.path), f.env, f.ctx);
+      expect(general.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(await general.json()).toMatchObject({ data });
+      expect(await cache.values.get(legacyKey)!.json()).toEqual({ data: legacy });
+      expect(cache.match.mock.calls[0][0].url).toContain(
+        `/${entry.id}-principal-unavailable${entry.path}`,
+      );
+      expect(cache.put).toHaveBeenCalledTimes(1);
+      expect(f.get.mock.calls.filter(([key]) => key === kvKey)).toHaveLength(1);
+      const advanced = {
+        ...data,
+        captured_at: new Date(NOW + 60_000).toISOString(),
+        block_number: 8_983_010,
+      };
+      f.values.set(kvKey, advanced);
+      vi.mocked(Date.now).mockReturnValue(NOW + 61_000);
+      const next = await handleDefaultExplorerDirectory(
+        request(entry.path),
+        f.env,
+        f.ctx,
+      );
+      expect(next!.headers.get("x-metagraph-cache")).toBe("miss");
+      expect(await next!.json()).toMatchObject({ data: advanced });
+      expect(cache.match.mock.calls[0][0].url).not.toBe(
+        cache.match.mock.calls[2][0].url,
+      );
+    },
+  );
 
-  test("a cold HEAD retains the GET body in cache and conditional requests still return 304", async () => {
-    const f = fixture();
-    cacheFixture();
-    const head = await handleDefaultExplorerDirectory(
-      request(ACCOUNT_PATH, { method: "HEAD" }),
-      f.env,
-      f.ctx,
-    );
-    expect(head!.status).toBe(200);
-    expect(await head!.text()).toBe("");
-    await Promise.all(f.pending);
-    const get = await handleDefaultExplorerDirectory(request(), f.env, f.ctx);
-    expect(get!.headers.get("x-metagraph-cache")).toBe("hit");
-    expect(await get!.json()).toMatchObject({ data: f.accounts });
-    const conditional = await handleDefaultExplorerDirectory(
-      request(ACCOUNT_PATH, {
-        headers: { "if-none-match": head!.headers.get("etag")! },
-      }),
-      f.env,
-      f.ctx,
-    );
-    expect(conditional!.status).toBe(304);
-    expect(await conditional!.text()).toBe("");
-  });
+  test.each(EXPLORER_DIRECTORY_ENTRIES)(
+    "$id cold HEAD retains the GET body and conditional requests still return 304",
+    async (entry) => {
+      const f = fixture();
+      cacheFixture();
+      const head = await handleDefaultExplorerDirectory(
+        request(entry.path, { method: "HEAD" }),
+        f.env,
+        f.ctx,
+      );
+      expect(head!.status).toBe(200);
+      expect(await head!.text()).toBe("");
+      await Promise.all(f.pending);
+      const get = await handleDefaultExplorerDirectory(
+        request(entry.path),
+        f.env,
+        f.ctx,
+      );
+      expect(get!.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(await get!.json()).toMatchObject({
+        data: entry.path === ACCOUNT_PATH ? f.accounts : f.validators,
+      });
+      const conditional = await handleDefaultExplorerDirectory(
+        request(entry.path, {
+          headers: { "if-none-match": head!.headers.get("etag")! },
+        }),
+        f.env,
+        f.ctx,
+      );
+      expect(conditional!.status).toBe(304);
+      expect(await conditional!.text()).toBe("");
+    },
+  );
 
   test("an absent materialization uses the existing source-backed fallback", async () => {
     const f = fixture();

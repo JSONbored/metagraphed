@@ -10,6 +10,22 @@ import {
 import { deserializeOperatorRows } from "./validator-operators";
 
 describe("normalizeGlobalValidators", () => {
+  it.each([
+    { fields: { emission_alpha: 4.5, emission_tao: 999 }, expected: 4.5 },
+    { fields: { emission_alpha: 0, emission_tao: 999 }, expected: 0 },
+    { fields: { emission_alpha: null, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: undefined, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: NaN, emission_tao: 999 }, expected: null },
+    { fields: { emission_tao: 2.5 }, expected: 2.5 },
+    { fields: { emission_tao: 0 }, expected: 0 },
+    { fields: {}, expected: null },
+  ])("preserves native membership emission $fields", ({ fields, expected }) => {
+    const result = normalizeGlobalValidators({
+      validators: [{ hotkey: "5Hotkey", subnets: [{ netuid: 1, uid: 2, ...fields }] }],
+    });
+    expect(result.validators[0]?.subnets[0]?.emission_tao).toBe(expected);
+  });
+
   it("normalizes a representative global validators payload", () => {
     const out = normalizeGlobalValidators({
       schema_version: 1,

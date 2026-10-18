@@ -1,5 +1,10 @@
 // Per-route `limit` page-size ceilings, in one place (#9127).
 import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
+
+/** Checked catalog work, not page-size or silent truncation limits. */
+export const CATALOG_MATCHED_ROWS_MAX = 5_000;
+export const CATALOG_HASH_BYTES_MAX = 16 * 1024 * 1024;
+export const CATALOG_HASH_DEPTH_MAX = 64;
 //
 // Each of these numbers used to be stated three times: the constant the handler
 // enforces, the `maximum` the contract publishes, and the "(default N, max M)"

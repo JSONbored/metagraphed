@@ -16,6 +16,40 @@ var MetagraphedError = class extends Error {
 function isErrorEnvelope(body) {
   return typeof body === "object" && body !== null && body.ok === false;
 }
+function responseErrorCode(envelope) {
+  switch (envelope?.meta?.catalog_paging?.reason) {
+    case "catalog_changed":
+      return "catalog_restart_required";
+    case "catalog_budget_exceeded":
+      return "catalog_budget_exceeded";
+    case "catalog_unavailable":
+      return "artifact_unavailable";
+    default:
+      return envelope?.error?.code;
+  }
+}
+function nextPageCursor(page, query, state) {
+  const body = page;
+  const p = body?.meta?.pagination;
+  if (query.page_snapshot === void 0) return p?.next_cursor;
+  const fail = () => {
+    throw new MetagraphedError(
+      "Catalog page could not be verified. Restart results from the first page.",
+      409,
+      "catalog_restart_required"
+    );
+  };
+  const rows = typeof p?.collection === "string" ? body?.data?.[p.collection] : void 0;
+  const cursor = query.cursor === void 0 ? 0 : Number(query.cursor);
+  if (!p || !Array.isArray(rows) || typeof p.snapshot !== "string" || !/^v1[.][0-9a-f]{64}$/.test(p.snapshot) || query.page_snapshot !== "start" && p.snapshot !== query.page_snapshot || !Number.isSafeInteger(cursor) || cursor < 0 || query.page_snapshot === "start" && cursor !== 0 || p.cursor !== cursor || p.returned !== rows.length || !Number.isSafeInteger(p.total) || state.total !== void 0 && p.total !== state.total || state.collection !== void 0 && p.collection !== state.collection) return fail();
+  const total = p.total;
+  const end = cursor + rows.length;
+  if (total < end || (p.next_cursor === null ? end !== total : rows.length === 0 || p.next_cursor !== end || end >= total)) return fail();
+  query.page_snapshot = p.snapshot;
+  state.total = total;
+  state.collection = p.collection;
+  return p.next_cursor;
+}
 async function readJsonBody(response) {
   const text = await response.text();
   if (!text) {
@@ -57,6 +91,7 @@ async function metagraphedFetch(path, options = {}) {
   }
   const response = await fetch(url, {
     ...init,
+    ...url.searchParams.has("page_snapshot") ? { cache: "no-store" } : {},
     method: "GET",
     headers: {
       accept: "application/json",
@@ -64,13 +99,15 @@ async function metagraphedFetch(path, options = {}) {
     },
     signal: resolveSignal(signal, timeoutMs)
   });
+  if (url.searchParams.has("page_snapshot") && response.status === 304)
+    throw new MetagraphedError("Checked catalog requires a current response body. Restart results.", 304, "catalog_restart_required");
   const body = await readJsonBody(response);
   if (!response.ok) {
     const envelope = isErrorEnvelope(body) ? body : void 0;
     throw new MetagraphedError(
       envelope?.error?.message ?? `GET ${url.pathname} failed with status ${response.status}`,
       response.status,
-      envelope?.error?.code,
+      responseErrorCode(envelope),
       envelope
     );
   }
@@ -80,6 +117,7 @@ async function* metagraphedPaginate(path, options = {}) {
   const baseQuery = {
     ...options.query
   };
+  const state = {};
   let cursor = baseQuery.cursor;
   for (; ; ) {
     if (cursor !== void 0 && cursor !== null) {
@@ -89,8 +127,8 @@ async function* metagraphedPaginate(path, options = {}) {
       ...options,
       query: baseQuery
     });
+    const next = nextPageCursor(page, baseQuery, state);
     yield page;
-    const next = page?.meta?.pagination?.next_cursor;
     if (next === void 0 || next === null) {
       return;
     }
@@ -125,7 +163,7 @@ async function metagraphedRpc(network, request, options = {}) {
     throw new MetagraphedError(
       envelope?.error?.message ?? `RPC ${request.method} failed with status ${response.status}`,
       response.status,
-      envelope?.error?.code,
+      responseErrorCode(envelope),
       envelope
     );
   }
@@ -311,15 +349,16 @@ function createMetagraphedClient(clientOptions = {}) {
       pathParams,
       query
     );
+    const checked = url.searchParams.has("page_snapshot");
     let attempt = 0;
     let retriedUncachedNotModified = false;
     for (; ; ) {
       const requestHeaders = mergeRequestHeaders(clientOptions.headers, headers);
       const key = buildEtagCacheKey(url, requestHeaders);
-      const cached = !retriedUncachedNotModified && store ? store.get(key) : void 0;
+      const cached = !checked && !retriedUncachedNotModified && store ? store.get(key) : void 0;
       if (cached) {
         requestHeaders["if-none-match"] = cached.etag;
-      } else if (retriedUncachedNotModified) {
+      } else if (checked || retriedUncachedNotModified) {
         delete requestHeaders["if-none-match"];
         delete requestHeaders["if-modified-since"];
       }
@@ -327,6 +366,7 @@ function createMetagraphedClient(clientOptions = {}) {
       try {
         response = await fetchImpl(url, {
           ...init,
+          ...checked ? { cache: "no-store" } : {},
           method: "GET",
           headers: requestHeaders,
           signal: resolveSignal(signal, timeoutMs)
@@ -335,7 +375,7 @@ function createMetagraphedClient(clientOptions = {}) {
         if (signal && signal.aborted) {
           throw error;
         }
-        if (retry && attempt < retry.retries) {
+        if (!checked && retry && attempt < retry.retries) {
           await sleep(retryDelayMs(void 0, attempt, retry), signal);
           attempt += 1;
           continue;
@@ -343,6 +383,11 @@ function createMetagraphedClient(clientOptions = {}) {
         throw error;
       }
       if (response.status === 304) {
+        if (checked) throw new MetagraphedError(
+          "Checked catalog requires a current response body. Restart results.",
+          304,
+          "catalog_restart_required"
+        );
         if (cached) {
           return cached.body;
         }
@@ -355,7 +400,7 @@ function createMetagraphedClient(clientOptions = {}) {
         retriedUncachedNotModified = true;
         continue;
       }
-      if (retry && retry.statuses.includes(response.status) && attempt < retry.retries) {
+      if (!checked && retry && retry.statuses.includes(response.status) && attempt < retry.retries) {
         await sleep(retryDelayMs(response, attempt, retry), signal);
         attempt += 1;
         continue;
@@ -366,11 +411,11 @@ function createMetagraphedClient(clientOptions = {}) {
         throw new MetagraphedError(
           envelope?.error?.message ?? "GET " + url.pathname + " failed with status " + response.status,
           response.status,
-          envelope?.error?.code,
+          responseErrorCode(envelope),
           envelope
         );
       }
-      if (store) {
+      if (!checked && store) {
         const etag = response.headers.get("etag");
         if (etag) {
           store.set(key, { etag, body });
@@ -383,6 +428,7 @@ function createMetagraphedClient(clientOptions = {}) {
     const baseQuery = {
       ...options.query
     };
+    const state = {};
     let cursor = baseQuery.cursor;
     for (; ; ) {
       if (cursor !== void 0 && cursor !== null) {
@@ -392,8 +438,8 @@ function createMetagraphedClient(clientOptions = {}) {
         ...options,
         query: baseQuery
       });
+      const next = nextPageCursor(page, baseQuery, state);
       yield page;
-      const next = page?.meta?.pagination?.next_cursor;
       if (next === void 0 || next === null) {
         return;
       }

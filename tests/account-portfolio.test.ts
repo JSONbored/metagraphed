@@ -3,19 +3,14 @@ import { describe, test } from "vitest";
 import {
   buildAccountPortfolio as buildAccountPortfolioRaw,
   loadAccountPortfolio,
+  unavailableAccountPortfolioCapital,
 } from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
-// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
-// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
-// and APY blending, so the figure under test must be the SUM, not a product.
-// Pricing itself is asserted separately, against a realistic non-unit table,
-// in the "#9051" describe block -- which declares its own local PRICES.
-// Passed explicitly at every call site: buildGlobalValidators and friends
-// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
-// the way production could before that argument became mandatory.
+// Unit prices isolate membership/count/stamp assertions from independent
+// emission pricing, which a separate describe block exercises below.
 const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
   Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
 );
@@ -34,8 +29,7 @@ function buildAccountPortfolio(
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-// A wallet holding a validator position on netuid 7 and a miner position on 12,
-// plus a zero-stake position (excluded from stake concentration + yield).
+// Recorded validator/miner memberships, including a stored zero voting weight.
 const ROWS = [
   {
     netuid: 7,
@@ -75,7 +69,7 @@ const ROWS = [
 ];
 
 describe("buildAccountPortfolio", () => {
-  test("aggregates positions, counts, totals, overall yield, and stamp", () => {
+  test("preserves membership counts, emission and stamp without inferring capital", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
     assert.equal(out.schema_version, 1);
     assert.equal(out.ss58, SS58);
@@ -83,28 +77,53 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.position_count, 3);
     assert.equal(out.validator_count, 1);
     assert.equal(out.miner_count, 2);
-    assert.equal(out.total_stake_tao, 1200);
+    assert.equal(out.total_stake_tao, null);
     assert.equal(out.total_emission_tao, 80);
-    assert.ok(Math.abs(out.overall_yield! - 80 / 1200) < 1e-6);
+    assert.equal(out.overall_yield, null);
+    assert.equal(out.stake_concentration, null);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
-  test("positions carry per-position economics + yield, biggest stake first", () => {
+  test("preserves per-membership scores while declining quantity and yield", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal(out.positions[0].netuid, 7); // 1000 stake sorts first
+    assert.equal(out.positions[0].netuid, 7);
     assert.equal(out.positions[0].role, "validator");
-    assert.equal(out.positions[0].yield, 0.05); // 50 / 1000
+    assert.equal(out.positions[0].yield, null);
     assert.equal(out.positions[0].trust, 0.8);
-    assert.equal(out.positions[1].yield, 0.15); // 30 / 200
-    assert.equal(out.positions[2].yield, null); // zero-stake → null
+    assert.equal(out.positions[1].yield, null);
+    assert.equal(out.positions[2].yield, null);
+    assert.ok(out.positions.every((position) => position.stake_alpha === null));
     assert.equal(out.positions[2].rank, null); // absent cell → null
     assert.equal(out.positions[2].active, false);
   });
 
-  test("stake_concentration is over the positive-stake positions", () => {
-    const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal((out.stake_concentration as Row).holders, 2); // zero-stake dropped
-    assert.equal((out.stake_concentration as Row).total, 1200);
+  test("voting weight cannot change capital, concentration, yield or membership selection", () => {
+    const baseline = buildAccountPortfolio(ROWS, SS58);
+    for (const weight of [0, 1, 10_000_000, null, "junk", -1]) {
+      const changed = ROWS.map((row) => ({ ...row, stake_tao: weight }));
+      assert.deepEqual(buildAccountPortfolio(changed, SS58), baseline);
+    }
+  });
+
+  test("orders every membership by subnet then uid rather than voting weight", () => {
+    const out = buildAccountPortfolio(
+      [
+        { netuid: 12, uid: 9, stake_tao: 1_000_000 },
+        { netuid: 7, uid: null, stake_tao: 99 },
+        { netuid: 7, uid: 4, stake_tao: 1 },
+        { netuid: 7, uid: 2, stake_tao: 0 },
+      ],
+      SS58,
+    );
+    assert.deepEqual(
+      out.positions.map((position) => [position.netuid, position.uid]),
+      [
+        [7, 2],
+        [7, 4],
+        [7, null],
+        [12, 9],
+      ],
+    );
   });
 
   test("drops positions with a non-numeric netuid; coerces numeric strings", () => {
@@ -128,7 +147,7 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.subnet_count, 1);
     assert.equal(out.positions[0].uid, 3); // "3" coerced
     assert.equal(out.positions[0].rank, null); // non-numeric score dropped
-    assert.equal(out.total_stake_tao, 100);
+    assert.equal(out.total_stake_tao, null);
   });
 
   test("blank score cells stay null (not rank/trust 0)", () => {
@@ -215,6 +234,7 @@ describe("buildAccountPortfolio", () => {
       SS58,
     );
     assert.equal(out.captured_at, null);
+    assert.equal(out.total_stake_tao, null);
   });
 
   test("cold/empty → schema-stable empty card", () => {
@@ -222,6 +242,7 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.position_count, 0);
     assert.equal(out.subnet_count, 0);
     assert.equal(out.captured_at, null);
+    assert.equal(out.total_stake_tao, null);
     assert.equal(out.overall_yield, null);
     assert.equal(out.stake_concentration, null);
     assert.deepEqual(out.positions, []);
@@ -281,13 +302,13 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.position_count, 0);
+    assert.equal(body.data.total_stake_tao, null);
     assert.deepEqual(body.data.positions, []);
   });
 });
 
-// #9051: the wallet totals and overall_yield are TAO-priced.
-describe("TAO-priced portfolio totals (#9051)", () => {
-  test("prices positions, keeps per-position figures raw, and residualizes", () => {
+describe("independent portfolio emission pricing", () => {
+  test("prices only emission and preserves unpriced memberships without a principal estimate", () => {
     const out = buildAccountPortfolioRaw(
       [
         {
@@ -320,19 +341,134 @@ describe("TAO-priced portfolio totals (#9051)", () => {
         ]),
       },
     );
-    assert.equal(out.total_stake_tao, 450); // 50 + 800*0.5
+    assert.equal(out.total_stake_tao, null);
     assert.equal(out.total_emission_tao, 25); // 5 + 40*0.5
-    // The priceless position is EXCLUDED from the totals (no residual field:
-    // the economics tier prices every subnet, so a miss is a data defect, and
-    // under-reporting beats mis-denominating).
-    // overall_yield is priced/priced -- dimensionally coherent (25/450).
-    assert.equal(out.overall_yield, Math.round((25 / 450) * 1e9) / 1e9);
-    // Per-position stake_alpha stays the RAW single-subnet figure: it is that
-    // subnet's own alpha count and is not a cross-subnet sum. The name says so
-    // since #10514, because it sits beside a total_stake_tao that IS priced.
+    assert.equal(out.overall_yield, null);
+    assert.equal(out.stake_concentration, null);
     const sn1 = out.positions.find((p) => p.netuid === 1)!;
-    assert.equal(sn1.stake_alpha, 800);
-    // The priceless position is still listed -- exclusion is from the totals.
+    assert.equal(sn1.stake_alpha, null);
+    assert.equal(sn1.emission_alpha, 40);
     assert.equal(out.position_count, 3);
+    assert.deepEqual(out.positions.map((position) => position.netuid), [0, 1, 4]);
+  });
+});
+
+describe("unavailableAccountPortfolioCapital", () => {
+  test("clears old positive and zero financial values while preserving the complete evidence", () => {
+    for (const legacyValue of [1200, 0]) {
+      const original = {
+        ss58: SS58,
+        captured_at: "2026-07-05T00:00:00Z",
+        position_count: 3,
+        total_stake_tao: legacyValue,
+        total_emission_tao: 80,
+        overall_yield: legacyValue,
+        stake_concentration: { total: legacyValue, holders: 3 },
+        positions: [
+          {
+            netuid: 12,
+            uid: 8,
+            stake_alpha: legacyValue,
+            emission_alpha: 30,
+            yield: legacyValue,
+          },
+          {
+            netuid: 7,
+            uid: 4,
+            stake_alpha: legacyValue,
+            trust: 0.8,
+            yield: legacyValue,
+          },
+          {
+            netuid: 7,
+            uid: 2,
+            stake_alpha: legacyValue,
+            active: false,
+            yield: legacyValue,
+          },
+        ],
+      };
+      const before = structuredClone(original);
+      const guarded = unavailableAccountPortfolioCapital(original);
+      assert.equal(guarded.total_stake_tao, null);
+      assert.equal(guarded.overall_yield, null);
+      assert.equal(guarded.stake_concentration, null);
+      assert.equal(guarded.total_emission_tao, 80);
+      assert.equal(guarded.position_count, 3);
+      assert.equal(guarded.captured_at, original.captured_at);
+      assert.deepEqual(guarded.positions, [
+        { netuid: 7, uid: 2, stake_alpha: null, active: false, yield: null },
+        { netuid: 7, uid: 4, stake_alpha: null, trust: 0.8, yield: null },
+        { netuid: 12, uid: 8, stake_alpha: null, emission_alpha: 30, yield: null },
+      ]);
+      assert.deepEqual(
+        original,
+        before,
+        "a guard must not mutate a shared cached response",
+      );
+      assert.deepEqual(unavailableAccountPortfolioCapital(guarded), guarded);
+    }
+  });
+
+  test("preserves all complete memberships beyond a display-sized list", () => {
+    const original = {
+      position_count: 300,
+      positions: Array.from({ length: 300 }, (_, index) => ({
+        netuid: 299 - index,
+        uid: index,
+        stake_alpha: index,
+        yield: index,
+      })),
+    };
+    const guarded = unavailableAccountPortfolioCapital(original);
+    const positions = guarded.positions as Row[];
+    assert.equal(guarded.position_count, 300);
+    assert.equal(positions.length, 300);
+    assert.deepEqual(
+      positions.map((position) => position.netuid),
+      Array.from({ length: 300 }, (_, index) => index),
+    );
+    assert.ok(
+      positions.every(
+        (position) => position.stake_alpha === null && position.yield === null,
+      ),
+    );
+    assert.equal(original.positions[0].netuid, 299);
+  });
+
+  test("does not invent a measured empty list when a legacy list is absent or malformed", () => {
+    assert.equal(
+      Object.hasOwn(unavailableAccountPortfolioCapital({}), "positions"),
+      false,
+    );
+    for (const positions of [null, "unknown", { count: 1 }]) {
+      const guarded = unavailableAccountPortfolioCapital({ positions });
+      assert.equal(guarded.positions, positions);
+      assert.equal(guarded.total_stake_tao, null);
+    }
+    const guarded = unavailableAccountPortfolioCapital({
+      positions: [
+        { netuid: 2, uid: null },
+        "unknown",
+        { netuid: 1, uid: null },
+        null,
+        { netuid: 1, uid: 3 },
+        [],
+        {},
+      ],
+    });
+    const positions = guarded.positions as unknown[];
+    assert.equal(positions.length, 7);
+    assert.deepEqual(positions.slice(0, 3), [
+      { netuid: 1, uid: 3, stake_alpha: null, yield: null },
+      { netuid: 1, uid: null, stake_alpha: null, yield: null },
+      { netuid: 2, uid: null, stake_alpha: null, yield: null },
+    ]);
+    assert.deepEqual(positions.slice(3), [
+      "unknown",
+      null,
+      [],
+      { stake_alpha: null, yield: null },
+    ]);
   });
 });

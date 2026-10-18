@@ -121,7 +121,10 @@ import {
 // already use) -- not a reimplementation.
 import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
-import { tryDataApiTier } from "../workers/data-api-tier.ts";
+import {
+  normalizeNeuronCapitalForRoute,
+  tryDataApiTier,
+} from "../workers/data-api-tier.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   buildSubnetValidatorEconomicsHistoryPayload,
@@ -489,8 +492,6 @@ import {
   buildValidatorDetail,
   composeValidatorComparison,
   overlayFeaturedValidators,
-  unavailableValidatorCapital,
-  unavailableRealizedReturns,
 } from "./metagraph-neurons.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
@@ -627,10 +628,7 @@ import {
   overlaySubnetHistoryColdTier,
   overlayValidatorHistoryColdTier,
 } from "./neuron-daily-cold-tier.ts";
-import {
-  buildValidatorHistory,
-  unavailableValidatorHistoryCapital,
-} from "./validator-history.ts";
+import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import { loadSubnetTrajectory } from "./analytics-live.ts";
 import {
@@ -1820,13 +1818,13 @@ function extrinsicNode(extrinsic: Row | null | undefined) {
 // reads them straight off each row, the same technique this file's other node
 // builders use for rows with more columns than any one GraphQL type exposes.
 function validatorNode(validator: Row) {
+  // Use a canonical template even when a short ID bypassed transport matching.
+  const normalized = normalizeNeuronCapitalForRoute(
+    "/api/v1/validators/{hotkey}",
+    validator,
+  )!;
   return {
-    ...validator,
-    // A service response from an older deployment cannot establish principal
-    // merely by carrying numeric values derived from neuron voting weight.
-    ...unavailableValidatorCapital(),
-    ...unavailableRealizedReturns(),
-    stake_dominance: null,
+    ...normalized,
     // `featured` is absent from the validator DETAIL artifact by design --
     // buildValidatorDetail never passes featuredHotkeys (src/metagraph-neurons.ts:362),
     // which keeps that artifact's shape unchanged. `=== true` turned that
@@ -4704,7 +4702,10 @@ const rootValue = {
           }),
       );
     }
-    return composeValidatorComparison(details, { netuid: netuid ?? null });
+    return normalizeNeuronCapitalForRoute(
+      "/api/v1/compare/validators",
+      composeValidatorComparison(details, { netuid: netuid ?? null }),
+    );
   },
 
   async agent_resources(_args: unknown, context: GqlContext) {
@@ -6224,6 +6225,10 @@ const rootValue = {
       netuid ?? null,
       { label, days },
     );
+    const normalized = normalizeNeuronCapitalForRoute(
+      "/api/v1/validators/{hotkey}/history",
+      toRow(data),
+    )!;
     return {
       take_u16: data.take_u16 ?? null,
       take_last_changed_date: data.take_last_changed_date ?? null,
@@ -6240,7 +6245,7 @@ const rootValue = {
       window: data.window ?? label,
       netuid: (data.netuid as number | null) ?? null,
       point_count: data.point_count ?? 0,
-      points: rowsOf(data.points).map(unavailableValidatorHistoryCapital),
+      points: rowsOf(normalized.points),
     };
   },
 
@@ -6504,19 +6509,24 @@ const rootValue = {
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPortfolio([])
     // fallback contract handleAccountPortfolio uses. This route's Postgres-tier
     // body is flat (like `account`'s own), not the { data, generatedAt } envelope
-    // the account-event-footprint family uses.
-    const data =
-      ((await tryDataApiTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/accounts/${encodeURIComponent(ss58)}/portfolio`,
-        ),
-        "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ??
-      buildAccountPortfolio([], ss58, {
-        priceByNetuid: NO_ALPHA_PRICES,
-      });
+    // the account-event-footprint family uses. The copied projection also keeps
+    // unsupported capital unavailable if a source bypasses route classification.
+    const data = normalizeNeuronCapitalForRoute(
+      "/api/v1/accounts/{ss58}/portfolio",
+      toRow(
+        ((await tryDataApiTier(
+          context.env,
+          postgresTierRequest(
+            context,
+            `/api/v1/accounts/${encodeURIComponent(ss58)}/portfolio`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) as Row | null) ??
+          buildAccountPortfolio([], ss58, {
+            priceByNetuid: NO_ALPHA_PRICES,
+          }),
+      ),
+    )!;
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -6525,7 +6535,7 @@ const rootValue = {
       position_count: data.position_count ?? 0,
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
-      total_stake_tao: data.total_stake_tao ?? 0,
+      total_stake_tao: data.total_stake_tao ?? null,
       total_emission_tao: data.total_emission_tao ?? 0,
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,

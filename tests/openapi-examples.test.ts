@@ -255,7 +255,7 @@ describe("one component, one worked example", () => {
   });
 });
 
-describe("validator examples describe available measurements", () => {
+describe("membership examples describe available measurements", () => {
   type ExampleRow = Record<string, unknown>;
 
   function workedExample(routePath: string, contentType = "application/json") {
@@ -383,13 +383,16 @@ describe("validator examples describe available measurements", () => {
     assert.equal(scopedPoint.stake_share, 0.2);
   });
 
-  test("mainnet-only validator examples do not advertise network-scoped data", () => {
+  test("mainnet-only membership examples do not advertise network-scoped data", () => {
     for (const routeId of [
       "global-validators",
       "validator-detail",
       "compare-validators",
       "validator-history",
       "validator-operator-directory",
+      "accounts-list",
+      "account-holder-directory",
+      "account-portfolio",
     ]) {
       const route = API_ROUTES.find((entry) => entry.id === routeId)!;
       const scoped = route.path.replace("/api/v1/", "/api/v1/{network}/");
@@ -402,11 +405,47 @@ describe("validator examples describe available measurements", () => {
     const account = (
       exampleData("/api/v1/accounts").accounts as ExampleRow[]
     )[0]!;
-    assert.equal(account.total_stake_tao, 0.5);
-    assert.equal(account.stake_dominance, 0.5);
+    assert.equal(account.total_stake_tao, null);
+    assert.equal(account.stake_dominance, null);
+    assert.equal(account.total_emission_tao, 0.5);
+    assert.equal((account.subnets as ExampleRow[])[0]!.stake_alpha, null);
+    assert.equal((account.subnets as ExampleRow[])[0]!.emission_alpha, 0.5);
   });
 
-  test("CSV blanks validator capital and dominance while preserving account examples", () => {
+  test("account examples clear principal-derived values and omit the unavailable stake ranking", () => {
+    const data = exampleData("/api/v1/accounts/{ss58}/portfolio");
+    assertUnavailable(data, ["total_stake_tao", "overall_yield", "stake_concentration"]);
+    assert.equal(data.total_emission_tao, 0.5);
+    const position = (data.positions as ExampleRow[])[0]!;
+    assertUnavailable(position, ["stake_alpha", "yield"]);
+    assert.equal(position.emission_alpha, 0.5);
+    assert.equal(position.trust, 0.5);
+
+    const directory = exampleData("/api/v1/accounts/directory");
+    assert.equal(directory.priced_registered_stake_tao, null);
+    const rankings = directory.rankings as Record<string, ExampleRow[]>;
+    assert.deepEqual(rankings.stake, []);
+    for (const metric of ["emission", "reach"]) {
+      assertUnavailable(rankings[metric]![0]!, ["total_stake_tao", "stake_dominance"]);
+      assert.equal(rankings[metric]![0]!.total_emission_tao, 0.5);
+    }
+  });
+
+  test("availability overrides stay scoped to the named account routes", () => {
+    const route = API_ROUTES.find((entry) => entry.id === "account-portfolio")!;
+    const unrelated = { ...route, id: "unrelated-example" };
+    const registry = buildOpenApiExampleRegistry(componentSchemas, [unrelated]);
+    const name = registry.jsonNameByRouteId.get(unrelated.id)!;
+    const original = (registry.examples[name] as { value: { data: ExampleRow; meta: unknown } }).value;
+    assert.equal(original.data.total_stake_tao, 0.5);
+    assert.equal((original.data.positions as ExampleRow[])[0]!.stake_alpha, 0.5);
+    assert.deepEqual(
+      (workedExample(route.path) as { meta: unknown }).meta,
+      original.meta,
+    );
+  });
+
+  test("CSV blanks unsupported capital and dominance while preserving emission", () => {
     const csv = workedExample("/api/v1/validators", "text/csv") as string;
     const cells = csv.split("\r\n")[1]!.split(",");
     assert.deepEqual(cells.slice(0, 10), [
@@ -424,7 +463,7 @@ describe("validator examples describe available measurements", () => {
     const accounts = workedExample("/api/v1/accounts", "text/csv") as string;
     assert.equal(
       accounts.split("\r\n")[1],
-      'hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+      'hk_sample,ck_sample,1,3,3,1,2,,10.25,,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     );
   });
 });

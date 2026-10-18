@@ -50,6 +50,7 @@ import {
 } from "./og-card-style.ts";
 import { loadCardFonts } from "./og-card-fonts.ts";
 import { type EntityLogo, fetchLogoBytes } from "./og-entity-logo.ts";
+import { resolveOgLogo, verifyOgLogo } from "./og-logo-manifest.ts";
 export { fetchLogoBytes } from "./og-entity-logo.ts";
 
 /** The cached image is versioned. Public entity URLs remain stable, so social
@@ -81,7 +82,7 @@ export interface EntityCardFacts {
    * render either has the bytes or draws the mark below instead.
    */
   logo?: string | null;
-  /** Where the logo can be fetched from, before it is inlined. */
+  /** Published logo URL, resolved through the sharing manifest before fetching. */
   logoUrl?: string | null;
   /**
    * The mark drawn when there is no logo -- 69 of 129 subnets.
@@ -110,17 +111,16 @@ export function renderEntityMarkup(facts: EntityCardFacts): string {
 }
 
 /**
- * A stable digest of exactly what the card draws.
+ * A stable digest of the declared facts, before verified artwork is inlined.
  *
  * FNV-1a over the facts, not over the entity id: two publishes that change
  * nothing visible produce the same key and re-use the cached PNG, and any
- * change to a drawn value produces a different one. Non-cryptographic on
- * purpose -- this names a cache entry, it does not authenticate anything.
+ * change to a fact produces a different one. cardKey also includes the full
+ * artwork identity. This digest does not authenticate anything.
  */
 export function factsDigest(facts: EntityCardFacts): string {
-  // The logo URL, not its bytes: the URL is content-addressed by the logo
-  // cache already, so a new logo is a new URL, and hashing megabytes of PNG on
-  // every request to learn the same thing would be absurd.
+  // The original URL remains a fact. cardKey also retains the complete
+  // manifest identity, because curated files can change at an unchanged URL.
   const canonical = JSON.stringify([
     facts.kind,
     facts.identifier ?? null,
@@ -148,8 +148,13 @@ export function factsDigest(facts: EntityCardFacts): string {
  * it. This is a cache: nothing downstream reads it by name, and losing all of
  * it costs one re-render per card.
  */
-export function cardKey(kind: string, subject: string, digest: string): string {
-  return `cache/og/v${CARD_VERSION}/${kind}/${subject}-${digest}.png`;
+export function cardKey(
+  kind: string,
+  subject: string,
+  digest: string,
+  logoIdentity?: string,
+): string {
+  return `cache/og/v${CARD_VERSION}/${kind}/${subject}-${digest}${logoIdentity ?? ".png"}`;
 }
 
 /** Immutable rendered cards are disposable edge cache entries. A miss renders
@@ -221,7 +226,9 @@ type CardWriter = (
 
 export interface EntityCardDeps {
   readArtifact?: ArtifactReader;
-  /** Fetches the subnet logo so it can be inlined. Injectable so a test can
+  /** Raw generated sharing manifest; injectable without weakening validation. */
+  logoManifest?: unknown;
+  /** Fetches the qualified PNG derivative. Injectable so a test can
    * assert the render survives a logo that will not load. */
   fetchLogo?: (url: string) => Promise<EntityLogo | ArrayBuffer | null>;
   readCard?: (
@@ -348,15 +355,19 @@ export async function handleEntityOgImage(
   }
   if (!facts) return fallbackResponse(assets, url);
 
-  const key = cardKey(target.kind, target.subject, factsDigest(facts));
-  const expectsLogo = Boolean(facts.logoUrl);
-
-  // Inlined AFTER the digest, because the digest keys on the URL: the bytes do
-  // not need fetching to know whether this card is already drawn.
+  const logo = resolveOgLogo(facts.logoUrl, deps.logoManifest);
+  const expectsLogo = logo.intent === "expected";
+  const cacheable = logo.intent === "absent" || logo.qualified;
+  const key = cardKey(
+    target.kind,
+    target.subject,
+    factsDigest(facts),
+    logo.intent === "expected" && logo.qualified ? logo.identity : undefined,
+  );
 
   // The cached render, if this exact card has been drawn before.
   try {
-    const cached = await deps.readCard?.(key, expectsLogo);
+    const cached = cacheable ? await deps.readCard?.(key, expectsLogo) : null;
     if (cached) {
       return request.method === "HEAD"
         ? new Response(null, {
@@ -382,16 +393,17 @@ export async function handleEntityOgImage(
   // A LOGO THAT WILL NOT LOAD IS NOT A FAILED CARD. The subnet still has a
   // symbol and a name, so a fetch that 404s or hangs falls through to the mark
   // rather than taking the unfurl down with it.
-  if (facts.logoUrl) {
+  if (logo.intent === "expected" && logo.qualified) {
     try {
       const fetched = await (deps.fetchLogo
-        ? deps.fetchLogo(facts.logoUrl)
-        : fetchLogoBytes(facts.logoUrl));
-      const logo =
+        ? deps.fetchLogo(logo.url)
+        : fetchLogoBytes(logo.url));
+      const image =
         fetched instanceof ArrayBuffer
           ? { bytes: fetched, contentType: "image/png" }
           : fetched;
-      if (logo?.bytes.byteLength) facts = { ...facts, logo: toDataUri(logo) };
+      if (await verifyOgLogo(image, logo))
+        facts = { ...facts, logo: toDataUri(image!) };
     } catch (error) {
       console.error("og-entity: logo unavailable", error);
     }
@@ -407,7 +419,7 @@ export async function handleEntityOgImage(
     return fallbackResponse(assets, url);
   }
 
-  const complete = !expectsLogo || Boolean(facts.logo);
+  const complete = cacheable && (!expectsLogo || Boolean(facts.logo));
   // A monogram for an expected logo is usable but incomplete. Do not persist
   // it under the same key as a future complete card, or extend it via SWR.
   if (complete) {

@@ -8,6 +8,9 @@ import {
   unavailableRealizedReturns,
 } from "../src/metagraph-neurons.ts";
 import { unavailableValidatorHistoryCapital } from "../src/validator-history.ts";
+import { hasLegacyAccountsListCapital } from "../src/accounts-list.ts";
+import { hasLegacyAccountHolderCapital } from "../src/account-holder-directory.ts";
+import { unavailableAccountPortfolioCapital } from "../src/account-portfolio.ts";
 
 // Store-backed requests forward through the existing DATA_API service binding.
 // D1_STATE_TABLES selects the native D1 owner inside that Worker. The legacy
@@ -149,80 +152,113 @@ const VALIDATOR_CAPITAL_FIELDS = [
 const DATA_API_NETWORK_PREFIX = new RegExp(
   `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
 );
+const NEURON_CAPITAL_POLICIES = new Map<string, string>([
+  ["/api/v1/accounts", "account-list"],
+  ["/api/v1/accounts/directory", "account-directory"],
+  ["/api/v1/accounts/{ss58}/portfolio", "portfolio"],
+  ["/api/v1/validators", "validator-list"],
+  ["/api/v1/validators/operators", "operator-directory"],
+  ["/api/v1/validators/{hotkey}", "validator-detail"],
+  ["/api/v1/validators/{hotkey}/history", "validator-history"],
+  ["/api/v1/compare/validators", "validator-comparison"],
+]);
+
+/** Exact canonical route templates with an unavailable-principal policy. */
+export function hasNeuronCapitalPolicy(canonicalRoutePath: string): boolean {
+  return NEURON_CAPITAL_POLICIES.has(canonicalRoutePath);
+}
 
 function hasLegacyValidatorCapital(value: unknown): boolean {
   const row = asJsonObject(value);
   return (
-    row !== null &&
-    VALIDATOR_CAPITAL_FIELDS.some((field) => row[field] != null)
+    row === null ||
+    VALIDATOR_CAPITAL_FIELDS.some((field) => row[field] !== null)
   );
 }
 
-/** REST and MCP can meet an older DATA_API deployment during rollout. */
-function guardValidatorCapital(
-  request: Request,
+/**
+ * Normalize a flat artifact or response envelope without source reads or side
+ * effects. The caller supplies its matched canonical API route template.
+ * A capped financial selection declines; complete evidence keeps its scope
+ * and clocks while unsupported principal-derived values are cleared.
+ */
+export function normalizeNeuronCapitalForRoute(
+  canonicalRoutePath: string,
   body: Record<string, unknown>,
 ): Record<string, unknown> | null {
-  // Classification only: never rewrite the forwarded request's network or URL.
-  // The router accepts repeated default aliases; stripping is bounded by path
-  // length and uses the contract's own alias vocabulary.
-  let pathname = new URL(request.url).pathname;
-  while (DATA_API_NETWORK_PREFIX.test(pathname)) {
-    pathname = pathname.replace(DATA_API_NETWORK_PREFIX, "/api/v1");
-  }
-  const route = contractPathForPathname(pathname);
+  const policy = NEURON_CAPITAL_POLICIES.get(canonicalRoutePath);
+  if (policy === undefined) return body;
   const wrapped = asJsonObject(body.data);
   const payload = wrapped ?? body;
-  if (route === "/api/v1/validators") {
+  if (policy === "account-list") {
+    // Both the page and its nested membership slices may already be capped by
+    // voting weight. Clearing fields cannot recover the omitted identities.
+    return hasLegacyAccountsListCapital(payload) ? null : body;
+  }
+  if (policy === "account-directory") {
+    return hasLegacyAccountHolderCapital(payload) ? null : body;
+  }
+  if (policy === "portfolio") {
+    // The portfolio carries the full hotkey membership, so it can preserve
+    // observations while removing unsupported capital and principal ratios.
+    const guarded = unavailableAccountPortfolioCapital(payload);
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (policy === "validator-list") {
     // A legacy service already ranked and capped this subset by false capital.
     // Nulling or re-sorting its limited rows cannot reconstruct the selection.
-    if (!Array.isArray(payload.validators)) return body;
-    if (payload.validators.some(hasLegacyValidatorCapital)) {
-      return markDataApiTierFallback();
+    if (
+      !Array.isArray(payload.validators) ||
+      payload.validators.some(hasLegacyValidatorCapital)
+    ) {
+      return null;
     }
     // Return estimates do not select the membership subset. Keep its evidence,
     // but never republish balance changes as measured investment performance.
     const guarded = {
       ...payload,
       validators: payload.validators.map((value) => {
-        const validator = asJsonObject(value);
-        return validator === null
-          ? value
-          : {
-              ...validator,
-              ...unavailableValidatorCapital(),
-              ...unavailableRealizedReturns(),
-            };
+        // The complete collection passed the strict record/capital check above.
+        return {
+          ...asJsonObject(value),
+          ...unavailableValidatorCapital(),
+          ...unavailableRealizedReturns(),
+        };
       }),
     };
     return wrapped ? { ...body, data: guarded } : guarded;
   }
-  if (route === "/api/v1/validators/operators") {
+  if (policy === "operator-directory") {
     const legacy =
-      Array.isArray(payload.operators) &&
+      !Array.isArray(payload.operators) ||
       payload.operators.some((value) => {
         const operator = asJsonObject(value);
         return (
-          hasLegacyValidatorCapital(value) ||
-          (operator !== null &&
-            Array.isArray(operator.hotkeys) &&
-            operator.hotkeys.some(hasLegacyValidatorCapital))
+          operator === null ||
+          operator.total_stake_tao !== null ||
+          operator.apy_estimate !== null ||
+          operator.stake_dominance !== null ||
+          !Array.isArray(operator.hotkeys) ||
+          operator.hotkeys.some((value) => {
+            const hotkey = asJsonObject(value);
+            return hotkey === null || hotkey.total_stake_tao !== null;
+          })
         );
       });
-    return legacy ? markDataApiTierFallback() : body;
+    return legacy ? null : body;
   }
-  if (route === "/api/v1/validators/{hotkey}") {
+  if (policy === "validator-detail") {
     const guarded = {
       ...payload,
       ...unavailableValidatorCapital(),
       ...unavailableRealizedReturns(),
+      ...(Object.hasOwn(payload, "stake_dominance")
+        ? { stake_dominance: null }
+        : {}),
     };
     return wrapped ? { ...body, data: guarded } : guarded;
   }
-  if (
-    route === "/api/v1/validators/{hotkey}/history" &&
-    Array.isArray(payload.points)
-  ) {
+  if (policy === "validator-history" && Array.isArray(payload.points)) {
     const guarded = {
       ...payload,
       points: payload.points.map((value) => {
@@ -233,7 +269,39 @@ function guardValidatorCapital(
     };
     return wrapped ? { ...body, data: guarded } : guarded;
   }
+  if (policy === "validator-comparison" && Array.isArray(payload.validators)) {
+    const unavailable = unavailableValidatorCapital();
+    const guarded = {
+      ...payload,
+      validators: payload.validators.map((value) => {
+        const validator = asJsonObject(value);
+        if (validator === null) return value;
+        const comparison = { ...validator };
+        for (const field of [
+          "total_stake_tao",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
+        ]) {
+          if (Object.hasOwn(comparison, field)) {
+            comparison[field] = unavailable[field];
+          }
+        }
+        return comparison;
+      }),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
   return body;
+}
+
+function canonicalNeuronRoute(request: Request): string {
+  // Classification only: preserve the forwarded request's network and URL.
+  // Repeated aliases are bounded by path length and use the router vocabulary.
+  let pathname = new URL(request.url).pathname;
+  while (DATA_API_NETWORK_PREFIX.test(pathname)) {
+    pathname = pathname.replace(DATA_API_NETWORK_PREFIX, "/api/v1");
+  }
+  return contractPathForPathname(pathname) ?? pathname;
 }
 
 export async function tryDataApiTier(
@@ -316,7 +384,12 @@ export async function tryDataApiTier(
     await captureDataApiTierFallback(err, flagName, env);
     return markDataApiTierFallback();
   }
-  return flagName === "METAGRAPH_NEURONS_SOURCE"
-    ? guardValidatorCapital(request, body as Record<string, unknown>)
-    : (body as Record<string, unknown>);
+  if (flagName !== "METAGRAPH_NEURONS_SOURCE") {
+    return body as Record<string, unknown>;
+  }
+  const normalized = normalizeNeuronCapitalForRoute(
+    canonicalNeuronRoute(request),
+    body as Record<string, unknown>,
+  );
+  return normalized ?? markDataApiTierFallback();
 }

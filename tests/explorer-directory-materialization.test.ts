@@ -23,7 +23,7 @@ const accounts = {
   block_number: 8_950_000,
   account_count: 0,
   limit: 20 as const,
-  priced_registered_stake_tao: 0,
+  priced_registered_stake_tao: null,
   rankings: { stake: [], emission: [], reach: [] },
 };
 
@@ -174,4 +174,39 @@ test("legacy capital-ranked directories decline until the source republishes neu
   );
   assert.equal(legacy.operators[0]!.total_stake_tao, 1000);
   assert.equal(legacy.operators[0]!.hotkeys[0]!.total_stake_tao, 900);
+});
+
+test("account cache readers decline financially selected directories, including zero and stripped stake ranks", async () => {
+  const row = {
+    hotkey: "hk-a",
+    coldkey: "owner",
+    subnet_count: 3,
+    uid_count: 4,
+    total_stake_tao: null,
+    total_emission_tao: 8,
+    stake_dominance: null,
+  };
+  const fresh = {
+    ...accounts,
+    account_count: 1,
+    rankings: { stake: [], emission: [row], reach: [row] },
+  };
+  const materialization = {
+    schema_version: 1,
+    captured_at: Date.parse(capturedAt),
+    accounts: fresh,
+    validators,
+  };
+  for (const legacy of [
+    { ...fresh, priced_registered_stake_tao: 0 },
+    { ...fresh, rankings: { ...fresh.rankings, stake: [row] } },
+    { ...fresh, rankings: { ...fresh.rankings, emission: [{ ...row, total_stake_tao: 0 }] } },
+    { ...fresh, rankings: { ...fresh.rankings, reach: [{ ...row, stake_dominance: 0 }] } },
+  ]) {
+    assert.equal(await readCurrentAccountDirectory({ get: async () => legacy }), null);
+    assert.equal(materializationFromUnknown({ ...materialization, accounts: legacy }), null);
+  }
+  assert.deepEqual(await readCurrentAccountDirectory({ get: async () => fresh }), fresh);
+  assert.deepEqual(materializationFromUnknown(materialization), materialization);
+  assert.equal(fresh.rankings.emission[0]!.total_emission_tao, 8);
 });

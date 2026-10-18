@@ -10,12 +10,15 @@ import {
   type EntityCardDeps,
 } from "../src/og-entity-card.ts";
 import { fetchLogoBytes } from "../src/og-entity-logo.ts";
+import { resolveOgLogo } from "../src/og-logo-manifest.ts";
+import { logoManifestFixture } from "./helpers/og-logo-fixture.ts";
 
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer;
 const COMPLETE = new Uint8Array([137, 80, 78, 71, 1]).buffer;
 const LONG = "public, max-age=86400, stale-while-revalidate=604800";
 const SHORT = "public, max-age=60";
 const LOGO_URL = "https://metagraph.sh/logos/cache/identity.png";
+const LOGO_MANIFEST = logoManifestFixture(PNG, "cache/identity.png");
 const INDEX = {
   subnets: [
     { netuid: 1, name: "Identity", logo_url: LOGO_URL },
@@ -36,9 +39,21 @@ function cardRequest(deps: EntityCardDeps, netuid = 1, method = "GET") {
   const url = new URL(`https://api.metagraph.sh/og/subnets/${netuid}.png`);
   return handleEntityOgImage(new Request(url, { method }), {}, url, {
     readArtifact: async () => ({ ok: true, data: INDEX }),
+    logoManifest: LOGO_MANIFEST,
     assets: ASSETS,
     ...deps,
   });
+}
+
+function fixtureCardKey(netuid: number) {
+  const facts = subnetFacts(INDEX, netuid)!;
+  const logo = resolveOgLogo(facts.logoUrl, LOGO_MANIFEST);
+  return cardKey(
+    "subnets",
+    String(netuid),
+    factsDigest(facts),
+    logo.intent === "expected" && logo.qualified ? logo.identity : undefined,
+  );
 }
 
 function cacheFixture() {
@@ -78,7 +93,7 @@ describe("entity logos recover without changing facts or URLs", () => {
   for (const failure of ["miss", "throw", "empty"] as const) {
     test(`old ambiguous cached monogram survives a ${failure}, then recovers and caches the logo`, async () => {
       const fixture = cacheFixture();
-      const key = cardKey("subnets", "1", factsDigest(subnetFacts(INDEX, 1)!));
+      const key = fixtureCardKey(1);
       fixture.stored.set(key, { bytes: PNG });
       let fetches = 0;
       let renders = 0;
@@ -146,7 +161,7 @@ describe("entity logos recover without changing facts or URLs", () => {
     assert.equal(fetches, 0);
     assert.equal(renders, 1);
     assert.equal(fixture.writes(), 1);
-    const key = cardKey("subnets", "2", factsDigest(subnetFacts(INDEX, 2)!));
+    const key = fixtureCardKey(2);
     fixture.stored.set(key, { bytes: PNG });
     await cardRequest(deps, 2);
     assert.equal(
@@ -229,7 +244,7 @@ describe("entity logos recover without changing facts or URLs", () => {
     assert.equal(fixture.writes(), 1);
   });
 
-  test("a typed JPEG logo retains its MIME through rendering", async () => {
+  test("a typed original cannot complete a card expecting its PNG derivative", async () => {
     let markup = "";
     const response = (await cardRequest({
       fetchLogo: async () => ({ bytes: PNG, contentType: "image/jpeg" }),
@@ -238,8 +253,8 @@ describe("entity logos recover without changing facts or URLs", () => {
         return COMPLETE;
       },
     }))!;
-    assert.ok(markup.includes("data:image/jpeg;base64,"));
-    assert.equal(response.headers.get("cache-control"), LONG);
+    assert.ok(!markup.includes("data:image/jpeg;base64,"));
+    assert.equal(response.headers.get("cache-control"), SHORT);
   });
 });
 

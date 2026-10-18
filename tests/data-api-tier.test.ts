@@ -9,6 +9,8 @@ import { test, vi } from "vitest";
 import {
   DATA_API_TIER_RETRY_ATTEMPTS,
   currentDataApiTierFallbackGeneration,
+  hasNeuronCapitalPolicy,
+  normalizeNeuronCapitalForRoute,
   readExplorerDirectoryCacheStamp,
   tryDataApiTier,
 } from "../workers/data-api-tier.ts";
@@ -406,6 +408,9 @@ const LEGACY_VALIDATOR_CAPITAL_FIELDS = [
   "apy_estimate",
   "stake_dominance",
 ] as const;
+const CURRENT_VALIDATOR_CAPITAL = Object.fromEntries(
+  LEGACY_VALIDATOR_CAPITAL_FIELDS.map((field) => [field, null]),
+);
 
 async function readValidatorPayload(path: string, body: unknown) {
   const before = currentDataApiTierFallbackGeneration();
@@ -430,7 +435,7 @@ test.each(
 )("global validator $field=$value declines the already-selected legacy page", async ({ field, value }) => {
   const { result, before, after } = await readValidatorPayload(
     "/api/v1/validators?sort=total_stake&limit=1",
-    { limit: 1, validator_count: 100, validators: [{ hotkey: VALIDATOR_HOTKEY, [field]: value }] },
+    { limit: 1, validator_count: 100, validators: [{ hotkey: VALIDATOR_HOTKEY, ...CURRENT_VALIDATOR_CAPITAL, [field]: value }] },
   );
   assert.equal(result, null);
   assert.equal(after, before + 1);
@@ -488,7 +493,7 @@ test.each([false, true])("old realized returns alone preserve current membership
     avg_validator_trust: 0.9,
     subnets: [{ netuid: 3, uid: 4, stake_alpha: 180 }],
   };
-  const page = { validator_count: 1, validators: [validator, null] };
+  const page = { validator_count: 1, validators: [validator] };
   const body = wrapped ? { data: page, generatedAt: "capture" } : page;
   const expected = {
     ...page,
@@ -501,7 +506,7 @@ test.each([false, true])("old realized returns alone preserve current membership
       realized_return_1w_as_of: null,
       realized_return_1m: null,
       realized_return_1m_as_of: null,
-    }, null],
+    }],
   };
   const { result, before, after } = await readValidatorPayload("/api/v1/validators", body);
   assert.deepEqual(result, wrapped ? { data: expected, generatedAt: "capture" } : expected);
@@ -526,7 +531,13 @@ test.each([
 ])("legacy operator $label declines instead of retaining a financially-selected primary", async ({ operator }) => {
   const { result, before, after } = await readValidatorPayload(
     "/api/v1/validators/operators",
-    { operators: [operator] },
+    { operators: [{
+      total_stake_tao: null,
+      apy_estimate: null,
+      stake_dominance: null,
+      hotkeys: [{ total_stake_tao: null }],
+      ...operator,
+    }] },
   );
   assert.equal(result, null);
   assert.equal(after, before + 1);
@@ -667,11 +678,259 @@ test("the capital guard stays scoped to the neurons flag", async () => {
 });
 
 test.each([
-  { path: "/api/v1/validators", body: {} },
-  { path: "/api/v1/validators/operators", body: { operators: [null, {}] } },
-  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, body: { points: null } },
-])("missing collections do not become fabricated measurements on $path", async ({ path, body }) => {
+  { path: "/api/v1/validators", body: {}, decline: true },
+  { path: "/api/v1/validators/operators", body: { operators: [null, {}] }, decline: true },
+  { path: `/api/v1/validators/${VALIDATOR_HOTKEY}/history`, body: { points: null }, decline: false },
+  { path: "/api/v1/compare/validators", body: { validators: null }, decline: false },
+])("missing collections do not become fabricated measurements on $path", async ({ path, body, decline }) => {
+  const { result, before, after } = await readValidatorPayload(path, body);
+  assert.deepEqual(result, decline ? null : body);
+  assert.equal(after, before + (decline ? 1 : 0));
+});
+
+const CURRENT_ACCOUNT = {
+  hotkey: VALIDATOR_HOTKEY,
+  total_stake_tao: null,
+  stake_dominance: null,
+  total_emission_tao: 7,
+  subnet_count: 2,
+  subnets: [{ netuid: 1, uid: 3, stake_alpha: null, emission_alpha: 4 }],
+};
+
+test.each([
+  { total_stake_tao: 0 },
+  { total_stake_tao: 90 },
+  { stake_dominance: 0 },
+  { subnets: [{ netuid: 1, uid: 3, stake_alpha: 0 }] },
+])("accounts decline legacy financial selection including $total_stake_tao", async (legacy) => {
+  const body = {
+    data: { account_count: 200, limit: 1, accounts: [{ ...CURRENT_ACCOUNT, ...legacy }] },
+    meta: { source: "old-service" },
+  };
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/mainnet/accounts?sort=subnet_count&limit=1",
+    body,
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test.each(["/api/v1/accounts", "/api/v1/finney/accounts/", "/api/v1/testnet/accounts"])(
+  "accounts with unavailable capital retain independent evidence on %s",
+  async (path) => {
+    const body = { account_count: 1, accounts: [CURRENT_ACCOUNT] };
+    const { result, before, after } = await readValidatorPayload(path, body);
+    assert.deepEqual(result, body);
+    assert.equal(after, before);
+  },
+);
+
+test.each([
+  { priced_registered_stake_tao: 0 },
+  { rankings: { stake: [CURRENT_ACCOUNT], emission: [], reach: [] } },
+  { rankings: { stake: [], emission: [{ ...CURRENT_ACCOUNT, total_stake_tao: 0 }], reach: [] } },
+  { rankings: { stake: [], emission: [], reach: [{ ...CURRENT_ACCOUNT, stake_dominance: 0 }] } },
+])("holder directories decline old selection rather than stripping it", async (legacy) => {
+  const body = {
+    priced_registered_stake_tao: null,
+    rankings: { stake: [], emission: [CURRENT_ACCOUNT], reach: [CURRENT_ACCOUNT] },
+    ...legacy,
+  };
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/accounts/directory",
+    body,
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test("current holder rankings preserve independent emission and reach with wrapper metadata", async () => {
+  const body = {
+    data: {
+      priced_registered_stake_tao: null,
+      rankings: { stake: [], emission: [CURRENT_ACCOUNT], reach: [CURRENT_ACCOUNT] },
+    },
+    generatedAt: "capture",
+  };
+  const { result, before, after } = await readValidatorPayload("/api/v1/accounts/directory", body);
+  assert.deepEqual(result, body);
+  assert.equal(after, before);
+});
+
+test.each([false, true])("full portfolio membership is copied safely with wrapped=%s", async (wrapped) => {
+  const portfolio = {
+    ss58: VALIDATOR_HOTKEY,
+    captured_at: "2026-10-17T00:00:00.000Z",
+    total_stake_tao: 1000,
+    total_emission_tao: 9,
+    overall_yield: 0.9,
+    stake_concentration: { hhi: 0.8 },
+    positions: [
+      { netuid: 7, uid: 3, stake_alpha: 900, yield: 0.1, emission_alpha: 5, trust: 0.8 },
+      { netuid: 1, uid: 4, stake_alpha: 100, yield: 0.2, emission_alpha: 4, trust: null },
+    ],
+  };
+  const body = wrapped ? { data: portfolio, meta: { source: "capture" } } : portfolio;
+  const expected = {
+    ...portfolio,
+    total_stake_tao: null,
+    overall_yield: null,
+    stake_concentration: null,
+    positions: [portfolio.positions[1], portfolio.positions[0]].map((position) => ({
+      ...position,
+      stake_alpha: null,
+      yield: null,
+    })),
+  };
+  const { result, before, after } = await readValidatorPayload(
+    `/api/v1/finney/accounts/${VALIDATOR_HOTKEY}/portfolio`,
+    body,
+  );
+  assert.deepEqual(result, wrapped ? { data: expected, meta: { source: "capture" } } : expected);
+  assert.equal(after, before);
+  assert.equal(portfolio.positions[0]!.stake_alpha, 900);
+});
+
+test.each([
+  "/api/v1/accounts/top-holders",
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}`,
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}/positions`,
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}/subnets`,
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}/subnets/1/history`,
+  `/api/v1/accounts/${VALIDATOR_HOTKEY}/balance`,
+])("account financial guards do not intercept independent route %s", async (path) => {
+  const body = { total_stake_tao: 15, stake_alpha: 30, yield: 0.5 };
   const { result, before, after } = await readValidatorPayload(path, body);
   assert.deepEqual(result, body);
   assert.equal(after, before);
+});
+
+test("the shared policy vocabulary recognizes canonical families and preserves unrelated values", () => {
+  for (const route of [
+    "/api/v1/accounts",
+    "/api/v1/accounts/directory",
+    "/api/v1/accounts/{ss58}/portfolio",
+    "/api/v1/validators",
+    "/api/v1/validators/operators",
+    "/api/v1/validators/{hotkey}",
+    "/api/v1/validators/{hotkey}/history",
+    "/api/v1/compare/validators",
+  ]) {
+    assert.equal(hasNeuronCapitalPolicy(route), true, route);
+  }
+  const body = { total_stake_tao: 100, free_tao: 20, net_flow_tao: -5 };
+  for (const route of [
+    "/api/v1/accounts/{ss58}/balance",
+    "/api/v1/accounts/{ss58}/stake-flow",
+    "/api/v1/accounts/top-holders",
+    "/api/v1/validators/economics",
+    "/api/v1/subnets/{netuid}/validators",
+    "/api/v1/validators/",
+    "/api/v1/unknown",
+  ]) {
+    assert.equal(hasNeuronCapitalPolicy(route), false, route);
+    assert.equal(normalizeNeuronCapitalForRoute(route, body), body);
+  }
+});
+
+test.each(LEGACY_VALIDATOR_CAPITAL_FIELDS)(
+  "a missing required validator financial field %s declines without manufacturing null provenance",
+  async (field) => {
+    const incomplete = Object.fromEntries(
+      Object.entries(CURRENT_VALIDATOR_CAPITAL).filter(([key]) => key !== field),
+    );
+    const { result, before, after } = await readValidatorPayload(
+      "/api/v1/validators",
+      { validators: [incomplete] },
+    );
+    assert.equal(result, null);
+    assert.equal(after, before + 1);
+  },
+);
+
+test.each([null, false, 4, [], {}])("malformed validator row %j declines the whole capped page", async (row) => {
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/validators",
+    { validators: [CURRENT_VALIDATOR_CAPITAL, row] },
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test.each([
+  {},
+  { operators: null },
+  { operators: [null] },
+  { operators: [{ total_stake_tao: null, apy_estimate: null, stake_dominance: null }] },
+  { operators: [{ total_stake_tao: null, apy_estimate: null, stake_dominance: null, hotkeys: null }] },
+  { operators: [{ total_stake_tao: null, apy_estimate: null, stake_dominance: null, hotkeys: [null] }] },
+  { operators: [{ total_stake_tao: null, apy_estimate: null, stake_dominance: null, hotkeys: [{}] }] },
+  ...["total_stake_tao", "apy_estimate", "stake_dominance"].map((missing) => ({
+    operators: [Object.fromEntries(Object.entries({
+      total_stake_tao: null,
+      apy_estimate: null,
+      stake_dominance: null,
+      hotkeys: [{ total_stake_tao: null }],
+    }).filter(([key]) => key !== missing))],
+  })),
+])("malformed or incomplete operator capital cannot establish safe selection", async (body) => {
+  const { result, before, after } = await readValidatorPayload(
+    "/api/v1/validators/operators",
+    body,
+  );
+  assert.equal(result, null);
+  assert.equal(after, before + 1);
+});
+
+test.each([false, true])("comparison normalization preserves order, clocks and strict keys with wrapped=%s", async (wrapped) => {
+  const comparison = {
+    schema_version: 1,
+    netuid: 3,
+    validator_count: 2,
+    validators: [
+      {
+        hotkey: VALIDATOR_HOTKEY,
+        total_stake_tao: 0,
+        apy_estimate: 0.5,
+        apy_estimate_eligible_subnet_count: 4,
+        total_emission_tao: 12,
+        take: 0.18,
+        subnet_context: { netuid: 3, uid: 5, stake_alpha: 180, validator_trust: 0.9 },
+      },
+      { hotkey: "sparse", subnet_context: null },
+    ],
+  };
+  const meta = { network: "mainnet", generated_at: "2026-10-17T03:00:00.000Z" };
+  const body = wrapped ? { data: comparison, meta } : comparison;
+  const expected = {
+    ...comparison,
+    validators: [{
+      ...comparison.validators[0],
+      total_stake_tao: null,
+      apy_estimate: null,
+      apy_estimate_eligible_subnet_count: 0,
+    }, comparison.validators[1]],
+  };
+  const { result, before, after } = await readValidatorPayload(
+    `/api/v1/mainnet/compare/validators?hotkeys=${VALIDATOR_HOTKEY}&netuid=3`,
+    body,
+  );
+  assert.deepEqual(result, wrapped ? { data: expected, meta } : expected);
+  assert.equal(after, before);
+  assert.equal(comparison.validators[0]!.total_stake_tao, 0);
+});
+
+test("the reusable normalizer has no fallback counter side effects", () => {
+  const before = currentDataApiTierFallbackGeneration();
+  assert.equal(normalizeNeuronCapitalForRoute("/api/v1/validators", { validators: [{}] }), null);
+  assert.equal(normalizeNeuronCapitalForRoute("/api/v1/validators/operators", {}), null);
+  const detail = { hotkey: "short", total_stake_tao: 12, stake_dominance: 0.2, captured_at: "detail-clock" };
+  const result = normalizeNeuronCapitalForRoute("/api/v1/validators/{hotkey}", detail)!;
+  assert.equal(result.total_stake_tao, null);
+  assert.equal(result.stake_dominance, null);
+  assert.equal(result.captured_at, "detail-clock");
+  assert.equal(detail.total_stake_tao, 12);
+  assert.equal(currentDataApiTierFallbackGeneration(), before);
+  const comparison = { validators: [null, {}], generated_at: "comparison-clock" };
+  assert.deepEqual(normalizeNeuronCapitalForRoute("/api/v1/compare/validators", comparison), comparison);
 });

@@ -8,12 +8,8 @@
 // "validator_count","stake_dominance","last_active"] matches
 // ACCOUNTS_LIST_SORTS exactly.
 //
-// Real finding (bucket a): AccountsListEntry's `stake_dominance` was
-// initially modeled `.optional()`, but buildAccountsList() unconditionally
-// runs every entry through applyStakeDominance() before returning -- every
-// row always carries the key (a real 0..1 ratio, or null when the network
-// total is 0) -- confirmed via src/accounts-list.ts's own call site. Fixed
-// to required-but-nullable, matching the hand-edited component and reality.
+// Capital keys remain required but unavailable. Metagraph voting weight does
+// not establish independent principal, even when a price or zero is observed.
 //
 // Real finding (bucket a): `subnets[]` was initially modeled without a
 // length bound; buildAccountEntry() always slices to
@@ -37,14 +33,16 @@ const AccountsListSubnetSchema = z
     stake_alpha: z
       .number()
       .min(0)
+      .nullable()
       .describe(
-        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.",
-      ),
+        "Deprecated compatibility field; always null. The metagraph records voting weight (alpha + tao_weight * root), not independently measured alpha principal. Root influence can repeat across memberships; neither prices nor observed zero weight establish holdings.",
+      )
+      .meta({ deprecated: true }),
     emission_alpha: z
       .number()
       .min(0)
       .describe(
-        "This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name.",
+        "This row's emission in the subnet named by the sibling `netuid`, alpha-denominated on non-root subnets (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's `tempo` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from `emission_tao` in #10514.",
       ),
   })
   .strict();
@@ -61,26 +59,43 @@ const AccountsListEntrySchema = z
     total_stake_tao: z
       .number()
       .min(0)
+      .nullable()
       .describe(
-        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-      ),
+        "Deprecated compatibility field; always null. Metagraph stake_tao is voting weight, not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z
       .number()
       .min(0)
       .describe(
         "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
       ),
-    stake_dominance: z.number().min(0).max(1).nullable(),
+    stake_dominance: z
+      .number()
+      .min(0)
+      .max(1)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight cannot establish a share of network holdings.",
+      )
+      .meta({ deprecated: true }),
     latest_captured_at: z.string().nullable(),
     latest_block_number: z.int().nullable(),
-    subnets: z.array(AccountsListSubnetSchema).max(10),
+    subnets: z
+      .array(AccountsListSubnetSchema)
+      .max(10)
+      .describe("First ten recorded memberships in ascending netuid/uid order."),
   })
   .strict();
 
 export const AccountsListArtifactSchema = z
   .object({
     schema_version: z.int(),
-    sort: z.enum(ACCOUNTS_LIST_LIST_SORTS_VALUES),
+    sort: z
+      .enum(ACCOUNTS_LIST_LIST_SORTS_VALUES)
+      .describe(
+        "Legacy total_stake and stake_dominance sorts remain accepted and use stable hotkey order while capital is unavailable. Other sorts retain their independent metrics.",
+      ),
     limit: z.int().min(1).max(100),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),

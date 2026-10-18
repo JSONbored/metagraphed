@@ -3,7 +3,6 @@ import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagr
 import {
   HOLDER_SORT,
   activeRows,
-  concentrationSegments,
   fmtTaoCompact,
   holderCards,
   lookupVerdict,
@@ -25,9 +24,8 @@ const isH160 = (v: string) => /^0x[0-9a-fA-F]{40}$/.test(v);
 const normalize = (v: string) => v.toLowerCase();
 
 describe("HOLDER_SORT", () => {
-  it("maps every metric onto a sort the endpoint accepts", () => {
-    // Anything else is a 400 (measured live 2026-08-23).
-    expect(Object.values(HOLDER_SORT)).toEqual(["total_stake", "total_emission", "subnet_count"]);
+  it("offers only independent reach and emission sorts", () => {
+    expect(HOLDER_SORT).toEqual({ reach: "subnet_count", emission: "total_emission" });
   });
 });
 
@@ -50,12 +48,14 @@ describe("shortAddress / fmtTaoCompact", () => {
 describe("holderCards", () => {
   const accounts = [
     account({
+      hotkey: "5HotA",
       coldkey: "5AAAAAAAAAAAAAAAAAAA",
       total_stake_tao: 100,
       total_emission_tao: 3,
       subnet_count: 7,
     }),
     account({
+      hotkey: "5HotB",
       coldkey: "5BBBBBBBBBBBBBBBBBBB",
       total_stake_tao: 50,
       total_emission_tao: 9,
@@ -63,68 +63,61 @@ describe("holderCards", () => {
     }),
   ];
 
-  it("shows the reading it was ranked by, not always stake", () => {
-    expect(holderCards(accounts, "stake")[0]?.value).toBe("100.00τ");
+  it("preserves each independent ranking's supplied order and values", () => {
     expect(holderCards(accounts, "emission")[0]?.value).toBe("3.00τ");
     expect(holderCards(accounts, "reach")[0]?.value).toBe("7 subnets");
     expect(holderCards(accounts, "reach")[1]?.value).toBe("2 subnets");
+    expect(holderCards([...accounts].reverse(), "emission")[0]?.key).toBe("5HotB");
   });
 
-  it("links the coldkey, which is the account a reader can open", () => {
-    expect(holderCards(accounts, "stake")[0]?.href).toBe("/accounts/5AAAAAAAAAAAAAAAAAAA");
-  });
-
-  it("shows a share of complete priced registered stake", () => {
-    expect(holderCards(accounts, "stake", 18, 1_000)[0]?.sub).toBe(
-      "10.0% of priced stake · 7 subnets",
+  it("keeps hotkey identities distinct even when a coldkey is shared", () => {
+    const cards = holderCards(
+      accounts.map((row) => ({ ...row, coldkey: "5SharedOwner" })),
+      "reach",
     );
+    expect(cards.map(({ key, name, href }) => ({ key, name, href }))).toEqual([
+      { key: "5HotA", name: "5HotA", href: "/accounts/5HotA" },
+      { key: "5HotB", name: "5HotB", href: "/accounts/5HotB" },
+    ]);
+  });
+
+  it.each([0, 250, 1_000_000])("ignores legacy cached capital %s", (stake) => {
+    const rows = accounts.map((row) => ({ ...row, total_stake_tao: stake, stake_dominance: 0.75 }));
+    for (const metric of ["reach", "emission"] as const) {
+      const cards = holderCards(rows, metric);
+      expect(cards[0]?.sub).toBe("7 subnets · 1 UID");
+      expect(JSON.stringify(cards)).not.toMatch(/%|stake|holdings/);
+    }
+    expect(holderCards(rows, "stake" as never)).toEqual([]);
   });
 
   it("drops a row with no address rather than linking nowhere", () => {
     expect(
-      holderCards([{ subnet_count: 1, uid_count: 1 } as AccountHolderDirectoryEntry], "stake"),
+      holderCards(
+        [{ coldkey: "5OwnerOnly", subnet_count: 1, uid_count: 1 } as AccountHolderDirectoryEntry],
+        "reach",
+      ),
     ).toEqual([]);
   });
 
   it("honours the limit", () => {
-    expect(holderCards(accounts, "stake", 1)).toHaveLength(1);
+    expect(holderCards(accounts, "reach", 1)).toHaveLength(1);
+  });
+
+  it("keeps absent membership and emission readings unavailable", () => {
+    const rows = [account({ subnet_count: null, uid_count: null, total_emission_tao: null })];
+    expect(holderCards(rows, "reach")[0]?.value).toBe("— subnets");
+    expect(holderCards(rows, "emission")[0]).toMatchObject({
+      sub: "— subnets · — UIDs",
+      value: "—",
+    });
   });
 });
-
 describe("plural", () => {
   it('does not say "1 subnets"', () => {
     expect(plural(1, "subnet")).toBe("1 subnet");
     expect(plural(0, "subnet")).toBe("0 subnets");
     expect(plural(7, "subnet")).toBe("7 subnets");
-  });
-});
-
-describe("concentrationSegments", () => {
-  const accounts = [1, 2, 3, 4].map((n) =>
-    account({ coldkey: `5${"X".repeat(19)}${n}`, total_stake_tao: n * 10 }),
-  );
-
-  it("collapses everything past the head into one residual segment", () => {
-    const { segments } = concentrationSegments(accounts, 2);
-    expect(segments.map((s) => s.key.slice(-1))).toEqual(["4", "3", "t"]);
-    expect(segments[2]).toMatchObject({ label: "2 more listed", value: 30 });
-  });
-
-  it("totals the LISTED stake, which is not the network's", () => {
-    // The endpoint serves a top-N slice, so a share computed against "all
-    // stake" would overstate every segment by the untabulated tail.
-    const { listedTotal } = concentrationSegments(accounts, 2);
-    expect(listedTotal).toBe(100);
-  });
-
-  it("emits no residual when the head is everything", () => {
-    const { segments } = concentrationSegments(accounts, 10);
-    expect(segments.some((s) => s.key === "rest")).toBe(false);
-  });
-
-  it("drops an account holding nothing and survives an empty read", () => {
-    expect(concentrationSegments([account({ total_stake_tao: 0 })]).segments).toEqual([]);
-    expect(concentrationSegments([])).toEqual({ segments: [], listedTotal: 0 });
   });
 });
 
@@ -168,47 +161,5 @@ describe("lookupVerdict", () => {
       kind: "invalid",
       message: expect.stringContaining("ss58"),
     });
-  });
-});
-
-describe("holderCards carries each account's share of priced registered stake", () => {
-  const accounts = [
-    { coldkey: "5A", total_stake_tao: 250, subnet_count: 3, uid_count: 3 },
-    { coldkey: "5B", total_stake_tao: 750, subnet_count: 1, uid_count: 1 },
-  ] as never;
-
-  it("states each account's network-wide share, share first", () => {
-    const [a, b] = holderCards(accounts, "stake", 18, 1000);
-    expect(a!.sub).toBe("25.0% of priced stake · 3 subnets");
-    expect(b!.sub).toBe("75.0% of priced stake · 1 subnet");
-  });
-
-  it("falls back to reach when there is no total to divide by", () => {
-    // A zero denominator is not "0%", it is "we cannot say" -- the card shows
-    // what it does know instead of a share of nothing.
-    const [a] = holderCards(accounts, "stake", 18, 0);
-    expect(a!.sub).toBe("3 subnets · 3 UIDs");
-  });
-
-  it("falls back when the stake itself is missing", () => {
-    const [a] = holderCards(
-      [{ coldkey: "5A", subnet_count: 2, uid_count: 2 }] as never,
-      "stake",
-      18,
-      1000,
-    );
-    expect(a!.sub).toBe("2 subnets · 2 UIDs");
-  });
-
-  it("uses one percent formatter, so two rows can never disagree", () => {
-    // The defect this replaced: the same account rendered "9%" in one section
-    // and "9.0%" in the other, 600px apart.
-    const [a] = holderCards(
-      [{ coldkey: "5A", total_stake_tao: 90, subnet_count: 1 }] as never,
-      "stake",
-      18,
-      1000,
-    );
-    expect(a!.sub.startsWith("9.0% of priced stake")).toBe(true);
   });
 });

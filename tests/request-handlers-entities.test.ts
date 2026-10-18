@@ -1334,7 +1334,7 @@ describe("handleAccountHolderDirectory", () => {
       emptyEnv(),
     );
     assert.equal(body.data.account_count, 0);
-    assert.equal(body.data.priced_registered_stake_tao, 0);
+    assert.equal(body.data.priced_registered_stake_tao, null);
     assert.deepEqual(body.data.rankings, {
       stake: [],
       emission: [],
@@ -1350,7 +1350,7 @@ describe("handleAccountHolderDirectory", () => {
       block_number: 8_950_000,
       account_count: 1,
       limit: 20,
-      priced_registered_stake_tao: 42,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     };
     let forwardedPath = "";

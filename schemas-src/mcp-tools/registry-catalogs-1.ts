@@ -28,6 +28,8 @@ import {
   providerSlugSchema,
   sortSchema,
   McpListPageFields,
+  McpCatalogPageFields,
+  McpCatalogPageControls,
   McpSortableListPage,
 } from "./shared.ts";
 import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
@@ -77,6 +79,7 @@ export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 export const ListSurfacesInputSchema = z
   .object({
+    ...McpCatalogPageControls,
     netuid:
       API_QUERY_COLLECTIONS[
         "curated-surfaces"
@@ -132,6 +135,7 @@ export const ListSurfacesOutputSchema = SurfacesArtifactSchema.extend({
   // The page block the MCP loader adds on top of the route's artifact --
   // undeclared until #10790, when `.strict()` first rejected it.
   ...McpListPageFields,
+  ...McpCatalogPageFields,
   surfaces: projectableRows(SurfacesArtifactSchema.shape.surfaces),
 });
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;

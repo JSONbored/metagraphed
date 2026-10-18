@@ -1,5 +1,6 @@
+import { CatalogPageRecovery } from "@/components/metagraphed/catalog-page-recovery";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import {
   AnalyticsSection,
@@ -20,7 +21,13 @@ import {
 } from "@jsonbored/ui-kit";
 import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/endpoint-directory-controls";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
+import {
+  CatalogRestartRequired,
+  restartCatalogResults,
+  catalogRetentionNotice,
+} from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { HubSections } from "@/components/metagraphed/hub-prose";
 import { RouterLink } from "@/components/metagraphed/router-link";
@@ -31,10 +38,10 @@ import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
 import { parseAppSearch } from "@/lib/metagraphed/search-params";
 import {
   endpointIncidentsQuery,
-  endpointsInfiniteQuery,
   endpointsSummaryQuery,
   rpcPoolsQuery,
 } from "@/lib/metagraphed/queries";
+import { endpointsInfiniteQuery, exportEndpointRows } from "@/lib/metagraphed/catalog-queries";
 import { hostOf } from "@/components/metagraphed/providers/providers-logic";
 import {
   LATENCY_VIEWS,
@@ -71,6 +78,7 @@ function ApiSources() {
 
 /** The endpoint directory leads; routing and probe diagnostics follow it. */
 export function EndpointsPage() {
+  const queryClient = useQueryClient();
   const routeSearch = Route.useSearch();
   const { history } = useRouter();
   // History commits immediately, while route matches render in a transition.
@@ -116,17 +124,24 @@ export function EndpointsPage() {
   if (search.kind) serverParams.kind = search.kind;
   if (search.provider) serverParams.provider = search.provider;
 
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    endpointRows(await exportEndpointRows(serverParams, signal));
+
+  const catalogOptions = endpointsInfiniteQuery(serverParams);
   const feed = useInfiniteQuery({
-    ...endpointsInfiniteQuery(serverParams),
+    ...catalogOptions,
     retry: 0,
     enabled: canSearch,
   });
   const directoryKey = JSON.stringify([search.q, search.status, search.kind, search.provider]);
   const retryFeed = () => {
-    if (canSearch) void feed.refetch();
+    if (canSearch) void restartCatalogResults(queryClient, catalogOptions);
   };
   const loadNextPage = () => {
-    if (canSearch) void feed.fetchNextPage();
+    if (canSearch && !feed.isFetching) {
+      if (feed.error instanceof CatalogRestartRequired) retryFeed();
+      else void feed.fetchNextPage({ cancelRefetch: false });
+    }
   };
   const summaryQuery = useQuery({ ...endpointsSummaryQuery(), retry: 0 });
   const pools = useQuery({ ...rpcPoolsQuery(), retry: 0 });
@@ -167,7 +182,7 @@ export function EndpointsPage() {
   );
   const refreshAll = () => {
     void Promise.all([
-      ...(canSearch ? [feed.refetch()] : []),
+      ...(canSearch ? [restartCatalogResults(queryClient, catalogOptions)] : []),
       summaryQuery.refetch(),
       pools.refetch(),
       incidents.refetch(),
@@ -408,6 +423,15 @@ export function EndpointsPage() {
               link={RouterLink}
               source="endpoint"
               storageKey="mg-endpoints-columns"
+              renderExportAction={({ formatRows, filename, shareAction }) => (
+                <CatalogExportAction
+                  loadRows={loadCatalogExportRows}
+                  formatRows={formatRows}
+                  filename={filename}
+                >
+                  {shareAction}
+                </CatalogExportAction>
+              )}
               expand={endpointDetail}
               loading={(feed.isPending || searchWaiting) && !searchError}
               error={
@@ -431,12 +455,16 @@ export function EndpointsPage() {
           // "1545 of 1545 - end of list" strip directly beneath it was the
           // same fact twice, in two vocabularies (#11696). An error still
           // shows, because a feed that stopped early is not the end of a list.
-          !canSearch ? null : feed.isRefetchError && rows.length > 0 ? (
-            <ErrorState error={feed.error} onRetry={retryFeed} context="endpoint refresh" />
+          !canSearch ? null : feed.error && rows.length > 0 ? (
+            <CatalogPageRecovery
+              error={feed.error}
+              onRestart={retryFeed}
+              pending={feed.isFetching}
+            />
           ) : feed.hasNextPage || (feed.error && rows.length > 0) ? (
             <LoadMore
               hasMore={feed.hasNextPage}
-              isLoading={feed.isFetchingNextPage}
+              isLoading={feed.isFetching}
               onLoadMore={loadNextPage}
               shown={rows.length}
               total={matchedTotal ?? undefined}
@@ -449,13 +477,14 @@ export function EndpointsPage() {
             ? "Search needs attention · endpoint results have not been requested"
             : searchWaiting
               ? "Waiting for search input · results update shortly"
-              : feed.isPending
-                ? "Searching the endpoint catalog · probe-derived"
-                : feed.isError
-                  ? rows.length > 0
-                    ? "Refresh failed · previously loaded endpoints remain visible · probe-derived"
-                    : "Endpoint results are temporarily unavailable · probe-derived"
-                  : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`
+              : (catalogRetentionNotice(feed, rows.length, resultScope) ??
+                (feed.isPending
+                  ? "Searching the endpoint catalog · probe-derived"
+                  : feed.isError
+                    ? rows.length > 0
+                      ? "Refresh failed · previously accepted endpoints retained · current freshness unverified"
+                      : "Endpoint results are temporarily unavailable · probe-derived"
+                    : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`))
         }
       />
 

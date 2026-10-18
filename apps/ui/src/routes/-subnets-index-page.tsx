@@ -21,13 +21,12 @@ import {
 } from "@/components/metagraphed/subnets-index/subnets-index-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
-  SUBNETS_ALL_LIMIT,
   agentCatalogMapQuery,
   domainsQuery,
   economicsQuery,
   subnetHealthMapQuery,
-  subnetsQuery,
 } from "@/lib/metagraphed/queries";
+import { subnetDirectoryQuery } from "@/lib/metagraphed/subnet-directory-query";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route, type SubnetsSearch } from "./subnets.index";
@@ -66,25 +65,6 @@ const API_PATHS = [
   "/api/v1/agent-catalog",
 ];
 
-// Every field the directory actually reads. The unprojected registry row now
-// carries dozens of enrichment fields and made this SSR document cross its
-// 430 KiB payload ratchet as that data grew, even though none was displayed.
-const SUBNET_DIRECTORY_FIELDS = [
-  "netuid",
-  "slug",
-  "name",
-  "native_name",
-  "subnet_type",
-  "surface_count",
-  "status",
-  "logo_url",
-  "website_url",
-  "source_repo",
-  "updated_at",
-  "integration_readiness",
-  "curation_level",
-].join(",");
-
 /** Registers this page's reads with the ⌘J drawer, from inside AppShell's provider. */
 function ApiSources() {
   useRegisterApiSource(API_PATHS);
@@ -97,9 +77,7 @@ export function SubnetsPage() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
-  const registry = useSuspenseQuery(
-    subnetsQuery({ limit: SUBNETS_ALL_LIMIT, fields: SUBNET_DIRECTORY_FIELDS }),
-  );
+  const registry = useSuspenseQuery(subnetDirectoryQuery());
   const economics = useQuery({ ...economicsQuery({ fields: "directory" }), retry: 0 });
   const domains = useQuery({ ...domainsQuery(), retry: 0 });
   const health = useQuery({ ...subnetHealthMapQuery(), retry: 0 });

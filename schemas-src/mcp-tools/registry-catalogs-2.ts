@@ -23,6 +23,7 @@ import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
+  McpCatalogPageFields,
   limitSchema,
   projectableRows,
   querySchema,
@@ -86,6 +87,7 @@ export const ListRpcEndpointsOutputSchema = RpcEndpointsArtifactSchema.extend({
   // The page block the MCP loader adds on top of the route's artifact --
   // undeclared until #10790, when `.strict()` first rejected it.
   ...McpListPageFields,
+  ...McpCatalogPageFields,
   // The same serve-time health overlay the REST route carries.
   ...LIVE_HEALTH_OVERLAY,
   endpoints: projectableRows(RpcEndpointsArtifactSchema.shape.endpoints),

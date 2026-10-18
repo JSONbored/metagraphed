@@ -18,6 +18,7 @@ import {
   DECLARED_UNPUBLISHED_ARGUMENTS,
   type ArgumentCodec,
 } from "./argument-divergences.ts";
+import { GRAPHQL_EXCLUDED_QUERY_PARAMETERS } from "../query-params.ts";
 
 /** One published argument, written the way the SDL writes it. */
 export interface QueryArgument {
@@ -165,9 +166,9 @@ export function fieldsArgumentApplies(returnType: string): boolean {
  *   PATH params become REQUIRED arguments -- `/subnets/{netuid}/…` is
  *   `netuid: Int!`, because a GraphQL field has no path to put them in.
  *
- *   `format` selects the CSV export. GraphQL has no CSV surface, and the SDL
- *   declares zero `format` arguments across all 196 fields, so this describes
- *   a rule the schema already keeps rather than carving an exception.
+ *   REST-only controls are omitted: `format` selects CSV and `page_snapshot`
+ *   requires the REST pagination metadata/Link restart protocol. GraphQL does
+ *   not implement that continuation contract.
  *
  *   `fields` is REST's projection parameter, and a selection set already is
  *   one -- dropped exactly when the return type is fully typed. When the
@@ -225,7 +226,7 @@ export function deriveQueryArguments(
   }
   for (const parameter of published) {
     if (parameter.in !== "query") continue;
-    if (parameter.name === "format") continue;
+    if (GRAPHQL_EXCLUDED_QUERY_PARAMETERS.includes(parameter.name)) continue;
     if (unpublished(parameter.name)) continue;
     if (parameter.name === "fields" && options.returnsProjectable) continue;
     const base = scalarFor(parameter);

@@ -26,7 +26,10 @@ from .client import (
     _default_headers,
     _interpolate,
     _jsonrpc_result,
-    _next_cursor,
+    _next_catalog_cursor,
+    _catalog_headers,
+    _catalog_error_code,
+    _parse_error_detail,
     _query_pairs,
     _url_origin,
 )
@@ -102,24 +105,12 @@ def _retry_after_seconds(
     return backoff * (2**attempt)
 
 
-def _response_error_detail(response: "httpx.Response") -> str:
-    """Best-effort extraction of the API's ``{ error: { code, message } }``
-    envelope from a failed response. Never raises."""
+def _response_error_detail(response: "httpx.Response") -> Any:
+    """Share the sync client's error detail and typed-envelope parsing."""
     try:
-        raw = response.text.strip()
+        return _parse_error_detail(response.text)
     except Exception:
-        return ""
-    if not raw:
-        return ""
-    try:
-        parsed = json.loads(raw)
-    except ValueError:
-        return f": {raw[:200]}"
-    envelope = parsed.get("error") if isinstance(parsed, dict) else None
-    if isinstance(envelope, dict) and envelope.get("message"):
-        code = envelope.get("code")
-        return f": {str(code) + ' — ' if code else ''}{envelope['message']}"
-    return f": {raw[:200]}"
+        return "", None
 
 
 class AsyncMetagraphedClient:
@@ -151,7 +142,7 @@ class AsyncMetagraphedClient:
         """Close the underlying connection pool."""
         await self._client.aclose()
 
-    async def _send_json(self, send: Any, *, label: str) -> Any:
+    async def _send_json(self, send: Any, *, label: str, checked: bool = False) -> Any:
         """Perform a request via ``send`` (an async thunk returning a response),
         retrying transient failures, and return the parsed JSON body.
 
@@ -161,19 +152,22 @@ class AsyncMetagraphedClient:
         <method>"``) prefixes error messages. Raises :class:`MetagraphedError`
         once retries are exhausted or if the body is not JSON.
         """
+        retry_budget = 0 if checked else self.retries
         attempt = 0
         while True:
             try:
                 response = await send()
             except self._httpx.HTTPError as error:
-                if attempt < self.retries:
+                if attempt < retry_budget:
                     await asyncio.sleep(self.backoff * (2**attempt))
                     attempt += 1
                     continue
                 raise MetagraphedError(f"{label} failed: {error}") from error
+            if checked and response.status_code == 304:
+                raise MetagraphedError("Checked catalog requires a current response body. Restart results.", status=304, code="catalog_restart_required")
             if response.status_code >= 400:
                 if (
-                    attempt < self.retries
+                    attempt < retry_budget
                     and response.status_code in _RETRY_STATUSES
                 ):
                     await asyncio.sleep(
@@ -181,10 +175,10 @@ class AsyncMetagraphedClient:
                     )
                     attempt += 1
                     continue
+                detail, envelope = _response_error_detail(response)
                 raise MetagraphedError(
-                    f"{label} failed: HTTP {response.status_code}"
-                    f"{_response_error_detail(response)}",
-                    status=response.status_code,
+                    f"{label} failed: HTTP {response.status_code}{detail}",
+                    status=response.status_code, code=_catalog_error_code(envelope), envelope=envelope,
                 )
             break
 
@@ -214,10 +208,11 @@ class AsyncMetagraphedClient:
         # and in-list ``None``, coerce bools — so both clients emit identical
         # query strings for the same input.
         params = dict(_query_pairs(query)) if query else None
-        merged_headers = _default_headers(headers)
+        merged_headers = _default_headers(_catalog_headers(query, headers))
         return await self._send_json(
             lambda: self._client.get(url, params=params, headers=merged_headers),
             label=f"GET {url}",
+            checked=bool(query and query.get("page_snapshot") is not None),
         )
 
     async def paginate(
@@ -231,6 +226,7 @@ class AsyncMetagraphedClient:
         """Yield each page's envelope, following ``meta.pagination.next_cursor``."""
         base_query = dict(query or {})
         cursor = base_query.get("cursor")
+        state: dict = {}
         while True:
             page_query = dict(base_query)
             if cursor is not None:
@@ -238,8 +234,10 @@ class AsyncMetagraphedClient:
             page = await self.fetch(
                 path, path_params=path_params, query=page_query, headers=headers
             )
+            cursor = _next_catalog_cursor(page, page_query, state)
+            if "page_snapshot" in page_query:
+                base_query["page_snapshot"] = page_query["page_snapshot"]
             yield page
-            cursor = _next_cursor(page)
             if cursor is None:
                 return
 
