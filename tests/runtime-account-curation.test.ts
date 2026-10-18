@@ -214,13 +214,15 @@ describe("qualified runtime account corrections", () => {
     expect(rows).toEqual(
       expected
         .filter((row) => row.block_number === first)
-        .map(({ block_number, observed_at, event_kind, amount_tao, netuid }) => ({
-          block_number,
-          observed_at,
-          event_kind,
-          amount_tao,
-          netuid,
-        })),
+        .map(
+          ({ block_number, observed_at, event_kind, amount_tao, netuid }) => ({
+            block_number,
+            observed_at,
+            event_kind,
+            amount_tao,
+            netuid,
+          }),
+        ),
     );
   });
 

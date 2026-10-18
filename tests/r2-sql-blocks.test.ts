@@ -189,6 +189,23 @@ test("the offset cap keeps the worst measured page under the body cap (#11140)",
 });
 
 describe("loadBlockWithEconomicsFromR2Sql", () => {
+  const fields = {
+    extrinsics: [
+      "block_number",
+      "observed_at",
+      "signer",
+      "fee_tao",
+      "tip_tao",
+      "call_args",
+    ],
+    account_events: [
+      "block_number",
+      "observed_at",
+      "event_kind",
+      "netuid",
+      "amount_tao",
+    ],
+  };
   test("projects reducer inputs while preserving nested subnet attribution", async () => {
     const extrinsic = economicsExtrinsic({
       call_args: JSON.stringify({
@@ -202,11 +219,8 @@ describe("loadBlockWithEconomicsFromR2Sql", () => {
     native.block.mockImplementation(
       async (_env, table, height, _network, _budget, columns) => {
         if (table === "blocks") return [row(height)];
-        const expected =
-          table === "extrinsics"
-            ? ["signer", "fee_tao", "tip_tao", "call_args"]
-            : ["event_kind", "netuid", "amount_tao"];
-        assert.deepEqual(columns, expected);
+        const expected = fields[table as keyof typeof fields];
+        assert.deepEqual([...columns].sort(), [...expected].sort());
         const source: Record<string, unknown> =
           table === "extrinsics" ? extrinsic : economicsEvent();
         return [
@@ -221,10 +235,7 @@ describe("loadBlockWithEconomicsFromR2Sql", () => {
     assert.deepEqual(data?.block?.subnet_ids, [7, 9, 19]);
   });
 
-  for (const [table, columns] of [
-    ["extrinsics", ["signer", "fee_tao", "tip_tao", "call_args"]],
-    ["account_events", ["event_kind", "netuid", "amount_tao"]],
-  ] as const) {
+  for (const [table, columns] of Object.entries(fields)) {
     for (const missing of columns) {
       test(`missing ${table}.${missing} cannot become a measured zero`, async () => {
         const incomplete: Record<string, unknown> =
@@ -240,6 +251,26 @@ describe("loadBlockWithEconomicsFromR2Sql", () => {
         const data = await loadBlockWithEconomicsFromR2Sql(TOKEN, "42");
         assert.equal(data?.block?.decode_status, "unavailable");
         assert.equal(data?.block?.economic_activity_tao, null);
+        assert.equal(data?.block?.fee_tao, null);
+      });
+    }
+  }
+
+  for (const table of ["extrinsics", "account_events"]) {
+    for (const field of ["block_number", "observed_at"]) {
+      test(`projected ${table}.${field} retains its generated numeric type`, async () => {
+        const malformed: Record<string, unknown> =
+          table === "extrinsics" ? economicsExtrinsic() : economicsEvent();
+        malformed[field] = String(malformed[field]);
+        native.block.mockImplementation(async (_env, selected, height) =>
+          selected === "blocks"
+            ? [row(height)]
+            : selected === table
+              ? [malformed]
+              : [],
+        );
+        const data = await loadBlockWithEconomicsFromR2Sql(TOKEN, "42");
+        assert.equal(data?.block?.decode_status, "unavailable");
         assert.equal(data?.block?.fee_tao, null);
       });
     }

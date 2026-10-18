@@ -47,12 +47,16 @@ import { readRetainedBlockRows } from "./retained-blocks-d1.ts";
 // call_args remains necessary for canonical subnet attribution in existing
 // captures; removing it needs a separately qualified compact source format.
 const economicsExtrinsicSchema = ExtrinsicsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
   signer: true,
   fee_tao: true,
   tip_tao: true,
   call_args: true,
 }).required();
 const economicsEventSchema = AccountEventsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
   event_kind: true,
   netuid: true,
   amount_tao: true,
