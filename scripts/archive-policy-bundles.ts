@@ -10,6 +10,7 @@ export const BUNDLE_FAMILIES = [
 ] as const;
 type Family = (typeof BUNDLE_FAMILIES)[number];
 type Bounds = { min: number; max: number };
+type SourceDialect = "postgres" | "d1";
 type Value = { nullable: boolean } & (
   | { kind: "string" | "boolean" | "decimal-string" }
   | ({ kind: "integer" } & Bounds)
@@ -27,6 +28,9 @@ type ColumnRule = {
   // A versioned contract assertion, not something base `numeric` in a source
   // snapshot proves. Unconstrained numeric values need decimal strings.
   integerBounds?: Bounds;
+  // D1 TEXT does not prove decimal syntax. This is a versioned writer/reader
+  // assertion, just like integerBounds, and still needs integration evidence.
+  encoding?: "decimal-string";
   binding: Binding;
 };
 type Receipt = { captureId: string; digest: string; acceptedAt: string };
@@ -42,6 +46,7 @@ type FamilyRule = {
 export interface BundleSourceColumn {
   table: string;
   column: string;
+  // PostgreSQL UDT, or the exact declared D1 type when sourceDialect is d1.
   udt: string;
   nullable: boolean;
 }
@@ -54,6 +59,7 @@ export interface BundleCatalogColumn {
 }
 export interface ArchiveBundleContract {
   version: number;
+  sourceDialect?: SourceDialect;
   capturePath: string;
   receiptPath: string;
   values: Record<string, Value>;
@@ -61,6 +67,9 @@ export interface ArchiveBundleContract {
   families: Record<Family, FamilyRule>;
   receipt: Receipt;
   index: {
+    // Independent of logical bundle version 1. Metadata checks cannot prove
+    // that the two physical v2 records were published or read back correctly.
+    physicalVersion?: number;
     fields: Omit<BundleCatalogColumn, "table">[];
     receipt: Receipt;
   };
@@ -119,10 +128,35 @@ function countFitsFamily(
   );
 }
 
-function lossless(source: ColumnRule, value: Value): boolean {
+function lossless(
+  source: ColumnRule,
+  value: Value,
+  dialect: SourceDialect,
+): boolean {
   if (source.nullable !== value.nullable) return false;
   if (source.integerBounds && !isBounds(source.integerBounds)) return false;
   if (value.kind === "integer" && !isBounds(value)) return false;
+  if (dialect === "d1") {
+    switch (source.udt) {
+      case "TEXT":
+        return (
+          (value.kind === "string" && source.encoding === undefined) ||
+          (value.kind === "decimal-string" &&
+            source.encoding === "decimal-string")
+        );
+      case "INTEGER":
+        return (
+          source.encoding === undefined &&
+          (value.kind === "decimal-string" ||
+            (value.kind === "integer" &&
+              source.integerBounds !== undefined &&
+              encloses(value, source.integerBounds)))
+        );
+      default:
+        return false;
+    }
+  }
+  if (source.encoding !== undefined) return false;
   switch (source.udt) {
     case "bool":
       return value.kind === "boolean";
@@ -182,6 +216,7 @@ function indexFits(
  * An empty production mapping is not an archive declaration or debt exemption.
  */
 export function validateArchiveBundles(input: {
+  sourceDialect?: SourceDialect;
   source: readonly BundleSourceColumn[];
   catalog: readonly BundleCatalogColumn[];
   policies: Readonly<Record<string, string>>;
@@ -207,6 +242,42 @@ export function validateArchiveBundles(input: {
       fail("unsupported or incompatible bundle contract version");
       continue;
     }
+    const dialect = contract.sourceDialect ?? "postgres";
+    if (
+      !["postgres", "d1"].includes(dialect) ||
+      dialect !== (input.sourceDialect ?? "postgres")
+    )
+      fail("unsupported or incompatible source dialect");
+    const physicalVersion = contract.index.physicalVersion ?? 1;
+    if (physicalVersion !== 1 && physicalVersion !== 2)
+      fail("unsupported physical index version");
+    const lookups = ["lookup_kind", "lookup_key"];
+    if (physicalVersion === 2) {
+      if (
+        contract.index.fields.length !== 29 ||
+        contract.index.fields.some(
+          (field) =>
+            !lookups.includes(field.column) &&
+            (field.field_id < 1 || field.field_id > 27),
+        ) ||
+        lookups.some(
+          (column, position) =>
+            !contract.index.fields.some(
+              (field) =>
+                field.column === column &&
+                field.field_id === position + 28 &&
+                field.type === "string" &&
+                field.required,
+            ),
+        )
+      )
+        fail(
+          "physical index v2 needs 27 logical fields and required lookup fields 28/29",
+        );
+    } else if (
+      contract.index.fields.some((field) => lookups.includes(field.column))
+    )
+      fail("lookup fields require explicit physical index v2");
     if (mapping.namespace !== "chain" || !NAME.test(mapping.indexTable))
       fail("unsupported catalog table identity");
     if (declaredIndexes.has(mapping.indexTable))
@@ -397,7 +468,7 @@ export function validateArchiveBundles(input: {
           fail(
             `missing value definition for ${table}.${column}: ${binding.path}`,
           );
-        else if (!lossless(projection, value))
+        else if (!lossless(projection, value, dialect))
           fail(
             `no lossless representation for ${table}.${column}; base numeric alone does not prove integer bounds`,
           );

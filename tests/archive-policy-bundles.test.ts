@@ -319,6 +319,237 @@ const definition = (input: Fixture): ArchiveBundleContract =>
 const association = (input: Fixture): ArchiveBundleMapping =>
   input.mappings[0]!;
 
+// Synthetic D1 columns exercise the existing logical fixture. They do not
+// parse sqlite_master DDL or establish production snapshot coverage.
+function d1Fixture(physicalVersion: 1 | 2) {
+  const input = { ...fixture(), sourceDialect: "d1" as const };
+  const contract = definition(input);
+  contract.sourceDialect = "d1";
+  contract.index.physicalVersion = physicalVersion;
+  for (const family of BUNDLE_FAMILIES) {
+    const table = association(input).sources[family];
+    for (const [column, rule] of Object.entries(
+      contract.families[family].columns,
+    )) {
+      // Safe integer bounds are contract assertions, never inferred from
+      // SQLite INTEGER affinity. Wide numeric text keeps its exact bytes.
+      if (rule.udt === "numeric" && rule.integerBounds) {
+        rule.udt = "INTEGER";
+      } else {
+        if (rule.udt === "numeric") rule.encoding = "decimal-string";
+        rule.udt = "TEXT";
+      }
+      input.source.find(
+        (source) => source.table === table && source.column === column,
+      )!.udt = rule.udt;
+    }
+  }
+  if (physicalVersion === 2) {
+    for (const [position, column] of ["lookup_kind", "lookup_key"].entries()) {
+      const field = {
+        column,
+        field_id: position + 28,
+        type: "string",
+        required: true,
+      };
+      contract.index.fields.push(field);
+      input.catalog.push({ ...field, table: association(input).indexTable });
+    }
+  }
+  return input;
+}
+
+describe("synthetic D1 bundle metadata and physical index versions", () => {
+  for (const physicalVersion of [1, 2] as const) {
+    test(`D1 source declarations support physical v${physicalVersion} with logical bundle v1`, () => {
+      const input = d1Fixture(physicalVersion);
+      assert.equal(definition(input).version, 1);
+      assert.equal(association(input).version, 1);
+      assert.equal(definition(input).index.physicalVersion, physicalVersion);
+      assert.equal(input.catalog.length, physicalVersion === 1 ? 27 : 29);
+      assert.deepEqual(input.catalog.slice(0, 27), fixture().catalog);
+      assert.equal(Object.keys(definition(input).families).length, 6);
+      assert.deepEqual(validateArchiveBundles(input), []);
+    });
+
+    const failures: [string, (input: Fixture) => void, RegExp][] = [
+      [
+        "source dialect mismatch",
+        (input) => {
+          definition(input).sourceDialect = "postgres";
+        },
+        /incompatible source dialect/,
+      ],
+      [
+        "unknown source dialect",
+        (input) => {
+          Object.assign(definition(input), { sourceDialect: "unknown" });
+        },
+        /incompatible source dialect/,
+      ],
+      [
+        "unasserted decimal text encoding",
+        (input) => {
+          delete definition(input).families.capture.columns.height!.encoding;
+        },
+        /no lossless representation.*height/,
+      ],
+      [
+        "unknown text encoding",
+        (input) => {
+          Object.assign(definition(input).families.capture.columns.height!, {
+            encoding: "number",
+          });
+        },
+        /no lossless representation.*height/,
+      ],
+      [
+        "unbounded D1 integer",
+        (input) => {
+          delete definition(input).families.pages.columns.page_index!
+            .integerBounds;
+        },
+        /no lossless representation.*page_index/,
+      ],
+      [
+        "narrow D1 integer representation",
+        (input) => {
+          definition(input).values["capture.funds[].targets[].weight"] =
+            integer(0, 255);
+        },
+        /no lossless representation.*weight/,
+      ],
+      [
+        "unsafe D1 integer bound",
+        (input) => {
+          definition(input).families.targets.columns.weight!.integerBounds!
+            .max = Number.MAX_SAFE_INTEGER + 1;
+        },
+        /no lossless representation.*weight/,
+      ],
+      [
+        "D1 nullability drift",
+        (input) => {
+          input.source.find((column) => column.column === "first_block")!
+            .nullable = false;
+        },
+        /source type\/nullability changed/,
+      ],
+      [
+        "D1 type drift",
+        (input) => {
+          input.source.find((column) => column.column === "height")!.udt =
+            "INTEGER";
+        },
+        /source type\/nullability changed/,
+      ],
+      [
+        "unmapped D1 source column",
+        (input) => {
+          input.source.push({
+            table: "fixture_capture",
+            column: "extra",
+            udt: "TEXT",
+            nullable: false,
+          });
+        },
+        /unmapped source column/,
+      ],
+      [
+        "missing D1 receipt column",
+        (input) => {
+          input.source = input.source.filter(
+            (column) => column.column !== "accepted_at",
+          );
+        },
+        /stale source column mapping/,
+      ],
+      [
+        "physical version used as logical version",
+        (input) => {
+          definition(input).version = association(input).version = 2;
+        },
+        /incompatible bundle contract version/,
+      ],
+    ];
+    for (const [name, mutate, expected] of failures) {
+      test(`physical v${physicalVersion} rejects ${name}`, () => {
+        const input = d1Fixture(physicalVersion);
+        mutate(input);
+        assert.match(validateArchiveBundles(input).join("\n"), expected);
+      });
+    }
+  }
+
+  test("wide D1 INTEGER needs a decimal string; affinity does not imply a safe JS number or boolean", () => {
+    for (const [udt, value, valid] of [
+      ["INTEGER", decimal(), true],
+      ["INTEGER", integer(0, Number.MAX_SAFE_INTEGER), false],
+      ["INTEGER", { kind: "boolean", nullable: false }, false],
+      ["TEXT", decimal(), false],
+      ["REAL", decimal(), false],
+      ["BLOB", text(), false],
+      ["numeric", decimal(), false],
+    ] as const) {
+      const input = d1Fixture(2);
+      const rule = definition(input).families.capture.columns.height!;
+      rule.udt = udt;
+      delete rule.encoding;
+      input.source.find((column) => column.column === "height")!.udt = udt;
+      definition(input).values["capture.height"] = value;
+      const problems = validateArchiveBundles(input);
+      assert.equal(problems.length === 0, valid, problems.join("\n"));
+    }
+  });
+
+  test("physical v2 requires exact required lookup fields and explicit selection", () => {
+    const mutations: ((input: Fixture) => void)[] = [
+      (input) => {
+        delete definition(input).index.physicalVersion;
+      },
+      (input) => {
+        definition(input).index.physicalVersion = 3;
+      },
+      (input) => {
+        definition(input).index.fields.pop();
+      },
+      (input) => {
+        definition(input).index.fields[27]!.field_id = 30;
+      },
+      (input) => {
+        definition(input).index.fields[0]!.field_id = 30;
+      },
+      (input) => {
+        definition(input).index.fields[28]!.required = false;
+      },
+      (input) => {
+        definition(input).index.fields[28]!.type = "long";
+      },
+      (input) => {
+        input.catalog[28]!.field_id = 30;
+      },
+      (input) => {
+        input.catalog[27]!.required = false;
+      },
+    ];
+    for (const mutate of mutations) {
+      const input = d1Fixture(2);
+      mutate(input);
+      assert.notDeepEqual(validateArchiveBundles(input), []);
+    }
+  });
+
+  test("D1 encoding assertions cannot change legacy PostgreSQL type rules", () => {
+    const input = fixture();
+    definition(input).families.capture.columns.height!.encoding =
+      "decimal-string";
+    assert.match(
+      validateArchiveBundles(input).join("\n"),
+      /no lossless representation.*height/,
+    );
+  });
+});
+
 describe("complete capture bundle archive mappings", () => {
   test("validates complete families, source/header/parent paths, nested fields and original receipts", () => {
     const input = fixture();
