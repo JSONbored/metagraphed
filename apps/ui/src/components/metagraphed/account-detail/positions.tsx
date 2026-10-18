@@ -95,6 +95,19 @@ export function PositionsSection({
           "Position snapshots unavailable"
         ) : (
           <>
+            {isError ? (
+              <span role="status">
+                Refresh failed; showing the last recorded response.{" "}
+                <button
+                  type="button"
+                  className="mg-section-more"
+                  disabled={query.isFetching}
+                  onClick={() => void query.refetch()}
+                >
+                  {query.isFetching ? "Retrying…" : "Retry refresh"}
+                </button>{" "}
+              </span>
+            ) : null}
             {incomplete ? "Incomplete position coverage · returned relationships only. " : null}
             Amounts and ownership shares are unavailable: this response does not identify an
             authoritative quantity basis. Root holdings are not covered. Recorded relationships do
