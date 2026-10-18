@@ -7,11 +7,17 @@
 // how neurons_passes froze the moment #10045 skipped that batch. Wiring their
 // tallies is the precondition, not a follow-up.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
+
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
+import type { LaneHealthDb } from "../src/lane-health.ts";
 
 const PASS = {
   capturedAt: 1786106225624,
@@ -20,6 +26,31 @@ const PASS = {
   nowMs: 1786106230000,
 };
 const ctx = { waitUntil: () => undefined } as never;
+
+// Null selects the environment-backed health store. A concrete no-op sink
+// keeps verdict writes isolated while the row/prune/tally SQL stays recorded.
+const laneHealthDb: LaneHealthDb = {
+  async query() {
+    return [];
+  },
+  async run() {
+    return { changes: 0 };
+  },
+};
+
+beforeEach(() => {
+  pg.control.connects = 0;
+  pg.control.queries.length = 0;
+});
+
+afterEach(() => {
+  assert.equal(
+    pg.control.connects,
+    0,
+    "a pass fixture reached the placeholder PostgreSQL connection",
+  );
+  assert.equal(pg.control.queries.length, 0);
+});
 
 function recordingSql(fail?: RegExp) {
   const calls: string[] = [];
@@ -48,7 +79,7 @@ describe("validator-nominator-counts", () => {
       ctx,
       "validator-nominator-counts",
       rows,
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
       PASS,
     );
     const tallyAt = calls.findIndex((c) =>
@@ -70,7 +101,7 @@ describe("validator-nominator-counts", () => {
       ctx,
       "validator-nominator-counts",
       rows,
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
       PASS,
     );
     assert.equal(
@@ -99,7 +130,7 @@ describe("validator-nominator-counts", () => {
       ctx,
       "hotkey-alpha",
       [{ hotkey: "h", netuid: 1, captured_at: 1 }],
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
       PASS,
     );
     assert.ok(
@@ -118,7 +149,7 @@ describe("validator-nominator-counts", () => {
       ctx,
       "hotkey-alpha",
       [{ hotkey: "h", netuid: 1, captured_at: 1 }],
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
       PASS,
     );
     assert.equal(
@@ -147,7 +178,7 @@ describe("nominator-positions", () => {
       env,
       ctx,
       { ...input, pass: PASS },
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
     );
     const tallyAt = calls.findIndex((c) =>
       c.includes("INSERT INTO nominator_positions_passes"),
@@ -163,7 +194,7 @@ describe("nominator-positions", () => {
       env,
       ctx,
       { ...input, pass: PASS },
-      { sql, laneHealthDb: null },
+      { sql, laneHealthDb },
     );
     assert.equal(
       calls.some((c) => c.includes("_passes")),
@@ -175,7 +206,7 @@ describe("nominator-positions", () => {
     const { calls, sql } = recordingSql();
     await mirrorNominatorPositionsToNeon(env, ctx, input, {
       sql,
-      laneHealthDb: null,
+      laneHealthDb,
     });
     assert.equal(
       calls.some((c) => c.includes("_passes")),
