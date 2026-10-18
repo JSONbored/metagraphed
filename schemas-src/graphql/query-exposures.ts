@@ -578,6 +578,14 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Whether the NETWORK is getting more concentrated: the network-wide concentration card as a per-day series, each point carrying the same five lenses the live card does (stake, emission, entity_stake, entity_emission, validator_stake) plus uids_per_entity and the shape of the day it was computed over. subnet_concentration_history answers one subnet at a time; this answers the whole network. READ builder_versions BEFORE DRAWING A TREND -- each point is a STORED computation, so if the builder changed, points before and after disagree BY CONSTRUCTION rather than because the network moved, and more than one version means the series changes DEFINITION partway along. The depth is the rollup's: neuron_daily is ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS, and a day the capture did not run is ABSENT rather than a zero-concentration point. A NULL scorecard means no measurable distribution, not a missing one. window is 7d, 30d (default) or 90d. An empty window is a measurement. Mainnet only. Mirrors GET /api/v1/chain/concentration/history.",
   },
   {
+    field: "subnet_price_share_composition",
+    operation: "subnet-price-share-composition",
+    returns: "SubnetPriceShareComposition!",
+    description:
+      "Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+  },
+  {
     field: "subnet_emission_pipeline_history",
     operation: "subnet-emission-pipeline-history",
     returns: "SubnetPipelineHistory!",

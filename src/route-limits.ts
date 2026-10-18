@@ -296,6 +296,11 @@ export const PIPELINE_HISTORY_WINDOWS = Object.keys(
 );
 export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
 
+/** #11550: fixed bounds, including one extra raw row to detect truncation. */
+export const PRICE_SHARE_COMPOSITION_DAYS = 56;
+export const PRICE_SHARE_COMPOSITION_SERIES = 6;
+export const PRICE_SHARE_COMPOSITION_ROWS = 16_384;
+
 /**
  * `/api/v1/review/attribution-candidates` -- the sweep's review queue (#11227).
  *

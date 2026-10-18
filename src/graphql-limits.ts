@@ -165,6 +165,7 @@ export const FIELD_COMPLEXITY = {
   // #9607: one bounded statement over the same two tables.
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_price_share_composition: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_emission_pipeline_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,

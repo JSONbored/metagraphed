@@ -404,6 +404,7 @@ import {
   handleAttributionCandidatesReview,
   handleSubnetDeregistrationHistory,
   handleSubnetPipelineHistory,
+  handleSubnetPriceShareComposition,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -8130,6 +8131,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/indexer-lag" ||
     // #9628: neuron_daily carries no network dimension.
     pathname === "/api/v1/chain/concentration/history" ||
+    pathname === "/api/v1/chain/subnet-price-share-composition" ||
     // #9625: subnet_snapshots carries no network dimension, so a testnet-
     // addressed request would be served MAINNET pipeline captures.
     SUBNET_PIPELINE_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -8328,8 +8330,22 @@ async function dispatchLiveChainRoute(
   if (pathname === "/api/v1/chain/indexer-lag") {
     return handleIndexerLag(request, env, new URL(request.url));
   }
-  // #9628: the network-wide concentration series. Exact-path match, and placed
-  // before the bare /chain/concentration check so the suffix is not swallowed.
+  // #11550: bounded observed price shares, using the existing short cache.
+  if (pathname === "/api/v1/chain/subnet-price-share-composition") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "subnet-price-share-composition",
+      (cacheRequest) =>
+        handleSubnetPriceShareComposition(
+          cacheRequest,
+          env,
+          new URL(cacheRequest.url),
+        ),
+    );
+  }
+  // #9628: the network-wide concentration series, before its bare route.
   if (pathname === "/api/v1/chain/concentration/history") {
     return handleChainConcentrationHistory(request, env, new URL(request.url));
   }

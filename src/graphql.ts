@@ -377,6 +377,10 @@ import {
   declinePipelineHistory,
   loadPipelineHistory,
 } from "./emission-pipeline-history.ts";
+import {
+  buildSubnetPriceShareComposition,
+  loadSubnetPriceShareComposition,
+} from "./subnet-price-share-composition.ts";
 import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildEmissionChanges,
@@ -3126,6 +3130,22 @@ const rootValue = {
     return rows === null
       ? declineChainConcentrationHistory("unavailable", args)
       : buildChainConcentrationHistory(rows, args);
+  },
+
+  async subnet_price_share_composition(
+    _args: Record<string, never>,
+    context: GqlContext,
+  ) {
+    return once(context, "subnet-price-share-composition", async () => {
+      const nowMs = Date.now();
+      return buildSubnetPriceShareComposition(
+        await loadSubnetPriceShareComposition(
+          readStore(context.env, SUBNET_SNAPSHOT_TABLES),
+          { nowMs },
+        ),
+        { nowMs },
+      );
+    });
   },
 
   async subnet_emission_pipeline_history(

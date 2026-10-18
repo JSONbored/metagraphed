@@ -1,4 +1,5 @@
 import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../schemas-src/legacy-emission-share.ts";
+import { buildSubnetPriceShareComposition } from "./subnet-price-share-composition.ts";
 import {
   CONTRACT_VERSION,
   ARTIFACT_BASE_PATH,
@@ -1953,6 +1954,14 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/concentration/history.json",
     "Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
     "ChainConcentrationHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Estimated artifact-normalized moving-price share composition over up to 56 closed UTC days, with six fixed netuid series and an exact residual. Numeric shares must share a persisted writer timestamp and satisfy six-decimal normalization checks; this is not completed-pass certification or proof of complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "SubnetPriceShareCompositionArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -4207,6 +4216,18 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "subnet-price-share-composition",
+    "GET",
+    "/api/v1/chain/subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "short",
+    ["chain"],
+    [],
+    [],
+  ),
+  route(
     "subnet-emission-pipeline-history",
     "GET",
     "/api/v1/subnets/{netuid}/emission-pipeline/history",
@@ -5474,6 +5495,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // served MAINNET holders. Same posture as /accounts/{ss58}/positions below,
   // which reads the first of those two tables.
   "/api/v1/subnets/{netuid}/holders",
+  "/api/v1/chain/subnet-price-share-composition",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6368,6 +6390,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   // not recognise, so /api/v1/ask leads with `Generate` and says what it
   // generates.
   ask: "Generate a grounded answer with citations",
+  "subnet-price-share-composition":
+    "Fetch an estimated subnet price-share timeline",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
   "subnet-health": "Fetch probe-derived health for one subnet",
@@ -6945,6 +6969,12 @@ function openApiExampleForRoute(
   const example =
     rowOf(sampleFromSchema(responseSchema, componentSchemas)) ??
     EMPTY_CONTRACT_ROW;
+  if (entry.id === "subnet-price-share-composition") {
+    // The generic sampler includes optional degradation independently of the
+    // measurements. Use the canonical decline so the worked example cannot
+    // claim both an unavailable store and a populated timeline.
+    return { ...example, data: buildSubnetPriceShareComposition(null) };
+  }
   if (UNAVAILABLE_VALIDATOR_EXAMPLE_ROUTES.has(entry.id)) {
     return unavailableCapitalExample(
       example,

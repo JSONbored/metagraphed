@@ -49,6 +49,8 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildGlobalValidators } from "../src/metagraph-neurons.ts";
 import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
+import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
+import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import {
@@ -1665,7 +1667,11 @@ describe("analytics edge cache", () => {
       );
       assert.equal(first.status, 200);
       assert.equal(first.headers.get("x-metagraph-cache"), "miss");
-      assert.deepEqual((await first.json()).data, directory);
+      const firstBody = await parseJsonBody(
+        first,
+        successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+      );
+      assert.deepEqual(firstBody.data, directory);
       await Promise.resolve();
       const repeat = await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
@@ -1673,7 +1679,11 @@ describe("analytics edge cache", () => {
         ctx,
       );
       assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
-      assert.deepEqual((await repeat.json()).data, directory);
+      const repeatBody = await parseJsonBody(
+        repeat,
+        successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+      );
+      assert.deepEqual(repeatBody.data, directory);
       const conditional = await handleRequest(
         new Request(`https://api.metagraph.sh${alias}`, {
           headers: { "if-none-match": first.headers.get("etag")! },
@@ -1737,7 +1747,11 @@ describe("analytics edge cache", () => {
       );
       assert.equal(first.status, 200);
       assert.equal(first.headers.get("x-metagraph-cache"), "miss");
-      assert.deepEqual((await first.json()).data, data);
+      const firstBody = await parseJsonBody(
+        first,
+        successEnvelopeSchema(GlobalValidatorsArtifactSchema),
+      );
+      assert.deepEqual(firstBody.data, data);
       await Promise.resolve();
       const repeat = await handleRequest(
         new Request(`https://api.metagraph.sh${path}${search}`),
@@ -1745,7 +1759,11 @@ describe("analytics edge cache", () => {
         ctx,
       );
       assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
-      assert.deepEqual((await repeat.json()).data, data);
+      const repeatBody = await parseJsonBody(
+        repeat,
+        successEnvelopeSchema(GlobalValidatorsArtifactSchema),
+      );
+      assert.deepEqual(repeatBody.data, data);
       const conditional = await handleRequest(
         new Request(`https://api.metagraph.sh${alias}${search}`, {
           headers: { "if-none-match": first.headers.get("etag")! },
@@ -1844,7 +1862,11 @@ describe("analytics edge cache", () => {
         );
         assert.equal(first.status, 200, "another scope's ETag must not match");
         assert.equal(first.headers.get("x-metagraph-cache"), "miss");
-        assert.deepEqual((await first.json()).data, histories.get(netuid));
+        const firstBody = await parseJsonBody(
+          first,
+          successEnvelopeSchema(ValidatorHistoryArtifactSchema),
+        );
+        assert.deepEqual(firstBody.data, histories.get(netuid));
         await Promise.resolve();
         const reorderedSearch =
           netuid === null ? "?window=30d" : `?netuid=${netuid}&window=30d`;
@@ -1854,7 +1876,11 @@ describe("analytics edge cache", () => {
           ctx,
         );
         assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
-        assert.deepEqual((await repeat.json()).data, histories.get(netuid));
+        const repeatBody = await parseJsonBody(
+          repeat,
+          successEnvelopeSchema(ValidatorHistoryArtifactSchema),
+        );
+        assert.deepEqual(repeatBody.data, histories.get(netuid));
         previousEtag = first.headers.get("etag");
         assert.ok(previousEtag);
         const conditional = await handleRequest(
@@ -1992,10 +2018,18 @@ describe("analytics edge cache", () => {
 
     const first = await handleRequest(request, env as unknown as Env, ctx);
     assert.equal(first.status, 200);
-    assert.deepEqual((await first.json()).data, data);
+    const firstBody = await parseJsonBody(
+      first,
+      successEnvelopeSchema(AccountsListArtifactSchema),
+    );
+    assert.deepEqual(firstBody.data, data);
     await Promise.resolve();
     const repeat = await handleRequest(request, env as unknown as Env, ctx);
-    assert.deepEqual((await repeat.json()).data, data);
+    const repeatBody = await parseJsonBody(
+      repeat,
+      successEnvelopeSchema(AccountsListArtifactSchema),
+    );
+    assert.deepEqual(repeatBody.data, data);
     assert.equal(reads, 1);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(

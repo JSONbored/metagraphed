@@ -3787,6 +3787,8 @@ export type Query = {
   subnet_performance: SubnetPerformance;
   /** Per-subnet per-day reward-distribution and score-spread trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's incentive/dividends Gini, Nakamoto coefficient, and top-10% share plus mean/median trust, consensus, and validator_trust, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/performance/history. */
   subnet_performance_history: SubnetPerformanceHistory;
+  /** Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
+  subnet_price_share_composition: SubnetPriceShareComposition;
   /** One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile. */
   subnet_profile?: Maybe<Scalars['JSON']['output']>;
   /** Per-subnet Prometheus telemetry-endpoint serving activity over a 7d/30d window (default 7d): distinct exporters (hotkeys), PrometheusServed announcement count, and announcements per exporter, summed live from the account_events stream. A subnet with no announcements resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
@@ -7353,6 +7355,39 @@ export type SubnetPipelineHistory = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+export type SubnetPriceShareComposition = {
+  __typename?: 'SubnetPriceShareComposition';
+  cohort_limit: Scalars['Int']['output'];
+  degraded?: Maybe<UnavailableDegraded>;
+  newest_day?: Maybe<Scalars['String']['output']>;
+  oldest_day?: Maybe<Scalars['String']['output']>;
+  other_label: Scalars['String']['output'];
+  point_count?: Maybe<Scalars['Int']['output']>;
+  points: Array<SubnetPriceShareCompositionPoint>;
+  quality: Scalars['String']['output'];
+  row_limit: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  series: Array<SubnetPriceShareCompositionSeries>;
+  window_days: Scalars['Int']['output'];
+};
+
+export type SubnetPriceShareCompositionPoint = {
+  __typename?: 'SubnetPriceShareCompositionPoint';
+  /** Persisted writer timestamp shared by the day's numeric shares; not an immutable source-pass ID or proof of complete chain coverage. */
+  captured_at: Scalars['String']['output'];
+  day: Scalars['String']['output'];
+  /** Exact six-decimal residual of one after selected shares; not a stored bucket, sum of unselected rows, or network total. */
+  other_share: Scalars['Float']['output'];
+  /** Recorded six-decimal shares in the fixed series order. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
+  shares: Array<Scalars['Float']['output']>;
+};
+
+export type SubnetPriceShareCompositionSeries = {
+  __typename?: 'SubnetPriceShareCompositionSeries';
+  /** A netuid, not a project identity across netuid reuse. */
+  netuid: Scalars['Int']['output'];
+};
+
 export type SubnetProfile = {
   __typename?: 'SubnetProfile';
   candidate_count: Scalars['Int']['output'];
@@ -8918,6 +8953,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetPerformanceHistory: ResolverTypeWrapper<SubnetPerformanceHistory>;
   SubnetPerformanceHistoryPoint: ResolverTypeWrapper<SubnetPerformanceHistoryPoint>;
   SubnetPipelineHistory: ResolverTypeWrapper<SubnetPipelineHistory>;
+  SubnetPriceShareComposition: ResolverTypeWrapper<SubnetPriceShareComposition>;
+  SubnetPriceShareCompositionPoint: ResolverTypeWrapper<SubnetPriceShareCompositionPoint>;
+  SubnetPriceShareCompositionSeries: ResolverTypeWrapper<SubnetPriceShareCompositionSeries>;
   SubnetProfile: ResolverTypeWrapper<SubnetProfile>;
   SubnetProfileCompleteness: ResolverTypeWrapper<SubnetProfileCompleteness>;
   SubnetProfileGithubCommitsWeekly: ResolverTypeWrapper<SubnetProfileGithubCommitsWeekly>;
@@ -9389,6 +9427,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetPerformanceHistory: SubnetPerformanceHistory;
   SubnetPerformanceHistoryPoint: SubnetPerformanceHistoryPoint;
   SubnetPipelineHistory: SubnetPipelineHistory;
+  SubnetPriceShareComposition: SubnetPriceShareComposition;
+  SubnetPriceShareCompositionPoint: SubnetPriceShareCompositionPoint;
+  SubnetPriceShareCompositionSeries: SubnetPriceShareCompositionSeries;
   SubnetProfile: SubnetProfile;
   SubnetProfileCompleteness: SubnetProfileCompleteness;
   SubnetProfileGithubCommitsWeekly: SubnetProfileGithubCommitsWeekly;
@@ -12354,6 +12395,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_ownership_history?: Resolver<ResolversTypes['SubnetOwnershipHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Ownership_HistoryArgs, 'netuid'>>;
   subnet_performance?: Resolver<ResolversTypes['SubnetPerformance'], ParentType, ContextType, RequireFields<QuerySubnet_PerformanceArgs, 'netuid'>>;
   subnet_performance_history?: Resolver<ResolversTypes['SubnetPerformanceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Performance_HistoryArgs, 'netuid'>>;
+  subnet_price_share_composition?: Resolver<ResolversTypes['SubnetPriceShareComposition'], ParentType, ContextType>;
   subnet_profile?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_ProfileArgs, 'netuid'>>;
   subnet_prometheus?: Resolver<ResolversTypes['SubnetPrometheus'], ParentType, ContextType, RequireFields<QuerySubnet_PrometheusArgs, 'netuid'>>;
   subnet_recycled?: Resolver<Maybe<ResolversTypes['SubnetRecycled']>, ParentType, ContextType, RequireFields<QuerySubnet_RecycledArgs, 'netuid'>>;
@@ -13902,6 +13944,32 @@ export type SubnetPipelineHistoryResolvers<ContextType = GqlContext, ParentType 
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type SubnetPriceShareCompositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareComposition'] = ResolversParentTypes['SubnetPriceShareComposition']> = ResolversObject<{
+  cohort_limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['UnavailableDegraded']>, ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  other_label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  point_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['SubnetPriceShareCompositionPoint']>, ParentType, ContextType>;
+  quality?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  row_limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  series?: Resolver<Array<ResolversTypes['SubnetPriceShareCompositionSeries']>, ParentType, ContextType>;
+  window_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetPriceShareCompositionPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareCompositionPoint'] = ResolversParentTypes['SubnetPriceShareCompositionPoint']> = ResolversObject<{
+  captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  other_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  shares?: Resolver<Array<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetPriceShareCompositionSeriesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPriceShareCompositionSeries'] = ResolversParentTypes['SubnetPriceShareCompositionSeries']> = ResolversObject<{
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetProfileResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfile'] = ResolversParentTypes['SubnetProfile']> = ResolversObject<{
   candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   categories?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
@@ -15153,6 +15221,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetPerformanceHistory?: SubnetPerformanceHistoryResolvers<ContextType>;
   SubnetPerformanceHistoryPoint?: SubnetPerformanceHistoryPointResolvers<ContextType>;
   SubnetPipelineHistory?: SubnetPipelineHistoryResolvers<ContextType>;
+  SubnetPriceShareComposition?: SubnetPriceShareCompositionResolvers<ContextType>;
+  SubnetPriceShareCompositionPoint?: SubnetPriceShareCompositionPointResolvers<ContextType>;
+  SubnetPriceShareCompositionSeries?: SubnetPriceShareCompositionSeriesResolvers<ContextType>;
   SubnetProfile?: SubnetProfileResolvers<ContextType>;
   SubnetProfileCompleteness?: SubnetProfileCompletenessResolvers<ContextType>;
   SubnetProfileGithubCommitsWeekly?: SubnetProfileGithubCommitsWeeklyResolvers<ContextType>;

@@ -190,6 +190,11 @@ import {
   PipelineHistoryArtifactSchema,
 } from "./routes/emission-pipeline-history.ts";
 import {
+  SubnetPriceShareCompositionSeriesSchema,
+  SubnetPriceShareCompositionPointSchema,
+  SubnetPriceShareCompositionArtifactSchema,
+} from "./routes/subnet-price-share-composition.ts";
+import {
   DeregistrationHistoryPointSchema,
   DeregistrationHistoryArtifactSchema,
 } from "./routes/subnet-deregistration-history.ts";
@@ -642,6 +647,18 @@ register(
 );
 register(PipelineHistoryPointSchema, "PipelineHistoryPoint");
 register(PipelineHistoryArtifactSchema, "PipelineHistoryArtifact");
+register(
+  SubnetPriceShareCompositionSeriesSchema,
+  "SubnetPriceShareCompositionSeries",
+);
+register(
+  SubnetPriceShareCompositionPointSchema,
+  "SubnetPriceShareCompositionPoint",
+);
+register(
+  SubnetPriceShareCompositionArtifactSchema,
+  "SubnetPriceShareCompositionArtifact",
+);
 register(DeregistrationHistoryPointSchema, "DeregistrationHistoryPoint");
 register(DeregistrationHistoryArtifactSchema, "DeregistrationHistoryArtifact");
 register(AttributionCandidateSchema, "AttributionCandidate");

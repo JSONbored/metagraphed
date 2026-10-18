@@ -329,6 +329,7 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/subnets/{netuid}/owner-cut",
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/chain/indexer-lag",
+  "/api/v1/chain/subnet-price-share-composition",
   "/api/v1/chain/burn",
   "/api/v1/subnets/{netuid}/ownership-history",
   "/api/v1/subnets/{netuid}/conviction",
