@@ -6,6 +6,7 @@ import {
   readNativePayload,
   writeNativePayload,
 } from "./chain-detail-native-payloads.ts";
+import type { ProducerStatement } from "./producer-store.ts";
 const PREFIX = "\0metagraphed:r2:";
 const INLINE_BYTES = 128 * 1024;
 const MAX_VALUE_BYTES = 16 * 1024 * 1024;
@@ -27,6 +28,7 @@ function objectKey(hash: string, compressed: boolean): string {
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
+  plan?: ProducerStatement[],
 ): Promise<Row[]> {
   const output: Row[] = [];
   const prepared = new Map<string, string>();
@@ -62,6 +64,7 @@ export async function storeChainDetailPayloads(
         raw.byteLength,
         bytes,
         compressed ? "gzip" : "raw",
+        plan,
       );
       prepared.set(hash, next[field] as string);
     }
@@ -172,3 +175,4 @@ export async function restoreChainDetailPayloads(
   }
   return output;
 }
+

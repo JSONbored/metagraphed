@@ -1,0 +1,62 @@
+name: Atomic chain-detail payload native red and control
+
+on:
+  push:
+    branches:
+      - ci/chain-detail-atomic-payload-qualification-20261018
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chain-detail-atomic-payload-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain exact native formatting
+        run: |
+          npx prettier --write src/chain-detail-d1-write.ts src/chain-detail-native-payloads.ts src/chain-detail-payloads.ts tests/chain-detail-d1.test.ts tests/chain-detail-native-payloads.test.ts .github/workflows/atomic-payload-qualification.yml .github/scripts/qualify-atomic-payload.ts
+          git diff -- src/chain-detail-d1-write.ts src/chain-detail-native-payloads.ts src/chain-detail-payloads.ts tests/chain-detail-d1.test.ts tests/chain-detail-native-payloads.test.ts .github/workflows/atomic-payload-qualification.yml .github/scripts/qualify-atomic-payload.ts
+      - name: Lint final source and regression fixtures
+        run: npx eslint src/chain-detail-d1-write.ts src/chain-detail-native-payloads.ts src/chain-detail-payloads.ts tests/chain-detail-d1.test.ts tests/chain-detail-native-payloads.test.ts
+      - name: Cold typecheck
+        run: npm run typecheck -- --incremental false
+      - name: Validate canonical and diagnostic workflow policies
+        run: npm run validate:workflows
+      - name: Build existing local fixture artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+      - name: Prove baseline failures and candidate native regressions
+        run: node .github/scripts/qualify-atomic-payload.ts
+      - name: Retain only native formatted source and synthetic receipt
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: atomic-payload-native-source
+          path: |
+            src/chain-detail-d1-write.ts
+            src/chain-detail-native-payloads.ts
+            src/chain-detail-payloads.ts
+            tests/chain-detail-d1.test.ts
+            tests/chain-detail-native-payloads.test.ts
+            atomic-payload-reports/source-receipt.json
+          retention-days: 1
+          if-no-files-found: error

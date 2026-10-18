@@ -7,7 +7,7 @@ import {
 import type { ProducerStore, ProducerStatement } from "./producer-store.ts";
 import type { NeonWriteResult } from "./neon-write.ts";
 
-/** Details and their coverage register commit together, including queue replay. */
+/** Exact chunks, details and coverage commit together, including queue replay. */
 export async function writeChainDetailD1(
   store: ProducerStore,
   env: unknown,
@@ -22,12 +22,13 @@ export async function writeChainDetailD1(
   const results: Record<string, NeonWriteResult> = {};
   try {
     const statements: ProducerStatement[] = [];
+    const chunks: ProducerStatement[] = [];
     for (const plan of CHAIN_DETAIL_MIRROR_PLANS) {
       const rows = byTable[plan.table as keyof typeof byTable];
       const prepared = rows.length
         ? captureUpsertStatements(
             plan,
-            await storeChainDetailPayloads(env, rows),
+            await storeChainDetailPayloads(env, rows, chunks),
           )
         : [];
       statements.push(...prepared);
@@ -37,9 +38,9 @@ export async function writeChainDetailD1(
         statements: prepared.length,
       };
     }
-    if (statements.length > 900)
+    if (chunks.length + statements.length > 900)
       throw new RangeError("Chain detail exceeds atomic statement budget");
-    await store.transaction(statements);
+    await store.transaction([...chunks, ...statements]);
   } catch (error) {
     for (const plan of CHAIN_DETAIL_MIRROR_PLANS)
       results[plan.table] = {
@@ -51,3 +52,4 @@ export async function writeChainDetailD1(
   }
   return results;
 }
+
