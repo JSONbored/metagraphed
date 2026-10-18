@@ -13,7 +13,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import { mockEnv } from "./row-type.ts";
+import { mockEnv, parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 
 // A real finney address (a live top holder), and the same address with its
 // checksum broken: base58 alphabet, correct length, wrong trailing bytes.
@@ -56,9 +57,9 @@ describe("account ss58 checksum guard", () => {
     const accepted: string[] = [];
     for (const route of ACCOUNT_ROUTES) {
       const res = await call(fill(route, BAD_CHECKSUM));
-      const body = (await res.json()) as { error?: { code?: string } };
-      if (res.status !== 400 || body.error?.code !== "invalid_ss58") {
-        accepted.push(`${route} -> ${res.status} ${body.error?.code ?? "ok"}`);
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+      if (res.status !== 400 || body.error.code !== "invalid_ss58") {
+        accepted.push(`${route} -> ${res.status} ${body.error.code}`);
       }
     }
     assert.deepEqual(accepted, []);
@@ -70,11 +71,16 @@ describe("account ss58 checksum guard", () => {
     // what makes the test above meaningful rather than "everything 400s".
     for (const route of ACCOUNT_ROUTES) {
       const res = await call(fill(route, VALID));
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: { code?: string };
-      };
+      const body: unknown = await res.json().catch(() => ({}));
+      let errorCode: unknown;
+      if (body !== null && typeof body === "object" && "error" in body) {
+        const error = body.error;
+        if (error !== null && typeof error === "object" && "code" in error) {
+          errorCode = error.code;
+        }
+      }
       assert.notEqual(
-        body.error?.code,
+        errorCode,
         "invalid_ss58",
         `${route} rejected a valid address`,
       );

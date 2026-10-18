@@ -1,3 +1,26 @@
+import { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  HealthPercentilesArtifactSchema,
+  HealthIncidentsArtifactSchema,
+} from "../schemas-src/routes/health-surfaces.ts";
+import {
+  SubnetTrajectoryArtifactSchema,
+} from "../schemas-src/routes/subnet-trajectory.ts";
+import {
+  RegistryLeaderboardsArtifactSchema,
+} from "../schemas-src/routes/registry-summary-leaderboards.ts";
+import {
+  SubnetMetagraphArtifactSchema,
+} from "../schemas-src/routes/subnet-metagraph.ts";
+import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
+import {
+  EmissionPipelineArtifactSchema,
+  SubnetEmissionDecompositionSchema,
+} from "../schemas-src/routes/emission-pipeline.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -29,8 +52,19 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
 import type { StorageReadError, StorageReadOk } from "../workers/storage.ts";
+
+const ProjectedEmissionPipelineResponseSchema = successEnvelopeSchema(
+  EmissionPipelineArtifactSchema.extend({
+    subnets: z.array(
+      SubnetEmissionDecompositionSchema.pick({
+        netuid: true,
+        final_share: true,
+      }),
+    ),
+  }),
+);
 
 // --- Pure format helpers ----------------------------------------------------
 
@@ -1619,9 +1653,13 @@ function rowsForSql(sql: string) {
   return [];
 }
 
-async function getJson(url: string, env: Row) {
+async function getJson<Schema extends z.ZodType>(
+  url: string,
+  env: Row,
+  schema: Schema,
+) {
   const res = await handleRequest(new Request(url), env as unknown as Env, {});
-  return { status: res.status, body: await res.json() };
+  return { status: res.status, body: await parseJsonBody(res, schema) };
 }
 
 describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)", () => {
@@ -1630,6 +1668,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles",
       env,
+      successEnvelopeSchema(HealthPercentilesArtifactSchema),
     );
     assert.equal(status, 200);
     assert.equal(body.data.netuid, 7);
@@ -1639,6 +1678,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
       env,
+      successEnvelopeSchema(HealthIncidentsArtifactSchema),
     );
     assert.deepEqual(body.data.surfaces, []);
   });
@@ -1656,6 +1696,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
       const { status, body } = await getJson(
         `https://api.metagraph.sh${path}`,
         env,
+        ErrorEnvelopeSchema,
       );
       assert.equal(status, 400, path);
       assert.equal(body.error.code, "invalid_query");
@@ -1666,6 +1707,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
       env,
+      ErrorEnvelopeSchema,
     );
     // 90d is a real window elsewhere on the surface, which is exactly why this
     // route has to reject it against its OWN enum (#10218). The sentence is
@@ -1681,6 +1723,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
       env,
+      successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
     );
     assert.equal(body.data.point_count, 0);
   });
@@ -1711,6 +1754,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
       const metagraph = await getJson(
         "https://api.metagraph.sh/api/v1/subnets/7/metagraph",
         failingEnv,
+        successEnvelopeSchema(SubnetMetagraphArtifactSchema),
       );
       // Degrades, never a client-facing error -- the contract this protects.
       assert.equal(metagraph.status, 200);
@@ -1748,6 +1792,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
       profileEnv,
+      successEnvelopeSchema(RegistryLeaderboardsArtifactSchema),
     );
     assert.equal(typeof body.data.boards, "object");
     assert.ok(body.data.boards["most-complete"].length > 0);
@@ -1757,6 +1802,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
       env,
+      successEnvelopeSchema(RegistryLeaderboardsArtifactSchema),
     );
     // open-slots / cheapest-registration / highest-emission / validator-headroom
     // project from the R2 economics.json fallback in this cold-D1 env.
@@ -1776,6 +1822,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
       "committed economics yields open-slot subnets",
     );
     // Descending by open_slots; each entry carries the miner decision fields.
+    assert.ok(typeof openSlots[0].open_slots === "number");
     assert.ok(openSlots[0].open_slots >= (openSlots[1]?.open_slots ?? 0));
     assert.equal(typeof openSlots[0].netuid, "number");
     assert.ok("registration_cost_tao" in openSlots[0]);
@@ -1784,6 +1831,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards?board=highest-emission&limit=5",
       env,
+      successEnvelopeSchema(RegistryLeaderboardsArtifactSchema),
     );
     assert.deepEqual(Object.keys(body.data.boards), ["highest-emission"]);
     assert.ok(body.data.boards["highest-emission"].length <= 5);
@@ -1819,9 +1867,10 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards?board=open-slots",
       liveEnv,
+      successEnvelopeSchema(RegistryLeaderboardsArtifactSchema),
     );
     assert.deepEqual(
-      body.data.boards["open-slots"].map((e: Row) => e.netuid),
+      body.data.boards["open-slots"].map((e) => e.netuid),
       [777],
     );
   });
@@ -1829,6 +1878,7 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards?board=bogus",
       env,
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 400);
     assert.equal(body.error.code, "invalid_query");
@@ -1846,6 +1896,7 @@ describe("analytics routes reject malformed params before any tier call", () => 
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=lots",
       envWithCapture,
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 400);
     assert.equal(body.error.code, "invalid_query");
@@ -1871,15 +1922,28 @@ describe("analytics routes tolerate a failing Postgres tier (D1 fully eliminated
     },
   };
   test("percentiles/incidents/trajectory/leaderboards degrade to empty, not 500", async () => {
-    for (const path of [
-      "/api/v1/subnets/7/health/percentiles",
-      "/api/v1/subnets/7/health/incidents",
-      "/api/v1/subnets/7/trajectory",
-      "/api/v1/registry/leaderboards",
-    ]) {
+    for (const [path, schema] of [
+      [
+        "/api/v1/subnets/7/health/percentiles",
+        successEnvelopeSchema(HealthPercentilesArtifactSchema),
+      ],
+      [
+        "/api/v1/subnets/7/health/incidents",
+        successEnvelopeSchema(HealthIncidentsArtifactSchema),
+      ],
+      [
+        "/api/v1/subnets/7/trajectory",
+        successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
+      ],
+      [
+        "/api/v1/registry/leaderboards",
+        successEnvelopeSchema(RegistryLeaderboardsArtifactSchema),
+      ],
+    ] as const) {
       const { status, body } = await getJson(
         `https://api.metagraph.sh${path}`,
         env,
+        schema,
       );
       assert.equal(status, 200, `${path} should degrade gracefully`);
       assert.equal(body.ok, true);
@@ -1960,6 +2024,21 @@ describe("emission-pipeline route", () => {
   const SUBNETS = [
     {
       netuid: 1,
+      alpha_price_tao: 0.4,
+      alpha_in_pool: null,
+      alpha_out_pool: null,
+      max_stake_alpha: null,
+      max_uids: 256,
+      max_validators: 64,
+      miner_count: 0,
+      owner_coldkey: null,
+      owner_hotkey: null,
+      registration_allowed: true,
+      registration_cost_tao: null,
+      subnet_volume_tao: null,
+      tao_in_pool_tao: null,
+      total_stake_alpha: null,
+      validator_count: 0,
       moving_price_pinned: 0.4,
       miner_burned_fraction: 0.1,
       emission_enabled: true,
@@ -1974,6 +2053,21 @@ describe("emission-pipeline route", () => {
     },
     {
       netuid: 2,
+      alpha_price_tao: 0.6,
+      alpha_in_pool: null,
+      alpha_out_pool: null,
+      max_stake_alpha: null,
+      max_uids: 256,
+      max_validators: 64,
+      miner_count: 0,
+      owner_coldkey: null,
+      owner_hotkey: null,
+      registration_allowed: true,
+      registration_cost_tao: null,
+      subnet_volume_tao: null,
+      tao_in_pool_tao: null,
+      total_stake_alpha: null,
+      validator_count: 0,
       moving_price_pinned: 0.6,
       miner_burned_fraction: 0.2,
       emission_enabled: false,
@@ -1988,6 +2082,20 @@ describe("emission-pipeline route", () => {
     },
   ];
 
+  // The REST fixture uses the economics schema's numeric TAO fields.
+  const ECONOMICS_SUBNETS = [
+    {
+      ...SUBNETS[0],
+      tao_in_emission_tao: 0.001185079,
+      excess_tao: 0.001106056,
+    },
+    {
+      ...SUBNETS[1],
+      tao_in_emission_tao: 0,
+      excess_tao: 0,
+    },
+  ];
+
   // Drives the route through the LIVE economics blob -- the tier it actually
   // prefers -- rather than the committed artifact, which carries no chain_state
   // locally.
@@ -1999,6 +2107,8 @@ describe("emission-pipeline route", () => {
           if (key !== "economics:current" || !economics) return null;
           return {
             schema_version: 1,
+            generated_at: new Date(Date.now() - 60_000).toISOString(),
+            network: "finney",
             contract_version: CONTRACT_VERSION,
             captured_at: new Date(Date.now() - 60_000).toISOString(),
             // resolveLiveEconomics refuses a blob whose row count disagrees
@@ -2006,6 +2116,14 @@ describe("emission-pipeline route", () => {
             // both are partial-write guards, so the fixture must satisfy them
             // or the route never sees the live tier at all.
             summary: {
+              registration_open_count: 2,
+              subnet_count: 2,
+              total_alpha_value_tao: "0.000000000",
+              total_miners: 0,
+              total_network_value_tao: "0.000000000",
+              total_root_value_tao: "0.000000000",
+              total_stake_alpha: "0.000000000",
+              total_validators: 0,
               with_economics_count: Array.isArray(economics.subnets)
                 ? (economics.subnets as Row[]).length
                 : 0,
@@ -2025,11 +2143,13 @@ describe("emission-pipeline route", () => {
   test("economics field_sources follows the serving tier", async () => {
     const live = await getJson(
       "https://api.metagraph.sh/api/v1/economics?limit=1",
-      envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS }),
+      envWithEconomics({ chain_state: CHAIN_STATE, subnets: ECONOMICS_SUBNETS }),
+      successEnvelopeSchema(EconomicsArtifactSchema),
     );
     assert.equal(live.status, 200);
     assert.equal(live.body.meta.source, "live-kv");
     const liveSources = live.body.data.field_sources;
+    assert.ok(liveSources);
     assert.equal(liveSources.alpha_price_tao.read_at, "chain_state.block");
     assert.equal(
       liveSources.alpha_price_tao.storage,
@@ -2043,9 +2163,11 @@ describe("emission-pipeline route", () => {
     const r2 = await getJson(
       "https://api.metagraph.sh/api/v1/economics?limit=1",
       envWithEconomics(null),
+      successEnvelopeSchema(EconomicsArtifactSchema),
     );
     assert.equal(r2.status, 200);
     const r2Sources = r2.body.data.field_sources;
+    assert.ok(r2Sources);
     assert.equal(r2Sources.alpha_price_tao.read_at, "capture");
     assert.equal(
       r2Sources.alpha_price_tao.storage,
@@ -2058,12 +2180,13 @@ describe("emission-pipeline route", () => {
   // rows without spot_price_tao while its schema declared the field. Both tiers
   // pass through the same injection point, so both are asserted here.
   test("economics rows carry serve-time spot_price_tao on both tiers", async () => {
-    const withReserves = SUBNETS.map((row, i) =>
+    const withReserves = ECONOMICS_SUBNETS.map((row, i) =>
       i === 0 ? { ...row, tao_in_pool_tao: 100, alpha_in_pool: 400 } : row,
     );
     const live = await getJson(
       "https://api.metagraph.sh/api/v1/economics",
       envWithEconomics({ chain_state: CHAIN_STATE, subnets: withReserves }),
+      successEnvelopeSchema(EconomicsArtifactSchema),
     );
     assert.equal(live.status, 200);
     assert.equal(live.body.meta.source, "live-kv");
@@ -2076,6 +2199,7 @@ describe("emission-pipeline route", () => {
     const r2 = await getJson(
       "https://api.metagraph.sh/api/v1/economics?limit=1",
       envWithEconomics(null),
+      successEnvelopeSchema(EconomicsArtifactSchema),
     );
     assert.equal(r2.status, 200);
     assert.notEqual(r2.body.data.subnets[0].spot_price_tao, undefined);
@@ -2085,16 +2209,20 @@ describe("emission-pipeline route", () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
       envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS } as Row),
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
     );
     assert.equal(status, 200);
     assert.equal(body.data.chain_state.block, 8_740_436);
     assert.equal(body.data.subnets.length, 2);
     // Stage 5: the disabled subnet is zeroed and its share redistributed, so
     // the enabled one takes all of it.
-    const enabled = body.data.subnets.find((s: Row) => s.netuid === 1);
-    const disabled = body.data.subnets.find((s: Row) => s.netuid === 2);
+    const enabled = body.data.subnets.find((s) => s.netuid === 1);
+    const disabled = body.data.subnets.find((s) => s.netuid === 2);
+    assert.ok(enabled);
+    assert.ok(disabled);
     assert.equal(disabled.emission_enabled, false);
     assert.equal(disabled.final_share, 0);
+    assert.ok(typeof enabled.final_share === "number");
     assert.ok(Math.abs(enabled.final_share - 1) < 1e-9);
     // ADR 0023 decision 3: reconstructed fields say so in the contract.
     assert.equal(body.data.field_sources.final_share.kind, "reconstructed");
@@ -2108,6 +2236,7 @@ describe("emission-pipeline route", () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline?netuid=1",
       envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS } as Row),
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
     );
     assert.equal(body.data.subnets.length, 1);
     assert.equal(body.data.subnets[0].netuid, 1);
@@ -2121,6 +2250,7 @@ describe("emission-pipeline route", () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
       envWithEconomics({ subnets: SUBNETS } as Row),
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 503);
     assert.equal(body.error.code, "emission_pipeline_unavailable");
@@ -2151,6 +2281,7 @@ describe("emission-pipeline route", () => {
         chain_state: CHAIN_STATE,
         subnets: SUBNETS,
       } as Row),
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
     );
     assert.equal(status, 200);
     assert.equal(body.data.chain_state.block, 8_740_436);
@@ -2161,6 +2292,7 @@ describe("emission-pipeline route", () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
       envWithArtifactOnly(null),
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 503);
     assert.equal(body.error.code, "emission_pipeline_unavailable");
@@ -2174,18 +2306,30 @@ describe("emission-pipeline route", () => {
     const base = "https://api.metagraph.sh/api/v1/chain/emission-pipeline";
 
     // Unnarrowed: today's body, and no count fields at all.
-    const plain = await getJson(base, env);
+    const plain = await getJson(
+      base,
+      env,
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
+    );
     assert.equal(plain.body.data.subnets.length, 2);
     assert.equal("matched_subnet_count" in plain.body.data, false);
 
     // final_share, not emission_share -- #9707's distinction, now sortable.
-    const ranked = await getJson(`${base}?sort=final_share`, env);
-    assert.ok(
-      ranked.body.data.subnets[0].final_share >=
-        ranked.body.data.subnets[1].final_share,
+    const ranked = await getJson(
+      `${base}?sort=final_share`,
+      env,
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
     );
+    const [first, second] = ranked.body.data.subnets;
+    assert.ok(typeof first.final_share === "number");
+    assert.ok(typeof second.final_share === "number");
+    assert.ok(first.final_share >= second.final_share);
 
-    const paged = await getJson(`${base}?sort=final_share&limit=1`, env);
+    const paged = await getJson(
+      `${base}?sort=final_share&limit=1`,
+      env,
+      successEnvelopeSchema(EmissionPipelineArtifactSchema),
+    );
     assert.equal(paged.body.data.subnets.length, 1);
     assert.equal(paged.body.data.matched_subnet_count, 2);
     assert.equal(paged.body.data.returned_subnet_count, 1);
@@ -2197,7 +2341,11 @@ describe("emission-pipeline route", () => {
       plain.body.data.verification,
     );
 
-    const projected = await getJson(`${base}?fields=netuid,final_share`, env);
+    const projected = await getJson(
+      `${base}?fields=netuid,final_share`,
+      env,
+      ProjectedEmissionPipelineResponseSchema,
+    );
     for (const row of projected.body.data.subnets) {
       assert.deepEqual(Object.keys(row).sort(), ["final_share", "netuid"]);
     }
@@ -2217,7 +2365,11 @@ describe("emission-pipeline route", () => {
       "limit=abc",
       "fields=netuid,not_a_column",
     ]) {
-      const { status } = await getJson(`${base}?${qs}`, env);
+      const { status } = await getJson(
+        `${base}?${qs}`,
+        env,
+        ErrorEnvelopeSchema,
+      );
       assert.equal(status, 400, `${qs} should have been rejected`);
     }
   });
@@ -2230,11 +2382,13 @@ describe("emission-pipeline route", () => {
     const bogus = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline?bogus=1",
       env,
+      ErrorEnvelopeSchema,
     );
     assert.equal(bogus.status, 400);
     const bad = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline?netuid=abc",
       env,
+      ErrorEnvelopeSchema,
     );
     assert.equal(bad.status, 400);
   });

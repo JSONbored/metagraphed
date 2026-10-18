@@ -411,6 +411,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Cold typecheck for native qualification
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run typecheck -- --incremental false
+
       # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
       # bundle, generated types + client) against what the schemas regenerate, so
       # they MUST run before the build step below overwrites those committed files.
@@ -489,6 +493,9 @@ jobs:
         env:
           METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
+
+      - name: Worker handler smoke
+        run: npm run worker:test
 
       - name: Verify submitted public artifacts are reproducible
         if: env.DOCS_ONLY != 'true' && github.event_name == 'pull_request'

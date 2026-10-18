@@ -1,3 +1,13 @@
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  BlockDetailArtifactSchema,
+  BlocksFeedArtifactSchema,
+} from "../schemas-src/routes/blocks.ts";
+import { BlockExtrinsicsArtifactSchema } from "../schemas-src/routes/block-extrinsics.ts";
+import { BlockEventsArtifactSchema } from "../schemas-src/routes/block-events.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -17,7 +27,7 @@ import {
   MAX_BLOCK_COUNT_FILTER,
 } from "../src/blocks.ts";
 import { encodeCursor } from "../src/cursor.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -376,6 +386,13 @@ test("BLOCK_READ_COLUMNS lists the served block columns", () => {
 
 // ---- Route/integration (#1345) ---------------------------------------------
 
+const blocksResponseSchema = successEnvelopeSchema(BlocksFeedArtifactSchema);
+const blockResponseSchema = successEnvelopeSchema(BlockDetailArtifactSchema);
+const extrinsicsResponseSchema = successEnvelopeSchema(
+  BlockExtrinsicsArtifactSchema,
+);
+const eventsResponseSchema = successEnvelopeSchema(BlockEventsArtifactSchema);
+
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
@@ -428,7 +445,10 @@ test("GET /blocks rejects an over-cap limit + unsupported params", async () => {
     {},
   );
   assert.equal(over.status, 400);
-  assert.equal((await over.json()).error.code, "invalid_query");
+  assert.equal(
+    (await parseJsonBody(over, ErrorEnvelopeSchema)).error.code,
+    "invalid_query",
+  );
 
   const bad = await handleRequest(
     req("/api/v1/blocks?bogus=1"),
@@ -456,7 +476,7 @@ test("GET /blocks rejects non-integer numeric filters with 400 (#2310)", async (
       {},
     );
     assert.equal(res.status, 400, query);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.ok, false, query);
     assert.equal(body.error.code, "invalid_query", query);
   }
@@ -471,7 +491,7 @@ test("GET /blocks emits next_cursor:null when the page is not full (#1851)", asy
     env as unknown as Env,
     {},
   );
-  const body = await res.json();
+  const body = await parseJsonBody(res, blocksResponseSchema);
   assert.equal(body.data.next_cursor, null);
 });
 
@@ -482,7 +502,7 @@ test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", asy
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, blockResponseSchema);
   assert.equal(body.data.ref, "777");
   assert.equal(body.data.block, null);
   // No anchor when the block didn't resolve → neighbors null (#1853).
@@ -497,7 +517,7 @@ test("GET /blocks is schema-stable when the store is cold (never 404)", async ()
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, blocksResponseSchema);
   assert.equal(body.data.block_count, 0);
   assert.equal(Array.isArray(body.data.blocks), true);
 });
@@ -537,7 +557,7 @@ for (const badRef of BAD_BLOCK_REFS) {
       badRef,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, blockResponseSchema);
     assert.equal(
       body.data.block,
       null,
@@ -558,7 +578,7 @@ for (const badRef of BAD_BLOCK_REFS) {
         `https://api.metagraph.sh/api/v1/blocks/${DISPATCHABLE_REF}/extrinsics`,
       ),
     );
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, extrinsicsResponseSchema);
     assert.equal(body.data.block_number, null);
     assert.deepEqual(body.data.extrinsics, []);
   });
@@ -576,7 +596,7 @@ for (const badRef of BAD_BLOCK_REFS) {
         `https://api.metagraph.sh/api/v1/blocks/${DISPATCHABLE_REF}/events`,
       ),
     );
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, eventsResponseSchema);
     assert.equal(body.data.block_number, null);
     assert.deepEqual(body.data.events, []);
   });
@@ -591,7 +611,7 @@ test("GET /blocks/{number}/extrinsics is schema-stable when the number is unknow
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, extrinsicsResponseSchema);
   assert.equal(body.data.ref, "777");
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.extrinsic_count, 0);
@@ -606,7 +626,7 @@ test("GET /blocks/{hash}/extrinsics is schema-stable when the hash is unknown (#
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, extrinsicsResponseSchema);
   assert.equal(body.data.ref, hash);
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.extrinsic_count, 0);

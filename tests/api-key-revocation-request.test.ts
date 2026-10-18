@@ -175,7 +175,8 @@ test("a successful wallet key revoke prevents the next fullnode request with a c
       ctx,
     );
     assert.equal(revoked.status, 200);
-    assert.deepEqual(await revoked.json(), { key_id: keyId, revoked: true });
+    const revokedBody: unknown = await revoked.json();
+    assert.deepEqual(revokedBody, { key_id: keyId, revoked: true });
     assert.equal(enabled, false);
     assert.notEqual(
       (

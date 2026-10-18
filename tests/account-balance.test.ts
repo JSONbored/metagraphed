@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import type { AnyFn, Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountBalanceArtifactSchema } from "../schemas-src/routes/account-balance.ts";
+import { parseJsonBody, type AnyFn, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -58,7 +63,10 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
       assert.equal(body.ok, true);
       assert.equal(body.schema_version, 1);
@@ -80,7 +88,7 @@ test("GET /accounts/{ss58}/balance returns 400 for an invalid ss58", async () =>
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.ok, false);
   assert.equal(body.error.code, "invalid_ss58");
 });
@@ -122,7 +130,7 @@ test("GET /accounts/{ss58}/balance rejects overlong base58 before rate limiting 
       assert.equal(res.status, 400);
       assert.equal(limiterCalls, 0);
       assert.equal(fetchCalls, 0);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "invalid_ss58");
     },
   );
@@ -143,7 +151,10 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC fail
       ),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountBalanceArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.schema_version, 1);
   assert.equal(body.data.ss58, SS58);
@@ -166,7 +177,10 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC time
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.ok, true);
       assert.equal(body.data.schema_version, 1);
       assert.equal(body.data.ss58, SS58);
@@ -194,7 +208,10 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountBalanceArtifactSchema),
+  );
   assert.equal(body.data.balance_tao, 99.0);
   assert.equal(body.data.queried_at, "2026-06-25T00:00:00.000Z");
 });
@@ -219,7 +236,10 @@ test("GET /accounts/{ss58}/balance falls through on KV read failure", async () =
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, null);
     },
   );
@@ -247,7 +267,10 @@ test("GET /accounts/{ss58}/balance decodes the live finney u64 AccountInfo layou
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, 1.976761846);
     },
   );
@@ -272,7 +295,10 @@ test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () =
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
       assert.ok(typeof body.data.balance_tao === "number");
       assert.ok(body.data.balance_tao > 0);
@@ -307,7 +333,10 @@ test("GET /accounts/{ss58}/balance keeps u128 rao precision above 2^53 (#2070)",
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, exact);
       assert.notEqual(body.data.balance_tao, preFix);
     },
@@ -324,7 +353,10 @@ test("GET /accounts/{ss58}/balance returns null when RPC responds non-ok", async
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, null);
     },
   );
@@ -343,7 +375,10 @@ test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", a
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, null);
     },
   );
@@ -409,7 +444,10 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
       );
       // KV write failure is non-fatal — still returns the balance.
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.ok(typeof body.data.balance_tao === "number");
     },
   );
@@ -431,7 +469,7 @@ test("GET /accounts/{ss58}/balance rejects non-base58 captures before RPC", asyn
       );
       assert.equal(res.status, 400);
       assert.equal(fetchCalls, 0);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "invalid_ss58");
     },
   );
@@ -498,7 +536,10 @@ test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async 
       assert.equal(putKey, `balance:${SS58}:failure:v1`);
       assert.equal(putValue!.value.balance_tao, null);
       assert.equal(putOptions!.expirationTtl, 60);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(AccountBalanceArtifactSchema),
+      );
       assert.equal(body.data.balance_tao, null);
       assert.equal(body.data.queried_at, putValue!.value.queried_at);
       assert.equal(Object.hasOwn(body.data, "live_rpc_cache_version"), false);
@@ -525,7 +566,7 @@ test("GET /accounts/{ss58}/balance rejects a base58 address with a non-finney ne
         {},
       );
       assert.equal(res.status, 400);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "invalid_ss58");
       assert.equal(fetched, false);
     },

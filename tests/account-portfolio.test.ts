@@ -5,8 +5,10 @@ import {
   loadAccountPortfolio,
 } from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountPortfolioArtifactSchema } from "../schemas-src/routes/account-portfolio.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // #9051 price table for the ACCUMULATION tests below. Every netuid is priced
 // at exactly 1 on purpose: those tests assert grouping, rao-exact summation
@@ -279,7 +281,10 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
     assert.equal(body.data.position_count, 0);
     assert.deepEqual(body.data.positions, []);
   });

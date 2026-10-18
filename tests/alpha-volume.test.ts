@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetAlphaVolumeArtifactSchema } from "../schemas-src/routes/subnet-alpha-volume.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import {
@@ -512,7 +515,10 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetAlphaVolumeArtifactSchema),
+    );
     assert.equal(body.data.total_volume_alpha, 0);
     assert.equal(body.data.vol_mcap_ratio, null);
   });
@@ -543,7 +549,10 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
       env as unknown as Env,
       ctx,
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetAlphaVolumeArtifactSchema),
+    );
     assert.equal(body.data.vol_mcap_ratio, null);
   });
 

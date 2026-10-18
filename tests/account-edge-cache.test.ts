@@ -21,7 +21,9 @@ import {
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
 import { isMainnetOnlyApiPath } from "../workers/api.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountEventsArtifactSchema } from "../schemas-src/routes/account-events-feed.ts";
 import { readFileSync } from "node:fs";
 
 const openapi = JSON.parse(
@@ -146,8 +148,14 @@ describe("the account edge cache", () => {
       `two repeats added ${queries.length - afterFirst} reads`,
     );
     assert.deepEqual(
-      await second.json(),
-      await first.clone().json(),
+      await parseJsonBody(
+        second,
+        successEnvelopeSchema(AccountEventsArtifactSchema),
+      ),
+      await parseJsonBody(
+        first.clone(),
+        successEnvelopeSchema(AccountEventsArtifactSchema),
+      ),
       "a hit must be the same body, not merely a fast one",
     );
   });

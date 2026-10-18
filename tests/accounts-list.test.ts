@@ -9,8 +9,13 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../src/accounts-list.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // An ACCOUNTS_LIST read-columns-shaped row (netuid, uid, hotkey, coldkey,
 // validator_permit, emission_tao, stake_tao, block_number, captured_at).
@@ -479,7 +484,10 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountsListArtifactSchema),
+    );
     assert.equal(body.data.account_count, 0);
   });
 
@@ -490,7 +498,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
   });
@@ -552,7 +560,9 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
     assert.match(lines[1], /^hk-a,ck-a,/);

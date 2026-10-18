@@ -1,3 +1,5 @@
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
 import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
 installNativeSurfaceFixtures();
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
@@ -29,7 +31,9 @@ test("GET /blocks/{ref}/extrinsics?format=csv emits a header-only CSV for an emp
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), EXTRINSICS_CSV_HEADER);
 });
 
@@ -62,7 +66,9 @@ test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines[0], EXTRINSICS_CSV_HEADER);
   assert.equal(lines.length, 2);
@@ -80,7 +86,10 @@ test("GET /blocks/{ref}/extrinsics rejects an invalid ?format with 400", async (
     {},
   );
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error.code, "invalid_query");
+  assert.equal(
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
+    "invalid_query",
+  );
 });
 
 test("GET /blocks/{ref}/events?format=csv emits a header-only CSV for an empty block", async () => {
@@ -90,7 +99,9 @@ test("GET /blocks/{ref}/events?format=csv emits a header-only CSV for an empty b
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 
@@ -119,7 +130,9 @@ test("GET /blocks/{ref}/events?format=csv exports the block's events via the Pos
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines[0], EVENTS_CSV_HEADER);
   assert.equal(lines.length, 2);
@@ -134,5 +147,8 @@ test("GET /blocks/{ref}/events rejects an invalid ?format with 400", async () =>
     {},
   );
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error.code, "invalid_query");
+  assert.equal(
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
+    "invalid_query",
+  );
 });

@@ -1,3 +1,18 @@
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetOwnerCutArtifactSchema } from "../schemas-src/routes/subnet-wallets.ts";
+import { SubnetWeightsArtifactSchema } from "../schemas-src/routes/subnet-weights.ts";
+import { SubnetPrometheusArtifactSchema } from "../schemas-src/routes/subnet-prometheus.ts";
+import { SubnetStakeMovesArtifactSchema } from "../schemas-src/routes/subnet-stake-moves.ts";
+import { SubnetStakeTransfersArtifactSchema } from "../schemas-src/routes/subnet-stake-transfers.ts";
+import {
+  SubnetServingArtifactSchema,
+  SubnetRegistrationsArtifactSchema,
+  SubnetAxonRemovalsArtifactSchema,
+  SubnetDeregistrationsArtifactSchema,
+} from "../schemas-src/routes/subnet-activity.ts";
+import { ValidatorOperatorDirectoryArtifactSchema } from "../schemas-src/routes/validator-operator-directory.ts";
+import { AccountHolderDirectoryArtifactSchema } from "../schemas-src/routes/account-holder-directory.ts";
+import { ChainCallsArtifactSchema } from "../schemas-src/routes/chain-analytics.ts";
 import assert from "node:assert/strict";
 import { archiveEnv } from "./helpers/cold-tier-env.ts";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -16,10 +31,7 @@ vi.mock("pg", () => pg.module);
 import { withStampedEdgeCache } from "../workers/edge-cache.ts";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
-import {
-  EXPOSED_RESPONSE_HEADERS_VALUE,
-  withNoStore,
-} from "../workers/http.ts";
+import { EXPOSED_RESPONSE_HEADERS_VALUE, withNoStore } from "../workers/http.ts";
 import {
   DEGRADED_HEADER,
   DEGRADED_TIER_UNAVAILABLE,
@@ -39,7 +51,12 @@ import {
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { resetObservedThroughCache } from "../src/lakehouse-observed-through.ts";
 import { resetSurfacesMemo } from "../src/revenue-load.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import {
+  mockEnv,
+  parseJsonBody,
+  requiredHeader,
+  type Row,
+} from "./row-type.ts";
 
 // Edge-cache coverage for the store-backed analytics routes (audit #6). These four
 // handlers (per-subnet health trends / percentiles / incidents + the bulk-trends
@@ -380,7 +397,7 @@ describe("analytics edge cache", () => {
       ctx,
     );
     assert.equal(warm.status, 200);
-    const etag = warm.headers.get("etag");
+    const etag = requiredHeader(warm, "etag");
     assert.ok(etag, "cached response advertises an etag");
     const callsAfterWarm = calls.length;
 
@@ -441,7 +458,7 @@ describe("analytics edge cache", () => {
     // polling agent that only ever gets 304s would otherwise never see one.
     const conditional = await handleRequest(
       new Request(target, {
-        headers: { "if-none-match": hit.headers.get("etag")! },
+        headers: { "if-none-match": requiredHeader(hit, "etag") },
       }),
       mockEnv(env) as unknown as Env,
       ctx,
@@ -728,7 +745,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOwnerCutArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.deepEqual(cache.putKeys, [
       expectedKey("subnet-owner-cut", "/api/v1/subnets/7/owner-cut"),
@@ -832,7 +852,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetWeightsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_setters, "number");
@@ -857,7 +880,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetServingArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_servers, "number");
@@ -882,7 +908,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetPrometheusArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_exporters, "number");
@@ -911,7 +940,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetStakeMovesArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_movers, "number");
@@ -940,7 +972,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetStakeTransfersArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_senders, "number");
@@ -969,7 +1004,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetRegistrationsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_registrants, "number");
@@ -998,7 +1036,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetAxonRemovalsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_removers, "number");
@@ -1027,7 +1068,10 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetDeregistrationsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "7d");
     assert.equal(typeof body.data.distinct_deregistered_hotkeys, "number");
@@ -1189,7 +1233,7 @@ describe("analytics edge cache", () => {
       ctx,
     );
     await Promise.resolve();
-    const etag = first.headers.get("etag");
+    const etag = requiredHeader(first, "etag");
     assert.equal(first.status, 200);
     const queryCountAfterMiss = queries.length;
 
@@ -1523,8 +1567,16 @@ describe("analytics edge cache", () => {
     const second = await handleRequest(request, env as unknown as Env, ctx);
     assert.equal(first.status, 200);
     assert.equal(second.status, 200);
-    assert.deepEqual((await first.json()).data, directory);
-    assert.deepEqual((await second.json()).data, directory);
+    const firstBody = await parseJsonBody(
+      first,
+      successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+    );
+    const secondBody = await parseJsonBody(
+      second,
+      successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+    );
+    assert.deepEqual(firstBody.data, directory);
+    assert.deepEqual(secondBody.data, directory);
     assert.deepEqual(paths, []);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
@@ -1575,8 +1627,16 @@ describe("analytics edge cache", () => {
     const second = await handleRequest(request, env as unknown as Env, ctx);
     assert.equal(first.status, 200);
     assert.equal(second.status, 200);
-    assert.deepEqual((await first.json()).data, directory);
-    assert.deepEqual((await second.json()).data, directory);
+    const firstBody = await parseJsonBody(
+      first,
+      successEnvelopeSchema(AccountHolderDirectoryArtifactSchema),
+    );
+    const secondBody = await parseJsonBody(
+      second,
+      successEnvelopeSchema(AccountHolderDirectoryArtifactSchema),
+    );
+    assert.deepEqual(firstBody.data, directory);
+    assert.deepEqual(secondBody.data, directory);
     assert.deepEqual(paths, []);
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
@@ -2046,7 +2106,7 @@ describe("analytics edge cache", () => {
     await Promise.resolve();
 
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.deepEqual(cache.putKeys, [
       expectedKey(
         "subnet-movers",
@@ -2435,7 +2495,10 @@ describe("degraded-tier labelling (#9110)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ChainCallsArtifactSchema),
+    );
     assert.equal(
       body.data.total_extrinsics,
       1_347_135,

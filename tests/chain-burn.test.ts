@@ -18,6 +18,13 @@ import { ChainBurnArtifactSchema } from "../schemas-src/routes/subnet-registrati
 import { handleRequest } from "../workers/api.ts";
 import { handleChainBurn } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { parseJsonBody } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+
+const responseSchema = successEnvelopeSchema(ChainBurnArtifactSchema);
 
 // twox128("SubtensorModule") ++ twox128("Burn"), verified against the live chain.
 const PREFIX =
@@ -419,13 +426,13 @@ describe("GET /api/v1/chain/burn — through the Worker router", () => {
       createLocalArtifactEnv() as never,
       { waitUntil() {}, passThroughOnException() {} } as never,
     );
-    return { res, body: (await res.json()) as Record<string, never> };
+    return { res, body: await parseJsonBody(res, responseSchema) };
   }
 
   test("serves the ranked card", async () => {
     const { res, body } = await get("/api/v1/chain/burn");
     assert.equal(res.status, 200);
-    const data = body.data as unknown as Record<string, unknown>;
+    const data = body.data;
     assert.equal(data.subnet_count, 2);
     assert.deepEqual(data.subnets, [
       { netuid: 0, burn_tao: 0 },
@@ -441,10 +448,7 @@ describe("GET /api/v1/chain/burn — through the Worker router", () => {
     // alternative is a documented route that 404s.
     const { res, body } = await get("/api/v1/testnet/chain/burn");
     assert.equal(res.status, 200);
-    assert.equal(
-      (body.data as unknown as Record<string, unknown>).subnet_count,
-      2,
-    );
+    assert.equal(body.data.subnet_count, 2);
   });
 
   test("the prefixed form reads the network's OWN chain, not mainnet's", async () => {
@@ -488,11 +492,8 @@ describe("the live-read rate limit", () => {
       res.headers.get("retry-after"),
       "a refusal must say when to come back",
     );
-    const body = (await res.json()) as Record<string, never>;
-    assert.equal(
-      (body.error as unknown as Record<string, unknown>).code,
-      "burn_rate_limited",
-    );
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "burn_rate_limited");
   });
 
   test("REST serves normally when the limiter allows it", async () => {
@@ -516,10 +517,7 @@ describe("the live-read rate limit", () => {
       limiter(true) as never,
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Record<string, never>;
-    assert.equal(
-      (body.data as unknown as Record<string, unknown>).read_count,
-      1,
-    );
+    const body = await parseJsonBody(res, responseSchema);
+    assert.equal(body.data.read_count, 1);
   });
 });

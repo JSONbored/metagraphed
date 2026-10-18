@@ -6,7 +6,11 @@ import {
 } from "../src/blocks-summary.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { BlocksSummaryArtifactSchema } from "../schemas-src/routes/blocks-summary.ts";
+
+const responseSchema = successEnvelopeSchema(BlocksSummaryArtifactSchema);
 
 // Five blocks: 100-103 consecutive (12s apart), then a gap to 110. Two authors.
 const ROWS = [
@@ -257,7 +261,7 @@ describe("GET /api/v1/blocks/summary", () => {
       blocksEnv(ROWS) as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal("block_count" in body.data, true);
     assert.equal("ref" in body.data, false);
   });

@@ -34,11 +34,48 @@ import {
   PROJECTION_NETWORKS,
   projectionKey,
 } from "../src/projection-lanes.ts";
-import { type AnyFn, type Row } from "./row-type.ts";
+import { parseJsonBody, type AnyFn, type Row } from "./row-type.ts";
 import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetDetailArtifactSchema } from "../schemas-src/routes/subnet-detail.ts";
+import {
+  SubnetIndexEntrySchema,
+  SubnetsArtifactSchema,
+} from "../schemas-src/routes/subnets.ts";
+import { FixtureArtifactSchema } from "../schemas-src/routes/fixtures.ts";
+import { RpcEndpointsArtifactSchema } from "../schemas-src/routes/providers-rpc.ts";
+import {
+  FreshnessArtifactSchema,
+  SearchIndexArtifactSchema,
+} from "../schemas-src/routes/evidence-search.ts";
+import { HealthSummaryArtifactSchema } from "../schemas-src/routes/health.ts";
+import {
+  BulkHealthTrendsArtifactSchema,
+  HealthSubnetArtifactSchema,
+  HealthTrendsArtifactSchema,
+} from "../schemas-src/routes/health-surfaces.ts";
+import { GapsArtifactSchema } from "../schemas-src/routes/curation-gaps.ts";
+import { SubnetGapsArtifactSchema } from "../schemas-src/routes/review-gaps-profile.ts";
+import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
 
 const req = (path: string, init?: RequestInit) =>
   new Request(`https://api.metagraph.sh${path}`, init);
+
+function requiredHeader(res: Response, name: string): string {
+  const value = res.headers.get(name);
+  assert.ok(value !== null, `missing response header: ${name}`);
+  return value;
+}
+
+function assertJsonObject(
+  value: unknown,
+): asserts value is Record<string, unknown> {
+  assert.ok(value !== null && typeof value === "object");
+  assert.equal(Array.isArray(value), false);
+}
 
 // In-memory KV mock matching the Workers KV surface the worker uses.
 function makeKv(entries: Row = {}) {
@@ -398,7 +435,8 @@ describe("handleRequest routing edges", () => {
       {},
     );
     assert.equal(res.status, 405);
-    assert.equal((await res.json()).error.code, "method_not_allowed");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "method_not_allowed");
     assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
   });
 
@@ -439,7 +477,7 @@ describe("handleRequest routing edges", () => {
       res.headers.get("access-control-allow-methods"),
       "GET, POST, DELETE, OPTIONS",
     );
-    const allowHeaders = res.headers.get("access-control-allow-headers");
+    const allowHeaders = requiredHeader(res, "access-control-allow-headers");
     assert.match(allowHeaders, /mcp-session-id/);
     assert.match(allowHeaders, /mcp-protocol-version/);
   });
@@ -578,7 +616,8 @@ describe("handleRequest routing edges", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "not_found");
   });
 });
 
@@ -592,7 +631,10 @@ describe("subnet slug resolution", () => {
     );
     // allways → netuid 7; should resolve to the subnet detail payload.
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetDetailArtifactSchema),
+    );
     assert.equal(body.data.subnet.netuid, 7);
   });
 
@@ -603,7 +645,8 @@ describe("subnet slug resolution", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subnet_not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "subnet_not_found");
   });
 
   test("404 subnet_not_found for a malformed (undecodable) slug", async () => {
@@ -615,7 +658,8 @@ describe("subnet slug resolution", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subnet_not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "subnet_not_found");
   });
 
   test("returns not_found when the slug index cannot be loaded (no prior copy)", async () => {
@@ -634,7 +678,8 @@ describe("subnet slug resolution", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "subnet_not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "subnet_not_found");
   });
 });
 
@@ -671,7 +716,10 @@ describe("/health readiness", () => {
     // A transient degraded 503 must not be edge-cached (it would pin the outage
     // for up to max-age + stale-while-revalidate after recovery).
     assert.equal(res.headers.get("cache-control"), "no-store");
-    const body = await res.json();
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.freshness);
+    assertJsonObject(body.operational_health);
     assert.equal(body.status, "degraded");
     assert.equal(body.freshness.stale, true);
     assert.equal(body.operational_health.probed_count, 5);
@@ -685,9 +733,11 @@ describe("/health readiness", () => {
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).status, "ok");
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assert.equal(body.status, "ok");
     // The healthy path stays edge-cacheable (short profile) for load relief.
-    assert.match(res.headers.get("cache-control"), /max-age=/);
+    assert.match(requiredHeader(res, "cache-control"), /max-age=/);
   });
 
   /** A reachable store answering the two aggregates the heartbeat reads
@@ -715,7 +765,11 @@ describe("/health readiness", () => {
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
+    assert.ok(typeof body.chain_events.age_seconds === "number");
+    assert.ok(typeof body.chain_events.latest_event_at === "string");
     assert.equal(body.chain_events.latest_indexed_block, 8461200);
     assert.equal(typeof body.chain_events.age_seconds, "number");
     assert.ok(
@@ -736,9 +790,14 @@ describe("/health readiness", () => {
         }),
         ...healthDb({ head: 8461200, latest: at }),
       });
-      const body = await (
-        await handleRequest(req("/health"), env as unknown as Env, {})
-      ).json();
+      const res = await handleRequest(
+        req("/health"),
+        env as unknown as Env,
+        {},
+      );
+      const body: unknown = await res.json();
+      assertJsonObject(body);
+      assertJsonObject(body.chain_events);
       assert.equal(
         body.chain_events.latest_indexed_block,
         null,
@@ -758,7 +817,9 @@ describe("/health readiness", () => {
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
     assert.equal(body.chain_events.latest_indexed_block, null);
     assert.equal(body.chain_events.latest_event_at, null);
     assert.equal(body.chain_events.age_seconds, null);
@@ -773,7 +834,9 @@ describe("/health readiness", () => {
       },
     };
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
-    assert.equal((await res.json()).chain_events, null);
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assert.equal(body.chain_events, null);
   });
 
   test("chain_events is schema-stable nulls when the store read throws (#5357)", async () => {
@@ -790,7 +853,9 @@ describe("/health readiness", () => {
     };
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
     assert.equal(body.chain_events.latest_indexed_block, null);
     assert.equal(body.chain_events.latest_event_at, null);
     assert.equal(body.chain_events.age_seconds, null);
@@ -887,7 +952,7 @@ describe("raw artifact route", () => {
       env as unknown as Env,
       {},
     );
-    const etag = first.headers.get("etag");
+    const etag = requiredHeader(first, "etag");
     const res = await handleRequest(
       req("/metagraph/subnets.json", { headers: { "if-none-match": etag } }),
       env as unknown as Env,
@@ -904,7 +969,8 @@ describe("raw artifact route", () => {
       {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "not_found");
   });
 
   test("propagates the artifact read error when the contract matches but data is missing", async () => {
@@ -923,7 +989,7 @@ describe("raw artifact route", () => {
       {},
     );
     assert.equal(res.status, 404);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.meta.artifact_path, "/metagraph/subnets.json");
   });
 
@@ -935,7 +1001,7 @@ describe("raw artifact route", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-storage-tier"), "r2");
-    const body = await res.json();
+    const body = await parseJsonBody(res, FixtureArtifactSchema);
     assert.equal(body.surface_id, "7:subnet-api:new_v2");
     assert.deepEqual(body.response.body, { ok: true });
   });
@@ -984,9 +1050,12 @@ describe("fixture detail API", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
 
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(FixtureArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.surface_id, "7:subnet-api:new_v2");
     assert.equal(body.data.request.method, "GET");
@@ -1004,7 +1073,8 @@ describe("fixture detail API", () => {
       {},
     );
     assert.equal(res.status, 404);
-    assert.equal((await res.json()).error.code, "not_found");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "not_found");
   });
 });
 
@@ -1028,7 +1098,7 @@ describe("badge SVG handler", () => {
       {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(requiredHeader(res, "content-type"), /image\/svg\+xml/);
     const svg = await res.text();
     assert.match(svg, /<svg/);
   });
@@ -1040,7 +1110,7 @@ describe("badge SVG handler", () => {
       env as unknown as Env,
       {} as unknown as ExecutionContext,
     );
-    const etag = first.headers.get("etag");
+    const etag = requiredHeader(first, "etag");
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", {
         headers: { "if-none-match": etag },
@@ -1061,7 +1131,7 @@ describe("badge SVG handler", () => {
       env as unknown as Env,
       {} as unknown as ExecutionContext,
     );
-    const strong = first.headers.get("etag").replace(/^W\//, "");
+    const strong = requiredHeader(first, "etag").replace(/^W\//, "");
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", {
         headers: { "if-none-match": strong },
@@ -1081,7 +1151,7 @@ describe("badge SVG handler", () => {
     ]) {
       const first = await handleRequest(req(path), env as unknown as Env, {});
       assert.equal(first.status, 200, `${path} first GET`);
-      const strong = first.headers.get("etag").replace(/^W\//, "");
+      const strong = requiredHeader(first, "etag").replace(/^W\//, "");
       const res = await handleRequest(
         req(path, { headers: { "if-none-match": strong } }),
         env as unknown as Env,
@@ -1126,7 +1196,7 @@ describe("badge SVG handler", () => {
     const svg = await res.text();
     assert.match(svg, /unavailable/);
     // Graceful fallback uses the short cache profile.
-    assert.match(res.headers.get("cache-control"), /max-age=/);
+    assert.match(requiredHeader(res, "cache-control"), /max-age=/);
   });
 
   test("HEAD on a badge returns no body", async () => {
@@ -1159,7 +1229,10 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(RpcEndpointsArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-cron-prober");
   });
 
@@ -1175,7 +1248,10 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(FreshnessArtifactSchema),
+    );
     assert.equal(body.meta.source, "live-cron-prober");
   });
 
@@ -1189,8 +1265,12 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthSummaryArtifactSchema),
+    );
     assert.equal(body.meta.source, "unavailable");
+    assert.ok(body.data.global.status_counts);
     assert.equal(body.data.global.status_counts.unknown, 0);
   });
 
@@ -1215,7 +1295,8 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     ]) {
       const res = await handleRequest(req(path), env as unknown as Env, {});
       assert.equal(res.status, 410);
-      assert.equal((await res.json()).error.code, "retired_artifact");
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+      assert.equal(body.error.code, "retired_artifact");
     }
     assert.equal(reads, 0);
   });
@@ -1242,10 +1323,7 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     ]) {
       const res = await handleRequest(req(path), env as unknown as Env, {});
       assert.equal(res.status, 404, path);
-      const body = (await res.json()) as {
-        error: { code: string };
-        live_route?: string;
-      };
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "artifact_computed_live", path);
     }
     assert.equal(reads, 0, "the miss was knowable without asking the store");
@@ -1269,8 +1347,12 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       env as unknown as Env,
       {},
     );
+    const body = await parseJsonBody(
+      res,
+      SubnetDetailArtifactSchema.or(ErrorEnvelopeSchema),
+    );
     assert.notEqual(
-      (await res.json())?.error?.code,
+      "error" in body ? body.error.code : undefined,
       "artifact_computed_live",
       "a bounded computed artifact is baked and must still be read",
     );
@@ -1302,7 +1384,10 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthSubnetArtifactSchema),
+    );
     assert.equal(body.data.summary.status, "unknown");
     assert.deepEqual(body.data.surfaces, []);
     assert.equal(reads, 0);
@@ -1323,7 +1408,10 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     );
     // Live overlay returns null on the KV throw → static artifact served.
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(FreshnessArtifactSchema),
+    );
     assert.notEqual(body.meta.source, "live-cron-prober");
   });
 });
@@ -1337,7 +1425,7 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
   });
@@ -1349,7 +1437,8 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).meta.parameter, "order");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.meta.parameter, "order");
   });
 
   test("400 invalid_query for an unknown list query parameter", async () => {
@@ -1359,7 +1448,7 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     // #10065: ONE message for one condition. The 34 collection routes reached
     // this through validateListQuery's own wording while the other 168 used
@@ -1376,7 +1465,7 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(
       body.error.message,
@@ -1392,7 +1481,7 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "fields");
   });
@@ -1404,23 +1493,29 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
     assert.equal(body.data.subnets.length, 2);
+    assert.ok(body.meta.pagination);
     assert.equal(body.meta.pagination.limit, 2);
     assert.equal(body.meta.pagination.cursor, 0);
   });
 
   test("?domain= filters subnets by derived/curated domain tag (#345)", async () => {
     const env = createLocalArtifactEnv();
-    const all = await (
-      await handleRequest(
-        req("/api/v1/subnets?limit=200"),
-        env as unknown as Env,
-        {},
-      )
-    ).json();
+    const allResponse = await handleRequest(
+      req("/api/v1/subnets?limit=200"),
+      env as unknown as Env,
+      {},
+    );
+    const all = await parseJsonBody(
+      allResponse,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
     const expected = all.data.subnets.filter(
-      (s: Row) =>
+      (s) =>
         (s.derived_categories || []).includes("inference") ||
         (s.categories || []).includes("inference"),
     );
@@ -1432,12 +1527,16 @@ describe("invalid query handling", () => {
       {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
     assert.equal(body.data.subnets.length, expected.length);
+    assert.ok(body.meta.pagination);
     assert.equal(body.meta.pagination.total, expected.length);
     assert.ok(
       body.data.subnets.every(
-        (s: Row) =>
+        (s) =>
           (s.derived_categories || []).includes("inference") ||
           (s.categories || []).includes("inference"),
       ),
@@ -1451,7 +1550,7 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "domain");
   });
@@ -1463,9 +1562,11 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const names = (await res.json()).data.subnets.map((s: Row) =>
-      String(s.name),
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
     );
+    const names = body.data.subnets.map((s) => String(s.name));
     const sorted = [...names].sort((a, b) => b.localeCompare(a));
     assert.deepEqual(names, sorted);
   });
@@ -1480,7 +1581,7 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnets.csv"',
@@ -1529,10 +1630,20 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
     assert.equal(res.headers.get("content-disposition"), null);
 
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(
+        SubnetsArtifactSchema.extend({
+          subnets: SubnetIndexEntrySchema.pick({
+            netuid: true,
+            name: true,
+          }).array(),
+        }),
+      ),
+    );
     assert.equal(body.ok, true);
     assert.equal(Array.isArray(body.data.subnets), true);
     assert.deepEqual(Object.keys(body.data.subnets[0]).sort(), [
@@ -1553,7 +1664,7 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(nextRes.status, 200);
-    assert.match(nextRes.headers.get("content-type"), /^application\/json/);
+    assert.match(requiredHeader(nextRes, "content-type"), /^application\/json/);
     assert.equal(nextRes.headers.get("content-disposition"), null);
   });
 
@@ -1566,9 +1677,12 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
 
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetDetailArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(body.data.subnet.netuid, 7);
   });
@@ -1585,9 +1699,12 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
 
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(GapsArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.equal(Array.isArray(body.data.gaps), true);
   });
@@ -1599,7 +1716,7 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(await res.text(), "netuid,name");
   });
 
@@ -1631,8 +1748,8 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 500);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
-    const body = await res.json();
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_artifact");
     assert.equal(body.meta.artifact_path, "/metagraph/subnets.json");
     assert.equal(body.meta.collection, "subnets");
@@ -1650,7 +1767,7 @@ describe("providers CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     const lines = (await res.text()).split("\r\n").filter(Boolean);
     assert.equal(lines[0], "id,name");
     assert.equal(lines.length, 3);
@@ -1663,7 +1780,7 @@ describe("providers CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     const text = await res.text();
     const lines = text.split("\r\n").filter(Boolean);
     assert.equal(lines[0], "id,netuids,social");
@@ -1680,7 +1797,7 @@ describe("providers CSV export", () => {
 describe("review enrichment list CSV export", () => {
   const parseCsv = async (res: Response) => {
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     const lines = (await res.text()).split("\r\n");
     const header = lines[0].split(",");
     const rows = lines
@@ -1725,7 +1842,7 @@ describe("review enrichment list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-gaps.csv"',
@@ -1746,13 +1863,13 @@ describe("review enrichment list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
-    const body = await res.json();
-    assert.equal(body.ok, true);
-    assert.equal(
-      Array.isArray(body.data.rows ?? body.data.gaps ?? body.data.priorities),
-      true,
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetGapsArtifactSchema),
     );
+    assert.equal(body.ok, true);
+    assert.equal(Array.isArray(body.data.priorities), true);
   });
 
   test("review/profile-completeness ?format=csv exports priority_score and honors identity_level", async () => {
@@ -1807,7 +1924,7 @@ describe("review enrichment list CSV export", () => {
 describe("registry list CSV export", () => {
   const parseCsv = async (res: Response) => {
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     const text = await res.text();
     const lines = text.split("\r\n").filter(Boolean);
     const header = lines[0].split(",");
@@ -1873,7 +1990,7 @@ describe("registry list CSV export", () => {
         {},
       );
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type")!, /^text\/csv/);
+      assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
       assert.equal(
         res.headers.get("content-disposition"),
         `attachment; filename="${filename}"`,
@@ -1893,7 +2010,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="profiles.csv"',
@@ -1923,7 +2040,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-surfaces.csv"',
@@ -1933,7 +2050,7 @@ describe("registry list CSV export", () => {
   test("surfaces CSV export projects kind/provider/name and honors kind filters (#2522)", async () => {
     const parseCsv = async (res: Response) => {
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type")!, /^text\/csv/);
+      assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
       const lines = (await res.text()).split("\r\n").filter(Boolean);
       const header = lines[0].split(",");
       const rows = lines.slice(1).map((line: string) => {
@@ -1977,7 +2094,7 @@ describe("registry list CSV export", () => {
   test("candidates CSV export projects kind/provider/state/confidence and honors state filters (#2524)", async () => {
     const parseCsv = async (res: Response) => {
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type")!, /^text\/csv/);
+      assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
       const lines = (await res.text()).split("\r\n").filter(Boolean);
       const header = lines[0].split(",");
       const rows = lines.slice(1).map((line: string) => {
@@ -2059,13 +2176,14 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="endpoints.csv"',
     );
     assert.equal(res.headers.get("etag"), null);
 
+    assert.ok(res.body);
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     const first = await reader.read();
@@ -2096,7 +2214,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-endpoints.csv"',
@@ -2123,7 +2241,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
   });
 
   test("?format=json keeps the JSON envelope on a registry route", async () => {
@@ -2135,8 +2253,11 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^application\/json/);
-    const body = await res.json();
+    assert.match(requiredHeader(res, "content-type"), /^application\/json/);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     assert.equal(body.ok, true);
     // The economics collection projects onto the shared `subnets` data key.
     assert.equal(Array.isArray(body.data.subnets), true);
@@ -2204,7 +2325,7 @@ describe("coverage-depth CSV export", () => {
   };
 
   const parseCoverageCsv = async (res: Response) => {
-    assert.match(res.headers.get("content-type")!, /^text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /^text\/csv/);
     const text = await res.text();
     const lines = parseCsvRows(text).filter(
       (line) => line.length !== 0 && !line.every((value) => value === ""),
@@ -2297,7 +2418,7 @@ describe("pagination Link header", () => {
   // pointer to the OpenAPI document, which is not part of the walk and would
   // otherwise show up in every relation-set assertion below.
   const PAGINATION_RELS = new Set(["first", "prev", "next", "last"]);
-  const parseLink = (value: Row) => {
+  const parseLink = (value: string | null) => {
     const links: Row = {};
     for (const part of String(value || "").split(",")) {
       const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
@@ -2327,7 +2448,10 @@ describe("pagination Link header", () => {
     assert.equal(links.last.searchParams.get("cursor"), "100");
     // The Link header must be readable cross-origin (exposed via CORS), or a
     // browser link-follower could not walk the pages.
-    assert.match(res.headers.get("access-control-expose-headers"), /\blink\b/);
+    assert.match(
+      requiredHeader(res, "access-control-expose-headers"),
+      /\blink\b/,
+    );
   });
 
   test("page links reject ignored/tracker query params end-to-end", async () => {
@@ -2335,7 +2459,7 @@ describe("pagination Link header", () => {
       "limit=50&cursor=0&utm_campaign=evil&token=SECRET123",
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     // #10065: ONE message for one condition. The 34 collection routes reached
     // this through validateListQuery's own wording while the other 168 used
@@ -2380,7 +2504,12 @@ describe("pagination Link header", () => {
     // the condition being exercised.
     const { res, links } = await page("netuid=65535&limit=50");
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).meta.pagination.total, 0);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
+    assert.ok(body.meta.pagination);
+    assert.equal(body.meta.pagination.total, 0);
     assert.deepEqual(Object.keys(links), []);
     // The service-desc pointer still ships — it describes the API, not the page.
     assert.match(res.headers.get("link") ?? "", /rel="service-desc"/);
@@ -2409,13 +2538,13 @@ describe("pagination Link header", () => {
     );
     const res = await handleRequest(
       req("/api/v1/subnets?sort=netuid&limit=50&cursor=0", {
-        headers: { "if-none-match": first.headers.get("etag") },
+        headers: { "if-none-match": requiredHeader(first, "etag") },
       }),
       env as unknown as Env,
       {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
-    assert.match(res.headers.get("link"), /rel="next"/);
+    assert.match(requiredHeader(res, "link"), /rel="next"/);
   });
 });
 
@@ -2428,11 +2557,14 @@ describe("/api/v1/search-index slim route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SearchIndexArtifactSchema),
+    );
     assert.equal(body.ok, true);
     assert.ok(body.data.documents.length > 0);
     assert.equal(
-      body.data.documents.every((document: Row) => !("tokens" in document)),
+      body.data.documents.every((document) => !("tokens" in document)),
       true,
       "slim route documents must omit the heavy tokens field",
     );
@@ -2445,10 +2577,20 @@ describe("/api/v1/search-index slim route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(
+        SearchIndexArtifactSchema.extend({
+          documents: SearchIndexArtifactSchema.shape.documents.element
+            .pick({ id: true, title: true, type: true })
+            .array(),
+        }),
+      ),
+    );
+    assertJsonObject(body.meta.projection);
     assert.deepEqual(body.meta.projection.fields, ["id", "title", "type"]);
     assert.equal(
-      body.data.documents.every((document: Row) =>
+      body.data.documents.every((document) =>
         Object.keys(document).every((key) =>
           ["id", "title", "type"].includes(key),
         ),
@@ -2467,7 +2609,7 @@ describe("api envelope 304", () => {
       env as unknown as Env,
       {},
     );
-    const etag = first.headers.get("etag");
+    const etag = requiredHeader(first, "etag");
     const res = await handleRequest(
       req("/api/v1/subnets", { headers: { "if-none-match": etag } }),
       env as unknown as Env,
@@ -2497,7 +2639,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 405);
-    assert.equal((await res.json()).error.code, "method_not_allowed");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "method_not_allowed");
   });
 
   test("501 when the RPC proxy is disabled", async () => {
@@ -2507,7 +2650,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 501);
-    assert.equal((await res.json()).error.code, "rpc_proxy_disabled");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_proxy_disabled");
   });
 
   test("413 when content-length exceeds the body limit", async () => {
@@ -2521,7 +2665,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "rpc_body_too_large");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_body_too_large");
   });
 
   test("400 when Content-Length is invalid before reading the body", async () => {
@@ -2535,7 +2680,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "rpc_invalid_content_length");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_invalid_content_length");
   });
 
   test("413 when the decoded body byte length exceeds the limit", async () => {
@@ -2550,7 +2696,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 413);
-    assert.equal((await res.json()).error.code, "rpc_body_too_large");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_body_too_large");
   });
 
   test("400 rpc_invalid_json for a non-JSON body", async () => {
@@ -2560,7 +2707,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "rpc_invalid_json");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_invalid_json");
   });
 
   test("400 rpc_invalid_request for an array body", async () => {
@@ -2573,7 +2721,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "rpc_invalid_request");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_invalid_request");
   });
 
   test("403 rpc_method_blocked for a denied method", async () => {
@@ -2583,7 +2732,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 403);
-    assert.equal((await res.json()).error.code, "rpc_method_blocked");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_method_blocked");
   });
 
   test("400 rpc_websocket_unsupported for the /wss route", async () => {
@@ -2600,7 +2750,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "rpc_websocket_unsupported");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_websocket_unsupported");
   });
 
   test("503 rpc_endpoint_unavailable when the pool has no eligible endpoints", async () => {
@@ -2632,7 +2783,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, "rpc_endpoint_unavailable");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_endpoint_unavailable");
   });
 
   test("502 rpc_endpoint_unsafe when the only eligible endpoint URL is unsafe", async () => {
@@ -2679,7 +2831,8 @@ describe("RPC proxy edges", () => {
       {},
     );
     assert.equal(res.status, 502);
-    assert.equal((await res.json()).error.code, "rpc_endpoint_unsafe");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "rpc_endpoint_unsafe");
   });
 
   test("propagates a pool-artifact read failure", async () => {
@@ -2698,7 +2851,7 @@ describe("RPC proxy edges", () => {
     );
     // pools.json is r2-tier; with no R2 binding the read fails.
     assert.notEqual(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.meta.artifact_path, "/metagraph/rpc/pools.json");
   });
 
@@ -2854,7 +3007,9 @@ describe("proxyWithFailover tee inspection", () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
     assert.equal(calls, 2);
-    assert.equal(healthMap.get("a").fails, 1);
+    const failedEndpoint = healthMap.get("a");
+    assert.ok(failedEndpoint);
+    assert.equal(failedEndpoint.fails, 1);
   });
 
   test("a successful 2xx upstream with a real tee()-able body streams through", async () => {
@@ -2870,7 +3025,10 @@ describe("proxyWithFailover tee inspection", () => {
       healthMap: new Map(),
     });
     assert.equal(res.status, 200);
-    assert.equal(((await res.json()) as Row).result.peers, 3);
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.result);
+    assert.equal(body.result.peers, 3);
   });
 });
 
@@ -2932,7 +3090,8 @@ describe("R2 timeout and static fallback", () => {
       {},
     );
     assert.equal(res.status, 504);
-    assert.equal((await res.json()).error.code, "r2_timeout");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "r2_timeout");
   });
 });
 
@@ -2971,7 +3130,10 @@ describe("health trends store error handling", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(HealthTrendsArtifactSchema),
+    );
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
@@ -2992,7 +3154,10 @@ describe("health trends store error handling", () => {
     const { env, ctx } = throwingStore();
     const res = await handleRequest(req("/api/v1/health/trends"), env, ctx);
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(BulkHealthTrendsArtifactSchema),
+    );
     assert.equal(body.data.windows["7d"].subnet_count, 0);
     assert.deepEqual(body.data.windows["7d"].subnets, []);
   });
@@ -3007,7 +3172,10 @@ describe("health trends store error handling", () => {
       {},
     );
     assert.equal(ok.status, 200);
-    const body = await ok.json();
+    const body = await parseJsonBody(
+      ok,
+      successEnvelopeSchema(BulkHealthTrendsArtifactSchema),
+    );
     assert.deepEqual(
       Object.keys(body.data.windows),
       ["7d"],
@@ -3026,9 +3194,11 @@ describe("health trends store error handling", () => {
         {},
       );
       assert.equal(res.status, 400, query);
-      const err = await res.json();
+      const err = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(err.error.code, "invalid_query", query);
-      assert.equal(err.error.details?.parameter ?? parameter, parameter, query);
+      const details = "details" in err.error ? err.error.details : undefined;
+      if (details !== undefined && details !== null) assertJsonObject(details);
+      assert.equal(details?.parameter ?? parameter, parameter, query);
     }
   });
 
@@ -3487,11 +3657,14 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
                 body: JSON.stringify({ query }),
               });
               if (!result.ok) return null;
-              return (
-                (await result.json()) as {
-                  result: { rows: Record<string, unknown>[] };
-                }
-              ).result.rows;
+              const body: unknown = await result.json();
+              assertJsonObject(body);
+              assertJsonObject(body.result);
+              assert.ok(Array.isArray(body.result.rows));
+              return body.result.rows.map((row: unknown) => {
+                assertJsonObject(row);
+                return row;
+              });
             },
           })
         : (env as Env),
@@ -3825,7 +3998,7 @@ describe("Access-Control-Expose-Headers", () => {
       createLocalArtifactEnv() as unknown as Env,
       {},
     );
-    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    assert.match(requiredHeader(res, "content-type"), /text\/event-stream/);
     assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
   });
 
@@ -3837,7 +4010,8 @@ describe("Access-Control-Expose-Headers", () => {
       createLocalArtifactEnv() as unknown as Env,
       {},
     );
-    const value = expose(res)!;
+    const value = expose(res);
+    assert.ok(value !== null);
     for (const name of [
       "x-ratelimit-reset",
       "x-ratelimit-scope",
@@ -3854,7 +4028,8 @@ describe("Access-Control-Expose-Headers", () => {
       createLocalArtifactEnv() as unknown as Env,
       {},
     );
-    const value = expose(res)!;
+    const value = expose(res);
+    assert.ok(value !== null);
     for (const name of [
       "retry-after",
       "x-ratelimit-limit",
@@ -4106,7 +4281,8 @@ describe("non-GET methods: 405 for a real route, 404 for a path that is not one"
         null,
         `${path}: allow names what a resource accepts, and this one does not exist`,
       );
-      assert.equal((await res.json()).error.code, "not_found", path);
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+      assert.equal(body.error.code, "not_found", path);
     }
   });
 
