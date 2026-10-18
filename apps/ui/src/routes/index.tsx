@@ -13,6 +13,10 @@ import { API_DATA_ORIGIN } from "@/lib/metagraphed/identity";
 export const HOME_BLOCK_FEED_URL = `${API_DATA_ORIGIN}/api/v1/blocks?limit=12`;
 
 export const Route = createFileRoute("/")({
+  loader: async ({ context }) => {
+    const { economicsQuery } = await import("@/lib/metagraphed/queries");
+    await context.queryClient.ensureQueryData(economicsQuery({ fields: "identity" }));
+  },
   head: () => ({
     meta: hubMeta("/"),
     links: [

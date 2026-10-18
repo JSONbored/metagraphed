@@ -38,7 +38,7 @@ export const Route = createFileRoute("/docs/$")({
   // only consumer, #7850) -- same split chunk either way, since what matters
   // is the `component:` field boundary, not which physical file defines it.
   loader: async ({ params }) => {
-    const slugs = params._splat?.split("/") ?? [];
+    const slugs = params._splat?.split("/").filter(Boolean) ?? [];
     return serverLoader({ data: slugs });
   },
   head: ({ loaderData, params, match }) => {
