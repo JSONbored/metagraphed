@@ -19,7 +19,7 @@ import {
 
 const nameOf = (netuid: number) => `SN${netuid}`;
 
-/** A minimal live position; every test spreads over what it cares about. */
+/** A minimal snapshot position; every test spreads over what it cares about. */
 const position = (): AccountPosition =>
   ({ hotkey: "5A", netuid: 1, stake_tao: 1, share_fraction: 0 }) as AccountPosition;
 
@@ -52,22 +52,41 @@ describe("positionsBySubnet", () => {
 
   it("collapses several hotkeys in one subnet into a single row", () => {
     const rows = positionsBySubnet(positions, nameOf);
-    expect(rows.map((r) => r.netuid)).toEqual([2, 1]);
-    expect(rows.find((r) => r.netuid === 1)).toMatchObject({ value: 40, hotkeys: 2 });
+    expect(rows.map((r) => r.netuid)).toEqual([1, 2]);
+    expect(rows.find((r) => r.netuid === 1)).toMatchObject({ hotkeys: 2 });
   });
 
-  it("shares each subnet against the account's own total", () => {
+  it("does not infer quantities or ownership from old dehydrated numeric fields", () => {
     const rows = positionsBySubnet(positions, nameOf);
-    expect(rows.find((r) => r.netuid === 2)?.share).toBeCloseTo(0.6);
-    expect(rows.reduce((acc, r) => acc + r.share, 0)).toBeCloseTo(1);
+    expect(rows.map((row) => [row.netuid, row.hotkeys])).toEqual([
+      [1, 2],
+      [2, 1],
+    ]);
+    for (const row of rows) {
+      expect(row).not.toHaveProperty("value");
+      expect(row).not.toHaveProperty("share");
+    }
   });
 
-  it("shares nothing rather than dividing by zero", () => {
+  it("preserves relationships when legacy quantities are zero, null or invalid", () => {
     const rows = positionsBySubnet(
-      [{ ...position(), netuid: 1, stake_tao: 0 }] as AccountPosition[],
+      [
+        { ...position(), netuid: 1, stake_tao: 0 },
+        { ...position(), netuid: 2, stake_tao: 60 },
+        { ...position(), hotkey: "5B", netuid: 2, stake_tao: null },
+      ],
       nameOf,
     );
-    expect(rows[0]?.share).toBe(0);
+    expect(rows[0]?.hotkeys).toBe(1);
+    expect(rows[1]?.hotkeys).toBe(2);
+  });
+
+  it("ignores amounts even when a positive numeric value resembles a token quantity", () => {
+    for (const stake_tao of [NaN, Infinity, -1, Number.MAX_VALUE, 12.5]) {
+      const rows = positionsBySubnet([{ ...position(), stake_tao }], nameOf);
+      expect(rows[0]?.hotkeys).toBe(1);
+      expect(rows[0]).not.toHaveProperty("value");
+    }
   });
 
   it("is empty for an empty read", () => {
@@ -180,7 +199,7 @@ describe("relatedKeys", () => {
     proportion_fraction: fraction,
   });
 
-  it("names the tie on every row and ranks staked hotkeys by stake", () => {
+  it("names the tie on every row without ranking unlike subnet tokens by quantity", () => {
     const rows = relatedKeys(
       [
         { ...position(), hotkey: "5AAAAAAAAA", netuid: 1, stake_tao: 5 },
@@ -190,23 +209,43 @@ describe("relatedKeys", () => {
       [edge("5DDDDDDDDD", null)],
     );
     expect(rows.map((r) => [r.key, r.role])).toEqual([
-      ["5BBBBBBBBB", "stakes through"],
-      ["5AAAAAAAAA", "stakes through"],
+      ["5AAAAAAAAA", "recorded through"],
+      ["5BBBBBBBBB", "recorded through"],
       ["5CCCCCCCCC", "delegates to"],
       ["5DDDDDDDDD", "delegated by"],
     ]);
-    expect(rows[2]?.value).toBe("25.0%");
+    expect(rows[2]?.value).toBeUndefined();
     expect(rows[3]?.value).toBeUndefined();
   });
 
-  it("does not list a key twice when it is both staked through and delegated to", () => {
+  it("counts distinct subnet ties rather than summing their alpha as TAO", () => {
+    const rows = relatedKeys(
+      [
+        { ...position(), hotkey: "5AAAAAAAAA", netuid: 1, stake_tao: 5 },
+        { ...position(), hotkey: "5AAAAAAAAA", netuid: 2, stake_tao: 50 },
+        { ...position(), hotkey: "5AAAAAAAAA", netuid: 2, stake_tao: null },
+      ],
+      [],
+      [],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.value).toBe("2 subnets");
+  });
+
+  it("does not assign an unscoped delegation percentage to a cross-subnet key", () => {
+    const rows = relatedKeys([], [edge("5AAAAAAAAA", 0.25), edge("5AAAAAAAAA", 0.5)], []);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.value).toBeUndefined();
+  });
+
+  it("does not list a key twice when it has both a recorded position and a child tie", () => {
     const rows = relatedKeys(
       [{ ...position(), hotkey: "5AAAAAAAAA", stake_tao: 1 }] as AccountPosition[],
       [edge("5AAAAAAAAA", 0.5)],
       [],
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.role).toBe("stakes through");
+    expect(rows[0]?.role).toBe("recorded through");
   });
 
   it("is empty for an account with no ties", () => {

@@ -183,7 +183,10 @@ test("legacy balance filters are explained and supported sort links survive relo
     "keys:desc",
   );
   await expect(page.locator("section#concentration")).toContainText(
-    "Balance, return and holdings-concentration figures are unavailable here.",
+    "Capital value, APY and capital rankings are unavailable.",
+  );
+  await expect(page.locator("section#concentration")).toContainText(
+    "does not establish delegated principal",
   );
 });
 

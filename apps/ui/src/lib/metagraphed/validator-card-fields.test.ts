@@ -42,16 +42,18 @@ describe("resolveValidatorCard", () => {
     expect(resolveValidatorCard(validator({ coldkey: null })).coldkeyShort).toBeNull();
   });
 
-  it("formats dominance as a 2-dp percentage, em dash when null", () => {
+  it("keeps dominance unavailable for null and legacy numerical claims", () => {
     expect(resolveValidatorCard(validator({ stake_dominance: 0.05263 })).dominanceLabel).toBe(
-      "5.26%",
+      "Unavailable",
     );
-    expect(resolveValidatorCard(validator({ stake_dominance: null })).dominanceLabel).toBe("—");
+    expect(resolveValidatorCard(validator({ stake_dominance: null })).dominanceLabel).toBe(
+      "Unavailable",
+    );
   });
 
-  it("formats APY as a 1-dp percentage, em dash when null", () => {
-    expect(resolveValidatorCard(validator({ apy_estimate: 0.1834 })).apyLabel).toBe("18.3%");
-    expect(resolveValidatorCard(validator({ apy_estimate: null })).apyLabel).toBe("—");
+  it("keeps APY unavailable for null and legacy numerical claims", () => {
+    expect(resolveValidatorCard(validator({ apy_estimate: 0.1834 })).apyLabel).toBe("Unavailable");
+    expect(resolveValidatorCard(validator({ apy_estimate: null })).apyLabel).toBe("Unavailable");
   });
 
   it("shows an em dash for a missing nominator count", () => {

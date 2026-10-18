@@ -1,14 +1,8 @@
 /**
  * The derivations behind /validators/$hotkey (#11617).
  */
-import type {
-  ValidatorDetailSubnet,
-  ValidatorHistoryPoint,
-  ValidatorNominatorEntry,
-} from "@/lib/metagraphed/types";
+import type { ValidatorDetailSubnet, ValidatorNominatorEntry } from "@/lib/metagraphed/types";
 import { formatAmount, formatDecimal } from "@/lib/metagraphed/format";
-
-export type ValidatorWindow = "7d" | "30d" | "90d";
 
 export const shortKey = (key: string): string =>
   key.length > 14 ? `${key.slice(0, 6)}…${key.slice(-4)}` : key;
@@ -19,97 +13,11 @@ export const fmtAlpha = (value: number | null | undefined): string => formatAmou
 
 export const fmtScore = (value: number | null | undefined): string => formatDecimal(value, 3);
 
-export interface StakeRail {
-  key: string;
-  label: string;
-  value: number;
-  secondary: number;
-  href: string;
-  detail: { key: string; label: string; value: string }[];
-}
-
-/**
- * Stake by subnet as one ranked row per membership, biggest first.
- *
- * NOT a time series. `/validators/{hotkey}/history` publishes network-wide
- * daily totals with `netuid: null` -- there is no per-subnet daily series to
- * stack, and drawing one would mean inventing it. What the data supports is
- * the composition right now, which is the question "where is the stake"
- * actually asks. Momentum below carries the time dimension.
- *
- * A RAIL, not stacked columns (#11693). Stacking put stake (2.65M α) and
- * emission (124 α) in one bar four orders of magnitude apart, so the emission
- * segment was 0.005% of it and never visible; the axis, built to thin dates,
- * labelled two of twelve subnets and rotated both; and the section had to
- * repeat all twelve underneath in a `RankGrid` just to name them. One rail
- * carries the name, the two tracks and the values in a single reading.
- */
-export function stakeBySubnet(
+/** Keep memberships identifiable without comparing weight across subnets. */
+export function membershipsBySubnet(
   subnets: readonly ValidatorDetailSubnet[],
-  nameOf: (netuid: number) => string,
-  fmt: (value: number) => string,
-  top = 12,
-): StakeRail[] {
-  return subnets
-    .map((subnet) => ({
-      netuid: subnet.netuid,
-      stake: typeof subnet.stake_alpha === "number" ? subnet.stake_alpha : 0,
-      emission: typeof subnet.emission_alpha === "number" ? subnet.emission_alpha : 0,
-    }))
-    .filter((row) => row.stake > 0 || row.emission > 0)
-    .sort((a, b) => b.stake - a.stake)
-    .slice(0, top)
-    .map((row) => ({
-      key: `sn-${row.netuid}`,
-      label: nameOf(row.netuid),
-      value: row.stake,
-      secondary: row.emission,
-      href: `/subnets/${row.netuid}`,
-      detail: [
-        { key: "stake", label: "Stake", value: fmt(row.stake) },
-        { key: "emission", label: "Emission", value: fmt(row.emission) },
-      ],
-    }));
-}
-
-/** History points → chronological line points for one measured field. */
-export function historyPoints(
-  points: readonly ValidatorHistoryPoint[],
-  pick: (point: ValidatorHistoryPoint) => number | null | undefined,
-): { t: number; v: number }[] {
-  return points
-    .map((point) => {
-      const value = pick(point);
-      const t = Date.parse(`${point.snapshot_date}T00:00:00Z`);
-      return typeof value === "number" && Number.isFinite(value) && Number.isFinite(t)
-        ? { t, v: value }
-        : null;
-    })
-    .filter((point): point is { t: number; v: number } => point !== null)
-    .sort((a, b) => a.t - b.t);
-}
-
-/**
- * Annualised yield from the daily rewards-per-1000-TAO the history publishes.
- *
- * Simple annualisation, not compounded: the series is a daily reward rate
- * measured per 1,000τ staked, and compounding it would state a return the
- * validator did not produce.
- */
-export function apyPoints(points: readonly ValidatorHistoryPoint[]): { t: number; v: number }[] {
-  return historyPoints(points, (point) =>
-    typeof point.rewards_per_1000_tao === "number"
-      ? (point.rewards_per_1000_tao / 1000) * 365
-      : null,
-  );
-}
-
-/** Fractional change across a series, or null when it cannot be measured. */
-export function changeOver(points: readonly { v: number }[]): number | null {
-  const first = points[0]?.v;
-  const last = points[points.length - 1]?.v;
-  if (first === undefined || last === undefined || first === 0) return null;
-  return (last - first) / first;
+): ValidatorDetailSubnet[] {
+  return [...subnets].sort((a, b) => a.netuid - b.netuid || a.uid - b.uid);
 }
 
 export interface NominatorRow {
@@ -119,9 +27,8 @@ export interface NominatorRow {
   href: string;
   detail: { key: string; label: string; value: string }[];
 }
-
 /**
- * Nominators ranked by what they currently have here.
+ * Nominators ranked by observed gross movement during the window.
  *
  * `net_staked_tao` is the window's NET movement, which is a different
  * question and goes negative for anyone unwinding. Ranking "who delegates
@@ -147,37 +54,4 @@ export function nominatorRail(
     .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, limit);
-}
-
-export interface PeerRow {
-  key: string;
-  label: string;
-  value: string;
-  href: string;
-  current: boolean;
-}
-
-/**
- * The operators ranked either side of this one by stake.
- *
- * A window centred on the subject, clamped at both ends -- "who am I next
- * to" has no answer at the top of a list otherwise, and showing the top N
- * instead would answer a question nobody asked.
- */
-export function peerWindow(
-  ranked: readonly { hotkey: string; name: string; totalStakeTao: number }[],
-  hotkey: string,
-  span = 11,
-): PeerRow[] {
-  const index = ranked.findIndex((row) => row.hotkey === hotkey);
-  const half = Math.floor(span / 2);
-  const start =
-    index < 0 ? 0 : Math.max(0, Math.min(index - half, Math.max(0, ranked.length - span)));
-  return ranked.slice(start, start + span).map((row) => ({
-    key: row.hotkey,
-    label: row.name,
-    value: fmtStake(row.totalStakeTao),
-    href: `/validators/${row.hotkey}`,
-    current: row.hotkey === hotkey,
-  }));
 }

@@ -294,7 +294,7 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
         {
           key: "apy",
           label: "Est. APY",
-          values: at((v) => v?.apy_estimate ?? null),
+          values: at(() => null),
           better: "high",
           format: share,
         },
@@ -312,8 +312,8 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
       rows: [
         {
           key: "stake",
-          label: "Total stake",
-          values: at((v) => v?.total_stake_tao ?? null),
+          label: "Capital value",
+          values: at(() => null),
           better: "high",
           format: tao,
         },
@@ -366,8 +366,8 @@ function ValidatorLedger({ hotkeys }: { hotkeys: string[] }) {
       className="mg-compare-ledger-section"
       id="ledger"
       name="Side by side"
-      question="What each operator takes, holds and is trusted with."
-      footnote="/api/v1/compare/validators · the winner is only marked where one direction is clearly better."
+      question="What each operator takes and where it validates."
+      footnote="Capital value and APY are unavailable: source voting weight does not establish delegated principal. /api/v1/compare/validators"
     >
       {!enabled ? (
         <EmptyState

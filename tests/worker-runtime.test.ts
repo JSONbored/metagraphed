@@ -4,6 +4,14 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import { buildAccountsList } from "../src/accounts-list.ts";
+import { buildAccountHolderDirectory } from "../src/account-holder-directory.ts";
+import {
+  buildGlobalValidators,
+  buildValidatorDetail,
+  composeValidatorComparison,
+} from "../src/metagraph-neurons.ts";
+import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
@@ -1287,6 +1295,303 @@ describe("Worker runtime", () => {
       {},
     );
     assert.equal(cold.status, 404);
+  });
+
+  test("stored account rankings cannot bypass principal guards", async () => {
+    const rows = [
+      {
+        hotkey: "hk-a",
+        coldkey: "ck-a",
+        netuid: 3,
+        uid: 7,
+        validator_permit: 1,
+        stake_tao: 999,
+        emission_tao: 4,
+        captured_at: Date.parse("2026-10-17T00:00:00.000Z"),
+        block_number: 9_000_000,
+      },
+    ];
+    const priceByNetuid = new Map([[3, 0.5]]);
+    const list = buildAccountsList(rows, { priceByNetuid });
+    const directory = buildAccountHolderDirectory(rows, { priceByNetuid });
+    for (const { path, current, legacy } of [
+      {
+        path: "/metagraph/accounts.json",
+        current: list,
+        legacy: (value: number) => ({
+          ...list,
+          accounts: [{ ...list.accounts[0], total_stake_tao: value }],
+        }),
+      },
+      {
+        path: "/metagraph/accounts/directory.json",
+        current: directory,
+        legacy: (value: number) => ({
+          ...directory,
+          priced_registered_stake_tao: value,
+        }),
+      },
+    ]) {
+      for (const network of ["", "finney/"]) {
+        const request = new Request(
+          `https://metagraph.sh${path.replace("/metagraph/", `/metagraph/${network}`)}`,
+        );
+        for (const value of [0, 123]) {
+          const response = await handleRequest(
+            request,
+            {
+              METAGRAPH_ARCHIVE: r2ArchiveFixture({
+                [path.slice("/metagraph/".length)]: legacy(value),
+              }),
+            } as unknown as Env,
+            {},
+          );
+          assert.equal(response.status, 503);
+          const body = await response.json();
+          assert.equal(body.error.code, "artifact_principal_unavailable");
+          assert.equal(body.meta.artifact_path, path);
+          assert.equal(Object.hasOwn(body, "accounts"), false);
+          assert.equal(Object.hasOwn(body, "rankings"), false);
+        }
+        const accepted = await handleRequest(
+          request,
+          {
+            METAGRAPH_ARCHIVE: r2ArchiveFixture({
+              [path.slice("/metagraph/".length)]: current,
+            }),
+          } as unknown as Env,
+          {},
+        );
+        assert.equal(accepted.status, 200);
+        assert.deepEqual(await accepted.json(), current);
+      }
+    }
+  });
+
+  test("raw validator selections decline old capital while complete comparisons retain their evidence", async () => {
+    const capturedAt = Date.parse("2026-10-17T00:00:00.000Z");
+    const rows = [
+      {
+        hotkey: "hk-a",
+        coldkey: "ck-a",
+        netuid: 7,
+        uid: 2,
+        validator_permit: 1,
+        stake_tao: 300,
+        emission_tao: 4,
+        validator_trust: 0.8,
+        take: 0.1,
+        captured_at: capturedAt,
+        block_number: 9_000_000,
+      },
+    ];
+    const options = { priceByNetuid: new Map([[7, 0.5]]) };
+    const global = buildGlobalValidators(rows, options);
+    const operators = buildValidatorOperatorDirectory(global);
+    for (const { path, current, legacy } of [
+      {
+        path: "/metagraph/validators.json",
+        current: global,
+        legacy: (value: number) => ({
+          ...global,
+          validators: (global.validators as Row[]).map((row) => ({
+            ...row,
+            total_stake_tao: value,
+          })),
+        }),
+      },
+      {
+        path: "/metagraph/validators/operators.json",
+        current: operators,
+        legacy: (value: number) => ({
+          ...operators,
+          operators: operators.operators.map((row) => ({
+            ...row,
+            apy_estimate: value,
+          })),
+        }),
+      },
+    ]) {
+      for (const network of ["", "finney/"]) {
+        const request = new Request(
+          `https://metagraph.sh${path.replace("/metagraph/", `/metagraph/${network}`)}`,
+        );
+        for (const value of [0, 123]) {
+          const response = await handleRequest(
+            request,
+            {
+              METAGRAPH_ARCHIVE: r2ArchiveFixture({
+                [path.slice("/metagraph/".length)]: legacy(value),
+              }),
+            } as unknown as Env,
+            {},
+          );
+          assert.equal(response.status, 503);
+          assert.equal(
+            (await response.json()).error.code,
+            "artifact_principal_unavailable",
+          );
+        }
+        const accepted = await handleRequest(
+          request,
+          {
+            METAGRAPH_ARCHIVE: r2ArchiveFixture({
+              [path.slice("/metagraph/".length)]: current,
+            }),
+          } as unknown as Env,
+          {},
+        );
+        assert.equal(accepted.status, 200);
+        assert.deepEqual(await accepted.json(), current);
+      }
+    }
+
+    const detail = buildValidatorDetail(rows, "hk-a", options);
+    const comparison = composeValidatorComparison(
+      [{ ...detail, hotkey: "hk-b" }, detail],
+      { netuid: 7 },
+    );
+    for (const value of [0, 123]) {
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/metagraph/compare/validators.json"),
+        {
+          METAGRAPH_ARCHIVE: r2ArchiveFixture({
+            "compare/validators.json": {
+              ...comparison,
+              validators: (comparison.validators as Row[]).map((validator) => ({
+                ...validator,
+                total_stake_tao: value,
+                apy_estimate: value,
+                apy_estimate_eligible_subnet_count: 9,
+              })),
+            },
+          }),
+        } as unknown as Env,
+        {},
+      );
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), comparison);
+    }
+  });
+
+  test("raw provenance guards preserve unrelated JSON and decline malformed account selections", async () => {
+    for (const data of [null, 7, "evidence", [1, 2]]) {
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/metagraph/coverage.json"),
+        {
+          METAGRAPH_ARCHIVE: {
+            get: async () => ({ json: async () => data }),
+          },
+        } as unknown as Env,
+        {},
+      );
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), data);
+    }
+    for (const data of [null, 7, [], { accounts: null }]) {
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/metagraph/accounts.json"),
+        {
+          METAGRAPH_ARCHIVE: {
+            get: async () => ({ json: async () => data }),
+          },
+        } as unknown as Env,
+        {},
+      );
+      assert.equal(response.status, 503);
+      assert.equal(
+        (await response.json()).error.code,
+        "artifact_principal_unavailable",
+      );
+    }
+  });
+
+  test("raw comparison declines malformed containers and envelopes carrying legacy capital", async () => {
+    const capital = { total_stake_tao: 123, apy_estimate: 0.5 };
+    for (const data of [
+      { validators: capital },
+      { validators: [null, capital] },
+      { validators: [[capital]] },
+      { data: [capital] },
+      { data: { validators: capital } },
+      [capital],
+    ]) {
+      for (const network of ["", "finney/"]) {
+        const response = await handleRequest(
+          new Request(
+            `https://metagraph.sh/metagraph/${network}compare/validators.json`,
+          ),
+          {
+            METAGRAPH_ARCHIVE: {
+              get: async () => ({ json: async () => data }),
+            },
+          } as unknown as Env,
+          {},
+        );
+        assert.equal(response.status, 503);
+        const body = await response.json();
+        assert.equal(body.error.code, "artifact_principal_unavailable");
+        assert.equal(Object.hasOwn(body, "validators"), false);
+      }
+    }
+  });
+
+  test("generic principal-sensitive route variants cannot revive stored or cached capital", async () => {
+    const previousCaches = globalWithCaches.caches;
+    let cacheReads = 0;
+    let storedReads = 0;
+    const legacy = { total_stake_tao: 123, stake_dominance: 0.5 };
+    globalWithCaches.caches = {
+      default: {
+        async match() {
+          cacheReads += 1;
+          return Response.json({ data: legacy });
+        },
+        async put() {
+          throw new Error("unavailable account variants must not be cached");
+        },
+      },
+    } as unknown as Row;
+    try {
+      for (const prefix of ["", "mainnet/", "testnet/"]) {
+        for (const route of [
+          "accounts/",
+          "accounts/directory/",
+          "accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/portfolio/",
+          "validators/",
+          "validators/operators/",
+          "validators/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/",
+          "validators/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/history/?window=7d&netuid=7",
+          "compare/validators/?hotkeys=5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F,5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5&netuid=7",
+        ]) {
+          const response = await handleRequest(
+            new Request(`https://metagraph.sh/api/v1/${prefix}${route}`),
+            {
+              METAGRAPH_ARCHIVE: {
+                async get() {
+                  storedReads += 1;
+                  return { json: async () => legacy };
+                },
+              },
+            } as unknown as Env,
+            {},
+          );
+          assert.equal(response.status, 404);
+          assert.equal(
+            (await response.json()).error.code,
+            "artifact_computed_live",
+          );
+        }
+      }
+      assert.equal(
+        cacheReads,
+        0,
+        "legacy static cache bodies are not consulted",
+      );
+      assert.equal(storedReads, 0, "a live-only route has no stored fallback");
+    } finally {
+      globalWithCaches.caches = previousCaches;
+    }
   });
 
   test("serves metagraph latest as an R2-backed raw artifact", async () => {

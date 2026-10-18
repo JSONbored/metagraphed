@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
-import { MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE } from "@/hooks/use-stake-flow";
+import { MAX_UNSTAKE_UNAVAILABLE_MESSAGE } from "@/hooks/use-stake-flow";
 import {
   unitSymbol,
   shouldShowUnitToggle,
   formatPositionAge,
   describeUnstakeMaxState,
   formatQuoteHint,
+  StakeAmountInput,
 } from "./stake-amount-input";
 
 describe("unitSymbol", () => {
@@ -59,26 +62,55 @@ describe("formatPositionAge", () => {
 });
 
 describe("describeUnstakeMaxState", () => {
-  it("prioritizes the root-unavailable reason over a missing position", () => {
+  it("declines snapshot-derived Max on every subnet", () => {
     expect(describeUnstakeMaxState(true, null)).toEqual({
       disabled: true,
-      note: MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE,
+      note: MAX_UNSTAKE_UNAVAILABLE_MESSAGE,
     });
     expect(describeUnstakeMaxState(true, "5.0")).toEqual({
       disabled: true,
-      note: MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE,
+      note: MAX_UNSTAKE_UNAVAILABLE_MESSAGE,
     });
   });
 
-  it("reports no-position when not root but no position is on record", () => {
+  it("reports an unavailable estimate without asserting the position is absent", () => {
     expect(describeUnstakeMaxState(false, null)).toEqual({
       disabled: true,
-      note: "No recorded position for this validator yet.",
+      note: MAX_UNSTAKE_UNAVAILABLE_MESSAGE,
     });
   });
 
-  it("is enabled with no note once a position amount is available", () => {
-    expect(describeUnstakeMaxState(false, "5.0")).toEqual({ disabled: false, note: null });
+  it("does not re-enable Max from an old cached positive prefill", () => {
+    expect(describeUnstakeMaxState(false, "5.0")).toEqual({
+      disabled: true,
+      note: MAX_UNSTAKE_UNAVAILABLE_MESSAGE,
+    });
+  });
+
+  it("renders a disabled Max even when legacy props contain a positive amount", () => {
+    const html = renderToStaticMarkup(
+      createElement(StakeAmountInput, {
+        action: "unstake",
+        onActionChange: vi.fn(),
+        unit: "alpha",
+        onUnitChange: vi.fn(),
+        amountInput: "",
+        onAmountInputChange: vi.fn(),
+        maxStakeRao: null,
+        onApplyMaxStake: vi.fn(),
+        maxUnstakeAmountInput: "999.000000000",
+        maxUnstakeUnavailable: false,
+        positionCapturedAt: "2026-07-05T00:00:00Z",
+        onApplyMaxUnstake: vi.fn(),
+        quote: null,
+        quoteIsPending: false,
+        quoteError: null,
+        validationMessages: [],
+      }),
+    );
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>\s*Max\s*<\/button>/);
+    expect(html).toContain(MAX_UNSTAKE_UNAVAILABLE_MESSAGE);
+    expect(html).not.toContain("999");
   });
 });
 

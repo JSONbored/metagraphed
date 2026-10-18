@@ -39,7 +39,7 @@ async function runQuery(ss58: string) {
 }
 
 describe("normalizePortfolioPosition", () => {
-  it("coerces a well-formed position and passes yield through unchanged", () => {
+  it("preserves membership, emission and scores while declining legacy capital and yield", () => {
     expect(
       normalizePortfolioPosition({
         netuid: 7,
@@ -59,13 +59,13 @@ describe("normalizePortfolioPosition", () => {
       uid: 42,
       role: "validator",
       active: true,
-      stake_alpha: 1250.5,
+      stake_alpha: null,
       emission_alpha: 3.2,
       rank: 0.9,
       trust: 0.8,
       incentive: 0.5,
       dividends: 0.4,
-      yield: 0.00256,
+      yield: null,
     });
   });
 
@@ -96,7 +96,7 @@ describe("normalizePortfolioPosition", () => {
     });
   });
 
-  it("keeps the miner role and a zero-stake null yield", () => {
+  it("declines zero-valued capital too and drops unqualified extra aliases", () => {
     const position = normalizePortfolioPosition({
       netuid: 0,
       uid: 1,
@@ -104,11 +104,17 @@ describe("normalizePortfolioPosition", () => {
       active: false,
       stake_alpha: 0,
       emission_alpha: 0,
-      yield: null,
+      yield: 0,
+      stake_tao: 100,
+      total_stake_tao: 100,
     });
     expect(position?.role).toBe("miner");
     expect(position?.active).toBe(false);
+    expect(position?.stake_alpha).toBeNull();
+    expect(position?.emission_alpha).toBe(0);
     expect(position?.yield).toBeNull();
+    expect(position).not.toHaveProperty("stake_tao");
+    expect(position).not.toHaveProperty("total_stake_tao");
   });
 
   it("drops a row with no numeric netuid or a non-object input", () => {
@@ -119,33 +125,25 @@ describe("normalizePortfolioPosition", () => {
 });
 
 describe("normalizePortfolioConcentration", () => {
-  it("keeps finite lenses, nulls a junk typed cell, and passes extra fields through", () => {
+  it("declines finite legacy lenses and any unqualified extra financial fields", () => {
     expect(
       normalizePortfolioConcentration({
         holders: 5,
-        gini: { attacker: true }, // junk in a typed cell → null (never rendered raw)
+        gini: 0.5,
         hhi_normalized: 0.31,
         nakamoto_coefficient: 2,
-        total: 1000, // an un-typed lens field passes through untouched
+        total: 1000,
       }),
-    ).toEqual({
-      holders: 5,
-      gini: null,
-      hhi_normalized: 0.31,
-      nakamoto_coefficient: 2,
-      total: 1000,
-    });
+    ).toBeNull();
   });
 
-  it("returns null for a null / non-object distribution (cold wallet)", () => {
+  it("keeps unavailable distributions null", () => {
     expect(normalizePortfolioConcentration(null)).toBeNull();
     expect(normalizePortfolioConcentration(undefined)).toBeNull();
     expect(normalizePortfolioConcentration(42)).toBeNull();
   });
 
   it("returns null for an empty, all-null, or zero-holder distribution", () => {
-    // The cold/empty-distribution contract: an object that carries no real
-    // concentration signal must not become a non-null card.
     expect(normalizePortfolioConcentration({})).toBeNull();
     expect(
       normalizePortfolioConcentration({
@@ -155,7 +153,6 @@ describe("normalizePortfolioConcentration", () => {
         nakamoto_coefficient: null,
       }),
     ).toBeNull();
-    // Zero holders is an empty distribution even if other cells are present.
     expect(
       normalizePortfolioConcentration({
         holders: 0,
@@ -172,7 +169,7 @@ describe("accountPortfolioQuery", () => {
     mockedApiFetch.mockReset();
   });
 
-  it("requests the ss58 portfolio path and shapes the envelope", async () => {
+  it.each([0, 100])("declines legacy capital %s", async (capital) => {
     resolveWith({
       ss58: "5Server",
       captured_at: "2026-07-05T00:00:00Z",
@@ -180,7 +177,7 @@ describe("accountPortfolioQuery", () => {
       position_count: 2,
       validator_count: 1,
       miner_count: 1,
-      total_stake_tao: 100,
+      total_stake_tao: capital,
       total_emission_tao: 4,
       overall_yield: 0.04,
       stake_concentration: { holders: 2, gini: 0.5, hhi_normalized: 0.6, nakamoto_coefficient: 1 },
@@ -198,34 +195,47 @@ describe("accountPortfolioQuery", () => {
     expect(result.data.ss58).toBe("5Server");
     expect(result.data.captured_at).toBe("2026-07-05T00:00:00Z");
     expect(result.data.positions).toHaveLength(1);
-    expect(result.data.positions[0]).toMatchObject({ netuid: 1, role: "validator", yield: 0.033 });
-    expect(result.data.stake_concentration).toEqual({
-      holders: 2,
-      gini: 0.5,
-      hhi_normalized: 0.6,
-      nakamoto_coefficient: 1,
+    expect(result.data.positions[0]).toMatchObject({
+      netuid: 1,
+      role: "validator",
+      stake_alpha: null,
+      emission_alpha: 3,
+      yield: null,
     });
+    expect(result.data.subnet_count).toBe(2);
+    expect(result.data.position_count).toBe(2);
+    expect(result.data.validator_count).toBe(1);
+    expect(result.data.miner_count).toBe(1);
+    expect(result.data.total_stake_tao).toBeNull();
+    expect(result.data.total_emission_tao).toBe(4);
+    expect(result.data.overall_yield).toBeNull();
+    expect(result.data.stake_concentration).toBeNull();
   });
 
-  it("falls back to safe defaults when the body is a non-object (cold/absent)", async () => {
+  it("keeps absent counts and capital unknown for a non-object body", async () => {
     resolveWith(null);
 
     const result = await runQuery(BOB);
 
     expect(result.data.ss58).toBe(BOB);
     expect(result.data.positions).toEqual([]);
-    expect(result.data.subnet_count).toBe(0);
-    expect(result.data.position_count).toBe(0);
-    expect(result.data.validator_count).toBe(0);
+    expect(result.data.subnet_count).toBeNull();
+    expect(result.data.position_count).toBeNull();
+    expect(result.data.validator_count).toBeNull();
+    expect(result.data.miner_count).toBeNull();
     expect(result.data.total_stake_tao).toBeNull();
     expect(result.data.overall_yield).toBeNull();
     expect(result.data.stake_concentration).toBeNull();
   });
 
-  it("caps the position list defensively", async () => {
+  it("caps neutral-ordered rows without replacing the source's full counts", async () => {
     resolveWith({
+      subnet_count: 300,
+      position_count: 300,
+      validator_count: 0,
+      miner_count: 300,
       positions: Array.from({ length: 300 }, (_, i) => ({
-        netuid: i,
+        netuid: 300 - i,
         uid: i,
         role: "miner",
         stake_alpha: 1,
@@ -237,7 +247,29 @@ describe("accountPortfolioQuery", () => {
     const result = await runQuery(CHARLIE);
 
     expect(result.data.positions).toHaveLength(256);
-    // subnet_count/position_count fall back to the (capped) rendered length.
-    expect(result.data.position_count).toBe(256);
+    expect(result.data.positions[0]?.netuid).toBe(1);
+    expect(result.data.positions[255]?.netuid).toBe(256);
+    expect(result.data.subnet_count).toBe(300);
+    expect(result.data.position_count).toBe(300);
+    expect(result.data.validator_count).toBe(0);
+    expect(result.data.miner_count).toBe(300);
+  });
+
+  it("uses netuid/uid order and never infers full counts from available rows", async () => {
+    resolveWith({
+      positions: [
+        { netuid: 7, uid: 9, stake_alpha: 999 },
+        { netuid: 2, uid: 4, stake_alpha: 50 },
+        { netuid: 2, uid: 1, stake_alpha: 0 },
+      ],
+    });
+    const result = await runQuery(ALICE);
+    expect(result.data.positions.map(({ netuid, uid }) => [netuid, uid])).toEqual([
+      [2, 1],
+      [2, 4],
+      [7, 9],
+    ]);
+    expect(result.data.position_count).toBeNull();
+    expect(result.data.subnet_count).toBeNull();
   });
 });

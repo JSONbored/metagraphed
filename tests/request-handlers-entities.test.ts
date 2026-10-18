@@ -124,6 +124,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
+  canonicalValidatorHistoryCachePath,
   canonicalChainRevenueCoverageCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
@@ -1146,9 +1147,9 @@ describe("handleGlobalValidators", () => {
       subnet_count: 1,
       uid_count: 1,
       take: null,
-      total_stake_tao: 0,
-      root_stake_tao: 0,
-      alpha_stake_tao: 0,
+      total_stake_tao: null,
+      root_stake_tao: null,
+      alpha_stake_tao: null,
       total_emission_tao: 0,
       nominator_count: null,
       apy_estimate: null,
@@ -1168,6 +1169,34 @@ describe("handleGlobalValidators", () => {
       ...overrides,
     };
   }
+
+  test("declines a legacy capital-selected service page instead of presenting its subset", async () => {
+    let calls = 0;
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async () => {
+          calls += 1;
+          return Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            limit: 1,
+            captured_at: null,
+            block_number: null,
+            validator_count: 2,
+            validators: [globalValidatorEntry({ total_stake_tao: 0 })],
+          });
+        },
+      },
+    };
+    const path = "/api/v1/validators?sort=total_stake&limit=1";
+    const body = await json(
+      await handleGlobalValidators(req(path), env as unknown as Env, url(path)),
+    );
+    assert.deepEqual(body.data.validators, []);
+    assert.equal(calls, 1);
+  });
 
   test("moves a featured validator to the front on the default (unsorted) view (#5166, Postgres tier)", async () => {
     const env = {
@@ -1263,7 +1292,7 @@ describe("handleValidatorOperatorDirectory", () => {
           hotkey_count: 1,
           primary_hotkey: "hk-a",
           coldkey: "ck-a",
-          total_stake_tao: 42,
+          total_stake_tao: null,
           total_emission_tao: 1,
           nominator_count: null,
           membership_count: 2,
@@ -1271,7 +1300,7 @@ describe("handleValidatorOperatorDirectory", () => {
           take_min: null,
           take_max: null,
           apy_estimate: null,
-          stake_dominance: 1,
+          stake_dominance: null,
         },
       ],
     };
@@ -1306,7 +1335,7 @@ describe("handleAccountHolderDirectory", () => {
       emptyEnv(),
     );
     assert.equal(body.data.account_count, 0);
-    assert.equal(body.data.priced_registered_stake_tao, 0);
+    assert.equal(body.data.priced_registered_stake_tao, null);
     assert.deepEqual(body.data.rankings, {
       stake: [],
       emission: [],
@@ -1322,7 +1351,7 @@ describe("handleAccountHolderDirectory", () => {
       block_number: 8_950_000,
       account_count: 1,
       limit: 20,
-      priced_registered_stake_tao: 42,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     };
     let forwardedPath = "";
@@ -7029,6 +7058,37 @@ describe("canonicalSubnetHistoryCachePath", () => {
   test("falls back to raw url when window value is invalid", () => {
     const raw = "/api/v1/subnets/7/history?window=invalid";
     assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalValidatorHistoryCachePath", () => {
+  const path = `/api/v1/validators/${SS58}/history`;
+
+  test("keeps unscoped, root and subnet cache keys distinct", () => {
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(path)),
+      `${path}?window=30d`,
+    );
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(`${path}?netuid=0`)),
+      `${path}?window=30d&netuid=0`,
+    );
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(`${path}?netuid=7&window=7d`)),
+      `${path}?window=7d&netuid=7`,
+    );
+  });
+
+  test("invalid queries retain their raw cache key", () => {
+    for (const query of [
+      "window=invalid&netuid=0",
+      "window=7d&netuid=65536",
+      "netuid=unknown",
+      "window=30d&extra=junk",
+    ]) {
+      const raw = `${path}?${query}`;
+      assert.equal(canonicalValidatorHistoryCachePath(url(raw)), raw);
+    }
   });
 });
 

@@ -726,7 +726,7 @@ type Query {
   account_position_history(ss58: String!, netuid: Int!, window: String): AccountPositionHistory!
 
   """
-  One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.
+  One hotkey's cross-subnet neuron memberships in netuid/uid order, with observed scores, role, active state, native emission, counts and priced emission totals. Legacy stake quantities, total capital, concentration and investment yield are unavailable and remain null, including for an empty card; metagraph voting weight cannot establish independent principal. An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.
   """
   account_portfolio(ss58: String!): AccountPortfolio!
 
@@ -1853,10 +1853,20 @@ type ComparedValidator {
   """
   coldkey_identity: CompareValidatorsArtifactValidatorsColdkeyIdentity
   take: Float
+
+  """
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.
+  """
   apy_estimate: Float
+
+  """Always 0 while investment principal is unavailable."""
   apy_estimate_eligible_subnet_count: Int!
   nominator_count: Int
-  total_stake_tao: Float!
+
+  """
+  Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
+  """
+  total_stake_tao: Float
   total_emission_tao: Float!
   avg_validator_trust: Float
   max_validator_trust: Float
@@ -1898,12 +1908,12 @@ type CompareValidatorsArtifactValidatorsSubnetContext {
   dividends: Float
 
   """
-  This row's emission on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`emission_tao\` in #10514, because the entry's own \`total_stake_tao\` IS priced TAO and a shared \`_tao\` suffix across different units is a trap no description undoes.
+  This row's emission on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Retained under the native emission field name from #10514; it does not establish capital or investment yield.
   """
   emission_alpha: Float
 
   """
-  This row's stake on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`stake_tao\` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion.
+  Legacy field name for observed subnet voting weight from metagraph stake_tao: alpha + tao_weight * root for non-root memberships. Root influence can repeat across subnets. This is not independent alpha principal, cannot be valued as holdings, and must not be summed across subnets.
   """
   stake_alpha: Float
   registered_at_block: Int
@@ -2246,7 +2256,7 @@ type NeuronState {
   emission_tao: Float
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
+  Observed metagraph voting weight for this membership, retained under the legacy stake_tao name. It combines alpha with a weighted root contribution (alpha + tao_weight * root); the root component can appear in several subnet memberships. This is not independently measured principal, a pure alpha holding, or a TAO valuation. Do not price it as alpha, sum it across subnets, or use it as an investment-yield denominator.
   """
   stake_tao: Float
   registered_at_block: Int
@@ -4059,7 +4069,7 @@ type NeuronHistoryPoint {
   emission_tao: Float
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
+  Observed metagraph voting weight for this membership, retained under the legacy stake_tao name. It combines alpha with a weighted root contribution (alpha + tao_weight * root); the root component can appear in several subnet memberships. This is not independently measured principal, a pure alpha holding, or a TAO valuation. Do not price it as alpha, sum it across subnets, or use it as an investment-yield denominator.
   """
   stake_tao: Float
   registered_at_block: Int
@@ -5906,15 +5916,19 @@ type Validator {
   take: Float
 
   """
-  Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
+  Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
   """
-  total_stake_tao: Float!
-  root_stake_tao: Float!
+  total_stake_tao: Float
 
   """
-  The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.
+  Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
   """
-  alpha_stake_tao: Float!
+  root_stake_tao: Float
+
+  """
+  Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
+  """
+  alpha_stake_tao: Float
 
   """
   Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
@@ -5925,7 +5939,13 @@ type Validator {
   Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero.
   """
   nominator_count: Int
+
+  """
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.
+  """
   apy_estimate: Float
+
+  """Always 0 while investment principal is unavailable."""
   apy_estimate_eligible_subnet_count: Int!
 
   """
@@ -5963,11 +5983,15 @@ type Validator {
   block_number: Int
 
   """
-  Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet.
+  Per-subnet membership rows for this validator. The global leaderboard entry caps this at the first 10 by netuid and uid; the single-validator lookup carries every subnet.
   """
   subnets: [ValidatorSubnet!]!
   featured: Boolean
   uid_count: Int
+
+  """
+  Always null: voting weight does not establish a common holdings-value denominator across validators.
+  """
   stake_dominance: Float
 }
 
@@ -6001,12 +6025,12 @@ type ValidatorSubnet {
   dividends: Float
 
   """
-  This row's emission on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`emission_tao\` in #10514, because the entry's own \`total_stake_tao\` IS priced TAO and a shared \`_tao\` suffix across different units is a trap no description undoes.
+  This row's emission on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Retained under the native emission field name from #10514; it does not establish capital or investment yield.
   """
   emission_alpha: Float
 
   """
-  This row's stake on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`stake_tao\` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion.
+  Legacy field name for observed subnet voting weight from metagraph stake_tao: alpha + tao_weight * root for non-root memberships. Root influence can repeat across subnets. This is not independent alpha principal, cannot be valued as holdings, and must not be summed across subnets.
   """
   stake_alpha: Float
   registered_at_block: Int
@@ -6072,7 +6096,7 @@ type Nominator {
 }
 
 """
-One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history.
+One validator's daily operational history. Capital and principal-based reward rates remain unavailable. Mirrors GET /api/v1/validators/{hotkey}/history.
 """
 type ValidatorHistory {
   schema_version: Int!
@@ -6103,10 +6127,14 @@ type ValidatorHistoryPoint {
   subnet_count: Int
 
   """
-  TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum.
+  Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
   """
   total_stake_tao: Float
   total_emission_tao: Float
+
+  """
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.
+  """
   rewards_per_1000_tao: Float
 
   """The scoped subnet. Null on the unscoped cross-subnet series."""
@@ -6114,7 +6142,7 @@ type ValidatorHistoryPoint {
   uid: Int
 
   """
-  Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point.
+  Legacy field name for observed subnet voting weight from metagraph stake_tao: alpha + tao_weight * root for non-root memberships. Root influence can repeat across subnets. This is not independent alpha principal, cannot be valued as holdings, and must not be summed across subnets.
   """
   stake_alpha: Float
   emission_alpha: Float
@@ -6131,12 +6159,27 @@ type ValidatorHistoryPoint {
   Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'.
   """
   validator_permit: Boolean
+
+  """
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.
+  """
   rewards_per_1000_alpha: Float
+
+  """
+  Always null: observed validator voting weight and the subnet's stake total do not establish a common economic-principal denominator.
+  """
   stake_share: Float
+
+  """
+  Always null while a valid common-denomination stake-share denominator is unavailable. Raw dividends remain available separately.
+  """
   dividend_efficiency: Float
 }
 
 type AccountList {
+  """
+  Legacy total_stake and stake_dominance sorts remain accepted and use stable hotkey order while capital is unavailable. Other sorts retain their independent metrics.
+  """
   sort: String!
   captured_at: String
   block_number: Int
@@ -6154,34 +6197,40 @@ type AccountEntry {
   miner_count: Int!
 
   """
-  Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
+  Deprecated compatibility field; always null. Metagraph stake_tao is voting weight, not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.
   """
-  total_stake_tao: Float!
+  total_stake_tao: Float
 
   """
   Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
   """
   total_emission_tao: Float!
+
+  """
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight cannot establish a share of network holdings.
+  """
   stake_dominance: Float
   latest_captured_at: String
   latest_block_number: Int
+
+  """First ten recorded memberships in ascending netuid/uid order."""
   subnets: [AccountSubnet!]!
 }
 
 """
-One subnet position in a wallet's portfolio, ranked biggest-stake-first.
+One hotkey membership with observed scores and native emission, in netuid/uid order. Capital and yield are unavailable.
 """
 type AccountSubnet {
   netuid: Int!
   uid: Int
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from \`stake_tao\` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating \`netuid\` sits in the same object, which holds -- except here, where a PRICED \`total_stake_tao\` sits in the same object too, and two fields sharing the \`_tao\` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.
+  Deprecated compatibility field; always null. The source records metagraph voting weight (alpha + tao_weight * root), not an independently measured alpha position or principal. A subnet identity does not establish token quantities.
   """
-  stake_alpha: Float!
+  stake_alpha: Float
 
   """
-  This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from \`emission_tao\` in #10514 -- see that sibling for why this one payload could not keep the on-chain name.
+  This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated outside root. netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from \`emission_tao\` in #10514 -- see that sibling for why this one payload could not keep the on-chain name.
   """
   emission_alpha: Float!
 }
@@ -6390,7 +6439,7 @@ type AccountPositionHistory {
 }
 
 """
-One day's position for an account in one subnet: the neuron's uid/role/active plus stake/emission and its rank/trust/incentive/dividends scores and emission-per-stake yield.
+One day's recorded neuron membership for an account in one subnet: uid, role, active state, voting weight, emission and operational scores. Historical quantity and ratio fields do not establish asset holdings or investment performance.
 """
 type AccountPositionHistoryPoint {
   snapshot_date: String!
@@ -6401,23 +6450,27 @@ type AccountPositionHistoryPoint {
   active: Boolean!
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).
+  Historical metagraph voting weight stored under a legacy name. It does not establish independent native-alpha or TAO principal, including on Root. Pricing or summing voting weight cannot certify account holdings or portfolio value.
   """
   stake_tao: Float!
 
   """
-  This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure.
+  This row's observed emission in the subnet named by the sibling \`netuid\`, alpha-denominated outside root under the legacy on-chain name (#2550/#8945). netuid 0 (root) is genuine TAO. It remains independent of the legacy voting-weight field and does not establish investment yield. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure.
   """
   emission_tao: Float!
   rank: Float
   trust: Float
   incentive: Float
   dividends: Float
+
+  """
+  Legacy operational emission-per-reported-weight ratio, not measured investment yield or principal-based return.
+  """
   yield: Float
 }
 
 """
-One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio.
+One hotkey's cross-subnet memberships, observed scores and emission. Capital, concentration and investment yield remain unavailable without independently measured principal. Mirrors GET /api/v1/accounts/{ss58}/portfolio.
 """
 type AccountPortfolio {
   schema_version: Int!
@@ -6429,9 +6482,9 @@ type AccountPortfolio {
   miner_count: Int!
 
   """
-  Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
+  Deprecated compatibility field; always null. Pricing or summing metagraph voting weight cannot establish independent principal or holdings value. Null is unavailable, including for an empty response, never a zero holding.
   """
-  total_stake_tao: Float!
+  total_stake_tao: Float
 
   """
   Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.
@@ -6439,19 +6492,19 @@ type AccountPortfolio {
   total_emission_tao: Float!
 
   """
-  Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake.
+  Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight cannot establish an investment return.
   """
   overall_yield: Float
 
   """
-  How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions.
+  Always null: the source cannot establish holdings-value concentration from metagraph voting weight.
   """
   stake_concentration: ConcentrationMetrics
   positions: [AccountPortfolioPosition!]!
 }
 
 """
-One subnet position in a wallet's portfolio, ranked biggest-stake-first.
+One hotkey membership with observed scores and native emission, in netuid/uid order. Capital and yield are unavailable.
 """
 type AccountPortfolioPosition {
   netuid: Int!
@@ -6460,12 +6513,12 @@ type AccountPortfolioPosition {
   active: Boolean!
 
   """
-  This row's stake in the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from \`stake_tao\` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating \`netuid\` sits in the same object, which holds -- except here, where a PRICED \`total_stake_tao\` sits in the same object too, and two fields sharing the \`_tao\` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO.
+  Deprecated compatibility field; always null. The source records metagraph voting weight (alpha + tao_weight * root), not an independently measured alpha position or principal. A subnet identity does not establish token quantities.
   """
-  stake_alpha: Float!
+  stake_alpha: Float
 
   """
-  This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from \`emission_tao\` in #10514 -- see that sibling for why this one payload could not keep the on-chain name.
+  This row's emission in the subnet named by the sibling \`netuid\`, alpha-denominated outside root. netuid 0 (root) is genuine TAO. The RATE PERIOD is one TEMPO -- the subnet's \`tempo\` hyperparameter, 360 blocks (~20 tempos/day) on effectively every subnet -- not one day: multiply by tempos/day before deriving a daily figure. Renamed from \`emission_tao\` in #10514 -- see that sibling for why this one payload could not keep the on-chain name.
   """
   emission_alpha: Float!
   rank: Float
@@ -6473,12 +6526,14 @@ type AccountPortfolioPosition {
   incentive: Float
   dividends: Float
 
-  """Emission over stake for this position; null when stake is 0."""
+  """
+  Deprecated compatibility field; always null. Voting weight is not an investment-principal denominator; null is unavailable, never zero yield.
+  """
   yield: Float
 }
 
 """
-This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions.
+Periodic nominator-side relationship records for one account, with capture time and coverage evidence. Legacy amount/share fields do not identify an authoritative holdings basis; Root holdings are not covered and an empty response does not establish an empty wallet. Mirrors GET /api/v1/accounts/{ss58}/positions.
 """
 type AccountPositions {
   schema_version: Int!
@@ -6487,7 +6542,7 @@ type AccountPositions {
   position_count: Int!
 
   """
-  Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.
+  Legacy sum of reconstructed quantities across returned records. The input can be voting weight and different subnets have different units; this aggregate does not establish asset holdings, portfolio value or allocation. It is not comparable with a TAO balance, including when finite or zero.
   """
   total_stake_alpha: Float!
   positions: [NominatorPosition!]!
@@ -6495,26 +6550,26 @@ type AccountPositions {
 }
 
 """
-One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid.
+One periodically recorded (hotkey, netuid) relationship from the nominator-position ledger. Legacy numeric fields are not qualified asset holdings; preserve relationship identity and capture provenance separately from quantity claims.
 """
 type NominatorPosition {
   hotkey: String!
   netuid: Int!
 
   """
-  This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount.
+  Legacy fraction reported by the nominator-position ledger (0..1). This wire response does not identify an authoritative asset-quantity basis; the fraction must not establish an ownership share, holdings allocation or unstake Max.
   """
   share_fraction: Float!
 
   """
-  This position's stake in the subnet named by the sibling \`netuid\`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of \`total_stake_alpha\` above -- same denomination, kept under the on-chain column name deliberately (#8945).
+  Legacy reconstructed quantity for the sibling hotkey and netuid. Reconstruction can multiply a nominator fraction by neuron voting weight, so this field name does not establish a native-alpha or TAO holding. The response has no authoritative quantity-basis discriminator. Do not use it for holdings value, allocation or unstake Max.
   """
   stake_tao: Float!
 }
 
 type AccountPositionsDegraded {
   """
-  \`tier_unavailable\`: every tier declined, so this zero is a read failure. \`snapshot_predates_stake_activity\`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so \`positions: 0\` is a claim the ledger is not entitled to make. \`positions_unpriceable\`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from \`positions\` and from \`total_stake_alpha\` rather than reported with a fabricated zero, so the total understates the real holding.
+  \`tier_unavailable\`: every tier declined, so zero is a read failure. \`snapshot_predates_stake_activity\`: the ledger answered zero before newer on-chain stake activity, so an empty current holding is not established. \`positions_unpriceable\`: ledger rows could not be reconstructed or their quantities are unqualified, so returned rows or totals are incomplete. Absence of this marker does not qualify legacy amounts as asset holdings.
   """
   reason: String!
 

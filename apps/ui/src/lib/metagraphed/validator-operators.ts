@@ -5,11 +5,11 @@ import type { OperatorValidator } from "./types";
  *
  * Keeping the full OperatorValidator here put one copy of every aggregate,
  * identity and empty subnets array back into SSR dehydration even though an
- * expanded operator renders only its key, stake and take.
+ * expanded operator renders only its key and take.
  */
 export interface OperatorKey {
   hotkey: string;
-  totalStakeTao: number;
+  totalStakeTao: number | null;
   take: number | null;
 }
 
@@ -23,7 +23,7 @@ export interface OperatorRow {
   keyCount: number;
   primaryHotkey: string;
   coldkey: string | null;
-  totalStakeTao: number;
+  totalStakeTao: number | null;
   totalEmissionTao: number;
   nominators: number | null;
   /** Total memberships across the operator's hotkeys, not distinct subnets. */
@@ -32,7 +32,7 @@ export interface OperatorRow {
   /** Null when no key declares one; a single value when they agree. */
   takeMin: number | null;
   takeMax: number | null;
-  /** Stake-weighted, so a large key's yield is not outvoted by a dust key. */
+  /** Unavailable without an authoritative principal denominator. */
   apyEstimate: number | null;
   dominance: number | null;
 }
@@ -45,13 +45,17 @@ export interface OperatorRow {
  * more than the values themselves, so the SSR boundary uses a documented
  * tuple and the component expands it back into the readable model.
  */
-export type SerializedOperatorKey = [hotkey: string, totalStakeTao: number, take: number | null];
+export type SerializedOperatorKey = [
+  hotkey: string,
+  totalStakeTao: number | null,
+  take: number | null,
+];
 export type SerializedOperatorRow = [
   identityName: string | null,
   multiKeyChildren: SerializedOperatorKey[],
   primaryHotkey: string,
   coldkey: string | null,
-  totalStakeTao: number,
+  totalStakeTao: number | null,
   totalEmissionTao: number,
   nominators: number | null,
   memberships: number,
@@ -73,7 +77,7 @@ export const shortKey = (key: string): string =>
   key.length > 14 ? `${key.slice(0, 6)}…${key.slice(-4)}` : key;
 
 /**
- * Validator keys aggregated into operators, largest first.
+ * Validator keys grouped by observed ownership, ordered by hotkey.
  *
  * Only one matching observed owner establishes shared membership. Missing or
  * conflicting evidence stays hotkey-scoped; declared names never group keys.
@@ -92,58 +96,37 @@ export function operatorRows(validators: readonly OperatorValidator[]): Operator
 
   const rows: OperatorRow[] = [];
   for (const [key, keys] of groups) {
-    const sorted = [...keys].sort(
-      (a, b) => b.total_stake_tao - a.total_stake_tao || a.hotkey.localeCompare(b.hotkey),
-    );
+    const sorted = [...keys].sort((a, b) => a.hotkey.localeCompare(b.hotkey));
     const primary = sorted[0]!;
-    const name = declaredName(primary);
+    const name = sorted.map(declaredName).find((name) => name !== null) ?? null;
     const named = name !== null;
     const takes = sorted
       .map((validator) => validator.take)
       .filter((take): take is number => typeof take === "number" && Number.isFinite(take));
-    const totalStakeTao = sorted.reduce((acc, validator) => acc + validator.total_stake_tao, 0);
-
-    let weighted = 0;
-    let weight = 0;
-    for (const validator of sorted) {
-      if (typeof validator.apy_estimate !== "number" || !Number.isFinite(validator.apy_estimate)) {
-        continue;
-      }
-      weighted += validator.apy_estimate * validator.total_stake_tao;
-      weight += validator.total_stake_tao;
-    }
-
     rows.push({
       key,
       name: name ?? shortKey(primary.hotkey),
       named,
       keys: sorted.map((validator) => ({
         hotkey: validator.hotkey,
-        totalStakeTao: validator.total_stake_tao,
+        totalStakeTao: null,
         take: validator.take,
       })),
       keyCount: sorted.length,
       primaryHotkey: primary.hotkey,
       coldkey: primary.coldkey,
-      totalStakeTao,
+      totalStakeTao: null,
       totalEmissionTao: sorted.reduce((acc, validator) => acc + validator.total_emission_tao, 0),
       nominators: operatorNominatorCount(primary.nominator_count, sorted.length),
       memberships: sorted.reduce((acc, validator) => acc + (validator.subnet_count ?? 0), 0),
       uidCount: sorted.reduce((acc, validator) => acc + validator.uid_count, 0),
       takeMin: takes.length > 0 ? Math.min(...takes) : null,
       takeMax: takes.length > 0 ? Math.max(...takes) : null,
-      apyEstimate: weight > 0 ? weighted / weight : null,
+      apyEstimate: null,
       dominance: null,
     });
   }
-  const ranked = rows.sort(
-    (a, b) => b.totalStakeTao - a.totalStakeTao || a.primaryHotkey.localeCompare(b.primaryHotkey),
-  );
-  const listedStake = ranked.reduce((acc, row) => acc + row.totalStakeTao, 0);
-  return ranked.map((row) => ({
-    ...row,
-    dominance: listedStake > 0 ? row.totalStakeTao / listedStake : null,
-  }));
+  return rows.sort((a, b) => a.primaryHotkey.localeCompare(b.primaryHotkey));
 }
 
 /** Per-hotkey counts cannot establish unique accounts across an operator's keys. */
@@ -167,21 +150,17 @@ export function serializeOperatorRows(rows: readonly OperatorRow[]): SerializedO
     const serialized: SerializedOperatorRow = [
       row.named ? row.name : null,
       row.keyCount > 1
-        ? row.keys.map((key) => [
-            key.hotkey,
-            compactDecimal(key.totalStakeTao, 5),
-            compactNullableDecimal(key.take, 6),
-          ])
+        ? row.keys.map((key) => [key.hotkey, null, compactNullableDecimal(key.take, 6)])
         : [],
       row.primaryHotkey,
       row.coldkey,
-      compactDecimal(row.totalStakeTao, 5),
+      null,
       compactDecimal(row.totalEmissionTao, 5),
       row.nominators,
       row.memberships,
       row.uidCount,
       row.keyCount === 1 ? compactNullableDecimal(row.takeMin, 6) : null,
-      compactNullableDecimal(row.apyEstimate, 8),
+      null,
     ];
     // Most IDs are losslessly reconstructible from addresses already present.
     // Repeating full addresses here exceeds the directory's HTML budget.
@@ -200,10 +179,10 @@ export function deserializeOperatorRows(rows: readonly SerializedOperatorRow[]):
       row[1].length > 0
         ? row[1].map((key) => ({
             hotkey: key[0],
-            totalStakeTao: key[1],
+            totalStakeTao: null,
             take: key[2],
           }))
-        : [{ hotkey: primaryHotkey, totalStakeTao: row[4], take: row[9] }];
+        : [{ hotkey: primaryHotkey, totalStakeTao: null, take: row[9] }];
     const takes = keys
       .map((key) => key.take)
       .filter((take): take is number => typeof take === "number");
@@ -221,20 +200,16 @@ export function deserializeOperatorRows(rows: readonly SerializedOperatorRow[]):
       keyCount: keys.length,
       primaryHotkey,
       coldkey: row[3],
-      totalStakeTao: row[4],
+      totalStakeTao: null,
       totalEmissionTao: row[5],
       nominators: operatorNominatorCount(row[6], keys.length),
       memberships: row[7],
       uidCount: row[8],
       takeMin: takes.length > 0 ? Math.min(...takes) : null,
       takeMax: takes.length > 0 ? Math.max(...takes) : null,
-      apyEstimate: row[10],
+      apyEstimate: null,
       dominance: null,
     };
   });
-  const listedStake = operators.reduce((acc, row) => acc + row.totalStakeTao, 0);
-  return operators.map((row) => ({
-    ...row,
-    dominance: listedStake > 0 ? row.totalStakeTao / listedStake : null,
-  }));
+  return operators;
 }

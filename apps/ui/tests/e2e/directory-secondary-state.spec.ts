@@ -73,7 +73,89 @@ test.describe("operator identity compatibility", () => {
 });
 
 test.describe("directory secondary analytics", () => {
-  test("keeps account holders immediate while deferring the separate activity ledger", async ({
+  test("account directory SSR withholds legacy capital and ownership claims", async ({
+    request,
+  }) => {
+    const response = await request.get("/accounts");
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("Registered hotkeys and signing activity.");
+    expect(html).toContain("capital values and ownership shares are unavailable");
+    expect(html).not.toContain("Priced stake");
+    expect(html).not.toContain("Top 10 share");
+    expect(html).not.toContain("of priced stake");
+    expect(html).not.toContain("Accounts ranked by stake");
+  });
+
+  test("keeps independent hotkey rankings when legacy capital fields are present", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 812 });
+    await gotoThroughRestart(page, "/settings");
+    await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+    let capturedAt: string | null = "2026-08-29T00:00:00Z";
+    await page.route("**/api/v1/accounts/directory*", async (route) => {
+      const row = (hotkey: string, subnets: number, emission: number) => ({
+        hotkey,
+        coldkey: "5SharedOwner",
+        subnet_count: subnets,
+        uid_count: subnets,
+        total_stake_tao: 1_000_000,
+        stake_dominance: 0.9,
+        total_emission_tao: emission,
+      });
+      await route.fulfill({
+        json: {
+          ok: true,
+          meta: { generated_at: "2026-10-17T00:00:00Z" },
+          data: {
+            captured_at: capturedAt,
+            account_count: 42,
+            limit: 20,
+            priced_registered_stake_tao: 2_000_000,
+            rankings: {
+              stake: [row("5StakeOnly", 99, 99)],
+              reach: [row("5ReachFirst", 7, 3), row("5EmissionFirst", 2, 9)],
+              emission: [row("5EmissionFirst", 2, 9)],
+            },
+          },
+        },
+      });
+    });
+    await page.getByRole("link", { name: "Accounts", exact: true }).first().click();
+
+    const directory = page.locator("section#holders");
+    await expect(page.getByRole("radio", { name: "Reach", exact: true })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Stake", exact: true })).toHaveCount(0);
+    await expect(directory.locator('a[href="/accounts/5ReachFirst"]')).toBeVisible();
+    await expect(directory.locator('a[href="/accounts/5EmissionFirst"]')).toBeVisible();
+    await expect(directory.locator('a[href="/accounts/5SharedOwner"]')).toHaveCount(0);
+    await expect(directory.locator('a[href="/accounts/5StakeOnly"]')).toHaveCount(0);
+    await expect(
+      directory.getByText(/2 hotkeys shown from the bounded reach ranking/),
+    ).toBeVisible();
+    await expect(page.locator(".mg-hero").getByText("Priced stake", { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(page.getByText(/of priced stake/)).toHaveCount(0);
+
+    await page.getByRole("radio", { name: "Emission", exact: true }).click();
+    await expect(directory.locator('a[href="/accounts/5ReachFirst"]')).toHaveCount(0);
+    await expect(directory.locator('a[href="/accounts/5EmissionFirst"]')).toBeVisible();
+    await expect(directory.getByText("9.00τ", { exact: true })).toBeVisible();
+    await expect(
+      directory.getByText(/1 hotkey shown from the bounded emission ranking/),
+    ).toBeVisible();
+
+    capturedAt = null;
+    await page
+      .locator(".mg-live-meta")
+      .getByRole("button", { name: "refresh", exact: true })
+      .click();
+    await expect(page.locator(".mg-live-meta")).toContainText("Updated —");
+  });
+
+  test("keeps absent reach explicit while loading the independent activity ledger", async ({
     page,
   }) => {
     let signerRequests = 0;
@@ -90,14 +172,13 @@ test.describe("directory secondary analytics", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/accounts");
 
+    await expect(
+      page.getByText("No registered-hotkey rows are available in this ranking.", { exact: true }),
+    ).toBeVisible();
     const active = page.locator("section#active");
     await expect(active.getByRole("table", { name: "Signing accounts" })).toBeVisible();
     await expect(active.locator(".mg-dt-skeleton")).toHaveCount(8);
-    await expect(
-      active.getByText("7d signing activity · chain-direct", { exact: true }),
-    ).toBeVisible();
     await expect(page.locator('[href="#concentration"]')).toHaveCount(0);
-    expect(signerRequests).toBe(0);
 
     await active.scrollIntoViewIfNeeded();
     await expect.poll(() => signerRequests).toBe(1);

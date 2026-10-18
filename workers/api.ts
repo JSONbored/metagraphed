@@ -40,6 +40,7 @@ import {
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
+  contractPathForPathname,
   liveOnlyArtifactRoute,
 } from "../src/contracts.ts";
 import {
@@ -323,7 +324,15 @@ import {
   accountEdgeCacheEligible,
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
-import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
+import {
+  readExplorerDirectoryCacheStamp,
+  hasNeuronCapitalPolicy,
+  normalizeNeuronCapitalForRoute,
+} from "./data-api-tier.ts";
+import {
+  ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
+  VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
+} from "./request-handlers/explorer-directories.ts";
 import {
   DEGRADED_HEADER,
   degradedSince,
@@ -5641,7 +5650,11 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      ACCOUNT_EDGE_CACHE_LABEL,
+      // A warm legacy portfolio can contain unqualified capital. Keep it out
+      // of the corrected response path even when the decode stamp is unchanged.
+      ACCOUNT_PORTFOLIO_PATH_PATTERN.test(resolved.pathname.replace(/\/$/, ""))
+        ? "account-portfolio-principal-unavailable"
+        : ACCOUNT_EDGE_CACHE_LABEL,
       // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the
       // GET key when the builder accepts the normalized request, and a builder
       // closing over the original HEAD would seed the GET entry with an empty
@@ -6416,7 +6429,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "validator-operator-directory",
+      VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
       (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
       url.pathname,
       readExplorerDirectoryCacheStamp,
@@ -6436,7 +6449,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "global-validators",
+      "global-validators-principal-unavailable",
       (cacheRequest) => handleGlobalValidators(cacheRequest, env, url),
       validatorsCache.cachePathAndSearch,
     );
@@ -6452,21 +6465,20 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "accounts-list",
+      "accounts-list-principal-unavailable",
       () => handleAccountsList(request, env, url),
       accountsCache.cachePathAndSearch,
     );
   }
 
-  // Canonical website-sized holder directory. One response contains the
-  // three bounded rankings the page switches between, and invalidates only
-  // when a complete neuron pass advances.
+  // Canonical website-sized registered-hotkey directory. The separate
+  // namespace prevents a legacy financial ranking from bypassing its guard.
   if (url.pathname === "/api/v1/accounts/directory") {
     return withEdgeCache(
       request,
       ctx,
       env,
-      "account-holder-directory",
+      ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
       (cacheRequest) => handleAccountHolderDirectory(cacheRequest, env),
       url.pathname,
       readExplorerDirectoryCacheStamp,
@@ -6523,7 +6535,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "validator-history",
+      "validator-history-principal-unavailable",
       () => handleValidatorHistory(request, env, validatorHistoryMatch[1], url),
       canonicalValidatorHistoryCachePath(url),
     );
@@ -8986,6 +8998,24 @@ async function handleRawArtifactRequest(
       artifact_path: networkPath,
     });
   }
+  // Bounded computed routes can still have older stored objects. Apply the
+  // same provenance policy as service responses before publish stamping.
+  const route = API_ROUTES.find((entry) => entry.id === matched.id);
+  const routePath = route?.path ?? "";
+  const capitalPolicy = hasNeuronCapitalPolicy(routePath);
+  const normalized = capitalPolicy
+    ? rowOf(artifact.data) === null
+      ? null
+      : normalizeNeuronCapitalForRoute(routePath, artifact.data as Row)
+    : (artifact.data as Row);
+  if (capitalPolicy && normalized === null) {
+    return errorResponse(
+      "artifact_principal_unavailable",
+      "Stored rankings do not establish holdings or principal; use the live API endpoints.",
+      503,
+      { artifact_path: networkPath },
+    );
+  }
   // Live per-endpoint health overlay: raw artifacts that embed the shared
   // EndpointResource list (endpoints.json, subnets/{n}.json, profiles/{n}.json,
   // provider endpoints) must not serve build-time operational health as fresh.
@@ -8993,7 +9023,7 @@ async function handleRawArtifactRequest(
   // the same live status the /api/v1 routes do; surfaces with no live reading
   // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
   // that actually carry probed endpoints.
-  let data = artifact.data as Row;
+  let data = normalized as Row;
   if (
     network.isDefault &&
     Array.isArray(data?.endpoints) &&
@@ -9482,6 +9512,17 @@ async function handleApiRequest(
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
   const checkedCatalog = url.searchParams.has("page_snapshot");
+  // Generic stored bodies cannot establish requested identities or history
+  // scope. Variants must reach the live handler before any cache or read.
+  // A matched route comes from the same published contract table.
+  if (hasNeuronCapitalPolicy(contractPathForPathname(url.pathname)!)) {
+    return errorResponse(
+      "artifact_computed_live",
+      "This route is served by its live handler; use the canonical API path without a trailing slash.",
+      404,
+      { artifact_path: artifactPath },
+    );
+  }
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold

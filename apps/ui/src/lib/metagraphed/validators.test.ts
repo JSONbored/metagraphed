@@ -10,6 +10,22 @@ import {
 import { deserializeOperatorRows } from "./validator-operators";
 
 describe("normalizeGlobalValidators", () => {
+  it.each([
+    { fields: { emission_alpha: 4.5, emission_tao: 999 }, expected: 4.5 },
+    { fields: { emission_alpha: 0, emission_tao: 999 }, expected: 0 },
+    { fields: { emission_alpha: null, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: undefined, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: NaN, emission_tao: 999 }, expected: null },
+    { fields: { emission_tao: 2.5 }, expected: 2.5 },
+    { fields: { emission_tao: 0 }, expected: 0 },
+    { fields: {}, expected: null },
+  ])("preserves native membership emission $fields", ({ fields, expected }) => {
+    const result = normalizeGlobalValidators({
+      validators: [{ hotkey: "5Hotkey", subnets: [{ netuid: 1, uid: 2, ...fields }] }],
+    });
+    expect(result.validators[0]?.subnets[0]?.emission_tao).toBe(expected);
+  });
+
   it("normalizes a representative global validators payload", () => {
     const out = normalizeGlobalValidators({
       schema_version: 1,
@@ -67,8 +83,9 @@ describe("normalizeGlobalValidators", () => {
       hotkey: "5Hotkey",
       coldkey: "5Coldkey",
       take: 0.18,
-      root_stake_tao: 10,
-      alpha_stake_tao: 90.5,
+      total_stake_tao: null,
+      root_stake_tao: null,
+      alpha_stake_tao: null,
       nominator_count: 42,
       coldkey_identity: { has_identity: true, name: "TensorOps" },
       subnet_count: 2,
@@ -252,15 +269,15 @@ describe("validatorOperatorDirectoryQuery", () => {
       named: true,
       keyCount: 2,
       primaryHotkey: "hk-large",
-      totalStakeTao: 100,
+      totalStakeTao: null,
       totalEmissionTao: 8,
       nominators: null,
       memberships: 6,
       uidCount: 8,
       takeMin: 0.1,
       takeMax: 0.2,
-      apyEstimate: 0.25,
-      dominance: 0.8,
+      apyEstimate: null,
+      dominance: null,
     });
     expect(rows[0]!.keys.map((key) => key.hotkey)).toEqual(["hk-large", "hk-small"]);
     expect(rows[1]).toMatchObject({
@@ -270,7 +287,7 @@ describe("validatorOperatorDirectoryQuery", () => {
       takeMin: null,
       takeMax: null,
       apyEstimate: null,
-      dominance: 0.2,
+      dominance: null,
     });
   });
 });
@@ -310,11 +327,11 @@ describe("projectOperatorValidator", () => {
       subnet_count: 2,
       uid_count: 3,
       take: 0.1,
-      total_stake_tao: 42,
+      total_stake_tao: null,
       total_emission_tao: 1,
       nominator_count: 4,
-      apy_estimate: 0.2,
-      stake_dominance: 0.3,
+      apy_estimate: null,
+      stake_dominance: null,
       subnets: [],
     });
   });

@@ -34,6 +34,22 @@ async function runQuery(hotkeys: string[], netuid?: number) {
 }
 
 describe("normalizeCompareValidators", () => {
+  it.each([
+    { fields: { emission_alpha: 4.5, emission_tao: 999 }, expected: 4.5 },
+    { fields: { emission_alpha: 0, emission_tao: 999 }, expected: 0 },
+    { fields: { emission_alpha: null, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: undefined, emission_tao: 999 }, expected: null },
+    { fields: { emission_alpha: NaN, emission_tao: 999 }, expected: null },
+    { fields: { emission_tao: 2.5 }, expected: 2.5 },
+    { fields: { emission_tao: 0 }, expected: 0 },
+    { fields: {}, expected: null },
+  ])("preserves native context emission $fields", ({ fields, expected }) => {
+    const result = normalizeCompareValidators({
+      validators: [{ hotkey: ALICE, subnet_context: { netuid: 1, uid: 2, ...fields } }],
+    });
+    expect(result.validators[0]?.subnet_context?.emission_tao).toBe(expected);
+  });
+
   it("coerces a well-formed comparison, keeping caller order", () => {
     const result = normalizeCompareValidators({
       schema_version: 1,
@@ -78,9 +94,10 @@ describe("normalizeCompareValidators", () => {
     expect(result.validators[0]).toMatchObject({
       coldkey: BOB,
       take: 0.09,
-      apy_estimate: 0.123,
+      apy_estimate: null,
+      apy_estimate_eligible_subnet_count: 0,
       nominator_count: 41,
-      total_stake_tao: 1200.5,
+      total_stake_tao: null,
       subnet_count: 5,
       subnet_context: null,
     });

@@ -25,6 +25,7 @@ import {
 import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { deserializeOperatorRows } from "@/lib/metagraphed/validator-operators";
+import { VALIDATOR_PRINCIPAL_UNAVAILABLE } from "@/lib/metagraphed/validator-principal";
 import { Route } from "./validators.index";
 
 const SECTIONS = [
@@ -114,7 +115,7 @@ export function ValidatorsPage() {
           visual={
             <p className="max-w-prose text-13 text-ink-muted">
               Declared names are labels, not verification. Expand a row to inspect its individual
-              hotkeys. Balance, return and holdings-concentration figures are unavailable here.
+              hotkeys. {VALIDATOR_PRINCIPAL_UNAVAILABLE}
             </p>
           }
         />

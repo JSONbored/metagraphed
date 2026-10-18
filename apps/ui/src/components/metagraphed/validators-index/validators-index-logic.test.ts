@@ -71,21 +71,22 @@ describe("operatorRows", () => {
     validator({ hotkey: "5D", total_stake_tao: 50 }),
   ];
 
-  it("sums an operator's keys and ranks operators by the sum", () => {
+  it("groups observed keys without interpreting voting-weight capital claims", () => {
     const operators = operatorRows(rows);
     expect(operators.map((o) => o.key)).toEqual(["coldkey:owner-a", "hotkey:5C", "hotkey:5D"]);
-    expect(operators[0]).toMatchObject({ keyCount: 2, totalStakeTao: 1000, named: true });
+    expect(operators[0]).toMatchObject({ keyCount: 2, totalStakeTao: null, named: true });
+    expect(operators.every((row) => row.dominance === null && row.apyEstimate === null)).toBe(true);
   });
 
-  it("preserves the largest-key compatibility field independently of chosen links", () => {
-    expect(operatorRows(rows)[0]?.primaryHotkey).toBe("5B");
+  it("chooses a stable primary hotkey without a capital ranking", () => {
+    expect(operatorRows(rows)[0]?.primaryHotkey).toBe("5A");
   });
 
   it("retains only the child-key fields the expanded directory renders", () => {
     expect(operatorRows(rows)[0]?.keys[0]).toEqual({
-      hotkey: "5B",
-      totalStakeTao: 900,
-      take: 0.09,
+      hotkey: "5A",
+      totalStakeTao: null,
+      take: 0.18,
     });
   });
 
@@ -131,7 +132,7 @@ describe("operatorRows", () => {
     ])[0]!;
     expect(after.key).toBe(before.key);
     expect(after.name).toBe("New Name");
-    expect(after.primaryHotkey).toBe("second");
+    expect(after.primaryHotkey).toBe("first");
     expect(deserializeOperatorRows(serializeOperatorRows([after]))[0]).toEqual(after);
   });
 
@@ -161,6 +162,7 @@ describe("operatorRows", () => {
     expect(rows.map((row) => row.key)).toEqual(["hotkey:first", "hotkey:second"]);
     expect(rows.map((row) => row.name)).toEqual(["Shared Name", "Shared Name"]);
     expect(rows.map((row) => row.nominators)).toEqual([0, 4]);
+    expect(rows.every((row) => row.totalStakeTao === null && row.dominance === null)).toBe(true);
   });
 
   it.each([
@@ -223,8 +225,8 @@ describe("operatorRows", () => {
     expect(serialized.map((row) => row.length)).toEqual([12, 11]);
     expect(serialized[0]?.[11]).toBe(1);
     expect(serialized[0]?.[1]).toEqual([
-      ["5A", 100.12346, 0.123457],
-      ["5B", 10.98765, 0.012346],
+      ["5A", null, 0.123457],
+      ["5B", null, 0.012346],
     ]);
     expect(serialized[0]?.[9]).toBeNull();
     expect(serialized[1]?.[1]).toEqual([]);
@@ -232,13 +234,13 @@ describe("operatorRows", () => {
 
     const restored = deserializeOperatorRows(serialized);
     expect(restored[0]).toMatchObject({
-      totalStakeTao: 111.11111,
+      totalStakeTao: null,
       totalEmissionTao: 1.35802,
       takeMin: 0.012346,
       takeMax: 0.123457,
     });
     expect(restored[1]).toMatchObject({
-      keys: [{ hotkey: "5C", totalStakeTao: 5.55556, take: 0.177778 }],
+      keys: [{ hotkey: "5C", totalStakeTao: null, take: 0.177778 }],
       takeMin: 0.177778,
       takeMax: 0.177778,
     });
@@ -252,7 +254,7 @@ describe("operatorRows", () => {
     expect(operators.find((o) => o.key === "hotkey:5C")?.name).toBe("5C");
   });
 
-  it("weights APY by stake, so a dust key cannot move the headline", () => {
+  it("rejects legacy numerical APY even when paired with finite capital claims", () => {
     const weighted = operatorRows([
       validator({
         hotkey: "5A",
@@ -269,7 +271,8 @@ describe("operatorRows", () => {
         apy_estimate: 10,
       }),
     ]);
-    expect(weighted[0]?.apyEstimate).toBeCloseTo(0.1099, 3);
+    expect(weighted[0]?.apyEstimate).toBeNull();
+    expect(weighted[0]?.totalStakeTao).toBeNull();
   });
 
   it("has no APY at all when no key estimated one", () => {

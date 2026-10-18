@@ -5,7 +5,7 @@ import { formatDecimal, formatNumber, joinAmountUnit } from "@/lib/metagraphed/f
 import { raoToTao, type Rao } from "@/lib/metagraphed/units";
 import type { SubnetStakeQuote } from "@/lib/metagraphed/types";
 import type { StakeFlowAction, StakeFlowUnit } from "@/hooks/use-stake-flow";
-import { MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE } from "@/hooks/use-stake-flow";
+import { MAX_UNSTAKE_UNAVAILABLE_MESSAGE } from "@/hooks/use-stake-flow";
 
 // The amount-entry step (#5242's "amount" phase): action tablist + amount
 // field + TAO/alpha toggle + Max button, wired to useStakeFlow's already-
@@ -26,9 +26,8 @@ export function shouldShowUnitToggle(action: StakeFlowAction): boolean {
 }
 
 /**
- * A relative-age label for the Max prefill's captured_at, e.g. "as of ~14h
- * ago" -- situational awareness that the figure is a daily/weekly snapshot,
- * never presented as authoritative (see AccountPositions' doc comment).
+ * A relative-age label for a record's captured_at, e.g. "as of ~14h ago".
+ * A clock does not establish the record's token quantity basis.
  * `nowMs` is injectable for deterministic testing, defaulting to the real
  * clock at call time.
  */
@@ -47,18 +46,12 @@ export function formatPositionAge(
   return `as of ~${Math.round(hours / 24)}d ago`;
 }
 
-/** Whether/why the unstake Max button is unavailable -- root's zero coverage takes priority over a merely-absent position. */
+/** Also reject old cached numeric prefills: their quantity basis is unqualified. */
 export function describeUnstakeMaxState(
-  maxUnstakeUnavailable: boolean,
-  maxUnstakeAmountInput: string | null,
+  _maxUnstakeUnavailable: boolean,
+  _maxUnstakeAmountInput: string | null,
 ): { disabled: boolean; note: string | null } {
-  if (maxUnstakeUnavailable) {
-    return { disabled: true, note: MAX_UNSTAKE_UNAVAILABLE_ROOT_MESSAGE };
-  }
-  if (maxUnstakeAmountInput == null) {
-    return { disabled: true, note: "No recorded position for this validator yet." };
-  }
-  return { disabled: false, note: null };
+  return { disabled: true, note: MAX_UNSTAKE_UNAVAILABLE_MESSAGE };
 }
 
 /** A compact single-line summary of a resolved quote -- expected output + slippage/root context. */
@@ -174,7 +167,10 @@ export function StakeAmountInput({
 
       {action === "unstake" ? (
         <p className="text-10 text-ink-muted">
-          {unstakeMax.note ?? (positionAge ? `Recorded position ${positionAge}.` : null)}
+          {unstakeMax.note ??
+            (positionAge
+              ? `Recorded position ${positionAge}.`
+              : "Recorded position snapshot time is unavailable.")}
         </p>
       ) : null}
 

@@ -1383,9 +1383,9 @@ export async function handleGlobalValidators(
 // from the current neurons snapshot. The collection-level counterpart to
 // /api/v1/validators (which this route follows as its precedent), generalized
 // to every account rather than just validator_permit=1 rows. See
-// src/accounts-list.ts's header for the "Free"/"Total" balance columns this
-// deliberately does NOT carry (no balance-tracking tier exists to derive them
-// from). A cold or absent store returns a schema-stable empty list.
+// src/accounts-list.ts's header for the membership scope and unavailable
+// principal. Legacy financial sorts use stable hotkey ties; independent
+// membership and emission sorts remain available.
 function parseAccountsListQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
@@ -2261,7 +2261,12 @@ export function canonicalSubnetHistoryCachePath(url: URL) {
 }
 
 export function canonicalValidatorHistoryCachePath(url: URL) {
-  return canonicalWindowedCachePath(url);
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = historyWindow(url);
+  const netuid = routeQuery(url).netuid as number | undefined;
+  return `${url.pathname}?window=${encodeURIComponent(label)}${
+    netuid == null ? "" : `&netuid=${netuid}`
+  }`;
 }
 
 export function canonicalSubnetConcentrationHistoryCachePath(
@@ -5401,10 +5406,9 @@ export async function handleAccountSubnets(
   );
 }
 
-// GET /api/v1/accounts/{ss58}/portfolio: the wallet's cross-subnet neuron
-// positions with per-position economics + yield and wallet-level aggregates
-// (totals, counts, overall return, stake concentration), from the neurons D1
-// tier. Richer than /subnets (registration footprint only). Cold/absent → empty.
+// GET /api/v1/accounts/{ss58}/portfolio: a hotkey's registered memberships,
+// scores and emission observations. Neuron voting weight does not establish
+// account principal, yield or value concentration; those legacy keys are null.
 export async function handleAccountPortfolio(
   request: Request,
   env: Env,

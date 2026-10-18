@@ -1,6 +1,15 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { createRequestCounter } from "../src/request-counters.ts";
+import { asJsonObject } from "../schemas-src/json-request.ts";
+import {
+  unavailableValidatorCapital,
+  unavailableRealizedReturns,
+} from "../src/metagraph-neurons.ts";
+import { unavailableValidatorHistoryCapital } from "../src/validator-history.ts";
+import { hasLegacyAccountsListCapital } from "../src/accounts-list.ts";
+import { hasLegacyAccountHolderCapital } from "../src/account-holder-directory.ts";
+import { unavailableAccountPortfolioCapital } from "../src/account-portfolio.ts";
 
 // Store-backed requests forward through the existing DATA_API service binding.
 // D1_STATE_TABLES selects the native D1 owner inside that Worker. The legacy
@@ -132,6 +141,182 @@ export async function readExplorerDirectoryCacheStamp(
   return `minute:${Math.floor(Date.now() / 60_000)}`;
 }
 
+const VALIDATOR_CAPITAL_FIELDS = [
+  "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
+  "apy_estimate",
+  "stake_dominance",
+] as const;
+const NEURON_CAPITAL_POLICIES = new Map<string, string>([
+  ["/api/v1/accounts", "account-list"],
+  ["/api/v1/accounts/directory", "account-directory"],
+  ["/api/v1/accounts/{ss58}/portfolio", "portfolio"],
+  ["/api/v1/validators", "validator-list"],
+  ["/api/v1/validators/operators", "operator-directory"],
+  ["/api/v1/validators/{hotkey}", "validator-detail"],
+  ["/api/v1/validators/{hotkey}/history", "validator-history"],
+  ["/api/v1/compare/validators", "validator-comparison"],
+]);
+
+/** Exact canonical route templates with an unavailable-principal policy. */
+export function hasNeuronCapitalPolicy(canonicalRoutePath: string): boolean {
+  return NEURON_CAPITAL_POLICIES.has(canonicalRoutePath);
+}
+
+function hasLegacyValidatorCapital(value: unknown): boolean {
+  const row = asJsonObject(value);
+  return (
+    row === null ||
+    VALIDATOR_CAPITAL_FIELDS.some((field) => row[field] !== null)
+  );
+}
+
+function isRecordCollection(
+  value: unknown,
+): value is Record<string, unknown>[] {
+  return (
+    Array.isArray(value) && value.every((row) => asJsonObject(row) !== null)
+  );
+}
+
+/**
+ * Normalize a flat artifact or response envelope without source reads or side
+ * effects. The caller supplies its matched canonical API route template.
+ * A capped financial selection declines; complete evidence keeps its scope
+ * and clocks while unsupported principal-derived values are cleared.
+ */
+export function normalizeNeuronCapitalForRoute(
+  canonicalRoutePath: string,
+  body: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const policy = NEURON_CAPITAL_POLICIES.get(canonicalRoutePath);
+  if (policy === undefined) return body;
+  if (asJsonObject(body) === null) return null;
+  const wrapped = asJsonObject(body.data);
+  if (Object.hasOwn(body, "data") && wrapped === null) return null;
+  const payload = wrapped ?? body;
+  if (policy === "account-list") {
+    // Both the page and its nested membership slices may already be capped by
+    // voting weight. Clearing fields cannot recover the omitted identities.
+    return hasLegacyAccountsListCapital(payload) ? null : body;
+  }
+  if (policy === "account-directory") {
+    return hasLegacyAccountHolderCapital(payload) ? null : body;
+  }
+  if (policy === "portfolio") {
+    // The portfolio carries the full hotkey membership, so it can preserve
+    // observations while removing unsupported capital and principal ratios.
+    if (!isRecordCollection(payload.positions)) return null;
+    const guarded = unavailableAccountPortfolioCapital(payload);
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (policy === "validator-list") {
+    // A legacy service already ranked and capped this subset by false capital.
+    // Nulling or re-sorting its limited rows cannot reconstruct the selection.
+    if (
+      !Array.isArray(payload.validators) ||
+      payload.validators.some(hasLegacyValidatorCapital)
+    ) {
+      return null;
+    }
+    // Return estimates do not select the membership subset. Keep its evidence,
+    // but never republish balance changes as measured investment performance.
+    const guarded = {
+      ...payload,
+      validators: payload.validators.map((value) => {
+        // The complete collection passed the strict record/capital check above.
+        return {
+          ...asJsonObject(value),
+          ...unavailableValidatorCapital(),
+          ...unavailableRealizedReturns(),
+        };
+      }),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (policy === "operator-directory") {
+    const legacy =
+      !Array.isArray(payload.operators) ||
+      payload.operators.some((value) => {
+        const operator = asJsonObject(value);
+        return (
+          operator === null ||
+          operator.total_stake_tao !== null ||
+          operator.apy_estimate !== null ||
+          operator.stake_dominance !== null ||
+          !Array.isArray(operator.hotkeys) ||
+          operator.hotkeys.some((value) => {
+            const hotkey = asJsonObject(value);
+            return hotkey === null || hotkey.total_stake_tao !== null;
+          })
+        );
+      });
+    return legacy ? null : body;
+  }
+  if (policy === "validator-detail") {
+    if (
+      Object.hasOwn(payload, "subnets") &&
+      !isRecordCollection(payload.subnets)
+    ) {
+      return null;
+    }
+    const guarded = {
+      ...payload,
+      ...unavailableValidatorCapital(),
+      ...unavailableRealizedReturns(),
+      ...(Object.hasOwn(payload, "stake_dominance")
+        ? { stake_dominance: null }
+        : {}),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  if (policy === "validator-history") {
+    if (!isRecordCollection(payload.points)) return null;
+    const guarded = {
+      ...payload,
+      points: payload.points.map(unavailableValidatorHistoryCapital),
+    };
+    return wrapped ? { ...body, data: guarded } : guarded;
+  }
+  // Comparison is the remaining policy after the seven handlers above.
+  if (!isRecordCollection(payload.validators)) return null;
+  const unavailable = unavailableValidatorCapital();
+  const guarded = {
+    ...payload,
+    validators: payload.validators.map((validator) => {
+      const comparison = { ...validator };
+      for (const field of [
+        "total_stake_tao",
+        "apy_estimate",
+        "apy_estimate_eligible_subnet_count",
+      ]) {
+        if (Object.hasOwn(comparison, field)) {
+          comparison[field] = unavailable[field];
+        }
+      }
+      return comparison;
+    }),
+  };
+  return wrapped ? { ...body, data: guarded } : guarded;
+}
+
+async function canonicalNeuronRoute(request: Request): Promise<string> {
+  // The directory fast entry must not initialize the full contract registry.
+  const { contractPathForPathname, NETWORK_ALIASES } =
+    await import("../src/contracts.ts");
+  const networkPrefix = new RegExp(
+    `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
+  );
+  // Classification only: preserve the forwarded request's network and URL.
+  // Repeated aliases are bounded by path length and use the router vocabulary.
+  let pathname = new URL(request.url).pathname;
+  while (networkPrefix.test(pathname)) {
+    pathname = pathname.replace(networkPrefix, "/api/v1");
+  }
+  return contractPathForPathname(pathname) ?? pathname;
+}
+
 export async function tryDataApiTier(
   env: Env,
   request: Request,
@@ -212,5 +397,12 @@ export async function tryDataApiTier(
     await captureDataApiTierFallback(err, flagName, env);
     return markDataApiTierFallback();
   }
-  return body as Record<string, unknown>;
+  if (flagName !== "METAGRAPH_NEURONS_SOURCE") {
+    return body as Record<string, unknown>;
+  }
+  const normalized = normalizeNeuronCapitalForRoute(
+    await canonicalNeuronRoute(request),
+    body as Record<string, unknown>,
+  );
+  return normalized ?? markDataApiTierFallback();
 }
