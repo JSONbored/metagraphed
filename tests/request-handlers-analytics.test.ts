@@ -772,13 +772,20 @@ describe("withEdgeCache", () => {
     const request = req("/api/v1/health/trends");
     const cacheRoute = "/api/v1/health/trends";
     const key = expectedKey("bulk-trends", cacheRoute);
-    cache.store.set(
-      key,
-      new Response(JSON.stringify({ ok: true, cached: true }), {
-        status: 200,
-        headers: { etag: '"cached"' },
-      }),
+    await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "bulk-trends",
+      async () =>
+        new Response(JSON.stringify({ ok: true, cached: true }), {
+          status: 200,
+          headers: { etag: '"cached"' },
+        }),
+      cacheRoute,
     );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [key]);
 
     let built = false;
     const res = await withEdgeCache(
@@ -809,7 +816,16 @@ describe("withEdgeCache", () => {
       status: 200,
       headers: { etag: '"snap-etag"', "cache-control": "max-age=60" },
     });
-    cache.store.set(key, cached);
+    await withEdgeCache(
+      req(cacheRoute),
+      ctx,
+      env,
+      "trends",
+      async () => cached,
+      cacheRoute,
+    );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [key]);
 
     const res = await withEdgeCache(
       req(cacheRoute, { headers: { "if-none-match": '"snap-etag"' } }),
