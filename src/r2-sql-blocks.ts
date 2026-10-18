@@ -42,6 +42,26 @@ import {
 import { recordOrNull } from "./read-store.ts";
 import { readRetainedBlockRows } from "./retained-blocks-d1.ts";
 
+// Keep generated catalog types while requiring every reducer input to exist.
+// In particular, an omitted signer must not turn an unknown fee into zero.
+// call_args remains necessary for canonical subnet attribution in existing
+// captures; removing it needs a separately qualified compact source format.
+const economicsExtrinsicSchema = ExtrinsicsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
+  signer: true,
+  fee_tao: true,
+  tip_tao: true,
+  call_args: true,
+}).required();
+const economicsEventSchema = AccountEventsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
+  event_kind: true,
+  netuid: true,
+  amount_tao: true,
+}).required();
+
 /**
  * Convert a lakehouse DOUBLE back into the decimal wire shape consumed by the
  * canonical economics reducer. The table itself is already the precision
@@ -66,6 +86,7 @@ async function loadBlockEconomicsFromIndexes(
     height,
     network,
     budget,
+    Object.keys(economicsExtrinsicSchema.shape),
   );
   const selectedEvents = await readSelectedHistoryBlock(
     env,
@@ -73,12 +94,15 @@ async function loadBlockEconomicsFromIndexes(
     height,
     network,
     budget,
+    Object.keys(economicsEventSchema.shape),
   );
   const extrinsics = selectedExtrinsics,
     accountEvents = selectedEvents;
   if (extrinsics == null || accountEvents == null) return null;
-  const parsedExtrinsics = ExtrinsicsRowSchema.array().safeParse(extrinsics);
-  const parsedEvents = AccountEventsRowSchema.array().safeParse(accountEvents);
+  const parsedExtrinsics = economicsExtrinsicSchema
+    .array()
+    .safeParse(extrinsics);
+  const parsedEvents = economicsEventSchema.array().safeParse(accountEvents);
   if (!parsedExtrinsics.success || !parsedEvents.success) return null;
   return summarizeBlockEconomics(
     parsedExtrinsics.data.map((row) => ({
