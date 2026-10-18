@@ -5,7 +5,13 @@
 
 import { clampToolLimit } from "../workers/request-params.ts";
 import { PROVIDER_ENDPOINTS_LIMIT_DEFAULT } from "./route-limits.ts";
-import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -195,7 +201,11 @@ export function providerEndpointsQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
-  return catalogQueryUrl(url, args, () => `/api/v1/providers/${parseProviderSlug(args)}/endpoints`);
+  return catalogQueryUrl(
+    url,
+    args,
+    () => `/api/v1/providers/${parseProviderSlug(args)}/endpoints`,
+  );
 }
 
 export interface ProviderEndpointsListResult {

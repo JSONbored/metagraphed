@@ -1079,5 +1079,14 @@ class CheckedCatalogTest(unittest.TestCase):
         self.assertIsNone(request.get_header("If-none-match"))
 
 
+    def test_checked_sync_304_requires_a_current_body_without_retry(self):
+        failure = urllib.error.HTTPError("https://api.metagraph.sh", 304, "unchanged", {}, None)
+        with mock.patch("metagraphed.client._open_request", side_effect=failure) as fetch:
+            with self.assertRaises(MetagraphedError) as error:
+                metagraphed_fetch("/api/v1/endpoints", query={"page_snapshot": "start"}, retries=3)
+        self.assertEqual(error.exception.code, "catalog_restart_required")
+        self.assertEqual(fetch.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

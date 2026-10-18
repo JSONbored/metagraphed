@@ -4,7 +4,13 @@
 // /metagraph/surfaces/{netuid}.json artifact.
 
 import { clampToolLimit } from "../workers/request-params.ts";
-import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -132,7 +138,11 @@ export function subnetSurfacesQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
-  return catalogQueryUrl(url, args, () => `/api/v1/subnets/${requireNetuid(args)}/surfaces`);
+  return catalogQueryUrl(
+    url,
+    args,
+    () => `/api/v1/subnets/${requireNetuid(args)}/surfaces`,
+  );
 }
 
 export interface SubnetSurfacesListResult {

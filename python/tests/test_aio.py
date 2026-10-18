@@ -702,5 +702,19 @@ class CheckedAsyncCatalogTest(unittest.IsolatedAsyncioTestCase):
         await client.aclose()
 
 
+    async def test_checked_async_304_strips_conditions_and_requires_current_body(self):
+        client = AsyncMetagraphedClient(retries=3)
+        with mock.patch.object(client._client, "get", return_value=httpx.Response(304)) as fetch:
+            with self.assertRaises(MetagraphedError) as error:
+                await client.fetch("/api/v1/endpoints", query={"page_snapshot": "start"},
+                                   headers={"If-None-Match": "old"})
+        self.assertEqual(error.exception.code, "catalog_restart_required")
+        self.assertEqual(fetch.call_count, 1)
+        headers = fetch.call_args.kwargs["headers"]
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertNotIn("If-None-Match", headers)
+        await client.aclose()
+
+
 if __name__ == "__main__":
     unittest.main()

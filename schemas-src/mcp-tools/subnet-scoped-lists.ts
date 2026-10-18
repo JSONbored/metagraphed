@@ -101,7 +101,7 @@ export const ListSubnetSurfacesOutputSchema = SubnetSurfacesArtifactSchema.pick(
 ).extend({
   ...McpSubnetListArtifactStamp,
   ...McpListPageFields,
-    ...McpCatalogPageFields,
+  ...McpCatalogPageFields,
 });
 export type ListSubnetSurfacesOutput = z.infer<
   typeof ListSubnetSurfacesOutputSchema

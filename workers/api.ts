@@ -9802,7 +9802,9 @@ async function handleApiRequest(
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: artifactPath,
       parameter: transformed.error.parameter,
-      ...(transformed.error.reason ? { catalog_paging: { reason: transformed.error.reason } } : {}),
+      ...(transformed.error.reason
+        ? { catalog_paging: { reason: transformed.error.reason } }
+        : {}),
     });
   }
   // Advertise the page chain via an RFC 8288 Link header on paginated list
@@ -9853,7 +9855,12 @@ async function handleApiRequest(
       transformed.meta.projection?.fields,
       {
         ...(linkValue ? { link: linkValue } : {}),
-        ...(checkedCatalog ? { "cache-control": "no-store", "x-metagraph-cache-profile": "no-store" } : {}),
+        ...(checkedCatalog
+          ? {
+              "cache-control": "no-store",
+              "x-metagraph-cache-profile": "no-store",
+            }
+          : {}),
       },
       {
         stream: matched.id === "endpoints" || matched.id === "subnet-endpoints",
@@ -10005,7 +10012,10 @@ async function handleApiRequest(
       // omits them rather than asserting a tier it did not read.
       ...artifactDiagnosticHeaders(artifact),
       ...(checkedCatalog
-        ? { "cache-control": "no-store", "x-metagraph-cache-profile": "no-store" }
+        ? {
+            "cache-control": "no-store",
+            "x-metagraph-cache-profile": "no-store",
+          }
         : {}),
     },
   );

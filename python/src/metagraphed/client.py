@@ -142,6 +142,7 @@ def _request_json(
     retries: int,
     backoff: float,
     label: str,
+    checked: bool = False,
 ) -> Any:
     """Open ``request`` and return its parsed JSON body, retrying transient
     failures.
@@ -163,6 +164,8 @@ def _request_json(
                 time.sleep(_retry_delay(error, attempt, backoff))
                 attempt += 1
                 continue
+            if checked and error.code == 304:
+                raise MetagraphedError("Checked catalog requires a current response body. Restart results.", status=304, code="catalog_restart_required") from error
             detail, envelope = _error_detail(error)
             raise MetagraphedError(
                 f"{label} failed: HTTP {error.code}{detail}",
@@ -257,6 +260,7 @@ def metagraphed_fetch(
         retries=0 if query and query.get("page_snapshot") is not None else retries,
         backoff=backoff,
         label=f"GET {url}",
+        checked=bool(query and query.get("page_snapshot") is not None),
     )
 
 

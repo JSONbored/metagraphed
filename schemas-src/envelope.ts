@@ -17,7 +17,10 @@
 //     handleRequest()+createLocalArtifactEnv() for all 5 pilot routes (see
 //     tests/zod-schemas.test.ts).
 import { z } from "zod";
-import { collectionSnapshotSchema, CatalogPagingFailureSchema } from "./query-params.ts";
+import {
+  collectionSnapshotSchema,
+  CatalogPagingFailureSchema,
+} from "./query-params.ts";
 
 export const CacheProfileSchema = z.enum(["short", "standard", "static"]);
 export type CacheProfile = z.infer<typeof CacheProfileSchema>;

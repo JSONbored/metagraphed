@@ -903,3 +903,19 @@ test("all eight classified MCP catalogs forward checked receipts, bind subjects 
     assert.equal(invalid.result.isError, true, name);
   }
 });
+
+test("MCP checked receipts cannot cross a provider, subnet or public route with identical rows", async () => {
+  const blob = { ...artifact(rows.slice(0, 3)), surfaces: rows.slice(0, 3) };
+  for (const [from, to] of [
+    [["list_provider_endpoints", { slug: "fixture" }], ["list_provider_endpoints", { slug: "another" }]],
+    [["get_subnet_endpoints", { netuid: 0 }], ["list_subnet_endpoints", { netuid: 1 }]],
+    [["list_endpoints", {}], ["list_rpc_endpoints", {}]],
+    [["get_subnet_surfaces", { netuid: 0 }], ["list_subnet_surfaces", { netuid: 1 }]],
+  ] as const) {
+    const first = await mcp(from[0], { ...from[1], limit: 2, page_snapshot: "start" }, blob);
+    assert.equal(first.result.isError, false, from[0]);
+    const rejected = await mcp(to[0], { ...to[1], limit: 2, cursor: 2, page_snapshot: first.result.structuredContent.snapshot }, blob);
+    assert.equal(rejected.result.isError, true, to[0]);
+    assert.equal(rejected.result.structuredContent.error.code, "catalog_restart_required", to[0]);
+  }
+});

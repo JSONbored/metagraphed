@@ -573,7 +573,12 @@ for (const tool of listToolDefinitions()) {
 
   const unreachable: string[] = [];
   for (const parameter of parameters.query) {
-    if (NOT_FOR_TOOLS.has(parameter) || (parameter === "page_snapshot" && !CHECKED_CATALOG_MCP_TOOLS.has(tool.name))) continue;
+    if (
+      NOT_FOR_TOOLS.has(parameter) ||
+      (parameter === "page_snapshot" &&
+        !CHECKED_CATALOG_MCP_TOOLS.has(tool.name))
+    )
+      continue;
     if (MCP_TRANSPORT_ARGS.has(parameter)) continue;
     if (args.includes(parameter)) continue;
     const key = `${tool.name}.${parameter}`;

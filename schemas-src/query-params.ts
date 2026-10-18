@@ -23,7 +23,11 @@
 import { z } from "zod";
 import { DAY_PATTERN, MAX_OFFSET } from "../workers/request-params.ts";
 import { ENVELOPE_SECTIONS } from "./artifact-sections.ts";
-import { CATALOG_MATCHED_ROWS_MAX, CATALOG_HASH_BYTES_MAX, CATALOG_HASH_DEPTH_MAX } from "../src/route-limits.ts";
+import {
+  CATALOG_MATCHED_ROWS_MAX,
+  CATALOG_HASH_BYTES_MAX,
+  CATALOG_HASH_DEPTH_MAX,
+} from "../src/route-limits.ts";
 
 /**
  * A subnet id. Bounded because it genuinely is: `netuid` is a u16 on chain, and
@@ -449,15 +453,22 @@ export const numericCursorSchema = () =>
 const COLLECTION_SNAPSHOT_PATTERN = "v1\\.[0-9a-f]{64}";
 
 /** Representation controls that are not MCP arguments. */
-export const REST_ONLY_QUERY_PARAMETERS: readonly string[] = [
-  "format",
-];
+export const REST_ONLY_QUERY_PARAMETERS: readonly string[] = ["format"];
 /** GraphQL retains its existing cursor contract. */
-export const GRAPHQL_EXCLUDED_QUERY_PARAMETERS: readonly string[] = [...REST_ONLY_QUERY_PARAMETERS, "page_snapshot"];
+export const GRAPHQL_EXCLUDED_QUERY_PARAMETERS: readonly string[] = [
+  ...REST_ONLY_QUERY_PARAMETERS,
+  "page_snapshot",
+];
 
-export const CatalogPagingFailureSchema = z.object({
-  reason: z.enum(["catalog_changed", "catalog_budget_exceeded", "catalog_unavailable"]),
-}).strict();
+export const CatalogPagingFailureSchema = z
+  .object({
+    reason: z.enum([
+      "catalog_changed",
+      "catalog_budget_exceeded",
+      "catalog_unavailable",
+    ]),
+  })
+  .strict();
 
 /** A content identity, not a retained snapshot or an authorization token. */
 export const collectionSnapshotSchema = () =>

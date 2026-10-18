@@ -2,7 +2,13 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/surfaces.json artifact.
 
-import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {

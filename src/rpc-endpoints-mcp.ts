@@ -8,7 +8,13 @@
 // mirrors provider-endpoints-mcp.ts (endpoints collection filters) and
 // rpc-pools-mcp.ts (live overlay before filter).
 
-import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";

@@ -92,9 +92,14 @@ export function withNoStore(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("cache-control", "no-store");
   headers.set("x-metagraph-cache-profile", "no-store");
-  return new Response(NULL_BODY_STATUSES.has(response.status) ? null : response.body, {
-    status: response.status, statusText: response.statusText, headers,
-  });
+  return new Response(
+    NULL_BODY_STATUSES.has(response.status) ? null : response.body,
+    {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    },
+  );
 }
 
 const EXPOSED_RESPONSE_HEADERS = [

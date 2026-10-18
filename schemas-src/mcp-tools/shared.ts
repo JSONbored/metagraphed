@@ -259,8 +259,12 @@ export const McpListPageFields = {
 };
 
 /** Opt-in controls/receipt for the classified endpoint and surface catalogs. */
-export const McpCatalogPageControls = { page_snapshot: collectionSnapshotParamSchema().optional() };
-export const McpCatalogPageFields = { snapshot: collectionSnapshotSchema().optional() };
+export const McpCatalogPageControls = {
+  page_snapshot: collectionSnapshotParamSchema().optional(),
+};
+export const McpCatalogPageFields = {
+  snapshot: collectionSnapshotSchema().optional(),
+};
 
 /**
  * The same page block MINUS `sort`/`order`, for the tools whose loader emits

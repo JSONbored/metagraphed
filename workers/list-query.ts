@@ -7,7 +7,11 @@
 // (src/route-query.ts, #10218), which runs before any handler.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
 import { boundedHistoryJsonSha256 } from "../src/history-sha256.ts";
-import { CATALOG_MATCHED_ROWS_MAX, CATALOG_HASH_BYTES_MAX, CATALOG_HASH_DEPTH_MAX } from "../src/route-limits.ts";
+import {
+  CATALOG_MATCHED_ROWS_MAX,
+  CATALOG_HASH_BYTES_MAX,
+  CATALOG_HASH_DEPTH_MAX,
+} from "../src/route-limits.ts";
 import {
   validateCollectionQuery,
   type QueryError,
@@ -530,12 +534,15 @@ function applyListTransform(
     config.range_filters,
   );
   const requestedSnapshot = params.get("page_snapshot");
-  const budgetError = (): ApplyQueryFiltersResult => ({ error: {
-    parameter: "page_snapshot",
-    reason: "catalog_budget_exceeded",
-    message: `Checked catalog exceeds the ${CATALOG_MATCHED_ROWS_MAX}-row, ${CATALOG_HASH_BYTES_MAX}-byte or ${CATALOG_HASH_DEPTH_MAX}-level verification budget. Narrow filters and start again; no partial page was returned.`,
-  } });
-  if (requestedSnapshot && filtered.length > CATALOG_MATCHED_ROWS_MAX) return budgetError();
+  const budgetError = (): ApplyQueryFiltersResult => ({
+    error: {
+      parameter: "page_snapshot",
+      reason: "catalog_budget_exceeded",
+      message: `Checked catalog exceeds the ${CATALOG_MATCHED_ROWS_MAX}-row, ${CATALOG_HASH_BYTES_MAX}-byte or ${CATALOG_HASH_DEPTH_MAX}-level verification budget. Narrow filters and start again; no partial page was returned.`,
+    },
+  });
+  if (requestedSnapshot && filtered.length > CATALOG_MATCHED_ROWS_MAX)
+    return budgetError();
   const sorted = sortRows(filtered, params);
   if (requestedSnapshot) {
     for (const name of ["cursor", "limit"]) {
@@ -564,7 +571,8 @@ function applyListTransform(
   if (requestedSnapshot) {
     // Stream already-loaded rows into one digest, avoiding a second complete
     // canonical payload string. No storage/database read is added here.
-    const digest = boundedHistoryJsonSha256([
+    const digest = boundedHistoryJsonSha256(
+      [
         {
           scope: options.snapshotScope,
           query: [...options.snapshotParams.entries()]
@@ -575,7 +583,10 @@ function applyListTransform(
             .sort(([a], [b]) => a.localeCompare(b)),
         },
         ...sorted,
-      ], CATALOG_HASH_BYTES_MAX, CATALOG_HASH_DEPTH_MAX);
+      ],
+      CATALOG_HASH_BYTES_MAX,
+      CATALOG_HASH_DEPTH_MAX,
+    );
     if (digest === null) return budgetError();
     snapshot = `v1.${digest}`;
   }

@@ -280,6 +280,8 @@ export async function metagraphedFetch<Path extends ApiPath>(
     },
     signal: resolveSignal(signal, timeoutMs),
   });
+  if (url.searchParams.has("page_snapshot") && response.status === 304)
+    throw new MetagraphedError("Checked catalog requires a current response body. Restart results.", 304, "catalog_restart_required");
   const body = await readJsonBody(response);
   if (!response.ok) {
     const envelope = isErrorEnvelope(body) ? body : undefined;

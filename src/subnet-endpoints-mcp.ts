@@ -5,7 +5,10 @@
 
 import { clampToolLimit } from "../workers/request-params.ts";
 import {
-  applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt,
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
   BOOLEAN_WORDS,
   withBooleanWords,
   type Row,
@@ -182,7 +185,11 @@ export function subnetEndpointsQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
-  return catalogQueryUrl(url, args, () => `/api/v1/subnets/${requireNetuid(args)}/endpoints`);
+  return catalogQueryUrl(
+    url,
+    args,
+    () => `/api/v1/subnets/${requireNetuid(args)}/endpoints`,
+  );
 }
 
 export interface SubnetEndpointsListResult {

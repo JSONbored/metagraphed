@@ -135,7 +135,7 @@ export const ListSurfacesOutputSchema = SurfacesArtifactSchema.extend({
   // The page block the MCP loader adds on top of the route's artifact --
   // undeclared until #10790, when `.strict()` first rejected it.
   ...McpListPageFields,
-    ...McpCatalogPageFields,
+  ...McpCatalogPageFields,
   surfaces: projectableRows(SurfacesArtifactSchema.shape.surfaces),
 });
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;

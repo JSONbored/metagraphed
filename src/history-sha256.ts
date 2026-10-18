@@ -45,8 +45,10 @@ export function boundedHistoryJsonSha256(
       let end = Math.min(start + 8192, value.length);
       const last = value.charCodeAt(end - 1);
       const next = value.charCodeAt(end);
-      if (last >= 0xd800 && last <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) end += 1;
-      if (!emit(JSON.stringify(value.slice(start, end)).slice(1, -1))) return false;
+      if (last >= 0xd800 && last <= 0xdbff && next >= 0xdc00 && next <= 0xdfff)
+        end += 1;
+      if (!emit(JSON.stringify(value.slice(start, end)).slice(1, -1)))
+        return false;
       start = end;
     }
     return emit('"');
@@ -73,7 +75,12 @@ export function boundedHistoryJsonSha256(
     keys.sort();
     for (let i = 0; i < keys.length; i += 1) {
       if (i && !emit(",")) return false;
-      if (!string(keys[i]) || !emit(":") || !write((value as Record<string, unknown>)[keys[i]], depth + 1)) return false;
+      if (
+        !string(keys[i]) ||
+        !emit(":") ||
+        !write((value as Record<string, unknown>)[keys[i]], depth + 1)
+      )
+        return false;
     }
     return emit("}");
   }
