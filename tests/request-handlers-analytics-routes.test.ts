@@ -5,6 +5,7 @@
 import type { z } from "zod";
 import {
   ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
   successEnvelopeSchema,
 } from "../schemas-src/envelope.ts";
 import {
@@ -58,6 +59,7 @@ import {
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import {} from "../src/neuron-history.ts";
 import {
+  assertJsonObject,
   mockEnv,
   parseJsonBody,
   requiredHeader,
@@ -94,6 +96,15 @@ function viaRouter(path: string, env: unknown = {}) {
 async function json<Schema extends z.ZodType>(res: Response, schema: Schema) {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
   const body = await parseJsonBody(res, successEnvelopeSchema(schema));
+  assert.equal(body.ok, true);
+  return body;
+}
+
+// These partial tier fixtures exercise projection and timestamps. Missing
+// metrics remain unknown; validate the envelope, then check the exact evidence.
+async function partialTierJson(res: Response) {
+  assert.equal(res.status, 200, `expected 200, got ${res.status}`);
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
   assert.equal(body.ok, true);
   return body;
 }
@@ -1204,47 +1215,41 @@ describe("handleCompareValidators", () => {
               schema_version: 1,
               hotkey: HOTKEY_A,
               coldkey: "coldkey-1",
-              subnets: [
-                {
-                  netuid: 7,
-                  uid: 3,
-                  hotkey: HOTKEY_A,
-                  coldkey: "coldkey-1",
-                  active: true,
-                  validator_permit: true,
-                  rank: null,
-                  trust: null,
-                  validator_trust: null,
-                  consensus: null,
-                  incentive: null,
-                  dividends: null,
-                  emission_alpha: null,
-                  stake_alpha: 100,
-                  registered_at_block: null,
-                  is_immunity_period: false,
-                  axon: null,
-                  axon_routable: null,
-                  take: null,
-                },
-              ],
+              subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
             },
           ],
         });
       },
     };
-    const body = await json(
+    const body = await partialTierJson(
       await handleCompareValidators(
         req("/"),
         mockEnv(env),
         url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=7`),
       ),
-      CompareValidatorsArtifactSchema,
     );
     assert.deepEqual(requestedPaths, ["/api/v1/internal/validator-details"]);
     assert.equal(body.data.netuid, 7);
-    assert.ok(body.data.validators[0].subnet_context);
-    assert.equal(body.data.validators[0].subnet_context.netuid, 7);
-    assert.equal(body.data.validators[0].subnet_context.uid, 3);
+    assert.ok(Array.isArray(body.data.validators));
+    const validator: unknown = body.data.validators[0];
+    assertJsonObject(validator);
+    assert.ok(validator.subnet_context);
+    assertJsonObject(validator.subnet_context);
+    assert.equal(validator.subnet_context.netuid, 7);
+    assert.equal(validator.subnet_context.uid, 3);
+    assert.deepEqual(validator.subnet_context, {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 100,
+    });
+    for (const field of [
+      "apy_estimate_eligible_subnet_count",
+      "total_stake_tao",
+      "total_emission_tao",
+      "subnet_count",
+    ]) {
+      assert.equal(validator[field], null, field);
+    }
   });
 
   test("generated_at tracks the latest captured_at across mixed-order per-hotkey responses", async () => {
@@ -1268,7 +1273,7 @@ describe("handleCompareValidators", () => {
         });
       },
     };
-    const body = await json(
+    const body = await partialTierJson(
       await handleCompareValidators(
         req("/"),
         mockEnv(env),
@@ -1276,9 +1281,21 @@ describe("handleCompareValidators", () => {
           `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B},${HOTKEY_C}`,
         ),
       ),
-      CompareValidatorsArtifactSchema,
     );
     assert.equal(body.meta.generated_at, "2026-06-22T00:00:00.000Z");
+    assert.ok(Array.isArray(body.data.validators));
+    assert.equal(body.data.validators.length, 3);
+    body.data.validators.forEach((validator: unknown) => {
+      assertJsonObject(validator);
+      assert.equal(validator.subnet_count, 0);
+      for (const field of [
+        "apy_estimate_eligible_subnet_count",
+        "total_stake_tao",
+        "total_emission_tao",
+      ]) {
+        assert.equal(validator[field], null, field);
+      }
+    });
   });
 
   // #6325: REST and MCP share the identical composeValidatorComparison

@@ -1854,6 +1854,16 @@ describe("Worker runtime", () => {
 
   test("serves operational endpoint indexes from R2", async () => {
     const r2KeysRequested: string[] = [];
+    // This storage-routing fixture has no surface identity. A complete endpoint
+    // would activate the independent live-health overlay and change provenance.
+    const StoredEndpointIndexFixtureSchema =
+      endpoints.EndpointsArtifactSchema.extend({
+        endpoints: detail.EndpointResourceSchema.pick({
+          id: true,
+          status: true,
+          provider: true,
+        }).array(),
+      });
     const endpointArtifact = {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
@@ -1865,7 +1875,8 @@ describe("Worker runtime", () => {
       },
       endpoints: [
         {
-          ...endpointFixture("endpoint-r2", "ok"),
+          id: "endpoint-r2",
+          status: "ok",
           provider: "r2",
         },
       ],
@@ -1896,7 +1907,7 @@ describe("Worker runtime", () => {
     assert.equal(response.status, 200);
     const body = await parseJsonBody(
       response,
-      successEnvelopeSchema(endpoints.EndpointsArtifactSchema),
+      successEnvelopeSchema(StoredEndpointIndexFixtureSchema),
     );
     assert.equal(body.meta.source, "r2");
     assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);

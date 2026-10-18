@@ -411,6 +411,22 @@ jobs:
             tests/webhooks-worker.test.ts
             tests/worker-runtime.test.ts
           )
+          native_debug_paths=(
+            tests/analytics-edge-cache.test.ts
+            tests/analytics.test.ts
+            tests/compare.test.ts
+            tests/economics-request-work.test.ts
+            tests/economics-surface-parity.test.ts
+            tests/emission-gate-changes.test.ts
+            tests/extrinsics.test.ts
+            tests/feeds.test.ts
+            tests/parse-json-body.test.ts
+            tests/request-handlers-analytics-routes.test.ts
+            tests/response-validation-tripwire.test.ts
+            tests/top-holders.test.ts
+            tests/webhooks-worker.test.ts
+            tests/worker-runtime.test.ts
+          )
           mkdir -p native-format-diagnostics
           git rev-parse HEAD > native-format-diagnostics/source-sha.txt
           printf '%s\n' "$GITHUB_SHA" > native-format-diagnostics/github-sha.txt
@@ -420,7 +436,13 @@ jobs:
             test ! -L "$native_format_path"
           done
           sha256sum -- "${native_format_paths[@]}" > native-format-diagnostics/original-files.sha256
-          ./node_modules/.bin/prettier --debug-check "${native_format_paths[@]}" | tee native-format-diagnostics/prettier-debug-check.txt
+          printf '%s\n' \
+            'Known native Prettier --debug-check limitation:' \
+            'tests/metagraph-neurons.test.ts is excluded only from debug-check:' \
+            'TypeError: Do not know how to serialize a BigInt.' \
+            'This file still has normal --write, both SHA256 receipts and archive inclusion.' \
+            > native-format-diagnostics/prettier-debug-check.txt
+          ./node_modules/.bin/prettier --debug-check "${native_debug_paths[@]}" | tee -a native-format-diagnostics/prettier-debug-check.txt
           ./node_modules/.bin/prettier --write "${native_format_paths[@]}"
           sha256sum -- "${native_format_paths[@]}" > native-format-diagnostics/formatted-files.sha256
           tar -czf native-format-diagnostics/formatted-tests.tar.gz -- "${native_format_paths[@]}"
