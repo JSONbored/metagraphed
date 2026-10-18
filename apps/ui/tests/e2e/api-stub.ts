@@ -30,6 +30,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildValidatorOperatorDirectory } from "../../../../src/validator-operator-directory.ts";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
+import { matchedCatalogFixture } from "./catalog-fixture.ts";
 
 const port = Number(process.argv[2] ?? 8081);
 // `--record` fills gaps from live production and writes them to the
@@ -411,6 +412,65 @@ function lookup(rawUrl: string): Match | null {
   return fallback ? { recorded: fallback, exact: false } : null;
 }
 
+// Guarded reads use a declared finite fixture catalog, rather than an old
+// offset page masquerading as a checked generation. Its rows are the complete
+// TEST dataset; original production totals describe a different recorded world
+// and must not be attached to these rows. Prefer a matching provider recording
+// and the richest available rowset for that scope. Legacy replay is unchanged.
+const catalogPayloads = new Map<Recorded, Record<string, unknown>>();
+function checkedCatalogRecord(url: URL): Recorded | null {
+  if (!url.searchParams.has("page_snapshot")) return null;
+  const collection =
+    url.pathname === "/api/v1/endpoints"
+      ? "endpoints"
+      : url.pathname === "/api/v1/surfaces"
+        ? "surfaces"
+        : null;
+  if (!collection) return null;
+  const provider = url.searchParams.get("provider");
+  const candidates = [...byUrl.entries()]
+    .flatMap(([key, recorded]) => {
+      const recordedUrl = new URL(key, "http://fixture.local");
+      if (recordedUrl.pathname !== url.pathname || recorded.status !== 200) return [];
+      const recordedProvider = recordedUrl.searchParams.get("provider");
+      if (recordedProvider && recordedProvider !== provider) return [];
+      let payload = catalogPayloads.get(recorded);
+      if (!payload) {
+        payload = JSON.parse(recorded.body.toString("utf8")) as Record<string, unknown>;
+        catalogPayloads.set(recorded, payload);
+      }
+      const rows = (payload.data as Record<string, unknown> | undefined)?.[collection];
+      if (!Array.isArray(rows)) return [];
+      return [
+        {
+          recorded,
+          payload,
+          rows: rows as Record<string, unknown>[],
+          exactScope: recordedProvider === provider,
+        },
+      ];
+    })
+    .sort((a, b) => Number(b.exactScope) - Number(a.exactScope) || b.rows.length - a.rows.length);
+  const candidate = candidates[0];
+  if (!candidate) return null;
+  const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
+  const rows = candidate.rows.filter(
+    (row) =>
+      ["provider", "kind", "status", "netuid"].every(
+        (key) => !url.searchParams.has(key) || String(row[key]) === url.searchParams.get(key),
+      ) &&
+      (url.searchParams.get("known_status") !== "true" ||
+        ["ok", "degraded", "failed"].includes(String(row.status))) &&
+      (!q || q.split(/\s+/).every((term) => JSON.stringify(row).toLowerCase().includes(term))),
+  );
+  const response = matchedCatalogFixture(url, collection, rows, candidate.payload);
+  return {
+    status: response.status,
+    contentType: response.contentType,
+    body: Buffer.from(response.body),
+  };
+}
+
 // Misses are reported once each. A route that starts requesting an endpoint
 // no fixture covers should be loud about it -- that is the signal to
 // re-record, and the alternative (silently serving a 404 the app renders as
@@ -473,6 +533,12 @@ const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
   if (url.pathname === VALIDATOR_NOMINATOR_FIXTURE_PATH) {
     serve(validatorNominatorsFixture);
+    return;
+  }
+
+  const checked = !recording ? checkedCatalogRecord(url) : null;
+  if (checked) {
+    serve(checked);
     return;
   }
 
