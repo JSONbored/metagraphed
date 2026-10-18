@@ -309,7 +309,7 @@ test("native catalog fixture measurements compare guarded and legacy cold/warm c
       url: `https://example.invalid/${n}`,
       source_urls: [`https://example.invalid/${"source/".repeat(75)}${n}`],
     }));
-    const rows =
+    const rows: Row[] =
       path === "endpoints"
         ? buildEndpointResourceArtifact({
             surfaces,
