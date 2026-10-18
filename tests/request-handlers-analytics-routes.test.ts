@@ -1234,8 +1234,9 @@ describe("handleCompareValidators", () => {
       uid: 3,
       stake_tao: 100,
     });
+    // Capital-unavailable policy admits no APY-eligible subnets.
+    assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
     for (const field of [
-      "apy_estimate_eligible_subnet_count",
       "total_stake_tao",
       "total_emission_tao",
       "subnet_count",
@@ -1280,11 +1281,8 @@ describe("handleCompareValidators", () => {
     body.data.validators.forEach((validator: unknown) => {
       assertJsonObject(validator);
       assert.equal(validator.subnet_count, 0);
-      for (const field of [
-        "apy_estimate_eligible_subnet_count",
-        "total_stake_tao",
-        "total_emission_tao",
-      ]) {
+      assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
+      for (const field of ["total_stake_tao", "total_emission_tao"]) {
         assert.equal(validator[field], null, field);
       }
     });
