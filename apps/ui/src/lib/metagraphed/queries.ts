@@ -6175,40 +6175,17 @@ export const topHoldersQuery = (limit = 25) =>
   });
 
 /**
- * One account's root-claim state (#10300).
+ * Legacy Root-claim compatibility at one finalized block (#12017).
  *
- * `field_sources` is carried through rather than dropped, because it says the
- * hotkey list is RECONSTRUCTED while the claim type is MEASURED. Those are
- * different confidences: one was read from chain storage, the other inferred,
- * and rendering them identically would present an inference as a reading.
+ * Keep the generated contract intact: null is unsupported or unavailable,
+ * while an empty hotkey list is a supported empty legacy result. This does
+ * not describe native Root basket holdings or entitlement.
  */
 export const accountRootClaimQuery = (ss58: string) =>
   queryOptions({
     queryKey: k("account-root-claim", ss58),
-    queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`,
-        { signal },
-      );
-      const d = isRecord(res.data) ? res.data : {};
-      const claim = isRecord(d.claim_type) ? d.claim_type : {};
-      const sources = isRecord(d.field_sources) ? d.field_sources : {};
-      const hotkeySource = isRecord(sources.hotkeys) ? sources.hotkeys : {};
-      return {
-        data: {
-          ss58: firstString(d.ss58) ?? ss58,
-          claim_kind: firstString(claim.kind) ?? null,
-          hotkeys: (Array.isArray(d.hotkeys) ? d.hotkeys : [])
-            .map((h) => firstString(h))
-            .filter((h): h is string => h !== undefined),
-          // "reconstructed" vs "measured" -- an inference is not a reading.
-          hotkeys_source: firstString(hotkeySource.kind) ?? null,
-          queried_at: firstString(d.queried_at) ?? null,
-        } satisfies RootClaim,
-        meta: res.meta,
-        url: res.url,
-      };
-    },
+    queryFn: ({ signal }) =>
+      apiFetch<RootClaim>(`/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`, { signal }),
     staleTime: STALE_MED,
   });
 

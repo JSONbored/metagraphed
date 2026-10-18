@@ -99,7 +99,7 @@ export const MAX_UNREFERENCED_EXPORTS: number = 730;
  * 152 after #12039 reuses the wallet connection trigger in contextual settings.
  * 151 after checked catalog recovery; retain the native measured improvement.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 151;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 150;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {

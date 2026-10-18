@@ -4765,15 +4765,8 @@ export interface TopHolder {
   net_flow_90d: number | null;
 }
 
-/** One account's root-claim state (#10300). */
-export interface RootClaim {
-  ss58: string;
-  claim_kind: string | null;
-  hotkeys: string[];
-  /** "measured" or "reconstructed" — an inference is not a reading. */
-  hotkeys_source: string | null;
-  queried_at: string | null;
-}
+/** Legacy Root-claim compatibility and accounting, never native basket holdings. */
+export type RootClaim = ApiSchema<"AccountRootClaimArtifact">;
 
 /** Validator entry economics ranked across subnets (#10300). */
 export interface ValidatorEconomics {
