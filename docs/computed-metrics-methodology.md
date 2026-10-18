@@ -129,28 +129,46 @@ trades never appears in the output (a genuine gap, not a synthesized flat candle
 how sparse an illiquid subnet's trading can be). Root (netuid 0) is excluded entirely: it has no
 AMM pool, so staking there is always 1:1 TAO↔TAO with no price to chart.
 
-## Emission share (and what it is not)
+## Legacy emission share and the separate v440 pipeline
 
-**Source:** `emission_share = alpha_price / Σ alpha_price` across subnets —
-[`scripts/lib/economics-artifacts.ts`](../scripts/lib/economics-artifacts.ts). It is a **price
-share**, and it is the default sort on `/api/v1/economics`.
+**Legacy source:** `emission_share = alpha_price_tao / Σ reported alpha_price_tao`,
+rounded to six decimal places by
+[`scripts/lib/economics-artifacts.ts`](../scripts/lib/economics-artifacts.ts).
+This is an **artifact-normalized moving-price share**, used by `/api/v1/economics`
+and retained in `subnet_snapshots`. The reported price set includes Root when Root
+reports a price. The writer does not apply the runtime's eligible-subnet filter.
 
-Before runtime spec 440 that was a reasonable proxy for a subnet's share of TAO emission. Since
-440 went live on finney (2026-07-27) it is **stage 1 of an eight-stage pipeline**, and the gap
-between it and the TAO a subnet actually receives is large enough that reading one as the other
-is simply wrong.
+Historical rows do not retain the eligibility inputs needed to certify runtime
+v440 Stage 1. Do not remove Root or re-normalize historic values after the fact:
+that would change the meaning of the stored series without recovering its missing
+inputs. The existing wire name and arithmetic remain compatible. This value is
+neither verified runtime Stage 1 nor final TAO emission.
 
-| #   | stage                  | what it does                                                                              |
-| --- | ---------------------- | ----------------------------------------------------------------------------------------- |
-| 0   | eligibility            | non-root, `FirstEmissionBlockNumber` set, `SubtokenEnabled`, `NetworkRegistrationAllowed` |
-| 1   | **`emission_share`**   | price-EMA share — `SubnetMovingPrice_i / Σ SubnetMovingPrice`                             |
-| 2   | miner-burn reweighting | `× (1 − MinerBurned_i)`, renormalized — non-zero on 68 subnets                            |
-| 3   | gate bar               | `θ` recomputed by the runtime every `block % 360 == 0`                                    |
-| 4   | Hill gate              | `w · 1/(1+(θ/w)^h)`, renormalized to sum 1                                                |
-| 5   | enabled filter         | `SubnetEmissionEnabled == false` → zeroed, share redistributed (47 subnets)               |
-| 6   | TAO emission           | `block_emission × final_share`                                                            |
-| 7   | alpha injection cap    | the remainder becomes `excess_tao` → chain buys                                           |
-| 8   | balancer               | splits materialized TAO into the price-active part written to `SubnetTaoInEmission`       |
+`total_emission_share` on domain summaries sums these legacy values without a new
+denominator. `mean_emission_share` on `/economics/trends` is the arithmetic mean of
+available daily legacy values. The same limits apply to trajectory and historical
+pipeline rows; a `pipeline_block` for other stored inputs does not certify the
+legacy price share against that block's eligible set.
+
+**Separate live reconstruction:** `/api/v1/chain/emission-pipeline` uses pinned
+inputs to reconstruct the v440 model's eligible non-root distribution and later
+stages. Its own `emission_share` is the reconstructed Stage-1 value. Inspect
+`chain_state`, `field_sources` and `verification.verified` before using it, and
+use `final_share` plus the TAO channels for questions about TAO received.
+
+The stages of that separate reconstruction are:
+
+| #   | stage                         | what it does                                                                                          |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 0   | eligibility                   | non-root, `FirstEmissionBlockNumber` set, `SubtokenEnabled`, `NetworkRegistrationAllowed`             |
+| 1   | **pipeline `emission_share`** | price-EMA share over the eligible non-root set — `SubnetMovingPrice_i / Σ eligible SubnetMovingPrice` |
+| 2   | miner-burn reweighting        | `× (1 − MinerBurned_i)`, renormalized — non-zero on 68 subnets                                        |
+| 3   | gate bar                      | `θ` recomputed by the runtime every `block % 360 == 0`                                                |
+| 4   | Hill gate                     | `w · 1/(1+(θ/w)^h)`, renormalized to sum 1                                                            |
+| 5   | enabled filter                | `SubnetEmissionEnabled == false` → zeroed, share redistributed (47 subnets)                           |
+| 6   | TAO emission                  | `block_emission × final_share`                                                                        |
+| 7   | alpha injection cap           | the remainder becomes `excess_tao` → chain buys                                                       |
+| 8   | balancer                      | splits materialized TAO into the price-active part written to `SubnetTaoInEmission`                   |
 
 Two consequences worth stating plainly, because both are counter-intuitive:
 
@@ -160,8 +178,8 @@ Two consequences worth stating plainly, because both are counter-intuitive:
   stale — the live value is recomputed from `TotalIssuance` every block, and the network is past
   its first halving. Anything deriving percentages from that storage item is off by 2×.
 
-`total_emission_share` (per domain) and `mean_emission_share` (on `/economics/trends`) are
-aggregates of this same stage-1 value and inherit the caveat exactly.
+The table describes the pinned pipeline reconstruction, not the denominator of
+legacy economics artifacts or their historical aggregates.
 
 ### Verify the gate parameters yourself
 

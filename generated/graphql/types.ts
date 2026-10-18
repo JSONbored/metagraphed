@@ -2045,6 +2045,7 @@ export type Compare = {
 export type CompareEconomics = {
   __typename?: 'CompareEconomics';
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   miner_readiness?: Maybe<Scalars['Float']['output']>;
@@ -2372,6 +2373,7 @@ export type DomainSummary = {
   netuids: Array<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
+  /** Sum of available legacy emission_share values for member subnets; this does not re-normalize the stored denominator. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   total_emission_share?: Maybe<Scalars['Float']['output']>;
   /** This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. The economics tier carries a price for every subnet, so a member without one is a data defect and is excluded from the total. */
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
@@ -2422,6 +2424,7 @@ export type EconomicsTrendsDay = {
   alpha_price_tao_weighted?: Maybe<Scalars['Float']['output']>;
   alpha_price_usd_median?: Maybe<Scalars['Float']['output']>;
   alpha_price_usd_weighted?: Maybe<Scalars['Float']['output']>;
+  /** Arithmetic mean of available legacy emission_share values for the day. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   mean_emission_share?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
@@ -3337,6 +3340,7 @@ export type OpportunityEntry = {
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
   /** alpha_price_tao converted at the blob's tao_usd reading. */
   alpha_price_usd?: Maybe<Scalars['Float']['output']>;
+  /** Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   max_uids?: Maybe<Scalars['Int']['output']>;
   max_validators?: Maybe<Scalars['Int']['output']>;
@@ -3360,6 +3364,7 @@ export type PipelineHistoryPoint = {
   captured_at?: Maybe<Scalars['String']['output']>;
   day: Scalars['String']['output'];
   emission_enabled?: Maybe<Scalars['Boolean']['output']>;
+  /** Stored beside pipeline inputs; pipeline_block does not certify this value against that block's runtime eligible set. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   /** Chain buys. */
   excess_tao?: Maybe<Scalars['Float']['output']>;
@@ -3585,13 +3590,13 @@ export type Query = {
   coverage_depth?: Maybe<Scalars['JSON']['output']>;
   /** Per-subnet curation states with full REST filter parity: each subnet's coverage_level, curation_level, and source counts. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the curation rows, as opaque JSON. An invalid filter/sort is a GraphQL error, and a cold/absent artifact is a GraphQL error (matching REST/MCP not_found), not a null. Mirrors GET /api/v1/curation. */
   curation: CurationList;
-  /** One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. */
+  /** One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. Sum of available legacy emission_share values for member subnets; this does not re-normalize the stored denominator. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   domain_summary: DomainSummary;
-  /** The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. */
+  /** The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. Sum of available legacy emission_share values for member subnets; this does not re-normalize the stored denominator. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   domains: DomainOverview;
-  /** Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. */
+  /** Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   economics: EconomicsList;
-  /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. */
+  /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. Arithmetic mean of available legacy emission_share values for the day. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   economics_trends: EconomicsTrends;
   /** Every recorded change to the emission gate -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. network_parameters serves these as CURRENT state; this says when they became that and what they were before. CRITICAL FOR COUNTING: predates_capture means the entry is the FIRST OBSERVATION of a value, not a change to it, so subtract predates_capture_count before reporting how often something changed. Each entry carries only the fields its kind has. kind filters to param, subnet or flow; newest first across all three tables. An empty feed is the steady state, not an error. Mainnet only. Mirrors GET /api/v1/chain/governance/emission-changes. */
   emission_changes: EmissionGateChanges;
@@ -3717,7 +3722,7 @@ export type Query = {
   subnet_cost_to_participate: SubnetCostToParticipate;
   /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
   subnet_deregistrations: SubnetDeregistrations;
-  /** One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. */
+  /** One subnet's stored pipeline inputs and legacy price share OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   subnet_emission_pipeline_history: SubnetPipelineHistory;
   /** Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
   subnet_emission_split_history: SubnetEmissionSplitHistory;
@@ -3797,7 +3802,7 @@ export type Query = {
   subnet_stake_transfers: SubnetStakeTransfers;
   /** When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history. */
   subnet_surface_history: SubnetSurfaceHistory;
-  /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. */
+  /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   subnet_trajectory: SubnetTrajectory;
   /** What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), `found: false` (read at a commit and found nothing — evidence), and a reviewed share. `declared_matches_observed` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
   subnet_treasury: SubnetTreasury;
@@ -6445,6 +6450,7 @@ export type SubnetEconomics = {
   alpha_price_usd?: Maybe<Scalars['Float']['output']>;
   block?: Maybe<Scalars['Int']['output']>;
   emission_enabled?: Maybe<Scalars['Boolean']['output']>;
+  /** Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   excess_tao?: Maybe<Scalars['Float']['output']>;
   first_emission_block?: Maybe<Scalars['Int']['output']>;
@@ -6487,7 +6493,7 @@ export type SubnetEmissionDecomposition = {
   distance_to_bar?: Maybe<Scalars['Float']['output']>;
   /** PUBLISHED, NOT INFERRED. A subnet far enough below the bar has its gated share underflow to exactly 0, so an enabled-but-deeply-gated subnet and a disabled one both read final_share: 0 -- this flag is the only thing that separates them. */
   emission_enabled: Scalars['Boolean']['output'];
-  /** Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received. */
+  /** Reconstructed v440 Stage-1 price share over the eligible non-root set at chain_state.block. This is distinct from the artifact-normalized emission_share on economics and legacy snapshot routes. It is not final TAO emission; inspect final_share and verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   /** Stage 7, measured: the TAO that reached the subnet by chain buys instead. */
   excess_tao?: Maybe<Scalars['Float']['output']>;
@@ -7674,6 +7680,7 @@ export type SubnetTrajectoryPoint = {
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
   completeness_score?: Maybe<Scalars['Int']['output']>;
   date: Scalars['String']['output'];
+  /** Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   emission_share?: Maybe<Scalars['Float']['output']>;
   endpoint_count?: Maybe<Scalars['Int']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;

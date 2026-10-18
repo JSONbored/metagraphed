@@ -5,6 +5,7 @@
 // Distinct from GET /api/v1/compare/validators (types-epic B batch 7,
 // #8061's CompareValidatorsArtifact).
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 
 const CompareSubnetStructureSchema = z
   .object({
@@ -20,7 +21,11 @@ const CompareSubnetEconomicsSchema = z
     registration_cost_tao: z.number().nullable().optional(),
     registration_allowed: z.boolean().optional(),
     open_slots: z.int().nullable().optional(),
-    emission_share: z.number().nullable().optional(),
+    emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(LEGACY_EMISSION_SHARE_DESCRIPTION),
     alpha_price_tao: z.number().nullable().optional(),
     validator_count: z.int().min(0).optional(),
     miner_count: z.int().min(0).optional(),
