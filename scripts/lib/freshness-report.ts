@@ -1,8 +1,5 @@
 export type FreshnessPhase =
-  | "arguments"
-  | "catalog"
-  | "evidence"
-  | "evaluation";
+  "arguments" | "catalog" | "evidence" | "evaluation";
 
 export interface FreshnessCounts {
   tables: number;

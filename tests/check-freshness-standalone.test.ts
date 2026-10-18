@@ -329,10 +329,7 @@ function readReport(
     "attempted",
     "mode",
   ]);
-  assert.equal(
-    report.notification.mode,
-    checkOnly ? "suppressed" : "enabled",
-  );
+  assert.equal(report.notification.mode, checkOnly ? "suppressed" : "enabled");
   assert.equal(report.notification.attempted, result.alerts > 0);
   if (checkOnly) assert.equal(result.alerts, 0);
   if (report.counts !== null) {

@@ -82,17 +82,14 @@ test.each(["true", "false", "invalid"])(
         assert.equal(existsSync(argsFile), false);
       } else {
         assert.equal(child.status, 23, child.stderr);
-        assert.deepEqual(
-          readFileSync(argsFile, "utf8").trimEnd().split("\n"),
-          [
-            "run",
-            "check:lakehouse-freshness",
-            "--",
-            "--report",
-            reportPath,
-            ...(mode === "true" ? ["--check-only"] : []),
-          ],
-        );
+        assert.deepEqual(readFileSync(argsFile, "utf8").trimEnd().split("\n"), [
+          "run",
+          "check:lakehouse-freshness",
+          "--",
+          "--report",
+          reportPath,
+          ...(mode === "true" ? ["--check-only"] : []),
+        ]);
       }
     } finally {
       rmSync(root, { recursive: true, force: true });
