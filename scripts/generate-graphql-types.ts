@@ -1,5 +1,4 @@
 import { codegen } from "@graphql-codegen/core";
-import { getCachedDocumentNodeFromSchema } from "@graphql-codegen/plugin-helpers";
 import * as typescriptPlugin from "@graphql-codegen/typescript";
 import * as typescriptResolversPlugin from "@graphql-codegen/typescript-resolvers";
 import { gqlPluckFromCodeString } from "@graphql-tools/graphql-tag-pluck";
@@ -10,6 +9,7 @@ import {
   lexicographicSortSchema,
   parse,
   printSchema,
+  Source,
 } from "graphql";
 import codegenConfig from "../codegen.ts";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
@@ -125,16 +125,21 @@ async function generateGraphqlTypeOutput(
     );
   }
 
-  // CLI's loader uses sort:true. Preserve its lexicographic ordering, its
-  // schema document conversion, and the import defaults passed to Core.
+  // Pluck and this caller can load different GraphQL module realms. Rebuild
+  // Source from its data so the original parser keeps its name and location.
+  const plucked = sources[0];
+  const source = new Source(plucked.body, plucked.name, plucked.locationOffset);
+  // CLI's loader uses sort:true. Preserve its lexicographic ordering and pass
+  // a plain, location-free AST to Core rather than a realm-bound Schema/Source.
+  // Core builds its own schema instance for its plugins, as its public API
+  // supports. Canonical byte equality with the CLI remains required.
   const schemaAst = lexicographicSortSchema(
-    buildASTSchema(parse(sources[0]), { assumeValidSDL: true }),
+    buildASTSchema(parse(source), { assumeValidSDL: true }),
   );
   const outputConfig = codegenConfig.generates[GRAPHQL_TYPES_PATH];
   const content = await codegen({
     filename: GRAPHQL_TYPES_PATH,
-    schema: getCachedDocumentNodeFromSchema(schemaAst),
-    schemaAst,
+    schema: parse(printSchema(schemaAst), { noLocation: true }),
     documents: [],
     plugins: outputConfig.plugins.map((plugin) => ({ [plugin]: {} })),
     pluginMap: {

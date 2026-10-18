@@ -43,6 +43,9 @@ jobs:
           set -euo pipefail
           baseline_dir="$RUNNER_TEMP/graphql-core-baseline"
           proof_dir="$RUNNER_TEMP/graphql-core-proof"
+          if ! git cat-file -e 189d90f2d10e6a745b6e50215ccf050980b17321^{commit}; then
+            git -c http.extraheader= fetch --no-tags --depth=1 https://github.com/JSONbored/metagraphed.git 189d90f2d10e6a745b6e50215ccf050980b17321
+          fi
           git cat-file -e 189d90f2d10e6a745b6e50215ccf050980b17321^{commit}
           git worktree add --detach "$baseline_dir" 189d90f2d10e6a745b6e50215ccf050980b17321
           (
@@ -74,7 +77,7 @@ jobs:
           if (pkg.devDependencies["@graphql-codegen/cli"] !== "^7.4.6") throw new Error("Unexpected CLI baseline");
           if (pkg.devDependencies["@graphql-codegen/core"] || pkg.devDependencies["@graphql-codegen/plugin-helpers"] || pkg.devDependencies["@graphql-tools/graphql-tag-pluck"]) throw new Error("Unexpected existing direct Core declarations");
           pkg.devDependencies = Object.fromEntries(Object.entries(pkg.devDependencies).flatMap(([name, version]) => {
-            if (name === "@graphql-codegen/cli") return [["@graphql-codegen/core", "^6.2.2"], ["@graphql-codegen/plugin-helpers", "^7.4.2"]];
+            if (name === "@graphql-codegen/cli") return [["@graphql-codegen/core", "^6.2.2"]];
             if (name === "@graphql-codegen/typescript-resolvers") return [[name, version], ["@graphql-tools/graphql-tag-pluck", "^8.3.41"]];
             return [[name, version]];
           }));
@@ -105,7 +108,7 @@ jobs:
             if (record?.version !== version || installed.version !== version) throw new Error("Unexpected installed dependency: " + name);
             resolved[name] = { locked: record.version, installed: installed.version };
           }
-          for (const name of ["@graphql-codegen/core", "@graphql-codegen/plugin-helpers", "@graphql-tools/graphql-tag-pluck"]) {
+          for (const name of ["@graphql-codegen/core", "@graphql-tools/graphql-tag-pluck"]) {
             if (pkg.devDependencies[name] !== lock.packages[""].devDependencies[name]) throw new Error("Manifest/lock declaration mismatch: " + name);
           }
           const removed = ["@graphql-codegen/cli", "braces", "micromatch"];
