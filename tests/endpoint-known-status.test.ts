@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { catalogQueryUrl, catalogQueryError, catalogPageReceipt } from "../src/mcp-list-query.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
@@ -918,4 +919,18 @@ test("MCP checked receipts cannot cross a provider, subnet or public route with 
     assert.equal(rejected.result.isError, true, to[0]);
     assert.equal(rejected.result.structuredContent.error.code, "catalog_restart_required", to[0]);
   }
+});
+
+test("checked MCP errors distinguish missing catalogs, exceeded budgets and invalid controls", async () => {
+  const missing = await mcp("list_endpoints", { page_snapshot: "start" }, {});
+  assert.equal(missing.result.structuredContent.error.code, "artifact_unavailable");
+  assert.deepEqual(missing.result.structuredContent.error.catalog_paging, { reason: "catalog_unavailable" });
+  const tooMany = await mcp("list_endpoints", { page_snapshot: "start", limit: 1 }, artifact(Array.from({ length: 5001 }, (_, i) => ({ ...rows[0], id: String(i) }))));
+  assert.equal(tooMany.result.structuredContent.error.code, "catalog_budget_exceeded");
+  assert.match(tooMany.result.structuredContent.error.message, /Narrow filters/);
+  assert.equal(tooMany.result.structuredContent.endpoints, undefined);
+  assert.throws(() => catalogQueryUrl(new URL("https://mcp.internal/endpoints"), { page_snapshot: "bad" }, () => "/api/v1/endpoints"), { code: "invalid_params", parameter: "page_snapshot" });
+  assert.equal(catalogQueryError({ parameter: "cursor", message: "bad cursor" }).code, "invalid_params");
+  assert.deepEqual(catalogPageReceipt(undefined), {});
+  assert.deepEqual(catalogPageReceipt({ snapshot: 3 }), {});
 });

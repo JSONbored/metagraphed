@@ -16,7 +16,7 @@ vi.mock("pg", () => pg.module);
 import { withStampedEdgeCache } from "../workers/edge-cache.ts";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
-import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
+import { EXPOSED_RESPONSE_HEADERS_VALUE, withNoStore } from "../workers/http.ts";
 import {
   DEGRADED_HEADER,
   DEGRADED_TIER_UNAVAILABLE,
@@ -2528,4 +2528,11 @@ test("checked analytics cache wrapper skips cache and stamp I/O for GET and HEAD
   } finally {
     (globalThis as unknown as { caches?: unknown }).caches = previous;
   }
+});
+
+test("no-store policy preserves bodyless checked response semantics", () => {
+  const response = withNoStore(new Response(null, { status: 304 }));
+  assert.equal(response.status, 304);
+  assert.equal(response.body, null);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
