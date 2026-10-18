@@ -1393,8 +1393,8 @@ const ECONOMIC_BOARD_SPECS: EconomicBoardSpec[] = [
     // Where the emission is concentrated — the yield signal.
     //
     // RANKED BY TAO ACTUALLY RECEIVED, not by `emission_share` (#9706).
-    // emission_share is the v440 STAGE-1 PRICE SHARE, and the tool
-    // descriptions say so at length -- but the warning sat on the field while
+    // The economics emission_share normalizes the reported price set; it is
+    // not a certified runtime Stage-1 value. The warning sat on the field while
     // the mistake happened here, on a board NAMED "highest-emission" that
     // ranked by it. Measured against mainnet 2026-08-07 over the 127
     // emission-eligible subnets:

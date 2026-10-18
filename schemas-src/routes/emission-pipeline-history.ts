@@ -2,6 +2,7 @@
 // pipeline decomposition over time. Modeled from
 // src/emission-pipeline-history.ts's buildPipelineHistory().
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { dailySubnetSeriesArtifact } from "./daily-subnet-series.ts";
 
 export const PipelineHistoryPointSchema = z
@@ -25,7 +26,13 @@ export const PipelineHistoryPointSchema = z
         "True when the snapshot writer carried the previous capture forward: this point is NOT an independent sample.",
       ),
     captured_at: z.iso.datetime().nullable(),
-    emission_share: z.number().nullable(),
+    emission_share: z
+      .number()
+      .nullable()
+      .describe(
+        "Stored beside pipeline inputs; pipeline_block does not certify this value against that block's runtime eligible set. " +
+          LEGACY_EMISSION_SHARE_DESCRIPTION,
+      ),
     alpha_price_tao: z.number().nullable(),
     tao_in_pool_tao: z.number().nullable(),
     /** Pool liquidity injection. */

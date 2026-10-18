@@ -21,6 +21,11 @@
 // conflating the two is what #10772 spent an issue undoing.
 
 import {
+  LEGACY_EMISSION_SHARE_DESCRIPTION,
+  MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
+  TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
+} from "../legacy-emission-share.ts";
+import {
   DECLARATIONS_REQUIRING_A_GPU,
   MIN_COMPUTE_SURFACES_REGISTERED,
   SUBNETS_IN_REGISTRY,
@@ -303,14 +308,16 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "domains",
     returns: "DomainOverview!",
     description:
-      "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains.",
+      "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "domain_summary",
     operation: "domain-summary",
     returns: "DomainSummary!",
     description:
-      "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary.",
+      "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "compare_validators",
@@ -575,7 +582,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-emission-pipeline-history",
     returns: "SubnetPipelineHistory!",
     description:
-      "One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history.",
+      "One subnet's stored pipeline inputs and legacy price share OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "emission_changes",
@@ -645,7 +653,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-trajectory",
     returns: "SubnetTrajectory!",
     description:
-      "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory.",
+      "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "subnet_metagraph",
@@ -696,7 +705,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "economics",
     returns: "EconomicsList!",
     description:
-      "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics.",
+      "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "surfaces",
@@ -1198,7 +1208,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "economics-trends",
     returns: "EconomicsTrends!",
     description:
-      "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends.",
+      "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. " +
+      MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "subnet_revenue",

@@ -173,6 +173,14 @@ describe("the decomposition against the committed finney fixture", () => {
   });
 
   it("labels every reconstructed field as ours, not the chain's", () => {
+    expect(EMISSION_FIELD_SOURCES.emission_share).toEqual({
+      kind: "reconstructed",
+      storage: null,
+    });
+    expect(EMISSION_FIELD_SOURCES.moving_price).toEqual({
+      kind: "measured",
+      storage: "SubtensorModule.SubnetMovingPrice",
+    });
     expect(EMISSION_FIELD_SOURCES.final_share.kind).toBe("reconstructed");
     expect(EMISSION_FIELD_SOURCES.liquidity_fraction.kind).toBe(
       "reconstructed",
@@ -184,6 +192,35 @@ describe("the decomposition against the committed finney fixture", () => {
     expect(EMISSION_FIELD_SOURCES.excess_tao.storage).toBe(
       "SubtensorModule.SubnetExcessTao",
     );
+  });
+
+  it("normalizes a measured price using the other eligible prices", () => {
+    const row = (
+      netuid: number,
+      movingPrice: number,
+    ): EconomicsPipelineRow => ({
+      netuid,
+      moving_price_pinned: movingPrice,
+      first_emission_block: 1,
+      subtoken_enabled: true,
+      registration_allowed_pinned: true,
+    });
+    const measured = row(1, 1);
+    const balanced = buildEmissionDecomposition({
+      subnets: [measured, row(2, 1)],
+      chainState,
+    });
+    const changed = buildEmissionDecomposition({
+      subnets: [measured, row(2, 3)],
+      chainState,
+    });
+    expect(measured.moving_price_pinned).toBe(1);
+    expect(balanced.subnets[0].emission_share).toBe(0.5);
+    expect(changed.subnets[0].emission_share).toBe(0.25);
+    expect(EMISSION_FIELD_SOURCES.emission_share).toEqual({
+      kind: "reconstructed",
+      storage: null,
+    });
   });
 
   it("carries the pinned block through to the response", () => {
