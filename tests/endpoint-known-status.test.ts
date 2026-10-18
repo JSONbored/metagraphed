@@ -13,7 +13,7 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
 } from "../src/kv-keys.ts";
-import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
+import { API_ROUTES, API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
@@ -1001,16 +1001,16 @@ test("checked MCP errors distinguish missing catalogs, exceeded budgets and inva
   assert.deepEqual(catalogPageReceipt({ snapshot: 3 }), {});
 });
 
-test("all six REST catalog routes retain checked links, projections, CSV and no-store semantics", async () => {
+test("all six REST catalog routes preserve checked links, projections, published formats and no-store", async () => {
   const values: Row[] = rows.slice(0, 3);
   const blob = { ...artifact(values), surfaces: values };
-  for (const [path, key] of [
-    ["/api/v1/endpoints", "endpoints"],
-    ["/api/v1/rpc/endpoints", "endpoints"],
-    ["/api/v1/providers/fixture/endpoints", "endpoints"],
-    ["/api/v1/subnets/0/endpoints", "endpoints"],
-    ["/api/v1/surfaces", "surfaces"],
-    ["/api/v1/subnets/0/surfaces", "surfaces"],
+  for (const [path, key, operation] of [
+    ["/api/v1/endpoints", "endpoints", "endpoints"],
+    ["/api/v1/rpc/endpoints", "endpoints", "rpc-endpoints"],
+    ["/api/v1/providers/fixture/endpoints", "endpoints", "provider-endpoints"],
+    ["/api/v1/subnets/0/endpoints", "endpoints", "subnet-endpoints"],
+    ["/api/v1/surfaces", "surfaces", "surfaces"],
+    ["/api/v1/subnets/0/surfaces", "surfaces", "subnet-surfaces"],
   ] as const) {
     const env = envFor(blob);
     const first = await rest(
@@ -1041,13 +1041,22 @@ test("all six REST catalog routes retain checked links, projections, CSV and no-
       {},
     );
     assert.equal(csv.status, 200, path);
-    assert.match(csv.headers.get("content-type") ?? "", /text\/csv/, path);
     assert.equal(csv.headers.get("cache-control"), "no-store", path);
     assert.match(
       csv.headers.get("link") ?? "",
       new RegExp(receipt.replace(".", "[.]")),
       path,
     );
+    const declaration = API_ROUTES.find((entry) => entry.id === operation);
+    assert.ok(declaration, operation);
+    if (!declaration.csv_response) {
+      assert.match(csv.headers.get("content-type") ?? "", /application\/json/, path);
+      const json = await csv.json() as Row;
+      assert.equal(json.meta.pagination.snapshot, receipt, path);
+      assert.deepEqual(json.data[key], [{ id: values[0].id }], path);
+      continue;
+    }
+    assert.match(csv.headers.get("content-type") ?? "", /text\/csv/, path);
     const text = await csv.text();
     assert.ok(text.includes(String(values[0].id)), path);
     assert.ok(!text.includes(String(values[1].id)), path);
