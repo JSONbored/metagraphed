@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,7 @@ export function DataTableMenu<Row>({
   visibleKeys,
   onVisibleKeys,
   csv,
+  renderExportAction,
   filename,
   shareUrl,
   label,
@@ -33,6 +34,7 @@ export function DataTableMenu<Row>({
   visibleKeys: readonly string[];
   onVisibleKeys: (keys: string[]) => void;
   csv: () => string;
+  renderExportAction?: (shareAction: ReactNode) => ReactNode;
   filename: string;
   shareUrl?: string;
   label: string;
@@ -80,6 +82,12 @@ export function DataTableMenu<Row>({
       window.setTimeout(() => setCopied(false), 1500);
     });
   };
+
+  const shareAction = (
+    <button type="button" onClick={copyLink}>
+      {copied ? "Link copied" : "Copy link"}
+    </button>
+  );
 
   return (
     <Popover>
@@ -129,14 +137,16 @@ export function DataTableMenu<Row>({
             </div>
           </>
         ) : null}
-        <div className="mg-dt-menu-actions">
-          <button type="button" onClick={download}>
-            Download CSV
-          </button>
-          <button type="button" onClick={copyLink}>
-            {copied ? "Link copied" : "Copy link"}
-          </button>
-        </div>
+        {renderExportAction ? (
+          renderExportAction(shareAction)
+        ) : (
+          <div className="mg-dt-menu-actions">
+            <button type="button" onClick={download}>
+              Download CSV
+            </button>
+            {shareAction}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

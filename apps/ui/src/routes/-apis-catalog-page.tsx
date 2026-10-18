@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AnalyticsSection,
@@ -15,7 +15,9 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
+import { CatalogRestartRequired, restartCatalogResults } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { HubSections } from "@/components/metagraphed/hub-prose";
@@ -24,7 +26,8 @@ import { ErrorState } from "@/components/metagraphed/states";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatAbsoluteTime, formatNumber, formatPct } from "@/lib/metagraphed/format";
-import { coverageQuery, surfacesInfiniteQuery } from "@/lib/metagraphed/queries";
+import { coverageQuery } from "@/lib/metagraphed/queries";
+import { exportSurfaceRows, surfacesInfiniteQuery } from "@/lib/metagraphed/catalog-queries";
 import type { Surface } from "@/lib/metagraphed/types";
 import type { CoverageCounts } from "@/components/metagraphed/apis/apis-logic";
 import { catalogHeadlineFacts, interfaceCoverage } from "@/components/metagraphed/apis/apis-logic";
@@ -48,6 +51,7 @@ function ApiSources() {
  * every rebuilt page uses for its own sections.
  */
 export function ApisCatalogPage() {
+  const queryClient = useQueryClient();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/apis" });
   const setSearch = (patch: Record<string, unknown>) =>
@@ -84,8 +88,14 @@ export function ApisCatalogPage() {
     "0px 0px",
     !coverage.isPending,
   );
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    (await exportSurfaceRows(serverParams, signal)).filter((surface) =>
+      matchesSurfaceFilters(surface, search),
+    );
+
+  const catalogOptions = surfacesInfiniteQuery(serverParams);
   const feed = useInfiniteQuery({
-    ...surfacesInfiniteQuery(serverParams),
+    ...catalogOptions,
     enabled: catalogNearViewport,
     retry: 0,
   });
@@ -111,7 +121,10 @@ export function ApisCatalogPage() {
     [surfaces, search],
   );
   const refreshAll = () => {
-    void Promise.all([coverage.refetch(), ...(catalogNearViewport ? [feed.refetch()] : [])]);
+    void Promise.all([
+      coverage.refetch(),
+      ...(catalogNearViewport ? [restartCatalogResults(queryClient, catalogOptions.queryKey)] : []),
+    ]);
   };
 
   const columns: DataTableColumn<Surface>[] = [
@@ -291,13 +304,22 @@ export function ApisCatalogPage() {
             link={RouterLink}
             source="surface"
             storageKey="mg-apis-columns"
+            renderExportAction={({ formatRows, filename, shareAction }) => (
+              <CatalogExportAction
+                loadRows={loadCatalogExportRows}
+                formatRows={formatRows}
+                filename={filename}
+              >
+                {shareAction}
+              </CatalogExportAction>
+            )}
             expand={surfaceDetail}
             loading={!catalogNearViewport || feed.isPending}
             error={
               feed.isError ? (
                 <ErrorState
                   error={feed.error}
-                  onRetry={() => void feed.refetch()}
+                  onRetry={() => void restartCatalogResults(queryClient, catalogOptions.queryKey)}
                   context="verified interfaces"
                 />
               ) : undefined
@@ -356,7 +378,11 @@ export function ApisCatalogPage() {
               <LoadMore
                 hasMore={feed.hasNextPage}
                 isLoading={feed.isFetchingNextPage}
-                onLoadMore={() => void feed.fetchNextPage()}
+                onLoadMore={() => {
+                  if (feed.error instanceof CatalogRestartRequired)
+                    void restartCatalogResults(queryClient, catalogOptions.queryKey);
+                  else void feed.fetchNextPage();
+                }}
                 shown={surfaces.length}
                 error={feed.error}
               />

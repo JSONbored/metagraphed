@@ -15,9 +15,10 @@ export class ApiError extends Error {
    * relying on a specific error `code`.
    */
   network?: string;
+  parameter?: string;
   constructor(
     message: string,
-    opts: { status: number; code?: string; url: string; network?: string },
+    opts: { status: number; code?: string; url: string; network?: string; parameter?: string },
   ) {
     super(message);
     this.name = "ApiError";
@@ -25,6 +26,7 @@ export class ApiError extends Error {
     this.code = opts.code;
     this.url = opts.url;
     this.network = opts.network;
+    this.parameter = opts.parameter;
   }
 }
 
@@ -137,6 +139,7 @@ export async function apiFetch<T>(
       code: env?.error?.code,
       url: redactUrlForError(url),
       network: env?.meta?.network,
+      parameter: typeof env?.meta?.parameter === "string" ? env.meta.parameter : undefined,
     });
   }
 
@@ -149,6 +152,7 @@ export async function apiFetch<T>(
         code: env.error?.code,
         url: redactUrlForError(url),
         network: env.meta?.network,
+        parameter: typeof env.meta?.parameter === "string" ? env.meta.parameter : undefined,
       });
     }
     // Some collection routes deliberately return a schema-stable empty 200
