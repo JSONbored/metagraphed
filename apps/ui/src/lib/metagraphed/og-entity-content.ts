@@ -1,6 +1,6 @@
 import { shortHash } from "./blocks";
 import { formatPct, formatTao } from "./format";
-import { firstPartyLogoPath, logoHostFrom, type OgCardOptions } from "./og-card";
+import { firstPartyLogoPath, logoHostFrom, type OgCardOptions, type OgCardStat } from "./og-card";
 
 type Logo = string | { light?: string; dark?: string } | null;
 
@@ -10,6 +10,17 @@ function finiteAmount(value: unknown): value is number {
 
 function count(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function countStat(label: string, value: unknown): OgCardStat[] {
+  return count(value) ? [{ label, value: String(value) }] : [];
+}
+
+function logoFields(data?: { iconUrl?: Logo; website?: string | null } | null) {
+  return {
+    logoPath: firstPartyLogoPath(data?.iconUrl),
+    logoHost: logoHostFrom(data?.iconUrl, data?.website),
+  };
 }
 
 // Image copy is deliberately separate from SEO prose. These adapters consume
@@ -28,8 +39,7 @@ export function subnetOgContent(
     title: data?.name || `Subnet ${netuid}`,
     identifier: data?.name ? `Subnet ${netuid}` : null,
     subtitle: "Public interfaces, schemas and subnet economics.",
-    logoPath: firstPartyLogoPath(data?.iconUrl),
-    logoHost: logoHostFrom(data?.iconUrl, data?.website),
+    ...logoFields(data),
     stats: [
       ...(finiteAmount(data?.alphaPriceTao)
         ? [{ label: "Price", value: formatTao(data.alphaPriceTao) }]
@@ -59,7 +69,7 @@ export function validatorOgContent(
     subtitle: "Validator identity and subnet memberships.",
     logoPath: data?.logoPath,
     logoHost: data?.logoHost,
-    stats: count(data?.subnetCount) ? [{ label: "Subnets", value: String(data.subnetCount) }] : [],
+    stats: countStat("Subnets", data?.subnetCount),
   };
 }
 
@@ -77,12 +87,11 @@ export function providerOgContent(
   return {
     title: data?.name || slug,
     subtitle: "Public interfaces and subnet coverage.",
-    logoPath: firstPartyLogoPath(data?.iconUrl),
-    logoHost: logoHostFrom(data?.iconUrl, data?.website),
+    ...logoFields(data),
     stats: [
-      ...(count(data?.endpoints) ? [{ label: "Endpoints", value: String(data.endpoints) }] : []),
-      ...(count(data?.surfaces) ? [{ label: "Surfaces", value: String(data.surfaces) }] : []),
-      ...(count(data?.subnets) ? [{ label: "Subnets", value: String(data.subnets) }] : []),
+      ...countStat("Endpoints", data?.endpoints),
+      ...countStat("Surfaces", data?.surfaces),
+      ...countStat("Subnets", data?.subnets),
     ],
   };
 }

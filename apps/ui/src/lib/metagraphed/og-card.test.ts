@@ -51,10 +51,17 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     // Providers: a slug (102 of 138).
     expect(firstPartyLogoPath("https://metagraph.sh/logos/404-gen.png")).toBe("/logos/404-gen.png");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/albedo.svg")).toBe("/logos/albedo.svg");
+    expect(firstPartyLogoPath("custom://METAGRAPH.SH/logos/albedo.svg")).toBe("/logos/albedo.svg");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/example.ico")).toBe("/logos/example.ico");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/example.gif")).toBe("/logos/example.gif");
     expect(firstPartyLogoPath("https://metagraph.sh/logos/brands/mark.png")).toBe(
       "/logos/brands/mark.png",
+    );
+    expect(firstPartyLogoPath("/logos/brands/display/mark.png")).toBe(
+      "/logos/brands/display/mark.png",
+    );
+    expect(firstPartyLogoPath("/logos/brands/sharing/mark.png")).toBe(
+      "/logos/brands/sharing/mark.png",
     );
     const sharingPath = `/logos/sharing/v1/${"a".repeat(64)}-${"b".repeat(64)}.png`;
     expect(firstPartyLogoPath(sharingPath)).toBe(sharingPath);
@@ -73,6 +80,7 @@ describe("firstPartyLogoPath — the registry's own curated logo", () => {
     // Traversal cannot be spelled — the name charset excludes ".".
     expect(firstPartyLogoPath("https://metagraph.sh/logos/../../secret.png")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/logos/display/nested/dir/x.png")).toBeNull();
+    expect(firstPartyLogoPath("/logos/sharing/mark.png")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/logos/script.svg.js")).toBeNull();
     expect(firstPartyLogoPath("https://metagraph.sh/index.html")).toBeNull();
     expect(firstPartyLogoPath(null, undefined, "")).toBeNull();
@@ -102,6 +110,7 @@ describe("logoHostFrom — our own host is not an identity", () => {
 
   it("still reduces a third-party URL, and accepts a bare host", () => {
     expect(logoHostFrom("https://Apex.Macrocosmos.ai/path?q=1")).toBe("apex.macrocosmos.ai");
+    expect(logoHostFrom("custom://Apex.Macrocosmos.ai/path")).toBe("apex.macrocosmos.ai");
     expect(logoHostFrom("chutes.ai")).toBe("chutes.ai");
     expect(logoHostFrom("not a url", "https://tao.bot")).toBe("tao.bot");
   });
