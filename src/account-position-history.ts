@@ -1,58 +1,27 @@
 import { numberOrZero, round9 } from "./lib/rao.ts";
 import { nonNegativeIntOrNull } from "./read-store.ts";
-// Per-account daily position HISTORY (block-explorer Tier-1, epic #4329/6.1).
+// Periodic hotkey/subnet neuron observations (epic #4329/6.1).
 //
-// The refresh-metagraph cron lands the LATEST per-UID snapshot in Postgres's
-// `neurons` (overwrite-on-conflict — no history is kept). The rollup that
-// copies that snapshot into the append-only `account_position_daily` table,
-// keyed by (account, netuid, snapshot_date) instead of neuron_daily's
-// (netuid, uid, snapshot_date), now runs entirely on the Postgres side
-// (workers/data-api.ts's handleNeuronsSync, #4839) — in the SAME write
-// transaction as the neurons/neuron_daily sync, not from a separate cron.
-// account = hotkey ss58, matching loadAccountPortfolio's own "WHERE hotkey = ?"
-// framing (src/account-portfolio.ts).
+// account_position_daily is keyed by (account, netuid, snapshot_date), where
+// account is a hotkey, matching account-portfolio.ts. It records membership,
+// operational scores and emission observations from neuron snapshots. It is
+// not a coldkey's nominator ledger or a reconstruction of wallet balances.
 //
-// This module previously also owned the store's OWN rollup/prune
-// (rollupAccountPositionDaily/pruneAccountPositionDaily, called from
-// workers/api.ts's NEURON_HISTORY_ROLLUP_CRON) as a parallel write path.
-// That D1 side is retired here: #4908 (#4772, D1 chain-data write-path
-// retirement) dropped D1's `neurons` table entirely, so a `FROM neurons`
-// D1 rollup query can no longer even run — confirmed live via `wrangler d1
-// execute` returning "no such table: neurons", and the store's own
-// account_position_daily table frozen at 2026-07-11 (the day #4908 merged)
-// ever since. #4839 already gave this table a fully independent, live-
-// verified Postgres write + read path, so nothing depends on the D1 side.
-// This module is now READ-PATH ONLY: the shaping/formatting helpers the
-// Postgres-backed handleAccountPositionHistory route
-// (workers/request-handlers/entities.ts) and workers/data-api.ts's own
-// Postgres query both share.
+// The legacy stake_tao column contains runtime voting weight, not independent
+// native-alpha or TAO principal (#12014). Preserve historical numeric values
+// and ratios for compatibility without interpreting them as asset holdings,
+// allocation or investment returns. Missing rows do not prove an empty wallet
+// or complete Root coverage. The public contract describes this boundary in
+// schemas-src/routes/account-positions.ts.
 //
-// Known scope limitation: "position"/stake_tao here is a HOTKEY's own
-// registered-neuron stake (for a validator hotkey, the FULL pool delegated to
-// it by every nominator — migrations/0007_neurons.sql's stake_tao comment),
-// not a coldkey's aggregate nominator/delegated stake across OTHER people's
-// validators. A wallet that only delegates (never registers its own hotkey)
-// will show near-zero history here despite genuinely holding alpha — that
-// delegated-stake concept only exists as an account_events log today (would
-// need balance reconstruction, out of scope for this issue). Matches
-// loadAccountPortfolio's existing, equally-unqualified "WHERE hotkey = ?"
-// framing (src/account-portfolio.ts) — not a new gap, but worth restating
-// here since epic #4329 explicitly frames this as taostats.io's (coldkey-
-// centric) "Alpha Holdings" feature.
+// Read/format helpers only. The old D1 rollup/prune path was retired in #4908;
+// this module does not create observations or establish current freshness.
 
 // ---- Read path (block-explorer Tier-1, epic #4329/6.2) --------------------
-// GET /api/v1/accounts/{ss58}/subnets/{netuid}/history — the per-position
-// counterpart to /accounts/{ss58}/portfolio's live cross-subnet snapshot, one
-// point per snapshot_date for a single (account, netuid) pair. Field shape
-// mirrors buildAccountPortfolio's per-position object (src/account-portfolio.ts)
-// since account_position_daily's columns were deliberately sized to match
-// ACCOUNT_PORTFOLIO_READ_COLUMNS (see the migration's header comment) — a point
-// here and a `positions[]` entry there should read as the same "position",
-// just at different times. netuid is NOT repeated per-point (it's the fixed
-// scope of the whole query, like SubnetHistoryArtifact's points omitting the
-// netuid every row shares) — only `uid` and `coldkey` can legitimately vary
-// day-to-day for one (account, netuid) pair (a hotkey re-registering at a new
-// UID slot, or a coldkey key-rotation), so those travel with each point.
+// GET /api/v1/accounts/{ss58}/subnets/{netuid}/history returns one recorded
+// point per snapshot_date for that hotkey/subnet. Legacy quantity fields differ
+// from the portfolio's withheld compatibility fields; neither certifies asset
+// holdings. netuid scopes the series, while uid/coldkey may vary across rows.
 
 function nullableScore(value: unknown): number | null {
   if (value == null) return null;
@@ -69,18 +38,15 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-// Emission-per-stake return rate; null when stake is 0 (undefined return).
-// Mirrors computeYieldValue in account-portfolio.ts.
+// Legacy emission/voting-weight ratio, not an investment return. Preserve the
+// historical calculation; a zero denominator leaves the ratio unavailable.
 function computeYieldValue(emission: number, stake: number): number | null {
   if (!(stake > 0)) return null;
   return round9(emission / stake);
 }
 
-// One day's position, in the same field shape as buildAccountPortfolio's
-// `positions[]` entries (minus netuid — see the read-path header comment).
-// Exported (unlike account-portfolio.ts's inline per-row mapping) so its
-// field coercion can be unit-tested directly, matching formatRuntimeTransition
-// (src/runtime-versions.ts)'s precedent for a history route's row formatter.
+// One day's recorded neuron membership with legacy numeric compatibility keys.
+// Exported so historical field coercion can be checked independently.
 export interface AccountPositionEntry {
   uid: number | null;
   coldkey: unknown;
