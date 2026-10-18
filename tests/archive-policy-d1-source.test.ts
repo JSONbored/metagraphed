@@ -25,14 +25,24 @@ test("SQLite supplies declared types, nullability and generated columns without 
         derived TEXT GENERATED ALWAYS AS (id || ',') VIRTUAL
       )`),
       { type: "view", name: "ignored", tbl_name: "ignored", sql: "invalid" },
-      { type: "trigger", name: "guard", tbl_name: "fixture_rows", sql: "invalid" },
+      {
+        type: "trigger",
+        name: "guard",
+        tbl_name: "fixture_rows",
+        sql: "invalid",
+      },
     ],
     ["fixture_rows", "fixture_rows"],
   );
   assert.deepEqual(columns, [
     { table: "fixture_rows", column: "id", udt: "TEXT", nullable: false },
     { table: "fixture_rows", column: "quantity", udt: "TEXT", nullable: true },
-    { table: "fixture_rows", column: "page_index", udt: "INTEGER", nullable: false },
+    {
+      table: "fixture_rows",
+      column: "page_index",
+      udt: "INTEGER",
+      nullable: false,
+    },
     { table: "fixture_rows", column: "label", udt: "TEXT", nullable: true },
     { table: "fixture_rows", column: "derived", udt: "TEXT", nullable: true },
   ]);
@@ -56,7 +66,12 @@ test("table order is deterministic and TEXT primary keys do not imply NOT NULL",
 
 const failures: [string, SchemaObject[], string[], RegExp][] = [
   ["missing table", [], ["fixture_rows"], /one physical table/],
-  ["duplicate table", [table(), table()], ["fixture_rows"], /one physical table/],
+  [
+    "duplicate table",
+    [table(), table()],
+    ["fixture_rows"],
+    /one physical table/,
+  ],
   [
     "view masquerading as a table",
     [{ ...table(), type: "view" }],
@@ -69,7 +84,12 @@ const failures: [string, SchemaObject[], string[], RegExp][] = [
     ["fixture_rows"],
     /one physical table/,
   ],
-  ["invalid selected name", [table()], ["fixture_rows;DROP"], /invalid D1 source/],
+  [
+    "invalid selected name",
+    [table()],
+    ["fixture_rows;DROP"],
+    /invalid D1 source/,
+  ],
   [
     "mismatched DDL identity",
     [table("CREATE TABLE other(id TEXT)")],
@@ -90,7 +110,11 @@ const failures: [string, SchemaObject[], string[], RegExp][] = [
   ],
   [
     "row statement tail",
-    [table("CREATE TABLE fixture_rows(id TEXT); INSERT INTO fixture_rows VALUES('x')")],
+    [
+      table(
+        "CREATE TABLE fixture_rows(id TEXT); INSERT INTO fixture_rows VALUES('x')",
+      ),
+    ],
     ["fixture_rows"],
     /trailing SQL/,
   ],
@@ -110,6 +134,9 @@ const failures: [string, SchemaObject[], string[], RegExp][] = [
 for (const [name, snapshot, selected, expected] of failures) {
   test(`source extraction rejects ${name}`, async () => {
     await assert.rejects(d1BundleSourceColumns(snapshot, selected), expected);
-    assert.equal((await d1BundleSourceColumns([table()], ["fixture_rows"])).length, 1);
+    assert.equal(
+      (await d1BundleSourceColumns([table()], ["fixture_rows"])).length,
+      1,
+    );
   });
 }

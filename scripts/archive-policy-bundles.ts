@@ -257,10 +257,7 @@ export function validateArchiveBundles(input: {
         : dialect === "d1"
           ? input.d1Source
           : undefined;
-    if (
-      !["postgres", "d1"].includes(dialect) ||
-      sourceSnapshot === undefined
-    )
+    if (!["postgres", "d1"].includes(dialect) || sourceSnapshot === undefined)
       fail("unsupported or incompatible source dialect");
     const physicalVersion = contract.index.physicalVersion ?? 1;
     if (physicalVersion !== 1 && physicalVersion !== 2)

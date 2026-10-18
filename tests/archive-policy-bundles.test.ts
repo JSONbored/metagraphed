@@ -405,10 +405,7 @@ describe("archive audit wiring to committed D1 source snapshots", () => {
       };
       // The CLI supplies a retained PostgreSQL logical snapshot plus a
       // separate D1 census, rather than switching the whole input dialect.
-      assert.deepEqual(
-        await validateBundleSnapshots(snapshots),
-        [],
-      );
+      assert.deepEqual(await validateBundleSnapshots(snapshots), []);
       snapshots.physical = snapshots.physical.filter(
         (table) => table.name !== "fixture_completion",
       );
@@ -421,20 +418,32 @@ describe("archive audit wiring to committed D1 source snapshots", () => {
 
   test("physical source drift cannot be hidden by matching logical columns", async () => {
     for (const [before, after, expected] of [
-      ["height TEXT NOT NULL", "height INTEGER NOT NULL", /type\/nullability changed/],
+      [
+        "height TEXT NOT NULL",
+        "height INTEGER NOT NULL",
+        /type\/nullability changed/,
+      ],
       ["height TEXT NOT NULL", "height TEXT", /type\/nullability changed/],
-      ["height TEXT NOT NULL", "height TEXT NOT NULL,extra TEXT", /unmapped source column/],
+      [
+        "height TEXT NOT NULL",
+        "height TEXT NOT NULL,extra TEXT",
+        /unmapped source column/,
+      ],
       ["height TEXT NOT NULL,", "", /stale source column mapping/],
     ] as const) {
       const input = d1Fixture(2);
       const physical = physicalSnapshot(input);
-      physical.find((table) => table.name === "fixture_capture")!.sql =
-        physical.find((table) => table.name === "fixture_capture")!.sql.replace(
-          before,
-          after,
-        );
+      physical.find((table) => table.name === "fixture_capture")!.sql = physical
+        .find((table) => table.name === "fixture_capture")!
+        .sql.replace(before, after);
       assert.match(
-        (await validateBundleSnapshots({ ...input, logical: input.source, physical })).join("\n"),
+        (
+          await validateBundleSnapshots({
+            ...input,
+            logical: input.source,
+            physical,
+          })
+        ).join("\n"),
         expected,
       );
     }
@@ -455,7 +464,9 @@ describe("archive audit wiring to committed D1 source snapshots", () => {
       catalog: [...logical.catalog, ...d1.catalog],
       policies: {
         ...logical.policies,
-        ...Object.fromEntries(d1.source.map((column) => [column.table, "bundled"])),
+        ...Object.fromEntries(
+          d1.source.map((column) => [column.table, "bundled"]),
+        ),
       },
       contracts: { ...logical.contracts, "fixture-d1": definition(d1) },
       mappings: [...logical.mappings, ...d1.mappings],
@@ -472,7 +483,14 @@ describe("archive audit wiring to committed D1 source snapshots", () => {
     assert.deepEqual(
       await validateBundleSnapshots({
         logical: [],
-        physical: [{ type: "table", name: "unselected", tbl_name: "unselected", sql: "invalid" }],
+        physical: [
+          {
+            type: "table",
+            name: "unselected",
+            tbl_name: "unselected",
+            sql: "invalid",
+          },
+        ],
         catalog: [],
         policies: {},
         contracts: {},
