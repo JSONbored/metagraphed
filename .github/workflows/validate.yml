@@ -24,9 +24,7 @@ jobs:
         with:
           node-version: 22.23.2
           cache-dependency-path: package-lock.json
-      - name: Install exact lock without lifecycle scripts
-        run: npm ci --ignore-scripts --no-audit
-      - name: Retain exact dependency advisories and chains
+      - name: Inspect current upstream dependency compatibility
         run: |
           node --input-type=module <<'NODE'
           import { spawnSync } from "node:child_process";
@@ -34,26 +32,15 @@ jobs:
           import { join } from "node:path";
           const output = join(process.env.RUNNER_TEMP, "dependency-audit");
           mkdirSync(output, { recursive: true });
-          const metadata = { source: process.env.GITHUB_SHA, repository: process.env.GITHUB_REPOSITORY, node: process.version, npm: spawnSync("npm", ["--version"], { encoding: "utf8" }).stdout.trim() };
-          console.log("AUDIT_METADATA " + JSON.stringify(metadata));
-          writeFileSync(join(output, "metadata.json"), JSON.stringify(metadata, null, 2) + "\n");
-          const scopes = [["all",["--workspaces","--include-workspace-root"]],["root-runtime",["--omit=dev","--workspaces=false"]],["ui-runtime",["--omit=dev","--workspace=apps/ui"]]];
-          let packages = new Set();
-          for (const [name, args] of scopes) {
-            const result = spawnSync("npm", ["audit", "--json", ...args], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
-            writeFileSync(join(output, name + ".json"), result.stdout);
-            writeFileSync(join(output, name + ".stderr.txt"), result.stderr);
-            const report = JSON.parse(result.stdout);
-            if (result.error || ![0, 1].includes(result.status) || report.error || !report.metadata || !report.vulnerabilities) throw new Error("Audit did not produce a complete report: " + name);
-            console.log("AUDIT_" + name + " " + JSON.stringify({ exit_code: result.status, ...report }));
-            for (const value of Object.keys(report.vulnerabilities)) packages.add(value);
+          const packages = ["@graphql-codegen/cli", "@graphql-codegen/typescript-resolvers", "@graphql-tools/utils", "@graphql-tools/url-loader", "@graphql-tools/executor-legacy-ws", "@fastify/busboy", "smol-toml", "braces", "sharp"];
+          const reports = {};
+          for (const name of packages) {
+            const result = spawnSync("npm", ["view", name, "version", "dependencies", "engines", "--json"], { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+            if (result.error || result.status !== 0) throw new Error("Registry inspection failed: " + name);
+            const report = JSON.parse(result.stdout); reports[name] = report;
+            console.log("REGISTRY_" + name + " " + JSON.stringify(report));
           }
-          for (const name of [...packages].sort()) {
-            const result = spawnSync("npm", ["explain", name, "--json"], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
-            writeFileSync(join(output, "explain-" + name.replaceAll("/", "__") + ".json"), result.stdout);
-            if (result.error || result.status !== 0) throw new Error("Dependency explanation failed: " + name);
-            console.log("EXPLAIN_" + name + " " + JSON.stringify(JSON.parse(result.stdout)));
-          }
+          writeFileSync(join(output, "registry.json"), JSON.stringify(reports, null, 2) + "\n");
           NODE
       - name: Upload dependency diagnostics
         if: always()
