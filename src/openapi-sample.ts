@@ -38,6 +38,10 @@ function valueForPattern(pattern: string, name = ""): string {
   switch (normalizedPattern) {
     case "^[a-f0-9]{64}$":
       return HEX64;
+    case "^v1\\.[0-9a-f]{64}$":
+      return `v1.${HEX64}`;
+    case "^(start|v1\\.[0-9a-f]{64})$":
+      return "start";
     case "^0x[0-9a-fA-F]{64}$":
       // The 0x-prefixed form (#8744's chain_state.block_hash) -- a block hash
       // is carried alongside the height so the pinning is exact, and a height

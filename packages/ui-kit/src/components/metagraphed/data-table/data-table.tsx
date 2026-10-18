@@ -104,6 +104,12 @@ export interface DataTableColumn<Row> {
 }
 
 export interface DataTableProps<Row> {
+  /** Optional route-owned export action; the table supplies its current CSV view. */
+  renderExportAction?: (context: {
+    formatRows: (rows: readonly Row[]) => string;
+    filename: string;
+    shareAction: ReactNode;
+  }) => ReactNode;
   rows: readonly Row[];
   columns: ReadonlyArray<DataTableColumn<Row>>;
   rowKey: (row: Row) => string;
@@ -235,6 +241,7 @@ export function statusTone(value: string): "good" | "warn" | "bad" | "muted" {
 }
 
 export function DataTable<Row>({
+  renderExportAction,
   rows,
   columns,
   rowKey,
@@ -395,6 +402,15 @@ export function DataTable<Row>({
   };
 
   const csv = () => toCsv(sorted, shown, valueOf);
+  const formatRows = useCallback(
+    (exportRows: readonly Row[]) =>
+      toCsv(
+        onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+        shown,
+        valueOf,
+      ),
+    [onSort, sort, shown, valueOf],
+  );
 
   const hasRows = visibleRows.length > 0;
 
@@ -466,6 +482,16 @@ export function DataTable<Row>({
               }
             }}
             csv={csv}
+            renderExportAction={
+              renderExportAction
+                ? (shareAction) =>
+                    renderExportAction({
+                      formatRows,
+                      filename: caption,
+                      shareAction,
+                    })
+                : undefined
+            }
             filename={caption}
             shareUrl={shareUrl}
             label={caption}

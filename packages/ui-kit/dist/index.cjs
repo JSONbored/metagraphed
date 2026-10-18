@@ -4038,6 +4038,7 @@ function DataTableMenu({
   visibleKeys,
   onVisibleKeys,
   csv,
+  renderExportAction,
   filename,
   shareUrl,
   label,
@@ -4070,6 +4071,7 @@ function DataTableMenu({
       window.setTimeout(() => setCopied(false), 1500);
     });
   };
+  const shareAction = /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" });
   return /* @__PURE__ */ jsxRuntime.jsxs(Popover, { children: [
     /* @__PURE__ */ jsxRuntime.jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsx(
       "button",
@@ -4114,9 +4116,9 @@ function DataTableMenu({
           }
         )
       ] }) : null,
-      /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-dt-menu-actions", children: [
+      renderExportAction ? renderExportAction(shareAction) : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mg-dt-menu-actions", children: [
         /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: download, children: "Download CSV" }),
-        /* @__PURE__ */ jsxRuntime.jsx("button", { type: "button", onClick: copyLink, children: copied ? "Link copied" : "Copy link" })
+        shareAction
       ] })
     ] })
   ] });
@@ -4265,6 +4267,7 @@ function statusTone(value) {
   return "muted";
 }
 function DataTable({
+  renderExportAction,
   rows,
   columns,
   rowKey,
@@ -4384,6 +4387,14 @@ function DataTable({
     viewportRef.current?.scrollTo({ top: 0 });
   };
   const csv = () => toCsv(sorted, shown, valueOf);
+  const formatRows = React2.useCallback(
+    (exportRows) => toCsv(
+      onSort ? exportRows : sortRows(exportRows, sort, valueOf),
+      shown,
+      valueOf
+    ),
+    [onSort, sort, shown, valueOf]
+  );
   const hasRows = visibleRows.length > 0;
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
@@ -4443,6 +4454,11 @@ function DataTable({
                   }
                 },
                 csv,
+                renderExportAction: renderExportAction ? (shareAction) => renderExportAction({
+                  formatRows,
+                  filename: caption,
+                  shareAction
+                }) : void 0,
                 filename: caption,
                 shareUrl,
                 label: caption

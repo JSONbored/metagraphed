@@ -6,6 +6,8 @@
 // belongs to the router's single parse against the route's Zod schema
 // (src/route-query.ts, #10218), which runs before any handler.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
+import { createHash } from "node:crypto";
+import { historyJson } from "../src/history-sha256.ts";
 import {
   validateCollectionQuery,
   type QueryError,
@@ -70,6 +72,7 @@ export interface ListPaginationMeta {
   limit: number;
   cursor: number;
   next_cursor: number | null;
+  snapshot?: string;
   sort: string | null;
   order: "asc" | "desc";
 }
@@ -135,7 +138,13 @@ export function applyQueryFilters(
   {
     csvResponse = false,
     defaultLimit,
-  }: { csvResponse?: boolean; defaultLimit?: number } = {},
+    snapshotUrl = url,
+  }: {
+    csvResponse?: boolean;
+    defaultLimit?: number;
+    /** Resolved public identity, including route-owned scopes removed before validation. */
+    snapshotUrl?: URL;
+  } = {},
 ): ApplyQueryFiltersResult {
   const params = url.searchParams;
   // A route with no collection funnels into the SAME miss branch as an unknown
@@ -147,6 +156,15 @@ export function applyQueryFilters(
     return { data, meta: {} };
   }
   if (!Array.isArray(data?.[config.data_key])) {
+    if (params.has("page_snapshot")) {
+      return {
+        error: {
+          parameter: "page_snapshot",
+          message:
+            "Guarded collection is unavailable; retry from the first page.",
+        },
+      };
+    }
     return { data, meta: {} };
   }
   // The check, from the collection's own Zod object -- the same one
@@ -162,7 +180,12 @@ export function applyQueryFilters(
     data,
     params,
     listQueryConfig(config, queryFilterNames),
-    { csvResponse, defaultLimit },
+    {
+      csvResponse,
+      defaultLimit,
+      snapshotScope: [collection, snapshotUrl.pathname],
+      snapshotParams: snapshotUrl.searchParams,
+    },
   );
 }
 
@@ -249,6 +272,7 @@ function listQueryParamNamesForConfig(
     "fields",
     "limit",
     "cursor",
+    "page_snapshot",
     "sort",
     "order",
     ...filterNames,
@@ -280,6 +304,7 @@ export interface Pagination {
   limit: number;
   next_cursor?: number | null;
   total: number;
+  snapshot?: string;
 }
 
 export interface PaginationLinkOptions {
@@ -312,6 +337,9 @@ export function paginationLinkHeader(
     }
     target.searchParams.set("cursor", String(offset));
     target.searchParams.set("limit", String(limit));
+    if (pagination.snapshot) {
+      target.searchParams.set("page_snapshot", pagination.snapshot);
+    }
     return target.href;
   };
   const links: Array<{ uri: string; rel: string }> = [];
@@ -474,7 +502,12 @@ function applyListTransform(
   data: Record<string, unknown>,
   params: URLSearchParams,
   config: QueryCollectionConfig,
-  options: { csvResponse?: boolean; defaultLimit?: number } = {},
+  options: {
+    csvResponse?: boolean;
+    defaultLimit?: number;
+    snapshotScope: [string, string];
+    snapshotParams: URLSearchParams;
+  },
 ): ApplyQueryFiltersResult {
   const key = config.data_key;
   const projection = parseProjection(params, data[key] as Row[], key);
@@ -496,6 +529,63 @@ function applyListTransform(
     config.range_filters,
   );
   const sorted = sortRows(filtered, params);
+  const requestedSnapshot = params.get("page_snapshot");
+  if (requestedSnapshot) {
+    for (const name of ["cursor", "limit"]) {
+      if (params.has(name) && integerParam(params.get(name)) === null) {
+        return {
+          error: {
+            parameter: name,
+            message: `${name} must be a non-negative safe integer in decimal digits.`,
+          },
+        };
+      }
+    }
+  }
+  if (requestedSnapshot === "start" && Number(params.get("cursor")) > 0) {
+    return {
+      error: {
+        parameter: "page_snapshot",
+        message: "page_snapshot=start requires cursor 0.",
+      },
+    };
+  }
+  // Bind the full ordered result BEFORE projection/windowing: hidden sort or
+  // health changes can move rows between pages too. Page size and offset do
+  // not change that result; Link may make an implicit limit explicit.
+  let snapshot: string | undefined;
+  if (requestedSnapshot) {
+    // Stream already-loaded rows into one digest, avoiding a second complete
+    // canonical payload string. No storage/database read is added here.
+    const digest = createHash("sha256")
+      .update(
+        historyJson({
+          scope: options.snapshotScope,
+          query: [...options.snapshotParams.entries()]
+            .filter(
+              ([name]) =>
+                !["cursor", "limit", "format", "page_snapshot"].includes(name),
+            )
+            .sort(([a], [b]) => a.localeCompare(b)),
+        }),
+      )
+      .update("\n");
+    for (const row of sorted) digest.update(historyJson(row)).update("\n");
+    snapshot = `v1.${digest.digest("hex")}`;
+  }
+  if (
+    requestedSnapshot &&
+    requestedSnapshot !== "start" &&
+    requestedSnapshot !== snapshot
+  ) {
+    return {
+      error: {
+        parameter: "page_snapshot",
+        message:
+          "Collection or query changed since the previous page; restart with page_snapshot=start at cursor 0.",
+      },
+    };
+  }
   const paginated = paginateRows(sorted, params, options.defaultLimit);
   return {
     data: {
@@ -510,6 +600,7 @@ function applyListTransform(
         limit: paginated.limit,
         cursor: paginated.cursor,
         next_cursor: paginated.nextCursor,
+        ...(snapshot ? { snapshot } : {}),
         sort: paginated.sort,
         order: paginated.order,
       },
@@ -636,7 +727,10 @@ function paginateRows(
   const requestedLimit = integerParam(params.get("limit"));
   const requestedCursor = integerParam(params.get("cursor"));
   const shouldPage =
-    requestedLimit !== null || requestedCursor !== null || defaultLimit != null;
+    requestedLimit !== null ||
+    requestedCursor !== null ||
+    defaultLimit != null ||
+    params.has("page_snapshot");
   const limit = shouldPage
     ? Math.min(
         Math.max(requestedLimit ?? defaultLimit ?? DEFAULT_LIMIT, MIN_LIMIT),

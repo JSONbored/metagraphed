@@ -9790,7 +9790,10 @@ async function handleApiRequest(
     url,
     matched.queryCollection,
     matched.queryFilterNames,
-    { csvResponse: matched.csvResponse === true },
+    {
+      csvResponse: matched.csvResponse === true,
+      snapshotUrl: networkPublicUrl(url, network),
+    },
   );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {

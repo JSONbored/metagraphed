@@ -47,6 +47,7 @@ import path from "node:path";
 import { generateFiles } from "fumadocs-openapi";
 import { createOpenAPI } from "fumadocs-openapi/server";
 import { clampText } from "../src/lib/metagraphed/truncate.ts";
+import { apiTagIndexRow } from "./api-tag-index-row.ts";
 
 const OUTPUT_DIR = process.env.OPENAPI_DOCS_OUTPUT ?? "./content/docs/api-reference";
 // Read locally (fast, no network dependency for a rarely-changing generator
@@ -229,18 +230,6 @@ function withMetaDescription(content, description) {
 }
 
 /**
- * Escape the two characters MDX treats as syntax, for prose taken from the spec.
- *
- * Operation descriptions are written for an API reference, not for MDX, and they
- * are full of both: `?counterparty=<ss58>` parses as an unclosed JSX tag and
- * `{network}` as a JS expression. Either one fails the build outright — which is
- * how this was caught, rather than by rendering wrongly in production.
- */
-function escapeMdx(text) {
-  return String(text).replace(/([<{])/g, "\\$1");
-}
-
-/**
  * The index page for one tag folder (#11204).
  *
  * WHY THIS IS GENERATED, not hand-written: every operation page links its own
@@ -261,12 +250,7 @@ function tagIndexPage(tag, operations) {
   const title = tagTitle(tag);
   const rows = [...operations]
     .sort((a, b) => a.slug.localeCompare(b.slug))
-    .map((op) => {
-      // The method+path needs no escaping — it is inside a code span, where MDX
-      // does not parse JSX. The description is bare prose and does.
-      const line = `- [${escapeMdx(op.title)}](/docs/api-reference/${tag}/${op.slug}) — \`${op.method} ${op.route}\``;
-      return op.description ? `${line}  \n  ${escapeMdx(op.description)}` : line;
-    })
+    .map((op) => apiTagIndexRow(tag, op))
     .join("\n");
   return (
     `---\n` +
