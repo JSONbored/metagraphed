@@ -1067,17 +1067,19 @@ class CheckedCatalogTest(unittest.TestCase):
                     "meta": {"catalog_paging": {"reason": "catalog_budget_exceeded"}}}
         failure = urllib.error.HTTPError("https://api.metagraph.sh", 503, "fail", {},
                                          BytesIO(json.dumps(envelope).encode()))
-        with mock.patch("metagraphed.client._open_request", side_effect=failure) as fetch:
+        with mock.patch("metagraphed.client._open_request", side_effect=[_FakeResponse(_checked_page(["a"], 0, 2)), failure]) as fetch:
             with self.assertRaises(MetagraphedError) as error:
                 metagraphed_fetch_all("/api/v1/endpoints", query={"page_snapshot": "start"}, retries=3,
                                      headers={"If-None-Match": "old"})
-        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(fetch.call_count, 2)
         self.assertEqual(error.exception.code, "catalog_budget_exceeded")
         self.assertEqual(error.exception.envelope, envelope)
         request = fetch.call_args.args[0]
         self.assertEqual(request.get_header("Cache-control"), "no-store")
         self.assertIsNone(request.get_header("If-none-match"))
 
+        self.assertIn("page_snapshot=v1.", request.full_url)
+        self.assertIn("cursor=1", request.full_url)
 
     def test_checked_sync_304_requires_a_current_body_without_retry(self):
         failure = urllib.error.HTTPError("https://api.metagraph.sh", 304, "unchanged", {}, None)

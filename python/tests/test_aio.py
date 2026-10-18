@@ -693,12 +693,14 @@ class CheckedAsyncCatalogTest(unittest.IsolatedAsyncioTestCase):
                     "meta": {"catalog_paging": {"reason": "catalog_budget_exceeded"}}}
         client = AsyncMetagraphedClient(retries=3)
         await client._client.aclose()
-        client._client = _FakeAsyncHttp([httpx.Response(503, json=envelope)])
+        client._client = _FakeAsyncHttp([httpx.Response(200, json=_checked_page(["a"], 0, 2)), httpx.Response(503, json=envelope)])
         with self.assertRaises(MetagraphedError) as error:
             await client.fetch_all("/api/v1/endpoints", query={"page_snapshot": "start"})
         self.assertEqual(error.exception.code, "catalog_budget_exceeded")
         self.assertEqual(error.exception.envelope, envelope)
-        self.assertEqual(len(client._client.calls), 1)
+        self.assertEqual(len(client._client.calls), 2)
+        self.assertEqual(client._client.calls[1][2]["page_snapshot"], "v1." + "a" * 64)
+        self.assertEqual(client._client.calls[1][2]["cursor"], 1)
         await client.aclose()
 
 
