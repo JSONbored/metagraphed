@@ -86,6 +86,13 @@ try {
     gnu_time_max_rss_bytes: red.gnu_time_max_rss_bytes }));
   for (const [path, content] of candidates) writeFileSync(path, content);
   const green = run("candidate");
+  if (green.result.status !== 0) {
+    console.log(JSON.stringify({ phase: "candidate-refused", failed: green.cases
+      .filter((item) => item.status === "failed")
+      .map((item) => ({ name: item.fullName, status: item.status,
+        failure_class: /(?:AssertionError|TypeError|RangeError|SyntaxError|Error)/.exec(item.failureMessages.join("\\n"))?.[0] ?? "unknown",
+        source_location: /(?:tests\\/chain-detail-(?:d1|native-payloads)\\.test\\.ts:\\d+:\\d+)/.exec(item.failureMessages.join("\\n"))?.[0] ?? "unknown" })) }));
+  }
   assert.equal(green.result.status, 0);
   assert.equal(green.report.numFailedTests, 0);
   assert.equal(green.report.numPassedTests, 25);
