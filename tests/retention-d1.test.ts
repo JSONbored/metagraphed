@@ -32,8 +32,14 @@ const env = () => ({
 const head = DEFAULT_BLOCKS_SEAM + 1000;
 const floor = head - 3000;
 const accountFloor = head - 9000 + 1;
-async function seed() {
-  for (const block of [floor, floor + 119, floor + 120, head]) {
+async function seed(coverageFloor = floor, extraBlocks: number[] = []) {
+  for (const block of [
+    coverageFloor,
+    coverageFloor + 119,
+    coverageFloor + 120,
+    head,
+    ...extraBlocks,
+  ]) {
     await db.batch([
       db
         .prepare(
@@ -150,6 +156,165 @@ test("an account-event backlog is bounded from its own floor", async () => {
   ]);
 });
 
+test.each([0, 17])(
+  "an account backlog keeps draining at a fixed head with coverage %i heights inside its window",
+  async (inside) => {
+    const coverageFloor = head - 1800 + 1 + inside;
+    await seed(coverageFloor);
+    const old = accountFloor - 300;
+    for (const block of [old, old + 119, old + 120, old + 239, old + 240])
+      await db
+        .prepare(
+          "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+        )
+        .bind(block)
+        .run();
+    const before = await Promise.all(tables.map(blocks));
+    for (const removed of [120, 240]) {
+      const result = await pruneChainDetail(env(), ctx);
+      assert.equal(result.ok, true);
+      assert.equal(result.d1_pruned, true);
+      assert.equal(result.blocks_pruned, 0);
+      assert.equal(result.deleted_below, coverageFloor);
+      for (const [index, table] of tables.entries())
+        assert.deepEqual(
+          await blocks(table),
+          table === "chain_detail_account_events"
+            ? before[index]!.filter((block) => block >= old + removed)
+            : before[index],
+        );
+    }
+    assert.equal(pg.control.connects, 0);
+  },
+);
+
+test.each([1, 75, 120])(
+  "a %i-height coverage backlog does not reduce the account-event budget",
+  async (span) => {
+    const keepFrom = head - 1800 + 1;
+    const coverageFloor = keepFrom - span;
+    await seed(coverageFloor);
+    const old = accountFloor - 1000;
+    for (const block of [old, old + 119, old + 120])
+      await db
+        .prepare(
+          "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+        )
+        .bind(block)
+        .run();
+    const before = await Promise.all(tables.map(blocks));
+    const batch = vi.fn((statements: D1PreparedStatement[]) =>
+      db.batch(statements),
+    );
+    const result = await pruneChainDetail(
+      {
+        ...env(),
+        D1_STATE: { prepare: db.prepare.bind(db), batch },
+      },
+      ctx,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.blocks_pruned, span);
+    assert.equal(result.deleted_below, keepFrom);
+    assert.equal(batch.mock.calls.length, 12);
+    assert.deepEqual(
+      batch.mock.calls.map(([statements]) => statements.length),
+      Array.from({ length: 12 }, (_, chunk) => (chunk * 10 < span ? 4 : 1)),
+    );
+    for (const [index, table] of tables.entries())
+      assert.deepEqual(
+        await blocks(table),
+        before[index]!.filter((block) =>
+          table === "chain_detail_account_events"
+            ? block >= old + 120
+            : block >= keepFrom,
+        ),
+      );
+    assert.equal(pg.control.connects, 0);
+  },
+);
+
+test.each(["empty", "at cutoff", "above cutoff"])(
+  "caught-up coverage does not write when account events are %s",
+  async (state) => {
+    await seed(head - 1800 + 1);
+    if (state === "empty")
+      await db.prepare("DELETE FROM chain_detail_account_events").run();
+    else
+      await db
+        .prepare(
+          "DELETE FROM chain_detail_account_events WHERE block_number < ?",
+        )
+        .bind(accountFloor + (state === "above cutoff" ? 1 : 0))
+        .run();
+    const before = await Promise.all(tables.map(blocks));
+    const batch = vi.fn((statements: D1PreparedStatement[]) =>
+      db.batch(statements),
+    );
+    const result = await pruneChainDetail(
+      {
+        ...env(),
+        D1_STATE: { prepare: db.prepare.bind(db), batch },
+      },
+      ctx,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.blocks_pruned, 0);
+    assert.equal(batch.mock.calls.length, 0);
+    assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+    assert.equal(pg.control.connects, 0);
+  },
+);
+
+test.each([0, 75])(
+  "a later account delete failure preserves its whole chunk with %i coverage heights pending",
+  async (span) => {
+    const coverageFloor = head - 1800 + 1 - span;
+    await seed(coverageFloor, [coverageFloor + 10]);
+    const old = accountFloor - 1000;
+    for (const block of [old, old + 9, old + 10, old + 19, old + 20])
+      await db
+        .prepare(
+          "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+        )
+        .bind(block)
+        .run();
+    const before = await Promise.all(tables.map(blocks));
+    await db
+      .prepare(
+        `CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_account_events
+         WHEN OLD.block_number >= ${old + 10}
+         BEGIN SELECT RAISE(ABORT,'later account chunk rejected'); END`,
+      )
+      .run();
+    const result = await pruneChainDetail(env(), ctx);
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "prune_failed");
+    assert.equal(result.blocks_pruned, undefined);
+    assert.match(result.detail!, /later account chunk rejected/);
+    for (const [index, table] of tables.entries())
+      assert.deepEqual(
+        await blocks(table),
+        before[index]!.filter((block) =>
+          table === "chain_detail_account_events"
+            ? block >= old + 10
+            : span === 0 || block >= coverageFloor + 10,
+        ),
+      );
+    assert.equal(pg.control.connects, 0);
+  },
+);
+
+test("account-only rows cannot supply a missing coverage head", async () => {
+  await seed();
+  await db.prepare("DELETE FROM chain_detail_blocks").run();
+  const before = await Promise.all(tables.map(blocks));
+  const result = await pruneChainDetail(env(), ctx);
+  assert.deepEqual(result, { ok: true, reason: "no rows", blocks_pruned: 0 });
+  assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+  assert.equal(pg.control.connects, 0);
+});
+
 test("a later D1 chunk failure leaves a complete pruned prefix", async () => {
   await seed();
   await db
@@ -228,7 +393,13 @@ test.each(["blocks", "extrinsics", "chain_events", "account_events"])(
     assert.equal(result.ok, true);
     assert.equal(result.keep_from, floor);
     assert.equal(result.blocks_pruned, 0);
-    assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+    for (const [index, table] of tables.entries())
+      assert.deepEqual(
+        await blocks(table),
+        table === "chain_detail_account_events"
+          ? before[index]!.filter((block) => block >= accountFloor)
+          : before[index],
+      );
     assert.equal(selected.METAGRAPH_ARCHIVE.get.mock.calls.length, 4);
   },
 );

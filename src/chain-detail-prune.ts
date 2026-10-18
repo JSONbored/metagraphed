@@ -245,16 +245,16 @@ export interface ChainDetailPruneResult {
   /** The window this run computed, absent when nothing could be computed. */
   keep_from?: number;
   retained_blocks?: number;
-  /** Exclusive upper bound of the range this run actually deleted. */
+  /** Exclusive upper bound of the coverage range when pruning ran. */
   deleted_below?: number;
-  /** How many blocks this run removed, capped per run. */
+  /** Coverage-height span removed by this run, capped per run. */
   blocks_pruned?: number;
   /** Whether the SAME bound was applied to Neon, and what happened if not.
    * Reported separately because the two stores prune INDEPENDENTLY -- see the
    * runner. */
   neon_pruned?: boolean;
   neon_detail?: string;
-  /** The selected D1 owner committed each bounded group of four deletes atomically. */
+  /** The selected D1 owner committed each bounded group of deletes atomically. */
   d1_pruned?: boolean;
 }
 
@@ -307,7 +307,8 @@ export async function pruneChainDetail(
         (env as { NATIVE_PROJECTIONS?: unknown } | null)?.NATIVE_PROJECTIONS ===
         "enabled",
     });
-    if (window.keepFrom <= floor)
+    const d1 = selectedD1Store(env, PRUNE_TABLES);
+    if (!d1 && window.keepFrom <= floor)
       return {
         ok: true,
         keep_from: window.keepFrom,
@@ -317,18 +318,16 @@ export async function pruneChainDetail(
 
     // Bounded per run: delete at most CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN
     // blocks upward from the current floor, never the whole backlog at once.
-    const deletedBelow = Math.min(
-      window.keepFrom,
-      floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+    const deletedBelow = Math.max(
+      floor,
+      Math.min(window.keepFrom, floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN),
     );
-    // The account-events bound rides the SAME per-run cap, so a deeper floor
-    // cannot turn one run into an unbounded delete -- it only stops that table
-    // being taken as far as the others.
+    // Preserve Neon's existing shared cap. D1 below plans the account range
+    // from its own minimum instead of the coverage register's floor.
     const accountEventsDeletedBelow = Math.min(
       window.accountEventsKeepFrom,
       floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
     );
-    const d1 = selectedD1Store(env, PRUNE_TABLES);
     let outcome: Pick<
       ChainDetailPruneResult,
       "d1_pruned" | "neon_pruned" | "neon_detail"
@@ -342,29 +341,51 @@ export async function pruneChainDetail(
         "SELECT MIN(block_number) AS floor FROM chain_detail_account_events",
       );
       const accountFloor =
-        safeIntOrNull(accountBounds!.floor) ?? accountEventsDeletedBelow;
+        safeIntOrNull(accountBounds!.floor) ?? window.accountEventsKeepFrom;
+      const accountDeletedBelow = Math.max(
+        accountFloor,
+        Math.min(
+          window.accountEventsKeepFrom,
+          accountFloor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
+        ),
+      );
+      // Either window can have work after the other has caught up. In
+      // particular, a bounded coverage register must not strand the deeper
+      // account backlog, even when the producer head stops advancing.
+      const span = Math.max(
+        deletedBelow - floor,
+        accountDeletedBelow - accountFloor,
+      );
+      if (span === 0)
+        return {
+          ok: true,
+          keep_from: window.keepFrom,
+          retained_blocks: window.retainedBlocks,
+          blocks_pruned: 0,
+        };
       for (
         let offset = 0;
-        offset < deletedBelow - floor;
+        offset < span;
         offset += D1_PRUNE_BLOCKS_PER_TRANSACTION
       ) {
         // Each completed prefix is safe: its detail and coverage disappear
         // together. A later failure preserves its entire chunk and reports
         // failure without claiming that the whole requested window finished.
         await d1.transaction(
-          PRUNE_TABLES.map((table) => {
+          PRUNE_TABLES.flatMap((table) => {
             const account = table === "chain_detail_account_events";
             const first = (account ? accountFloor : floor) + offset;
-            return {
-              text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
-              values: [
-                first,
-                Math.min(
-                  account ? accountEventsDeletedBelow : deletedBelow,
-                  first + D1_PRUNE_BLOCKS_PER_TRANSACTION,
-                ),
-              ],
-            };
+            const end = account ? accountDeletedBelow : deletedBelow;
+            if (first >= end) return [];
+            return [
+              {
+                text: `DELETE FROM ${table} WHERE block_number >= ? AND block_number < ?`,
+                values: [
+                  first,
+                  Math.min(end, first + D1_PRUNE_BLOCKS_PER_TRANSACTION),
+                ],
+              },
+            ];
           }),
         );
       }
