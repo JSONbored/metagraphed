@@ -362,6 +362,63 @@ test("does not substitute fleet totals when result metadata is unavailable", asy
   await expect(directory.locator(".mg-dt-caption")).not.toContainText("450");
 });
 
+test("restarts a rejected catalog generation with only fresh rows and the same search intent", async ({
+  page,
+}) => {
+  let rows = ROWS.slice(200, 203).map((row) => ({ ...row, provider: "fixture-a" }));
+  const reads: { cursor: string | null; snapshot: string | null; status: number }[] = [];
+  await page.route("**/api/v1/endpoints?*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("limit") === "1") {
+      await route.fulfill(matchedCatalogFixture(url, "endpoints", ROWS, {
+        data: { summary: { endpoint_count: ROWS.length, monitored_count: 449, by_status: { ok: 449, unknown: 1 } } },
+      }));
+      return;
+    }
+    expect(url.searchParams.get("q")).toBe(QUERY);
+    expect(url.searchParams.get("provider")).toBe("fixture-a");
+    expect(url.searchParams.get("status")).toBe("ok");
+    const result = matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
+    reads.push({
+      cursor: url.searchParams.get("cursor"),
+      snapshot: url.searchParams.get("page_snapshot"),
+      status: result.status,
+    });
+    await route.fulfill(result);
+  });
+  await gotoThroughRestart(
+    page,
+    "/apis/endpoints?" + new URLSearchParams({ q: QUERY, provider: "fixture-a", status: "ok" }),
+  );
+  const directory = page.locator("section#directory");
+  const search = page.getByRole("searchbox", { name: "Search endpoints", exact: true });
+  await expect(directory).toContainText("2 loaded of 3 matching");
+  await expect(directory.getByRole("link", { name: "node200.example", exact: true })).toBeVisible();
+  rows = [ROWS[402]].map((row) => ({ ...row, provider: "fixture-a" }));
+  await directory.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(directory).toContainText("These results changed or could not be verified");
+  expect(reads).toHaveLength(2);
+  expect(reads[1]).toMatchObject({ cursor: "2", status: 400 });
+  expect(reads[1].snapshot).toMatch(/^v1\.[0-9a-f]{64}$/);
+  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(directory).toContainText("1 loaded of 1 matching");
+  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toBeVisible();
+  for (const host of ["node200.example", "node201.example", "node202.example"])
+    await expect(directory.getByRole("link", { name: host, exact: true })).toHaveCount(0);
+  await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(1);
+  await expect(directory.locator(".mg-dt-caption")).toContainText("1");
+  await expect(directory).not.toContainText("3 matching");
+  await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+  await expect(directory.getByRole("alert")).toHaveCount(0);
+  await expect(search).toHaveValue(QUERY);
+  expect(new URL(page.url()).searchParams.get("provider")).toBe("fixture-a");
+  expect(new URL(page.url()).searchParams.get("status")).toBe("ok");
+  expect(reads).toHaveLength(3);
+  expect(reads[2]).toEqual({ cursor: "0", snapshot: "start", status: 200 });
+});
+
 test.describe("catalog-wide known status", () => {
   test.use({ serviceWorkers: "block" });
 

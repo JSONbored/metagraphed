@@ -30,7 +30,11 @@ export function matchedCatalogFixture(
     return {
       status: 400,
       contentType: "application/json",
-      body: JSON.stringify({ ok: false, error: { code: "invalid_query", ...result.error } }),
+      body: JSON.stringify({
+        ok: false,
+        error: { code: "invalid_query", message: result.error.message },
+        meta: { parameter: result.error.parameter },
+      }),
     };
   }
   const pagination: Record<string, unknown> = { ...result.meta.pagination };
