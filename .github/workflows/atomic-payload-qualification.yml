@@ -22,6 +22,8 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
+      - name: Fetch the exact public baseline for regression controls
+        run: git fetch --no-tags --depth=1 origin 4411b7cba04221610f989e74a479380f85e17ed6
       - name: Setup existing Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
