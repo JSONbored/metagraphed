@@ -40,7 +40,9 @@ describe("estimated price-share composition", () => {
     };
     const registry = buildOpenApiExampleRegistry(
       document.components.schemas,
-      API_ROUTES.filter((route) => route.id === "subnet-price-share-composition"),
+      API_ROUTES.filter(
+        (route) => route.id === "subnet-price-share-composition",
+      ),
     );
     const example =
       document.components.examples.SubnetPriceShareCompositionArtifactResponse;
@@ -96,7 +98,8 @@ describe("estimated price-share composition", () => {
       "2026-10-17",
     ]);
     expect(result.points[0].shares).toEqual([0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
-    expect(result.points.map((point) => point.other_share)).toEqual([0.4, 0.05]);
+    const residuals = result.points.map((point) => point.other_share);
+    expect(residuals).toEqual([0.4, 0.05]);
     expect(result.oldest_day).toBe("2026-10-15");
     expect(result.newest_day).toBe("2026-10-17");
     expect(SubnetPriceShareCompositionArtifactSchema.parse(result)).toEqual(
@@ -118,7 +121,8 @@ describe("estimated price-share composition", () => {
   it("does not replace missing selected observations with zeroes or unpriced rows", () => {
     const older = day("2026-10-16").filter((entry) => entry.netuid !== 1);
     older.push(row(7, 0.2, "2026-10-16"), row(1, null, "2026-10-16"));
-    expect(build([...day("2026-10-17"), ...older], options).points).toHaveLength(1);
+    const result = build([...day("2026-10-17"), ...older], options);
+    expect(result.points).toHaveLength(1);
     const unpriced = row(42, null);
     unpriced.captured_at = null;
     expect(build([row(), unpriced], options).points[0].shares).toEqual([1]);
@@ -146,10 +150,17 @@ describe("estimated price-share composition", () => {
       row(index + 8, share, "2026-10-16"),
     );
     const result = build([...latest, ...older], options);
-    expect(result.series).toEqual([{ netuid: 10 }, { netuid: 8 }, { netuid: 9 }]);
+    expect(result.series).toEqual([
+      { netuid: 10 },
+      { netuid: 8 },
+      { netuid: 9 },
+    ]);
     expect(result.points.map((point) => point.day)).toEqual(["2026-10-16"]);
     expect(result.points[0].shares).toEqual([0.4, 0.3, 0.3]);
-    expect(build(latest, options)).toMatchObject({ point_count: 0, points: [] });
+    expect(build(latest, options)).toMatchObject({
+      point_count: 0,
+      points: [],
+    });
   });
 
   it("keeps older points whose fixed cohort fits even if a different local top six exceeds one", () => {
@@ -192,9 +203,8 @@ describe("estimated price-share composition", () => {
     Number.MIN_VALUE,
     1e-20,
   ])("omits malformed/off-grid share %s", (value) => {
-    expect(build([{ ...row(), emission_share: value }], options).points).toEqual(
-      [],
-    );
+    const result = build([{ ...row(), emission_share: value }], options);
+    expect(result.points).toEqual([]);
   });
   it.each([
     null,
@@ -208,7 +218,8 @@ describe("estimated price-share composition", () => {
     Number.MAX_SAFE_INTEGER + 1,
     nowMs + 1,
   ])("omits uncaptured timestamp %s", (value) => {
-    expect(build([{ ...row(), captured_at: value }], options).points).toEqual([]);
+    const result = build([{ ...row(), captured_at: value }], options);
+    expect(result.points).toEqual([]);
   });
   it.each([undefined, null, "1", -1, 65536, 0.5, NaN, Infinity])(
     "omits invalid netuid %s",
@@ -239,7 +250,8 @@ describe("estimated price-share composition", () => {
     "2026-10-19",
     "2026-08-22",
   ])("omits malformed, open, future or out-of-window date %s", (value) => {
-    expect(build([{ ...row(), snapshot_date: value }], options).points).toEqual([]);
+    const result = build([{ ...row(), snapshot_date: value }], options);
+    expect(result.points).toEqual([]);
   });
 
   it("retains 56 closed UTC dates including the oldest boundary", () => {
@@ -266,9 +278,8 @@ describe("estimated price-share composition", () => {
       points: [],
       series: [],
     });
-    expect(SubnetPriceShareCompositionArtifactSchema.parse(unavailable)).toEqual(
-      unavailable,
-    );
+    const parsed = SubnetPriceShareCompositionArtifactSchema.parse(unavailable);
+    expect(parsed).toEqual(unavailable);
     const empty = build([], options);
     expect(empty).toMatchObject({
       point_count: 0,
@@ -294,10 +305,14 @@ describe("bounded snapshot query on a disposable SQLite fixture", () => {
     const index = schema.match(
       /CREATE INDEX idx_subnet_snapshots_date_netuid[^;]+;/,
     )?.[0];
-    if (!table || !index) throw new Error("Canonical snapshot table/index missing");
+    if (!table || !index)
+      throw new Error("Canonical snapshot table/index missing");
     sqlite.exec(table);
     sqlite.exec(index);
-    const query = async <T>(sql: string, values: unknown[] = []): Promise<T[]> =>
+    const query = async <T>(
+      sql: string,
+      values: unknown[] = [],
+    ): Promise<T[]> =>
       sqlite.prepare(sql).all(...(values as SQLInputValue[])) as T[];
     return { sqlite, query };
   }
@@ -348,7 +363,8 @@ describe("bounded snapshot query on a disposable SQLite fixture", () => {
         "INSERT INTO subnet_snapshots(netuid,snapshot_date,captured_at,emission_share) VALUES(?,?,?,?)",
       );
       sqlite.exec("BEGIN");
-      for (let netuid = 0; netuid < PRICE_SHARE_COMPOSITION_ROWS + 2; netuid += 1) {
+      const insertedRows = PRICE_SHARE_COMPOSITION_ROWS + 2;
+      for (let netuid = 0; netuid < insertedRows; netuid += 1) {
         insert.run(
           netuid,
           "2026-10-17",
@@ -359,9 +375,9 @@ describe("bounded snapshot query on a disposable SQLite fixture", () => {
       sqlite.exec("COMMIT");
       const rows = await load({ query }, options);
       expect(rows).toHaveLength(PRICE_SHARE_COMPOSITION_ROWS + 1);
-      const serializedBytes = new TextEncoder().encode(
-        JSON.stringify(rows),
-      ).byteLength;
+      const serializedRows = JSON.stringify(rows);
+      const encoder = new TextEncoder();
+      const serializedBytes = encoder.encode(serializedRows).byteLength;
       expect(serializedBytes).toBeLessThan(2 * 1024 * 1024);
       expect(build(rows!, options).points).toEqual([]);
       console.info(

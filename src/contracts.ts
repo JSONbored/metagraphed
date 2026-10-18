@@ -1959,7 +1959,8 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-price-share-composition",
     "/metagraph/chain/subnet-price-share-composition.json",
-    "Estimated artifact-normalized moving-price share composition over up to 56 closed UTC days, with six fixed netuid series and an exact residual. Numeric shares must share a persisted writer timestamp and satisfy six-decimal normalization checks; this is not completed-pass certification or proof of complete chain coverage. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "Estimated artifact-normalized moving-price share composition over up to 56 closed UTC days, with six fixed netuid series and an exact residual. Numeric shares must share a persisted writer timestamp and satisfy six-decimal normalization checks; this is not completed-pass certification or proof of complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "SubnetPriceShareCompositionArtifact",
     COMPUTED_LIVE,
   ),
@@ -4219,7 +4220,8 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/subnet-price-share-composition",
     "/metagraph/chain/subnet-price-share-composition.json",
-    "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "short",
     ["chain"],
     [],

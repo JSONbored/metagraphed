@@ -85,7 +85,8 @@ describe("price-share route and mirror parity", () => {
       const response = await handleRequest(new Request(address), source, ctx);
       expect(response.status).toBe(200);
       const rest = (await jsonBody(response)).data;
-      expect(SubnetPriceShareCompositionArtifactSchema.parse(rest)).toEqual(rest);
+      const parsed = SubnetPriceShareCompositionArtifactSchema.parse(rest);
+      expect(parsed).toEqual(rest);
       const gqlResponse = await graphql(
         `{ subnet_price_share_composition { ${selection} } }`,
         source,
@@ -146,6 +147,16 @@ describe("price-share route and mirror parity", () => {
         (entry) => entry.name === "get_subnet_price_share_composition",
       ),
     ).toBe(true);
+  });
+
+  it("rejects a caller-controlled REST window before querying", async () => {
+    const response = await handleRequest(
+      new Request(address + "?window=all"),
+      env(),
+      ctx,
+    );
+    expect(response.status).toBe(400);
+    expect(pg.control.queries).toHaveLength(0);
   });
 
   it("refuses testnet addressing without reading mainnet snapshots", async () => {

@@ -98,7 +98,8 @@ function eligibleDay(day: string, rows: Row[], nowMs: number): Day | null {
   // Each independently rounded six-decimal share contributes at most half
   // a micro-unit of error. This detects partial normalization, not missing
   // zero-price rows or a source pass's identity/completeness.
-  if (captured === null || Math.abs(total - UNIT) * 2 > shares.size) return null;
+  if (captured === null || Math.abs(total - UNIT) * 2 > shares.size)
+    return null;
   return { day, captured_at: captured, shares };
 }
 
