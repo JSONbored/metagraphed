@@ -97,8 +97,8 @@ export function PositionsSection({
           <>
             {incomplete ? "Incomplete position coverage · returned relationships only. " : null}
             Amounts and ownership shares are unavailable: this response does not identify an
-            authoritative quantity basis. Root holdings are not covered. Recorded relationships
-            do not establish wallet holdings.
+            authoritative quantity basis. Root holdings are not covered. Recorded relationships do
+            not establish wallet holdings.
             {data?.data.captured_at
               ? ` Snapshot ${formatRelative(data.data.captured_at)}.`
               : " Snapshot time unavailable."}

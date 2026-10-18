@@ -189,10 +189,9 @@ describe("default directory entry", () => {
               stake_dominance: capital,
             })),
           };
-      const legacyKey =
-        `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-          CONTRACT_VERSION,
-        )}/${encodeURIComponent(`minute:${Math.floor(NOW / 60_000)}`)}/${entry.id}${entry.path}`;
+      const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${encodeURIComponent(`minute:${Math.floor(NOW / 60_000)}`)}/${entry.id}${entry.path}`;
       cache.values.set(legacyKey, Response.json({ data: legacy }));
       const first = await handleDefaultExplorerDirectory(
         request(entry.path),
@@ -205,7 +204,9 @@ describe("default directory entry", () => {
       const general = await api.fetch(request(entry.path), f.env, f.ctx);
       expect(general.headers.get("x-metagraph-cache")).toBe("hit");
       expect(await general.json()).toMatchObject({ data });
-      expect(await cache.values.get(legacyKey)!.json()).toEqual({ data: legacy });
+      expect(await cache.values.get(legacyKey)!.json()).toEqual({
+        data: legacy,
+      });
       expect(cache.match.mock.calls[0][0].url).toContain(
         `/${entry.id}-principal-unavailable${entry.path}`,
       );

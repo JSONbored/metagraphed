@@ -16250,29 +16250,52 @@ describe("MCP account tools (get_account + events + subnets)", () => {
   });
 
   test("get_account_portfolio retains membership evidence while clearing legacy financial values", async () => {
-    const res = await callTool("get_account_portfolio", { ss58: SS58 }, {
-      env: {
-        METAGRAPH_NEURONS_SOURCE: "data-api",
-        DATA_API: { fetch: async () => Response.json({
-          ss58: SS58,
-          position_count: 1,
-          total_stake_tao: 0,
-          total_emission_tao: 4,
-          overall_yield: 0,
-          stake_concentration: { hhi: 0 },
-          positions: [{ netuid: 3, uid: 8, stake_alpha: 0, yield: 0, emission_alpha: 4, trust: 0.9 }],
-        }) },
+    const res = await callTool(
+      "get_account_portfolio",
+      { ss58: SS58 },
+      {
+        env: {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async () =>
+              Response.json({
+                ss58: SS58,
+                position_count: 1,
+                total_stake_tao: 0,
+                total_emission_tao: 4,
+                overall_yield: 0,
+                stake_concentration: { hhi: 0 },
+                positions: [
+                  {
+                    netuid: 3,
+                    uid: 8,
+                    stake_alpha: 0,
+                    yield: 0,
+                    emission_alpha: 4,
+                    trust: 0.9,
+                  },
+                ],
+              }),
+          },
+        },
       },
-    });
+    );
     assert.equal(res.body.result.isError, false);
     const out = res.body.result.structuredContent;
     assert.equal(out.total_stake_tao, null);
     assert.equal(out.overall_yield, null);
     assert.equal(out.stake_concentration, null);
     assert.equal(out.total_emission_tao, 4);
-    assert.deepEqual(out.positions, [{
-      netuid: 3, uid: 8, stake_alpha: null, yield: null, emission_alpha: 4, trust: 0.9,
-    }]);
+    assert.deepEqual(out.positions, [
+      {
+        netuid: 3,
+        uid: 8,
+        stake_alpha: null,
+        yield: null,
+        emission_alpha: 4,
+        trust: 0.9,
+      },
+    ]);
   });
 
   test("get_account_events rejects a non-string kind", async () => {
@@ -22071,27 +22094,32 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
-        fetch: async () => Response.json({
-          schema_version: 1,
-          hotkey: HOTKEY,
-          total_stake_tao: 1000,
-          root_stake_tao: 100,
-          alpha_stake_tao: 900,
-          apy_estimate: 0.2,
-          apy_estimate_eligible_subnet_count: 2,
-          realized_return_1d: 0.1,
-          realized_return_1w: 0.2,
-          realized_return_1m: 0.3,
-          realized_return_1d_as_of: "2026-10-16",
-          realized_return_1w_as_of: "2026-10-16",
-          realized_return_1m_as_of: "2026-10-16",
-          take: 0.1,
-          total_emission_tao: 5,
-          subnets: [],
-        }),
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            hotkey: HOTKEY,
+            total_stake_tao: 1000,
+            root_stake_tao: 100,
+            alpha_stake_tao: 900,
+            apy_estimate: 0.2,
+            apy_estimate_eligible_subnet_count: 2,
+            realized_return_1d: 0.1,
+            realized_return_1w: 0.2,
+            realized_return_1m: 0.3,
+            realized_return_1d_as_of: "2026-10-16",
+            realized_return_1w_as_of: "2026-10-16",
+            realized_return_1m_as_of: "2026-10-16",
+            take: 0.1,
+            total_emission_tao: 5,
+            subnets: [],
+          }),
       },
     };
-    const res = await callTool("get_validator_detail", { hotkey: HOTKEY }, { env });
+    const res = await callTool(
+      "get_validator_detail",
+      { hotkey: HOTKEY },
+      { env },
+    );
     const out = res.body.result.structuredContent;
     assert.equal(out.total_stake_tao, null);
     assert.equal(out.apy_estimate, null);
@@ -23264,8 +23292,22 @@ describe("MCP get_account_snapshot", () => {
               overall_yield: 0.1,
               stake_concentration: { hhi: 0.8 },
               positions: [
-                { netuid: 7, uid: 9, stake_alpha: 900, yield: 0.1, emission_alpha: 4, trust: 0.9 },
-                { netuid: 1, uid: 3, stake_alpha: 100, yield: 0.2, emission_alpha: 2, trust: 0.8 },
+                {
+                  netuid: 7,
+                  uid: 9,
+                  stake_alpha: 900,
+                  yield: 0.1,
+                  emission_alpha: 4,
+                  trust: 0.9,
+                },
+                {
+                  netuid: 1,
+                  uid: 3,
+                  stake_alpha: 100,
+                  yield: 0.2,
+                  emission_alpha: 2,
+                  trust: 0.8,
+                },
               ],
             });
           }
@@ -23303,8 +23345,22 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.portfolio.stake_concentration, null);
       assert.equal(out.portfolio.total_emission_tao, 6);
       assert.deepEqual(out.portfolio.positions, [
-        { netuid: 1, uid: 3, stake_alpha: null, yield: null, emission_alpha: 2, trust: 0.8 },
-        { netuid: 7, uid: 9, stake_alpha: null, yield: null, emission_alpha: 4, trust: 0.9 },
+        {
+          netuid: 1,
+          uid: 3,
+          stake_alpha: null,
+          yield: null,
+          emission_alpha: 2,
+          trust: 0.8,
+        },
+        {
+          netuid: 7,
+          uid: 9,
+          stake_alpha: null,
+          yield: null,
+          emission_alpha: 4,
+          trust: 0.9,
+        },
       ]);
       assert.equal(out.subnets.subnet_count, 3);
       assert.equal(
@@ -23621,15 +23677,29 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   });
 
   test("list_accounts declines an already capped legacy financial page", async () => {
-    const res = await callTool("list_accounts", { limit: 1 }, {
-      env: {
-        METAGRAPH_NEURONS_SOURCE: "data-api",
-        DATA_API: { fetch: async () => Response.json({
-          account_count: 300,
-          accounts: [{ hotkey: "legacy-selected", total_stake_tao: 0, stake_dominance: 0, subnets: [] }],
-        }) },
+    const res = await callTool(
+      "list_accounts",
+      { limit: 1 },
+      {
+        env: {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async () =>
+              Response.json({
+                account_count: 300,
+                accounts: [
+                  {
+                    hotkey: "legacy-selected",
+                    total_stake_tao: 0,
+                    stake_dominance: 0,
+                    subnets: [],
+                  },
+                ],
+              }),
+          },
+        },
       },
-    });
+    );
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.account_count, 0);
     assert.deepEqual(res.body.result.structuredContent.accounts, []);

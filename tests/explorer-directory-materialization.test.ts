@@ -200,13 +200,34 @@ test("account cache readers decline financially selected directories, including 
   for (const legacy of [
     { ...fresh, priced_registered_stake_tao: 0 },
     { ...fresh, rankings: { ...fresh.rankings, stake: [row] } },
-    { ...fresh, rankings: { ...fresh.rankings, emission: [{ ...row, total_stake_tao: 0 }] } },
-    { ...fresh, rankings: { ...fresh.rankings, reach: [{ ...row, stake_dominance: 0 }] } },
+    {
+      ...fresh,
+      rankings: {
+        ...fresh.rankings,
+        emission: [{ ...row, total_stake_tao: 0 }],
+      },
+    },
+    {
+      ...fresh,
+      rankings: { ...fresh.rankings, reach: [{ ...row, stake_dominance: 0 }] },
+    },
   ]) {
-    assert.equal(await readCurrentAccountDirectory({ get: async () => legacy }), null);
-    assert.equal(materializationFromUnknown({ ...materialization, accounts: legacy }), null);
+    assert.equal(
+      await readCurrentAccountDirectory({ get: async () => legacy }),
+      null,
+    );
+    assert.equal(
+      materializationFromUnknown({ ...materialization, accounts: legacy }),
+      null,
+    );
   }
-  assert.deepEqual(await readCurrentAccountDirectory({ get: async () => fresh }), fresh);
-  assert.deepEqual(materializationFromUnknown(materialization), materialization);
+  assert.deepEqual(
+    await readCurrentAccountDirectory({ get: async () => fresh }),
+    fresh,
+  );
+  assert.deepEqual(
+    materializationFromUnknown(materialization),
+    materialization,
+  );
   assert.equal(fresh.rankings.emission[0]!.total_emission_tao, 8);
 });

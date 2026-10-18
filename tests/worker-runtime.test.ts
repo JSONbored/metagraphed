@@ -1518,7 +1518,9 @@ describe("Worker runtime", () => {
     ]) {
       for (const network of ["", "finney/"]) {
         const response = await handleRequest(
-          new Request(`https://metagraph.sh/metagraph/${network}compare/validators.json`),
+          new Request(
+            `https://metagraph.sh/metagraph/${network}compare/validators.json`,
+          ),
           {
             METAGRAPH_ARCHIVE: {
               get: async () => ({ json: async () => data }),
@@ -1581,7 +1583,11 @@ describe("Worker runtime", () => {
           );
         }
       }
-      assert.equal(cacheReads, 0, "legacy static cache bodies are not consulted");
+      assert.equal(
+        cacheReads,
+        0,
+        "legacy static cache bodies are not consulted",
+      );
       assert.equal(storedReads, 0, "a live-only route has no stored fallback");
     } finally {
       globalWithCaches.caches = previousCaches;

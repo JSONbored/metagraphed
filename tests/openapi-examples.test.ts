@@ -259,9 +259,8 @@ describe("membership examples describe available measurements", () => {
   type ExampleRow = Record<string, unknown>;
 
   function workedExample(routePath: string, contentType = "application/json") {
-    const media = openapi.paths[routePath]?.get?.responses?.["200"]?.content?.[
-      contentType
-    ];
+    const media =
+      openapi.paths[routePath]?.get?.responses?.["200"]?.content?.[contentType];
     assert.ok(media, `${routePath} ${contentType}: expected a response`);
     const name = Object.keys(media.examples ?? {})[0];
     assert.ok(name, `${routePath} ${contentType}: expected an example`);
@@ -365,7 +364,9 @@ describe("membership examples describe available measurements", () => {
         ...componentSchemas,
         ValidatorHistoryArtifact: {
           type: "object",
-          properties: { points: { type: "array", items: { const: scopedPoint } } },
+          properties: {
+            points: { type: "array", items: { const: scopedPoint } },
+          },
         },
       } as unknown as Row,
       [route],
@@ -414,7 +415,11 @@ describe("membership examples describe available measurements", () => {
 
   test("account examples clear principal-derived values and omit the unavailable stake ranking", () => {
     const data = exampleData("/api/v1/accounts/{ss58}/portfolio");
-    assertUnavailable(data, ["total_stake_tao", "overall_yield", "stake_concentration"]);
+    assertUnavailable(data, [
+      "total_stake_tao",
+      "overall_yield",
+      "stake_concentration",
+    ]);
     assert.equal(data.total_emission_tao, 0.5);
     const position = (data.positions as ExampleRow[])[0]!;
     assertUnavailable(position, ["stake_alpha", "yield"]);
@@ -426,7 +431,10 @@ describe("membership examples describe available measurements", () => {
     const rankings = directory.rankings as Record<string, ExampleRow[]>;
     assert.deepEqual(rankings.stake, []);
     for (const metric of ["emission", "reach"]) {
-      assertUnavailable(rankings[metric]![0]!, ["total_stake_tao", "stake_dominance"]);
+      assertUnavailable(rankings[metric]![0]!, [
+        "total_stake_tao",
+        "stake_dominance",
+      ]);
       assert.equal(rankings[metric]![0]!.total_emission_tao, 0.5);
     }
   });
@@ -436,9 +444,14 @@ describe("membership examples describe available measurements", () => {
     const unrelated = { ...route, id: "unrelated-example" };
     const registry = buildOpenApiExampleRegistry(componentSchemas, [unrelated]);
     const name = registry.jsonNameByRouteId.get(unrelated.id)!;
-    const original = (registry.examples[name] as { value: { data: ExampleRow; meta: unknown } }).value;
+    const original = (
+      registry.examples[name] as { value: { data: ExampleRow; meta: unknown } }
+    ).value;
     assert.equal(original.data.total_stake_tao, 0.5);
-    assert.equal((original.data.positions as ExampleRow[])[0]!.stake_alpha, 0.5);
+    assert.equal(
+      (original.data.positions as ExampleRow[])[0]!.stake_alpha,
+      0.5,
+    );
     assert.deepEqual(
       (workedExample(route.path) as { meta: unknown }).meta,
       original.meta,

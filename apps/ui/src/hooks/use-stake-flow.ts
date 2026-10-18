@@ -283,7 +283,8 @@ export function createStakeConfirmation(
         ? alphaToRawAlpha(quotedAmountInput)
         : taoToRao(quotedAmountInput);
     if (typedRaw <= 0n) return null;
-    if ((intent.action === "stake" || intent.unit === "alpha") && typedRaw !== quotedRaw) return null;
+    if ((intent.action === "stake" || intent.unit === "alpha") && typedRaw !== quotedRaw)
+      return null;
   } catch {
     return null;
   }
@@ -371,7 +372,15 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
   const [minStakeRao, setMinStakeRao] = useState<Rao | null>(null);
   const coldkeyAddress = wallet.wallet?.address ?? null;
   const intent = useMemo<StakeFlowIntent>(
-    () => ({ action, hotkey, netuid, amountInput, unit, tolerancePct, signerAddress: coldkeyAddress }),
+    () => ({
+      action,
+      hotkey,
+      netuid,
+      amountInput,
+      unit,
+      tolerancePct,
+      signerAddress: coldkeyAddress,
+    }),
     [action, hotkey, netuid, amountInput, unit, tolerancePct, coldkeyAddress],
   );
   const activeConfirmation = stakeConfirmationMatches(confirmation, intent) ? confirmation : null;
@@ -412,7 +421,8 @@ export function useStakeFlow(hotkey: string, netuid: number): UseStakeFlowResult
     netuid: number;
     value: number;
   } | null>(null);
-  const lastKnownSpotPriceTao = retainedSpotPrice?.netuid === netuid ? retainedSpotPrice.value : null;
+  const lastKnownSpotPriceTao =
+    retainedSpotPrice?.netuid === netuid ? retainedSpotPrice.value : null;
   const priorSpotPriceTao = lastKnownSpotPriceTao ?? bootstrapSpotPriceTao;
   const quoteAmount = resolveStakeQuoteAmount(action, unit, amountInput, priorSpotPriceTao);
   const quotePriceUnavailable =

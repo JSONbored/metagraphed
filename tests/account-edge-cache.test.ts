@@ -186,10 +186,9 @@ describe("the account edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const path = `/api/v1/accounts/${ADDR}/portfolio`;
-    const legacyKey =
-      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-        CONTRACT_VERSION,
-      )}/8800000/accounts${path}`;
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/8800000/accounts${path}`;
     cache.store.set(
       legacyKey,
       Response.json({ data: { total_stake_tao: 123, positions: [] } }),

@@ -5652,9 +5652,7 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
       env,
       // A warm legacy portfolio can contain unqualified capital. Keep it out
       // of the corrected response path even when the decode stamp is unchanged.
-      ACCOUNT_PORTFOLIO_PATH_PATTERN.test(
-        resolved.pathname.replace(/\/$/, ""),
-      )
+      ACCOUNT_PORTFOLIO_PATH_PATTERN.test(resolved.pathname.replace(/\/$/, ""))
         ? "account-portfolio-principal-unavailable"
         : ACCOUNT_EDGE_CACHE_LABEL,
       // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the

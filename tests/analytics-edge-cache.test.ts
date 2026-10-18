@@ -53,8 +53,7 @@ import { mockEnv, type Row } from "./row-type.ts";
 // transparent: same body, keyed on what changes the data, never caching errors.
 
 const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
-const VALIDATOR_HOTKEY =
-  "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const VALIDATOR_HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
 function validatorSnapshot() {
   return buildGlobalValidators(
@@ -1583,10 +1582,9 @@ describe("analytics edge cache", () => {
         })),
       };
       const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
-      const legacyKey =
-        `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-          CONTRACT_VERSION,
-        )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory${path}`;
+      const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory${path}`;
       cache.store.set(legacyKey, Response.json({ data: legacy }));
       let sourceReads = 0;
       const env = {
@@ -1838,10 +1836,9 @@ describe("analytics edge cache", () => {
       priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     };
-    const legacyKey =
-      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-        CONTRACT_VERSION,
-      )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`;
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`;
     cache.store.set(
       legacyKey,
       Response.json({
@@ -1891,10 +1888,9 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const path = "/api/v1/accounts?sort=total_stake&limit=20";
-    const legacyKey =
-      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-        CONTRACT_VERSION,
-      )}/${encodeURIComponent(LAST_RUN_AT)}/accounts-list${path}`;
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/${encodeURIComponent(LAST_RUN_AT)}/accounts-list${path}`;
     cache.store.set(
       legacyKey,
       Response.json({

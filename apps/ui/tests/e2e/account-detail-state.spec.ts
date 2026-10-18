@@ -159,7 +159,9 @@ test.describe("account detail query states", () => {
     await expect(positions.getByText("Share of holdings", { exact: true })).toHaveCount(0);
     await expect(positions.locator("[data-mg-rails]")).toHaveCount(0);
     await expect(page.locator(".mg-fact").filter({ hasText: "Staked value" })).toContainText("—");
-    await expect(page.locator(".mg-fact").filter({ hasText: "Staked value" })).not.toContainText("τ");
+    await expect(page.locator(".mg-fact").filter({ hasText: "Staked value" })).not.toContainText(
+      "τ",
+    );
     await expect(page.getByText("Balance (free + reserved)", { exact: true })).toBeVisible();
     await expect(positions).toContainText("authoritative quantity basis");
     await expect(positions).toContainText("Root holdings are not covered");
@@ -201,10 +203,12 @@ test.describe("account detail query states", () => {
     await expect(page.locator("#positions").getByRole("status")).toHaveText(
       "Position relationship coverage is unavailable.",
     );
-    await expect(page.locator(".mg-fact").filter({ hasText: "Recorded ties / subnets" })).toContainText(
-      "—",
-    );
-    await expect(page.getByText("No position relationships recorded in this response.")).toHaveCount(0);
+    await expect(
+      page.locator(".mg-fact").filter({ hasText: "Recorded ties / subnets" }),
+    ).toContainText("—");
+    await expect(
+      page.getByText("No position relationships recorded in this response."),
+    ).toHaveCount(0);
     await page.locator("#keys").scrollIntoViewIfNeeded();
     await expect(page.locator("#keys")).toContainText(
       "Incomplete position coverage · returned relationships only",

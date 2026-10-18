@@ -6025,12 +6025,13 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     const env = {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       DATA_API: {
-        fetch: async () => Response.json({
-          schema_version: 1,
-          sort: "total_stake",
-          validator_count: 1,
-          validators: [{ hotkey: "legacy-rank", total_stake_tao: 1000 }],
-        }),
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            validator_count: 1,
+            validators: [{ hotkey: "legacy-rank", total_stake_tao: 1000 }],
+          }),
       },
     };
     const { status, body } = await gql(
@@ -6070,16 +6071,21 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       "{ validators { total items { hotkey total_stake_tao stake_dominance } } }",
       {
         METAGRAPH_NEURONS_SOURCE: "data-api",
-        DATA_API: { fetch: async () => Response.json({
-          validator_count: 80,
-          validators: [{
-            hotkey: "unknown-selection",
-            total_stake_tao: null,
-            root_stake_tao: null,
-            alpha_stake_tao: null,
-            apy_estimate: null,
-          }],
-        }) },
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              validator_count: 80,
+              validators: [
+                {
+                  hotkey: "unknown-selection",
+                  total_stake_tao: null,
+                  root_stake_tao: null,
+                  alpha_stake_tao: null,
+                  apy_estimate: null,
+                },
+              ],
+            }),
+        },
       },
     );
     assert.equal(body.errors, undefined);
@@ -6159,7 +6165,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(body.data.validator.stake_dominance, null);
     for (const window of ["1d", "1w", "1m"]) {
       assert.equal(body.data.validator[`realized_return_${window}`], null);
-      assert.equal(body.data.validator[`realized_return_${window}_as_of`], null);
+      assert.equal(
+        body.data.validator[`realized_return_${window}_as_of`],
+        null,
+      );
     }
     assert.equal(body.data.validator.total_emission_tao, 8);
     assert.equal(body.data.validator.avg_validator_trust, 0.8);
@@ -7776,13 +7785,23 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 
   test("accounts: a capped legacy page declines rather than retaining its selected identities", async () => {
     const { body } = await gql(
-      '{ accounts(limit: 1) { total items { hotkey total_stake_tao } } }',
+      "{ accounts(limit: 1) { total items { hotkey total_stake_tao } } }",
       {
         METAGRAPH_NEURONS_SOURCE: "data-api",
-        DATA_API: { fetch: async () => Response.json({
-          account_count: 500,
-          accounts: [{ hotkey: SS58, total_stake_tao: 0, stake_dominance: 0, subnets: [] }],
-        }) },
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              account_count: 500,
+              accounts: [
+                {
+                  hotkey: SS58,
+                  total_stake_tao: 0,
+                  stake_dominance: 0,
+                  subnets: [],
+                },
+              ],
+            }),
+        },
       },
     );
     assert.equal(body.errors, undefined);
@@ -10723,7 +10742,15 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
             apy_estimate_eligible_subnet_count: 2,
             total_emission_tao: 6,
             take: 0.18,
-            subnets: [{ netuid: 3, uid: 5, stake_alpha: 1700, emission_alpha: 6, validator_trust: 0.9 }],
+            subnets: [
+              {
+                netuid: 3,
+                uid: 5,
+                stake_alpha: 1700,
+                emission_alpha: 6,
+                validator_trust: 0.9,
+              },
+            ],
           });
         },
       },
@@ -10747,7 +10774,11 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(validator.total_emission_tao, 6);
     assert.equal(validator.take, 0.18);
     assert.deepEqual(validator.subnet_context, {
-      netuid: 3, uid: 5, stake_alpha: 1700, emission_alpha: 6, validator_trust: 0.9,
+      netuid: 3,
+      uid: 5,
+      stake_alpha: 1700,
+      emission_alpha: 6,
+      validator_trust: 0.9,
     });
   });
 

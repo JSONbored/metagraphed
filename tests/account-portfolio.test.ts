@@ -349,7 +349,10 @@ describe("independent portfolio emission pricing", () => {
     assert.equal(sn1.stake_alpha, null);
     assert.equal(sn1.emission_alpha, 40);
     assert.equal(out.position_count, 3);
-    assert.deepEqual(out.positions.map((position) => position.netuid), [0, 1, 4]);
+    assert.deepEqual(
+      out.positions.map((position) => position.netuid),
+      [0, 1, 4],
+    );
   });
 });
 
@@ -399,7 +402,13 @@ describe("unavailableAccountPortfolioCapital", () => {
       assert.deepEqual(guarded.positions, [
         { netuid: 7, uid: 2, stake_alpha: null, active: false, yield: null },
         { netuid: 7, uid: 4, stake_alpha: null, trust: 0.8, yield: null },
-        { netuid: 12, uid: 8, stake_alpha: null, emission_alpha: 30, yield: null },
+        {
+          netuid: 12,
+          uid: 8,
+          stake_alpha: null,
+          emission_alpha: 30,
+          yield: null,
+        },
       ]);
       assert.deepEqual(
         original,

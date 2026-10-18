@@ -54,7 +54,9 @@ test("legacy history projection copies financial fields without mutating source 
     dividend_efficiency: null,
   });
   assert.deepEqual(original, before);
-  assert.deepEqual(unavailableValidatorHistoryCapital({ take: 0 }), { take: 0 });
+  assert.deepEqual(unavailableValidatorHistoryCapital({ take: 0 }), {
+    take: 0,
+  });
 });
 
 describe("buildValidatorHistory", () => {

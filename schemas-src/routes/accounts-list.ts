@@ -84,7 +84,9 @@ const AccountsListEntrySchema = z
     subnets: z
       .array(AccountsListSubnetSchema)
       .max(10)
-      .describe("First ten recorded memberships in ascending netuid/uid order."),
+      .describe(
+        "First ten recorded memberships in ascending netuid/uid order.",
+      ),
   })
   .strict();
 

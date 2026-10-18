@@ -73,7 +73,9 @@ test.describe("operator identity compatibility", () => {
 });
 
 test.describe("directory secondary analytics", () => {
-  test("account directory SSR withholds legacy capital and ownership claims", async ({ request }) => {
+  test("account directory SSR withholds legacy capital and ownership claims", async ({
+    request,
+  }) => {
     const response = await request.get("/accounts");
     expect(response.status()).toBe(200);
     const html = await response.text();
@@ -85,7 +87,9 @@ test.describe("directory secondary analytics", () => {
     expect(html).not.toContain("Accounts ranked by stake");
   });
 
-  test("keeps independent hotkey rankings when legacy capital fields are present", async ({ page }) => {
+  test("keeps independent hotkey rankings when legacy capital fields are present", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 812 });
     await gotoThroughRestart(page, "/settings");
     await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
@@ -127,18 +131,27 @@ test.describe("directory secondary analytics", () => {
     await expect(directory.locator('a[href="/accounts/5EmissionFirst"]')).toBeVisible();
     await expect(directory.locator('a[href="/accounts/5SharedOwner"]')).toHaveCount(0);
     await expect(directory.locator('a[href="/accounts/5StakeOnly"]')).toHaveCount(0);
-    await expect(directory.getByText(/2 hotkeys shown from the bounded reach ranking/)).toBeVisible();
-    await expect(page.locator(".mg-hero").getByText("Priced stake", { exact: true })).toHaveCount(0);
+    await expect(
+      directory.getByText(/2 hotkeys shown from the bounded reach ranking/),
+    ).toBeVisible();
+    await expect(page.locator(".mg-hero").getByText("Priced stake", { exact: true })).toHaveCount(
+      0,
+    );
     await expect(page.getByText(/of priced stake/)).toHaveCount(0);
 
     await page.getByRole("radio", { name: "Emission", exact: true }).click();
     await expect(directory.locator('a[href="/accounts/5ReachFirst"]')).toHaveCount(0);
     await expect(directory.locator('a[href="/accounts/5EmissionFirst"]')).toBeVisible();
     await expect(directory.getByText("9.00τ", { exact: true })).toBeVisible();
-    await expect(directory.getByText(/1 hotkey shown from the bounded emission ranking/)).toBeVisible();
+    await expect(
+      directory.getByText(/1 hotkey shown from the bounded emission ranking/),
+    ).toBeVisible();
 
     capturedAt = null;
-    await page.locator(".mg-live-meta").getByRole("button", { name: "refresh", exact: true }).click();
+    await page
+      .locator(".mg-live-meta")
+      .getByRole("button", { name: "refresh", exact: true })
+      .click();
     await expect(page.locator(".mg-live-meta")).toContainText("Updated —");
   });
 

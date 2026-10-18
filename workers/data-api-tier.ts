@@ -172,8 +172,12 @@ function hasLegacyValidatorCapital(value: unknown): boolean {
   );
 }
 
-function isRecordCollection(value: unknown): value is Record<string, unknown>[] {
-  return Array.isArray(value) && value.every((row) => asJsonObject(row) !== null);
+function isRecordCollection(
+  value: unknown,
+): value is Record<string, unknown>[] {
+  return (
+    Array.isArray(value) && value.every((row) => asJsonObject(row) !== null)
+  );
 }
 
 /**
@@ -299,9 +303,8 @@ export function normalizeNeuronCapitalForRoute(
 
 async function canonicalNeuronRoute(request: Request): Promise<string> {
   // The directory fast entry must not initialize the full contract registry.
-  const { contractPathForPathname, NETWORK_ALIASES } = await import(
-    "../src/contracts.ts"
-  );
+  const { contractPathForPathname, NETWORK_ALIASES } =
+    await import("../src/contracts.ts");
   const networkPrefix = new RegExp(
     `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
   );

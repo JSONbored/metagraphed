@@ -115,7 +115,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(directory.captured_at, "2026-08-29T00:00:00.000Z");
     assert.equal(directory.block_number, 8_950_000);
 
-    const team = directory.operators.find((entry) => entry.operator_id === "coldkey:ck-team")!;
+    const team = directory.operators.find(
+      (entry) => entry.operator_id === "coldkey:ck-team",
+    )!;
     assert.equal(team.operator_id, "coldkey:ck-team");
     assert.equal(team.ownership_basis, "single_coldkey");
     assert.equal(team.identity_name, "Tensor Team");
@@ -135,7 +137,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(team.apy_estimate, null);
     assert.equal(team.stake_dominance, null);
 
-    const anonymous = directory.operators.filter((entry) => entry.operator_id !== "coldkey:ck-team");
+    const anonymous = directory.operators.filter(
+      (entry) => entry.operator_id !== "coldkey:ck-team",
+    );
     assert.deepEqual(
       anonymous.map((entry) => entry.primary_hotkey),
       ["anonymous-a", "anonymous-b"],
@@ -443,27 +447,29 @@ describe("buildValidatorOperatorDirectory", () => {
       block_number: 8_950_000,
       validator_count: 2,
       operator_count: 1,
-      operators: [{
-        operator_id: "coldkey:ck-a",
-        ownership_basis: "single_coldkey",
-        identity_name: "Observed name",
-        hotkeys: [
-          { hotkey: "hk-a", total_stake_tao: 1000, take: 0.1 },
-          { hotkey: "hk-b", total_stake_tao: 2, take: null },
-        ],
-        hotkey_count: 2,
-        primary_hotkey: "hk-a",
-        coldkey: "ck-a",
-        total_stake_tao: 1002,
-        total_emission_tao: 10,
-        nominator_count: null,
-        membership_count: 3,
-        uid_count: 3,
-        take_min: 0.1,
-        take_max: 0.1,
-        apy_estimate: 0.25,
-        stake_dominance: 0.75,
-      }],
+      operators: [
+        {
+          operator_id: "coldkey:ck-a",
+          ownership_basis: "single_coldkey",
+          identity_name: "Observed name",
+          hotkeys: [
+            { hotkey: "hk-a", total_stake_tao: 1000, take: 0.1 },
+            { hotkey: "hk-b", total_stake_tao: 2, take: null },
+          ],
+          hotkey_count: 2,
+          primary_hotkey: "hk-a",
+          coldkey: "ck-a",
+          total_stake_tao: 1002,
+          total_emission_tao: 10,
+          nominator_count: null,
+          membership_count: 3,
+          uid_count: 3,
+          take_min: 0.1,
+          take_max: 0.1,
+          apy_estimate: 0.25,
+          stake_dominance: 0.75,
+        },
+      ],
     });
     assert.equal(hasLegacyValidatorOperatorCapital(cached), true);
     assert.equal(cached.operators[0]!.total_stake_tao, 1002);
@@ -474,7 +480,10 @@ describe("buildValidatorOperatorDirectory", () => {
     "even zero legacy %s invalidates cached selection",
     (field) => {
       const current = buildValidatorOperatorDirectory({
-        validators: [validator({ hotkey: "hk-a" }), validator({ hotkey: "hk-b" })],
+        validators: [
+          validator({ hotkey: "hk-a" }),
+          validator({ hotkey: "hk-b" }),
+        ],
       });
       assert.equal(hasLegacyValidatorOperatorCapital(current), false);
       const operator = current.operators[0]!;

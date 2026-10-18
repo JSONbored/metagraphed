@@ -960,7 +960,9 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
   assert.equal(body.validator_count, 4);
   assert.equal(body.operator_count, 3);
   const operators = body.operators as Row[];
-  const team = operators.find((entry) => entry.operator_id === "coldkey:5TeamColdLarge")!;
+  const team = operators.find(
+    (entry) => entry.operator_id === "coldkey:5TeamColdLarge",
+  )!;
   assert.equal(team.identity_name, "Tensor Team");
   assert.equal(team.ownership_basis, "single_coldkey");
   assert.equal(team.hotkey_count, 2);
@@ -972,10 +974,14 @@ test("GET /api/v1/validators/operators serves the grouped website projection", a
     (team.hotkeys as Row[]).map((entry) => entry.hotkey),
     ["5SameOwner", "5TeamLarge"],
   );
-  const anonymous = operators.find((entry) => entry.primary_hotkey === "5Anonymous")!;
+  const anonymous = operators.find(
+    (entry) => entry.primary_hotkey === "5Anonymous",
+  )!;
   assert.equal(anonymous.identity_name, null);
   assert.deepEqual(anonymous.hotkeys, []);
-  const small = operators.find((entry) => entry.operator_id === "coldkey:5TeamColdSmall")!;
+  const small = operators.find(
+    (entry) => entry.operator_id === "coldkey:5TeamColdSmall",
+  )!;
   assert.equal(small.identity_name, "Tensor Team");
   assert.equal(small.hotkey_count, 1);
 });
@@ -1344,8 +1350,15 @@ test("GET /api/v1/accounts/:ss58/portfolio preserves memberships without pricing
   assert.equal(body.overall_yield, null);
   assert.equal(body.stake_concentration, null);
   const positions = body.positions as Row[];
-  assert.deepEqual(positions.map((position) => position.netuid), [0, 7]);
-  assert.ok(positions.every((position) => position.stake_alpha === null && position.yield === null));
+  assert.deepEqual(
+    positions.map((position) => position.netuid),
+    [0, 7],
+  );
+  assert.ok(
+    positions.every(
+      (position) => position.stake_alpha === null && position.yield === null,
+    ),
+  );
 });
 
 test("GET /api/v1/accounts/:ss58/subnets lists the live registrations", async () => {

@@ -297,7 +297,10 @@ describe("buildAccountsList", () => {
       );
       assert.equal(data.sort, sort);
       assert.equal(data.account_count, 2);
-      assert.deepEqual(data.accounts.map((entry) => entry.hotkey), ["hk-a"]);
+      assert.deepEqual(
+        data.accounts.map((entry) => entry.hotkey),
+        ["hk-a"],
+      );
     }
   });
 
@@ -429,7 +432,11 @@ describe("buildAccountsList", () => {
         { sort },
       );
       assert.equal(data.sort, sort, sort);
-      assert.deepEqual(data.accounts.map((entry) => entry.hotkey), hotkeys, sort);
+      assert.deepEqual(
+        data.accounts.map((entry) => entry.hotkey),
+        hotkeys,
+        sort,
+      );
     }
   });
 });

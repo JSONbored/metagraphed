@@ -12,7 +12,9 @@ async function scrollSectionIntoView(page: Page, id: string) {
 }
 
 test.describe("Validator detail secondary query states", () => {
-  test("defers movement evidence and omits unsupported capital-history and peer reads", async ({ page }) => {
+  test("defers movement evidence and omits unsupported capital-history and peer reads", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     let release: (() => void) | undefined;
     const continueReads = new Promise<void>((resolve) => {

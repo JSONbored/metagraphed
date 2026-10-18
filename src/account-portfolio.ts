@@ -81,7 +81,9 @@ export function unavailableAccountPortfolioCapital(portfolio: Row): Row {
       ? {
           positions: portfolio.positions
             .map((value: unknown) =>
-              value !== null && typeof value === "object" && !Array.isArray(value)
+              value !== null &&
+              typeof value === "object" &&
+              !Array.isArray(value)
                 ? { ...value, stake_alpha: null, yield: null }
                 : value,
             )

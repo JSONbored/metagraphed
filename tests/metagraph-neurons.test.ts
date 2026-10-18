@@ -847,22 +847,25 @@ describe("metagraph-neurons builders", () => {
     { label: "non-root voting weight", netuid: 3, stake_tao: 1000 },
     { label: "zero voting weight", netuid: 3, stake_tao: 0 },
     { label: "missing voting weight", netuid: 3, stake_tao: null },
-  ])("$label never establishes investment capital or APY", ({ netuid, stake_tao }) => {
-    const rows = [{ ...ROW, netuid, uid: 0, hotkey: "hk-a", stake_tao }];
-    const options = { tempoByNetuid: new Map([[netuid, 360]]) };
-    const list = buildGlobalValidators(rows, options);
-    const detail = buildValidatorDetail(rows, "hk-a", options);
-    for (const entry of [list.validators[0], detail]) {
-      assert.equal(entry.total_stake_tao, null);
-      assert.equal(entry.root_stake_tao, null);
-      assert.equal(entry.alpha_stake_tao, null);
-      assert.equal(entry.apy_estimate, null);
-      assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
-    }
-    assert.equal(list.validators[0].stake_dominance, null);
-    assert.equal(list.validators[0].subnet_count, 1);
-    assert.equal(detail.subnets.length, 1);
-  });
+  ])(
+    "$label never establishes investment capital or APY",
+    ({ netuid, stake_tao }) => {
+      const rows = [{ ...ROW, netuid, uid: 0, hotkey: "hk-a", stake_tao }];
+      const options = { tempoByNetuid: new Map([[netuid, 360]]) };
+      const list = buildGlobalValidators(rows, options);
+      const detail = buildValidatorDetail(rows, "hk-a", options);
+      for (const entry of [list.validators[0], detail]) {
+        assert.equal(entry.total_stake_tao, null);
+        assert.equal(entry.root_stake_tao, null);
+        assert.equal(entry.alpha_stake_tao, null);
+        assert.equal(entry.apy_estimate, null);
+        assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+      }
+      assert.equal(list.validators[0].stake_dominance, null);
+      assert.equal(list.validators[0].subnet_count, 1);
+      assert.equal(detail.subnets.length, 1);
+    },
+  );
 
   test.each([
     { raw: undefined, expected: null },
@@ -873,16 +876,21 @@ describe("metagraph-neurons builders", () => {
     { raw: Number.POSITIVE_INFINITY, expected: null },
     { raw: 0, expected: 0 },
     { raw: "120.5", expected: 120.5 },
-  ])("raw voting weight $raw stays measured or explicitly unknown", ({ raw, expected }) => {
-    const rows = [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: raw }];
-    const list = buildGlobalValidators(rows).validators[0];
-    const detail = buildValidatorDetail(rows, "hk-a");
-    for (const entry of [list, detail]) {
-      assert.equal(entry.subnets[0].stake_alpha, expected);
-      assert.equal(entry.total_stake_tao, null);
-      assert.equal(entry.apy_estimate, null);
-    }
-  });
+  ])(
+    "raw voting weight $raw stays measured or explicitly unknown",
+    ({ raw, expected }) => {
+      const rows = [
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: raw },
+      ];
+      const list = buildGlobalValidators(rows).validators[0];
+      const detail = buildValidatorDetail(rows, "hk-a");
+      for (const entry of [list, detail]) {
+        assert.equal(entry.subnets[0].stake_alpha, expected);
+        assert.equal(entry.total_stake_tao, null);
+        assert.equal(entry.apy_estimate, null);
+      }
+    },
+  );
 
   test("repeated root influence never becomes independent capital across subnets", () => {
     const rows = [0, 3, 8].map((netuid) => ({
@@ -894,8 +902,15 @@ describe("metagraph-neurons builders", () => {
       emission_tao: 1,
     }));
     const options = {
-      priceByNetuid: new Map([[3, 0.5], [8, 2]]),
-      tempoByNetuid: new Map([[0, 100], [3, 360], [8, 360]]),
+      priceByNetuid: new Map([
+        [3, 0.5],
+        [8, 2],
+      ]),
+      tempoByNetuid: new Map([
+        [0, 100],
+        [3, 360],
+        [8, 360],
+      ]),
     };
     for (const entry of [
       buildGlobalValidators(rows, options).validators[0],
@@ -912,8 +927,16 @@ describe("metagraph-neurons builders", () => {
   });
 
   test("capital schemas preserve nullable compatibility keys with explicit provenance", () => {
-    for (const schema of [GlobalValidatorEntrySchema, ValidatorDetailArtifactSchema]) {
-      for (const field of ["total_stake_tao", "root_stake_tao", "alpha_stake_tao", "apy_estimate"] as const) {
+    for (const schema of [
+      GlobalValidatorEntrySchema,
+      ValidatorDetailArtifactSchema,
+    ]) {
+      for (const field of [
+        "total_stake_tao",
+        "root_stake_tao",
+        "alpha_stake_tao",
+        "apy_estimate",
+      ] as const) {
         assert.equal(schema.shape[field].parse(null), null);
         assert.equal(schema.shape[field].meta()?.deprecated, true);
         assert.match(schema.shape[field].description ?? "", /always null/);
@@ -1363,7 +1386,9 @@ describe("metagraph-neurons builders", () => {
       hotkey: "hk-a",
       stake_tao: 100 + netuid,
     }));
-    const options = { tempoByNetuid: new Map(rows.map((row) => [row.netuid, 360])) };
+    const options = {
+      tempoByNetuid: new Map(rows.map((row) => [row.netuid, 360])),
+    };
     const list = buildGlobalValidators(rows, options).validators[0];
     const detail = buildValidatorDetail(rows, "hk-a", options);
     assert.equal(list.subnets.length, 10);
@@ -1581,7 +1606,10 @@ describe("metagraph-neurons builders", () => {
       Number(expectedTotalRao / 1_000_000_000n) +
       Number(expectedTotalRao % 1_000_000_000n) / 1e9;
     const entry = data.validators.find((v: Row) => v.hotkey === "hk-precision");
-    assert.equal(entry.total_emission_tao, Math.round(expectedTotal * 1e9) / 1e9);
+    assert.equal(
+      entry.total_emission_tao,
+      Math.round(expectedTotal * 1e9) / 1e9,
+    );
   });
 
   test("builders drop malformed rows and count only real neurons", () => {
