@@ -2068,6 +2068,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/subnet-price-share-composition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch an estimated subnet price-share timeline
+         * @description Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.
+         */
+        get: operations["subnetPriceShareComposition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/transfer-pairs": {
         parameters: {
             query?: never;
@@ -12738,6 +12758,43 @@ export interface components {
             schema_version: number;
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
+        };
+        SubnetPriceShareCompositionArtifact: {
+            /** @constant */
+            cohort_limit: 6;
+            degraded?: components["schemas"]["UnavailableDegraded"];
+            newest_day: string | null;
+            oldest_day: string | null;
+            /** @constant */
+            other_label: "Other artifact-normalized price share";
+            point_count: number | null;
+            points: components["schemas"]["SubnetPriceShareCompositionPoint"][];
+            /** @constant */
+            quality: "estimated_observed_price_set";
+            /** @constant */
+            row_limit: 16384;
+            /** @constant */
+            schema_version: 1;
+            series: components["schemas"]["SubnetPriceShareCompositionSeries"][];
+            /** @constant */
+            window_days: 56;
+        };
+        SubnetPriceShareCompositionPoint: {
+            /**
+             * Format: date-time
+             * @description Persisted writer timestamp shared by the day's numeric shares; not an immutable source-pass ID or proof of complete chain coverage.
+             */
+            captured_at: string;
+            /** Format: date */
+            day: string;
+            /** @description Exact six-decimal residual of one after selected shares; not a stored bucket, sum of unselected rows, or network total. */
+            other_share: number;
+            /** @description Recorded six-decimal shares in the fixed series order. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
+            shares: number[];
+        };
+        SubnetPriceShareCompositionSeries: {
+            /** @description A netuid, not a project identity across netuid reuse. */
+            netuid: number;
         };
         SubnetProfile: {
             candidate_count: number;
@@ -31590,6 +31647,136 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetPriceShareComposition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "cohort_limit": 6,
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "newest_day": "2026-06-01",
+                     *         "oldest_day": "2026-06-01",
+                     *         "other_label": "Other artifact-normalized price share",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "day": "2026-06-01",
+                     *             "other_share": 0.5,
+                     *             "shares": [
+                     *               0.5
+                     *             ]
+                     *           }
+                     *         ],
+                     *         "quality": "estimated_observed_price_set",
+                     *         "row_limit": 16384,
+                     *         "schema_version": 1,
+                     *         "series": [
+                     *           {
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "window_days": 56
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetPriceShareCompositionArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

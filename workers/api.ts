@@ -8307,8 +8307,17 @@ async function dispatchLiveChainRoute(
   }
   // #11550: bounded observed price shares, using the existing short cache.
   if (pathname === "/api/v1/chain/subnet-price-share-composition") {
-    return withEdgeCache(request, ctx, env, "subnet-price-share-composition", (cacheRequest) =>
-      handleSubnetPriceShareComposition(cacheRequest, env, new URL(cacheRequest.url)),
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "subnet-price-share-composition",
+      (cacheRequest) =>
+        handleSubnetPriceShareComposition(
+          cacheRequest,
+          env,
+          new URL(cacheRequest.url),
+        ),
     );
   }
   // #9628: the network-wide concentration series, before its bare route.

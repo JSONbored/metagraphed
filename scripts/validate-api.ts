@@ -1750,7 +1750,10 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(Array.isArray(body.data.points), true);
       assert.equal(body.data.points.length <= 56, true);
       assert.equal(body.data.series.length <= 6, true);
-      assert.equal(body.data.point_count, body.data.degraded ? null : body.data.points.length);
+      assert.equal(
+        body.data.point_count,
+        body.data.degraded ? null : body.data.points.length,
+      );
     },
   ],
   [

@@ -240,7 +240,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_chain_concentration_history: {
     operation: "chain-concentration-history",
   },
-  get_subnet_price_share_composition: { operation: "subnet-price-share-composition" },
+  get_subnet_price_share_composition: {
+    operation: "subnet-price-share-composition",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

@@ -647,9 +647,18 @@ register(
 );
 register(PipelineHistoryPointSchema, "PipelineHistoryPoint");
 register(PipelineHistoryArtifactSchema, "PipelineHistoryArtifact");
-register(SubnetPriceShareCompositionSeriesSchema, "SubnetPriceShareCompositionSeries");
-register(SubnetPriceShareCompositionPointSchema, "SubnetPriceShareCompositionPoint");
-register(SubnetPriceShareCompositionArtifactSchema, "SubnetPriceShareCompositionArtifact");
+register(
+  SubnetPriceShareCompositionSeriesSchema,
+  "SubnetPriceShareCompositionSeries",
+);
+register(
+  SubnetPriceShareCompositionPointSchema,
+  "SubnetPriceShareCompositionPoint",
+);
+register(
+  SubnetPriceShareCompositionArtifactSchema,
+  "SubnetPriceShareCompositionArtifact",
+);
 register(DeregistrationHistoryPointSchema, "DeregistrationHistoryPoint");
 register(DeregistrationHistoryArtifactSchema, "DeregistrationHistoryArtifact");
 register(AttributionCandidateSchema, "AttributionCandidate");

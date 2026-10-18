@@ -1,4 +1,5 @@
 import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../schemas-src/legacy-emission-share.ts";
+import { buildSubnetPriceShareComposition } from "./subnet-price-share-composition.ts";
 import {
   CONTRACT_VERSION,
   ARTIFACT_BASE_PATH,
@@ -6388,7 +6389,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   // not recognise, so /api/v1/ask leads with `Generate` and says what it
   // generates.
   ask: "Generate a grounded answer with citations",
-  "subnet-price-share-composition": "Fetch an estimated subnet price-share timeline",
+  "subnet-price-share-composition":
+    "Fetch an estimated subnet price-share timeline",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
   "subnet-health": "Fetch probe-derived health for one subnet",
@@ -6898,6 +6900,12 @@ function openApiExampleForRoute(
   const example =
     rowOf(sampleFromSchema(responseSchema, componentSchemas)) ??
     EMPTY_CONTRACT_ROW;
+  if (entry.id === "subnet-price-share-composition") {
+    // The generic sampler includes optional degradation independently of the
+    // measurements. Use the canonical decline so the worked example cannot
+    // claim both an unavailable store and a populated timeline.
+    return { ...example, data: buildSubnetPriceShareComposition(null) };
+  }
   if (entry.id !== "fixture-detail") {
     return example;
   }

@@ -1409,6 +1409,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-price-share-composition",
+      "path": "/metagraph/chain/subnet-price-share-composition.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetPriceShareCompositionArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-emission-pipeline-history",
       "path": "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
       "retirement": null,
@@ -2597,7 +2606,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 173,
+    "mainnet_only_route_count": 174,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -10809,6 +10818,22 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/subnet-price-share-composition.json",
+      "cache": "short",
+      "description": "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.",
+      "id": "subnet-price-share-composition",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/subnet-price-share-composition",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/emission-pipeline/history.json",

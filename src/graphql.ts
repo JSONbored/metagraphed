@@ -3124,12 +3124,19 @@ const rootValue = {
       : buildChainConcentrationHistory(rows, args);
   },
 
-  async subnet_price_share_composition(_args: Record<string, never>, context: GqlContext) {
+  async subnet_price_share_composition(
+    _args: Record<string, never>,
+    context: GqlContext,
+  ) {
     return once(context, "subnet-price-share-composition", async () => {
       const nowMs = Date.now();
-      return buildSubnetPriceShareComposition(await loadSubnetPriceShareComposition(
-        readStore(context.env, SUBNET_SNAPSHOT_TABLES), { nowMs },
-      ), { nowMs });
+      return buildSubnetPriceShareComposition(
+        await loadSubnetPriceShareComposition(
+          readStore(context.env, SUBNET_SNAPSHOT_TABLES),
+          { nowMs },
+        ),
+        { nowMs },
+      );
     });
   },
 

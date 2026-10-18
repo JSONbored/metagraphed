@@ -54,7 +54,10 @@ const OWNER: Record<string, string[]> = {
   FAILURE_REASONS_TABLES: ["src/failure-reasons.ts"],
   INDEXER_LAG_TABLES: ["src/indexer-lag.ts"],
   CHAIN_CONCENTRATION_HISTORY_TABLES: ["src/chain-concentration-history.ts"],
-  SUBNET_SNAPSHOT_TABLES: ["src/emission-pipeline-history.ts", "src/subnet-price-share-composition.ts"],
+  SUBNET_SNAPSHOT_TABLES: [
+    "src/emission-pipeline-history.ts",
+    "src/subnet-price-share-composition.ts",
+  ],
   UPTIME_DAILY_TABLES: ["src/bulk-health-trends.ts"],
 };
 

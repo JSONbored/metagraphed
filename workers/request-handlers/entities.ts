@@ -6443,15 +6443,24 @@ export async function handleChainConcentrationHistory(
 }
 
 // #11550: one bounded read of estimated artifact-normalized price shares.
-export async function handleSubnetPriceShareComposition(request: Request, env: Env, url: URL) {
+export async function handleSubnetPriceShareComposition(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const nowMs = Date.now();
   const rows = await loadSubnetPriceShareComposition(
-    readStore(env, SUBNET_SNAPSHOT_TABLES), { nowMs },
+    readStore(env, SUBNET_SNAPSHOT_TABLES),
+    { nowMs },
   );
   const data = buildSubnetPriceShareComposition(rows, { nowMs });
-  const response = await envelopeResponse(request, { data, meta: { contract_version: contractVersion(env) } }, "short");
+  const response = await envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
   return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 

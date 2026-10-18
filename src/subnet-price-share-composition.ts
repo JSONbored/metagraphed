@@ -31,7 +31,8 @@ export async function loadSubnetPriceShareComposition(
   try {
     return await db.query<Row>(PRICE_SHARE_COMPOSITION_SQL, [
       new Date(today - PRICE_SHARE_COMPOSITION_DAYS * DAY_MS)
-        .toISOString().slice(0, 10),
+        .toISOString()
+        .slice(0, 10),
       new Date(today).toISOString().slice(0, 10),
       PRICE_SHARE_COMPOSITION_ROWS + 1,
     ]);
@@ -42,7 +43,13 @@ export async function loadSubnetPriceShareComposition(
 
 /** The writer rounds to six decimals. Accept only its representable grid. */
 function shareUnits(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) return null;
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 1
+  )
+    return null;
   const scaled = value * UNIT;
   const rounded = Math.round(scaled);
   return value === rounded / UNIT ? rounded : null;
@@ -61,14 +68,28 @@ function eligibleDay(day: string, rows: Row[], nowMs: number): Day | null {
   let total = 0;
   for (const row of rows) {
     const netuid = row.netuid;
-    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0 || netuid > 65535 || seen.has(netuid)) return null;
+    if (
+      typeof netuid !== "number" ||
+      !Number.isInteger(netuid) ||
+      netuid < 0 ||
+      netuid > 65535 ||
+      seen.has(netuid)
+    )
+      return null;
     seen.add(netuid);
     // An unpriced row is outside the observed numeric set. It cannot enter
     // the cohort or supply a zero for a selected netuid on another day.
     if (row.emission_share === null) continue;
     const units = shareUnits(row.emission_share);
     const timestamp = row.captured_at;
-    if (units === null || typeof timestamp !== "number" || !Number.isSafeInteger(timestamp) || timestamp <= 0 || timestamp > nowMs) return null;
+    if (
+      units === null ||
+      typeof timestamp !== "number" ||
+      !Number.isSafeInteger(timestamp) ||
+      timestamp <= 0 ||
+      timestamp > nowMs
+    )
+      return null;
     if (captured !== null && captured !== timestamp) return null;
     captured = timestamp;
     shares.set(netuid, units);
@@ -103,17 +124,31 @@ export function buildSubnetPriceShareComposition(
     return result;
   }
   const today = new Date(nowMs).toISOString().slice(0, 10);
-  const firstDay = new Date(Date.parse(today) - PRICE_SHARE_COMPOSITION_DAYS * DAY_MS).toISOString().slice(0, 10);
+  const firstDay = new Date(
+    Date.parse(today) - PRICE_SHARE_COMPOSITION_DAYS * DAY_MS,
+  )
+    .toISOString()
+    .slice(0, 10);
   const bounded = rows.slice(0, PRICE_SHARE_COMPOSITION_ROWS);
-  const boundary = rows.length > PRICE_SHARE_COMPOSITION_ROWS &&
-    bounded[bounded.length - 1].snapshot_date === rows[PRICE_SHARE_COMPOSITION_ROWS].snapshot_date
-    ? rows[PRICE_SHARE_COMPOSITION_ROWS].snapshot_date : null;
+  const boundary =
+    rows.length > PRICE_SHARE_COMPOSITION_ROWS &&
+    bounded[bounded.length - 1].snapshot_date ===
+      rows[PRICE_SHARE_COMPOSITION_ROWS].snapshot_date
+      ? rows[PRICE_SHARE_COMPOSITION_ROWS].snapshot_date
+      : null;
   const grouped = new Map<string, Row[]>();
   for (const row of bounded) {
     const day = row.snapshot_date;
-    if (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
-      !Number.isFinite(Date.parse(day)) || new Date(day).toISOString().slice(0, 10) !== day ||
-      day < firstDay || day >= today || day === boundary) continue;
+    if (
+      typeof day !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+      !Number.isFinite(Date.parse(day)) ||
+      new Date(day).toISOString().slice(0, 10) !== day ||
+      day < firstDay ||
+      day >= today ||
+      day === boundary
+    )
+      continue;
     const group = grouped.get(day) ?? [];
     group.push(row);
     grouped.set(day, group);
@@ -129,7 +164,8 @@ export function buildSubnetPriceShareComposition(
   // without changing which newest eligible date owns the cohort.
   const cohort = [...days[0].shares.entries()]
     .sort((a, b) => b[1] - a[1] || a[0] - b[0])
-    .slice(0, PRICE_SHARE_COMPOSITION_SERIES).map(([netuid]) => netuid);
+    .slice(0, PRICE_SHARE_COMPOSITION_SERIES)
+    .map(([netuid]) => netuid);
   result.series = cohort.map((netuid) => ({ netuid }));
   for (const day of days.reverse()) {
     if (!cohort.every((netuid) => day.shares.has(netuid))) continue;

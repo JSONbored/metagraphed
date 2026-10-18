@@ -12499,6 +12499,68 @@
       "SubnetPerformanceHistoryCsv": {
         "value": "snapshot_date,neuron_count,validator_count,active_count,incentive_gini,incentive_nakamoto_coefficient,incentive_top_10pct_share,dividends_gini,dividends_nakamoto_coefficient,dividends_top_10pct_share,trust_mean,trust_median,consensus_mean,consensus_median,validator_trust_mean,validator_trust_median\r\n2026-06-27,2,1,2,0.490099,1,0.990099,0.409091,1,0.909091,0.5,0.5,0.4,0.4,0.6,0.6"
       },
+      "SubnetPriceShareCompositionArtifactResponse": {
+        "value": {
+          "data": {
+            "cohort_limit": 6,
+            "degraded": {
+              "reason": "unavailable"
+            },
+            "newest_day": "2026-06-01",
+            "oldest_day": "2026-06-01",
+            "other_label": "Other artifact-normalized price share",
+            "point_count": 1,
+            "points": [
+              {
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "day": "2026-06-01",
+                "other_share": 0.5,
+                "shares": [
+                  0.5
+                ]
+              }
+            ],
+            "quality": "estimated_observed_price_set",
+            "row_limit": 16384,
+            "schema_version": 1,
+            "series": [
+              {
+                "netuid": 7
+              }
+            ],
+            "window_days": 56
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SubnetProfileArtifactResponse": {
         "value": {
           "data": {
@@ -58128,6 +58190,156 @@
         ],
         "type": "object"
       },
+      "SubnetPriceShareCompositionArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "cohort_limit": {
+            "const": 6,
+            "type": "number"
+          },
+          "degraded": {
+            "$ref": "#/components/schemas/UnavailableDegraded"
+          },
+          "newest_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oldest_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "other_label": {
+            "const": "Other artifact-normalized price share",
+            "type": "string"
+          },
+          "point_count": {
+            "anyOf": [
+              {
+                "maximum": 56,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetPriceShareCompositionPoint"
+            },
+            "maxItems": 56,
+            "type": "array"
+          },
+          "quality": {
+            "const": "estimated_observed_price_set",
+            "type": "string"
+          },
+          "row_limit": {
+            "const": 16384,
+            "type": "number"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetPriceShareCompositionSeries"
+            },
+            "maxItems": 6,
+            "type": "array"
+          },
+          "window_days": {
+            "const": 56,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "quality",
+          "window_days",
+          "cohort_limit",
+          "row_limit",
+          "other_label",
+          "series",
+          "point_count",
+          "oldest_day",
+          "newest_day",
+          "points"
+        ],
+        "type": "object"
+      },
+      "SubnetPriceShareCompositionPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "captured_at": {
+            "description": "Persisted writer timestamp shared by the day's numeric shares; not an immutable source-pass ID or proof of complete chain coverage.",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "type": "string"
+          },
+          "other_share": {
+            "description": "Exact six-decimal residual of one after selected shares; not a stored bucket, sum of unselected rows, or network total.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "shares": {
+            "description": "Recorded six-decimal shares in the fixed series order. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.",
+            "items": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 6,
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "captured_at",
+          "shares",
+          "other_share"
+        ],
+        "type": "object"
+      },
+      "SubnetPriceShareCompositionSeries": {
+        "additionalProperties": false,
+        "properties": {
+          "netuid": {
+            "description": "A netuid, not a project identity across netuid reuse.",
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid"
+        ],
+        "type": "object"
+      },
       "SubnetProfile": {
         "additionalProperties": false,
         "properties": {
@@ -84455,6 +84667,104 @@
         "tags": [
           "chain",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/chain/subnet-price-share-composition": {
+      "get": {
+        "description": "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.",
+        "operationId": "subnetPriceShareComposition",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetPriceShareCompositionArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetPriceShareCompositionArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetPriceShareCompositionArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch an estimated subnet price-share timeline",
+        "tags": [
+          "chain"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

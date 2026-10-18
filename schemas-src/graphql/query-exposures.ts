@@ -581,7 +581,9 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     field: "subnet_price_share_composition",
     operation: "subnet-price-share-composition",
     returns: "SubnetPriceShareComposition!",
-    description: "Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " + LEGACY_EMISSION_SHARE_DESCRIPTION,
+    description:
+      "Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "subnet_emission_pipeline_history",
