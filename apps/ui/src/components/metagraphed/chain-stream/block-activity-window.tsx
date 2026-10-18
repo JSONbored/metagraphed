@@ -39,6 +39,7 @@ export function BlockActivityWindow({
 }) {
   const entries = useMemo(() => blockActivityEntries(blocks), [blocks]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [clientEnhanced, setClientEnhanced] = useState(false);
   const links = useRef<Array<HTMLAnchorElement | null>>([]);
   const touchIntent = useRef<{ key: string; wasSelected: boolean } | null>(null);
   const previousHead = useRef<number | null>(null);
@@ -47,6 +48,12 @@ export function BlockActivityWindow({
   const active = entries.find((entry) => entry.key === activeKey) ?? entries[0] ?? null;
   const head = entries[0]?.block.block_number ?? null;
   const blockWindowKey = entries.map((entry) => entry.key).join("|");
+
+  // This effect runs after this instance's client commit. Its state update
+  // advertises that milestone without changing the selected mark.
+  useEffect(() => {
+    setClientEnhanced(true);
+  }, []);
 
   // The directory receives a new first page at most once per polling interval.
   // Animate only a confirmed new unfiltered head. A 50-cell two-dimensional
@@ -130,7 +137,11 @@ export function BlockActivityWindow({
   };
 
   return (
-    <section className="mg-block-activity" aria-labelledby="block-activity-title">
+    <section
+      className="mg-block-activity"
+      aria-labelledby="block-activity-title"
+      data-client-enhanced={clientEnhanced ? "true" : undefined}
+    >
       <header className="mg-block-activity-head">
         <div>
           <p>Block activity</p>
