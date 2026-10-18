@@ -11,31 +11,32 @@ export default {
       logoManifest: unknown;
       originalLogoUrl: string;
     }>();
-    return (
-      (await handleEntityOgImage(
-        new Request(url, { method: "GET" }),
-        {},
-        url,
-        {
-          logoManifest,
-          readArtifact: async (_env, artifactPath) => {
-            if (artifactPath !== "/metagraph/subnets.json")
-              throw new Error("Unexpected fixture artifact read");
-            return {
-              ok: true,
-              data: {
-                subnets: [
-                  {
-                    netuid: 65535,
-                    name: "Format fixture",
-                    logo_url: originalLogoUrl,
-                  },
-                ],
-              },
-            };
-          },
+    const response = await handleEntityOgImage(
+      new Request(url, { method: "GET" }),
+      {},
+      url,
+      {
+        logoManifest,
+        readArtifact: async (_env, artifactPath) => {
+          if (artifactPath !== "/metagraph/subnets.json")
+            throw new Error("Unexpected fixture artifact read");
+          return {
+            ok: true,
+            data: {
+              subnets: [
+                {
+                  netuid: 65535,
+                  name: "Format fixture",
+                  logo_url: originalLogoUrl,
+                },
+              ],
+            },
+          };
         },
-      )) ?? new Response("Entity route did not match", { status: 404 })
+      },
+    );
+    return (
+      response ?? new Response("Entity route did not match", { status: 404 })
     );
   },
 };

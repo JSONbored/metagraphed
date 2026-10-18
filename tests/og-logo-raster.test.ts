@@ -642,8 +642,7 @@ test.each(workerFormats)(
           },
           font_sha256: FONT_SHA256,
           asset_url: assetUrl,
-          cache_control:
-            "public, max-age=86400, stale-while-revalidate=604800",
+          cache_control: "public, max-age=86400, stale-while-revalidate=604800",
         }),
     );
   },
