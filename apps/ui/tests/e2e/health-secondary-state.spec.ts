@@ -136,9 +136,7 @@ test.describe("Health secondary query states", () => {
     await expect(incidentError).toHaveCount(0);
     await expect(page.getByRole("table", { name: "Recorded surface incidents" })).toBeVisible();
     await expect(
-      page
-        .getByRole("table", { name: "Recorded surface incidents" })
-        .getByRole("columnheader", { name: "Started", exact: true }),
+      page.getByText("No incident records are currently open in this window."),
     ).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(2);
     await expect(page.getByText("Couldn't load subnet uptime")).toBeVisible();
