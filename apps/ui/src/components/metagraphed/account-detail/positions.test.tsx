@@ -82,3 +82,44 @@ describe("PositionsSection refresh failures", () => {
     });
   }
 });
+
+describe("PositionsSection observation clocks", () => {
+  for (const captured_at of [null, "2026-07-04T00:00:00Z"]) {
+    it(`keeps source and activity clocks distinct from capture ${captured_at}`, async () => {
+      const client = new QueryClient({
+        defaultOptions: { queries: { enabled: false, retry: false } },
+      });
+      const fetch = vi.mocked(apiFetch);
+      try {
+        fetch.mockResolvedValue({
+          data: {
+            ss58: SS58,
+            captured_at,
+            position_count: 0,
+            positions: [],
+            degraded: {
+              reason: "snapshot_predates_stake_activity",
+              snapshot_captured_at: "2026-07-01T00:00:00Z",
+              latest_stake_event_at: "2026-07-05T00:00:00Z",
+            },
+          },
+          meta: {},
+          url: "/fixture",
+        });
+        await client.fetchQuery(accountPositionsQuery(SS58));
+        const html = await render(client);
+        expect(html).toContain("Source snapshot 7/1/2026");
+        expect(html).toContain("Latest recorded stake activity 7/5/2026");
+        expect(html).toContain(
+          captured_at ? "Relationship snapshot 7/4/2026" : "Relationship capture time unavailable.",
+        );
+        expect(html).toContain("Position relationship coverage is unavailable.");
+        expect(html).toContain("Root holdings are not covered");
+        expect(html).not.toContain("No position relationships recorded in this response.");
+      } finally {
+        client.clear();
+        fetch.mockReset();
+      }
+    });
+  }
+});

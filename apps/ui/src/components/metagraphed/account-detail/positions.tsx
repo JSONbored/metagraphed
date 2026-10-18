@@ -113,8 +113,14 @@ export function PositionsSection({
             authoritative quantity basis. Root holdings are not covered. Recorded relationships do
             not establish wallet holdings.
             {data?.data.captured_at
-              ? ` Snapshot ${formatRelative(data.data.captured_at)}.`
-              : " Snapshot time unavailable."}
+              ? ` Relationship snapshot ${formatRelative(data.data.captured_at)}.`
+              : " Relationship capture time unavailable."}
+            {data?.data.degraded?.snapshot_captured_at
+              ? ` Source snapshot ${formatRelative(data.data.degraded.snapshot_captured_at)}.`
+              : null}
+            {data?.data.degraded?.latest_stake_event_at
+              ? ` Latest recorded stake activity ${formatRelative(data.data.degraded.latest_stake_event_at)}.`
+              : null}
             {positions.length > 0 && !expanded ? (
               <button type="button" className="mg-section-more" onClick={() => setExpanded(true)}>
                 Show recorded relationships ({formatNumber(positions.length)})
