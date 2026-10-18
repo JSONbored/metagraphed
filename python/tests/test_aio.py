@@ -661,14 +661,14 @@ class AsyncImportGuardTest(unittest.TestCase):
 class CheckedAsyncCatalogTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_propagates_checked_receipts_without_mutating_options(self):
         client = AsyncMetagraphedClient()
-        query = {"page_snapshot": "start", "limit": 2}
+        query = {"page_snapshot": "start", "limit": 2, "cursor": None}
         with mock.patch.object(client, "fetch", side_effect=[
                 _checked_page(["a", "b"], 0, 3), _checked_page(["c"], 2, 3)]) as fetch:
             pages = [page async for page in client.paginate("/api/v1/endpoints", query=query)]
         self.assertEqual(len(pages), 2)
         self.assertEqual(fetch.call_args_list[1].kwargs["query"],
                          {"page_snapshot": "v1." + "a" * 64, "cursor": 2, "limit": 2})
-        self.assertEqual(query, {"page_snapshot": "start", "limit": 2})
+        self.assertEqual(query, {"page_snapshot": "start", "limit": 2, "cursor": None})
         await client.aclose()
 
     async def test_async_rejects_changed_or_malformed_pages_before_yield(self):

@@ -1036,14 +1036,14 @@ def _checked_page(ids, cursor, total, snapshot="v1." + "a" * 64):
 
 class CheckedCatalogTest(unittest.TestCase):
     def test_sync_forwards_checked_receipts_without_mutating_options(self):
-        query = {"page_snapshot": "start", "limit": 2, "kind": "rpc"}
+        query = {"page_snapshot": "start", "limit": 2, "kind": "rpc", "cursor": None}
         with mock.patch("metagraphed.client.metagraphed_fetch", side_effect=[
                 _checked_page(["a", "b"], 0, 3), _checked_page(["c"], 2, 3)]) as fetch:
             pages = list(metagraphed_paginate("/api/v1/endpoints", query=query))
         self.assertEqual(len(pages), 2)
         self.assertEqual(fetch.call_args_list[1].kwargs["query"],
                          {"page_snapshot": "v1." + "a" * 64, "limit": 2, "kind": "rpc", "cursor": 2})
-        self.assertEqual(query, {"page_snapshot": "start", "limit": 2, "kind": "rpc"})
+        self.assertEqual(query, {"page_snapshot": "start", "limit": 2, "kind": "rpc", "cursor": None})
 
     def test_sync_rejects_malformed_continuations_before_yield(self):
         for change in [{"snapshot": "v1." + "b" * 64}, {"total": 2}, {"cursor": 0},

@@ -342,7 +342,9 @@ def _next_catalog_cursor(page: Any, query: dict, state: dict) -> Any:
     collection = p.get("collection")
     rows = data.get(collection) if isinstance(data, dict) and isinstance(collection, str) else None
     snapshot = p.get("snapshot")
-    cursor = query.get("cursor", 0)
+    cursor = query.get("cursor")
+    if cursor is None:
+        cursor = 0  # None query values are omitted from the wire request.
     if isinstance(cursor, str) and re.fullmatch(r"[0-9]+", cursor):
         cursor = int(cursor)
     total = p.get("total")
