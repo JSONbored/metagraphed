@@ -1,4 +1,4 @@
-import { parseJsonBody } from "./row-type.ts";
+import { parseJsonBody, requiredHeader } from "./row-type.ts";
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { ExtrinsicsFeedArtifactSchema } from "../schemas-src/routes/extrinsics.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
@@ -124,7 +124,7 @@ test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(requiredHeader(res, "content-type"), /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines.length, 2);
   assert.match(lines[1], /^300-3,300,5AdminKey,AdminUtils,sudo_set_tempo,true/);

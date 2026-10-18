@@ -64,7 +64,12 @@ async function createdSubscription(response: Response) {
   const { id, secret } = body.data;
   assert.ok(typeof id === "string");
   assert.ok(typeof secret === "string");
-  return { ...body, data: { ...body.data, id, secret } };
+  const data: typeof body.data & { id: string; secret: string } = {
+    ...body.data,
+    id,
+    secret,
+  };
+  return { ...body, data };
 }
 
 async function subscriptionJson(response: Response) {

@@ -10431,7 +10431,10 @@ async function createWebhookSubscription(
   );
 }
 
-function validateWebhookSubscriptionToken(request: Request, env: Env) {
+function validateWebhookSubscriptionToken(
+  request: Request,
+  env: Env,
+): { ok: true } | { ok: false; response: Response } {
   const configured = env.METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN;
   if (typeof configured !== "string" || configured.length === 0) {
     return {

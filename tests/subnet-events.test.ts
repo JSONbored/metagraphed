@@ -1,4 +1,4 @@
-import { parseJsonBody } from "./row-type.ts";
+import { parseJsonBody, requiredHeader } from "./row-type.ts";
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { SubnetEventsArtifactSchema } from "../schemas-src/routes/subnet-events.ts";
 import assert from "node:assert/strict";
@@ -31,7 +31,7 @@ test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold"
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(requiredHeader(res, "content-type"), /text\/csv/);
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 

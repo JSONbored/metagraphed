@@ -1,4 +1,4 @@
-import { parseJsonBody } from "./row-type.ts";
+import { parseJsonBody, requiredHeader } from "./row-type.ts";
 import {
   ErrorEnvelopeSchema,
   successEnvelopeSchema,
@@ -581,7 +581,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.match(requiredHeader(res, "content-type"), /text\/csv/);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
     // net_flow_7d (-50) gets a leading `'` -- the formula-injection guard for
