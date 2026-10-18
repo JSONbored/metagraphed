@@ -1,3 +1,9 @@
+import { parseJsonBody } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { TopHoldersArtifactSchema } from "../schemas-src/routes/top-holders.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -473,7 +479,10 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(TopHoldersArtifactSchema),
+    );
     assert.equal(body.data.account_count, 0);
   });
 
@@ -486,7 +495,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
   });
@@ -519,7 +528,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
-    const body = await res.json();
+    const body = await parseJsonBody(res, successEnvelopeSchema(TopHoldersArtifactSchema));
     // The generic {ss58} route's response shape has no `accounts` array --
     // if dispatch were wrong this would 200 with a single-account shape instead.
     assert.equal(Array.isArray(body.data.accounts), true);

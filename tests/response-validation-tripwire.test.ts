@@ -23,7 +23,14 @@ import { COMPONENT_SCHEMAS_BY_ID } from "../schemas-src/openapi-registry.ts";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { assertJsonObject, parseJsonBody, type Row } from "./row-type.ts";
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
+import { GapsArtifactSchema } from "../schemas-src/routes/curation-gaps.ts";
 
 const ECONOMICS_ARTIFACT = "/metagraph/economics.json";
 
@@ -31,11 +38,14 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-async function realBody(path: string): Promise<Row> {
+async function realBody<Schema extends z.ZodType>(
+  path: string,
+  schema: Schema,
+): Promise<z.output<Schema>> {
   const env = createLocalArtifactEnv();
   const res = await handleRequest(req(path), env as unknown as Env, {});
   assert.equal(res.status, 200, `${path} did not answer 200`);
-  return res.json();
+  return parseJsonBody(res, schema);
 }
 
 describe("validateResponseTripwire (unit)", () => {
@@ -61,7 +71,10 @@ describe("validateResponseTripwire (unit)", () => {
 
   test("a real, schema-matching envelope passes", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const body = await realBody("/api/v1/economics");
+    const body = await realBody(
+      "/api/v1/economics",
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     await assert.doesNotReject(
       validateResponseTripwire("economics", body, ECONOMICS_ARTIFACT),
     );
@@ -69,7 +82,10 @@ describe("validateResponseTripwire (unit)", () => {
   });
 
   test("an envelope that drifts THROWS, carrying the route id", async () => {
-    const body = await realBody("/api/v1/economics");
+    const body = await realBody(
+      "/api/v1/economics",
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     // Break a required field so safeParse genuinely fails, rather than
     // asserting against a hand-built (and possibly already-wrong) fixture.
     const broken = { ...body, data: { ...body.data, subnets: "not-an-array" } };
@@ -120,7 +136,10 @@ describe("coverage is DERIVED, not listed", () => {
 
   test("a route far outside the original five validates cleanly", async () => {
     // `gaps` was never one of the pilots, so before this it served unchecked.
-    const body = await realBody("/api/v1/gaps?limit=5");
+    const body = await realBody(
+      "/api/v1/gaps?limit=5",
+      successEnvelopeSchema(GapsArtifactSchema),
+    );
     await assert.doesNotReject(
       validateResponseTripwire("gaps", body, "/metagraph/gaps.json"),
     );
@@ -209,9 +228,9 @@ describe("workers/api.ts fails the request on drift", () => {
         {},
       );
       assert.equal(res.status, 500);
-      return (await res.json()) as Row;
+      return parseJsonBody(res, ErrorEnvelopeSchema);
     });
-    assert.equal((body.error as Row).code, "response_schema_drift");
+    assert.equal(body.error.code, "response_schema_drift");
   });
 
   test("flag on: the refusal FILES A FAULT naming the route (#10897)", async () => {
@@ -292,8 +311,8 @@ describe("workers/api.ts fails the request on drift", () => {
         {},
       );
       assert.equal(res.status, 500);
-      const body = (await res.json()) as Row;
-      assert.equal((body.error as Row).code, "response_schema_drift");
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+      assert.equal(body.error.code, "response_schema_drift");
     });
   });
 
@@ -668,19 +687,23 @@ describe("the projection signal reaches the tripwire from the routes", () => {
         {},
       );
       if (base.status !== 200) continue;
-      const body = (await base.json()) as Row;
+      const body: unknown = await base.json();
+      assertJsonObject(body);
+      const data = body.data ?? {};
+      assertJsonObject(data);
       // Any array of objects under `data` is a projectable collection; the
       // first of its keys is a field the route certainly serves.
-      const rows = Object.values((body.data ?? {}) as Record<string, unknown>)
+      const firstRow = Object.values(data)
         .filter(
-          (value): value is Row[] =>
-            Array.isArray(value) &&
-            value.length > 0 &&
-            typeof value[0] === "object" &&
-            value[0] !== null,
+          (value): value is unknown[] =>
+            Array.isArray(value) && value.length > 0,
         )
-        .at(0);
-      const field = rows && Object.keys(rows[0])[0];
+        .map((value) => value[0])
+        .find(
+          (value): value is object =>
+            typeof value === "object" && value !== null,
+        );
+      const field = firstRow && Object.keys(firstRow)[0];
       if (!field) continue;
       const res = await handleRequest(
         req(`${route}?limit=1&fields=${field}`),
@@ -722,10 +745,13 @@ describe("the projection signal reaches the tripwire from the routes", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    const data = body.data ?? {};
+    assertJsonObject(data);
     for (const required of ["subnet", "surfaces", "gaps"]) {
       assert.ok(
-        !((body.data as Row) ?? {})[required],
+        !data[required],
         `${required} should have been projected away`,
       );
     }

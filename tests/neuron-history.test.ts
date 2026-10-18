@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -556,7 +558,7 @@ describe("history endpoints (via the Worker dispatch)", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(
       body.error.message,

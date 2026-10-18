@@ -13,6 +13,9 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { concretePath } from "./concrete-path.ts";
 import { describe, test } from "vitest";
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { NetworkCapabilitiesArtifactSchema } from "../schemas-src/routes/network-capabilities.ts";
 import {
   buildNetworkCapabilities,
   buildNetworksPayload,
@@ -330,6 +333,9 @@ describe("GET /api/v1/networks never 404s", () => {
     // The one route that must answer everywhere — it is how a caller learns
     // what does not.
     const env = createLocalArtifactEnv() as unknown as Env;
+    const responseSchema = successEnvelopeSchema(
+      NetworkCapabilitiesArtifactSchema,
+    );
     const bodies: string[] = [];
     for (const path of [
       "/api/v1/networks",
@@ -345,7 +351,7 @@ describe("GET /api/v1/networks never 404s", () => {
         {},
       );
       assert.equal(res.status, 200, `${path} did not return 200`);
-      const body = (await res.json()) as { data: unknown };
+      const body = await parseJsonBody(res, responseSchema);
       bodies.push(JSON.stringify(body.data));
     }
     // Identical on every network: the document describes the whole matrix, so

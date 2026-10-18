@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
@@ -201,7 +205,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
   });
@@ -226,7 +230,10 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ValidatorHistoryArtifactSchema),
+    );
     assert.deepEqual(body.data.points, []);
     assert.equal(body.data.point_count, 0);
   });

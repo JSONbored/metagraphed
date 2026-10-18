@@ -12,7 +12,11 @@ export { SubnetStatusHub } from "./subnet-status-hub.ts";
 export { NeonWriteBufferHub } from "./neon-write-buffer-hub.ts";
 
 const handler = {
-  fetch: async (request: Request, env: Env, ctx: ExecutionContext) =>
+  fetch: async (
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> =>
     (await import("./api.ts")).default.fetch(request, env, ctx),
 };
 
@@ -34,7 +38,11 @@ async function loadOAuth() {
 let oauth: ReturnType<typeof loadOAuth> | undefined;
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const directory = await handleDefaultExplorerDirectory(request, env, ctx);
     if (directory) return directory;
     const { provider, isNonOAuthMcpRequest } = await (oauth ??= loadOAuth());

@@ -10,7 +10,12 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row, AnyFn } from "./row-type.ts";
+import { parseJsonBody, type Row, type AnyFn } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SurfaceVerifyArtifactSchema } from "../schemas-src/routes/ai-native.ts";
 
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
 // not a `globalThis` property -- so stubbing/restoring it for a test needs
@@ -355,7 +360,8 @@ describe("surface verify-now endpoint (#358)", () => {
           {},
         );
         assert.equal(res.status, 404);
-        assert.equal((await res.json()).error.code, "surface_not_found");
+        const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+        assert.equal(body.error.code, "surface_not_found");
       },
     );
     assert.equal(fetched, false);
@@ -375,7 +381,8 @@ describe("surface verify-now endpoint (#358)", () => {
       {},
     );
     assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, "surfaces_unavailable");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "surfaces_unavailable");
   });
 
   test("429 when the rate limiter rejects", async () => {
@@ -387,7 +394,8 @@ describe("surface verify-now endpoint (#358)", () => {
       {},
     );
     assert.equal(res.status, 429);
-    assert.equal((await res.json()).error.code, "verify_rate_limited");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "verify_rate_limited");
   });
 
   test("probes a catalogued surface, then serves the 60s cache", async () => {
@@ -408,7 +416,10 @@ describe("surface verify-now endpoint (#358)", () => {
         ctx,
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+      );
       assert.equal(body.ok, true);
       assert.equal(body.data.surface_id, SURFACE_ID);
       assert.equal(typeof body.data.callable, "boolean");
@@ -419,7 +430,11 @@ describe("surface verify-now endpoint (#358)", () => {
         createLocalArtifactEnv() as unknown as Env,
         ctx,
       );
-      assert.equal((await res2.json()).data.from_cache, true);
+      const cachedBody = await parseJsonBody(
+        res2,
+        successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+      );
+      assert.equal(cachedBody.data.from_cache, true);
     });
   });
 
@@ -431,7 +446,10 @@ describe("surface verify-now endpoint (#358)", () => {
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+      );
       assert.equal(body.data.surface_id, SURFACE_ID);
       assert.equal(body.data.surface_key, SURFACE_KEY);
     });
@@ -489,7 +507,10 @@ describe("surface verify-now endpoint (#358)", () => {
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+      );
       assert.equal(body.data.surface_id, SURFACE_ID);
       assert.equal(body.data.surface_key, SURFACE_KEY);
     });
@@ -520,7 +541,10 @@ describe("surface verify-now endpoint (#358)", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+        );
         assert.equal(body.data.callable, false);
         assert.equal(body.data.classification, "unsafe");
         assert.equal(body.data.error, "unsafe URL");
@@ -532,6 +556,23 @@ describe("surface verify-now endpoint (#358)", () => {
 
 // --- MCP tool: verify_integration --------------------------------------------
 describe("verify_integration MCP tool (#358)", () => {
+  const resultOf = async (response: Response) => {
+    const body: unknown = await response.json();
+    assert.ok(body && typeof body === "object" && "result" in body);
+    const result = body.result;
+    assert.ok(result && typeof result === "object" && "isError" in result);
+    assert.ok(typeof result.isError === "boolean");
+    if (result.isError) {
+      return { isError: result.isError, structuredContent: null };
+    }
+    assert.ok("structuredContent" in result);
+    return {
+      isError: result.isError,
+      structuredContent: SurfaceVerifyArtifactSchema.parse(
+        result.structuredContent,
+      ),
+    };
+  };
   const CATALOG = {
     surfaces: [
       {
@@ -590,7 +631,7 @@ describe("verify_integration MCP tool (#358)", () => {
         {} as unknown as Env,
         deps,
       );
-      return ((await response.json()) as Row).result;
+      return await resultOf(response);
     } finally {
       globalThis.fetch = of;
     }
@@ -599,15 +640,19 @@ describe("verify_integration MCP tool (#358)", () => {
   test("verifies by surface_id and by netuid", async () => {
     const bySurface = await call({ surface_id: "x:api:1" });
     assert.equal(bySurface.isError, false);
+    assert.ok(bySurface.structuredContent);
     assert.equal(bySurface.structuredContent.surface_id, "x:api:1");
     const byKey = await call({ surface_id: "srf-xapi100000000" });
     assert.equal(byKey.isError, false);
+    assert.ok(byKey.structuredContent);
     assert.equal(byKey.structuredContent.surface_id, "x:api:1");
     assert.equal(byKey.structuredContent.surface_key, "srf-xapi100000000");
     const byAlias = await call({ surface_id: "x:api:old" });
     assert.equal(byAlias.isError, false);
+    assert.ok(byAlias.structuredContent);
     assert.equal(byAlias.structuredContent.surface_id, "x:api:1");
     const byNetuid = await call({ netuid: 5 });
+    assert.ok(byNetuid.structuredContent);
     assert.equal(byNetuid.structuredContent.surface_id, "x:api:1");
   });
 
@@ -648,8 +693,9 @@ describe("verify_integration MCP tool (#358)", () => {
         {} as unknown as Env,
         deps,
       );
-      const result = ((await response.json()) as Row).result;
+      const result = await resultOf(response);
       assert.equal(result.isError, false);
+      assert.ok(result.structuredContent);
       assert.equal(result.structuredContent.callable, false);
       assert.equal(result.structuredContent.classification, "unsafe");
     } finally {
@@ -694,17 +740,19 @@ describe("verify_integration MCP tool (#358)", () => {
         {} as unknown as Env,
         deps,
       );
-      return ((await response.json()) as Row).result;
+      return resultOf(response);
     };
     try {
       const first = await invoke({ surface_id: "x:api:1" });
       assert.equal(first.isError, false);
+      assert.ok(first.structuredContent);
       assert.equal(first.structuredContent.from_cache, false);
       const probesAfterFirst = probeCount;
       assert.ok(probesAfterFirst > 0);
 
       const second = await invoke({ surface_id: "x:api:1" });
       assert.equal(second.isError, false);
+      assert.ok(second.structuredContent);
       assert.equal(second.structuredContent.from_cache, true);
       assert.equal(
         probeCount,

@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 // Shared dynamic-JSON row type for test fixtures/mocks: registry snapshots,
 // D1/Postgres-shaped rows, KV-stored payloads, and other untrusted or
 // intentionally-loose test data. Mirrors the readJson/readArtifactJson
@@ -27,10 +29,33 @@ export function mockEnv(overrides: Record<string, unknown> = {}): Env {
   return overrides as unknown as Env;
 }
 
-// This codebase's Response/Request type declarations resolve `res.json()` to
-// `Promise<unknown>`, not `Promise<any>` -- every test that reads a handler's
-// JSON body and then accesses a field on it needs this cast once at the read
-// site rather than fighting `unknown` per property.
+// Legacy reader for intentionally loose fixtures. This assertion does not
+// prove a handler's response contract; use parseJsonBody with the canonical
+// schema when asserting a typed API response (#11589).
 export async function jsonBody(res: Response): Promise<Row> {
   return (await res.json()) as Row;
+}
+
+// Infer the parsed output from an existing schema, including transforms.
+// Reuse schemas-src rather than restating response shapes in tests.
+export async function parseJsonBody<Schema extends z.ZodType>(
+  res: Response,
+  schema: Schema,
+): Promise<z.output<Schema>> {
+  const body: unknown = await res.json();
+  return schema.parseAsync(body);
+}
+
+export function requiredHeader(res: Response, name: string): string {
+  const value = res.headers.get(name);
+  if (value === null) throw new Error(`Missing response header: ${name}`);
+  return value;
+}
+
+export function assertJsonObject(
+  value: unknown,
+): asserts value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Expected a JSON object");
+  }
 }

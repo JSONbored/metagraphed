@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest, rpcCachePolicy } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import { ChainRpcEnvelopeSchema } from "../schemas-src/chain-rpc-envelope.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 describe("rpcCachePolicy", () => {
   const c = (m: string, p: unknown) => rpcCachePolicy(m, p);
@@ -198,7 +199,8 @@ describe("RPC response cache flow", () => {
       assert.equal(r2.status, 200);
       assert.equal(r2.headers.get("x-metagraph-rpc-cache"), "hit");
       assert.equal(fetchCount, 1, "cache hit must not call upstream");
-      assert.equal((await r2.json()).result, "0xhash");
+      const r2Body = await parseJsonBody(r2, ChainRpcEnvelopeSchema);
+      assert.equal(r2Body.result, "0xhash");
     });
   });
 
@@ -227,7 +229,8 @@ describe("RPC response cache flow", () => {
         ctx,
       );
       assert.equal(r1.headers.get("x-metagraph-rpc-cache"), "miss");
-      assert.equal((await r1.json()).result, null);
+      const r1Body = await parseJsonBody(r1, ChainRpcEnvelopeSchema);
+      assert.equal(r1Body.result, null);
       await Promise.all(waits);
       assert.equal(cache.store.size, 0, "a null result must never be cached");
 
@@ -242,7 +245,8 @@ describe("RPC response cache flow", () => {
         2,
         "second call must re-query upstream, not replay null",
       );
-      assert.equal((await r2.json()).result, "0xrealhash");
+      const r2Body = await parseJsonBody(r2, ChainRpcEnvelopeSchema);
+      assert.equal(r2Body.result, "0xrealhash");
     });
   });
 
@@ -272,7 +276,10 @@ describe("RPC response cache flow", () => {
         ctx,
       );
       assert.equal(primed.headers.get("x-metagraph-rpc-cache"), "miss");
-      assert.equal((await primed.json()).id, "attacker-prime-id");
+      const primedBody: unknown = await primed.json();
+      assert.ok(primedBody && typeof primedBody === "object");
+      assert.ok("id" in primedBody);
+      assert.equal(primedBody.id, "attacker-prime-id");
       await Promise.all(waits);
 
       const victim = await handleRequest(
@@ -313,7 +320,8 @@ describe("RPC response cache flow", () => {
         ctx,
       );
       assert.equal(testnet.headers.get("x-metagraph-rpc-cache"), "miss");
-      assert.equal((await testnet.json()).result, "TESTNET_CHAIN");
+      const testnetBody = await parseJsonBody(testnet, ChainRpcEnvelopeSchema);
+      assert.equal(testnetBody.result, "TESTNET_CHAIN");
       await Promise.all(waits);
 
       const finney = await handleRequest(
@@ -322,7 +330,8 @@ describe("RPC response cache flow", () => {
         ctx,
       );
       assert.equal(finney.headers.get("x-metagraph-rpc-cache"), "miss");
-      assert.equal((await finney.json()).result, "FINNEY_CHAIN");
+      const finneyBody = await parseJsonBody(finney, ChainRpcEnvelopeSchema);
+      assert.equal(finneyBody.result, "FINNEY_CHAIN");
       assert.equal(seen.length, 2, "finney must not reuse testnet cache entry");
       assert.equal(cache.store.size, 2);
       assert.ok(
@@ -396,7 +405,11 @@ describe("RPC response cache flow", () => {
       assert.equal(primed.status, 200);
       // The named-param caller still gets their own correct answer -- the fix
       // withholds caching, it does not change what is proxied.
-      assert.equal((await primed.json()).result.specVersion, 100);
+      const primedBody = await parseJsonBody(primed, ChainRpcEnvelopeSchema);
+      const result = primedBody.result;
+      assert.ok(result && typeof result === "object");
+      assert.ok("specVersion" in result);
+      assert.equal(result.specVersion, 100);
       // Non-cacheable requests take the same bypass path as system_health:
       // no cache header at all, and nothing written to the store.
       assert.equal(primed.headers.get("x-metagraph-rpc-cache"), null);

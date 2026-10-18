@@ -6,8 +6,13 @@ import assert from "node:assert/strict";
 import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { mockEnv } from "./row-type.ts";
-import type { Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { RpcUsageArtifactSchema } from "../schemas-src/routes/providers-rpc.ts";
+import { SurfaceVerifyArtifactSchema } from "../schemas-src/routes/ai-native.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
 import {
   configureRpcProxy,
   graphqlRateLimited,
@@ -73,16 +78,19 @@ function viaRouter(path: string) {
   );
 }
 
-async function json(res: Response, status = 200) {
+async function usageJson(res: Response, status = 200) {
   assert.equal(res.status, status, `expected ${status}, got ${res.status}`);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(RpcUsageArtifactSchema),
+  );
   if (status < 400) assert.equal(body.ok, true);
   return body;
 }
 
 async function errorJson(res: Response, status: number) {
   assert.equal(res.status, status, `expected ${status}, got ${res.status}`);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.ok, false);
   return body;
 }
@@ -152,7 +160,7 @@ describe("handleRpcUsage", () => {
   // rpc_proxy_events any more, so a Postgres-tier miss always returns the
   // schema-stable empty payload -- this is now the only cold-path shape.
   test("returns a schema-stable zeroed payload on a Postgres-tier miss", async () => {
-    const body = await json(
+    const body = await usageJson(
       await handleRpcUsage(
         req("/api/v1/rpc/usage"),
         mockEnv(),
@@ -204,7 +212,7 @@ describe("handleRpcUsage", () => {
         [{ ts: 1_700_000, requests: 7, ok_count: 6 }],
       ]),
       async () =>
-        json(
+        usageJson(
           await handleRpcUsage(
             req("/api/v1/rpc/usage"),
             env as unknown as Env,
@@ -215,6 +223,7 @@ describe("handleRpcUsage", () => {
     assert.equal(body.data.summary.total_requests, 7);
     // The one deliberate tier difference, visible end to end: AE has weighted
     // quantiles so these are measured, where the lakehouse tier reports null.
+    assert.ok(body.data.summary.latency_ms);
     assert.equal(body.data.summary.latency_ms.p50, 40);
     assert.equal(body.data.summary.latency_ms.p95, 90);
     // The "" sentinel is mapped back to the lakehouse tier's NULL group, so
@@ -237,7 +246,7 @@ describe("handleRpcUsage", () => {
     const body = await withFetch(
       aeFetch([[{ total: null }], [], [], []]),
       async () =>
-        json(
+        usageJson(
           await handleRpcUsage(
             req("/api/v1/rpc/usage"),
             AE_ENV as unknown as Env,
@@ -261,7 +270,7 @@ describe("handleRpcUsage", () => {
         return Response.json({ data: [] });
       }) as unknown as typeof fetch,
       async () =>
-        json(
+        usageJson(
           await handleRpcUsage(
             req("/api/v1/rpc/usage"),
             mockEnv(),
@@ -282,7 +291,7 @@ describe("handleRpcUsage", () => {
         },
       },
     };
-    const body = await json(
+    const body = await usageJson(
       await handleRpcUsage(
         req("/api/v1/rpc/usage"),
         env as unknown as Env,
@@ -398,7 +407,11 @@ describe("handleSurfaceVerify", () => {
         SURFACE_ID,
         {},
       );
-      const body = await json(res);
+      assert.equal(res.status, 200);
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(SurfaceVerifyArtifactSchema),
+      );
       assert.equal(body.data.surface_id, SURFACE_ID);
       assert.equal(typeof body.data.callable, "boolean");
       assert.equal(body.meta.source, "live-probe");
@@ -457,9 +470,10 @@ describe("graphqlRateLimited", () => {
         RPC_RATE_LIMITER: { limit: async () => ({ success: false }) },
       } as unknown as Env,
     );
-    const body = await errorJson(res!, 429);
+    assert.ok(res);
+    const body = await errorJson(res, 429);
     assert.equal(body.error.code, "graphql_rate_limited");
-    assert.equal(res!.headers.get("x-ratelimit-remaining"), "0");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   });
 });
 
@@ -737,7 +751,7 @@ describe("configureRpcProxy wiring", () => {
     configureRpcProxy({
       readHealthMetaKv: async () => ({ last_run_at: customObserved }),
     });
-    const body = await json(
+    const body = await usageJson(
       await handleRpcUsage(
         req("/api/v1/rpc/usage"),
         mockEnv(),

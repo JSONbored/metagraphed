@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetOhlcArtifactSchema } from "../schemas-src/routes/subnet-ohlc.ts";
 import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
 installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
@@ -577,7 +580,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.deepEqual(body.data.candles, []);
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.interval, "1h");
@@ -590,7 +596,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.equal(body.data.root_excluded, true);
     assert.deepEqual(body.data.candles, []);
   });
@@ -620,7 +629,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.equal(body.data.interval, "1d");
   });
 
@@ -685,7 +697,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.equal(body.data.candles.length, 1);
     assert.equal(body.data.candles[0].volume_alpha, 5);
     // The retired tier carried its own `generatedAt`; the cold tier has no such
@@ -737,7 +752,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.equal(body.data.interval, "1d");
     assert.equal(body.data.candles.length, 1);
     assert.equal(body.data.candles[0].open, 2);
@@ -851,7 +869,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc carries USD", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     assert.equal(body.data.candles.length, 1);
     const c = body.data.candles[0];
     // The TAO side is untouched by the overlay.
@@ -863,7 +884,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc carries USD", () => {
       "close_usd",
       "volume_usd",
       "usd_per_tao",
-    ]) {
+    ] as const) {
       assert.ok(k in c, `${k} must be present`);
       assert.equal(c[k], null, `${k} must be null, never 0`);
     }
@@ -875,7 +896,10 @@ describe("GET /api/v1/subnets/{netuid}/ohlc carries USD", () => {
       ohlcTierEnv(),
       ctx,
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetOhlcArtifactSchema),
+    );
     // "We could not ask the index" is not "the index had nothing to say".
     assert.equal(body.data.usd_unavailable, "read_failed");
     assert.equal(body.data.usd_available_from, null);

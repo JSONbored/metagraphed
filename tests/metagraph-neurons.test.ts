@@ -21,6 +21,8 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { GlobalValidatorEntrySchema } from "../schemas-src/routes/global-validators.ts";
 import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
+import { NeuronDetailArtifactSchema } from "../schemas-src/routes/subnet-metagraph.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import type { Row } from "./row-type.ts";
 
 // #9051 price table for the ACCUMULATION tests below. Every netuid is priced
@@ -2184,7 +2186,8 @@ const getJson = async (path: string, env: Row) => {
     env as unknown as Env,
     {},
   );
-  return { res, body: await res.json() };
+  const body: unknown = await res.json();
+  return { res, body };
 };
 
 const getText = async (path: string, env: Row, init = {}) => {
@@ -2334,16 +2337,26 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
   const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
   test("GET /validators/{hotkey} for an absent hotkey returns a zeroed aggregate, never 404", async () => {
-    const { res, body } = await getJson(`/api/v1/validators/${HOTKEY}`, env);
+    const { res, body: rawBody } = await getJson(
+      `/api/v1/validators/${HOTKEY}`,
+      env,
+    );
     assert.equal(res.status, 200);
+    const body = successEnvelopeSchema(ValidatorDetailArtifactSchema).parse(
+      rawBody,
+    );
     assert.equal(body.data.hotkey, HOTKEY);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
   });
 
   test("GET /subnets/{n}/neurons/{uid} for an absent uid → 200 neuron:null", async () => {
-    const { res, body } = await getJson("/api/v1/subnets/7/neurons/999", env);
+    const { res, body: rawBody } = await getJson(
+      "/api/v1/subnets/7/neurons/999",
+      env,
+    );
     assert.equal(res.status, 200);
+    const body = successEnvelopeSchema(NeuronDetailArtifactSchema).parse(rawBody);
     assert.equal(body.data.neuron, null);
   });
 

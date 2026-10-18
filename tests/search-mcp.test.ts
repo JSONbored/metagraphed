@@ -11,7 +11,9 @@ import {
   searchMcpError,
   searchQueryUrl,
 } from "../src/search-mcp.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SearchArtifactSchema } from "../schemas-src/routes/evidence-search.ts";
 
 type LoadCtx = Parameters<typeof loadSearchList>[0];
 type LoadDeps = Parameters<typeof loadSearchList>[2];
@@ -21,7 +23,18 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "../src/route-limits.ts";
 
+const responseSchema = successEnvelopeSchema(SearchArtifactSchema);
+const projectedResponseSchema = successEnvelopeSchema(
+  SearchArtifactSchema.extend({
+    documents: SearchArtifactSchema.shape.documents.element
+      .pick({ id: true, title: true })
+      .array(),
+  }),
+);
+
 const SAMPLE_BLOB = {
+  schema_version: 1,
+  document_count: 3,
   generated_at: "2026-07-01T00:00:00.000Z",
   notes: ["full index"],
   documents: [
@@ -31,6 +44,7 @@ const SAMPLE_BLOB = {
       netuid: 7,
       slug: "sn-7",
       title: "Subnet Seven",
+      artifact_path: "/metagraph/subnets/7.json",
       tokens: ["seven", "sn"],
     },
     {
@@ -39,6 +53,7 @@ const SAMPLE_BLOB = {
       netuid: 7,
       slug: "sn-7-openapi",
       title: "Seven OpenAPI",
+      artifact_path: "/metagraph/surfaces.json",
       tokens: ["openapi", "spec"],
     },
     {
@@ -46,6 +61,7 @@ const SAMPLE_BLOB = {
       type: "provider",
       slug: "datura",
       title: "Datura",
+      artifact_path: "/metagraph/providers.json",
       tokens: ["datura", "gpu"],
     },
   ],
@@ -465,8 +481,12 @@ describe("search-mcp", () => {
         {},
       );
       assert.equal(res.status, 200, `REST 200 for ${url.search}`);
-      const body = await res.json();
+      const body =
+        params.fields === "id,title"
+          ? await parseJsonBody(res, projectedResponseSchema)
+          : await parseJsonBody(res, responseSchema);
       const page = body.meta.pagination;
+      assert.ok(page);
 
       assert.deepEqual(
         mcp.documents,
@@ -497,18 +517,20 @@ describe("search-mcp", () => {
       restEnv as unknown as Env,
       {},
     );
-    const restBody = await restRes.json();
+    const restBody = await parseJsonBody(restRes, responseSchema);
+    const restPage = restBody.meta.pagination;
+    assert.ok(restPage);
     assert.equal(
       unbounded.limit,
       MCP_LIST_LIMIT_DEFAULT,
       "MCP must page by default",
     );
     assert.equal(
-      restBody.meta.pagination.limit,
-      restBody.meta.pagination.total,
+      restPage.limit,
+      restPage.total,
       "REST must stay unbounded by default",
     );
     // Same total either way -- the collection is paged, never hidden.
-    assert.equal(unbounded.total, restBody.meta.pagination.total);
+    assert.equal(unbounded.total, restPage.total);
   });
 });

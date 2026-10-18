@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { assertJsonObject } from "./row-type.ts";
 import { describe, test, vi } from "vitest";
 import { authLookupCacheWrite } from "../src/auth-lookup-cache.ts";
 import { handleMcpRequest, mcpAuthChallenge } from "../src/mcp-server.ts";
@@ -140,8 +141,11 @@ describe("required authentication at the public MCP router", () => {
           [],
           "no account lookup, quota or artifact dispatch",
         );
+        const body: unknown = await res.json();
+        assertJsonObject(body);
+        assert.ok(typeof body.error_description === "string");
         assert.match(
-          (await res.json()).error_description,
+          body.error_description,
           /Authentication required to use Metagraphed MCP/,
         );
       }

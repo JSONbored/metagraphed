@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SudoKeyArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -261,7 +264,10 @@ describe("GET /api/v1/sudo/key via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SudoKeyArtifactSchema),
+        );
         assert.equal(body.ok, true);
         assert.equal(body.data.schema_version, 1);
         assert.equal(body.data.hotkey, GOLDEN_SS58);
@@ -283,7 +289,10 @@ describe("GET /api/v1/sudo/key via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(SudoKeyArtifactSchema),
+        );
         assert.equal(body.data.hotkey, null);
       },
     );

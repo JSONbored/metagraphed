@@ -5,6 +5,8 @@ import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 // #5745: ?format=csv on GET /api/v1/validators/{hotkey}/nominators, mirroring
 // the accounts-list / global-validators CSV-export convention.
@@ -23,7 +25,9 @@ test("GET /validators/{hotkey}/nominators?format=csv emits a header-only CSV whe
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), CSV_HEADER);
 });
 
@@ -49,7 +53,9 @@ test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominato
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines[0], CSV_HEADER);
   assert.equal(lines.length, 2);
@@ -67,5 +73,6 @@ test("GET /validators/{hotkey}/nominators rejects an invalid ?format with 400", 
     {},
   );
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error.code, "invalid_query");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "invalid_query");
 });

@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { formatRpcUsage } from "../src/health-serving.ts";
-import type { Row } from "./row-type.ts";
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { RpcUsageArtifactSchema } from "../schemas-src/routes/providers-rpc.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // --- formatRpcUsage (pure) --------------------------------------------------
@@ -160,9 +166,13 @@ describe("formatRpcUsage", () => {
 
 // --- /api/v1/rpc/usage route ------------------------------------------------
 
-async function getJson(url: string, env: Row) {
+async function getJson<Schema extends z.ZodType>(
+  url: string,
+  env: Row,
+  schema: Schema,
+) {
   const res = await handleRequest(new Request(url), env as unknown as Env, {});
-  return { status: res.status, body: (await res.json()) as Row };
+  return { status: res.status, body: await parseJsonBody(res, schema) };
 }
 
 describe("/api/v1/rpc/usage route", () => {
@@ -173,6 +183,7 @@ describe("/api/v1/rpc/usage route", () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/rpc/usage",
       createLocalArtifactEnv(),
+      successEnvelopeSchema(RpcUsageArtifactSchema),
     );
     assert.equal(status, 200);
     assert.equal(body.data.source, "rpc-proxy");
@@ -186,6 +197,7 @@ describe("/api/v1/rpc/usage route", () => {
       const { status, body } = await getJson(
         `https://api.metagraph.sh/api/v1/rpc/usage?${query}`,
         createLocalArtifactEnv(),
+        ErrorEnvelopeSchema,
       );
       assert.equal(status, 400);
       assert.equal(body.error.code, "invalid_query");
