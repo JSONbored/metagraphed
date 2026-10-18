@@ -7,7 +7,7 @@ vi.mock("./client", async (original) => ({
 }));
 import { ApiError } from "./client";
 import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./catalog-queries";
-import { CatalogRestartRequired, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
+import { CatalogRestartRequired, catalogRetentionNotice, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
 
 const snapshot = "v1." + "a".repeat(64);
 function response(ids: string[], cursor: number, total: number, key = "endpoints") {
@@ -142,7 +142,6 @@ describe("first-party checked catalog consumers", () => {
     fetchApi.mockResolvedValueOnce(response(["c"], 2, 3));
     await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", {})).rejects.toBeInstanceOf(
       CatalogRestartRequired,
-      catalogRetentionNotice,
     );
     expect(fetchApi).toHaveBeenCalledTimes(2);
   });

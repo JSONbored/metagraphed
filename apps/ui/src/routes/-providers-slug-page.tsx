@@ -20,7 +20,6 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import {
-  CatalogRestartRequired,
   restartCatalogResults,
   catalogRetentionNotice,
 } from "@/lib/metagraphed/catalog-pages";
@@ -347,13 +346,10 @@ export function ProviderDetail() {
                 isLoading={surfaces.isFetching}
                 onLoadMore={() => {
                   if (surfaces.isFetching) return;
-                  if (surfaces.error instanceof CatalogRestartRequired)
-                    void restartCatalogResults(queryClient, catalogOptions);
-                  else void surfaces.fetchNextPage({ cancelRefetch: false });
+                  void surfaces.fetchNextPage({ cancelRefetch: false });
                 }}
                 shown={mergedSurfaces.length}
                 total={total}
-                error={surfaces.isFetchNextPageError ? surfaces.error : null}
                 cursorInvalid={cursorInvalid}
               />
             </div>

@@ -1,4 +1,4 @@
-import type { QueryClient, QueryKey, FetchInfiniteQueryOptions } from "@tanstack/react-query";
+import type { QueryClient, QueryKey, FetchInfiniteQueryOptions, GetNextPageParamFunction } from "@tanstack/react-query";
 import { apiFetch, ApiError, buildUrl, type ApiResult, type QueryParams } from "./client";
 
 export interface CatalogPageParam {
@@ -111,7 +111,9 @@ export async function collectCatalogRows<T>(
 /** Replace atomically with one fresh first page; failure retains accepted data. */
 export async function restartCatalogResults<T, TData, TKey extends QueryKey>(
   client: QueryClient,
-  options: FetchInfiniteQueryOptions<T, Error, TData, TKey, CatalogPageParam>,
+  options: FetchInfiniteQueryOptions<T, Error, TData, TKey, CatalogPageParam> & {
+    getNextPageParam: GetNextPageParamFunction<CatalogPageParam, T>;
+  },
 ) {
   await client.cancelQueries({ queryKey: options.queryKey, exact: true });
   try {

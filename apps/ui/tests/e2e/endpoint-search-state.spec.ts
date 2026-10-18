@@ -430,7 +430,8 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
     directory.getByRole("button", { name: "Restart results", exact: true }),
   ).toBeVisible();
   failRestart = true;
-  await directory.getByRole("button", { name: "Restart results", exact: true }).click();
+  await directory.getByRole("button", { name: "Restart results", exact: true }).focus();
+  await page.keyboard.press("Enter");
   await expect(directory).toContainText("restart unavailable");
   await expect(directory).toContainText("current freshness unverified");
   await expect(directory).toContainText("2 loaded of 3 matching");
