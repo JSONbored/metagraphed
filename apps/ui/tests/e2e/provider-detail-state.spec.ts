@@ -112,7 +112,7 @@ test.describe("Provider services and independent probe states", () => {
     recordOrdinaryFixturePhase(page, "provider-recovered");
   });
 
-  test("follows the supplied cursor, retries a failed next page and keeps published counts", async ({
+  test("follows the supplied cursor, restarts a failed walk and keeps published counts", async ({
     page,
   }) => {
     let failNext = true;
@@ -141,20 +141,28 @@ test.describe("Provider services and independent probe states", () => {
     const more = page.getByRole("button", { name: "Load more", exact: true });
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await more.click();
-    await expect(page.getByText(/Couldn.t load more/)).toBeVisible();
+    const section = page.locator("section#surfaces");
+    const recovery = section.getByRole("alert").filter({ hasText: "Previously accepted rows retained" });
+    await expect(recovery).toBeVisible();
+    await expect(section).toContainText("2 services loaded of 3 catalog results");
+    await expect(section).toContainText("current freshness unverified");
     await expect(page.locator("#surfaces .mg-dt-row")).toHaveCount(2);
     failNext = false;
-    await page.locator("#surfaces").getByRole("button", { name: "Retry", exact: true }).click();
+    await recovery.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect(recovery).toHaveCount(0);
+    await expect(page.locator("#surfaces .mg-dt-row")).toHaveCount(2);
+    await more.click();
     await expect(page.locator("#surfaces .mg-dt-row")).toHaveCount(3);
     await expect(
       page.getByText("3 services loaded of 3 catalog results", { exact: false }),
     ).toBeVisible();
     await expect(published).toContainText("156");
     await expect(more).toHaveCount(0);
-    expect(cursors).toEqual(["0", "2", "2"]);
+    expect(cursors).toEqual(["0", "2", "0", "2"]);
     expect(snapshots[0]).toBe("start");
     expect(snapshots[1]).toMatch(/^v1\.[0-9a-f]{64}$/);
-    expect(snapshots[2]).toBe(snapshots[1]);
+    expect(snapshots[2]).toBe("start");
+    expect(snapshots[3]).toBe(snapshots[1]);
   });
 
   test("retains accepted services on a failed restart and distinguishes initial failure from empty", async ({
@@ -181,8 +189,8 @@ test.describe("Provider services and independent probe states", () => {
     const retained = page.locator("#surfaces").getByRole("alert");
     await expect(retained).toContainText("Previously accepted rows retained");
     await expect(page.locator("#surfaces .mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(1);
-    await expect(page.locator("#surfaces")).toContainText("Previously accepted rows retained");
-    await expect(page.locator("#surfaces")).toContainText("current freshness unverified");
+    await expect(page.locator("section#surfaces")).toContainText("Previously accepted rows retained");
+    await expect(page.locator("section#surfaces")).toContainText("current freshness unverified");
     fail = false;
     await retained.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(page.locator("#surfaces .mg-dt-row")).toHaveCount(1);

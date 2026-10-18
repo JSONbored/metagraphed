@@ -556,8 +556,9 @@ test.describe("endpoint discovery", () => {
     await expect(directory).toContainText("current freshness unverified");
     await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(3);
     await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
-    await expect(page.locator("section#latency").getByRole("alert")).toContainText(
-      "endpoint latency",
+    await expect(page.getByRole("group", { name: "Endpoint latency" })).toBeVisible();
+    await expect(page.locator("section#latency")).toContainText(
+      "Refresh failed · previous measured endpoints remain visible",
     );
     const beforeRetry = state.reads.length;
     state.failFeed = false;
