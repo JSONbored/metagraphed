@@ -143,6 +143,38 @@ jobs:
             console.log("AUDIT_" + name + " " + JSON.stringify({ exit_code: result.status, ...report }));
           }
           NODE
+      - name: Capture fixed public candidate output before strict equality gate
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+          import { createHash } from "node:crypto";
+          import { join } from "node:path";
+          import { spawnSync } from "node:child_process";
+          import { generateGraphqlTypes } from "./scripts/generate-graphql-types.ts";
+          const proof = join(process.env.RUNNER_TEMP, "graphql-core-proof");
+          const target = join(proof, "candidate-output");
+          mkdirSync(target, { recursive: true });
+          const allowed = { "generated/graphql/schema.ts": "schema.ts", "generated/graphql/types.ts": "types.ts" };
+          const outputs = await generateGraphqlTypes({ silent: true });
+          if (outputs.length !== 2 || new Set(outputs.map(output => output.filename)).size !== 2) throw new Error("Unexpected candidate outputs");
+          const hashes = {};
+          const patches = [];
+          for (const output of outputs) {
+            const filename = allowed[output.filename];
+            if (!filename) throw new Error("Unexpected generated output path");
+            const candidate = join(target, filename);
+            const reference = join(proof, "reference", filename);
+            writeFileSync(candidate, output.content);
+            hashes[output.filename] = createHash("sha256").update(readFileSync(candidate)).digest("hex");
+            const diff = spawnSync("diff", ["-u", "--label", "baseline-CLI/" + filename, "--label", "candidate-Core/" + filename, reference, candidate], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+            if (diff.error || ![0, 1].includes(diff.status) || diff.stderr) throw new Error("Candidate comparison diagnostic failed");
+            patches.push(diff.stdout);
+          }
+          writeFileSync(join(proof, "candidate-in-memory-hashes.json"), JSON.stringify(hashes, null, 2) + "\n");
+          writeFileSync(join(proof, "canonical-difference.patch"), patches.join(""));
+          console.log("CANDIDATE_IN_MEMORY_HASHES " + JSON.stringify(hashes));
+          NODE
       - name: Require exact canonical equality with baseline CLI
         run: |
           set -euo pipefail
