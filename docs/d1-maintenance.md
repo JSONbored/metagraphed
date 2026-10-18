@@ -21,6 +21,16 @@ dependency. SQLite introspection cannot infer the numeric types of JSON-backed
 view columns, so a physical D1 snapshot must never overwrite that contract.
 Change logical types deliberately alongside their readers and export tests.
 
+The archive-policy audit reads both committed snapshots. A bundle contract that
+explicitly declares the D1 source dialect derives its selected physical table
+columns from `generated/db/d1-schema.json` in an isolated in-memory SQLite
+database. Views keep the retained logical contract; their physical metadata is
+not a substitute for logical types. No extra generated column snapshot is stored.
+With production bundle mappings empty, this path selects no D1 table and opens
+no database. Type and nullability checks do not prove writer encoding, catalog
+identity or deployed publication/readback; those need separate integration
+evidence before a production mapping is added.
+
 Treasury review stays an explicit, non-public maintainer action:
 
 ```sh

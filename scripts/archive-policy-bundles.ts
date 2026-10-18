@@ -28,9 +28,9 @@ type ColumnRule = {
   // A versioned contract assertion, not something base `numeric` in a source
   // snapshot proves. Unconstrained numeric values need decimal strings.
   integerBounds?: Bounds;
-  // D1 TEXT does not prove decimal syntax. This is a versioned writer/reader
-  // assertion, just like integerBounds, and still needs integration evidence.
-  encoding?: "decimal-string";
+  // D1 affinity proves neither decimal syntax nor boolean encoding. These
+  // assertions, like integerBounds, still need writer/reader integration proof.
+  encoding?: "decimal-string" | "boolean-integer";
   binding: Binding;
 };
 type Receipt = { captureId: string; digest: string; acceptedAt: string };
@@ -145,6 +145,12 @@ function lossless(
             source.encoding === "decimal-string")
         );
       case "INTEGER":
+        if (source.encoding === "boolean-integer")
+          return (
+            value.kind === "boolean" &&
+            source.integerBounds?.min === 0 &&
+            source.integerBounds.max === 1
+          );
         return (
           source.encoding === undefined &&
           (value.kind === "decimal-string" ||
@@ -218,6 +224,8 @@ function indexFits(
 export function validateArchiveBundles(input: {
   sourceDialect?: SourceDialect;
   source: readonly BundleSourceColumn[];
+  // Separate physical D1 metadata; never blend it with logical view columns.
+  d1Source?: readonly BundleSourceColumn[];
   catalog: readonly BundleCatalogColumn[];
   policies: Readonly<Record<string, string>>;
   contracts: Readonly<Record<string, ArchiveBundleContract>>;
@@ -243,9 +251,15 @@ export function validateArchiveBundles(input: {
       continue;
     }
     const dialect = contract.sourceDialect ?? "postgres";
+    const sourceSnapshot =
+      dialect === (input.sourceDialect ?? "postgres")
+        ? input.source
+        : dialect === "d1"
+          ? input.d1Source
+          : undefined;
     if (
       !["postgres", "d1"].includes(dialect) ||
-      dialect !== (input.sourceDialect ?? "postgres")
+      sourceSnapshot === undefined
     )
       fail("unsupported or incompatible source dialect");
     const physicalVersion = contract.index.physicalVersion ?? 1;
@@ -399,7 +413,9 @@ export function validateArchiveBundles(input: {
       declaredSources.add(table);
       if (input.policies[table] !== "bundled")
         fail(`${table} must explicitly use bundled policy`);
-      const source = input.source.filter((column) => column.table === table);
+      const source = (sourceSnapshot ?? []).filter(
+        (column) => column.table === table,
+      );
       if (!source.length)
         fail(`source table is absent from the committed snapshot: ${table}`);
       const expectedParent =

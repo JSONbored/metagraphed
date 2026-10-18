@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { validateBundleSnapshots } from "../scripts/validate-archive-policy.ts";
 import {
   BUNDLE_FAMILIES,
   validateArchiveBundles,
@@ -344,6 +345,23 @@ function d1Fixture(physicalVersion: 1 | 2) {
       )!.udt = rule.udt;
     }
   }
+  input.source.push({
+    table: "fixture_funds",
+    column: "provisional",
+    udt: "INTEGER",
+    nullable: false,
+  });
+  contract.values["capture.funds[].provisional"] = {
+    kind: "boolean",
+    nullable: false,
+  };
+  contract.families.funds.columns.provisional = {
+    udt: "INTEGER",
+    nullable: false,
+    integerBounds: { min: 0, max: 1 },
+    encoding: "boolean-integer",
+    binding: { kind: "path", from: "row", path: "capture.funds[].provisional" },
+  };
   if (physicalVersion === 2) {
     for (const [position, column] of ["lookup_kind", "lookup_key"].entries()) {
       const field = {
@@ -358,6 +376,112 @@ function d1Fixture(physicalVersion: 1 | 2) {
   }
   return input;
 }
+
+function physicalSnapshot(input: Fixture) {
+  return [...new Set(input.source.map((column) => column.table))].map(
+    (table) => ({
+      type: "table",
+      name: table,
+      tbl_name: table,
+      sql: `CREATE TABLE ${table} (${input.source
+        .filter((column) => column.table === table)
+        .map(
+          (column) =>
+            `${column.column} ${column.udt}${column.nullable ? "" : " NOT NULL"}`,
+        )
+        .join(",")})`,
+    }),
+  );
+}
+
+describe("archive audit wiring to committed D1 source snapshots", () => {
+  for (const version of [1, 2] as const) {
+    test(`physical v${version} audits all six source families from DDL, independently of logical view types`, async () => {
+      const input = d1Fixture(version);
+      const snapshots = {
+        ...input,
+        logical: fixture().source,
+        physical: physicalSnapshot(input),
+      };
+      // The CLI supplies a retained PostgreSQL logical snapshot plus a
+      // separate D1 census, rather than switching the whole input dialect.
+      assert.deepEqual(
+        await validateBundleSnapshots(snapshots),
+        [],
+      );
+      snapshots.physical = snapshots.physical.filter(
+        (table) => table.name !== "fixture_completion",
+      );
+      assert.match(
+        (await validateBundleSnapshots(snapshots)).join("\n"),
+        /D1 bundle source snapshot:.*one physical table/,
+      );
+    });
+  }
+
+  test("physical source drift cannot be hidden by matching logical columns", async () => {
+    for (const [before, after, expected] of [
+      ["height TEXT NOT NULL", "height INTEGER NOT NULL", /type\/nullability changed/],
+      ["height TEXT NOT NULL", "height TEXT", /type\/nullability changed/],
+      ["height TEXT NOT NULL", "height TEXT NOT NULL,extra TEXT", /unmapped source column/],
+      ["height TEXT NOT NULL,", "", /stale source column mapping/],
+    ] as const) {
+      const input = d1Fixture(2);
+      const physical = physicalSnapshot(input);
+      physical.find((table) => table.name === "fixture_capture")!.sql =
+        physical.find((table) => table.name === "fixture_capture")!.sql.replace(
+          before,
+          after,
+        );
+      assert.match(
+        (await validateBundleSnapshots({ ...input, logical: input.source, physical })).join("\n"),
+        expected,
+      );
+    }
+  });
+
+  test("mixed source dialects retain independent column censuses and complete mapping checks", async () => {
+    const logical = fixture();
+    const d1 = d1Fixture(2);
+    for (const column of d1.source) column.table = `d1_${column.table}`;
+    for (const family of BUNDLE_FAMILIES)
+      association(d1).sources[family] = `d1_${association(d1).sources[family]}`;
+    association(d1).contract = "fixture-d1";
+    association(d1).indexTable = "fixture_index_d1";
+    for (const field of d1.catalog) field.table = "fixture_index_d1";
+    const input = {
+      logical: logical.source,
+      physical: physicalSnapshot(d1),
+      catalog: [...logical.catalog, ...d1.catalog],
+      policies: {
+        ...logical.policies,
+        ...Object.fromEntries(d1.source.map((column) => [column.table, "bundled"])),
+      },
+      contracts: { ...logical.contracts, "fixture-d1": definition(d1) },
+      mappings: [...logical.mappings, ...d1.mappings],
+    };
+    assert.deepEqual(await validateBundleSnapshots(input), []);
+    Object.assign(input.contracts, { unused: structuredClone(definition(d1)) });
+    assert.match(
+      (await validateBundleSnapshots(input)).join("\n"),
+      /unused: bundle contract has no mapping/,
+    );
+  });
+
+  test("empty production-style mappings neither select a physical table nor add archive debt exemptions", async () => {
+    assert.deepEqual(
+      await validateBundleSnapshots({
+        logical: [],
+        physical: [{ type: "table", name: "unselected", tbl_name: "unselected", sql: "invalid" }],
+        catalog: [],
+        policies: {},
+        contracts: {},
+        mappings: [],
+      }),
+      [],
+    );
+  });
+});
 
 describe("synthetic D1 bundle metadata and physical index versions", () => {
   for (const physicalVersion of [1, 2] as const) {
@@ -410,6 +534,29 @@ describe("synthetic D1 bundle metadata and physical index versions", () => {
           delete rule.integerBounds;
         },
         /no lossless representation.*page_index/,
+      ],
+      [
+        "unasserted integer boolean encoding",
+        (input) => {
+          delete definition(input).families.funds.columns.provisional!.encoding;
+        },
+        /no lossless representation.*provisional/,
+      ],
+      [
+        "unbounded integer boolean encoding",
+        (input) => {
+          const rule = definition(input).families.funds.columns.provisional!;
+          delete rule.integerBounds;
+        },
+        /no lossless representation.*provisional/,
+      ],
+      [
+        "non-boolean integer range",
+        (input) => {
+          const rule = definition(input).families.funds.columns.provisional!;
+          rule.integerBounds = { min: 0, max: 2 };
+        },
+        /no lossless representation.*provisional/,
       ],
       [
         "narrow D1 integer representation",

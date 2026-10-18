@@ -253,6 +253,61 @@ jobs:
             echo "Diff is 100% **/*.md + .claude/skills/** -- docs fast lane applies to the checks job."
           fi
 
+  # Source preparation for this retained draft has separate ownership from
+  # unrelated response-typing repairs. Keep normal draft/full-suite rules below.
+  bundle-source:
+    name: bundle source qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018' }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Install without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Check source formatting
+        id: format
+        run: npx prettier --check scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Retain native formatting diff on failure
+        if: failure() && steps.format.outcome == 'failure'
+        run: |
+          npx prettier --write scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+          git diff -- scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Lint source support
+        run: npx eslint scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts
+      - name: Typecheck source support and regression fixtures
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('.bundle-source.tsconfig.json', JSON.stringify({
+            extends: './tsconfig.json',
+            compilerOptions: { incremental: false },
+            include: [
+              'scripts/archive-policy-bundles.ts',
+              'scripts/archive-policy-d1-source.ts',
+              'scripts/validate-archive-policy.ts',
+              'tests/archive-policy-bundles.test.ts',
+              'tests/archive-policy-d1-source.test.ts',
+              'tests/archive-policy.test.ts',
+              'tests/d1-schema-snapshot.test.ts',
+              'workers/**/*.d.ts'
+            ]
+          }));
+          NODE
+          npx tsc --project .bundle-source.tsconfig.json --noEmit
+      - name: Test snapshot extraction and archive-policy wiring
+        run: npx vitest run tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts tests/archive-policy.test.ts tests/d1-schema-snapshot.test.ts
+      - name: Audit committed snapshots and workflow rules
+        run: |
+          npm run validate:archive-policy
+          npm run validate:workflows
+
   validate:
     name: validate
     needs: changes
@@ -262,9 +317,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    # Qualify this retained fixture branch while publication remains a draft.
-    # Same-repository ownership and the exact branch bound this exception.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -804,8 +857,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Run the existing full suite for the same narrowly scoped draft as validate.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
