@@ -8,7 +8,11 @@ import {
 } from "../src/mcp-list-query.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
-import { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "../src/kv-keys.ts";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+} from "../src/kv-keys.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
 import {
   applyQueryFilters,
@@ -1009,21 +1013,41 @@ test("all six REST catalog routes retain checked links, projections, CSV and no-
     ["/api/v1/subnets/0/surfaces", "surfaces"],
   ] as const) {
     const env = envFor(blob);
-    const first = await rest({ limit: "1", fields: "id", page_snapshot: "start" }, path, env);
+    const first = await rest(
+      { limit: "1", fields: "id", page_snapshot: "start" },
+      path,
+      env,
+    );
     assert.equal(first.response.status, 200, path);
     const receipt = first.body.meta.pagination.snapshot;
     assert.match(receipt, /^v1\.[0-9a-f]{64}$/, path);
     assert.deepEqual(first.body.data[key], [{ id: values[0].id }], path);
     assert.equal(first.body.meta.pagination.total, 3, path);
     assert.equal(first.response.headers.get("cache-control"), "no-store", path);
-    const next = await rest({ limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" }, path, env);
+    const next = await rest(
+      { limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" },
+      path,
+      env,
+    );
     assert.deepEqual(next.body.data[key], [{ id: values[1].id }], path);
     assert.equal(next.body.meta.pagination.snapshot, receipt, path);
-    const csv = await handleRequest(new Request("https://metagraph.sh" + path + "?limit=1&fields=id&page_snapshot=start&format=csv"), env, {});
+    const csv = await handleRequest(
+      new Request(
+        "https://metagraph.sh" +
+          path +
+          "?limit=1&fields=id&page_snapshot=start&format=csv",
+      ),
+      env,
+      {},
+    );
     assert.equal(csv.status, 200, path);
     assert.match(csv.headers.get("content-type") ?? "", /text\/csv/, path);
     assert.equal(csv.headers.get("cache-control"), "no-store", path);
-    assert.match(csv.headers.get("link") ?? "", new RegExp(receipt.replace(".", "[.]")), path);
+    assert.match(
+      csv.headers.get("link") ?? "",
+      new RegExp(receipt.replace(".", "[.]")),
+      path,
+    );
     const text = await csv.text();
     assert.ok(text.includes(String(values[0].id)), path);
     assert.ok(!text.includes(String(values[1].id)), path);
@@ -1032,26 +1056,57 @@ test("all six REST catalog routes retain checked links, projections, CSV and no-
 
 test("checked endpoint routes hash effective health even when every observation stamp is unchanged", async () => {
   const stamp = new Date().toISOString();
-  const values: Row[] = rows.slice(0, 3).map((row, index) => ({ ...row, surface_id: `surface-${index}` }));
+  const values: Row[] = rows
+    .slice(0, 3)
+    .map((row, index) => ({ ...row, surface_id: `surface-${index}` }));
   const blob = artifact(values);
-  for (const path of ["/api/v1/endpoints", "/api/v1/rpc/endpoints", "/api/v1/providers/fixture/endpoints", "/api/v1/subnets/0/endpoints"]) {
+  for (const path of [
+    "/api/v1/endpoints",
+    "/api/v1/rpc/endpoints",
+    "/api/v1/providers/fixture/endpoints",
+    "/api/v1/subnets/0/endpoints",
+  ]) {
     let changed = false;
-    const env = { METAGRAPH_ARCHIVE: { get: async () => ({ json: async () => blob }) }, METAGRAPH_CONTROL: {
-      get: async (key: string) => {
-        if (key === KV_HEALTH_META) return { last_run_at: stamp };
-        const live = values.map((row, i) => ({ id: row.id, surface_id: row.surface_id, netuid: 0, status: changed && i === 0 ? "failed" : "ok", last_checked: stamp, latency_ms: 1 }));
-        if (key === KV_HEALTH_CURRENT) return { last_run_at: stamp, surfaces: live };
-        if (key === KV_HEALTH_RPC_POOL) return { last_run_at: stamp, endpoints: live };
-        return null;
+    const env = {
+      METAGRAPH_ARCHIVE: { get: async () => ({ json: async () => blob }) },
+      METAGRAPH_CONTROL: {
+        get: async (key: string) => {
+          if (key === KV_HEALTH_META) return { last_run_at: stamp };
+          const live = values.map((row, i) => ({
+            id: row.id,
+            surface_id: row.surface_id,
+            netuid: 0,
+            status: changed && i === 0 ? "failed" : "ok",
+            last_checked: stamp,
+            latency_ms: 1,
+          }));
+          if (key === KV_HEALTH_CURRENT)
+            return { last_run_at: stamp, surfaces: live };
+          if (key === KV_HEALTH_RPC_POOL)
+            return { last_run_at: stamp, endpoints: live };
+          return null;
+        },
       },
-    } } as unknown as Env;
-    const first = await rest({ limit: "1", fields: "id", page_snapshot: "start" }, path, env);
+    } as unknown as Env;
+    const first = await rest(
+      { limit: "1", fields: "id", page_snapshot: "start" },
+      path,
+      env,
+    );
     assert.equal(first.response.status, 200, path);
     const receipt = first.body.meta.pagination.snapshot;
     changed = true;
-    const next = await rest({ limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" }, path, env);
+    const next = await rest(
+      { limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" },
+      path,
+      env,
+    );
     assert.equal(next.response.status, 400, path);
-    assert.deepEqual(next.body.meta.catalog_paging, { reason: "catalog_changed" }, path);
+    assert.deepEqual(
+      next.body.meta.catalog_paging,
+      { reason: "catalog_changed" },
+      path,
+    );
     assert.equal(next.body.data, null, path);
   }
 });

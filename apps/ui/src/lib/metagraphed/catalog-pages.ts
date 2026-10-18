@@ -1,4 +1,9 @@
-import type { QueryClient, QueryKey, FetchInfiniteQueryOptions, GetNextPageParamFunction } from "@tanstack/react-query";
+import type {
+  QueryClient,
+  QueryKey,
+  FetchInfiniteQueryOptions,
+  GetNextPageParamFunction,
+} from "@tanstack/react-query";
 import { apiFetch, ApiError, buildUrl, type ApiResult, type QueryParams } from "./client";
 
 export interface CatalogPageParam {

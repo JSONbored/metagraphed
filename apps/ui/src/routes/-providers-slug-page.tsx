@@ -19,10 +19,7 @@ import {
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
-import {
-  restartCatalogResults,
-  catalogRetentionNotice,
-} from "@/lib/metagraphed/catalog-pages";
+import { restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";

@@ -7,7 +7,12 @@ vi.mock("./client", async (original) => ({
 }));
 import { ApiError } from "./client";
 import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./catalog-queries";
-import { CatalogRestartRequired, catalogRetentionNotice, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
+import {
+  CatalogRestartRequired,
+  catalogRetentionNotice,
+  collectCatalogRows,
+  restartCatalogResults,
+} from "./catalog-pages";
 
 const snapshot = "v1." + "a".repeat(64);
 function response(ids: string[], cursor: number, total: number, key = "endpoints") {
