@@ -13,6 +13,71 @@ export interface D1AdminCredentials {
   databaseId: string;
   apiToken: string;
 }
+
+// Only a fixed, documented authentication code may leave an error body. Never
+// copy messages, nested errors, identifiers or arbitrary numeric/string codes.
+// https://developers.cloudflare.com/ai-search/troubleshooting/api-error-codes/
+async function d1ErrorCodes(response: Response): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let finished = false;
+  const deadline = Date.now() + 500;
+  try {
+    const read = async () => {
+      const decoder = new TextDecoder("utf-8", { fatal: true });
+      let bytes = 0,
+        text = "";
+      for (let chunks = 0; chunks < 64; chunks++) {
+        if (finished || Date.now() >= deadline) return "";
+        const part = await reader.read();
+        if (finished || Date.now() >= deadline) return "";
+        if (part.done) {
+          text += decoder.decode();
+          const payload: unknown = JSON.parse(text);
+          if (
+            !payload ||
+            typeof payload !== "object" ||
+            !("success" in payload) ||
+            payload.success !== false ||
+            !("errors" in payload) ||
+            !Array.isArray(payload.errors) ||
+            payload.errors.length > 16
+          )
+            return "";
+          return payload.errors.some(
+            (error) => error && typeof error === "object" && error.code === 10000,
+          )
+            ? "; Cloudflare error codes: 10000"
+            : "";
+        }
+        bytes += part.value.byteLength;
+        if (bytes > 8 * 1024) return "";
+        text += decoder.decode(part.value, { stream: true });
+      }
+      return "";
+    };
+    return await Promise.race([
+      read(),
+      new Promise<string>((resolve) => {
+        timer = setTimeout(() => {
+          finished = true;
+          resolve("");
+        }, 500);
+      }),
+    ]);
+  } finally {
+    finished = true;
+    clearTimeout(timer);
+    // Cleanup must not delay the original HTTP failure on a stalled stream.
+    try {
+      void reader.cancel().catch(() => {});
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}
+
 export function d1AdminCredentials(
   env: Record<string, string | undefined> = process.env,
 ): D1AdminCredentials {
@@ -58,7 +123,9 @@ export async function d1AdminBatch(
   }
   if (!response.ok || !response.body)
     throw new Error(
-      `D1 maintenance request failed with HTTP ${response.status}`,
+      `D1 maintenance request failed with HTTP ${response.status}${
+        response.ok ? "" : await d1ErrorCodes(response).catch(() => "")
+      }`,
     );
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
