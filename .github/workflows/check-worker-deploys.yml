@@ -82,6 +82,7 @@ jobs:
             ["wrangler.data.jsonc", "metagraphed-data-api"],
             ["wrangler.registry.jsonc", "metagraphed-registry-sync-api"],
             ["wrangler.wss-lb.jsonc", "metagraphed-wss-lb"],
+            ["apps/ui/wrangler.jsonc", "metagraphed-ui"],
           ];
           const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
           const STAMP = /^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?Z$/;
@@ -178,7 +179,7 @@ jobs:
             let calls = 0;
             const read = args => {
               const remaining = deadline - performance.now();
-              requireValue(remaining >= 6000 && calls < 12);
+              requireValue(remaining >= 6000 && calls < 15);
               calls += 1;
               const commandSeconds = Math.min(30, Math.floor((remaining - 5000) / 1000));
               const result = spawnSync("timeout", ["--signal=TERM", "--kill-after=5s", commandSeconds + "s",
@@ -200,7 +201,7 @@ jobs:
               requireValue(performance.now() < deadline);
               records.push(record);
             }
-            requireValue(performance.now() < deadline && calls <= 12 && records.length === 4);
+            requireValue(performance.now() < deadline && calls <= 15 && records.length === 5);
             for (const record of records) console.log(JSON.stringify(record));
           } catch {
             console.error("deployment_metadata_readback_failed");
