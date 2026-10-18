@@ -9514,7 +9514,8 @@ async function handleApiRequest(
   const checkedCatalog = url.searchParams.has("page_snapshot");
   // Generic stored bodies cannot establish requested identities or history
   // scope. Variants must reach the live handler before any cache or read.
-  if (hasNeuronCapitalPolicy(contractPathForPathname(url.pathname) ?? "")) {
+  // A matched route comes from the same published contract table.
+  if (hasNeuronCapitalPolicy(contractPathForPathname(url.pathname)!)) {
     return errorResponse(
       "artifact_computed_live",
       "This route is served by its live handler; use the canonical API path without a trailing slash.",

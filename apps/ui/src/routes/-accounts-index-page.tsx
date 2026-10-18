@@ -80,7 +80,10 @@ export function AccountsPage() {
     ? [<Fact key="h160">{`looking up ${shortAddress(h160)}`}</Fact>]
     : [];
 
-  const cells: FactCells = [{ label: "Registered hotkeys", value: formatNumber(accountCount) }];
+  const cells: FactCells = [
+    { label: "Registered hotkeys", value: formatNumber(accountCount) },
+    { label: "Capital", value: "Unavailable", kind: "text" },
+  ];
 
   const activeColumns: DataTableColumn<ActiveRow>[] = [
     { key: "signer", label: "Account", kind: "identifier", value: (row) => row.signer },

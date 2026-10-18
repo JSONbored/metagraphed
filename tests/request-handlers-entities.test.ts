@@ -124,6 +124,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
+  canonicalValidatorHistoryCachePath,
   canonicalChainRevenueCoverageCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
@@ -7057,6 +7058,37 @@ describe("canonicalSubnetHistoryCachePath", () => {
   test("falls back to raw url when window value is invalid", () => {
     const raw = "/api/v1/subnets/7/history?window=invalid";
     assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalValidatorHistoryCachePath", () => {
+  const path = `/api/v1/validators/${SS58}/history`;
+
+  test("keeps unscoped, root and subnet cache keys distinct", () => {
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(path)),
+      `${path}?window=30d`,
+    );
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(`${path}?netuid=0`)),
+      `${path}?window=30d&netuid=0`,
+    );
+    assert.equal(
+      canonicalValidatorHistoryCachePath(url(`${path}?netuid=7&window=7d`)),
+      `${path}?window=7d&netuid=7`,
+    );
+  });
+
+  test("invalid queries retain their raw cache key", () => {
+    for (const query of [
+      "window=invalid&netuid=0",
+      "window=7d&netuid=65536",
+      "netuid=unknown",
+      "window=30d&extra=junk",
+    ]) {
+      const raw = `${path}?${query}`;
+      assert.equal(canonicalValidatorHistoryCachePath(url(raw)), raw);
+    }
   });
 });
 

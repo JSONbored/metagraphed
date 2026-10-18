@@ -33,6 +33,7 @@ import {
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildGlobalValidators } from "../src/metagraph-neurons.ts";
+import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import {
@@ -56,7 +57,7 @@ const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
 const VALIDATOR_HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
 function validatorSnapshot() {
-  return buildGlobalValidators(
+  const snapshot = buildGlobalValidators(
     [
       {
         hotkey: VALIDATOR_HOTKEY,
@@ -73,6 +74,7 @@ function validatorSnapshot() {
     ],
     { priceByNetuid: new Map([[7, 2]]) },
   );
+  return GlobalValidatorsArtifactSchema.parse(snapshot);
 }
 
 // One row backs every shape the analytics SQL returns (the shared ok-latency CTE
@@ -1633,7 +1635,7 @@ describe("analytics edge cache", () => {
           "/validator-operator-directory-principal-unavailable/",
         ),
       ]);
-      assert.deepEqual((await cache.store.get(legacyKey)!.json()).data, legacy);
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
     },
   );
 
@@ -1648,7 +1650,7 @@ describe("analytics edge cache", () => {
       const data = validatorSnapshot();
       const legacy = {
         ...data,
-        validators: data.validators.map((validator: Row) => ({
+        validators: data.validators.map((validator) => ({
           ...validator,
           total_stake_tao: capital,
           root_stake_tao: capital,
@@ -1700,7 +1702,7 @@ describe("analytics edge cache", () => {
       assert.deepEqual(cache.putKeys, [
         expectedKey("global-validators-principal-unavailable", path, search),
       ]);
-      assert.deepEqual((await cache.store.get(legacyKey)!.json()).data, legacy);
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
     },
   );
 
@@ -1817,7 +1819,7 @@ describe("analytics edge cache", () => {
           ),
         ),
       );
-      assert.deepEqual((await cache.store.get(legacyKey)!.json()).data, legacy);
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), { data: legacy });
     },
   );
 
