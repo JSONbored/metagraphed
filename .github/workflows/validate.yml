@@ -1,4 +1,4 @@
-name: Chain-stream readiness qualification
+name: Chain-stream controlled readiness qualification
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
-      - name: Compare original and candidate ten times with retries disabled
+      - name: Observe pre-client predicate and candidate contract ten times without retries
         run: node scripts/qualify-chain-stream-readiness.mjs
       - name: Retain exact diagnostic reports and server logs
         if: ${{ !cancelled() }}
