@@ -1,4 +1,9 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type {
+  QueryClient,
+  QueryKey,
+  FetchInfiniteQueryOptions,
+  GetNextPageParamFunction,
+} from "@tanstack/react-query";
 import { apiFetch, ApiError, buildUrl, type ApiResult, type QueryParams } from "./client";
 
 export interface CatalogPageParam {
@@ -34,7 +39,11 @@ export async function fetchCatalogPage<T>(
       signal,
     });
   } catch (error) {
-    if (error instanceof ApiError && error.parameter === "page_snapshot") {
+    if (
+      error instanceof ApiError &&
+      error.parameter === "page_snapshot" &&
+      (error.catalogReason === undefined || error.catalogReason === "catalog_changed")
+    ) {
       throw new CatalogRestartRequired();
     }
     throw error;
@@ -104,8 +113,38 @@ export async function collectCatalogRows<T>(
   return rows;
 }
 
-/** Cancel late continuations, discard the accumulated generation, fetch page zero once. */
-export async function restartCatalogResults(client: QueryClient, queryKey: readonly unknown[]) {
-  await client.cancelQueries({ queryKey, exact: true });
-  await client.resetQueries({ queryKey, exact: true });
+/** Replace atomically with one fresh first page; failure retains accepted data. */
+export async function restartCatalogResults<T, TData, TKey extends QueryKey>(
+  client: QueryClient,
+  options: FetchInfiniteQueryOptions<T, Error, TData, TKey, CatalogPageParam> & {
+    getNextPageParam: GetNextPageParamFunction<CatalogPageParam, T>;
+  },
+) {
+  await client.cancelQueries({ queryKey: options.queryKey, exact: true });
+  try {
+    await client.fetchInfiniteQuery({ ...options, pages: 1, staleTime: 0, retry: false });
+    return true;
+  } catch {
+    // React Query owns the visible error alongside retained data. UI handlers
+    // can fire-and-forget without an unhandled rejection or an implicit retry.
+    return false;
+  }
+}
+
+/** Retained rows are accepted historical results, not a fresh observation. */
+export function catalogRetentionNotice(
+  state: { isFetching: boolean; isFetchingNextPage: boolean; isError: boolean },
+  count: number,
+  acceptedScope?: string,
+): string | undefined {
+  if (!count) return undefined;
+  const prefix = acceptedScope ? acceptedScope + " · " : "";
+  if (state.isFetching && !state.isFetchingNextPage)
+    return (
+      prefix +
+      "Refreshing results · previously accepted rows retained · current freshness unverified"
+    );
+  if (state.isError)
+    return prefix + "Previously accepted rows retained · current freshness unverified";
+  return undefined;
 }

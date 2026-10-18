@@ -85,6 +85,7 @@ export interface ApiPagination {
 }
 
 export interface ApiMeta {
+  catalog_paging?: ApiComponents["schemas"]["ResponseMeta"]["catalog_paging"];
   artifact_path?: string;
   cache?: string;
   contract_version?: string;

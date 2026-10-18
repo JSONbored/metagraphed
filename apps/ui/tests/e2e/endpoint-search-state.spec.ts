@@ -316,7 +316,7 @@ test("combines server facets and known-status filtering with search", async ({ p
   expect(state.reads.at(-1)).toMatchObject({ q: "second", status: null, knownStatus: "true" });
 });
 
-test("discards the current generation on refresh failure and retries its first page", async ({
+test("retains the accepted generation on refresh failure and retries its first page", async ({
   page,
 }) => {
   const state = await searchFixture(page);
@@ -325,11 +325,13 @@ test("discards the current generation on refresh failure and retries its first p
   await expect(directory).toContainText("1 loaded of 1 matching");
   state.failed.add("second");
   await page.getByRole("button", { name: "refresh", exact: true }).click();
-  await expect(directory.getByRole("alert")).toContainText("tracked endpoints");
+  await expect(directory.getByRole("alert")).toContainText("Previously accepted rows retained");
   await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toHaveCount(
-    0,
+    1,
   );
-  await expect(directory).not.toContainText("previously loaded endpoints remain visible");
+  await expect(directory).toContainText("Previously accepted rows retained");
+  await expect(directory).toContainText("current freshness unverified");
+  await expect(directory).toContainText("1 loaded of 1 matching");
   state.failed.delete("second");
   await directory.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(directory).toContainText("1 loaded of 1 matching");
@@ -366,6 +368,7 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
   page,
 }) => {
   let rows = ROWS.slice(200, 203).map((row) => ({ ...row, provider: "fixture-a" }));
+  let failRestart = false;
   const reads: { cursor: string | null; snapshot: string | null; status: number }[] = [];
   await page.route("**/api/v1/endpoints?*", async (route) => {
     const url = new URL(route.request().url());
@@ -386,7 +389,18 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
     expect(url.searchParams.get("q")).toBe(QUERY);
     expect(url.searchParams.get("provider")).toBe("fixture-a");
     expect(url.searchParams.get("status")).toBe("ok");
-    const result = matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
+    const result =
+      failRestart && url.searchParams.get("page_snapshot") === "start"
+        ? {
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "unavailable", message: "restart unavailable" },
+              meta: {},
+            }),
+          }
+        : matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
     reads.push({
       cursor: url.searchParams.get("cursor"),
       snapshot: url.searchParams.get("page_snapshot"),
@@ -412,7 +426,20 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
     0,
   );
 
-  await page.getByRole("button", { name: "refresh", exact: true }).click();
+  await expect(
+    directory.getByRole("button", { name: "Restart results", exact: true }),
+  ).toBeVisible();
+  failRestart = true;
+  await directory.getByRole("button", { name: "Restart results", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(directory).toContainText("restart unavailable");
+  await expect(directory).toContainText("current freshness unverified");
+  await expect(directory).toContainText("2 loaded of 3 matching");
+  await expect(directory.getByRole("link", { name: "node200.example", exact: true })).toBeVisible();
+  expect(reads).toHaveLength(3);
+  expect(reads[2]).toEqual({ cursor: "0", snapshot: "start", status: 503 });
+  failRestart = false;
+  await directory.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(directory).toContainText("1 loaded of 1 matching");
   await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toBeVisible();
   for (const host of ["node200.example", "node201.example", "node202.example"])
@@ -425,8 +452,8 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
   await expect(search).toHaveValue(QUERY);
   expect(new URL(page.url()).searchParams.get("provider")).toBe("fixture-a");
   expect(new URL(page.url()).searchParams.get("status")).toBe("ok");
-  expect(reads).toHaveLength(3);
-  expect(reads[2]).toEqual({ cursor: "0", snapshot: "start", status: 200 });
+  expect(reads).toHaveLength(4);
+  expect(reads[3]).toEqual({ cursor: "0", snapshot: "start", status: 200 });
 });
 
 test.describe("catalog-wide known status", () => {

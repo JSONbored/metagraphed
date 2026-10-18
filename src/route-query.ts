@@ -64,6 +64,8 @@ import {
 export interface QueryError {
   parameter: string;
   message: string;
+  reason?:
+    "catalog_changed" | "catalog_budget_exceeded" | "catalog_unavailable";
 }
 
 /**

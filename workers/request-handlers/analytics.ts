@@ -259,6 +259,7 @@ export function canonicalHealthWindowCachePath(url: URL): string {
 function analyticsQueryError(error: QueryError): Response {
   return errorResponse("invalid_query", error.message, 400, {
     parameter: error.parameter,
+    ...(error.reason ? { catalog_paging: { reason: error.reason } } : {}),
   });
 }
 

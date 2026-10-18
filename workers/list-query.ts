@@ -6,8 +6,12 @@
 // belongs to the router's single parse against the route's Zod schema
 // (src/route-query.ts, #10218), which runs before any handler.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
-import { createHash } from "node:crypto";
-import { historyJson } from "../src/history-sha256.ts";
+import { boundedHistoryJsonSha256 } from "../src/history-sha256.ts";
+import {
+  CATALOG_MATCHED_ROWS_MAX,
+  CATALOG_HASH_BYTES_MAX,
+  CATALOG_HASH_DEPTH_MAX,
+} from "../src/route-limits.ts";
 import {
   validateCollectionQuery,
   type QueryError,
@@ -160,6 +164,7 @@ export function applyQueryFilters(
       return {
         error: {
           parameter: "page_snapshot",
+          reason: "catalog_unavailable",
           message:
             "Guarded collection is unavailable; retry from the first page.",
         },
@@ -528,8 +533,17 @@ function applyListTransform(
     params,
     config.range_filters,
   );
-  const sorted = sortRows(filtered, params);
   const requestedSnapshot = params.get("page_snapshot");
+  const budgetError = (): ApplyQueryFiltersResult => ({
+    error: {
+      parameter: "page_snapshot",
+      reason: "catalog_budget_exceeded",
+      message: `Checked catalog exceeds the ${CATALOG_MATCHED_ROWS_MAX}-row, ${CATALOG_HASH_BYTES_MAX}-byte or ${CATALOG_HASH_DEPTH_MAX}-level verification budget. Narrow filters and start again; no partial page was returned.`,
+    },
+  });
+  if (requestedSnapshot && filtered.length > CATALOG_MATCHED_ROWS_MAX)
+    return budgetError();
+  const sorted = sortRows(filtered, params);
   if (requestedSnapshot) {
     for (const name of ["cursor", "limit"]) {
       if (params.has(name) && integerParam(params.get(name)) === null) {
@@ -557,9 +571,9 @@ function applyListTransform(
   if (requestedSnapshot) {
     // Stream already-loaded rows into one digest, avoiding a second complete
     // canonical payload string. No storage/database read is added here.
-    const digest = createHash("sha256")
-      .update(
-        historyJson({
+    const digest = boundedHistoryJsonSha256(
+      [
+        {
           scope: options.snapshotScope,
           query: [...options.snapshotParams.entries()]
             .filter(
@@ -567,11 +581,14 @@ function applyListTransform(
                 !["cursor", "limit", "format", "page_snapshot"].includes(name),
             )
             .sort(([a], [b]) => a.localeCompare(b)),
-        }),
-      )
-      .update("\n");
-    for (const row of sorted) digest.update(historyJson(row)).update("\n");
-    snapshot = `v1.${digest.digest("hex")}`;
+        },
+        ...sorted,
+      ],
+      CATALOG_HASH_BYTES_MAX,
+      CATALOG_HASH_DEPTH_MAX,
+    );
+    if (digest === null) return budgetError();
+    snapshot = `v1.${digest}`;
   }
   if (
     requestedSnapshot &&
@@ -581,6 +598,7 @@ function applyListTransform(
     return {
       error: {
         parameter: "page_snapshot",
+        reason: "catalog_changed",
         message:
           "Collection or query changed since the previous page; restart with page_snapshot=start at cursor 0.",
       },

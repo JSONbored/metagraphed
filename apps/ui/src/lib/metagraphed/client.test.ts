@@ -341,3 +341,39 @@ describe("apiFetch", () => {
     expect(apiLatencySnapshot()?.ms).toEqual(expect.any(Number));
   });
 });
+
+it.each([400, 200])(
+  "checked requests bypass browser cache and preserve budget reasons (HTTP %s)",
+  async (status) => {
+    const fetch = vi.fn(async (_url: unknown, _init: RequestInit) =>
+      Response.json(
+        {
+          ok: false,
+          error: { code: "invalid_query", message: "Narrow filters" },
+          meta: {
+            parameter: "page_snapshot",
+            catalog_paging: { reason: "catalog_budget_exceeded" },
+          },
+        },
+        { status },
+      ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    try {
+      await expect(
+        apiFetch("/api/v1/endpoints", {
+          params: { page_snapshot: "start" },
+          init: { cache: "force-cache" },
+        }),
+      ).rejects.toMatchObject({
+        parameter: "page_snapshot",
+        catalogReason: "catalog_budget_exceeded",
+        message: "Narrow filters",
+      });
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);

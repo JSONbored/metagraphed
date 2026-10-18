@@ -7,7 +7,12 @@ vi.mock("./client", async (original) => ({
 }));
 import { ApiError } from "./client";
 import { endpointsInfiniteQuery, surfacesInfiniteQuery } from "./catalog-queries";
-import { CatalogRestartRequired, collectCatalogRows, restartCatalogResults } from "./catalog-pages";
+import {
+  CatalogRestartRequired,
+  catalogRetentionNotice,
+  collectCatalogRows,
+  restartCatalogResults,
+} from "./catalog-pages";
 
 const snapshot = "v1." + "a".repeat(64);
 function response(ids: string[], cursor: number, total: number, key = "endpoints") {
@@ -73,7 +78,7 @@ describe("first-party checked catalog consumers", () => {
     const late = observer.fetchNextPage().catch(() => undefined);
     const lateSignal = fetchApi.mock.calls[1][1].signal as AbortSignal;
     fetchApi.mockResolvedValueOnce(response(["new"], 0, 1));
-    await restartCatalogResults(client, options.queryKey);
+    await restartCatalogResults(client, options);
     expect(lateSignal.aborted).toBe(true);
     finish(response(["c", "d"], 2, 4));
     await late;
@@ -162,4 +167,70 @@ describe("first-party checked catalog consumers", () => {
     await expect(result).rejects.toMatchObject({ name: "AbortError" });
     expect(fetchApi).toHaveBeenCalledTimes(1);
   });
+});
+
+it("failed restart retains all accepted pages and parameters without retry; success replaces once", async () => {
+  fetchApi.mockResolvedValueOnce(response(["a", "b"], 0, 4));
+  fetchApi.mockResolvedValueOnce(response(["c", "d"], 2, 4));
+  const client = new QueryClient();
+  const options = endpointsInfiniteQuery({ kind: "rpc", limit: 2 });
+  await client.fetchInfiniteQuery(options);
+  const observer = new InfiniteQueryObserver(client, options);
+  const stop = observer.subscribe(() => {});
+  await observer.fetchNextPage();
+  const accepted = observer.getCurrentResult().data;
+  fetchApi.mockRejectedValueOnce(new Error("restart failed"));
+  expect(await restartCatalogResults(client, options)).toBe(false);
+  expect(fetchApi).toHaveBeenCalledTimes(3);
+  expect(observer.getCurrentResult().data).toBe(accepted);
+  expect(observer.getCurrentResult().error?.message).toBe("restart failed");
+  fetchApi.mockResolvedValueOnce({
+    ...response(["fresh"], 0, 1),
+    meta: {
+      pagination: {
+        ...response(["fresh"], 0, 1).meta.pagination,
+        snapshot: "v1." + "b".repeat(64),
+      },
+    },
+  });
+  expect(await restartCatalogResults(client, options)).toBe(true);
+  expect(fetchApi).toHaveBeenCalledTimes(4);
+  expect(fetchApi.mock.calls.slice(2).map((call) => call[1].params)).toEqual([
+    expect.objectContaining({ cursor: 0, page_snapshot: "start", kind: "rpc" }),
+    expect.objectContaining({ cursor: 0, page_snapshot: "start", kind: "rpc" }),
+  ]);
+  expect(observer.getCurrentResult().data?.pages.flatMap((p) => p.data.map((r) => r.id))).toEqual([
+    "fresh",
+  ]);
+  expect(observer.getCurrentResult().data?.pageParams).toEqual([{ cursor: 0, snapshot: "start" }]);
+  stop();
+  client.clear();
+});
+
+it("keeps actionable over-budget errors instead of encouraging identical restarts", async () => {
+  const error = new ApiError("Narrow filters", {
+    status: 400,
+    code: "invalid_query",
+    parameter: "page_snapshot",
+    catalogReason: "catalog_budget_exceeded",
+    url: "fixture",
+  });
+  fetchApi.mockRejectedValueOnce(error);
+  await expect(collectCatalogRows("/api/v1/endpoints", "endpoints", {})).rejects.toBe(error);
+  expect(fetchApi).toHaveBeenCalledTimes(1);
+});
+
+it("labels retained results during failed or pending replacement while preserving accepted counts", () => {
+  const state = { isFetching: false, isFetchingNextPage: false, isError: false };
+  expect(catalogRetentionNotice(state, 2, "2 of 3")).toBeUndefined();
+  expect(catalogRetentionNotice({ ...state, isError: true }, 0)).toBeUndefined();
+  expect(catalogRetentionNotice({ ...state, isError: true }, 2, "2 of 3")).toBe(
+    "2 of 3 · Previously accepted rows retained · current freshness unverified",
+  );
+  expect(catalogRetentionNotice({ ...state, isFetching: true }, 2, "2 of 3")).toMatch(
+    /^2 of 3 · Refreshing results/,
+  );
+  expect(
+    catalogRetentionNotice({ ...state, isFetching: true, isFetchingNextPage: true }, 2),
+  ).toBeUndefined();
 });

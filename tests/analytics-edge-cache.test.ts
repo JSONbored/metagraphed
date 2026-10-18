@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { archiveEnv } from "./helpers/cold-tier-env.ts";
-import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The analytics store is Postgres now (#10179), reached through
@@ -13,9 +13,13 @@ const { pg } = await vi.hoisted(async () => ({
 }));
 vi.mock("pg", () => pg.module);
 
+import { withStampedEdgeCache } from "../workers/edge-cache.ts";
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
-import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
+import {
+  EXPOSED_RESPONSE_HEADERS_VALUE,
+  withNoStore,
+} from "../workers/http.ts";
 import {
   DEGRADED_HEADER,
   DEGRADED_TIER_UNAVAILABLE,
@@ -2480,4 +2484,58 @@ describe("degraded-tier labelling (#9110)", () => {
     );
     assert.equal(marked.status, immutable.status);
   });
+});
+
+test("checked analytics cache wrapper skips cache and stamp I/O for GET and HEAD", async () => {
+  const stamp = vi.fn(async () => "unchanged");
+  const match = vi.fn();
+  const put = vi.fn();
+  const previous = (globalThis as unknown as { caches?: unknown }).caches;
+  (globalThis as unknown as { caches?: unknown }).caches = {
+    default: { match, put },
+  };
+  try {
+    for (const method of ["GET", "HEAD"]) {
+      const build = vi.fn(
+        (_request: Request) =>
+          new Response("current rows", {
+            headers: { "cache-control": "public, max-age=60" },
+          }),
+      );
+      const response = await withStampedEdgeCache(
+        new Request(
+          "https://api.metagraph.sh/api/v1/surfaces?page_snapshot=start",
+          { method },
+        ),
+        {},
+        {} as Env,
+        "catalog",
+        build,
+        null,
+        stamp,
+      );
+      assert.equal(build.mock.calls[0][0].method, "GET");
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.equal(
+        response.headers.get("x-metagraph-cache-profile"),
+        "no-store",
+      );
+      assert.equal(
+        await response.text(),
+        method === "HEAD" ? "" : "current rows",
+      );
+    }
+    expect(stamp).not.toHaveBeenCalled();
+    expect(match).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  } finally {
+    (globalThis as unknown as { caches?: unknown }).caches = previous;
+  }
+});
+
+test("no-store policy preserves bodyless checked response semantics", () => {
+  const response = withNoStore(new Response(null, { status: 304 }));
+  assert.equal(response.status, 304);
+  assert.equal(response.body, null);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });

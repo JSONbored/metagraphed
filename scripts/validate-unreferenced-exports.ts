@@ -97,8 +97,9 @@ export const MAX_UNREFERENCED_EXPORTS: number = 730;
  * residue. Lock the gain in rather than leaving unused-export capacity behind.
  *
  * 152 after #12039 reuses the wallet connection trigger in contextual settings.
+ * 151 after checked catalog recovery; retain the native measured improvement.
  */
-export const MAX_UNREFERENCED_EXPORTS_UI: number = 152;
+export const MAX_UNREFERENCED_EXPORTS_UI: number = 151;
 
 /** Whether a knip issue belongs to the UI workspaces rather than the backend. */
 export function isUiFile(file: string): boolean {

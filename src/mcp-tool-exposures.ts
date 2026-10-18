@@ -458,3 +458,22 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   },
   get_evm_address_mapping: { operation: "evm-address-mapping" },
 };
+
+/** Initial checked catalog delivery; other offset tools retain legacy semantics. */
+const CHECKED_CATALOG_OPERATIONS = new Set([
+  "endpoints",
+  "rpc-endpoints",
+  "provider-endpoints",
+  "subnet-endpoints",
+  "surfaces",
+  "subnet-surfaces",
+]);
+export const CHECKED_CATALOG_MCP_TOOLS = new Set(
+  Object.entries(MCP_EXPOSURES)
+    .filter(
+      ([, exposure]) =>
+        exposure.operation !== null &&
+        CHECKED_CATALOG_OPERATIONS.has(exposure.operation),
+    )
+    .map(([name]) => name),
+);

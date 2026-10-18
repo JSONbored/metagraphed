@@ -16,6 +16,8 @@ import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
+  McpCatalogPageFields,
+  McpCatalogPageControls,
   RPC_POOL_KIND_VALUES,
   fieldsSchema,
   querySchema,
@@ -161,6 +163,7 @@ const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 export const ListProviderEndpointsInputSchema = z
   .object({
+    ...McpCatalogPageControls,
     q: querySchema().optional(),
     known_status: ENDPOINT_LIST_FILTERS.known_status,
     slug: z
@@ -246,6 +249,7 @@ export const ListProviderEndpointsOutputSchema =
     // slug, so the slug is what identifies the answer.
     slug: z.string(),
     ...McpListPageFields,
+    ...McpCatalogPageFields,
   });
 export type ListProviderEndpointsOutput = z.infer<
   typeof ListProviderEndpointsOutputSchema
