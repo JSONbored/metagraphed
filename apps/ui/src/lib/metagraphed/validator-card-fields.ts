@@ -1,4 +1,4 @@
-import { formatNumber, formatPct } from "@/lib/metagraphed/format";
+import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
@@ -17,9 +17,9 @@ export interface ValidatorCardFields {
   uidsLabel: string;
   /** Nominator count, or an em dash when the low-frequency source has no row. */
   nominatorsLabel: string;
-  /** Stake dominance as a 2-dp percentage, or an em dash when null. */
+  /** Explicitly unavailable without an authoritative principal contract. */
   dominanceLabel: string;
-  /** Estimated APY as a 1-dp percentage, or an em dash when null. */
+  /** Explicitly unavailable without an authoritative principal denominator. */
   apyLabel: string;
 }
 
@@ -35,7 +35,7 @@ export function resolveValidatorCard(v: GlobalValidator): ValidatorCardFields {
     subnetsLabel: formatNumber(v.subnet_count),
     uidsLabel: formatNumber(v.uid_count),
     nominatorsLabel: v.nominator_count != null ? formatNumber(v.nominator_count) : "—",
-    dominanceLabel: v.stake_dominance != null ? `${formatPct(v.stake_dominance, 2)}` : "—",
-    apyLabel: v.apy_estimate != null ? `${formatPct(v.apy_estimate, 1)}` : "—",
+    dominanceLabel: "Unavailable",
+    apyLabel: "Unavailable",
   };
 }

@@ -1,13 +1,10 @@
-// A wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a
-// registered neuron, each position's economics (stake, emission, rank, trust,
-// incentive, dividends, role) and emission/stake yield, plus wallet-level
-// aggregates — totals, subnet/validator counts, the overall return, and how
-// concentrated the wallet's stake is across its subnets. Distinct from
-// /accounts/{ss58}/subnets, which returns only the bare registration footprint
+// A hotkey's cross-subnet neuron memberships, scores and emission. The source's
+// stake_tao is voting weight, not independent principal, so legacy capital and
+// yield fields remain unavailable. Distinct from /accounts/{ss58}/subnets,
+// which returns only the bare registration footprint
 // (netuid/uid/stake/permit/active). Pure + exported for unit tests; the Worker
 // does the store read + envelope. Null-safe: no positions -> schema-stable empty card.
 
-import { computeConcentration } from "./concentration.ts";
 import { loadStoreAlphaPricesByNetuid } from "./metagraph-neurons.ts";
 import { numberOrZero, round9 } from "./lib/rao.ts";
 import { nonNegativeIntOrNull } from "./read-store.ts";
@@ -25,9 +22,6 @@ function nullableScore(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? round9(n) : null;
 }
-
-// Strict non-negative integer coercion: accept ONLY a real number or an all-digits
-// string, so a blank/null/false cell is rejected rather than read as 0.
 
 interface CaptureStamp {
   ms: number;
@@ -51,10 +45,52 @@ function captureStamp(value: unknown): CaptureStamp | null {
   return { ms, value: date.toISOString() };
 }
 
-// Emission-per-stake return rate; null when stake is 0 (undefined return).
-function computeYieldValue(emission: number, stake: number): number | null {
-  if (!(stake > 0)) return null;
-  return round9(emission / stake);
+type Row = Record<string, unknown>;
+
+const UNAVAILABLE_PORTFOLIO_CAPITAL = {
+  total_stake_tao: null,
+  overall_yield: null,
+  stake_concentration: null,
+};
+
+function membershipIdentity(value: unknown): [number | null, number | null] {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return [null, null];
+  }
+  const row = value as Row;
+  return [nonNegativeIntOrNull(row.netuid), nonNegativeIntOrNull(row.uid)];
+}
+
+function compareNullableIds(a: number | null, b: number | null): number {
+  if (a === null) return b === null ? 0 : 1;
+  return b === null ? -1 : a - b;
+}
+
+function compareMemberships(a: unknown, b: unknown): number {
+  const [aNetuid, aUid] = membershipIdentity(a);
+  const [bNetuid, bUid] = membershipIdentity(b);
+  return compareNullableIds(aNetuid, bNetuid) || compareNullableIds(aUid, bUid);
+}
+
+/** Clear old direct/compound service values without losing membership evidence. */
+export function unavailableAccountPortfolioCapital(portfolio: Row): Row {
+  return {
+    ...portfolio,
+    ...UNAVAILABLE_PORTFOLIO_CAPITAL,
+    ...(Array.isArray(portfolio.positions)
+      ? {
+          positions: portfolio.positions
+            .map((value: unknown) =>
+              value !== null &&
+              typeof value === "object" &&
+              !Array.isArray(value)
+                ? { ...value, stake_alpha: null, yield: null }
+                : value,
+            )
+            .sort(compareMemberships),
+        }
+      : {}),
+  };
 }
 
 export interface AccountPortfolioPosition {
@@ -62,7 +98,8 @@ export interface AccountPortfolioPosition {
   uid: number | null;
   role: "validator" | "miner";
   active: boolean;
-  stake_alpha: number;
+  /** Unavailable: the metagraph records voting weight, not alpha principal. */
+  stake_alpha: number | null;
   emission_alpha: number;
   rank: number | null;
   trust: number | null;
@@ -79,7 +116,8 @@ export interface AccountPortfolioResult {
   position_count: number;
   validator_count: number;
   miner_count: number;
-  total_stake_tao: number;
+  /** Unavailable without independently measured principal. */
+  total_stake_tao: number | null;
   total_emission_tao: number;
   overall_yield: number | null;
   stake_concentration: unknown;
@@ -92,20 +130,15 @@ export function buildAccountPortfolio(
   rows: Array<Record<string, unknown>> | null | undefined,
   ss58: string,
   {
-    // netuid -> alpha_price_tao (#9051). Root passes through at 1:1. A netuid
-    // with no resolvable price keeps its position row (per-position
-    // stake_alpha/emission_alpha/yield are single-subnet figures, untouched)
-    // but is excluded from the cross-subnet totals. REQUIRED, never defaulted
-    // -- see BuildGlobalValidatorsOptions for why.
+    // Required per-netuid emission pricing. Voting weight is never priced as
+    // principal; a missing price does not remove the membership row.
     priceByNetuid,
   }: { priceByNetuid: Map<number, number | null> },
 ): AccountPortfolioResult {
   const list = Array.isArray(rows) ? rows : [];
   const positions: AccountPortfolioPosition[] = [];
-  const pricedStakeByPosition: number[] = [];
   const netuids = new Set<number>();
   let validatorCount = 0;
-  let totalStake = 0;
   let totalEmission = 0;
   let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
@@ -116,7 +149,6 @@ export function buildAccountPortfolio(
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
-    const stake = numberOrZero(row?.stake_tao);
     const emission = numberOrZero(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     if (isValidator) validatorCount += 1;
@@ -130,28 +162,23 @@ export function buildAccountPortfolio(
           ? rowPrice
           : null;
     if (price != null) {
-      totalStake += stake * price;
       totalEmission += emission * price;
-      pricedStakeByPosition.push(stake * price);
     }
     positions.push({
       netuid,
       uid: nonNegativeIntOrNull(row?.uid),
       role: isValidator ? "validator" : "miner",
       active: Number(row?.active) === 1,
-      stake_alpha: round9(stake),
+      stake_alpha: null,
       emission_alpha: round9(emission),
       rank: nullableScore(row?.rank),
       trust: nullableScore(row?.trust),
       incentive: nullableScore(row?.incentive),
       dividends: nullableScore(row?.dividends),
-      yield: computeYieldValue(emission, stake),
+      yield: null,
     });
   }
-  // Biggest position first; tie-break by netuid for a stable order.
-  positions.sort(
-    (a, b) => b.stake_alpha - a.stake_alpha || a.netuid - b.netuid,
-  );
+  positions.sort(compareMemberships);
   return {
     schema_version: 1,
     ss58,
@@ -160,16 +187,8 @@ export function buildAccountPortfolio(
     position_count: positions.length,
     validator_count: validatorCount,
     miner_count: positions.length - validatorCount,
-    total_stake_tao: round9(totalStake),
+    ...UNAVAILABLE_PORTFOLIO_CAPITAL,
     total_emission_tao: round9(totalEmission),
-    // Overall wallet return: priced emission per priced stake -- both sides
-    // in TAO, so the ratio is dimensionally coherent for the first time
-    // (#9051). Null with no priceable stake.
-    overall_yield: totalStake > 0 ? round9(totalEmission / totalStake) : null,
-    // How concentrated the wallet's VALUE is across its priceable positions
-    // (Gini/HHI/etc.) -- priced legs only, since mixing different alpha
-    // units would weight the concentration by token count, not value.
-    stake_concentration: computeConcentration(pricedStakeByPosition),
     positions,
   };
 }
@@ -190,7 +209,7 @@ export async function loadAccountPortfolio(
       `SELECT ${ACCOUNT_PORTFOLIO_READ_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
       [ss58],
     ),
-    // #9051: TAO-price the cross-subnet totals from the snapshot stores mirror.
+    // #9051: TAO-price emission totals from the snapshot stores mirror.
     loadStoreAlphaPricesByNetuid(runner),
   ]);
   return buildAccountPortfolio(rows, ss58, { priceByNetuid });

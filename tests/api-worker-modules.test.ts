@@ -76,7 +76,7 @@ beforeAll(async () => {
       ...stamp,
       account_count: 0,
       limit: 20,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     }),
   );

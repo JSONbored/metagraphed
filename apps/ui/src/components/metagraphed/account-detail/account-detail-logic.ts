@@ -15,7 +15,7 @@ import type {
 import {
   formatAmount,
   formatAmountFixed,
-  formatPct,
+  formatNumber,
   formatSignedAmount,
 } from "@/lib/metagraphed/format";
 
@@ -49,43 +49,37 @@ export interface PositionRow {
   key: string;
   netuid: number;
   label: string;
-  value: number;
   hotkeys: number;
-  share: number;
 }
 
 /**
- * Live positions collapsed to one row per subnet.
+ * Recorded relationships collapsed to one row per subnet.
  *
  * `/positions` is per (hotkey, netuid) and an account commonly holds the same
  * subnet through several hotkeys -- 61 positions across 5 subnets on the
- * account this page is measured against. Railing the raw rows would show the
- * same subnet five times and let the reader add it up.
+ * account this page is measured against. These rows establish relationships,
+ * not quantities: even same-subnet legacy values may be voting weight. Ignore
+ * them here too, since old dehydrated data can bypass the query normalizer.
  */
 export function positionsBySubnet(
   positions: readonly AccountPosition[],
   nameOf: (netuid: number) => string,
 ): PositionRow[] {
-  const bySubnet = new Map<number, { value: number; hotkeys: Set<string> }>();
+  const bySubnet = new Map<number, Set<string>>();
   for (const position of positions) {
-    if (typeof position.netuid !== "number") continue;
-    const stake = typeof position.stake_tao === "number" ? position.stake_tao : 0;
-    const entry = bySubnet.get(position.netuid) ?? { value: 0, hotkeys: new Set<string>() };
-    entry.value += stake;
-    if (position.hotkey) entry.hotkeys.add(position.hotkey);
+    if (!Number.isSafeInteger(position.netuid) || position.netuid < 0) continue;
+    const entry = bySubnet.get(position.netuid) ?? new Set<string>();
+    if (position.hotkey) entry.add(position.hotkey);
     bySubnet.set(position.netuid, entry);
   }
-  const total = [...bySubnet.values()].reduce((acc, entry) => acc + entry.value, 0);
   return [...bySubnet.entries()]
     .map(([netuid, entry]) => ({
       key: `sn-${netuid}`,
       netuid,
       label: nameOf(netuid),
-      value: entry.value,
-      hotkeys: entry.hotkeys.size,
-      share: total > 0 ? entry.value / total : 0,
+      hotkeys: entry.size,
     }))
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => a.netuid - b.netuid);
 }
 
 export interface FlowRail {
@@ -219,7 +213,7 @@ export interface KeyRow {
 /**
  * Every key the chain ties to this account, with the tie named.
  *
- * The role is the whole point: a hotkey this coldkey stakes through, a child
+ * The role is the whole point: a hotkey recorded for this coldkey, a child
  * it delegates to and a parent that delegates to it are three different
  * relationships, and a bare list of addresses says none of them.
  */
@@ -229,19 +223,20 @@ export function relatedKeys(
   parents: readonly AccountDelegationEdge[],
 ): KeyRow[] {
   const rows: KeyRow[] = [];
-  const hotkeys = new Map<string, number>();
+  const hotkeys = new Map<string, Set<number>>();
   for (const position of positions) {
     if (!position.hotkey) continue;
-    const stake = typeof position.stake_tao === "number" ? position.stake_tao : 0;
-    hotkeys.set(position.hotkey, (hotkeys.get(position.hotkey) ?? 0) + stake);
+    const subnets = hotkeys.get(position.hotkey) ?? new Set<number>();
+    subnets.add(position.netuid);
+    hotkeys.set(position.hotkey, subnets);
   }
-  for (const [hotkey, stake] of [...hotkeys.entries()].sort((a, b) => b[1] - a[1])) {
+  for (const [hotkey, subnets] of [...hotkeys.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     rows.push({
       key: hotkey,
       label: `${hotkey.slice(0, 6)}…${hotkey.slice(-4)}`,
-      role: "stakes through",
+      role: "recorded through",
       href: `/validators/${hotkey}`,
-      value: fmtCompactTao(stake),
+      value: `${formatNumber(subnets.size)} ${subnets.size === 1 ? "subnet" : "subnets"}`,
     });
   }
   for (const [list, role] of [
@@ -256,10 +251,8 @@ export function relatedKeys(
         label: `${hotkey.slice(0, 6)}…${hotkey.slice(-4)}`,
         role,
         href: `/validators/${hotkey}`,
-        value:
-          typeof entry.proportion_fraction === "number"
-            ? `${formatPct(entry.proportion_fraction, 1)}`
-            : undefined,
+        // Edges were flattened from per-netuid RPC rows by the caller. Their
+        // proportions cannot describe this cross-subnet relationship.
       });
     }
   }

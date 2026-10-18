@@ -1111,7 +1111,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "account-portfolio",
     returns: "AccountPortfolio!",
     description:
-      "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
+      "One hotkey's cross-subnet neuron memberships in netuid/uid order, with observed scores, role, active state, native emission, counts and priced emission totals. Legacy stake quantities, total capital, concentration and investment yield are unavailable and remain null, including for an empty card; metagraph voting weight cannot establish independent principal. An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
   },
   {
     field: "account_positions",

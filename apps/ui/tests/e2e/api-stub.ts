@@ -285,9 +285,9 @@ if (!byPath.has(ACCOUNT_DIRECTORY_PATH)) {
           rankings: {
             stake: stakeAccounts.map(compact),
             emission: emissionAccounts.map(compact),
-            reach: [...stakeAccounts]
-              .sort((a, b) => Number(b.subnet_count ?? 0) - Number(a.subnet_count ?? 0))
-              .map(compact),
+            // No committed reach-ranked fixture exists. A stake-selected
+            // slice cannot establish the independent reach ranking.
+            reach: [],
           },
         },
       }),

@@ -15,9 +15,10 @@ describe("validator detail loading contract", () => {
     );
   });
 
-  it("keeps lower evidence regions deferred until their anchors approach the viewport", () => {
-    expect(page).toContain("enabled: momentumNearViewport");
+  it("defers movement evidence and omits unsupported capital instruments", () => {
     expect(page).toContain("enabled: nominatorsNearViewport");
-    expect(page).toContain("enabled: peersNearViewport");
+    expect(page).not.toContain("validatorHistoryQuery");
+    expect(page).not.toContain("validatorOperatorDirectoryQuery");
+    expect(page).not.toContain("stakeBySubnet");
   });
 });

@@ -17,10 +17,27 @@ export const CompareValidatorEntrySchema = z
       "The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape.",
     ),
     take: z.number().nullable(),
-    apy_estimate: z.number().min(0).nullable(),
-    apy_estimate_eligible_subnet_count: z.int().min(0),
+    apy_estimate: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.",
+      )
+      .meta({ deprecated: true }),
+    apy_estimate_eligible_subnet_count: z
+      .int()
+      .min(0)
+      .describe("Always 0 while investment principal is unavailable."),
     nominator_count: z.int().min(0).nullable(),
-    total_stake_tao: z.number().min(0),
+    total_stake_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z.number().min(0),
     avg_validator_trust: z.number().nullable(),
     max_validator_trust: z.number().nullable(),

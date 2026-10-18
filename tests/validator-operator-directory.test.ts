@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
 import { ValidatorOperatorDirectoryArtifactSchema } from "../schemas-src/routes/validator-operator-directory.ts";
-import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
+import {
+  buildValidatorOperatorDirectory,
+  hasLegacyValidatorOperatorCapital,
+} from "../src/validator-operator-directory.ts";
 import { buildGlobalValidators } from "../src/metagraph-neurons.ts";
 
 function validator(overrides: Record<string, unknown> = {}) {
@@ -112,7 +115,9 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(directory.captured_at, "2026-08-29T00:00:00.000Z");
     assert.equal(directory.block_number, 8_950_000);
 
-    const team = directory.operators[0]!;
+    const team = directory.operators.find(
+      (entry) => entry.operator_id === "coldkey:ck-team",
+    )!;
     assert.equal(team.operator_id, "coldkey:ck-team");
     assert.equal(team.ownership_basis, "single_coldkey");
     assert.equal(team.identity_name, "Tensor Team");
@@ -122,17 +127,19 @@ describe("buildValidatorOperatorDirectory", () => {
       team.hotkeys.map((key) => key.hotkey),
       ["hk-large", "hk-small"],
     );
-    assert.equal(team.total_stake_tao, 100);
+    assert.equal(team.total_stake_tao, null);
     assert.equal(team.total_emission_tao, 8);
     assert.equal(team.nominator_count, null);
     assert.equal(team.membership_count, 6);
     assert.equal(team.uid_count, 8);
     assert.equal(team.take_min, 0.1);
     assert.equal(team.take_max, 0.2);
-    assert.equal(team.apy_estimate, 0.25);
-    assert.equal(team.stake_dominance, 0.625);
+    assert.equal(team.apy_estimate, null);
+    assert.equal(team.stake_dominance, null);
 
-    const anonymous = directory.operators.slice(1);
+    const anonymous = directory.operators.filter(
+      (entry) => entry.operator_id !== "coldkey:ck-team",
+    );
     assert.deepEqual(
       anonymous.map((entry) => entry.primary_hotkey),
       ["anonymous-a", "anonymous-b"],
@@ -201,7 +208,7 @@ describe("buildValidatorOperatorDirectory", () => {
     ValidatorOperatorDirectoryArtifactSchema.parse(directory);
   });
 
-  test("one observed owner's ID and members survive name changes, missing identity and a new primary", () => {
+  test("owner identity remains stable while legacy capital changes do not choose a new primary", () => {
     const before = buildValidatorOperatorDirectory({
       validators: [
         validator({
@@ -221,12 +228,12 @@ describe("buildValidatorOperatorDirectory", () => {
         validator({
           hotkey: "hk-b",
           total_stake_tao: 3,
-          coldkey_identity: { has_identity: true, name: "New Name" },
+          coldkey_identity: null,
         }),
         validator({
           hotkey: "hk-a",
           total_stake_tao: 2,
-          coldkey_identity: { has_identity: false, name: "Old Name" },
+          coldkey_identity: { has_identity: true, name: "New Name" },
         }),
       ],
     }).operators[0]!;
@@ -235,7 +242,7 @@ describe("buildValidatorOperatorDirectory", () => {
     assert.equal(before.identity_name, "Old Name");
     assert.equal(after.identity_name, "New Name");
     assert.equal(before.primary_hotkey, "hk-a");
-    assert.equal(after.primary_hotkey, "hk-b");
+    assert.equal(after.primary_hotkey, "hk-a");
     assert.equal(after.hotkey_count, 2);
     assert.deepEqual(
       after.hotkeys.map(({ hotkey }) => hotkey).sort(),
@@ -417,7 +424,7 @@ describe("buildValidatorOperatorDirectory", () => {
       ["hk-a", "operator-b", "operator-c"],
     );
     assert.equal(directory.operators[0]!.hotkey_count, 2);
-    assert.equal(directory.operators[0]!.total_stake_tao, 0);
+    assert.equal(directory.operators[0]!.total_stake_tao, null);
     assert.equal(directory.operators[0]!.total_emission_tao, 0);
     assert.equal(directory.operators[0]!.nominator_count, null);
     assert.equal(directory.operators[0]!.membership_count, 0);
@@ -433,8 +440,64 @@ describe("buildValidatorOperatorDirectory", () => {
     ValidatorOperatorDirectoryArtifactSchema.parse(directory);
   });
 
+  test("legacy numeric capital invalidates cached selection without mutation", () => {
+    const cached = ValidatorOperatorDirectoryArtifactSchema.parse({
+      schema_version: 1,
+      captured_at: "2026-08-29T00:00:00.000Z",
+      block_number: 8_950_000,
+      validator_count: 2,
+      operator_count: 1,
+      operators: [
+        {
+          operator_id: "coldkey:ck-a",
+          ownership_basis: "single_coldkey",
+          identity_name: "Observed name",
+          hotkeys: [
+            { hotkey: "hk-a", total_stake_tao: 1000, take: 0.1 },
+            { hotkey: "hk-b", total_stake_tao: 2, take: null },
+          ],
+          hotkey_count: 2,
+          primary_hotkey: "hk-a",
+          coldkey: "ck-a",
+          total_stake_tao: 1002,
+          total_emission_tao: 10,
+          nominator_count: null,
+          membership_count: 3,
+          uid_count: 3,
+          take_min: 0.1,
+          take_max: 0.1,
+          apy_estimate: 0.25,
+          stake_dominance: 0.75,
+        },
+      ],
+    });
+    assert.equal(hasLegacyValidatorOperatorCapital(cached), true);
+    assert.equal(cached.operators[0]!.total_stake_tao, 1002);
+    assert.equal(cached.operators[0]!.hotkeys[0]!.total_stake_tao, 1000);
+  });
+
+  test.each(["capital", "APY", "dominance", "child capital"])(
+    "even zero legacy %s invalidates cached selection",
+    (field) => {
+      const current = buildValidatorOperatorDirectory({
+        validators: [
+          validator({ hotkey: "hk-a" }),
+          validator({ hotkey: "hk-b" }),
+        ],
+      });
+      assert.equal(hasLegacyValidatorOperatorCapital(current), false);
+      const operator = current.operators[0]!;
+      if (field === "capital") operator.total_stake_tao = 0;
+      if (field === "APY") operator.apy_estimate = 0;
+      if (field === "dominance") operator.stake_dominance = 0;
+      if (field === "child capital") operator.hotkeys[0]!.total_stake_tao = 0;
+      assert.equal(hasLegacyValidatorOperatorCapital(current), true);
+    },
+  );
+
   test("returns a schema-valid cold directory", () => {
     const directory = buildValidatorOperatorDirectory(null);
+    assert.equal(hasLegacyValidatorOperatorCapital(directory), false);
     assert.deepEqual(directory, {
       schema_version: 1,
       captured_at: null,

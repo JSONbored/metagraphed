@@ -928,7 +928,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons store at /api/v1/validators (no static file).",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across current subnet memberships, with footprint, trust and emission observations. Capital, APY, realized returns and dominance are unavailable because voting weight does not establish independent investment principal. Legacy capital sorts retain deterministic tie ordering. Computed at /api/v1/validators (no static file).",
       "id": "global-validators",
       "path": "/metagraph/validators.json",
       "retirement": null,
@@ -939,7 +939,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Multi-key unique nominator counts are unavailable. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
+      "description": "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Capital, APY, dominance and multi-key unique nominator counts are unavailable. Operators and their primary hotkeys use neutral address ordering. Computed at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators.",
       "id": "validator-operator-directory",
       "path": "/metagraph/validators/operators.json",
       "retirement": null,
@@ -950,7 +950,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons store at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
+      "description": "Currently registered hotkeys with membership counts and emission observations. Capital, dominance and nested stake_alpha are unavailable because voting weight does not establish holdings. Legacy capital sorts use neutral hotkey ordering; compact membership slices use netuid/uid order. Computed at /api/v1/accounts (no static file).",
       "id": "accounts-list",
       "path": "/metagraph/accounts.json",
       "retirement": null,
@@ -961,7 +961,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Website-sized account holder directory: bounded stake, emission and subnet-reach rankings derived together from one complete neuron snapshot, with the compact fields the account directory renders and each account's share of priced registered stake. Computed live at /api/v1/accounts/directory; the rich independently sortable /api/v1/accounts response remains unchanged.",
+      "description": "Website account directory with bounded emission and subnet-reach rankings from one complete neuron snapshot. Capital and dominance are unavailable, the stake ranking is empty, and priced_registered_stake_tao is null: voting weight does not establish holdings or network-wide stake shares. Computed at /api/v1/accounts/directory (no static file).",
       "id": "account-holder-directory",
       "path": "/metagraph/accounts/directory.json",
       "retirement": null,
@@ -983,7 +983,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons store at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
+      "description": "Cross-subnet detail for one validator identity: membership, trust, take and emission observations from its validator_permit=1 rows. Voting weight remains per subnet; capital, APY and realized returns are unavailable without independently measured principal. Computed at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
       "id": "validator-detail",
       "path": "/metagraph/validators/{hotkey}.json",
       "retirement": null,
@@ -1005,7 +1005,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily store tier at /api/v1/validators/{hotkey}/history (no static file).",
+      "description": "Daily validator membership and emission observations, rolled up from neuron_daily at /api/v1/validators/{hotkey}/history (no static file). Capital history and principal-derived reward ratios are unavailable because historical voting weight does not establish investment principal. Per-subnet operational observations remain scoped to one netuid.",
       "id": "validator-history",
       "path": "/metagraph/validators/{hotkey}/history.json",
       "retirement": null,
@@ -1401,7 +1401,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "A wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration) — richer than the /subnets registration footprint, computed live from the neurons store at /api/v1/accounts/{ss58}/portfolio (no static file).",
+      "description": "One hotkey's current registered memberships, with emission, rank, trust, incentive, dividends, role and footprint counts in netuid/uid order. Capital, yields and stake concentration are unavailable because voting weight does not establish holdings or investment principal. Computed at /api/v1/accounts/{ss58}/portfolio (no static file).",
       "id": "account-portfolio",
       "path": "/metagraph/accounts/{ss58}/portfolio.json",
       "retirement": null,
@@ -1412,7 +1412,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons store's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
+      "description": "Periodic nominator-side records for one account, served at /api/v1/accounts/{ss58}/positions (no static file). Preserve observed hotkey/subnet relationships and capture time. Legacy stake_tao reconstruction can use neuron voting weight; the public response does not identify an authoritative asset-quantity basis, so its amounts and share fractions must not establish holdings, allocation or unstake Max. Root holdings are not covered.",
       "id": "account-positions",
       "path": "/metagraph/accounts/{ss58}/positions.json",
       "retirement": null,
@@ -2314,7 +2314,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates, plus an optional single-subnet membership context — the validator equivalent of /api/v1/compare, computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+      "description": "Several validators placed side by side in requested order: take, nominator count, identity, emission, trust and optional single-subnet membership evidence. Capital and APY are unavailable (null), with an APY eligible count of zero; metagraph voting weight cannot establish investment principal. Computed live at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
       "id": "compare-validators",
       "path": "/metagraph/compare/validators.json",
       "retirement": null,

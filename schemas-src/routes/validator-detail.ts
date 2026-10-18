@@ -33,13 +33,13 @@ export const ValidatorDetailSubnetSchema = z
       .number()
       .nullable()
       .describe(
-        "This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `emission_tao` in #10514, because the entry's own `total_stake_tao` IS priced TAO and a shared `_tao` suffix across different units is a trap no description undoes.",
+        "This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Retained under the native emission field name from #10514; it does not establish capital or investment yield.",
       ),
     stake_alpha: z
       .number()
       .nullable()
       .describe(
-        "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion.",
+        "Legacy field name for observed subnet voting weight from metagraph stake_tao: alpha + tao_weight * root for non-root memberships. Root influence can repeat across subnets. This is not independent alpha principal, cannot be valued as holdings, and must not be summed across subnets.",
       ),
     registered_at_block: z.int().min(0).nullable(),
     is_immunity_period: z.boolean(),
@@ -66,16 +66,27 @@ export const ValidatorDetailArtifactSchema = z
     total_stake_tao: z
       .number()
       .min(0)
+      .nullable()
       .describe(
-        "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's.",
-      ),
-    root_stake_tao: z.number().min(0),
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
+    root_stake_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     alpha_stake_tao: z
       .number()
       .min(0)
+      .nullable()
       .describe(
-        "The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.",
-      ),
+        "Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero.",
+      )
+      .meta({ deprecated: true }),
     total_emission_tao: z
       .number()
       .min(0)
@@ -89,8 +100,18 @@ export const ValidatorDetailArtifactSchema = z
       .describe(
         "Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero.",
       ),
-    apy_estimate: z.number().min(0).nullable(),
-    apy_estimate_eligible_subnet_count: z.int().min(0),
+    apy_estimate: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Deprecated compatibility field; always null because independently measured investment principal is unavailable. Voting weight is not an APY denominator; null is unknown, never zero yield.",
+      )
+      .meta({ deprecated: true }),
+    apy_estimate_eligible_subnet_count: z
+      .int()
+      .min(0)
+      .describe("Always 0 while investment principal is unavailable."),
     realized_return_1d: z
       .number()
       .nullable()
@@ -140,7 +161,7 @@ export const ValidatorDetailArtifactSchema = z
     subnets: z
       .array(ValidatorDetailSubnetSchema)
       .describe(
-        "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet.",
+        "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the first 10 by netuid and uid; the single-validator lookup carries every subnet.",
       ),
   })
   .strict();

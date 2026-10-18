@@ -1,34 +1,28 @@
 /**
  * The derivations behind /accounts (#11615).
  */
-import { RESIDUAL_KEY } from "@jsonbored/ui-kit";
 import type { AccountHolderDirectoryEntry, ChainSignerEntry } from "@/lib/metagraphed/types";
-import { formatAmount, formatPct } from "@/lib/metagraphed/format";
+import { formatAmount } from "@/lib/metagraphed/format";
 
-export type HolderMetric = "stake" | "emission" | "reach";
+export type HolderMetric = "reach" | "emission";
 
 /**
- * The metric names map onto the sorts `/api/v1/accounts` accepts, which are
- * `total_stake | total_emission | subnet_count | uid_count` and nothing else
- * (anything further is a 400). "Reach" is `subnet_count`: how many subnets an
- * account has a position in, which is a different question from how much it
- * holds and the one a concentration page should also be able to ask.
+ * These independent rankings describe registered hotkeys. Neuron voting
+ * weight does not establish capital, so stake is not a supported metric.
  */
 export const HOLDER_SORT: Record<HolderMetric, string> = {
-  stake: "total_stake",
-  emission: "total_emission",
   reach: "subnet_count",
+  emission: "total_emission",
 };
 
 export const HOLDER_METRICS = [
-  { value: "stake", label: "Stake" },
-  { value: "emission", label: "Emission" },
   { value: "reach", label: "Reach" },
+  { value: "emission", label: "Emission" },
 ] as const;
 
 /** "1 subnet", "7 subnets" -- a card that says "1 subnets" reads as a bug. */
-export const plural = (count: number, singular: string, plural = `${singular}s`): string =>
-  `${count} ${count === 1 ? singular : plural}`;
+export const plural = (count: number | null, singular: string, plural = `${singular}s`): string =>
+  `${count ?? "—"} ${count === 1 ? singular : plural}`;
 
 export const shortAddress = (address: string): string =>
   address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
@@ -43,106 +37,31 @@ export interface HolderCard {
   href: string;
 }
 
-/** The reading each metric puts on a card, so the card shows what it ranked by. */
-/**
- * `25.9% of listed · 119 subnets` -- the share first, because that is the
- * reading the retired Concentration section existed to give.
- */
-function shareSub(
-  account: AccountHolderDirectoryEntry,
-  pricedRegisteredStakeTotal: number,
-): string {
-  const subnets = plural(account.subnet_count ?? 0, "subnet");
-  const stake = account.total_stake_tao;
-  if (!pricedRegisteredStakeTotal || typeof stake !== "number" || !Number.isFinite(stake)) {
-    return `${subnets} · ${plural(account.uid_count ?? 0, "UID")}`;
-  }
-  return `${formatPct(stake / pricedRegisteredStakeTotal, 1)} of priced stake · ${subnets}`;
-}
-
+/** Preserve the selected server ranking; never derive it from another bounded list. */
 export function holderCards(
   accounts: readonly AccountHolderDirectoryEntry[],
   metric: HolderMetric,
   limit = 18,
-  /**
-   * Complete priced registered-stake total, so each card can carry a genuine
-   * network-wide share even though the rendered ranking is deliberately
-   * bounded.
-   *
-   * #11691 folded the Concentration section into this one: it drew a bar and
-   * then re-listed the same eleven accounts that were already on the cards
-   * above it, 600px apart, with the address truncated differently in each and
-   * one showing "9%" where the other showed "9.0%". Its headline -- the top-10
-   * share -- was already a fact cell in the hero. What it uniquely carried was
-   * the per-account share, so that moved here.
-   */
-  pricedRegisteredStakeTotal = 0,
 ): HolderCard[] {
+  // Also refuse an obsolete runtime metric when old state bypasses TypeScript.
+  if (metric !== "reach" && metric !== "emission") return [];
   return accounts.slice(0, limit).flatMap((account) => {
-    const address = account.coldkey ?? account.hotkey;
+    const address = account.hotkey;
     if (!address) return [];
     const value =
-      metric === "stake"
-        ? fmtTaoCompact(account.total_stake_tao)
-        : metric === "emission"
-          ? fmtTaoCompact(account.total_emission_tao)
-          : plural(account.subnet_count ?? 0, "subnet");
+      metric === "emission"
+        ? fmtTaoCompact(account.total_emission_tao)
+        : plural(account.subnet_count, "subnet");
     return [
       {
         key: address,
         name: shortAddress(address),
-        sub: shareSub(account, pricedRegisteredStakeTotal),
+        sub: `${plural(account.subnet_count, "subnet")} · ${plural(account.uid_count, "UID")}`,
         value,
         href: `/accounts/${address}`,
       },
     ];
   });
-}
-
-export interface ConcentrationSegment {
-  key: string;
-  label: string;
-  value: number;
-  href?: string;
-}
-
-/**
- * The listed accounts as shares of the stake they collectively hold.
- *
- * NOT of the network: `/api/v1/accounts` serves a top-N slice, so the
- * denominator here is the slice's own total and the caller must say so. A
- * share of "all stake" computed from a top-20 read would overstate every
- * segment by the whole tail.
- */
-export function concentrationSegments(
-  accounts: readonly AccountHolderDirectoryEntry[],
-  top = 10,
-): { segments: ConcentrationSegment[]; listedTotal: number } {
-  const rows = accounts
-    .map((account) => ({
-      address: account.coldkey ?? account.hotkey ?? "",
-      stake: typeof account.total_stake_tao === "number" ? account.total_stake_tao : 0,
-    }))
-    .filter((row) => row.address !== "" && row.stake > 0)
-    .sort((a, b) => b.stake - a.stake);
-
-  const listedTotal = rows.reduce((acc, row) => acc + row.stake, 0);
-  const head = rows.slice(0, top);
-  const tail = rows.slice(top);
-  const segments: ConcentrationSegment[] = head.map((row) => ({
-    key: row.address,
-    label: shortAddress(row.address),
-    value: row.stake,
-    href: `/accounts/${row.address}`,
-  }));
-  if (tail.length > 0) {
-    segments.push({
-      key: RESIDUAL_KEY,
-      label: `${tail.length} more listed`,
-      value: tail.reduce((acc, row) => acc + row.stake, 0),
-    });
-  }
-  return { segments, listedTotal };
 }
 
 export interface ActiveRow {

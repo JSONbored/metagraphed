@@ -32,6 +32,10 @@ import {
 } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
+import { buildGlobalValidators } from "../src/metagraph-neurons.ts";
+import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
+import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import {
   KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
   KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
@@ -50,6 +54,28 @@ import { mockEnv, type Row } from "./row-type.ts";
 // transparent: same body, keyed on what changes the data, never caching errors.
 
 const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
+const VALIDATOR_HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+function validatorSnapshot() {
+  const snapshot = buildGlobalValidators(
+    [
+      {
+        hotkey: VALIDATOR_HOTKEY,
+        coldkey: "recorded-owner",
+        netuid: 7,
+        uid: 4,
+        stake_tao: 180,
+        emission_tao: 4,
+        validator_trust: 0.9,
+        take: 0.18,
+        captured_at: Date.parse(LAST_RUN_AT),
+        block_number: 8_950_000,
+      },
+    ],
+    { priceByNetuid: new Map([[7, 2]]) },
+  );
+  return GlobalValidatorsArtifactSchema.parse(snapshot);
+}
 
 // One row backs every shape the analytics SQL returns (the shared ok-latency CTE
 // carries both uptime and latency stats; incidents reuse the same row).
@@ -266,6 +292,7 @@ const globalWithCaches = globalThis as unknown as { caches: Row | undefined };
 let originalCaches: Row | undefined;
 afterEach(() => {
   globalWithCaches.caches = originalCaches;
+  vi.restoreAllMocks();
 });
 
 // This file COUNTS artifact reads, so it has to own every memo that can hide
@@ -1529,12 +1556,280 @@ describe("analytics edge cache", () => {
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
-      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory/api/v1/validators/operators`,
+      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory-principal-unavailable/api/v1/validators/operators`,
     ]);
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("/api/v1/accounts/directory caches within the bounded minute epoch", async () => {
+  test.each([123, 0])(
+    "the operator directory skips legacy capital %s and shares its corrected cache with Finney",
+    async (capital) => {
+      originalCaches = globalWithCaches.caches;
+      const cache = mockCaches();
+      cache.install();
+      const now = Date.now();
+      vi.spyOn(Date, "now").mockReturnValue(now);
+      const path = "/api/v1/validators/operators";
+      const directory = {
+        ...buildValidatorOperatorDirectory(validatorSnapshot()),
+        captured_at: new Date(now).toISOString(),
+      };
+      const legacy = {
+        ...directory,
+        operators: directory.operators.map((operator) => ({
+          ...operator,
+          total_stake_tao: capital,
+          apy_estimate: capital,
+          stake_dominance: capital,
+        })),
+      };
+      const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
+      const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory${path}`;
+      cache.store.set(legacyKey, Response.json({ data: legacy }));
+      let sourceReads = 0;
+      const env = {
+        ...analyticsEnv([]),
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        METAGRAPH_CONTROL: {
+          async get(key: string) {
+            if (key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT) {
+              sourceReads += 1;
+              return directory;
+            }
+            return null;
+          },
+        },
+      };
+      const alias = path.replace("/api/v1/", "/api/v1/finney/");
+      const first = await handleRequest(
+        new Request(`https://api.metagraph.sh${alias}`),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(first.status, 200);
+      assert.equal(first.headers.get("x-metagraph-cache"), "miss");
+      assert.deepEqual((await first.json()).data, directory);
+      await Promise.resolve();
+      const repeat = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
+      assert.deepEqual((await repeat.json()).data, directory);
+      const conditional = await handleRequest(
+        new Request(`https://api.metagraph.sh${alias}`, {
+          headers: { "if-none-match": first.headers.get("etag")! },
+        }),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(conditional.status, 304);
+      assert.equal(await conditional.text(), "");
+      assert.equal(sourceReads, 1);
+      assert.deepEqual(cache.putKeys, [
+        legacyKey.replace(
+          "/validator-operator-directory/",
+          "/validator-operator-directory-principal-unavailable/",
+        ),
+      ]);
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
+    },
+  );
+
+  test.each([123, 0])(
+    "global validators skip legacy capital %s at the same producer stamp through Finney aliases",
+    async (capital) => {
+      originalCaches = globalWithCaches.caches;
+      const cache = mockCaches();
+      cache.install();
+      const path = "/api/v1/validators";
+      const search = "?sort=subnet_count&limit=20";
+      const data = validatorSnapshot();
+      const legacy = {
+        ...data,
+        validators: data.validators.map((validator) => ({
+          ...validator,
+          total_stake_tao: capital,
+          root_stake_tao: capital,
+          alpha_stake_tao: capital,
+          apy_estimate: capital,
+          stake_dominance: capital,
+        })),
+      };
+      const legacyKey = expectedKey("global-validators", path, search);
+      cache.store.set(legacyKey, Response.json({ data: legacy }));
+      let sourceReads = 0;
+      const env = {
+        ...analyticsEnv([]),
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        DATA_API: {
+          async fetch() {
+            sourceReads += 1;
+            return Response.json(data);
+          },
+        },
+      };
+      const alias = path.replace("/api/v1/", "/api/v1/finney/");
+      const first = await handleRequest(
+        new Request(`https://api.metagraph.sh${alias}${search}`),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(first.status, 200);
+      assert.equal(first.headers.get("x-metagraph-cache"), "miss");
+      assert.deepEqual((await first.json()).data, data);
+      await Promise.resolve();
+      const repeat = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}${search}`),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
+      assert.deepEqual((await repeat.json()).data, data);
+      const conditional = await handleRequest(
+        new Request(`https://api.metagraph.sh${alias}${search}`, {
+          headers: { "if-none-match": first.headers.get("etag")! },
+        }),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(conditional.status, 304);
+      assert.equal(await conditional.text(), "");
+      assert.equal(sourceReads, 1);
+      assert.deepEqual(cache.putKeys, [
+        expectedKey("global-validators-principal-unavailable", path, search),
+      ]);
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
+    },
+  );
+
+  test.each([123, 0])(
+    "validator history skips legacy capital %s and keeps unscoped, root and subnet caches independent",
+    async (capital) => {
+      originalCaches = globalWithCaches.caches;
+      const cache = mockCaches();
+      cache.install();
+      const path = `/api/v1/validators/${VALIDATOR_HOTKEY}/history`;
+      const scopes = [null, 0, 7];
+      const histories = new Map<number | null, Row>(
+        scopes.map((netuid) => [
+          netuid,
+          buildValidatorHistory(
+            ["2026-06-18", "2026-06-17"].map((snapshot_date) => ({
+              snapshot_date,
+              netuid,
+              uid: 4,
+              subnet_count: netuid === null ? 2 : 1,
+              total_stake_tao: 180,
+              total_emission_tao: 4,
+              stake_alpha: 180,
+              emission_alpha: 4,
+              validator_trust: 0.9,
+              consensus: 0.8,
+              dividends: 0.6,
+              take: 0.18,
+              validator_permit: true,
+            })),
+            VALIDATOR_HOTKEY,
+            { window: "30d", netuid },
+          ),
+        ]),
+      );
+      const withLegacyCapital = (history: Row) => ({
+        ...history,
+        points: history.points.map((point: Row) => ({
+          ...point,
+          total_stake_tao: capital,
+          rewards_per_1000_tao: capital,
+          ...(history.netuid === null
+            ? {}
+            : {
+                rewards_per_1000_alpha: capital,
+                stake_share: capital,
+                dividend_efficiency: capital,
+              }),
+        })),
+      });
+      // The old key omitted netuid, so one warm scoped body could answer every
+      // scope. Neither that selection nor its numeric zero is valid evidence.
+      const legacyKey = expectedKey("validator-history", path, "?window=30d");
+      const legacy = withLegacyCapital(histories.get(7)!);
+      cache.store.set(legacyKey, Response.json({ data: legacy }));
+      const sourceScopes: (number | null)[] = [];
+      const env = {
+        ...analyticsEnv([]),
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        DATA_API: {
+          async fetch(request: Request) {
+            const value = new URL(request.url).searchParams.get("netuid");
+            const netuid = value === null ? null : Number(value);
+            sourceScopes.push(netuid);
+            return Response.json(withLegacyCapital(histories.get(netuid)!));
+          },
+        },
+      };
+      let previousEtag: string | null = null;
+      for (const netuid of scopes) {
+        const scope = netuid === null ? "" : `&netuid=${netuid}`;
+        const defaultSearch = netuid === null ? "" : `?netuid=${netuid}`;
+        const alias = path.replace("/api/v1/", "/api/v1/finney/");
+        const first = await handleRequest(
+          new Request(`https://api.metagraph.sh${alias}${defaultSearch}`, {
+            headers: previousEtag ? { "if-none-match": previousEtag } : {},
+          }),
+          env as unknown as Env,
+          ctx,
+        );
+        assert.equal(first.status, 200, "another scope's ETag must not match");
+        assert.equal(first.headers.get("x-metagraph-cache"), "miss");
+        assert.deepEqual((await first.json()).data, histories.get(netuid));
+        await Promise.resolve();
+        const reorderedSearch =
+          netuid === null ? "?window=30d" : `?netuid=${netuid}&window=30d`;
+        const repeat = await handleRequest(
+          new Request(`https://api.metagraph.sh${path}${reorderedSearch}`),
+          env as unknown as Env,
+          ctx,
+        );
+        assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
+        assert.deepEqual((await repeat.json()).data, histories.get(netuid));
+        previousEtag = first.headers.get("etag");
+        assert.ok(previousEtag);
+        const conditional = await handleRequest(
+          new Request(`https://api.metagraph.sh${alias}?window=30d${scope}`, {
+            headers: { "if-none-match": previousEtag },
+          }),
+          env as unknown as Env,
+          ctx,
+        );
+        assert.equal(conditional.status, 304);
+        assert.equal(await conditional.text(), "");
+      }
+      assert.deepEqual(sourceScopes, scopes);
+      assert.deepEqual(
+        cache.putKeys,
+        scopes.map((netuid) =>
+          expectedKey(
+            "validator-history-principal-unavailable",
+            path,
+            `?window=30d${netuid === null ? "" : `&netuid=${netuid}`}`,
+          ),
+        ),
+      );
+      assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
+        data: legacy,
+      });
+    },
+  );
+
+  test("the account directory skips warm legacy capital within the same minute epoch", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
@@ -1546,9 +1841,18 @@ describe("analytics edge cache", () => {
       block_number: 8_950_000,
       account_count: 0,
       limit: 20,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     };
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`;
+    cache.store.set(
+      legacyKey,
+      Response.json({
+        data: { ...directory, priced_registered_stake_tao: 123 },
+      }),
+    );
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "data-api",
@@ -1581,9 +1885,61 @@ describe("analytics edge cache", () => {
     assert.deepEqual(cache.putKeys, [
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         CONTRACT_VERSION,
-      )}/${encodeURIComponent(cacheStamp)}/account-holder-directory/api/v1/accounts/directory`,
+      )}/${encodeURIComponent(cacheStamp)}/account-holder-directory-principal-unavailable/api/v1/accounts/directory`,
     ]);
     assert.equal(cache.matchCalls, 2);
+    assert.ok(cache.store.has(legacyKey), "no cache pruning is needed");
+  });
+
+  test("the accounts list skips a warm financial selection at the same source stamp", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const path = "/api/v1/accounts?sort=total_stake&limit=20";
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/${encodeURIComponent(LAST_RUN_AT)}/accounts-list${path}`;
+    cache.store.set(
+      legacyKey,
+      Response.json({
+        data: { accounts: [{ hotkey: "legacy", total_stake_tao: 123 }] },
+      }),
+    );
+    const data = {
+      schema_version: 1,
+      sort: "total_stake",
+      limit: 20,
+      captured_at: "2026-10-17T00:00:00.000Z",
+      block_number: 8_950_000,
+      account_count: 0,
+      accounts: [],
+    };
+    let reads = 0;
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch() {
+          reads += 1;
+          return Response.json(data);
+        },
+      },
+    };
+    const request = new Request(`https://api.metagraph.sh${path}`);
+
+    const first = await handleRequest(request, env as unknown as Env, ctx);
+    assert.equal(first.status, 200);
+    assert.deepEqual((await first.json()).data, data);
+    await Promise.resolve();
+    const repeat = await handleRequest(request, env as unknown as Env, ctx);
+    assert.deepEqual((await repeat.json()).data, data);
+    assert.equal(reads, 1);
+    assert.deepEqual(cache.putKeys, [
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/${encodeURIComponent(LAST_RUN_AT)}/accounts-list-principal-unavailable${path}`,
+    ]);
+    assert.ok(cache.store.has(legacyKey), "no cache pruning is needed");
   });
 
   test("NO-CACHE-ON-ERROR: a store failure with a snapshot stamp is served but not cached", async () => {
@@ -2235,7 +2591,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     );
     assert.deepEqual(cache.putKeys, [
       expectedKey(
-        "global-validators",
+        "global-validators-principal-unavailable",
         "/api/v1/validators",
         "?sort=subnet_count&limit=1",
       ),
