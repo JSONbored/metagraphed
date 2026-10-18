@@ -123,6 +123,11 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // form. Listed here rather than exempted by a second mechanism, because this
   // list already means "referenced only by prose, deliberately written down".
   "/api/v1/networks",
+  // #11550 publishes the API and mirrors; homepage rendering is explicitly
+  // outside its scope. #11544 assigns the consumer and removal of this named
+  // exception. The current UI does not consume this route; remove the entry
+  // when a real consumer lands, which the stale-entry check below enforces.
+  "/api/v1/chain/subnet-price-share-composition",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

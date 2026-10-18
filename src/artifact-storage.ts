@@ -100,6 +100,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // rollup -- a baked copy would stop the day it built, on a route whose whole
   // subject is whether concentration is CHANGING.
   /^chain\/concentration\/history\.json$/,
+  /^chain\/subnet-price-share-composition\.json$/,
   // One subnet's emission-pipeline series (#9625), read live from the daily
   // snapshot rollup -- a baked copy would stop the day it built, on a route
   // whose subject is how the pipeline MOVED.

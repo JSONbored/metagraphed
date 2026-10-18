@@ -99,7 +99,8 @@ describe("checkQueryArguments", () => {
     // query schema rather than restating it, so they land in `exact` rather
     // than in `violations` -- which is the outcome this count exists to
     // confirm. Bumping it is a prompt to check that, not a formality.
-    assert.equal(report.exact, 206);
+    // #11550 adds one exact empty-argument mirror, declared in NO_QUERY_PARAMETERS.
+    assert.equal(report.exact, 207);
     assert.equal(report.skipped, 0);
   });
 

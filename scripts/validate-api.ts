@@ -1742,6 +1742,19 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/subnet-price-share-composition",
+    (body) => {
+      assert.equal(body.data.quality, "estimated_observed_price_set");
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(body.data.points.length <= 56, true);
+      assert.equal(body.data.series.length <= 6, true);
+      assert.equal(
+        body.data.point_count,
+        body.data.degraded ? null : body.data.points.length,
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/74/emission-pipeline/history",
     (body) => {
       // #9625. An empty series is a MEASUREMENT: only a failed read declines.

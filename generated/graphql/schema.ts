@@ -366,6 +366,11 @@ type Query {
   chain_concentration_history(window: String): ChainConcentrationHistory!
 
   """
+  Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.
+  """
+  subnet_price_share_composition: SubnetPriceShareComposition!
+
+  """
   One subnet's stored pipeline inputs and legacy price share OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.
   """
   subnet_emission_pipeline_history(netuid: Int!, window: String): SubnetPipelineHistory!
@@ -3694,6 +3699,45 @@ type ChainConcentrationScorecard {
   top_20pct_share: Float
   entropy: Float
   entropy_normalized: Float
+}
+
+type SubnetPriceShareComposition {
+  schema_version: Int!
+  quality: String!
+  window_days: Int!
+  cohort_limit: Int!
+  row_limit: Int!
+  other_label: String!
+  series: [SubnetPriceShareCompositionSeries!]!
+  point_count: Int
+  oldest_day: String
+  newest_day: String
+  points: [SubnetPriceShareCompositionPoint!]!
+  degraded: UnavailableDegraded
+}
+
+type SubnetPriceShareCompositionSeries {
+  """A netuid, not a project identity across netuid reuse."""
+  netuid: Int!
+}
+
+type SubnetPriceShareCompositionPoint {
+  day: String!
+
+  """
+  Persisted writer timestamp shared by the day's numeric shares; not an immutable source-pass ID or proof of complete chain coverage.
+  """
+  captured_at: String!
+
+  """
+  Recorded six-decimal shares in the fixed series order. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified.
+  """
+  shares: [Float!]!
+
+  """
+  Exact six-decimal residual of one after selected shares; not a stored bucket, sum of unselected rows, or network total.
+  """
+  other_share: Float!
 }
 
 type SubnetPipelineHistory {
