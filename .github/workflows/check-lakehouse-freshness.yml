@@ -14,7 +14,13 @@ name: check-lakehouse-freshness
 on:
   schedule:
     - cron: "17 7 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: "Check freshness without external notifications"
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: read
@@ -33,12 +39,30 @@ jobs:
         with:
           node-version: 22
       - name: Check every archived table's D1 snapshot receipt
+        shell: bash
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
           LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+          CHECK_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.check_only }}
+          REPORT_PATH: ${{ runner.temp }}/lakehouse-freshness-report.json
         # No `tee`: piping a report into tee discards the script's exit status,
         # which is how a scheduled sweep in this repo came to be unable to fail.
-        run: npm run check:lakehouse-freshness
+        run: |
+          args=(--report "$REPORT_PATH")
+          case "$CHECK_ONLY" in
+            true) args+=(--check-only) ;;
+            false) ;;
+            *) echo "Invalid check-only mode" >&2; exit 1 ;;
+          esac
+          npm run check:lakehouse-freshness -- "${args[@]}"
+      - name: Retain sanitized freshness report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lakehouse-freshness-report
+          path: ${{ runner.temp }}/lakehouse-freshness-report.json
+          retention-days: 7
+          if-no-files-found: error

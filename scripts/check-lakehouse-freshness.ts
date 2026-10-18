@@ -28,7 +28,14 @@
 // Absent means nobody has thought about it; `maxAgeMs: null` with a reason
 // means somebody decided it cannot go stale. The two are different facts and
 // only one of them is safe.
+import { open } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import {
+  createFreshnessReport,
+  parseFreshnessArgs,
+  type FreshnessReport,
+  type FreshnessReportState,
+} from "./lib/freshness-report.ts";
 import {
   MIRROR_SOURCES,
   evaluateMirrorFreshness,
@@ -359,7 +366,49 @@ export function evaluate(
   return { ok: true, detail: `${age.table}: ${days.toFixed(1)}d` };
 }
 
-export async function checkLakehouseFreshness(): Promise<void> {
+export async function checkLakehouseFreshness(
+  options: {
+    checkOnly?: boolean;
+    onReport?: (report: FreshnessReport) => void | Promise<void>;
+  } = {},
+): Promise<void> {
+  const checkOnly = options.checkOnly === true;
+  const state: FreshnessReportState = {
+    startedAt: new Date().toISOString(),
+    phase: "catalog",
+    counts: null,
+    notificationAttempted: false,
+  };
+  const report = async (status: FreshnessReport["status"]) => {
+    if (options.onReport)
+      await options.onReport(
+        createFreshnessReport({
+          state,
+          status,
+          checkOnly,
+          sourceSha: process.env.GITHUB_SHA,
+          nodeVersion: process.version,
+          finishedAt: new Date().toISOString(),
+        }),
+      );
+  };
+  let status: "ok" | "stale";
+  try {
+    status = await runLakehouseFreshness(checkOnly, state);
+  } catch (error) {
+    await report("error");
+    throw error;
+  }
+  await report(status);
+  // Keep the legacy exit outside the error-report catch: tests intercept it
+  // by throwing, and a stale verdict must not become an error artifact.
+  if (status === "stale") process.exit(1);
+}
+
+async function runLakehouseFreshness(
+  checkOnly: boolean,
+  state: FreshnessReportState,
+): Promise<"ok" | "stale"> {
   const metadata = await loadLakehouseMetadata();
   // BOTH NAMESPACES. This watched `chain` only, so the four decoded
   // `chain_testnet` tables had no freshness coverage at all -- testnet is a
@@ -406,6 +455,7 @@ export async function checkLakehouseFreshness(): Promise<void> {
       ({ namespace, table }) => namespace === "chain" && MIRROR_SOURCES[table],
     )
   ) {
+    state.phase = "evidence";
     try {
       mirror = await loadMirrorFreshnessEvidence();
     } catch (error) {
@@ -413,6 +463,7 @@ export async function checkLakehouseFreshness(): Promise<void> {
         error instanceof Error ? error.message : "unreadable mirror evidence";
     }
   }
+  state.phase = "evaluation";
   const failures: string[] = [];
   const lines: string[] = [];
   for (const { namespace, table, qualified } of tables) {
@@ -463,6 +514,19 @@ export async function checkLakehouseFreshness(): Promise<void> {
   const regressions = failures.filter(
     (f) => !KNOWN_FROZEN.has(f.split(" ")[0] ?? ""),
   );
+  state.counts = {
+    tables: tables.length,
+    stale: failures.length,
+    known: failures.length - regressions.length,
+    regressions: regressions.length,
+    recovered: recovered.length,
+    namespaces: {
+      chain: tables.filter((table) => table.namespace === "chain").length,
+      chain_testnet: tables.filter(
+        (table) => table.namespace === "chain_testnet",
+      ).length,
+    },
+  };
   process.stdout.write(
     `\nlakehouse-freshness: ${failures.length} stale of ${tables.length} -- ` +
       `${failures.length - regressions.length} known (baseline ${KNOWN_FROZEN.size}), ` +
@@ -475,10 +539,11 @@ export async function checkLakehouseFreshness(): Promise<void> {
         "\n",
     );
   }
-  if (regressions.length === 0 && recovered.length === 0) return;
+  if (regressions.length === 0 && recovered.length === 0) return "ok";
   const failures_ = regressions;
   const webhook = process.env.LIVE_ALERT_WEBHOOK_URL;
-  if (webhook) {
+  if (!checkOnly && webhook) {
+    state.notificationAttempted = true;
     try {
       await fetch(webhook, {
         method: "POST",
@@ -503,8 +568,55 @@ export async function checkLakehouseFreshness(): Promise<void> {
   process.stderr.write(
     `\nlakehouse-freshness: ${failures.length} of ${tables.length} table(s) STALE.\n`,
   );
-  process.exit(1);
+  return "stale";
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url))
-  await checkLakehouseFreshness();
+async function writeFreshnessReport(
+  reportPath: string,
+  report: FreshnessReport,
+): Promise<void> {
+  const serialized = JSON.stringify(report, null, 2) + "\n";
+  if (Buffer.byteLength(serialized, "utf8") > 4096)
+    throw new Error("Freshness report exceeds its byte bound");
+  const file = await open(reportPath, "w", 0o600);
+  try {
+    await file.chmod(0o600);
+    await file.writeFile(serialized, "utf8");
+  } finally {
+    await file.close();
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const startedAt = new Date().toISOString();
+  const args = parseFreshnessArgs(process.argv.slice(2));
+  const reportPath = args.reportPath;
+  const onReport = reportPath
+    ? (report: FreshnessReport) => writeFreshnessReport(reportPath, report)
+    : undefined;
+  try {
+    if (!args.valid) {
+      await onReport?.(
+        createFreshnessReport({
+          state: {
+            startedAt,
+            phase: "arguments",
+            counts: null,
+            notificationAttempted: false,
+          },
+          status: "error",
+          checkOnly: args.checkOnly,
+          sourceSha: process.env.GITHUB_SHA,
+          nodeVersion: process.version,
+          finishedAt: new Date().toISOString(),
+        }),
+      );
+      throw new Error("Invalid lakehouse freshness arguments");
+    }
+    await checkLakehouseFreshness({ checkOnly: args.checkOnly, onReport });
+  } catch (error) {
+    if (!reportPath) throw error;
+    process.stderr.write("lakehouse-freshness: check failed.\n");
+    process.exitCode = 1;
+  }
+}
