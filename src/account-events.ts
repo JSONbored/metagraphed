@@ -67,6 +67,9 @@ export const INGESTED_EVENT_KINDS = [
   "AxonInfoRemoved",
   "Faucet",
   "Transfer",
+  // Fee-payer events retain their identities; generic TAO/alpha amounts stay null.
+  "TransactionFeePaid",
+  "TransactionFeePaidWithAlpha",
   // Found by the 2026-07-14/15 exhaustive decode audit: indexer-rs's Rust
   // extract() (apps/indexer-rs/src/main.rs) has always curated these -- field
   // values decode correctly (SS58/numbers, never raw) -- but the JS serving
