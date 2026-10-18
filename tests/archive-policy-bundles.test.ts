@@ -406,8 +406,8 @@ describe("synthetic D1 bundle metadata and physical index versions", () => {
       [
         "unbounded D1 integer",
         (input) => {
-          delete definition(input).families.pages.columns.page_index!
-            .integerBounds;
+          const rule = definition(input).families.pages.columns.page_index!;
+          delete rule.integerBounds;
         },
         /no lossless representation.*page_index/,
       ],
@@ -422,24 +422,24 @@ describe("synthetic D1 bundle metadata and physical index versions", () => {
       [
         "unsafe D1 integer bound",
         (input) => {
-          definition(input).families.targets.columns.weight!.integerBounds!
-            .max = Number.MAX_SAFE_INTEGER + 1;
+          const rule = definition(input).families.targets.columns.weight!;
+          rule.integerBounds!.max = Number.MAX_SAFE_INTEGER + 1;
         },
         /no lossless representation.*weight/,
       ],
       [
         "D1 nullability drift",
         (input) => {
-          input.source.find((column) => column.column === "first_block")!
-            .nullable = false;
+          const first = input.source.find((c) => c.column === "first_block")!;
+          first.nullable = false;
         },
         /source type\/nullability changed/,
       ],
       [
         "D1 type drift",
         (input) => {
-          input.source.find((column) => column.column === "height")!.udt =
-            "INTEGER";
+          const height = input.source.find((c) => c.column === "height")!;
+          height.udt = "INTEGER";
         },
         /source type\/nullability changed/,
       ],
