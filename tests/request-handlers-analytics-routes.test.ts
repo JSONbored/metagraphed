@@ -1234,8 +1234,9 @@ describe("handleCompareValidators", () => {
       uid: 3,
       stake_tao: 100,
     });
+    assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
     for (const field of [
-      "apy_estimate_eligible_subnet_count",
+      "apy_estimate",
       "total_stake_tao",
       "total_emission_tao",
       "subnet_count",
@@ -1280,8 +1281,9 @@ describe("handleCompareValidators", () => {
     body.data.validators.forEach((validator: unknown) => {
       assertJsonObject(validator);
       assert.equal(validator.subnet_count, 0);
+      assert.equal(validator.apy_estimate_eligible_subnet_count, 0);
       for (const field of [
-        "apy_estimate_eligible_subnet_count",
+        "apy_estimate",
         "total_stake_tao",
         "total_emission_tao",
       ]) {
