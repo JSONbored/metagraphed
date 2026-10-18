@@ -102,6 +102,12 @@ function runStandalone(entry: string, scenario: string) {
     `;
     const preloadPath = path.join(root, "fixture-preload.ts");
     writeFileSync(preloadPath, preload);
+    const childEnv: Record<string, string | undefined> = {
+      CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+      CLOUDFLARE_D1_DATABASE_ID: "11111111-1111-1111-1111-111111111111",
+      CLOUDFLARE_API_TOKEN: "fixture-reader",
+      NODE_NO_WARNINGS: "1",
+    };
     const result = spawnSync(
       process.execPath,
       ["--import", preloadPath, path.join(root, entry)],
@@ -109,12 +115,9 @@ function runStandalone(entry: string, scenario: string) {
         cwd: root,
         encoding: "utf8",
         timeout: 10_000,
-        env: {
-          CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
-          CLOUDFLARE_D1_DATABASE_ID: "11111111-1111-1111-1111-111111111111",
-          CLOUDFLARE_API_TOKEN: "fixture-reader",
-          NODE_NO_WARNINGS: "1",
-        },
+        // Generated Worker bindings augment ProcessEnv with application fields;
+        // those bindings do not belong in this isolated Node environment.
+        env: childEnv as NodeJS.ProcessEnv,
       },
     );
     assert.equal(result.error, undefined);
