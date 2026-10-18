@@ -178,8 +178,7 @@ export function firstPartyLogoPath(...candidates: LogoCandidate[]): string | nul
 
 function findLogo(candidates: LogoCandidate[], firstParty: boolean): string | null {
   for (const candidate of candidates) {
-    const raw =
-      typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light);
+    const raw = typeof candidate === "string" ? candidate : (candidate?.dark ?? candidate?.light);
     if (!raw) continue;
     try {
       // Owned assets resolve relative to us; external identity accepts bare hosts.
