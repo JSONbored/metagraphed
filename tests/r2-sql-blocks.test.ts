@@ -189,6 +189,62 @@ test("the offset cap keeps the worst measured page under the body cap (#11140)",
 });
 
 describe("loadBlockWithEconomicsFromR2Sql", () => {
+  test("projects reducer inputs while preserving nested subnet attribution", async () => {
+    const extrinsic = economicsExtrinsic({
+      call_args: JSON.stringify({
+        payload: "x".repeat(1024 * 1024),
+        calls: [
+          { name: "src_netuid", value: "7" },
+          { name: "dest_netuid", value: 9 },
+        ],
+      }),
+    });
+    native.block.mockImplementation(
+      async (_env, table, height, _network, _budget, columns) => {
+        if (table === "blocks") return [row(height)];
+        const expected =
+          table === "extrinsics"
+            ? ["signer", "fee_tao", "tip_tao", "call_args"]
+            : ["event_kind", "netuid", "amount_tao"];
+        assert.deepEqual(columns, expected);
+        const source: Record<string, unknown> =
+          table === "extrinsics" ? extrinsic : economicsEvent();
+        return [
+          Object.fromEntries(columns.map((key: string) => [key, source[key]])),
+        ];
+      },
+    );
+    const data = await loadBlockWithEconomicsFromR2Sql(TOKEN, "42");
+    assert.equal(data?.block?.fee_tao, 0.125);
+    assert.equal(data?.block?.tip_tao, 0.005);
+    assert.equal(data?.block?.native_transfer_tao, 2.5);
+    assert.deepEqual(data?.block?.subnet_ids, [7, 9, 19]);
+  });
+
+  for (const [table, columns] of [
+    ["extrinsics", ["signer", "fee_tao", "tip_tao", "call_args"]],
+    ["account_events", ["event_kind", "netuid", "amount_tao"]],
+  ] as const) {
+    for (const missing of columns) {
+      test(`missing ${table}.${missing} cannot become a measured zero`, async () => {
+        const incomplete: Record<string, unknown> =
+          table === "extrinsics" ? economicsExtrinsic() : economicsEvent();
+        delete incomplete[missing];
+        native.block.mockImplementation(async (_env, selected, height) =>
+          selected === "blocks"
+            ? [row(height)]
+            : selected === table
+              ? [incomplete]
+              : [],
+        );
+        const data = await loadBlockWithEconomicsFromR2Sql(TOKEN, "42");
+        assert.equal(data?.block?.decode_status, "unavailable");
+        assert.equal(data?.block?.economic_activity_tao, null);
+        assert.equal(data?.block?.fee_tao, null);
+      });
+    }
+  }
+
   test("derives complete block economics and subnet involvement from companion tables", async () => {
     native.block.mockImplementation(async (_env, table, height) => {
       if (table === "blocks") return [row(height)];

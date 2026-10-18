@@ -42,6 +42,7 @@ const event = (event_index = 0, extrinsic_index: number | null = 0) => ({
   event_index,
   extrinsic_index,
   event_kind: "Transfer",
+  netuid: null,
   amount_tao: 2.5,
   observed_at: 1700000000000,
 });

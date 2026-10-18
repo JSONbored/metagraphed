@@ -252,7 +252,7 @@ async function readFileRanges(
   sourceIdentity?: string,
   projection?: {
     columns: string[];
-    consume(
+    consume?(
       rows: Record<string, unknown>[],
       start: number,
       identity: string,
@@ -339,7 +339,7 @@ async function readFileRanges(
       if (previous)
         while (groupEnd < previous.end) groupEnd += index.groups[++group].rows;
       if (
-        !projection &&
+        !projection?.consume &&
         previous &&
         selection.start < groupEnd &&
         Object.values(index.groups[group].columns).every(
@@ -353,7 +353,7 @@ async function readFileRanges(
     for (const { start, end, selections } of batches) {
       // Streaming releases each part: bound resident batches separately
       // from the cumulative I/O quota.
-      const partBudget = projection
+      const partBudget = projection?.consume
         ? { ...budget, decodedBytes: 0, values: 0 }
         : budget;
       let batch: Record<string, unknown>[];
@@ -370,7 +370,7 @@ async function readFileRanges(
         budget.bytes = partBudget.bytes;
         budget.requests = partBudget.requests;
       }
-      if (projection)
+      if (projection?.consume)
         projection.consume(batch, start + part.rowStart, file.sourceIdentity);
       else
         for (const selection of selections)
@@ -389,6 +389,7 @@ export async function readHistoryBlock(
   scope: Scope,
   block: number,
   budget: ParquetReadBudget,
+  columns?: string[],
 ): Promise<Record<string, unknown>[]> {
   const generation = validateHistoryBlockGeneration(input, scope);
   const index = await readJson(
@@ -422,6 +423,10 @@ export async function readHistoryBlock(
         end: run.rowStart + run.rows,
       })),
       budget,
+      undefined,
+      columns
+        ? { columns: [...new Set(["block_number", "observed_at", ...columns])] }
+        : undefined,
     );
     let offset = 0;
     for (const run of group)

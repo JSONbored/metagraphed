@@ -200,6 +200,30 @@ describe("qualified runtime account corrections", () => {
     }
   });
 
+  it("projects corrected block rows without losing the replacement discriminator", async () => {
+    const f = fixture();
+    const columns = ["amount_tao", "netuid"];
+    const rows = await readSelectedHistoryBlock(
+      f.env,
+      "account_events",
+      first,
+      "mainnet",
+      parquetReadBudget(),
+      columns,
+    );
+    expect(rows).toEqual(
+      expected
+        .filter((row) => row.block_number === first)
+        .map(({ block_number, observed_at, event_kind, amount_tao, netuid }) => ({
+          block_number,
+          observed_at,
+          event_kind,
+          amount_tao,
+          netuid,
+        })),
+    );
+  });
+
   it("preserves the prior contract before selection and skips nonintersecting correction feeds", async () => {
     const f = fixture();
     f.objects.delete(pointerKey);

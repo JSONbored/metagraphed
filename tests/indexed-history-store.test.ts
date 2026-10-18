@@ -417,6 +417,25 @@ test("selected block reads cache the pointer, enforce coverage, and preserve num
   );
   assert.equal(currentIndexedHistoryFailureGeneration(), 0);
 });
+test("selected extrinsic blocks forward explicit columns and the shared budget", async () => {
+  const { env } = fixture("extrinsics");
+  const budget = parquetReadBudget();
+  const columns = ["signer", "fee_tao", "tip_tao", "call_args"];
+  assert.deepEqual(
+    await readSelectedHistoryBlock(
+      env,
+      "extrinsics",
+      7,
+      "mainnet",
+      budget,
+      columns,
+    ),
+    [],
+  );
+  assert.equal(readers.block.mock.calls[0][4], budget);
+  assert.deepEqual(readers.block.mock.calls[0][5], columns);
+});
+
 test("unreadable, invalid and mismatched selected generations fail without a legacy fallback", async () => {
   for (const change of [
     { network: "testnet" },
