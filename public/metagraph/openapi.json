@@ -72113,7 +72113,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -73776,7 +73776,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -78530,7 +78530,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -80252,7 +80252,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -85708,7 +85708,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -86041,7 +86041,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -86488,7 +86488,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -86911,7 +86911,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -87347,7 +87347,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -87580,7 +87580,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -87908,7 +87908,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -88116,7 +88116,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -91914,7 +91914,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -92328,7 +92328,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -92751,7 +92751,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -93151,7 +93151,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -93487,7 +93487,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -94358,7 +94358,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -94596,7 +94596,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -95056,7 +95056,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -95586,7 +95586,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -96020,7 +96020,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -96368,7 +96368,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -96784,7 +96784,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -97024,7 +97024,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -97311,7 +97311,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -97675,7 +97675,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -97908,7 +97908,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -98444,7 +98444,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -98647,7 +98647,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -99273,7 +99273,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -99694,7 +99694,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -100467,7 +100467,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -101827,7 +101827,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -102384,7 +102384,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -102614,7 +102614,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -102892,7 +102892,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -107505,7 +107505,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -107711,7 +107711,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
@@ -110030,7 +110030,7 @@
             }
           },
           {
-            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns 400 invalid_query; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
+            "description": "Opt into checked collection paging: send `start` at cursor 0, then echo the returned snapshot (REST meta.pagination.snapshot; MCP snapshot) with subsequent numeric cursors, or follow the returned Link URLs. A changed result or query returns REST 400 invalid_query with catalog_changed, or MCP catalog_restart_required; restart from cursor 0. This does not retain old rows or continue across mutations. Checked requests bypass page caches. At most 5000 matching rows, 16777216 canonical bytes and 64 nesting levels can be verified; narrow filters on catalog_budget_exceeded. Omit for legacy offset paging.",
             "in": "query",
             "name": "page_snapshot",
             "required": false,
