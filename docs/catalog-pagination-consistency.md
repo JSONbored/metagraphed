@@ -136,9 +136,9 @@ for 1,200 producer-shaped endpoints and 160 schema-checked providers, 200-row
 pages, three alternating-order samples, legacy and guarded walks, and cold
 versus immediately warm cache. Returned IDs must exactly equal the fixture
 population; a warmed walk must avoid artifact reads. Source bytes, response
-bytes, page counts, cache entries, wall time, process CPU, sampled heap/RSS
-high-water values and heap deltas are recorded. Timing and memory never decide
-pass/fail.
+bytes, page counts, cache entries, wall time, process CPU, heap/RSS baselines,
+sampled increases/high-water values and heap deltas are recorded. Timing and
+memory never decide pass/fail.
 
 `CATALOG_CHURN_FIXTURE` cases change rows after page one. A legacy walk can
 finish with the expected count while skipping a fresh row. Guarded continuation

@@ -225,8 +225,12 @@ async function walkCatalogFixture(
       wallMs: performance.now() - started,
       processCpuUserMs: used.user / 1000,
       processCpuSystemMs: used.system / 1000,
+      heapBeforeBytes: before.heapUsed,
+      rssBeforeBytes: before.rss,
       sampledHeapHighWaterBytes,
       sampledRssHighWaterBytes,
+      sampledHeapIncreaseBytes: sampledHeapHighWaterBytes - before.heapUsed,
+      sampledRssIncreaseBytes: sampledRssHighWaterBytes - before.rss,
       heapDeltaBytes: process.memoryUsage().heapUsed - before.heapUsed,
     };
   }
@@ -395,6 +399,15 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
         changed.map((row) => row.id),
       );
       assert.equal(restarted.requests, 3);
+      const { ids: _restartedIds, ...restartMeasurement } = restarted;
+      console.log(
+        "CATALOG_CHURN_FIXTURE",
+        JSON.stringify({
+          scenario: "restarted-after-one-change",
+          guarded: true,
+          ...restartMeasurement,
+        }),
+      );
     } else {
       // Equal length and a terminal cursor do not certify completeness.
       assert.equal(result.outcome, "complete");
@@ -431,6 +444,15 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
     assert.equal(result.outcome, "restart_required");
     assert.deepEqual(result.ids, []);
     requests += result.requests;
+    const { ids: _ids, ...measurement } = result;
+    console.log(
+      "CATALOG_CHURN_FIXTURE",
+      JSON.stringify({
+        scenario: "persistent-change-attempt",
+        attempt,
+        ...measurement,
+      }),
+    );
   }
   assert.equal(requests, 4);
   assert.equal(cache.size, 2, "rejected continuations never seed the cache");
