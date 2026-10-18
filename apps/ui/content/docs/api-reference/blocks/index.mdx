@@ -5,29 +5,29 @@ description: Every Blocks endpoint in the metagraphed API, with its method and p
 
 13 endpoints.
 
-- [Block Chain Events](/docs/api-reference/blocks/block-chain-events) — `GET /api/v1/blocks/{ref}/chain-events`  
+- [Block Chain Events](/docs/api-reference/blocks/block-chain-events) — `GET /api/v1/blocks/{ref}/chain-events`\
   Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file).
-- [Block Chain Events By Network](/docs/api-reference/blocks/block-chain-events-by-network) — `GET /api/v1/{network}/blocks/{ref}/chain-events`  
+- [Block Chain Events By Network](/docs/api-reference/blocks/block-chain-events-by-network) — `GET /api/v1/{network}/blocks/{ref}/chain-events`\
   Network-scoped form of /api/v1/blocks/\{ref}/chain-events — prefix the route with a network to choose which chain answers it.
-- [Block Detail](/docs/api-reference/blocks/block-detail) — `GET /api/v1/blocks/{ref}`  
+- [Block Detail](/docs/api-reference/blocks/block-detail) — `GET /api/v1/blocks/{ref}`\
   Fetch per-block detail by numeric block_number or 0x block_hash.
-- [Block Detail By Network](/docs/api-reference/blocks/block-detail-by-network) — `GET /api/v1/{network}/blocks/{ref}`  
+- [Block Detail By Network](/docs/api-reference/blocks/block-detail-by-network) — `GET /api/v1/{network}/blocks/{ref}`\
   Network-scoped form of /api/v1/blocks/\{ref} — prefix the route with a network to choose which chain answers it.
-- [Block Events](/docs/api-reference/blocks/block-events) — `GET /api/v1/blocks/{ref}/events`  
+- [Block Events](/docs/api-reference/blocks/block-events) — `GET /api/v1/blocks/{ref}/events`\
   Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (\<=1000) / ?offset.
-- [Block Events By Network](/docs/api-reference/blocks/block-events-by-network) — `GET /api/v1/{network}/blocks/{ref}/events`  
+- [Block Events By Network](/docs/api-reference/blocks/block-events-by-network) — `GET /api/v1/{network}/blocks/{ref}/events`\
   Network-scoped form of /api/v1/blocks/\{ref}/events — prefix the route with a network to choose which chain answers it.
-- [Block Extrinsics](/docs/api-reference/blocks/block-extrinsics) — `GET /api/v1/blocks/{ref}/extrinsics`  
+- [Block Extrinsics](/docs/api-reference/blocks/block-extrinsics) — `GET /api/v1/blocks/{ref}/extrinsics`\
   Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (\<=100) / ?offset.
-- [Block Extrinsics By Network](/docs/api-reference/blocks/block-extrinsics-by-network) — `GET /api/v1/{network}/blocks/{ref}/extrinsics`  
+- [Block Extrinsics By Network](/docs/api-reference/blocks/block-extrinsics-by-network) — `GET /api/v1/{network}/blocks/{ref}/extrinsics`\
   Network-scoped form of /api/v1/blocks/\{ref}/extrinsics — prefix the route with a network to choose which chain answers it.
-- [Blocks Feed](/docs/api-reference/blocks/blocks-feed) — `GET /api/v1/blocks`  
+- [Blocks Feed](/docs/api-reference/blocks/blocks-feed) — `GET /api/v1/blocks`\
   Fetch the recent-block feed (newest first) for the block explorer; ?limit (\<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851).
-- [Blocks Feed By Network](/docs/api-reference/blocks/blocks-feed-by-network) — `GET /api/v1/{network}/blocks`  
+- [Blocks Feed By Network](/docs/api-reference/blocks/blocks-feed-by-network) — `GET /api/v1/{network}/blocks`\
   Network-scoped form of /api/v1/blocks — prefix the route with a network to choose which chain answers it.
-- [Blocks Summary](/docs/api-reference/blocks/blocks-summary) — `GET /api/v1/blocks/summary`  
+- [Blocks Summary](/docs/api-reference/blocks/blocks-summary) — `GET /api/v1/blocks/summary`\
   Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread.
-- [Blocks Summary By Network](/docs/api-reference/blocks/blocks-summary-by-network) — `GET /api/v1/{network}/blocks/summary`  
+- [Blocks Summary By Network](/docs/api-reference/blocks/blocks-summary-by-network) — `GET /api/v1/{network}/blocks/summary`\
   Network-scoped form of /api/v1/blocks/summary — prefix the route with a network to choose which chain answers it.
-- [Runtime Versions](/docs/api-reference/blocks/runtime-versions) — `GET /api/v1/runtime`  
+- [Runtime Versions](/docs/api-reference/blocks/runtime-versions) — `GET /api/v1/runtime`\
   Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number.

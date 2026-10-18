@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import { matchedCatalogFixture } from "./catalog-fixture.ts";
 import {
   attachOrdinaryFixtureDiagnostics,
   recordOrdinaryFixturePhase,
@@ -28,11 +29,8 @@ const service = (id: string, auth?: boolean) => ({
   kind: "subnet-api",
   auth_required: auth,
 });
-const response = (rows: unknown[], next: string | null = null, total = rows.length) => ({
-  ok: true,
-  data: { surfaces: rows },
-  meta: { pagination: { total, next_cursor: next } },
-});
+const response = (requestUrl: string, rows: Record<string, unknown>[], pageSize?: number) =>
+  matchedCatalogFixture(new URL(requestUrl), "surfaces", rows, {}, { pageSize });
 async function loaded(page: Page) {
   recordOrdinaryFixturePhase(page, "provider-navigation-start");
   await gotoThroughRestart(page, "/providers/lium");
@@ -119,19 +117,18 @@ test.describe("Provider services and independent probe states", () => {
   }) => {
     let failNext = true;
     const cursors: (string | null)[] = [];
+    const snapshots: (string | null)[] = [];
+    const rows = [service("a", false), service("b", true), service("last")];
     await page.route("**/api/v1/surfaces**", (route) => {
       const params = new URL(route.request().url()).searchParams;
       expect(params.get("provider")).toBe("lium");
       expect(params.get("limit")).toBe("500");
       const cursor = params.get("cursor");
       cursors.push(cursor);
-      return cursor && failNext
+      snapshots.push(params.get("page_snapshot"));
+      return cursor === "2" && failNext
         ? route.fulfill({ status: 503, json: { error: "next page failure" } })
-        : route.fulfill({
-            json: cursor
-              ? response([service("last")], null, 3)
-              : response([service("a", false), service("b", true)], "opaque-next-page", 3),
-          });
+        : route.fulfill(response(route.request().url(), rows, 2));
     });
     await loaded(page);
     const published = page
@@ -154,17 +151,20 @@ test.describe("Provider services and independent probe states", () => {
     ).toBeVisible();
     await expect(published).toContainText("156");
     await expect(more).toHaveCount(0);
-    expect(cursors).toEqual([null, "opaque-next-page", "opaque-next-page"]);
+    expect(cursors).toEqual(["0", "2", "2"]);
+    expect(snapshots[0]).toBe("start");
+    expect(snapshots[1]).toMatch(/^v1\.[0-9a-f]{64}$/);
+    expect(snapshots[2]).toBe(snapshots[1]);
   });
 
-  test("retains cached services after a failed refresh and distinguishes initial failure from empty", async ({
+  test("discards earlier services on a failed restart and distinguishes initial failure from empty", async ({
     page,
   }) => {
     let fail = true;
     await page.route("**/api/v1/surfaces**", (route) =>
       fail
         ? route.fulfill({ status: 503, json: { error: "services failure" } })
-        : route.fulfill({ json: response([service("a")]) }),
+        : route.fulfill(response(route.request().url(), [service("a")])),
     );
     await gotoThroughRestart(page, "/providers/lium");
     const error = page
@@ -179,18 +179,23 @@ test.describe("Provider services and independent probe states", () => {
     fail = true;
     await page.getByRole("button", { name: "refresh", exact: true }).click();
     await expect(error).toBeVisible();
+    await expect(page.locator("#surfaces .mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(0);
+    fail = false;
+    await error.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(page.locator("#surfaces .mg-dt-row")).toHaveCount(1);
-    await expect(page.getByText(/previously loaded rows remain visible/)).toBeVisible();
   });
 
-  test("stops on an invalid cursor without inventing an empty catalog", async ({ page }) => {
-    await page.route("**/api/v1/surfaces**", (route) =>
-      route.fulfill({
-        json: { ...response([service("a")]), meta: { pagination: { total: 3, next_cursor: {} } } },
-      }),
-    );
-    await loaded(page);
-    await expect(page.getByText(/Pagination stopped/)).toBeVisible();
+  test("rejects an invalid cursor without accepting uncertified catalog rows", async ({ page }) => {
+    await page.route("**/api/v1/surfaces**", (route) => {
+      const fixture = response(route.request().url(), [service("a")]);
+      const body = JSON.parse(fixture.body);
+      body.meta.pagination.next_cursor = {};
+      return route.fulfill({ ...fixture, body: JSON.stringify(body) });
+    });
+    await gotoThroughRestart(page, "/providers/lium");
+    const section = page.locator("#surfaces");
+    await expect(section.getByRole("alert")).toContainText("could not be verified");
+    await expect(section.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
   });
 
@@ -201,7 +206,9 @@ test.describe("Provider services and independent probe states", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.setViewportSize({ width: 375, height: 812 });
     await page.route("**/api/v1/surfaces**", (route) =>
-      route.fulfill({ json: response([service("a"), service("b", true), service("c", false)]) }),
+      route.fulfill(
+        response(route.request().url(), [service("a"), service("b", true), service("c", false)]),
+      ),
     );
     await loaded(page);
     await expect(page.locator('#surfaces td[data-label="Auth"]')).toHaveText([
