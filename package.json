@@ -259,7 +259,7 @@
     "source-map-js": "^1.2.2",
     "miniflare": {
       "sharp": "$sharp",
-      "undici": "7.29.0"
+      "undici": "7.30.1"
     },
     "@tanstack/start-server-core": "1.169.40",
     "dompurify": "3.4.16",
