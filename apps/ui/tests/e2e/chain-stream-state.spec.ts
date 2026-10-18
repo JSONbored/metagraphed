@@ -78,7 +78,11 @@ test.describe("chain event stream states", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, "/chain/blocks");
 
-    const mark = page.locator(".mg-block-activity-mark").nth(1);
+    // Resolve the mark only in an instance whose own client effect committed.
+    // The same locator also waits for a new instance if this section remounts.
+    const activity = page.locator('.mg-block-activity[data-client-enhanced="true"]');
+    await expect(activity).toBeVisible();
+    const mark = activity.locator(".mg-block-activity-mark").nth(1);
     const href = await mark.getAttribute("href");
     expect(href).toMatch(/^\/blocks\/\d+$/);
     // The fixture window is intentionally static while the numeric block it
@@ -111,14 +115,7 @@ test.describe("chain event stream states", () => {
       });
     });
 
-    // The activity marks are present in the streamed HTML before React owns
-    // them. On a slower CI runner, tapping as soon as the SSR anchor is visible
-    // can follow its native href before the first-tap pin handler hydrates.
-    // The roving-tabindex layout effect promotes the first mark from the SSR
-    // value (-1) to the hydrated value (0). Wait for that client-only signal
-    // without focusing or otherwise mutating the entity state, then exercise
-    // the actual touch contract on the second mark.
-    await expect(page.locator(".mg-block-activity-mark").first()).toHaveAttribute("tabindex", "0");
+    await expect(mark).not.toHaveAttribute("data-active", "true");
 
     await mark.tap();
     await expect(page).toHaveURL(/\/chain\/blocks$/);
