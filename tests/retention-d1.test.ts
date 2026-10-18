@@ -77,6 +77,63 @@ const blocks = async (table: string) =>
       .prepare(`SELECT block_number FROM ${table} ORDER BY block_number`)
       .all<{ block_number: number }>()
   ).results.map((row) => row.block_number);
+async function replaceCoverage(heights: number[]) {
+  for (const table of tables)
+    if (table !== "chain_detail_account_events")
+      await db.prepare(`DELETE FROM ${table}`).run();
+  for (const block of heights)
+    await db.batch([
+      db
+        .prepare(
+          "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'hash',1,1,0,1,1)",
+        )
+        .bind(block),
+      db
+        .prepare(
+          "INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,observed_at) VALUES(?,0,1)",
+        )
+        .bind(block),
+      db
+        .prepare(
+          "INSERT INTO chain_detail_chain_events(block_number,event_index,pallet,method,phase,observed_at) VALUES(?,0,'System','Success','ApplyExtrinsic',1)",
+        )
+        .bind(block),
+    ]);
+}
+
+async function accountRange(first: number) {
+  await db.batch(
+    Array.from({ length: 121 }, (_, offset) =>
+      db
+        .prepare(
+          "INSERT INTO chain_detail_account_events(block_number,event_index,event_kind,observed_at) VALUES(?,0,'Transfer',1)",
+        )
+        .bind(first + offset),
+    ),
+  );
+}
+
+function measuredPrune(afterBatch?: (completed: number) => Promise<void>) {
+  const prepared: string[] = [];
+  const changes: number[][] = [];
+  return {
+    prepared,
+    changes,
+    binding: {
+      prepare(text: string) {
+        prepared.push(text);
+        return db.prepare(text);
+      },
+      async batch(statements: D1PreparedStatement[]) {
+        const result = await db.batch(statements);
+        changes.push(result.map((row) => row.meta.changes));
+        await afterBatch?.(changes.length);
+        return result;
+      },
+    },
+  };
+}
+
 beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const sql of readFileSync(
@@ -314,6 +371,218 @@ test("account-only rows cannot supply a missing coverage head", async () => {
   assert.deepEqual(await Promise.all(tables.map(blocks)), before);
   assert.equal(pg.control.connects, 0);
 });
+
+test("account events ahead of retiring coverage retain all advertised children", async () => {
+  await seed();
+  const coverageFloor = head - 10_000;
+  const first = head - 9500;
+  await replaceCoverage([
+    coverageFloor,
+    coverageFloor + 119,
+    coverageFloor + 120,
+    first,
+    first + 120,
+    head,
+  ]);
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  await accountRange(first);
+  await db
+    .prepare(
+      "UPDATE chain_detail_blocks SET account_event_count=1 WHERE block_number IN (?,?)",
+    )
+    .bind(first, first + 120)
+    .run();
+  const before = await blocks("chain_detail_account_events");
+  const trace = measuredPrune();
+  const result = await pruneChainDetail(
+    { ...env(), D1_STATE: trace.binding },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(await blocks("chain_detail_account_events"), before);
+  assert.equal(trace.changes.length, 12);
+  assert.ok(trace.changes.every((batch) => batch[2] === 0));
+  for (const table of tables)
+    if (table !== "chain_detail_account_events")
+      assert.deepEqual(await blocks(table), [
+        coverageFloor + 120,
+        first,
+        first + 120,
+        head,
+      ]);
+});
+
+test("overlapping account children retire with their coverage in the same batch", async () => {
+  await seed();
+  const first = head - 10_000;
+  const heights = Array.from({ length: 121 }, (_, offset) => first + offset);
+  await replaceCoverage([...heights, head]);
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  await accountRange(first);
+  await db
+    .prepare(
+      "UPDATE chain_detail_blocks SET account_event_count=1 WHERE block_number < ?",
+    )
+    .bind(head)
+    .run();
+  const trace = measuredPrune();
+  const result = await pruneChainDetail(
+    { ...env(), D1_STATE: trace.binding },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 120);
+  assert.deepEqual(
+    trace.changes,
+    Array.from({ length: 12 }, () => [10, 10, 10, 10]),
+  );
+  for (const table of tables)
+    assert.deepEqual(
+      await blocks(table),
+      table === "chain_detail_account_events"
+        ? [first + 120]
+        : [first + 120, head],
+    );
+});
+
+test("a replay between account-only batches preserves newly advertised detail", async () => {
+  await seed();
+  const keepFrom = head - 1800 + 1;
+  await replaceCoverage([keepFrom, head]);
+  const old = accountFloor - 10_000;
+  await accountRange(old);
+  const replayed = old + 10;
+  const trace = measuredPrune(async (completed) => {
+    if (completed !== 1) return;
+    await db.batch([
+      db
+        .prepare(
+          "INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,observed_at) VALUES(?,0,2)",
+        )
+        .bind(replayed),
+      db
+        .prepare(
+          "INSERT INTO chain_detail_chain_events(block_number,event_index,pallet,method,phase,observed_at) VALUES(?,0,'System','Success','ApplyExtrinsic',2)",
+        )
+        .bind(replayed),
+      db
+        .prepare(
+          "UPDATE chain_detail_account_events SET observed_at=2 WHERE block_number=?",
+        )
+        .bind(replayed),
+      db
+        .prepare(
+          "INSERT INTO chain_detail_blocks(block_number,block_hash,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at) VALUES(?,'replayed',1,1,1,2,2)",
+        )
+        .bind(replayed),
+    ]);
+  });
+  const result = await pruneChainDetail(
+    { ...env(), D1_STATE: trace.binding },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 0);
+  assert.deepEqual(trace.changes, [
+    [10],
+    ...Array.from({ length: 11 }, () => [0]),
+  ]);
+  for (const table of tables)
+    assert.ok((await blocks(table)).includes(replayed));
+  const accounts = await blocks("chain_detail_account_events");
+  assert.equal(accounts[0], replayed);
+  assert.ok(accounts.includes(old + 119));
+  assert.equal(
+    await db
+      .prepare(
+        "SELECT observed_at FROM chain_detail_account_events WHERE block_number=?",
+      )
+      .bind(replayed)
+      .first("observed_at"),
+    2,
+  );
+});
+
+test("account batches keep their bounded progress if coverage disappears after the first batch", async () => {
+  await seed();
+  const keepFrom = head - 1800 + 1;
+  await replaceCoverage([keepFrom, head]);
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  const old = accountFloor - 10_000;
+  await accountRange(old);
+  const trace = measuredPrune(async (completed) => {
+    if (completed === 1)
+      await db.prepare("DELETE FROM chain_detail_blocks").run();
+  });
+  const result = await pruneChainDetail(
+    { ...env(), D1_STATE: trace.binding },
+    ctx,
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.blocks_pruned, 0);
+  assert.deepEqual(
+    trace.changes,
+    Array.from({ length: 12 }, () => [10]),
+  );
+  assert.deepEqual(await blocks("chain_detail_account_events"), [old + 120]);
+  assert.deepEqual(await blocks("chain_detail_blocks"), []);
+});
+
+test("a guarded account retirement rolls back with its coverage", async () => {
+  await seed();
+  const first = head - 10_000;
+  const heights = Array.from({ length: 121 }, (_, offset) => first + offset);
+  await replaceCoverage([...heights, head]);
+  await db.prepare("DELETE FROM chain_detail_account_events").run();
+  await accountRange(first);
+  const before = await Promise.all(tables.map(blocks));
+  await db
+    .prepare(
+      "CREATE TRIGGER reject_prune BEFORE DELETE ON chain_detail_blocks BEGIN SELECT RAISE(ABORT,'guarded coverage rejected'); END",
+    )
+    .run();
+  const result = await pruneChainDetail(env(), ctx);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "prune_failed");
+  assert.match(result.detail!, /guarded coverage rejected/);
+  assert.deepEqual(await Promise.all(tables.map(blocks)), before);
+});
+
+test.each([0, 120])(
+  "the account delete uses indexed range and coverage minimum searches with %i coverage heights pending",
+  async (span) => {
+    const coverageFloor = head - 1800 + 1 - span;
+    await seed(coverageFloor);
+    const old = accountFloor - 10_000;
+    await accountRange(old);
+    const trace = measuredPrune();
+    const result = await pruneChainDetail(
+      { ...env(), D1_STATE: trace.binding },
+      ctx,
+    );
+    assert.equal(result.ok, true);
+    const accountDelete = trace.prepared.find((text) =>
+      text.startsWith("DELETE FROM chain_detail_account_events"),
+    );
+    assert.ok(accountDelete);
+    // Explain the actual emitted statement, in both batch shapes, with the
+    // first batch's bounds. This is a plan assertion, not a row-count limit.
+    const values = [old, old + 10, old + 10];
+    if (span) values.push(coverageFloor, coverageFloor + 10);
+    const plan = await db
+      .prepare(`EXPLAIN QUERY PLAN ${accountDelete}`)
+      .bind(...values)
+      .all<{ detail: string }>();
+    const detail = plan.results.map((row) => row.detail).join("\n");
+    assert.match(
+      detail,
+      /SEARCH chain_detail_account_events USING PRIMARY KEY \(block_number>\? AND block_number<\?\)/,
+    );
+    assert.match(detail, /SEARCH chain_detail_blocks\b/);
+    assert.doesNotMatch(detail, /\bSCAN\b/);
+  },
+);
 
 test("a later D1 chunk failure leaves a complete pruned prefix", async () => {
   await seed();
