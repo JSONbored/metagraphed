@@ -1032,7 +1032,7 @@ test("all six REST catalog routes retain checked links, projections, CSV and no-
 
 test("checked endpoint routes hash effective health even when every observation stamp is unchanged", async () => {
   const stamp = new Date().toISOString();
-  const values = rows.slice(0, 3).map((row, index) => ({ ...row, surface_id: `surface-${index}` }));
+  const values: Row[] = rows.slice(0, 3).map((row, index) => ({ ...row, surface_id: `surface-${index}` }));
   const blob = artifact(values);
   for (const path of ["/api/v1/endpoints", "/api/v1/rpc/endpoints", "/api/v1/providers/fixture/endpoints", "/api/v1/subnets/0/endpoints"]) {
     let changed = false;
