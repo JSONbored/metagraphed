@@ -68,7 +68,9 @@ jobs:
         run: npm run validate:workflows
 
       - name: Cold whole-project typecheck
-        run: npx --no-install tsc --noEmit --incremental false
+        run: |
+          npm run pretypecheck
+          npx --no-install tsc --noEmit --incremental false
 
       - name: Check candidate formatting
         run: npx --no-install prettier --check .github/workflows/publish-cloudflare.yml scripts/validate-workflows.ts tests/publish-workflow-branch-guard.test.ts
