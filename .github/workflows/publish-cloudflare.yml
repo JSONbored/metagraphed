@@ -17,6 +17,7 @@ name: Publish Cloudflare Backend
 #     LIVE_ECONOMICS_REFRESH_CRON (src/live-economics-refresh.ts, which took the
 #     lane over from the retired refresh-economics.yml schedule).
 #   - workflow_dispatch (publish_mode=dry-run validates without writing R2/KV).
+#     Production publication requires main; a branch dispatch must use dry-run.
 #
 # No stale-pointer hazard: every run fresh-fetches the chain snapshot FIRST
 # (build.ts productionSteps, tolerant), so the KV `latest` pointer always flips to
@@ -69,6 +70,22 @@ jobs:
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
     steps:
+      - name: Validate registry publication request
+        id: publication-request
+        shell: bash
+        env:
+          PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
+        run: |
+          set -euo pipefail
+          case "$PUBLISH_MODE" in
+            publish|dry-run) ;;
+            *) echo "::error::Invalid registry publication mode."; exit 1 ;;
+          esac
+          if [ "$PUBLISH_MODE" = "publish" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Production registry publication requires refs/heads/main. Select main or use publish_mode=dry-run."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -167,7 +184,7 @@ jobs:
       # silent failure leaves stale data live (issue: 2-day wedge went unnoticed).
       # Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
       - name: Notify on failure
-        if: failure()
+        if: failure() && steps.publication-request.outcome == 'success'
         env:
           ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
         run: |
@@ -444,3 +461,4 @@ jobs:
           curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
             -d "{\"content\":\"🔴 metagraphed production publish FAILED (deploy job) — R2/KV may go stale — ${RUN_URL}\"}" || true
+

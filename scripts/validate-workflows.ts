@@ -319,6 +319,34 @@ for (const workflow of workflows) {
     );
     const refreshJob = workflowJobBlock(content, "refresh");
     const publishJob = workflowJobBlock(content, "publish");
+    const publicationRequest = stepBlock(
+      refreshJob,
+      "Validate registry publication request",
+    );
+    const requestIndex = refreshJob.indexOf(publicationRequest);
+    const checkoutIndex = refreshJob.indexOf("uses: actions/checkout@");
+    check(
+      publicationRequest.includes("id: publication-request") &&
+        publicationRequest.includes("shell: bash") &&
+        publicationRequest.includes('case "$PUBLISH_MODE" in') &&
+        publicationRequest.includes("publish|dry-run)") &&
+        publicationRequest.includes(
+          'if [ "$PUBLISH_MODE" = "publish" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then',
+        ) &&
+        publicationRequest.includes("exit 1") &&
+        requestIndex >= 0 &&
+        checkoutIndex >= 0 &&
+        requestIndex < checkoutIndex,
+      workflow,
+      "publish workflow must refuse production publication outside main before checkout",
+    );
+    check(
+      stepBlock(refreshJob, "Notify on failure").includes(
+        "if: failure() && steps.publication-request.outcome == 'success'",
+      ),
+      workflow,
+      "publish refresh must notify only failures after an accepted publication request",
+    );
     check(
       !publishJob.includes('METAGRAPH_WRITE_PROBE_RESULTS: "1"'),
       workflow,
@@ -479,3 +507,4 @@ function stepBlock(content: string, stepName: string): string {
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
