@@ -1332,7 +1332,7 @@ test("GET /api/v1/chain/yield excludes root; /subnets/:netuid/yield ranks per UI
 
 // --- Account-scoped neurons routes -------------------------------------------
 
-test("GET /api/v1/accounts/:ss58/portfolio prices cross-subnet positions from snapshot stores", async () => {
+test("GET /api/v1/accounts/:ss58/portfolio preserves memberships without pricing voting weight as principal", async () => {
   insertNeuron({ netuid: 0, uid: 0, hotkey: "5Acct", stake_tao: 100 });
   insertNeuron({ netuid: 7, uid: 4, hotkey: "5Acct", stake_tao: 10 });
   insertPrice(7, dayAgo(0), 2);
@@ -1340,8 +1340,12 @@ test("GET /api/v1/accounts/:ss58/portfolio prices cross-subnet positions from sn
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.subnet_count, 2);
-  // root 100 * 1 + netuid-7 10 * 2
-  assert.equal(body.total_stake_tao, 120);
+  assert.equal(body.total_stake_tao, null);
+  assert.equal(body.overall_yield, null);
+  assert.equal(body.stake_concentration, null);
+  const positions = body.positions as Row[];
+  assert.deepEqual(positions.map((position) => position.netuid), [0, 7]);
+  assert.ok(positions.every((position) => position.stake_alpha === null && position.yield === null));
 });
 
 test("GET /api/v1/accounts/:ss58/subnets lists the live registrations", async () => {
@@ -1390,9 +1394,9 @@ test("GET /api/v1/accounts/directory derives every website ranking from one snap
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
   assert.equal(body.account_count, 3);
-  assert.equal(body.priced_registered_stake_tao, 125);
+  assert.equal(body.priced_registered_stake_tao, null);
   const rankings = body.rankings as Row;
-  assert.equal((rankings.stake as Row[])[0]!.hotkey, "5Stake");
+  assert.deepEqual(rankings.stake, []);
   assert.equal((rankings.emission as Row[])[0]!.hotkey, "5Emission");
   assert.equal((rankings.reach as Row[])[0]!.hotkey, "5Reach");
 });
@@ -3125,7 +3129,7 @@ test("directory materializations reject malformed and mixed-snapshot values", ()
       block_number: 8_600_000,
       account_count: 0,
       limit: 20,
-      priced_registered_stake_tao: 0,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     },
     validators: {
@@ -3166,7 +3170,8 @@ test("a directory KV read failure falls back to the truthful live projection", a
   assert.equal(accounts.status, 200);
   const body = (await accounts.json()) as Row;
   assert.equal(body.account_count, 1);
-  assert.equal(((body.rankings as Row).stake as Row[])[0]!.hotkey, "5Live");
+  assert.deepEqual((body.rankings as Row).stake, []);
+  assert.equal(((body.rankings as Row).reach as Row[])[0]!.hotkey, "5Live");
   assert.equal(error.mock.calls.length, 1);
   error.mockRestore();
 });
@@ -3188,7 +3193,7 @@ test("a versioned directory payload read failure also falls back to live data", 
     env({ METAGRAPH_CONTROL: failingPayloadKv }),
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5Live",
   );
@@ -3219,7 +3224,7 @@ test("a pointer whose versioned payload has another stamp falls back to live dat
         block_number: 8_600_000,
         account_count: 0,
         limit: 20,
-        priced_registered_stake_tao: 0,
+        priced_registered_stake_tao: null,
         rankings: { stake: [], emission: [], reach: [] },
       },
       validators: {
@@ -3237,7 +3242,7 @@ test("a pointer whose versioned payload has another stamp falls back to live dat
     env({ METAGRAPH_CONTROL: kv }),
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5Live",
   );
@@ -3296,7 +3301,7 @@ test("a newer complete snapshot keeps the previous directory live while its repl
     materializedEnv,
   );
   assert.equal(
-    ((((await accounts.json()) as Row).rankings as Row).stake as Row[])[0]!
+    ((((await accounts.json()) as Row).rankings as Row).reach as Row[])[0]!
       .hotkey,
     "5New",
   );

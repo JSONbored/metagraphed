@@ -2,7 +2,6 @@ import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { createRequestCounter } from "../src/request-counters.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
-import { contractPathForPathname, NETWORK_ALIASES } from "../src/contracts.ts";
 import {
   unavailableValidatorCapital,
   unavailableRealizedReturns,
@@ -149,9 +148,6 @@ const VALIDATOR_CAPITAL_FIELDS = [
   "apy_estimate",
   "stake_dominance",
 ] as const;
-const DATA_API_NETWORK_PREFIX = new RegExp(
-  `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
-);
 const NEURON_CAPITAL_POLICIES = new Map<string, string>([
   ["/api/v1/accounts", "account-list"],
   ["/api/v1/accounts/directory", "account-directory"],
@@ -301,12 +297,19 @@ export function normalizeNeuronCapitalForRoute(
   return wrapped ? { ...body, data: guarded } : guarded;
 }
 
-function canonicalNeuronRoute(request: Request): string {
+async function canonicalNeuronRoute(request: Request): Promise<string> {
+  // The directory fast entry must not initialize the full contract registry.
+  const { contractPathForPathname, NETWORK_ALIASES } = await import(
+    "../src/contracts.ts"
+  );
+  const networkPrefix = new RegExp(
+    `^/api/v1/(?:${NETWORK_ALIASES.join("|")})(?=/|$)`,
+  );
   // Classification only: preserve the forwarded request's network and URL.
   // Repeated aliases are bounded by path length and use the router vocabulary.
   let pathname = new URL(request.url).pathname;
-  while (DATA_API_NETWORK_PREFIX.test(pathname)) {
-    pathname = pathname.replace(DATA_API_NETWORK_PREFIX, "/api/v1");
+  while (networkPrefix.test(pathname)) {
+    pathname = pathname.replace(networkPrefix, "/api/v1");
   }
   return contractPathForPathname(pathname) ?? pathname;
 }
@@ -395,7 +398,7 @@ export async function tryDataApiTier(
     return body as Record<string, unknown>;
   }
   const normalized = normalizeNeuronCapitalForRoute(
-    canonicalNeuronRoute(request),
+    await canonicalNeuronRoute(request),
     body as Record<string, unknown>,
   );
   return normalized ?? markDataApiTierFallback();

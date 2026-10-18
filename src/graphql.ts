@@ -6228,7 +6228,7 @@ const rootValue = {
     const normalized = normalizeNeuronCapitalForRoute(
       "/api/v1/validators/{hotkey}/history",
       toRow(data),
-    )!;
+    );
     return {
       take_u16: data.take_u16 ?? null,
       take_last_changed_date: data.take_last_changed_date ?? null,
@@ -6245,7 +6245,7 @@ const rootValue = {
       window: data.window ?? label,
       netuid: (data.netuid as number | null) ?? null,
       point_count: data.point_count ?? 0,
-      points: rowsOf(normalized.points),
+      points: rowsOf(normalized?.points),
     };
   },
 

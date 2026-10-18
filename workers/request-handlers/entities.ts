@@ -2263,7 +2263,7 @@ export function canonicalSubnetHistoryCachePath(url: URL) {
 export function canonicalValidatorHistoryCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const { label } = historyWindow(url);
-  const netuid = routeValue<number | undefined>(url, "netuid");
+  const netuid = routeQuery(url).netuid as number | undefined;
   return `${url.pathname}?window=${encodeURIComponent(label)}${
     netuid == null ? "" : `&netuid=${netuid}`
   }`;

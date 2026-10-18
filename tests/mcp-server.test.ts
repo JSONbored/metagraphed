@@ -24031,6 +24031,8 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
               marker: "from-postgres",
               ...(tool === "list_global_validators" ? { validators: [] } : {}),
               ...(tool === "list_accounts" ? { accounts: [] } : {}),
+              ...(tool === "get_validator_history" ? { points: [] } : {}),
+              ...(tool === "get_account_portfolio" ? { positions: [] } : {}),
             });
           },
         },
