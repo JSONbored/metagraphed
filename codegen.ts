@@ -1,12 +1,24 @@
-import type { CodegenConfig } from "@graphql-codegen/cli";
+import type { TypeScriptPluginConfig } from "@graphql-codegen/typescript";
+import type { TypeScriptResolversPluginConfig } from "@graphql-codegen/typescript-resolvers";
+
+// Only the fixed local generator is supported. New loader/hook/preset inputs
+// must be designed explicitly instead of silently ignored by the Core API.
+type FixedGraphqlCodegenConfig = {
+  schema: "generated/graphql/schema.ts";
+  generates: {
+    "generated/graphql/types.ts": {
+      plugins: ["typescript", "typescript-resolvers"];
+      config: TypeScriptPluginConfig & TypeScriptResolversPluginConfig;
+    };
+  };
+};
 
 // GraphQL codegen (types-epic D, #7862): schema points at the generated SDL
-// module (#10214) — a dependency-free file, so codegen's module-import schema
-// loader doesn't drag in src/graphql.ts's full resolver map as a side effect
-// of every codegen run. scripts/generate-graphql-types.ts emits that module
-// from the Zod-built schema BEFORE running this config against it.
+// module (#10214). The generator plucks its GraphQL text directly, without
+// importing src/graphql.ts's full resolver map. scripts/generate-graphql-types.ts
+// emits that module from the Zod-built schema BEFORE running this config.
 // `generated/graphql/types.ts` is the ONLY output; nothing else is written.
-const config: CodegenConfig = {
+const config = {
   schema: "generated/graphql/schema.ts",
   generates: {
     "generated/graphql/types.ts": {
@@ -32,6 +44,6 @@ const config: CodegenConfig = {
       },
     },
   },
-};
+} satisfies FixedGraphqlCodegenConfig;
 
 export default config;
