@@ -59,9 +59,9 @@ explicit freshness-unverified notice. Recovery remains keyboard/touch accessible
 continuation is unavailable during replacement. Late responses cannot append to
 the new query generation. Each continuation preserves the first snapshot and total.
 
-Both TypeScript SDK iterators validate checked receipts, totals, row counts and
+The TypeScript and Python sync/async SDK iterators validate checked receipts, totals, row counts and
 cursor progress before yielding, and forward the version with the offset. They
-copy caller options. `fetchAll` throws on a failed walk rather than returning
+copy caller options. `fetchAll` / `fetch_all` throw on a failed walk rather than returning
 partial rows. Checked SDK requests bypass ETag caches and implicit transport/status
 retries, including bodyless 304 recovery; legacy SDK behavior is preserved.
 

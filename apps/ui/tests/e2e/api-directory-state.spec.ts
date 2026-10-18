@@ -535,7 +535,7 @@ test.describe("endpoint discovery", () => {
     ).toBe(true);
   });
 
-  test("restarts a failed refresh without reusing earlier rows while supporting reads fail", async ({
+  test("retains accepted rows after a failed refresh while supporting reads fail", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
@@ -549,9 +549,10 @@ test.describe("endpoint discovery", () => {
     await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
     state.failFeed = true;
     await page.getByRole("button", { name: "refresh", exact: true }).click();
-    const error = directory.getByRole("alert").filter({ hasText: "tracked endpoints" });
+    const error = directory.getByRole("alert").filter({ hasText: "Previously accepted rows retained" });
     await expect(error).toBeVisible();
-    await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(0);
+    await expect(directory).toContainText("current freshness unverified");
+    await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(3);
     await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
     await expect(page.locator("section#latency").getByRole("alert")).toContainText(
       "endpoint latency",

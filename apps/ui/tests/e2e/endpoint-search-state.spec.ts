@@ -329,7 +329,7 @@ test("retains the accepted generation on refresh failure and retries its first p
   await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toHaveCount(
     1,
   );
-  await expect(directory).toContainText("previously accepted rows retained");
+  await expect(directory).toContainText("Previously accepted rows retained");
   await expect(directory).toContainText("current freshness unverified");
   await expect(directory).toContainText("1 loaded of 1 matching");
   state.failed.delete("second");
@@ -389,9 +389,18 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
     expect(url.searchParams.get("q")).toBe(QUERY);
     expect(url.searchParams.get("provider")).toBe("fixture-a");
     expect(url.searchParams.get("status")).toBe("ok");
-    const result = failRestart && url.searchParams.get("page_snapshot") === "start"
-      ? { status: 503, contentType: "application/json", body: JSON.stringify({ ok: false, error: { code: "unavailable", message: "restart unavailable" }, meta: {} }) }
-      : matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
+    const result =
+      failRestart && url.searchParams.get("page_snapshot") === "start"
+        ? {
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "unavailable", message: "restart unavailable" },
+              meta: {},
+            }),
+          }
+        : matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
     reads.push({
       cursor: url.searchParams.get("cursor"),
       snapshot: url.searchParams.get("page_snapshot"),
@@ -417,7 +426,9 @@ test("restarts a rejected catalog generation with only fresh rows and the same s
     0,
   );
 
-  await expect(directory.getByRole("button", { name: "Restart results", exact: true })).toBeVisible();
+  await expect(
+    directory.getByRole("button", { name: "Restart results", exact: true }),
+  ).toBeVisible();
   failRestart = true;
   await directory.getByRole("button", { name: "Restart results", exact: true }).click();
   await expect(directory).toContainText("restart unavailable");

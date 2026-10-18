@@ -19,7 +19,11 @@ import {
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
-import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
+import {
+  CatalogRestartRequired,
+  restartCatalogResults,
+  catalogRetentionNotice,
+} from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -292,7 +296,11 @@ export function ProviderDetail() {
               />
             ) : null}
             {surfaces.error && mergedSurfaces.length > 0 ? (
-              <CatalogPageRecovery error={surfaces.error} onRestart={() => void restartCatalogResults(queryClient, catalogOptions)} pending={surfaces.isFetching} />
+              <CatalogPageRecovery
+                error={surfaces.error}
+                onRestart={() => void restartCatalogResults(queryClient, catalogOptions)}
+                pending={surfaces.isFetching}
+              />
             ) : surfaces.isError ? (
               <ErrorState
                 error={surfaces.error}
@@ -352,7 +360,8 @@ export function ProviderDetail() {
           ) : undefined
         }
         footnote={
-          catalogRetentionNotice(surfaces, mergedSurfaces.length) ?? (surfaces.isPending
+          catalogRetentionNotice(surfaces, mergedSurfaces.length, `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`}`) ??
+          (surfaces.isPending
             ? "Loading registered services · registry"
             : `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`} · registry` +
               (surfaces.isError

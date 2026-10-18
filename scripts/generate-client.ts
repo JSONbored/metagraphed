@@ -186,7 +186,7 @@ function responseErrorCode(envelope: ErrorEnvelope | undefined): string | undefi
 function nextPageCursor(
   page: unknown,
   query: Record<string, unknown>,
-  state: { total?: number },
+  state: { total?: number; collection?: string },
 ): unknown {
   const body = page as { data?: Record<string, unknown>; meta?: { pagination?: {
     snapshot?: unknown; cursor?: unknown; total?: unknown; returned?: unknown;
@@ -203,15 +203,18 @@ function nextPageCursor(
   if (!p || !Array.isArray(rows) || typeof p.snapshot !== "string" ||
     !/^v1[.][0-9a-f]{64}$/.test(p.snapshot) ||
     (query.page_snapshot !== "start" && p.snapshot !== query.page_snapshot) ||
-    !Number.isSafeInteger(cursor) || cursor < 0 || p.cursor !== cursor ||
+    !Number.isSafeInteger(cursor) || cursor < 0 ||
+    (query.page_snapshot === "start" && cursor !== 0) || p.cursor !== cursor ||
     p.returned !== rows.length || !Number.isSafeInteger(p.total) ||
-    (state.total !== undefined && p.total !== state.total)) return fail();
+    (state.total !== undefined && p.total !== state.total) ||
+    (state.collection !== undefined && p.collection !== state.collection)) return fail();
   const total = p.total as number;
   const end = cursor + rows.length;
   if (total < end || (p.next_cursor === null ? end !== total :
     rows.length === 0 || p.next_cursor !== end || end >= total)) return fail();
   query.page_snapshot = p.snapshot;
   state.total = total;
+  state.collection = p.collection as string;
   return p.next_cursor;
 }
 
@@ -302,7 +305,7 @@ export async function* metagraphedPaginate<Path extends ApiPath>(
   const baseQuery: Record<string, unknown> = {
     ...(options.query as Record<string, unknown> | undefined),
   };
-  const state: { total?: number } = {};
+  const state: { total?: number; collection?: string } = {};
   let cursor: unknown = baseQuery.cursor;
   for (;;) {
     if (cursor !== undefined && cursor !== null) {
@@ -840,7 +843,7 @@ export function createMetagraphedClient(
     const baseQuery: Record<string, unknown> = {
       ...(options.query as Record<string, unknown> | undefined),
     };
-    const state: { total?: number } = {};
+    const state: { total?: number; collection?: string } = {};
     let cursor: unknown = baseQuery.cursor;
     for (;;) {
       if (cursor !== undefined && cursor !== null) {

@@ -34,8 +34,11 @@ export async function fetchCatalogPage<T>(
       signal,
     });
   } catch (error) {
-    if (error instanceof ApiError && error.parameter === "page_snapshot" &&
-      (error.catalogReason === undefined || error.catalogReason === "catalog_changed")) {
+    if (
+      error instanceof ApiError &&
+      error.parameter === "page_snapshot" &&
+      (error.catalogReason === undefined || error.catalogReason === "catalog_changed")
+    ) {
       throw new CatalogRestartRequired();
     }
     throw error;
@@ -125,11 +128,12 @@ export async function restartCatalogResults<T, TKey extends QueryKey>(
 export function catalogRetentionNotice(
   state: { isFetching: boolean; isFetchingNextPage: boolean; isError: boolean },
   count: number,
+  acceptedScope?: string,
 ): string | undefined {
   if (!count) return undefined;
+  const prefix = acceptedScope ? acceptedScope + " · " : "";
   if (state.isFetching && !state.isFetchingNextPage)
-    return "Refreshing results · previously accepted rows retained · current freshness unverified";
-  if (state.isError)
-    return "Previously accepted rows retained · current freshness unverified";
+    return prefix + "Refreshing results · previously accepted rows retained · current freshness unverified";
+  if (state.isError) return "Previously accepted rows retained · current freshness unverified";
   return undefined;
 }

@@ -306,26 +306,47 @@ describe("checked collection paging (#12094)", () => {
 
 test("checked hash work has inclusive row/byte/depth bounds; legacy results are not truncated", () => {
   const many = Array.from({ length: 5000 }, (_, i) => ({ id: String(i) }));
-  assert.equal(checked(page(many, url("page_snapshot=start&limit=2"))).pagination.total, 5000);
+  assert.equal(
+    checked(page(many, url("page_snapshot=start&limit=2"))).pagination.total,
+    5000,
+  );
   const oversized = [...many, { id: "extra" }];
   const rejected = page(oversized, url("page_snapshot=start&limit=2"));
   assert.equal(rejected.error?.reason, "catalog_budget_exceeded");
   assert.match(rejected.error?.message ?? "", /Narrow filters/);
   assert.equal(rejected.data, undefined);
   assert.equal(checked(page(oversized, url("limit=2"))).pagination.total, 5001);
-  const huge = page([{ id: "x", name: "界".repeat(6 * 1024 * 1024) }], url("page_snapshot=start"));
+  const huge = page(
+    [{ id: "x", name: "界".repeat(6 * 1024 * 1024) }],
+    url("page_snapshot=start"),
+  );
   assert.equal(huge.error?.reason, "catalog_budget_exceeded");
   let nested: unknown = 0;
   for (let i = 0; i < 65; i += 1) nested = [nested];
-  assert.equal(page([{ id: "x", nested }], url("page_snapshot=start")).error?.reason, "catalog_budget_exceeded");
-  assert.equal(applyQueryFilters({}, url("page_snapshot=start"), "providers").error?.reason, "catalog_unavailable");
+  assert.equal(
+    page([{ id: "x", nested }], url("page_snapshot=start")).error?.reason,
+    "catalog_budget_exceeded",
+  );
+  assert.equal(
+    applyQueryFilters({}, url("page_snapshot=start"), "providers").error
+      ?.reason,
+    "catalog_unavailable",
+  );
 });
 
 test("the canonical byte budget accepts exactly 16 MiB and rejects the next byte", () => {
   const request = url("page_snapshot=start&limit=1");
   const identity = { scope: ["providers", "/api/v1/providers"], query: [] };
-  const overhead = Buffer.byteLength(historyJson(identity) + "\n" + historyJson({ id: "x", name: "" }) + "\n");
+  const overhead = Buffer.byteLength(
+    historyJson(identity) + "\n" + historyJson({ id: "x", name: "" }) + "\n",
+  );
   const row = { id: "x", name: "x".repeat(16 * 1024 * 1024 - overhead) };
-  assert.match(checked(page([row], request)).pagination.snapshot ?? "", /^v1\./);
-  assert.equal(page([{ ...row, name: row.name + "x" }], request).error?.reason, "catalog_budget_exceeded");
+  assert.match(
+    checked(page([row], request)).pagination.snapshot ?? "",
+    /^v1\./,
+  );
+  assert.equal(
+    page([{ ...row, name: row.name + "x" }], request).error?.reason,
+    "catalog_budget_exceeded",
+  );
 });

@@ -89,9 +89,12 @@ def _open_request(request: urllib.request.Request, timeout: float):
 class MetagraphedError(Exception):
     """Raised on a network failure or a non-2xx HTTP response."""
 
-    def __init__(self, message: str, *, status: Optional[int] = None) -> None:
+    def __init__(self, message: str, *, status: Optional[int] = None,
+                 code: Optional[str] = None, envelope: Any = None) -> None:
         super().__init__(message)
         self.status = status
+        self.code = code
+        self.envelope = envelope
 
 
 def _interpolate(path: str, path_params: Optional[Mapping[str, Any]]) -> str:
@@ -160,9 +163,10 @@ def _request_json(
                 time.sleep(_retry_delay(error, attempt, backoff))
                 attempt += 1
                 continue
+            detail, envelope = _error_detail(error)
             raise MetagraphedError(
-                f"{label} failed: HTTP {error.code}{_error_detail(error)}",
-                status=error.code,
+                f"{label} failed: HTTP {error.code}{detail}",
+                status=error.code, code=_catalog_error_code(envelope), envelope=envelope,
             ) from error
         except urllib.error.URLError as error:
             if attempt < retries:
@@ -248,9 +252,9 @@ def metagraphed_fetch(
             url += "?" + urllib.parse.urlencode(pairs, doseq=True)
 
     return _request_json(
-        _build_request(url, method="GET", headers=headers),
+        _build_request(url, method="GET", headers=_catalog_headers(query, headers)),
         timeout=timeout,
-        retries=retries,
+        retries=0 if query and query.get("page_snapshot") is not None else retries,
         backoff=backoff,
         label=f"GET {url}",
     )
@@ -273,28 +277,92 @@ def _retry_delay(
     return backoff * (2**attempt)
 
 
-def _error_detail(error: "urllib.error.HTTPError") -> str:
-    """Best-effort extraction of the API's error envelope from a failed response.
+def _catalog_error_code(envelope: Any) -> Optional[str]:
+    if not isinstance(envelope, dict):
+        return None
+    meta = envelope.get("meta")
+    paging = meta.get("catalog_paging") if isinstance(meta, dict) else None
+    reason = paging.get("reason") if isinstance(paging, dict) else None
+    codes = {"catalog_changed": "catalog_restart_required",
+             "catalog_budget_exceeded": "catalog_budget_exceeded",
+             "catalog_unavailable": "artifact_unavailable"}
+    error = envelope.get("error")
+    return (codes.get(reason) if isinstance(reason, str) else None) or (error.get("code") if isinstance(error, dict) else None)
 
-    api.metagraph.sh returns ``{ error: { code, message } }`` on errors; surface
-    that (or a truncated raw body) so callers can see *why* a request failed
-    instead of a bare status code. Never raises.
-    """
-    try:
-        raw = error.read().decode("utf-8", "replace").strip()
-    except Exception:
-        return ""
+
+def _catalog_headers(query: Any, headers: Optional[Mapping[str, str]]) -> Any:
+    if not query or query.get("page_snapshot") is None:
+        return headers
+    result = {key: value for key, value in (headers or {}).items()
+              if key.lower() not in {"if-none-match", "if-modified-since", "cache-control"}}
+    result["Cache-Control"] = "no-store"
+    return result
+
+
+def _parse_error_detail(raw: str) -> Tuple[str, Any]:
+    raw = raw.strip()
     if not raw:
-        return ""
+        return "", None
     try:
         parsed = json.loads(raw)
     except ValueError:
-        return f": {raw[:200]}"
-    envelope = parsed.get("error") if isinstance(parsed, dict) else None
-    if isinstance(envelope, dict) and envelope.get("message"):
-        code = envelope.get("code")
-        return f": {str(code) + ' — ' if code else ''}{envelope['message']}"
-    return f": {raw[:200]}"
+        return f": {raw[:200]}", None
+    error = parsed.get("error") if isinstance(parsed, dict) else None
+    if isinstance(error, dict) and error.get("message"):
+        code = error.get("code")
+        return f": {str(code) + ' — ' if code else ''}{error['message']}", parsed
+    return f": {raw[:200]}", parsed
+
+
+def _error_detail(error: "urllib.error.HTTPError") -> Tuple[str, Any]:
+    """Read an HTTP failure once, retaining its typed envelope and safe detail."""
+    try:
+        return _parse_error_detail(error.read().decode("utf-8", "replace"))
+    except Exception:
+        return "", None
+
+
+def _next_catalog_cursor(page: Any, query: dict, state: dict) -> Any:
+    """Validate checked pages before exposing them; legacy/keyset behavior stays intact."""
+    if query.get("page_snapshot") is None:
+        return _next_cursor(page)
+    def fail():
+        raise MetagraphedError(
+            "Catalog page could not be verified. Restart results from the first page.",
+            status=409, code="catalog_restart_required")
+    meta = page.get("meta") if isinstance(page, dict) else None
+    p = meta.get("pagination") if isinstance(meta, dict) else None
+    if not isinstance(p, dict):
+        return fail()
+    data = page.get("data")
+    collection = p.get("collection")
+    rows = data.get(collection) if isinstance(data, dict) and isinstance(collection, str) else None
+    snapshot = p.get("snapshot")
+    cursor = query.get("cursor", 0)
+    if isinstance(cursor, str) and re.fullmatch(r"[0-9]+", cursor):
+        cursor = int(cursor)
+    total = p.get("total")
+    if (not isinstance(rows, list) or not isinstance(snapshot, str)
+            or re.fullmatch(r"v1[.][0-9a-f]{64}", snapshot) is None
+            or query["page_snapshot"] not in ("start", snapshot)
+            or type(cursor) is not int or not 0 <= cursor <= 9007199254740991
+            or (query["page_snapshot"] == "start" and cursor != 0)
+            or type(p.get("cursor")) is not int or p["cursor"] != cursor
+            or type(p.get("returned")) is not int or p["returned"] != len(rows)
+            or type(total) is not int or not 0 <= total <= 9007199254740991
+            or ("total" in state and state["total"] != total)
+            or ("collection" in state and state["collection"] != collection)):
+        return fail()
+    end = cursor + len(rows)
+    next_cursor = p.get("next_cursor")
+    if (total < end or "next_cursor" not in p
+            or (next_cursor is None and end != total)
+            or (next_cursor is not None and (not rows or type(next_cursor) is not int
+                                             or next_cursor != end or end >= total))):
+        return fail()
+    query["page_snapshot"] = snapshot
+    state.update(total=total, collection=collection)
+    return next_cursor
 
 
 def _next_cursor(page: Any) -> Optional[Any]:
@@ -325,6 +393,7 @@ def metagraphed_paginate(
     ``meta.pagination.next_cursor`` until it is exhausted."""
     base_query = dict(query or {})
     cursor = base_query.get("cursor")
+    state: dict = {}
     while True:
         page_query = dict(base_query)
         if cursor is not None:
@@ -339,8 +408,10 @@ def metagraphed_paginate(
             retries=retries,
             backoff=backoff,
         )
+        cursor = _next_catalog_cursor(page, page_query, state)
+        if "page_snapshot" in page_query:
+            base_query["page_snapshot"] = page_query["page_snapshot"]
         yield page
-        cursor = _next_cursor(page)
         if cursor is None:
             return
 

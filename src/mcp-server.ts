@@ -287,6 +287,7 @@ import { MCP_TIERED_RATE_LIMIT } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { searchMatchingRows } from "../workers/list-query.ts";
+import { CatalogPagingFailureSchema } from "../schemas-src/query-params.ts";
 import { applyMcpQueryFilters, catalogQueryUrl, catalogQueryError, catalogPageReceipt } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
@@ -17528,6 +17529,7 @@ async function dispatchTool(
   } catch (rawError) {
     const error = rawError as Row;
     if (error?.toolError) {
+      const catalogFailure = CatalogPagingFailureSchema.safeParse(error.catalog_paging);
       // Classified AND captured, for the one family that is both (#10641).
       // Keyed on the MARKER, never on the code: `ai_unavailable` is also what
       // requireAi throws for "no AI binding here", which is an expected
@@ -17562,7 +17564,7 @@ async function dispatchTool(
             // member rather than a second error vocabulary.
             ...(error.payment ? { payment: error.payment } : {}),
             ...(typeof error.parameter === "string" ? { parameter: error.parameter } : {}),
-            ...(error.catalog_paging ? { catalog_paging: error.catalog_paging } : {}),
+            ...(catalogFailure.success ? { catalog_paging: catalogFailure.data } : {}),
           },
         },
         isError: true,

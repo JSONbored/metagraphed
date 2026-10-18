@@ -2485,19 +2485,47 @@ describe("degraded-tier labelling (#9110)", () => {
 
 test("checked analytics cache wrapper skips cache and stamp I/O for GET and HEAD", async () => {
   const stamp = vi.fn(async () => "unchanged");
-  const match = vi.fn(); const put = vi.fn();
+  const match = vi.fn();
+  const put = vi.fn();
   const previous = (globalThis as unknown as { caches?: unknown }).caches;
-  (globalThis as unknown as { caches?: unknown }).caches = { default: { match, put } };
+  (globalThis as unknown as { caches?: unknown }).caches = {
+    default: { match, put },
+  };
   try {
     for (const method of ["GET", "HEAD"]) {
-      const build = vi.fn((_request: Request) => new Response("current rows", { headers: { "cache-control": "public, max-age=60" } }));
-      const response = await withStampedEdgeCache(new Request("https://api.metagraph.sh/api/v1/surfaces?page_snapshot=start", { method }), {}, {} as Env, "catalog", build, null, stamp);
+      const build = vi.fn(
+        (_request: Request) =>
+          new Response("current rows", {
+            headers: { "cache-control": "public, max-age=60" },
+          }),
+      );
+      const response = await withStampedEdgeCache(
+        new Request(
+          "https://api.metagraph.sh/api/v1/surfaces?page_snapshot=start",
+          { method },
+        ),
+        {},
+        {} as Env,
+        "catalog",
+        build,
+        null,
+        stamp,
+      );
       assert.equal(build.mock.calls[0][0].method, "GET");
       assert.equal(response.headers.get("cache-control"), "no-store");
-      assert.equal(response.headers.get("x-metagraph-cache-profile"), "no-store");
-      assert.equal(await response.text(), method === "HEAD" ? "" : "current rows");
+      assert.equal(
+        response.headers.get("x-metagraph-cache-profile"),
+        "no-store",
+      );
+      assert.equal(
+        await response.text(),
+        method === "HEAD" ? "" : "current rows",
+      );
     }
     expect(stamp).not.toHaveBeenCalled();
-    expect(match).not.toHaveBeenCalled(); expect(put).not.toHaveBeenCalled();
-  } finally { (globalThis as unknown as { caches?: unknown }).caches = previous; }
+    expect(match).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  } finally {
+    (globalThis as unknown as { caches?: unknown }).caches = previous;
+  }
 });

@@ -1027,5 +1027,57 @@ class FetchAllAndModelsTest(unittest.TestCase):
         self.assertEqual(catalog.raw["name"], "AllwaysAI")
 
 
+def _checked_page(ids, cursor, total, snapshot="v1." + "a" * 64):
+    return {"ok": True, "data": {"endpoints": [{"id": value} for value in ids]},
+            "meta": {"pagination": {"collection": "endpoints", "cursor": cursor,
+                     "total": total, "returned": len(ids), "snapshot": snapshot,
+                     "next_cursor": cursor + len(ids) if cursor + len(ids) < total else None}}}
+
+
+class CheckedCatalogTest(unittest.TestCase):
+    def test_sync_forwards_checked_receipts_without_mutating_options(self):
+        query = {"page_snapshot": "start", "limit": 2, "kind": "rpc"}
+        with mock.patch("metagraphed.client.metagraphed_fetch", side_effect=[
+                _checked_page(["a", "b"], 0, 3), _checked_page(["c"], 2, 3)]) as fetch:
+            pages = list(metagraphed_paginate("/api/v1/endpoints", query=query))
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(fetch.call_args_list[1].kwargs["query"],
+                         {"page_snapshot": "v1." + "a" * 64, "limit": 2, "kind": "rpc", "cursor": 2})
+        self.assertEqual(query, {"page_snapshot": "start", "limit": 2, "kind": "rpc"})
+
+    def test_sync_rejects_malformed_continuations_before_yield(self):
+        for change in [{"snapshot": "v1." + "b" * 64}, {"total": 2}, {"cursor": 0},
+                       {"returned": 2}, {"next_cursor": 2}, {"collection": "other"},
+                       {"snapshot": None}, {"total": True}]:
+            with self.subTest(change=change):
+                broken = _checked_page(["c"], 2, 3)
+                broken["meta"]["pagination"].update(change)
+                with mock.patch("metagraphed.client.metagraphed_fetch", side_effect=[
+                        _checked_page(["a", "b"], 0, 3), broken]) as fetch:
+                    iterator = metagraphed_paginate("/api/v1/endpoints", query={"page_snapshot": "start"})
+                    self.assertEqual(next(iterator)["data"]["endpoints"], [{"id": "a"}, {"id": "b"}])
+                    with self.assertRaises(MetagraphedError) as error:
+                        next(iterator)
+                    self.assertEqual(error.exception.code, "catalog_restart_required")
+                    self.assertEqual(fetch.call_count, 2)
+
+    def test_checked_sync_failure_has_typed_budget_envelope_and_no_retry(self):
+        from io import BytesIO
+        envelope = {"ok": False, "error": {"code": "invalid_query", "message": "Narrow filters"},
+                    "meta": {"catalog_paging": {"reason": "catalog_budget_exceeded"}}}
+        failure = urllib.error.HTTPError("https://api.metagraph.sh", 503, "fail", {},
+                                         BytesIO(json.dumps(envelope).encode()))
+        with mock.patch("metagraphed.client._open_request", side_effect=failure) as fetch:
+            with self.assertRaises(MetagraphedError) as error:
+                metagraphed_fetch_all("/api/v1/endpoints", query={"page_snapshot": "start"}, retries=3,
+                                     headers={"If-None-Match": "old"})
+        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual(error.exception.code, "catalog_budget_exceeded")
+        self.assertEqual(error.exception.envelope, envelope)
+        request = fetch.call_args.args[0]
+        self.assertEqual(request.get_header("Cache-control"), "no-store")
+        self.assertIsNone(request.get_header("If-none-match"))
+
+
 if __name__ == "__main__":
     unittest.main()

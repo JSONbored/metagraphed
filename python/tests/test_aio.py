@@ -1,6 +1,8 @@
 """Hermetic tests for the async client (httpx stubbed, no network)."""
 
 import unittest
+from unittest import mock
+from test_client import _checked_page
 
 try:
     import httpx
@@ -653,6 +655,51 @@ class AsyncImportGuardTest(unittest.TestCase):
         with self.assertRaises(MetagraphedError) as ctx:
             AsyncMetagraphedClient()
         self.assertIn("metagraphed[async]", str(ctx.exception))
+
+
+@unittest.skipUnless(_HAS_HTTPX, "httpx not installed")
+class CheckedAsyncCatalogTest(unittest.IsolatedAsyncioTestCase):
+    async def test_async_propagates_checked_receipts_without_mutating_options(self):
+        client = AsyncMetagraphedClient()
+        query = {"page_snapshot": "start", "limit": 2}
+        with mock.patch.object(client, "fetch", side_effect=[
+                _checked_page(["a", "b"], 0, 3), _checked_page(["c"], 2, 3)]) as fetch:
+            pages = [page async for page in client.paginate("/api/v1/endpoints", query=query)]
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(fetch.call_args_list[1].kwargs["query"],
+                         {"page_snapshot": "v1." + "a" * 64, "cursor": 2, "limit": 2})
+        self.assertEqual(query, {"page_snapshot": "start", "limit": 2})
+        await client.aclose()
+
+    async def test_async_rejects_changed_or_malformed_pages_before_yield(self):
+        client = AsyncMetagraphedClient()
+        for change in [{"snapshot": "v1." + "b" * 64}, {"total": 2}, {"cursor": 0},
+                       {"returned": 2}, {"next_cursor": 2}, {"collection": "other"},
+                       {"snapshot": None}, {"total": True}]:
+            with self.subTest(change=change):
+                broken = _checked_page(["c"], 2, 3)
+                broken["meta"]["pagination"].update(change)
+                with mock.patch.object(client, "fetch", side_effect=[_checked_page(["a", "b"], 0, 3), broken]) as fetch:
+                    iterator = client.paginate("/api/v1/endpoints", query={"page_snapshot": "start"})
+                    self.assertEqual((await iterator.__anext__())["data"]["endpoints"], [{"id": "a"}, {"id": "b"}])
+                    with self.assertRaises(MetagraphedError) as error:
+                        await iterator.__anext__()
+                    self.assertEqual(error.exception.code, "catalog_restart_required")
+                    self.assertEqual(fetch.call_count, 2)
+        await client.aclose()
+
+    async def test_checked_async_failure_is_typed_and_not_retried(self):
+        envelope = {"ok": False, "error": {"code": "invalid_query", "message": "Narrow filters"},
+                    "meta": {"catalog_paging": {"reason": "catalog_budget_exceeded"}}}
+        client = AsyncMetagraphedClient(retries=3)
+        await client._client.aclose()
+        client._client = _FakeAsyncHttp([httpx.Response(503, json=envelope)])
+        with self.assertRaises(MetagraphedError) as error:
+            await client.fetch_all("/api/v1/endpoints", query={"page_snapshot": "start"})
+        self.assertEqual(error.exception.code, "catalog_budget_exceeded")
+        self.assertEqual(error.exception.envelope, envelope)
+        self.assertEqual(len(client._client.calls), 1)
+        await client.aclose()
 
 
 if __name__ == "__main__":

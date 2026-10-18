@@ -21,7 +21,11 @@ import {
 } from "@jsonbored/ui-kit";
 import { EndpointDirectoryControls } from "@/components/metagraphed/endpoints/endpoint-directory-controls";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
-import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
+import {
+  CatalogRestartRequired,
+  restartCatalogResults,
+  catalogRetentionNotice,
+} from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -452,7 +456,11 @@ export function EndpointsPage() {
           // same fact twice, in two vocabularies (#11696). An error still
           // shows, because a feed that stopped early is not the end of a list.
           !canSearch ? null : feed.error && rows.length > 0 ? (
-            <CatalogPageRecovery error={feed.error} onRestart={retryFeed} pending={feed.isFetching} />
+            <CatalogPageRecovery
+              error={feed.error}
+              onRestart={retryFeed}
+              pending={feed.isFetching}
+            />
           ) : feed.hasNextPage || (feed.error && rows.length > 0) ? (
             <LoadMore
               hasMore={feed.hasNextPage}
@@ -469,13 +477,14 @@ export function EndpointsPage() {
             ? "Search needs attention · endpoint results have not been requested"
             : searchWaiting
               ? "Waiting for search input · results update shortly"
-              : catalogRetentionNotice(feed, rows.length) ?? (feed.isPending
-                ? "Searching the endpoint catalog · probe-derived"
-                : feed.isError
-                  ? rows.length > 0
-                    ? "Refresh failed · previously accepted endpoints retained · current freshness unverified"
-                    : "Endpoint results are temporarily unavailable · probe-derived"
-                  : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`)
+              : (catalogRetentionNotice(feed, rows.length, resultScope) ??
+                (feed.isPending
+                  ? "Searching the endpoint catalog · probe-derived"
+                  : feed.isError
+                    ? rows.length > 0
+                      ? "Refresh failed · previously accepted endpoints retained · current freshness unverified"
+                      : "Endpoint results are temporarily unavailable · probe-derived"
+                    : `${resultScope}${fleetScope} · probe-derived${knownStatus ? " · known status; freshness varies" : ""}`))
         }
       />
 

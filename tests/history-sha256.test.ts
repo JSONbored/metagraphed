@@ -62,3 +62,15 @@ it("bounds depth, oversized strings, arrays and objects before hashing a full pa
   expect(boundedHistoryJsonSha256([[1, 2, 3]], 2, 64)).toBeNull();
   expect(boundedHistoryJsonSha256([{ a: 1, b: 2 }], 3, 64)).toBeNull();
 });
+
+it("refuses every incomplete canonical prefix across punctuation, keys, escapes and rows", () => {
+  for (const value of [{ abc: [1, null, "界\""], z: false }, [1, 2], { "": "" }, undefined, "\ud800", true, 1]) {
+    const encoded = historyJson(value) + "\n";
+    const size = Buffer.byteLength(encoded);
+    for (let budget = 0; budget < size; budget += 1)
+      expect(boundedHistoryJsonSha256([value], budget, 64)).toBeNull();
+    expect(boundedHistoryJsonSha256([value], size, 64)).toBe(historySha256(encoded));
+  }
+  expect(boundedHistoryJsonSha256([1, 2], 4, 64)).toBe(historySha256("1\n2\n"));
+  expect(boundedHistoryJsonSha256([1, 2], 3, 64)).toBeNull();
+});

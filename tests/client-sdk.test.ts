@@ -569,7 +569,7 @@ describe("checked SDK catalog walks", () => {
         return jsonResponse(cursor === "2" ? page(["c"], 2, 3) : page(["a", "b"], 0, 3));
       });
       const query = { page_snapshot: "start", limit: 2, kind: "rpc" };
-      const pages = factory ? createMetagraphedClient({ cache: true }).paginate("/api/v1/endpoints", { query: { ...query } as never }) : metagraphedPaginate("/api/v1/endpoints", { query: { ...query } as never });
+      const pages = factory ? createMetagraphedClient({ cache: true }).paginate("/api/v1/endpoints", { query: query as never }) : metagraphedPaginate("/api/v1/endpoints", { query: query as never });
       const accepted: unknown[] = [];
       for await (const value of pages) accepted.push(value);
       expect(accepted).toHaveLength(2);
@@ -584,6 +584,8 @@ describe("checked SDK catalog walks", () => {
       ["repeated cursor", { next_cursor: 2 }],
       ["wrong returned", { returned: 99 }],
       ["wrong offset", { cursor: 0 }],
+      ["changed collection", { collection: "other" }],
+      ["negative total", { total: -1 }],
     ])(`rejects %s before yielding (factory=${factory})`, async (_name, change) => {
       const broken = page(["c"], 2, 3);
       Object.assign(broken.meta.pagination, change);

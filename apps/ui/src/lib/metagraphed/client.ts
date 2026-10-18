@@ -19,7 +19,14 @@ export class ApiError extends Error {
   catalogReason?: NonNullable<ApiMeta["catalog_paging"]>["reason"];
   constructor(
     message: string,
-    opts: { status: number; code?: string; url: string; network?: string; parameter?: string; catalogReason?: NonNullable<ApiMeta["catalog_paging"]>["reason"] },
+    opts: {
+      status: number;
+      code?: string;
+      url: string;
+      network?: string;
+      parameter?: string;
+      catalogReason?: NonNullable<ApiMeta["catalog_paging"]>["reason"];
+    },
   ) {
     super(message);
     this.name = "ApiError";

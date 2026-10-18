@@ -16,7 +16,11 @@ import {
   type RawRow,
 } from "@jsonbored/ui-kit";
 import { ApiNavigation } from "@/components/metagraphed/apis/api-navigation";
-import { CatalogRestartRequired, restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
+import {
+  CatalogRestartRequired,
+  restartCatalogResults,
+  catalogRetentionNotice,
+} from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
@@ -367,16 +371,23 @@ export function ApisCatalogPage() {
         }
         footnote={
           <>
-            {catalogRetentionNotice(feed, rows.length) ?? (!catalogNearViewport
-              ? "verified interface catalog · registry "
-              : feed.isPending
-                ? "Loading verified interfaces · registry "
-                : feed.isError
-                  ? rows.length > 0 ? "Previously accepted interfaces retained · current freshness unverified · registry " : "Verified interfaces are temporarily unavailable · registry "
-                  : `${formatNumber(rows.length)} shown · facets applied server-side · registry `)}
+            {catalogRetentionNotice(feed, rows.length, `${formatNumber(rows.length)} shown · ${feed.data?.pages[0]?.meta.pagination?.total ?? "unknown"} matching`) ??
+              (!catalogNearViewport
+                ? "verified interface catalog · registry "
+                : feed.isPending
+                  ? "Loading verified interfaces · registry "
+                  : feed.isError
+                    ? rows.length > 0
+                      ? "Previously accepted interfaces retained · current freshness unverified · registry "
+                      : "Verified interfaces are temporarily unavailable · registry "
+                    : `${formatNumber(rows.length)} shown · facets applied server-side · registry `)}
             {/* A cursor feed has no terminal range to repeat beneath the table. */}
             {feed.error && surfaces.length > 0 ? (
-              <CatalogPageRecovery error={feed.error} onRestart={() => void restartCatalogResults(queryClient, catalogOptions)} pending={feed.isFetching} />
+              <CatalogPageRecovery
+                error={feed.error}
+                onRestart={() => void restartCatalogResults(queryClient, catalogOptions)}
+                pending={feed.isFetching}
+              />
             ) : feed.hasNextPage ? (
               <LoadMore
                 hasMore={feed.hasNextPage}

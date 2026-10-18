@@ -455,7 +455,11 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
     );
   }
   assert.equal(requests, 4);
-  assert.equal(cache.size, 0, "checked pages and rejected continuations never seed the cache");
+  assert.equal(
+    cache.size,
+    0,
+    "checked pages and rejected continuations never seed the cache",
+  );
   console.log(
     "CATALOG_CHURN_FIXTURE",
     JSON.stringify({
@@ -469,26 +473,47 @@ test("finite catalog churn rejects mixed walks, restarts after one change and st
 
 test("checked pages revalidate content with unchanged stamps; legacy warm pages remain isolated", async () => {
   const cache = installCaches();
-  const fixture = catalogFixture("providers", [{ id: "a", name: "Before" }, { id: "b", name: "Other" }]);
+  const fixture = catalogFixture("providers", [
+    { id: "a", name: "Before" },
+    { id: "b", name: "Other" },
+  ]);
   const read = async (query: string) => {
     const waits: Promise<unknown>[] = [];
-    const response = await handleRequest(new Request("https://api.metagraph.sh/api/v1/providers?limit=1&" + query), fixture.env(), { waitUntil: (pending: Promise<unknown>) => waits.push(pending) });
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/providers?limit=1&" + query),
+      fixture.env(),
+      { waitUntil: (pending: Promise<unknown>) => waits.push(pending) },
+    );
     await Promise.all(waits);
-    return { response, body: await response.json() as Row };
+    return { response, body: (await response.json()) as Row };
   };
   const legacy = await read("");
   const first = await read("page_snapshot=start");
   const snapshot = first.body.meta.pagination.snapshot;
   assert.equal(first.response.headers.get("cache-control"), "no-store");
-  assert.equal(first.response.headers.get("x-metagraph-cache-profile"), "no-store");
+  assert.equal(
+    first.response.headers.get("x-metagraph-cache-profile"),
+    "no-store",
+  );
   const entries = cache.size;
-  fixture.replace([{ id: "a", name: "Changed under the same stamp" }, { id: "b", name: "Other" }], "fixture-generation-0");
+  fixture.replace(
+    [
+      { id: "a", name: "Changed under the same stamp" },
+      { id: "b", name: "Other" },
+    ],
+    "fixture-generation-0",
+  );
   const stale = await read("page_snapshot=" + snapshot + "&cursor=1");
   assert.equal(stale.response.status, 400);
-  assert.deepEqual(stale.body.meta.catalog_paging, { reason: "catalog_changed" });
+  assert.deepEqual(stale.body.meta.catalog_paging, {
+    reason: "catalog_changed",
+  });
   const fresh = await read("page_snapshot=start");
   assert.notEqual(fresh.body.meta.pagination.snapshot, snapshot);
-  assert.equal(fresh.body.data.providers[0].name, "Changed under the same stamp");
+  assert.equal(
+    fresh.body.data.providers[0].name,
+    "Changed under the same stamp",
+  );
   const reads = fixture.reads.artifact;
   const warm = await read("");
   assert.equal(fixture.reads.artifact, reads);
