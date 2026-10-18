@@ -109,9 +109,9 @@ export async function collectCatalogRows<T>(
 }
 
 /** Replace atomically with one fresh first page; failure retains accepted data. */
-export async function restartCatalogResults<T, TKey extends QueryKey>(
+export async function restartCatalogResults<T, TData, TKey extends QueryKey>(
   client: QueryClient,
-  options: FetchInfiniteQueryOptions<T, Error, T, TKey, CatalogPageParam>,
+  options: FetchInfiniteQueryOptions<T, Error, TData, TKey, CatalogPageParam>,
 ) {
   await client.cancelQueries({ queryKey: options.queryKey, exact: true });
   try {
@@ -134,6 +134,6 @@ export function catalogRetentionNotice(
   const prefix = acceptedScope ? acceptedScope + " · " : "";
   if (state.isFetching && !state.isFetchingNextPage)
     return prefix + "Refreshing results · previously accepted rows retained · current freshness unverified";
-  if (state.isError) return "Previously accepted rows retained · current freshness unverified";
+  if (state.isError) return prefix + "Previously accepted rows retained · current freshness unverified";
   return undefined;
 }

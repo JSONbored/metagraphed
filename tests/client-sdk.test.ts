@@ -609,3 +609,13 @@ describe("checked SDK catalog walks", () => {
     expect(get).not.toHaveBeenCalled(); expect(set).not.toHaveBeenCalled();
   });
 });
+
+test("checked fetchAll rejects a failed walk without returning partial rows or retrying status failures", async () => {
+  const fetchMock = stubFetch(async () => jsonResponse({ ok: false,
+    error: { code: "invalid_query", message: "Narrow filters" },
+    meta: { parameter: "page_snapshot", catalog_paging: { reason: "catalog_budget_exceeded" } },
+  }, 503));
+  const client = createMetagraphedClient({ retry: true });
+  await expect(client.fetchAll("/api/v1/endpoints", { query: { page_snapshot: "start" } })).rejects.toMatchObject({ code: "catalog_budget_exceeded", message: "Narrow filters" });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
