@@ -89,6 +89,8 @@ import {
   DEGRADED_UNAVAILABLE,
 } from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 
 // The surfaces map is memoized per ISOLATE and the registry resets module state
 // between test FILES, not between tests -- so without this a fixture from one
@@ -1307,7 +1309,7 @@ describe("handleRequest — GraphQL rate limiting (#security)", () => {
     // The N+1th request is over the limit -> 429 from the GraphQL gate.
     const limited = await gqlPost(env);
     assert.equal(limited.status, 429);
-    const body = await limited.json();
+    const body = await parseJsonBody(limited, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "graphql_rate_limited");
     assert.equal(limited.headers.get("retry-after"), "60");
     assert.equal(limited.headers.get("x-ratelimit-remaining"), "0");
@@ -1387,7 +1389,8 @@ describe("client IP resolution — x-forwarded-for is not trusted (#security)", 
       "x-forwarded-for": "10.0.0.2",
     });
     assert.equal(second.status, 429);
-    assert.equal((await second.json()).error.code, "graphql_rate_limited");
+    const body = await parseJsonBody(second, ErrorEnvelopeSchema);
+    assert.equal(body.error.code, "graphql_rate_limited");
   });
 });
 

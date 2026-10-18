@@ -15,6 +15,11 @@
 // would return the newest N of EACH table, so a quiet table would pad the page
 // with old rows while a busy one lost recent ones — and "the newest N changes"
 // would be neither. The ordering test below is what pins that.
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import {
+  EmissionGateChangesArtifactSchema,
+} from "../schemas-src/routes/emission-gate-changes.ts";
+import { parseJsonBody } from "./row-type.ts";
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
@@ -389,7 +394,11 @@ describe("GET /api/v1/chain/governance/emission-changes", () => {
     );
   const body = async (res: Response) => {
     assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-    return ((await res.json()) as Row).data as Row;
+    const parsed = await parseJsonBody(
+      res,
+      successEnvelopeSchema(EmissionGateChangesArtifactSchema),
+    );
+    return parsed.data;
   };
 
   test("serves the feed", async () => {

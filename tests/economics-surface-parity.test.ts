@@ -1,3 +1,12 @@
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
+import {
+  GetEconomicsOutputSchema,
+} from "../schemas-src/mcp-tools/get-economics.ts";
 import {
   mcpAccountContext,
   withMcpAccount,
@@ -6,7 +15,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 // REST and MCP answer the same question about the same resource, and an
 // external consumer found them holding two different snapshots of it — economics
@@ -41,12 +50,42 @@ const ECONOMICS_BLOB = {
   contract_version: "test-contract",
   captured_at: CAPTURED_AT,
   schema_version: 1,
+  generated_at: CAPTURED_AT,
   network: "finney",
-  chain_state: { block: BLOCK, block_hash: "0xabc" },
-  summary: { with_economics_count: 1, subnet_count: 1 },
+  chain_state: {
+    block: BLOCK,
+    block_hash: `0x${"ab".repeat(32)}`,
+    total_issuance_tao: 9_500_000,
+    emission_gate_bar: null,
+    emission_bar_quantile: null,
+    emission_gate_exponent: null,
+  },
+  summary: {
+    registration_open_count: 1,
+    subnet_count: 1,
+    total_alpha_value_tao: "0.000000000",
+    total_miners: 0,
+    total_network_value_tao: "0.000000000",
+    total_root_value_tao: "0.000000000",
+    total_stake_alpha: "0.000000000",
+    total_validators: 0,
+    with_economics_count: 1,
+  },
   subnets: [
     {
       netuid: 7,
+      alpha_price_tao: 0.01,
+      alpha_out_pool: null,
+      max_stake_alpha: null,
+      max_uids: 256,
+      max_validators: 64,
+      miner_count: 0,
+      owner_coldkey: null,
+      owner_hotkey: null,
+      registration_cost_tao: null,
+      subnet_volume_tao: null,
+      total_stake_alpha: null,
+      validator_count: 0,
       name: "Allways",
       slug: "allways",
       block: BLOCK,
@@ -83,7 +122,10 @@ function makeEnv() {
   };
 }
 
-async function restEconomics(env: Env) {
+async function restEconomics<Schema extends z.ZodType>(
+  env: Env,
+  schema: Schema,
+) {
   const response = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/economics?limit=1"),
     env,
@@ -92,7 +134,7 @@ async function restEconomics(env: Env) {
       passThroughOnException() {},
     } as unknown as ExecutionContext,
   );
-  return (await response.json()) as Row;
+  return parseJsonBody(response, schema);
 }
 
 async function mcpEconomics(env: Env) {
@@ -113,22 +155,34 @@ async function mcpEconomics(env: Env) {
       passThroughOnException() {},
     } as unknown as ExecutionContext,
   );
-  const body = (await response.json()) as Row;
-  const content = (body.result as Row)?.content as Array<Row> | undefined;
+  const body: unknown = await response.json();
+  assert.ok(typeof body === "object" && body !== null);
+  assert.ok("result" in body);
+  const result = body.result;
+  assert.ok(typeof result === "object" && result !== null);
+  assert.ok("content" in result && Array.isArray(result.content));
+  const content: unknown = result.content[0];
+  assert.ok(typeof content === "object" && content !== null);
+  assert.ok("text" in content && typeof content.text === "string");
   assert.ok(
-    content?.[0]?.text,
+    content.text,
     `MCP returned no tool content: ${JSON.stringify(body)}`,
   );
-  return JSON.parse(String(content[0].text)) as Row;
+  const parsed: unknown = JSON.parse(content.text);
+  return GetEconomicsOutputSchema.parseAsync(parsed);
 }
 
 describe("economics: REST and MCP resolve one snapshot", () => {
   test("both surfaces report the same captured_at and block", async () => {
     const { env } = makeEnv();
-    const rest = await restEconomics(env);
+    const rest = await restEconomics(
+      env,
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     const mcp = await mcpEconomics(env);
 
-    const restData = rest.data as Row;
+    const restData = rest.data;
+    assert.ok(restData.chain_state);
     assert.equal(
       restData.captured_at,
       CAPTURED_AT,
@@ -140,18 +194,21 @@ describe("economics: REST and MCP resolve one snapshot", () => {
       "MCP and REST are holding different snapshots of the same resource",
     );
     assert.equal(
-      (mcp.subnets as Array<Row>)[0].block,
-      (restData.chain_state as Row).block,
+      mcp.subnets[0].block,
+      restData.chain_state.block,
       "the block an agent would cite differs by surface",
     );
   });
 
   test("both report the same tier, so neither can silently fall back alone", async () => {
     const { env } = makeEnv();
-    const rest = await restEconomics(env);
+    const rest = await restEconomics(
+      env,
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     const mcp = await mcpEconomics(env);
-    assert.equal((rest.meta as Row).source, "live-kv");
-    assert.equal(mcp.source, (rest.meta as Row).source);
+    assert.equal(rest.meta.source, "live-kv");
+    assert.equal(mcp.source, rest.meta.source);
   });
 
   test("a cold KV tier degrades both surfaces the same way", async () => {
@@ -162,7 +219,7 @@ describe("economics: REST and MCP resolve one snapshot", () => {
       METAGRAPH_CONTROL: { get: async () => null },
       METAGRAPH_ARCHIVE: { get: async () => null },
     });
-    const rest = await restEconomics(env);
+    const rest = await restEconomics(env, ErrorEnvelopeSchema);
     const mcp = await mcpEconomics(env).catch((error) => ({
       error: String(error),
     }));
@@ -172,7 +229,7 @@ describe("economics: REST and MCP resolve one snapshot", () => {
       "no tier could answer, so REST must say so rather than serve an empty snapshot",
     );
     assert.ok(
-      "error" in mcp || (mcp as Row).source !== "live-kv",
+      "error" in mcp || mcp.source !== "live-kv",
       "MCP claimed the live tier while REST could not reach it",
     );
   });
@@ -181,7 +238,10 @@ describe("economics: REST and MCP resolve one snapshot", () => {
     // Not a performance assertion: two independently-timed reads of one key is the
     // structure that let the surfaces drift apart in the first place.
     const { env, reads } = makeEnv();
-    await restEconomics(env);
+    await restEconomics(
+      env,
+      successEnvelopeSchema(EconomicsArtifactSchema),
+    );
     await mcpEconomics(env);
     const economicsReads = reads.filter((key) => key === KV_ECONOMICS_CURRENT);
     assert.ok(

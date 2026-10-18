@@ -13,7 +13,15 @@ import {
 } from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, requiredHeader, type Row } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+
+async function jsonItems(res: Response): Promise<unknown[]> {
+  const body: unknown = await res.json();
+  assert.ok(body && typeof body === "object" && "items" in body);
+  assert.ok(Array.isArray(body.items));
+  return body.items;
+}
 
 let originalCaches: Row | undefined;
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
@@ -1093,8 +1101,8 @@ describe("feeds — handleFeedRequest", () => {
   test("registry feed defaults to JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry");
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /application\/feed\+json/);
-    assert.match(res.headers.get("cache-control")!, /max-age=600/);
+    assert.match(requiredHeader(res, "content-type"), /application\/feed\+json/);
+    assert.match(requiredHeader(res, "cache-control"), /max-age=600/);
     const parsed = JSON.parse(text);
     assert.equal(parsed.version, "https://jsonfeed.org/version/1.1");
     assert.equal(
@@ -1107,11 +1115,11 @@ describe("feeds — handleFeedRequest", () => {
     const rss = await feed("/api/v1/feeds/registry.rss", {
       accept: "application/feed+json",
     });
-    assert.match(rss.res.headers.get("content-type")!, /application\/rss\+xml/);
+    assert.match(requiredHeader(rss.res, "content-type"), /application\/rss\+xml/);
     assert.match(rss.text, /<rss version="2\.0"/);
     const atom = await feed("/api/v1/feeds/incidents.atom");
     assert.match(
-      atom.res.headers.get("content-type")!,
+      requiredHeader(atom.res, "content-type"),
       /application\/atom\+xml/,
     );
     assert.match(atom.text, /<feed xmlns/);
@@ -1121,7 +1129,7 @@ describe("feeds — handleFeedRequest", () => {
     const { res } = await feed("/api/v1/feeds/registry", {
       accept: "text/html, application/rss+xml",
     });
-    assert.match(res.headers.get("content-type")!, /application\/rss\+xml/);
+    assert.match(requiredHeader(res, "content-type"), /application\/rss\+xml/);
     assert.equal(res.headers.get("vary"), "Accept");
   });
 
@@ -1195,7 +1203,7 @@ describe("feeds — handleFeedRequest", () => {
 
   test("watch feed carries the standard cache-control + etag headers", async () => {
     const { res } = await feed("/api/v1/feeds/watch.json?ids=s7");
-    assert.match(res.headers.get("cache-control")!, /max-age=600/);
+    assert.match(requiredHeader(res, "cache-control"), /max-age=600/);
     assert.ok(res.headers.get("etag"));
   });
 
@@ -1302,7 +1310,7 @@ describe("feeds — handleFeedRequest", () => {
   test("gaps feed serves ranked enrichment targets as JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/gaps");
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /application\/feed\+json/);
+    assert.match(requiredHeader(res, "content-type"), /application\/feed\+json/);
     const parsed = JSON.parse(text);
     assert.equal(parsed.feed_url, "https://api.metagraph.sh/api/v1/feeds/gaps");
     assert.equal(parsed.home_page_url, "https://metagraph.sh/gaps");
@@ -1312,7 +1320,7 @@ describe("feeds — handleFeedRequest", () => {
 
   test("gaps feed supports .rss and ?tag= lane filtering", async () => {
     const rss = await feed("/api/v1/feeds/gaps.rss");
-    assert.match(rss.res.headers.get("content-type")!, /application\/rss\+xml/);
+    assert.match(requiredHeader(rss.res, "content-type"), /application\/rss\+xml/);
     assert.match(rss.text, /SN7 Allways — Submit openapi evidence/);
     const filtered = await feed("/api/v1/feeds/gaps?tag=direct-submission");
     const parsed = JSON.parse(filtered.text);
@@ -1385,7 +1393,7 @@ describe("feeds — ETag + conditional requests", () => {
         const path = `/api/v1/feeds/${kind}${ext}`;
         const first = await feed(path);
         assert.equal(first.res.status, 200);
-        const etag = first.res.headers.get("etag")!;
+        const etag = requiredHeader(first.res, "etag");
         assert.match(etag, /^W\/"[0-9a-f]+"$/, "a weak ETag is emitted");
 
         const second = await feed(path, { ifNoneMatch: etag });
@@ -1397,7 +1405,7 @@ describe("feeds — ETag + conditional requests", () => {
           "the 304 echoes the validator",
         );
         assert.match(
-          second.res.headers.get("cache-control")!,
+          requiredHeader(second.res, "cache-control"),
           /max-age=600/,
           "the 304 carries the same cache-control",
         );
@@ -1489,7 +1497,7 @@ describe("feeds — Worker dispatch integration", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type")!, /application\/rss\+xml/);
+    assert.match(requiredHeader(res, "content-type"), /application\/rss\+xml/);
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
@@ -1522,7 +1530,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(first.status, 200);
-    assert.deepEqual((await first.json()).items, []);
+    assert.deepEqual(await jsonItems(first), []);
     const etag = first.headers.get("etag");
     assert.ok(etag);
     assert.equal(cache.putCount, 1);
@@ -1656,7 +1664,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(future.status, 200);
-    assert.deepEqual((await future.json()).items, []);
+    assert.deepEqual(await jsonItems(future), []);
     assert.equal(cache.putCount, 1);
 
     const unfiltered = await handleRequest(
@@ -1665,7 +1673,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(unfiltered.status, 200);
-    assert.deepEqual((await unfiltered.json()).items, []);
+    assert.deepEqual(await jsonItems(unfiltered), []);
     assert.equal(
       cache.putCount,
       2,
@@ -1713,7 +1721,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(past.status, 200);
-    assert.deepEqual((await past.json()).items, []);
+    assert.deepEqual(await jsonItems(past), []);
     assert.equal(cache.putCount, 1);
 
     const unfiltered = await handleRequest(
@@ -1722,7 +1730,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(unfiltered.status, 200);
-    assert.deepEqual((await unfiltered.json()).items, []);
+    assert.deepEqual(await jsonItems(unfiltered), []);
     assert.equal(
       cache.putCount,
       2,
@@ -1758,7 +1766,7 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(capped.status, 200);
-    assert.ok((await capped.json()).items.length <= 1);
+    assert.ok((await jsonItems(capped)).length <= 1);
 
     const invalid = await handleRequest(
       new Request(
@@ -1788,8 +1796,8 @@ describe("feeds — Worker dispatch integration", () => {
     // The Worker injects the shared errorResponse, so feed errors carry the
     // same envelope + headers as every other API error (not a bare body).
     assert.equal(res.headers.get("x-metagraph-error-code"), "feed_not_found");
-    assert.match(res.headers.get("content-type")!, /application\/json/);
-    const body = await res.json();
+    assert.match(requiredHeader(res, "content-type"), /application\/json/);
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.ok, false);
     assert.equal(body.schema_version, 1);
     assert.equal(body.data, null);

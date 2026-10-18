@@ -1,3 +1,13 @@
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
+import { CompareArtifactSchema } from "../schemas-src/routes/compare.ts";
+import {
+  CompareValidatorsArtifactSchema,
+} from "../schemas-src/routes/compare-validators.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 
@@ -335,24 +345,27 @@ describe("composeCompareData", () => {
 
 describe("GET /api/v1/compare", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path: string) => {
+  const get = async <Schema extends z.ZodType>(
+    path: string,
+    schema: Schema,
+  ) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env as unknown as Env,
       {},
     );
-    return { status: res.status, body: await res.json() };
+    return { status: res.status, body: await parseJsonBody(res, schema) };
   };
 
   test("returns one entry per requested netuid in order, all dimensions by default", async () => {
-    const { status, body } = await get("/api/v1/compare?netuids=1,7,64");
+    const { status, body } = await get(
+      "/api/v1/compare?netuids=1,7,64",
+      successEnvelopeSchema(CompareArtifactSchema),
+    );
     assert.equal(status, 200);
     assert.equal(body.ok, true);
     assert.deepEqual(body.data.requested_netuids, [1, 7, 64]);
-    assert.deepEqual(
-      body.data.subnets.map((s: Row) => s.netuid),
-      [1, 7, 64],
-    );
+    assert.deepEqual(body.data.subnets.map((s) => s.netuid), [1, 7, 64]);
     assert.deepEqual(body.data.dimensions, [
       "structure",
       "economics",
@@ -369,6 +382,7 @@ describe("GET /api/v1/compare", () => {
   test("dimensions subset restricts the composed domains", async () => {
     const { body } = await get(
       "/api/v1/compare?netuids=1&dimensions=economics",
+      successEnvelopeSchema(CompareArtifactSchema),
     );
     assert.deepEqual(body.data.dimensions, ["economics"]);
     const [s] = body.data.subnets;
@@ -380,6 +394,7 @@ describe("GET /api/v1/compare", () => {
   test("dimensions are echoed in canonical order regardless of request order", async () => {
     const { body } = await get(
       "/api/v1/compare?netuids=1&dimensions=health,structure",
+      successEnvelopeSchema(CompareArtifactSchema),
     );
     assert.deepEqual(body.data.dimensions, ["structure", "health"]);
   });
@@ -387,6 +402,7 @@ describe("GET /api/v1/compare", () => {
   test("dimensions tolerate whitespace around comma-separated entries", async () => {
     const { body } = await get(
       "/api/v1/compare?netuids=1&dimensions=structure,%20health",
+      successEnvelopeSchema(CompareArtifactSchema),
     );
     assert.deepEqual(body.data.dimensions, ["structure", "health"]);
     const [s] = body.data.subnets;
@@ -397,20 +413,27 @@ describe("GET /api/v1/compare", () => {
   test("rejects empty dimension tokens", async () => {
     const { status, body } = await get(
       "/api/v1/compare?netuids=1&dimensions=structure,,health",
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 400);
     assert.equal(body.meta.parameter, "dimensions");
   });
 
   test("an unknown netuid is found:false, never a 404", async () => {
-    const { status, body } = await get("/api/v1/compare?netuids=99999");
+    const { status, body } = await get(
+      "/api/v1/compare?netuids=99999",
+      successEnvelopeSchema(CompareArtifactSchema),
+    );
     assert.equal(status, 200);
     assert.equal(body.data.subnets[0].netuid, 99999);
     assert.equal(body.data.subnets[0].found, false);
   });
 
   test("duplicate netuids are de-duplicated, preserving first position", async () => {
-    const { body } = await get("/api/v1/compare?netuids=7,7,1");
+    const { body } = await get(
+      "/api/v1/compare?netuids=7,7,1",
+      successEnvelopeSchema(CompareArtifactSchema),
+    );
     assert.deepEqual(body.data.requested_netuids, [7, 1]);
   });
 
@@ -425,7 +448,7 @@ describe("GET /api/v1/compare", () => {
       ["/api/v1/compare?netuids=1&netuids=2", "netuids"],
     ];
     for (const [path, parameter] of cases) {
-      const { status, body } = await get(path);
+      const { status, body } = await get(path, ErrorEnvelopeSchema);
       assert.equal(status, 400, path);
       assert.equal(body.error.code, "invalid_query", path);
       assert.equal(body.meta.parameter, parameter, path);
@@ -434,7 +457,10 @@ describe("GET /api/v1/compare", () => {
 
   test("rejects more than 128 netuids", async () => {
     const many = Array.from({ length: 129 }, (_, i) => i + 1).join(",");
-    const { status, body } = await get(`/api/v1/compare?netuids=${many}`);
+    const { status, body } = await get(
+      `/api/v1/compare?netuids=${many}`,
+      ErrorEnvelopeSchema,
+    );
     assert.equal(status, 400);
     assert.equal(body.meta.parameter, "netuids");
   });
@@ -470,11 +496,15 @@ describe("GET /api/v1/compare", () => {
       healthEnv as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(CompareArtifactSchema),
+    );
     assert.equal(res.status, 200);
     assert.equal(body.data.observed_at, "2026-06-24T01:02:03.000Z");
     assert.deepEqual(body.data.dimensions, ["health"]);
     assert.equal(body.data.subnets[0].netuid, 7);
+    assert.ok(body.data.subnets[0].health);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
   });
 
@@ -500,13 +530,16 @@ describe("GET /api/v1/compare", () => {
 // directly, so the route-matching branch itself is covered too.
 describe("GET /api/v1/compare/validators", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path: string) => {
+  const get = async <Schema extends z.ZodType>(
+    path: string,
+    schema: Schema,
+  ) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env as unknown as Env,
       {},
     );
-    return { status: res.status, body: await res.json() };
+    return { status: res.status, body: await parseJsonBody(res, schema) };
   };
   const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
@@ -514,19 +547,23 @@ describe("GET /api/v1/compare/validators", () => {
   test("returns one entry per requested hotkey in order, zeroed on cold store", async () => {
     const { status, body } = await get(
       `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`,
+      successEnvelopeSchema(CompareValidatorsArtifactSchema),
     );
     assert.equal(status, 200);
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, null);
     assert.deepEqual(
-      body.data.validators.map((v: Row) => v.hotkey),
+      body.data.validators.map((v) => v.hotkey),
       [HOTKEY_A, HOTKEY_B],
     );
     assert.equal(body.meta.artifact_path, "/metagraph/compare/validators.json");
   });
 
   test("requires hotkeys", async () => {
-    const { status, body } = await get("/api/v1/compare/validators");
+    const { status, body } = await get(
+      "/api/v1/compare/validators",
+      ErrorEnvelopeSchema,
+    );
     assert.equal(status, 400);
     assert.equal(body.meta.parameter, "hotkeys");
   });
@@ -534,6 +571,7 @@ describe("GET /api/v1/compare/validators", () => {
   test("rejects a malformed netuid", async () => {
     const { status, body } = await get(
       `/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=bogus`,
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 400);
     assert.equal(body.meta.parameter, "netuid");

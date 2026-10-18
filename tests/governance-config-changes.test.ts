@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ExtrinsicsFeedArtifactSchema } from "../schemas-src/routes/extrinsics.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
 import assert from "node:assert/strict";
 import { LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
@@ -84,7 +87,10 @@ test("GET /api/v1/governance/config-changes is schema-stable when the store is c
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ExtrinsicsFeedArtifactSchema),
+  );
   assert.deepEqual(body.data.extrinsics, []);
   assert.equal(body.data.extrinsic_count, 0);
 });

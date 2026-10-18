@@ -1,7 +1,9 @@
 import { installNativeSurfaceFixtures } from "./helpers/native-surface-fixtures.ts";
 installNativeSurfaceFixtures();
 import assert from "node:assert/strict";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainWeightSettersArtifactSchema } from "../schemas-src/routes/chain-weight-setters.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -16,6 +18,8 @@ import {
 } from "../src/chain-weight-setters.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+
+const responseSchema = successEnvelopeSchema(ChainWeightSettersArtifactSchema);
 
 // Two per-setter leaderboard rows + the network-wide totals, matching the
 // shape buildChainWeightSetters expects.
@@ -309,7 +313,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.window, "30d");
     assert.equal(body.data.setter_count, 2);
     assert.equal(body.data.setters[0].share, 0.75);
@@ -326,7 +330,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.window, "7d");
   });
 
@@ -376,7 +380,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.setter_count, 0);
     assert.deepEqual(body.data.setters, []);
   });
@@ -416,7 +420,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.setter_count, 0);
   });
 
@@ -441,9 +445,13 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
+    const contentDisposition = res.headers.get("content-disposition");
+    assert.ok(contentDisposition);
     assert.match(
-      res.headers.get("content-disposition"),
+      contentDisposition,
       /attachment; filename="chain-weight-setters\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
@@ -458,7 +466,9 @@ describe("GET /api/v1/chain/weights/setters", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal((await res.text()).trim(), WEIGHT_SETTERS_CSV_HEADER);
   });
 

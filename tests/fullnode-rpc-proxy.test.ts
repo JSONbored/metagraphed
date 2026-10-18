@@ -11,6 +11,8 @@
 // verified identity and fresh ledger state each test needs, matching the
 // contract workers/data-api.ts's handleApiKeyVerify actually returns.
 import assert from "node:assert/strict";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainRpcEnvelopeSchema } from "../schemas-src/chain-rpc-envelope.ts";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -19,7 +21,7 @@ import {
   USAGE_EVENT_NAME,
 } from "../src/usage-telemetry.ts";
 import { MAX_RPC_BODY_BYTES } from "../workers/config.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 function createFakeKv() {
   const store = new Map<string, string>();
@@ -170,7 +172,7 @@ test("401s on a revoked key with a distinct message", async () => {
     env,
   );
   assert.equal(res.status, 401);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.match(body.error.message, /revoked/);
 });
 
@@ -344,7 +346,7 @@ test("400s when the request body stream is null", async () => {
     new URL(request.url),
   );
   assert.equal(res.status, 400);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.error.code, "fullnode_rpc_invalid_json");
 });
 
@@ -391,7 +393,7 @@ test("413s on Content-Length over the cap without reading any body bytes", async
     new URL(request.url),
   );
   assert.equal(res.status, 413);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.error.code, "fullnode_rpc_body_too_large");
 });
 
@@ -427,7 +429,7 @@ test("413s and aborts mid-stream when Content-Length is absent (regression #8810
     new URL(request.url),
   );
   assert.equal(res.status, 413);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.error.code, "fullnode_rpc_body_too_large");
   assert.equal(cancelled, true);
   assert.ok(
@@ -640,7 +642,7 @@ test("happy path: proxies a read method through to the configured origin", async
   );
   assert.equal(res.status, 200);
   assert.ok(res.headers.get("x-metagraph-rpc-endpoint-id"));
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ChainRpcEnvelopeSchema);
   assert.equal(body.result, "ok");
 });
 
@@ -663,7 +665,7 @@ test("happy path: allows the one write method exception (author_submitExtrinsic)
     env,
   );
   assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ChainRpcEnvelopeSchema);
   assert.equal(body.result, "0xhash");
 });
 
@@ -699,7 +701,7 @@ test("fails over to a second configured origin when one is unreachable", async (
     env,
   );
   assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, ChainRpcEnvelopeSchema);
   assert.equal(body.result, "ok");
   assert.ok(calls >= 1);
 });
@@ -980,7 +982,7 @@ describe("dispatch from workers/api.ts's handleRequest", () => {
       waitUntil: (p: Promise<unknown>) => waitUntilCalls.push(p),
     });
     assert.equal(res.status, 200);
-    const body = (await res.json()) as Row;
+    const body = await parseJsonBody(res, ChainRpcEnvelopeSchema);
     assert.equal(body.result, "ok");
   });
 });

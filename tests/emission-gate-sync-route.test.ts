@@ -7,6 +7,8 @@
 // but never parses it, and the riskiest constructs here -- the ROW_NUMBER()
 // window reads that replace postgres's DISTINCT ON, and the two-arm shape
 // CHECK on emission_flow_watch -- only fail at execution).
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
@@ -102,6 +104,32 @@ function baseBody(over: Record<string, unknown> = {}) {
   };
 }
 
+async function syncSummary(res: Response) {
+  const body: unknown = await res.json();
+  assert.ok(typeof body === "object" && body !== null);
+  assert.ok(
+    "ok" in body &&
+      "block_number" in body &&
+      "gate_param_rows" in body &&
+      "subnet_enabled_rows" in body &&
+      "flow_watch_rows" in body &&
+      "flow_alertable" in body &&
+      "subnets_seen" in body &&
+      "ema_entries_seen" in body &&
+      "alertable" in body,
+  );
+  assert.equal(body.ok, true);
+  assert.ok(typeof body.block_number === "number");
+  assert.ok(typeof body.gate_param_rows === "number");
+  assert.ok(typeof body.subnet_enabled_rows === "number");
+  assert.ok(typeof body.flow_watch_rows === "number");
+  assert.ok(typeof body.flow_alertable === "number");
+  assert.ok(typeof body.subnets_seen === "number");
+  assert.ok(typeof body.ema_entries_seen === "number");
+  assert.ok(Array.isArray(body.alertable));
+  return body;
+}
+
 async function post(body: unknown, environment = env()) {
   return handleRequest(
     syncRequest(typeof body === "string" ? body : JSON.stringify(body)),
@@ -141,7 +169,10 @@ test("503s when EMISSION_GATE_SYNC_SECRET is unprovisioned", async () => {
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "emission_gate_sync_unavailable");
+  assert.equal(
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
+    "emission_gate_sync_unavailable",
+  );
 });
 
 test("401s when the token header is missing", async () => {
@@ -152,7 +183,7 @@ test("401s when the token header is missing", async () => {
   );
   assert.equal(res.status, 401);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "emission_gate_sync_unauthorized",
   );
 });
@@ -173,14 +204,17 @@ test("503s when no store is bound", async () => {
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "emission_gate_sync_unavailable");
+  assert.equal(
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
+    "emission_gate_sync_unavailable",
+  );
 });
 
 test("413s a body over the byte cap", async () => {
   const res = await post(`{"pad":"${"x".repeat(1_000_001)}"}`);
   assert.equal(res.status, 413);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "emission_gate_sync_body_too_large",
   );
 });
@@ -189,7 +223,7 @@ test("400s a non-JSON body", async () => {
   const res = await post("not json");
   assert.equal(res.status, 400);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "emission_gate_sync_invalid_body",
   );
 });
@@ -261,7 +295,7 @@ for (const [what, body] of malformed) {
     const res = await post(body);
     assert.equal(res.status, 400);
     assert.equal(
-      (await res.json()).error.code,
+      (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
       "emission_gate_sync_invalid_body",
     );
     assert.equal(count("emission_gate_param_history"), 0, "nothing written");
@@ -282,7 +316,7 @@ test("400s a non-finite parameter value (JSON 1e999 parses to Infinity)", async 
 test("first run appends predates_capture rows for every key, none alertable", async () => {
   const res = await post(baseBody());
   assert.equal(res.status, 200);
-  const summary = await res.json();
+  const summary = await syncSummary(res);
   assert.deepEqual(summary, {
     ok: true,
     block_number: 8_500_000,
@@ -319,7 +353,7 @@ test("a second identical POST inserts nothing (idempotent no-change run)", async
   await post(baseBody());
   const res = await post(baseBody());
   assert.equal(res.status, 200);
-  const summary = await res.json();
+  const summary = await syncSummary(res);
   assert.equal(summary.gate_param_rows, 0);
   assert.equal(summary.subnet_enabled_rows, 0);
   assert.equal(summary.flow_watch_rows, 0);
@@ -344,7 +378,7 @@ test("a moved parameter appends one history row carrying previous_value", async 
       },
     }),
   );
-  const summary = await res.json();
+  const summary = await syncSummary(res);
   assert.equal(summary.gate_param_rows, 2);
   const bar = db
     .prepare(
@@ -374,7 +408,7 @@ test("an enablement flip appends one row per flipped subnet, both directions", a
       ],
     }),
   );
-  const summary = await res.json();
+  const summary = await syncSummary(res);
   assert.equal(summary.subnet_enabled_rows, 2);
   const rows = db
     .prepare(
@@ -403,14 +437,14 @@ test("a flow parameter becoming set (then unset) is recorded and alertable both 
       ],
     }),
   );
-  const setSummary = await set.json();
+  const setSummary = await syncSummary(set);
   assert.equal(setSummary.flow_watch_rows, 1);
   assert.equal(setSummary.flow_alertable, 1);
   assert.deepEqual(setSummary.alertable, [
     { item: "net_tao_flow_enabled", netuid: null },
   ]);
   const unset = await post(baseBody());
-  const unsetSummary = await unset.json();
+  const unsetSummary = await syncSummary(unset);
   assert.equal(unsetSummary.flow_alertable, 1);
   const rows = db
     .prepare(
@@ -434,7 +468,7 @@ test("an EMA advanced past the frozen baseline is recorded and alertable", async
       ],
     }),
   );
-  const summary = await res.json();
+  const summary = await syncSummary(res);
   assert.equal(summary.flow_watch_rows, 1);
   assert.equal(summary.ema_entries_seen, 3);
   assert.deepEqual(summary.alertable, [
@@ -466,7 +500,7 @@ test("a store with no prior rows is treated as a first run, in ONE transaction",
   pg.control.db = null;
   const res = await post(baseBody());
   assert.equal(res.status, 200);
-  assert.equal((await res.json()).gate_param_rows, 4);
+  assert.equal((await syncSummary(res)).gate_param_rows, 4);
   // ONE batch, and it really is a transaction: the three change sets are
   // derived from a single observation, so a partial application would leave
   // the enabled history claiming a state the param history never recorded.
@@ -480,7 +514,10 @@ test("a store failure is contained as a 502, never an uncaught throw", async () 
   pg.control.failNext = new Error("store down");
   const res = await post(baseBody());
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "emission_gate_sync_failed");
+  assert.equal(
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
+    "emission_gate_sync_failed",
+  );
 });
 
 // --- the booleans, and the all-or-nothing family (#10112, #10179) -----------
