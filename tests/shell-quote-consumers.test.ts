@@ -139,32 +139,35 @@ test("Codegen quotes an ordinary output path before passing a string hook to exe
 test.each([
   '"Editor Suite" --reuse-window --profile "Work notes"',
   "Editor\\ Suite --reuse-window --profile Work\\ notes",
-])("launch-editor parses an explicit ordinary editor setting: %s", (editor) => {
-  const file = path.join(temporaryRoot(), "ordinary notes.ts");
-  writeFileSync(file, "export {};\n");
-  const child = new EventEmitter() as childProcess.ChildProcess;
-  vi.mocked(childProcess.spawn).mockReturnValue(child);
-  vi.mocked(childProcess.exec).mockReturnValue(child);
-  syncBuiltinESMExports();
+])(
+  "launch-editor parses an explicit ordinary editor setting: %s",
+  (editor) => {
+    const file = path.join(temporaryRoot(), "ordinary notes.ts");
+    writeFileSync(file, "export {};\n");
+    const child = new EventEmitter() as childProcess.ChildProcess;
+    vi.mocked(childProcess.spawn).mockReturnValue(child);
+    vi.mocked(childProcess.exec).mockReturnValue(child);
+    syncBuiltinESMExports();
 
-  const launchEditor = editorRequire("launch-editor") as LaunchEditor;
-  try {
-    launchEditor(file, editor);
+    const launchEditor = editorRequire("launch-editor") as LaunchEditor;
+    try {
+      launchEditor(file, editor);
 
-    if (process.platform === "win32") {
-      expect(childProcess.exec).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(childProcess.exec).mock.calls[0][0]).toBe(
-        `"Editor Suite" --reuse-window --profile "Work notes" "${file}"`,
-      );
-    } else {
-      expect(childProcess.spawn).toHaveBeenCalledExactlyOnceWith(
-        "Editor Suite",
-        ["--reuse-window", "--profile", "Work notes", file],
-        { stdio: "inherit" },
-      );
+      if (process.platform === "win32") {
+        expect(childProcess.exec).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(childProcess.exec).mock.calls[0][0]).toBe(
+          `"Editor Suite" --reuse-window --profile "Work notes" "${file}"`,
+        );
+      } else {
+        expect(childProcess.spawn).toHaveBeenCalledExactlyOnceWith(
+          "Editor Suite",
+          ["--reuse-window", "--profile", "Work notes", file],
+          { stdio: "inherit" },
+        );
+      }
+    } finally {
+      // Clear the launcher's active-child state before restoring the stubs.
+      child.emit("exit", 0);
     }
-  } finally {
-    // Clear the launcher's active-child state before restoring the stubs.
-    child.emit("exit", 0);
-  }
-});
+  },
+);
