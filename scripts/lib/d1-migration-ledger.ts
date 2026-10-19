@@ -70,7 +70,14 @@ export function d1SchemaVerificationFailure(error: unknown): string {
       /^D1 maintenance request failed with HTTP ([1-5]\d{2})(?:;|$)/.exec(
         error.message,
       );
-    if (http) return `D1 schema verification failed (http_${http[1]})`;
+    if (http) {
+      const code =
+        error.message ===
+        `D1 maintenance request failed with HTTP ${http[1]}; Cloudflare error codes: 10000`
+          ? "; Cloudflare error codes: 10000"
+          : "";
+      return `D1 schema verification failed (http_${http[1]})${code}`;
+    }
   }
   return "D1 schema verification failed (unclassified)";
 }
