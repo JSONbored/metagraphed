@@ -34,10 +34,10 @@ jobs:
         uses: ./.github/actions/install-deps
       - name: Obtain native formatting
         run: |
-          npx prettier --write src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts .github/scripts/qualify-queue-admission.ts .github/workflows/queue-admission-qualification.yml
-          git diff -- src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts
+          npx prettier --write src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts tests/sync-batch-decoded-limits.test.ts .github/scripts/qualify-queue-admission.ts .github/workflows/queue-admission-qualification.yml
+          git diff -- src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts tests/sync-batch-decoded-limits.test.ts
       - name: Lint focused source and fixtures
-        run: npx eslint src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts
+        run: npx eslint src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts tests/sync-batch-decoded-limits.test.ts
       - name: Cold typecheck
         run: npm run typecheck -- --incremental false
       - name: Validate workflow policy
@@ -56,6 +56,7 @@ jobs:
             src/sync-batch-queue.ts
             tests/sync-batch-queue.test.ts
             tests/chain-detail-sync-route.test.ts
+            tests/sync-batch-decoded-limits.test.ts
             queue-admission-reports/source-receipt.json
           retention-days: 1
           if-no-files-found: error

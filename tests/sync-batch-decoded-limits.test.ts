@@ -181,17 +181,24 @@ describe("the derived sync-batch envelope", () => {
       1,
       "normal deduplication remains",
     );
-    const oversized = packMultiFamilyMessage({
-      lane: "chain-detail",
-      capturedAt: NOW,
-      families: {
-        chainEventRows: Array.from(
-          { length: SYNC_BATCH_MAX_ROWS + 1 },
-          () => event,
-        ),
-      },
-    });
-    assert.equal(oversized.families!.chainEventRows!.length, 5_001);
+    const families = {
+      chainEventRows: Array.from(
+        { length: SYNC_BATCH_MAX_ROWS + 1 },
+        () => event,
+      ),
+    };
+    assert.throws(
+      () =>
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: NOW,
+          families,
+        }),
+      /invalid multi-family message/,
+    );
+    // An untrusted incoming envelope still reaches the independent validator.
+    const oversized = { lane: "chain-detail", captured_at: NOW, families };
+    assert.equal(oversized.families.chainEventRows.length, 5_001);
     assert.equal(validSyncBatchMessage(oversized), false);
   });
 });

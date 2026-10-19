@@ -6,7 +6,7 @@ import { lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "
 const base = "adf7d871efceb07ef3017e4a7709dc53d177e9ed";
 const source = "src/sync-batch-queue.ts";
 const sourceBlob = "396079b96f31c255a3de0f1675db4d5ba30bb23c";
-const files = [source, "tests/sync-batch-queue.test.ts", "tests/chain-detail-sync-route.test.ts"];
+const files = [source, "tests/sync-batch-queue.test.ts", "tests/chain-detail-sync-route.test.ts", "tests/sync-batch-decoded-limits.test.ts"];
 const tests = [...files.slice(1), "tests/data-api-sync-queue-consumer.test.ts", "tests/data-api-bundle-boundary.test.ts"];
 const directory = "queue-admission-reports";
 const receiptPath = directory + "/source-receipt.json";
