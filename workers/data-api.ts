@@ -1,4 +1,5 @@
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
+import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
@@ -573,7 +574,6 @@ import {
   isCompressedSyncBatchBody,
 } from "../src/sync-batch-compress.ts";
 import {
-  classifySyncBatch,
   enqueueSyncBatch,
   packMultiFamilyMessage,
   SYNC_BATCH_MAX_BYTES,
@@ -1027,8 +1027,8 @@ async function handleChainDetailSync(
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
 
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > CHAIN_DETAIL_SYNC_MAX_BODY_BYTES) {
+  const raw = await readChainDetailSyncBody(request);
+  if (raw === null) {
     return writeJson(
       { error: `body exceeds ${CHAIN_DETAIL_SYNC_MAX_BODY_BYTES} bytes` },
       413,
@@ -9687,34 +9687,6 @@ export default {
       );
       return;
     }
-    // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A
-    // compressed message arrives as bytes, and `validSyncBatchMessage` would
-    // call those unparseable -- which the consumer ACKS. That is silent data
-    // loss for the largest lane on the platform, so it happens first, and a
-    // body that fails to decompress simply stays what it was and takes the
-    // existing unparseable path.
-    const decoded = await Promise.all(
-      batch.messages.map(async (message) =>
-        isCompressedSyncBatchBody(message.body)
-          ? {
-              message,
-              body: await decompressSyncBatchMessage(message.body),
-            }
-          : { message, body: message.body },
-      ),
-    );
-    const { valid, invalid } = classifySyncBatch(decoded);
-    // syncBatchRowCount, not `m.rows.length`: a multi-family message carries
-    // `families` and no `rows` at all, so the direct read threw a TypeError HERE
-    // -- above the per-message try/catch below -- and failed the whole batch,
-    // every co-batched lane with it, five times over, into the dead-letter
-    // queue. A log line is the last thing that should be able to do that.
-    const rows = valid.reduce((n: number, m) => n + syncBatchRowCount(m), 0);
-    const lanes = [...new Set(valid.map((m) => m.lane))].sort().join(",");
-    console.log(
-      `sync-batches: ${batch.messages.length} message(s), ${valid.length} valid ` +
-        `(${rows} row(s), lanes=${lanes || "none"}), ${invalid} unparseable`,
-    );
     // WRITES NOW, per message (metagraphed-infra#348). Per message rather than
     // per batch so one bad chunk is retried alone instead of dragging its nine
     // neighbours through the retry budget with it.
@@ -9916,28 +9888,54 @@ export default {
         return { statements: 0 };
       },
     };
-    for (const { message, body } of decoded) {
-      if (!validSyncBatchMessage(body)) {
-        // Acked, not retried: a message that cannot parse will not parse on the
-        // fifth attempt either, and burning the budget only delays the DLQ.
-        message.ack();
-        continue;
-      }
+    let valid = 0;
+    let invalid = 0;
+    let rows = 0;
+    const lanes = new Set<string>();
+    // Decode, validate, write and dispose ONE delivery before expanding its
+    // neighbour. Keeping decoded bodies in a batch array retains up to ten
+    // expanded payloads even when the writes themselves are sequential.
+    for (const message of batch.messages) {
+      let lane = "decode";
       try {
+        const body = isCompressedSyncBatchBody(message.body)
+          ? await decompressSyncBatchMessage(message.body)
+          : message.body;
+        if (!validSyncBatchMessage(body)) {
+          // Malformed input keeps its existing ACK policy. Expansion refusals
+          // throw instead, preserving the original delivery for retry/custody.
+          invalid += 1;
+          message.ack();
+          continue;
+        }
+        valid += 1;
+        rows += syncBatchRowCount(body);
+        lanes.add(body.lane);
+        lane = body.lane;
         await writeSyncBatch(body, writers, Date.now(), familyWriters);
         if (body.lane === "neurons" && body.pass_total !== undefined) {
           scheduleExplorerDirectoryRefresh(env, ctx, body.captured_at);
         }
         message.ack();
       } catch (err) {
-        console.error("sync-batches: write failed:", err);
-        await captureDataApiError(err, `sync-batches/${body.lane}`, env);
+        console.error("sync-batches: decode/write failed:", err);
+        // Retry first: neither telemetry nor the next message owns custody of
+        // this original compressed delivery.
+        message.retry();
+        ctx.waitUntil(
+          captureDataApiError(err, `sync-batches/${lane}`, env).then(
+            () => undefined,
+          ),
+        );
         // Retried: a store write that failed under load is exactly what the queue's
         // backoff exists for, and this is the failure the one-second producer
         // sleep was standing in for.
-        message.retry();
       }
     }
+    console.log(
+      `sync-batches: ${batch.messages.length} message(s), ${valid} valid ` +
+        `(${rows} row(s), lanes=${[...lanes].sort().join(",") || "none"}), ${invalid} unparseable`,
+    );
     if (invalid > 0) {
       ctx.waitUntil(
         recordLaneVerdict(laneHealthStore(env), {
