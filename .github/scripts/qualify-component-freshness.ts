@@ -74,7 +74,14 @@ try {
   console.log(JSON.stringify({ phase: "baseline", failed: 1, expected: "degraded", actual: "operational", test: testName }));
   for (const [path, content] of candidates) writeFileSync(path, content);
   const candidate = run("candidate", tests);
-  if (candidate.status !== 0) console.log(JSON.stringify({ phase: "candidate", failed: candidate.cases.filter(item => item.status === "failed").map(item => ({ name: item.fullName, assertions: item.failureMessages.map(value => value.split("\\n").filter(line => /AssertionError|TypeError|SyntaxError|expected|actual|not equal/.test(line)).slice(0, 3).map(line => line.replace(/[A-Za-z0-9_\\/=+.-]{32,}/g, "[redacted-long-value]"))) })) }));\n  assert.equal(candidate.status, 0);
+  if (candidate.status !== 0) {
+    console.log(JSON.stringify({
+      phase: "candidate",
+      failed: candidate.cases.filter(item => item.status === "failed")
+        .map(item => ({ name: item.fullName, status: item.status })),
+    }));
+  }
+  assert.equal(candidate.status, 0);
   assert.equal(candidate.report.numFailedTests, 0);
   assert.ok(candidate.cases.length > 50);
   assert.ok(candidate.cases.every(item => item.status === "passed" && item.failureMessages.length === 0));
