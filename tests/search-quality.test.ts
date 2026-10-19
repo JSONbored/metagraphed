@@ -11,7 +11,9 @@ import {
   repoRoot,
   subnetLifecycle,
 } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { SuccessEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SearchArtifactSchema } from "../schemas-src/routes/evidence-search.ts";
 
 // search.json is R2-tier (built to dist/), with a public/ fallback.
 function loadArtifact(relative: string): Promise<Row> {
@@ -41,9 +43,15 @@ async function keywordSearch(query: string, limit = 5) {
     env as unknown as Env,
     {},
   );
-  const body = await res.json();
-  const docs = body.data.results || body.data.documents || [];
-  return docs.filter((doc: Row) => doc.type === "subnet");
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
+  const data = body.data;
+  assert.ok(data && typeof data === "object" && !Array.isArray(data));
+  // Keep the legacy results/documents fallback, then validate the selected
+  // documents against the same leaf the published search schema uses.
+  const docs = data.results || data.documents || [];
+  return SearchArtifactSchema.shape.documents
+    .parse(docs)
+    .filter((doc) => doc.type === "subnet");
 }
 
 describe("search quality (TS1 discovery)", () => {
@@ -51,7 +59,7 @@ describe("search quality (TS1 discovery)", () => {
     // Gittensor's chain description is "autonomous software development".
     const results = await keywordSearch("software development");
     assert.ok(
-      results.some((doc: Row) => doc.netuid === 74),
+      results.some((doc) => doc.netuid === 74),
       "expected gittensor (74) for 'software development'",
     );
   });
@@ -61,7 +69,7 @@ describe("search quality (TS1 discovery)", () => {
     const results = await keywordSearch("inference");
     assert.ok(results.length > 0, "expected matches for 'inference'");
     assert.ok(
-      results.some((doc: Row) => doc.netuid === 95),
+      results.some((doc) => doc.netuid === 95),
       "expected the inference-network subnet (95) for 'inference'",
     );
   });

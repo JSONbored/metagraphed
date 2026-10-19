@@ -4,7 +4,12 @@ import assert from "node:assert/strict";
 import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { afterEach, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountHistoryArtifactSchema } from "../schemas-src/routes/account-events-feed.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
 // assert the query shape (keyset seek vs offset).
@@ -93,7 +98,10 @@ test("GET /accounts/{ss58}/history returns the per-day series (#1854)", async ()
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountHistoryArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.day_count, 1);
@@ -113,7 +121,7 @@ test("GET /accounts/{ss58}/history rejects malformed ?from / ?to", async () => {
     {},
   );
   assert.equal(bad.status, 400);
-  const body = await bad.json();
+  const body = await parseJsonBody(bad, ErrorEnvelopeSchema);
   assert.equal(body.ok, false);
   assert.equal(body.error.code, "invalid_query");
   assert.equal(body.meta.parameter, "from");
@@ -135,7 +143,10 @@ test("GET /accounts/{ss58}/history is schema-stable when cold (never 404)", asyn
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountHistoryArtifactSchema),
+  );
   assert.equal(body.data.day_count, 0);
   assert.equal(Array.isArray(body.data.days), true);
 });
@@ -161,7 +172,11 @@ test("GET /accounts/{ss58}/history exposes x-metagraph-artifact-source on both t
     {},
   );
   assert.equal(inverted.status, 200);
-  assert.equal((await inverted.json()).data.day_count, 0);
+  const body = await parseJsonBody(
+    inverted,
+    successEnvelopeSchema(AccountHistoryArtifactSchema),
+  );
+  assert.equal(body.data.day_count, 0);
   // Short-circuited before D1 — no account_events_daily scan.
   assert.ok(!captured.some((q) => /FROM account_events_daily/.test(q.sql)));
   assert.equal(

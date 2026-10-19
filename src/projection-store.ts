@@ -1,6 +1,7 @@
 // Projection I/O and ownership. A declined read returns null; never substitute
 // another window or fabricate freshness. Schemas own payload validation.
 import type { z } from "zod";
+import type { ArtifactReadBudget } from "./artifact-read-budget.ts";
 
 import { ProjectionEnvelopeSchema } from "../schemas-src/projection-artifact.ts";
 import { type ChainNetworkId, projectionKey } from "./chain-network.ts";
@@ -15,10 +16,15 @@ export interface ArtifactObjectStore {
   get(
     key: string,
   ): Promise<{ json(): Promise<unknown>; etag?: string; size?: number } | null>;
+  getWithBudget?(
+    key: string,
+    budget: ArtifactReadBudget,
+  ): Promise<{ json(): Promise<unknown>; etag?: string; size?: number } | null>;
 }
 
 /** Optional bindings are checked at runtime, including untyped history-reader D1 ports. */
 export interface ArtifactStoreEnv {
+  METAGRAPH_R2_TIMEOUT_MS?: string;
   NATIVE_PROJECTIONS?: string;
   D1_STATE?: unknown;
   METAGRAPH_ARCHIVE?: Partial<ArtifactObjectStore>;

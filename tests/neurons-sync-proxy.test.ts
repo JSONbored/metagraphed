@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 // Unit tests for the /api/v1/internal/neurons-sync proxy (workers/api.ts's
 // handleNeuronsSyncProxy, #4771), which forwards to workers/data-api.ts's
 // handleNeuronsSync via the EXISTING DATA_API service binding (not a
@@ -108,7 +110,8 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "neurons_sync_unavailable");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "neurons_sync_unavailable");
 });
 
 // #5549: proxyToDataApi (shared by all six internal-sync proxies, exercised
@@ -140,7 +143,8 @@ test("rate limiting: 429 with the rate-limit header family when the limiter reje
     {},
   );
   assert.equal(res.status, 429);
-  assert.equal((await res.json()).error.code, "internal_sync_rate_limited");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "internal_sync_rate_limited");
   assert.equal(res.headers.get("retry-after"), "60");
   // The published headers must state the limit that is actually enforced --
   // asked of the constant rather than restated, because a restated number is

@@ -41,6 +41,34 @@ import {
 } from "./indexed-parquet.ts";
 import { recordOrNull } from "./read-store.ts";
 import { readRetainedBlockRows } from "./retained-blocks-d1.ts";
+import { HistoryEconomicsSubnetIdsSchema } from "../schemas-src/artifacts/history-generation.ts";
+
+// Keep generated catalog types while requiring every reducer input to exist.
+// In particular, an omitted signer must not turn an unknown fee into zero.
+// Existing captures need call_args; qualified companions carry the same derived
+// subnet IDs without materializing those arguments on the serving path.
+const economicsExtrinsicFields = ExtrinsicsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
+  signer: true,
+  fee_tao: true,
+  tip_tao: true,
+}).required();
+const legacyEconomicsExtrinsicSchema = economicsExtrinsicFields.extend(
+  ExtrinsicsRowSchema.pick({ call_args: true }).required().shape,
+);
+const economicsExtrinsicSchema = legacyEconomicsExtrinsicSchema.or(
+  economicsExtrinsicFields.extend({
+    __economics_subnet_ids: HistoryEconomicsSubnetIdsSchema,
+  }),
+);
+const economicsEventSchema = AccountEventsRowSchema.pick({
+  block_number: true,
+  observed_at: true,
+  event_kind: true,
+  netuid: true,
+  amount_tao: true,
+}).required();
 
 /**
  * Convert a lakehouse DOUBLE back into the decimal wire shape consumed by the
@@ -66,6 +94,8 @@ async function loadBlockEconomicsFromIndexes(
     height,
     network,
     budget,
+    Object.keys(legacyEconomicsExtrinsicSchema.shape),
+    true,
   );
   const selectedEvents = await readSelectedHistoryBlock(
     env,
@@ -73,12 +103,15 @@ async function loadBlockEconomicsFromIndexes(
     height,
     network,
     budget,
+    Object.keys(economicsEventSchema.shape),
   );
   const extrinsics = selectedExtrinsics,
     accountEvents = selectedEvents;
   if (extrinsics == null || accountEvents == null) return null;
-  const parsedExtrinsics = ExtrinsicsRowSchema.array().safeParse(extrinsics);
-  const parsedEvents = AccountEventsRowSchema.array().safeParse(accountEvents);
+  const parsedExtrinsics = economicsExtrinsicSchema
+    .array()
+    .safeParse(extrinsics);
+  const parsedEvents = economicsEventSchema.array().safeParse(accountEvents);
   if (!parsedExtrinsics.success || !parsedEvents.success) return null;
   return summarizeBlockEconomics(
     parsedExtrinsics.data.map((row) => ({
@@ -90,6 +123,11 @@ async function loadBlockEconomicsFromIndexes(
       ...row,
       amount_tao: lakehouseDecimal(row.amount_tao),
     })),
+    parsedExtrinsics.data.flatMap((row) =>
+      Object.hasOwn(row, "call_args")
+        ? []
+        : HistoryEconomicsSubnetIdsSchema.parse(row.__economics_subnet_ids),
+    ),
   );
 }
 

@@ -259,6 +259,49 @@ test("valid physical pointers must still match block and observation keys", asyn
   }
 });
 
+test("projected block reads retain pointer checks and cumulative decode limits", async () => {
+  const { generation } = await fixture();
+  const source = r2ParquetSource(bucket);
+  const fullBudget = parquetReadBudget();
+  const full = await readHistoryBlock(source, generation, scope, 7, fullBudget);
+  const budget = parquetReadBudget();
+  const rows = await readHistoryBlock(source, generation, scope, 7, budget, [
+    "nullable",
+  ]);
+  assert.deepEqual(
+    rows,
+    full.map(({ block_number, observed_at, nullable }) => ({
+      block_number,
+      observed_at,
+      nullable,
+    })),
+  );
+  assert.ok(budget.values < fullBudget.values);
+  const exhausted = parquetReadBudget();
+  exhausted.values = 1_000_000;
+  await assert.rejects(
+    readHistoryBlock(source, generation, scope, 7, exhausted, ["nullable"]),
+    /budget/,
+  );
+  await assert.rejects(
+    readHistoryBlock(source, generation, scope, 7, parquetReadBudget(), [
+      "missing_column",
+    ]),
+    /selection/,
+  );
+  const { index, bytes } = await fixture();
+  const view = new DataView(bytes.buffer);
+  view.setBigUint64(16, 99n, true);
+  const object = await bucket.put(index.shards[0].key, bytes);
+  assert.ok(object);
+  index.shards[0].etag = object.etag;
+  generation.blockIndex = await put(generation.blockIndex.key, index);
+  await assert.rejects(
+    readHistoryBlock(source, generation, scope, 7, parquetReadBudget(), []),
+    /different logical record/,
+  );
+});
+
 test("native event block lookups retain duplicates, wide values and absence after relocation", async () => {
   const { generation } = await fixture();
   const descriptor = await put(`${root}/block-manifest.json`, generation);

@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 // Unit tests for workers/api.ts's two chain-firehose routes (#4982, ADR
 // 0015): the public GET /api/v1/chain/stream forwarder and the internal
 // POST /api/v1/internal/chain-firehose-ingest auth+forward. The Durable
@@ -28,7 +30,8 @@ test("chain/stream: 503s when CHAIN_FIREHOSE_HUB is not bound", async () => {
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "chain_firehose_unavailable");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "chain_firehose_unavailable");
 });
 
 test("chain/stream: forwards to the hub's /subscribe path, preserving the query string, on the fixed 'global' id", async () => {
@@ -114,7 +117,7 @@ test("ingest: 503s when CHAIN_FIREHOSE_SYNC_SECRET is unprovisioned", async () =
   );
   assert.equal(res.status, 503);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "chain_firehose_ingest_unavailable",
   );
 });
@@ -136,7 +139,7 @@ test("ingest: 401s when the token header is wrong", async () => {
   );
   assert.equal(res.status, 401);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "chain_firehose_ingest_unauthorized",
   );
 });
@@ -148,7 +151,8 @@ test("ingest: 503s (after auth passes) when CHAIN_FIREHOSE_HUB is not bound", as
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "chain_firehose_unavailable");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "chain_firehose_unavailable");
 });
 
 test("ingest: on valid auth, forwards the body to the hub's /ingest path on the fixed 'global' id and relays its response", async () => {
@@ -291,7 +295,7 @@ test("ingest: a DO stub call throwing (e.g. a mid-request deploy reset) 503s cle
   );
   assert.equal(res.status, 503);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "chain_firehose_ingest_unavailable",
   );
   assert.ok(res.headers.get("retry-after"));

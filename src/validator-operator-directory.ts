@@ -1,19 +1,12 @@
-// The website-facing validator directory, derived from the full network-wide
-// validator leaderboard without changing that leaderboard's public contract.
-//
-// `/api/v1/validators` is intentionally rich: each hotkey carries realized
-// returns, identity metadata and up to ten subnet memberships for REST/MCP
-// consumers that need the complete record. The directory page asks a different
-// question -- which OPERATORS are active, and how much stake/emission they run
-// across their keys -- so sending every rich row there wastes about 900 kB per
-// refresh. This builder keeps the grouping rule in the data layer and returns
-// only the fields the directory can render.
+// Website-facing validator identities and membership evidence. Metagraph voting
+// weight does not establish holdings value or investment yield, including on
+// older cached leaderboard rows; retain those response keys as null.
 
 type Row = Record<string, unknown>;
 
 export interface ValidatorOperatorKey {
   hotkey: string;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   take: number | null;
 }
 
@@ -29,7 +22,7 @@ export interface ValidatorOperatorEntry {
   hotkey_count: number;
   primary_hotkey: string;
   coldkey: string | null;
-  total_stake_tao: number;
+  total_stake_tao: number | null;
   total_emission_tao: number;
   nominator_count: number | null;
   /** Sum of subnet memberships across the operator's validator hotkeys. */
@@ -37,7 +30,7 @@ export interface ValidatorOperatorEntry {
   uid_count: number;
   take_min: number | null;
   take_max: number | null;
-  /** Stake-weighted across keys with a measured APY. */
+  /** Unavailable: the source does not establish investment principal. */
   apy_estimate: number | null;
   stake_dominance: number | null;
 }
@@ -49,6 +42,19 @@ export interface ValidatorOperatorDirectory {
   validator_count: number;
   operator_count: number;
   operators: ValidatorOperatorEntry[];
+}
+
+/** A legacy directory's financial selection cannot be repaired after truncation. */
+export function hasLegacyValidatorOperatorCapital(
+  directory: ValidatorOperatorDirectory,
+): boolean {
+  return directory.operators.some(
+    (operator) =>
+      operator.total_stake_tao !== null ||
+      operator.apy_estimate !== null ||
+      operator.stake_dominance !== null ||
+      operator.hotkeys.some((key) => key.total_stake_tao !== null),
+  );
 }
 
 function finite(value: unknown): number | null {
@@ -139,33 +145,19 @@ export function buildValidatorOperatorDirectory(
 
   const operators: ValidatorOperatorEntry[] = [];
   for (const [operatorId, unsorted] of grouped) {
-    const keys = [...unsorted].sort(
-      (a, b) =>
-        nonNegative(b.total_stake_tao) - nonNegative(a.total_stake_tao) ||
-        hotkey(a)!.localeCompare(hotkey(b)!),
+    // Voting-weight-derived capital on older artifacts must not select the
+    // primary key or rank operators. Addresses provide a stable neutral order.
+    const keys = [...unsorted].sort((a, b) =>
+      hotkey(a)!.localeCompare(hotkey(b)!),
     );
     const primary = keys[0]!;
     const identityName = declaredIdentityName(primary);
     const takes = keys
       .map((validator) => finite(validator.take))
       .filter((take): take is number => take !== null);
-    const totalStake = keys.reduce(
-      (sum, validator) => sum + nonNegative(validator.total_stake_tao),
-      0,
-    );
-    let weightedApy = 0;
-    let apyWeight = 0;
-    for (const validator of keys) {
-      const apy = finite(validator.apy_estimate);
-      if (apy === null) continue;
-      const stake = nonNegative(validator.total_stake_tao);
-      weightedApy += apy * stake;
-      apyWeight += stake;
-    }
-
     const operatorKeys = keys.map((validator) => ({
       hotkey: hotkey(validator)!,
-      total_stake_tao: nonNegative(validator.total_stake_tao),
+      total_stake_tao: null,
       take: finite(validator.take),
     }));
     operators.push({
@@ -176,7 +168,7 @@ export function buildValidatorOperatorDirectory(
       hotkey_count: operatorKeys.length,
       primary_hotkey: hotkey(primary)!,
       coldkey: nullableString(primary.coldkey),
-      total_stake_tao: totalStake,
+      total_stake_tao: null,
       total_emission_tao: keys.reduce(
         (sum, validator) => sum + nonNegative(validator.total_emission_tao),
         0,
@@ -196,25 +188,12 @@ export function buildValidatorOperatorDirectory(
       ),
       take_min: takes.length > 0 ? Math.min(...takes) : null,
       take_max: takes.length > 0 ? Math.max(...takes) : null,
-      apy_estimate: apyWeight > 0 ? weightedApy / apyWeight : null,
+      apy_estimate: null,
       stake_dominance: null,
     });
   }
 
-  operators.sort(
-    (a, b) =>
-      b.total_stake_tao - a.total_stake_tao ||
-      a.primary_hotkey.localeCompare(b.primary_hotkey),
-  );
-  const listedStake = operators.reduce(
-    (sum, operator) => sum + operator.total_stake_tao,
-    0,
-  );
-  const ranked = operators.map((operator) => ({
-    ...operator,
-    stake_dominance:
-      listedStake > 0 ? operator.total_stake_tao / listedStake : null,
-  }));
+  operators.sort((a, b) => a.primary_hotkey.localeCompare(b.primary_hotkey));
 
   return {
     schema_version: 1,
@@ -224,7 +203,7 @@ export function buildValidatorOperatorDirectory(
         ? nonNegativeInteger(globalValidators?.block_number)
         : null,
     validator_count: validators.length,
-    operator_count: ranked.length,
-    operators: ranked,
+    operator_count: operators.length,
+    operators,
   };
 }

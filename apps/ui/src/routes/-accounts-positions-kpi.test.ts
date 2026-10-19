@@ -20,10 +20,20 @@ const source = readFileSync(
 
 describe("#8818 the /accounts figures never fabricate a zero", () => {
   it("derives every positions figure from one nullable read", () => {
-    expect(source).toContain("const held = positions.data?.data.positions ?? null;");
-    expect(source).toMatch(/const staked = held \? held\.reduce/);
+    expect(source).toContain(
+      "const held = positions.data?.data.degraded ? null : (positions.data?.data.positions ?? null);",
+    );
     expect(source).toMatch(/const subnetCount = held \?/);
-    expect(source).toContain("const positionCount = positions.data?.data.position_count ?? null;");
+    expect(source).toContain(
+      "const positionCount = held === null ? null : (positions.data?.data.position_count ?? null);",
+    );
+  });
+
+  it("withholds unqualified position amounts and does not call reserved balance free", () => {
+    expect(source).not.toContain("held.reduce");
+    expect(source).toContain('{ label: "Staked value", value: "—", loading: positions.isPending }');
+    expect(source).toContain('label: "Balance (free + reserved)"');
+    expect(source).not.toContain('label: "Free balance"');
   });
 
   it("renders a dash for an unresolved count, not a number", () => {
@@ -32,7 +42,7 @@ describe("#8818 the /accounts figures never fabricate a zero", () => {
     // and is what this asserts: neither count reaches the strip without having
     // been tested against null first.
     expect(source).toMatch(/positionCount === null \|\| subnetCount === null\s*\?\s*"—"/);
-    expect(source).toContain('label: "Positions / subnets"');
+    expect(source).toContain('label: "Recorded ties / subnets"');
   });
 
   it("never coerces a positions field to zero", () => {

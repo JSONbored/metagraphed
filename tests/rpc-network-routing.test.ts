@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 // Network-aware proxy routing: /rpc/v1/{network} selects its pool from
 // rpc/pools.json (finney → finney-rpc, test → test-rpc). The testnet endpoints
@@ -112,7 +114,7 @@ describe("RPC proxy — network-aware pool selection", () => {
         },
       );
       assert.equal(res.status, 404);
-      const body = await res.json();
+      const body = await parseJsonBody(res, ErrorEnvelopeSchema);
       assert.equal(body.error.code, "rpc_network_unsupported");
       assert.deepEqual(body.meta.supported_networks, ["finney", "test"]);
     });

@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 // Unit tests for the /api/v1/internal/backfill-neuron-daily proxy
 // (workers/api.ts's handleNeuronDailyBackfillProxy), which forwards to
 // workers/data-api.ts's handleNeuronDailyBackfill via the EXISTING DATA_API
@@ -115,7 +117,7 @@ test("returns 502 when the upstream response body is unreadable", async () => {
   );
   assert.equal(res.status, 502);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "neuron_daily_backfill_unavailable",
   );
 });

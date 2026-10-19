@@ -25,6 +25,17 @@ async function render() {
 }
 
 describe("BlockActivityWindow", () => {
+  it("keeps the first SSR activity mark tabbable without advertising enhancement", async () => {
+    const html = await render();
+    const activity = html.match(/<section class="mg-block-activity"[\s\S]*?<\/section>/)?.[0];
+    const firstMark = activity?.match(/<a\b[^>]*class="mg-block-activity-mark"[^>]*>/)?.[0];
+
+    expect(activity).toBeDefined();
+    expect(firstMark).toContain('href="/blocks/12"');
+    expect(firstMark).toContain('tabindex="0"');
+    expect(activity?.split(">")[0]).not.toContain("data-client-enhanced");
+  });
+
   it("keeps exact counts, keyboard direction, and a block-detail link beside the visual", async () => {
     const html = await render();
 

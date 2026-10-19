@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetStakeQuoteArtifactSchema } from "../schemas-src/routes/stake-quote.ts";
 // Route-dispatch coverage for GET /api/v1/subnets/{netuid}/stake-quote (#5235):
 // drives the real api.ts router end-to-end so the path-pattern match + handler
 // call are exercised. Handler/resolver branch detail lives in
@@ -56,7 +59,10 @@ describe("GET /api/v1/subnets/{netuid}/stake-quote route", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetStakeQuoteArtifactSchema),
+    );
     assert.equal(body.data.netuid, 64);
     assert.equal(body.data.expected_out_unit, "alpha");
     assert.ok(body.data.price_impact_pct > 0);

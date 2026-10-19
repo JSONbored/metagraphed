@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody } from "./row-type.ts";
+import {
+  SuccessEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetIdentityHistoryArtifactSchema } from "../schemas-src/routes/subnet-identity-history.ts";
+import { SubnetDetailArtifactSchema } from "../schemas-src/routes/subnet-detail.ts";
+import {
+  AgentCatalogArtifactSchema,
+  AgentCatalogSubnetArtifactSchema,
+} from "../schemas-src/routes/agent-catalog.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -37,7 +47,10 @@ test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Post
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(SubnetIdentityHistoryArtifactSchema),
+  );
   assert.equal(body.data.netuid, 86);
   assert.equal(body.data.entry_count, 0);
   assert.deepEqual(body.data.entries, []);
@@ -67,7 +80,10 @@ test("GET /subnets/{netuid} publishes no previously_known_as overlay on the subn
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(SubnetDetailArtifactSchema),
+  );
   // No source, so no overlay (#10706).
   assert.equal(body.data.subnet?.previously_known_as, undefined);
 });
@@ -106,7 +122,9 @@ test("GET /subnets/{netuid} publishes no previously_known_as overlay on flat sub
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  // This legacy flat fixture intentionally has no nested SubnetDetail. Only
+  // its shared envelope is validated; the flat data fields stay unknown.
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
   // No source, so no overlay (#10706).
   assert.equal(body.data.previously_known_as, undefined);
   assert.equal(body.data.subnet, undefined);
@@ -120,10 +138,11 @@ test("GET /agent-catalog publishes no previously_known_as overlay on index entri
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
-  const subnet = (body.data.subnets as Row[]).find(
-    (entry) => entry.netuid === 7,
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AgentCatalogArtifactSchema),
   );
+  const subnet = body.data.subnets.find((entry) => entry.netuid === 7);
   assert.ok(subnet);
   // No source, so no overlay (#10706).
   assert.equal(subnet.previously_known_as, undefined);
@@ -137,7 +156,10 @@ test("GET /agent-catalog/{netuid} publishes no previously_known_as overlay on th
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AgentCatalogSubnetArtifactSchema),
+  );
   // No source, so no overlay (#10706).
   assert.equal(body.data.previously_known_as, undefined);
 });

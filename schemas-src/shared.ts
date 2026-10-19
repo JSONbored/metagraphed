@@ -9,6 +9,7 @@
 // from src/contracts.ts, the canonical JSON-Schema contract), cross-checked
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "./legacy-emission-share.ts";
 import { QUERY_ENUMS } from "./query-enums.ts";
 import { ALPHA_USD_UNAVAILABLE } from "../src/alpha-usd.ts";
 
@@ -410,7 +411,13 @@ export const SubnetEconomicsSchema = z
         "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average.",
       ),
     block: z.int().min(0).nullable().optional(),
-    emission_share: z.number().min(0).max(1).nullable().optional(),
+    emission_share: z
+      .number()
+      .min(0)
+      .max(1)
+      .nullable()
+      .optional()
+      .describe(LEGACY_EMISSION_SHARE_DESCRIPTION),
     // Stage 5. DEFAULTS TO TRUE on chain: absent storage is enabled and 0x00
     // is disabled, so 57 of 127 subnets are enabled with no entry at all.
     emission_enabled: z.boolean().nullable().optional(),
@@ -840,7 +847,9 @@ export function distributionStatsSchema(
  * measurement, never an error -- which is why every one of these resolves to a
  * schema-stable empty card rather than null.
  */
-export function subnetHistoryArtifactSchema(point: z.ZodType) {
+export function subnetHistoryArtifactSchema<PointSchema extends z.ZodType>(
+  point: PointSchema,
+) {
   return z
     .object({
       schema_version: z.int(),
@@ -869,7 +878,9 @@ export function subnetHistoryArtifactSchema(point: z.ZodType) {
  * but the loader is reachable without them and a schema that promised numbers
  * would be wrong on that path.
  */
-export function subnetEntryListSchema(entry: z.ZodType) {
+export function subnetEntryListSchema<EntrySchema extends z.ZodType>(
+  entry: EntrySchema,
+) {
   return z
     .object({
       schema_version: z.int(),

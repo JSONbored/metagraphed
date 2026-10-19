@@ -253,6 +253,60 @@ jobs:
             echo "Diff is 100% **/*.md + .claude/skills/** -- docs fast lane applies to the checks job."
           fi
 
+  # Retain focused source evidence alongside the full gates for this draft.
+  bundle-source:
+    name: bundle source qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018' }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Install without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Check source formatting
+        id: format
+        run: npx prettier --check scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Retain native formatting diff on failure
+        if: failure() && steps.format.outcome == 'failure'
+        run: |
+          npx prettier --write scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+          git diff -- scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Lint source support
+        run: npx eslint scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts
+      - name: Typecheck source support and regression fixtures
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('.bundle-source.tsconfig.json', JSON.stringify({
+            extends: './tsconfig.json',
+            compilerOptions: { incremental: false },
+            include: [
+              'scripts/archive-policy-bundles.ts',
+              'scripts/archive-policy-d1-source.ts',
+              'scripts/validate-archive-policy.ts',
+              'tests/archive-policy-bundles.test.ts',
+              'tests/archive-policy-d1-source.test.ts',
+              'tests/archive-policy.test.ts',
+              'tests/d1-schema-snapshot.test.ts',
+              'workers/**/*.d.ts'
+            ]
+          }));
+          NODE
+          npx tsc --project .bundle-source.tsconfig.json --noEmit
+      - name: Test snapshot extraction and archive-policy wiring
+        run: npx vitest run tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts tests/archive-policy.test.ts tests/d1-schema-snapshot.test.ts
+      - name: Audit committed snapshots and workflow rules
+        run: |
+          npm run validate:archive-policy
+          npm run validate:workflows
+
   validate:
     name: validate
     needs: changes
@@ -262,7 +316,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -411,6 +465,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Cold typecheck for native qualification
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run typecheck -- --incremental false
+
       # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
       # bundle, generated types + client) against what the schemas regenerate, so
       # they MUST run before the build step below overwrites those committed files.
@@ -489,6 +547,9 @@ jobs:
         env:
           METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
+
+      - name: Worker handler smoke
+        run: npm run worker:test
 
       - name: Verify submitted public artifacts are reproducible
         if: env.DOCS_ONLY != 'true' && github.event_name == 'pull_request'
@@ -795,7 +856,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
@@ -1429,23 +1490,11 @@ jobs:
         if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
         run: npm run test:e2e --workspace=apps/ui
 
-      # The e2e server is a LOCAL `wrangler dev` on this runner (playwright.config.ts's
-      # webServer), not a deployed Worker -- so when it dies there is nothing in the
-      # Cloudflare dashboard to read, and the only record is the log file wrangler
-      # names on its way out.
-      #
-      # Without this the failure is undiagnosable. Observed three times across main
-      # and a feature branch: wrangler prints a bare `✘ [ERROR]` with an EMPTY body,
-      # the process exits ~20 page-loads in, and every subsequent navigation fails
-      # ERR_EMPTY_RESPONSE -> ERR_CONNECTION_REFUSED. The reported test is just
-      # whichever route was in flight, which is why it looks like a different
-      # "overflow" failure each run. The actual reason goes to this file and dies
-      # with the runner.
-      #
       # A flaky test can make this step green after its retry. Retain the first
-      # failure's error-context and server logs too: #12741's successful retry
-      # otherwise discarded the evidence needed to distinguish an interrupted
-      # asset request from a page bug. This changes neither assertions nor retries.
+      # failure's native report and error-context too: #12741's successful retry
+      # otherwise discarded evidence of an interrupted asset request. This changes
+      # neither assertions nor retries. Raw Wrangler debug logs can include local
+      # proxy authentication data and must stay outside the uploaded artifact.
       - name: Pin e2e diagnostic receipt
         if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
         run: |
@@ -1489,13 +1538,12 @@ jobs:
           }, null, 2) + "\n");
           NODE
 
-      - name: Upload e2e server + report diagnostics
+      - name: Upload e2e report diagnostics
         if: ${{ !cancelled() && (steps.ui-e2e.outcome == 'success' || steps.ui-e2e.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ui-e2e-diagnostics
           path: |
-            ~/.config/.wrangler/logs/*.log
             apps/ui/playwright-report/**
             apps/ui/test-results/**
           retention-days: 7

@@ -1,5 +1,11 @@
+import { CatalogPageRecovery } from "@/components/metagraphed/catalog-page-recovery";
 import { useMemo } from "react";
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   AnalyticsSection,
   BrandIcon,
@@ -13,7 +19,9 @@ import {
   type DataTableColumn,
   type RawRow,
 } from "@jsonbored/ui-kit";
+import { restartCatalogResults, catalogRetentionNotice } from "@/lib/metagraphed/catalog-pages";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CatalogExportAction } from "@/components/metagraphed/catalog-export-action";
 import { factCells } from "@/lib/metagraphed/facts";
 import { RouterLink } from "@/components/metagraphed/router-link";
 import { ErrorState } from "@/components/metagraphed/states";
@@ -21,11 +29,8 @@ import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { recordModifiedAt } from "@/lib/metagraphed/freshness";
 import { formatAbsoluteTime, formatNumber } from "@/lib/metagraphed/format";
-import {
-  providerEndpointsQuery,
-  providerQuery,
-  surfacesInfiniteQuery,
-} from "@/lib/metagraphed/queries";
+import { providerEndpointsQuery, providerQuery } from "@/lib/metagraphed/queries";
+import { surfacesInfiniteQuery, exportSurfaceRows } from "@/lib/metagraphed/catalog-queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import {
   endpointRails,
@@ -53,19 +58,26 @@ function ApiSources({ slug }: { slug: string }) {
 
 /** Provider identity and usable services, followed by independent probe diagnostics. */
 export function ProviderDetail() {
+  const queryClient = useQueryClient();
   const { slug } = Route.useParams();
   const providerResult = useSuspenseQuery(providerQuery(slug));
   const provider = providerResult.data.data;
   const endpoints = useQuery({ ...providerEndpointsQuery(slug), retry: 0 });
   // Services are the primary reading and start independently of endpoint health.
+  const catalogOptions = surfacesInfiniteQuery({ provider: slug, limit: 500 });
   const surfaces = useInfiniteQuery({
-    ...surfacesInfiniteQuery({ provider: slug, limit: 500 }),
+    ...catalogOptions,
     retry: 0,
   });
 
   // Memoised, not inlined: `?? []` builds a fresh array on every render and
   // the rail's useMemo below would recompute every time.
   const endpointList = useMemo(() => (endpoints.data?.data ?? []) as Endpoint[], [endpoints.data]);
+  const loadCatalogExportRows = async (signal: AbortSignal) =>
+    mergeSurfaceProbes(
+      providerSurfaces(await exportSurfaceRows({ provider: slug }, signal)),
+      endpointList,
+    );
   const surfaceList = useMemo(
     () => providerSurfaces((surfaces.data?.pages ?? []).flatMap((page) => page.data)),
     [surfaces.data],
@@ -251,7 +263,7 @@ export function ProviderDetail() {
             const reads: Promise<unknown>[] = [
               providerResult.refetch(),
               endpoints.refetch(),
-              surfaces.refetch(),
+              restartCatalogResults(queryClient, catalogOptions),
             ];
             void Promise.all(reads);
           },
@@ -279,10 +291,16 @@ export function ProviderDetail() {
                 context="provider endpoint probes"
               />
             ) : null}
-            {surfaces.isError && !surfaces.isFetchNextPageError ? (
+            {surfaces.error && mergedSurfaces.length > 0 ? (
+              <CatalogPageRecovery
+                error={surfaces.error}
+                onRestart={() => void restartCatalogResults(queryClient, catalogOptions)}
+                pending={surfaces.isFetching}
+              />
+            ) : surfaces.isError ? (
               <ErrorState
                 error={surfaces.error}
-                onRetry={() => void surfaces.refetch()}
+                onRetry={() => void restartCatalogResults(queryClient, catalogOptions)}
                 context="provider surfaces"
               />
             ) : null}
@@ -295,6 +313,15 @@ export function ProviderDetail() {
               link={RouterLink}
               source="provider-surface"
               storageKey="mg-provider-surfaces-columns"
+              renderExportAction={({ formatRows, filename, shareAction }) => (
+                <CatalogExportAction
+                  loadRows={loadCatalogExportRows}
+                  formatRows={formatRows}
+                  filename={filename}
+                >
+                  {shareAction}
+                </CatalogExportAction>
+              )}
               className="max-lg:[&_.mg-dt-expansion>td]:px-4! [&_td[data-mobile-lead=true]]:before:hidden [&_.mg-dt-status]:self-start [&_.mg-dt-disclosure]:min-h-11 [&_.mg-dt-disclosure]:min-w-11 [&_.mg-dt-menu-trigger]:min-h-11 [&_.mg-dt-menu-trigger]:min-w-11"
               mobile="cards"
               expand={surfaceDetail}
@@ -309,32 +336,39 @@ export function ProviderDetail() {
           </>
         }
         legend={
-          surfaces.hasNextPage || surfaces.isFetchNextPageError || cursorInvalid ? (
+          !surfaces.error && (surfaces.hasNextPage || cursorInvalid) ? (
             <div className="[&_button]:min-h-11">
               <LoadMore
                 hasMore={surfaces.hasNextPage}
-                isLoading={surfaces.isFetchingNextPage}
-                onLoadMore={() => void surfaces.fetchNextPage()}
+                isLoading={surfaces.isFetching}
+                onLoadMore={() => {
+                  if (surfaces.isFetching) return;
+                  void surfaces.fetchNextPage({ cancelRefetch: false });
+                }}
                 shown={mergedSurfaces.length}
                 total={total}
-                error={surfaces.isFetchNextPageError ? surfaces.error : null}
                 cursorInvalid={cursorInvalid}
               />
             </div>
           ) : undefined
         }
         footnote={
-          surfaces.isPending
+          catalogRetentionNotice(
+            surfaces,
+            mergedSurfaces.length,
+            `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`}`,
+          ) ??
+          (surfaces.isPending
             ? "Loading registered services · registry"
             : `${formatNumber(mergedSurfaces.length)} services loaded${total == null ? "" : ` of ${formatNumber(total)} catalog results`} · registry` +
               (surfaces.isError
-                ? " · service read failed; previously loaded rows remain visible"
+                ? " · service read failed; previously accepted rows retained; current freshness unverified"
                 : "") +
               (endpoints.isPending
                 ? " · probe readings loading"
                 : endpoints.isError
                   ? " · probe readings unavailable"
-                  : " · latest probes joined only where identity matches")
+                  : " · latest probes joined only where identity matches"))
         }
       />
 

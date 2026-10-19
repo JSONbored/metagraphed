@@ -1,9 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import {
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+} from "../src/mcp-list-query.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
-import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "../src/contracts.ts";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+} from "../src/kv-keys.ts";
+import {
+  API_ROUTES,
+  API_QUERY_COLLECTIONS,
+  QUERY_ENUMS,
+} from "../src/contracts.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
@@ -71,7 +85,7 @@ async function rest(
 async function mcp(
   name: string,
   args: Row,
-  blob = artifact(),
+  blob: Row = artifact(),
   live: Row | null = null,
 ) {
   const response = await handleMcpRequest(
@@ -216,6 +230,35 @@ describe("catalog-wide known endpoint status", () => {
       const unknown = await rest({ known_status: "false", limit: "1" }, path);
       assert.equal(unknown.body.meta.pagination.total, 346);
     }
+  });
+
+  test("guarded REST pages reject a changed health-status matching set", async () => {
+    const params = {
+      known_status: "true",
+      fields: "id,status",
+      limit: "2",
+      page_snapshot: "start",
+    };
+    const first = await rest(params);
+    assert.equal(first.response.status, 200);
+    const snapshot = first.body.meta.pagination.snapshot;
+    assert.match(snapshot, /^v1\.[0-9a-f]{64}$/);
+    const nextParams = { ...params, page_snapshot: snapshot, cursor: "2" };
+    const unchanged = await rest(nextParams);
+    assert.equal(unchanged.response.status, 200);
+    assert.equal(unchanged.body.data.endpoints[0].id, "endpoint-277");
+    const changed = rows.map((row) =>
+      row.id === "endpoint-275" ? { ...row, status: "unknown" } : row,
+    );
+    const rejected = await rest(
+      nextParams,
+      "/api/v1/endpoints",
+      envFor(artifact(changed)),
+    );
+    assert.equal(rejected.response.status, 400);
+    assert.equal(rejected.body.error.code, "invalid_query");
+    assert.equal(rejected.body.meta.parameter, "page_snapshot");
+    assert.equal(rejected.body.data, null);
   });
 
   test("combines exact root netuid, q, health and capability facets without changing freshness", async () => {
@@ -791,4 +834,296 @@ describe("catalog-wide known endpoint status", () => {
       globalCache.caches = previous;
     }
   });
+});
+
+test("all eight classified MCP catalogs forward checked receipts, bind subjects and report churn", async () => {
+  const cases = [
+    ["list_endpoints", {}, "endpoints"],
+    ["list_rpc_endpoints", {}, "endpoints"],
+    ["list_provider_endpoints", { slug: "fixture" }, "endpoints"],
+    ["get_subnet_endpoints", { netuid: 0 }, "endpoints"],
+    ["list_subnet_endpoints", { netuid: 0 }, "endpoints"],
+    ["list_surfaces", {}, "surfaces"],
+    ["get_subnet_surfaces", { netuid: 0 }, "surfaces"],
+    ["list_subnet_surfaces", { netuid: 0 }, "surfaces"],
+  ] as const;
+  for (const [name, base, key] of cases) {
+    const values: Row[] = rows
+      .slice(0, 3)
+      .map((row) => ({ ...row, kind: "subtensor-rpc" }));
+    const blob = { ...artifact(values), surfaces: values };
+    const first = await mcp(
+      name,
+      { ...base, limit: 2, page_snapshot: "start" },
+      blob,
+    );
+    assert.equal(first.result.isError, false, name);
+    const content = first.result.structuredContent;
+    assert.match(content.snapshot, /^v1\.[0-9a-f]{64}$/, name);
+    assert.equal(content.total, 3, name);
+    assert.equal(content[key].length, 2, name);
+    const next = await mcp(
+      name,
+      {
+        ...base,
+        limit: 2,
+        cursor: content.next_cursor,
+        page_snapshot: content.snapshot,
+      },
+      blob,
+    );
+    assert.equal(
+      next.result.structuredContent.snapshot,
+      content.snapshot,
+      name,
+    );
+    assert.deepEqual(
+      next.result.structuredContent[key].map((row: Row) => row.id),
+      [values[2].id],
+      name,
+    );
+    const changed = {
+      ...blob,
+      [key]: values.map((row, i) =>
+        i === 2 ? { ...row, latency_ms: 999 } : row,
+      ),
+    };
+    const rejected = await mcp(
+      name,
+      { ...base, limit: 2, cursor: 2, page_snapshot: content.snapshot },
+      changed,
+    );
+    assert.equal(rejected.result.isError, true, name);
+    assert.equal(
+      rejected.result.structuredContent.error.code,
+      "catalog_restart_required",
+      name,
+    );
+    assert.equal(
+      rejected.result.structuredContent.error.parameter,
+      "page_snapshot",
+      name,
+    );
+    assert.deepEqual(
+      rejected.result.structuredContent.error.catalog_paging,
+      { reason: "catalog_changed" },
+      name,
+    );
+    const invalid = await mcp(
+      name,
+      { ...base, page_snapshot: "invalid" },
+      blob,
+    );
+    assert.equal(invalid.result.isError, true, name);
+  }
+});
+
+test("MCP checked receipts cannot cross a provider, subnet or public route with identical rows", async () => {
+  const blob = { ...artifact(rows.slice(0, 3)), surfaces: rows.slice(0, 3) };
+  for (const [from, to] of [
+    [
+      ["list_provider_endpoints", { slug: "fixture" }],
+      ["list_provider_endpoints", { slug: "another" }],
+    ],
+    [
+      ["get_subnet_endpoints", { netuid: 0 }],
+      ["list_subnet_endpoints", { netuid: 1 }],
+    ],
+    [
+      ["list_endpoints", {}],
+      ["list_rpc_endpoints", {}],
+    ],
+    [
+      ["get_subnet_surfaces", { netuid: 0 }],
+      ["list_subnet_surfaces", { netuid: 1 }],
+    ],
+  ] as const) {
+    const first = await mcp(
+      from[0],
+      { ...from[1], limit: 2, page_snapshot: "start" },
+      blob,
+    );
+    assert.equal(first.result.isError, false, from[0]);
+    const rejected = await mcp(
+      to[0],
+      {
+        ...to[1],
+        limit: 2,
+        cursor: 2,
+        page_snapshot: first.result.structuredContent.snapshot,
+      },
+      blob,
+    );
+    assert.equal(rejected.result.isError, true, to[0]);
+    assert.equal(
+      rejected.result.structuredContent.error.code,
+      "catalog_restart_required",
+      to[0],
+    );
+  }
+});
+
+test("checked MCP errors distinguish missing catalogs, exceeded budgets and invalid controls", async () => {
+  const missing = await mcp("list_endpoints", { page_snapshot: "start" }, {});
+  assert.equal(
+    missing.result.structuredContent.error.code,
+    "artifact_unavailable",
+  );
+  assert.deepEqual(missing.result.structuredContent.error.catalog_paging, {
+    reason: "catalog_unavailable",
+  });
+  const tooMany = await mcp(
+    "list_endpoints",
+    { page_snapshot: "start", limit: 1 },
+    artifact(
+      Array.from({ length: 5001 }, (_, i) => ({ ...rows[0], id: String(i) })),
+    ),
+  );
+  assert.equal(
+    tooMany.result.structuredContent.error.code,
+    "catalog_budget_exceeded",
+  );
+  assert.match(
+    tooMany.result.structuredContent.error.message,
+    /Narrow filters/,
+  );
+  assert.equal(tooMany.result.structuredContent.endpoints, undefined);
+  assert.throws(
+    () =>
+      catalogQueryUrl(
+        new URL("https://mcp.internal/endpoints"),
+        { page_snapshot: "bad" },
+        () => "/api/v1/endpoints",
+      ),
+    { code: "invalid_params", parameter: "page_snapshot" },
+  );
+  assert.equal(
+    catalogQueryError({ parameter: "cursor", message: "bad cursor" }).code,
+    "invalid_params",
+  );
+  assert.deepEqual(catalogPageReceipt(undefined), {});
+  assert.deepEqual(catalogPageReceipt({ snapshot: 3 }), {});
+});
+
+test("all six REST catalog routes preserve checked links, projections, published formats and no-store", async () => {
+  const values: Row[] = rows.slice(0, 3);
+  const blob = { ...artifact(values), surfaces: values };
+  for (const [path, key, operation] of [
+    ["/api/v1/endpoints", "endpoints", "endpoints"],
+    ["/api/v1/rpc/endpoints", "endpoints", "rpc-endpoints"],
+    ["/api/v1/providers/fixture/endpoints", "endpoints", "provider-endpoints"],
+    ["/api/v1/subnets/0/endpoints", "endpoints", "subnet-endpoints"],
+    ["/api/v1/surfaces", "surfaces", "surfaces"],
+    ["/api/v1/subnets/0/surfaces", "surfaces", "subnet-surfaces"],
+  ] as const) {
+    const env = envFor(blob);
+    const first = await rest(
+      { limit: "1", fields: "id", page_snapshot: "start" },
+      path,
+      env,
+    );
+    assert.equal(first.response.status, 200, path);
+    const receipt = first.body.meta.pagination.snapshot;
+    assert.match(receipt, /^v1\.[0-9a-f]{64}$/, path);
+    assert.deepEqual(first.body.data[key], [{ id: values[0].id }], path);
+    assert.equal(first.body.meta.pagination.total, 3, path);
+    assert.equal(first.response.headers.get("cache-control"), "no-store", path);
+    const next = await rest(
+      { limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" },
+      path,
+      env,
+    );
+    assert.deepEqual(next.body.data[key], [{ id: values[1].id }], path);
+    assert.equal(next.body.meta.pagination.snapshot, receipt, path);
+    const csv = await handleRequest(
+      new Request(
+        "https://metagraph.sh" +
+          path +
+          "?limit=1&fields=id&page_snapshot=start&format=csv",
+      ),
+      env,
+      {},
+    );
+    assert.equal(csv.status, 200, path);
+    assert.equal(csv.headers.get("cache-control"), "no-store", path);
+    assert.match(
+      csv.headers.get("link") ?? "",
+      new RegExp(receipt.replace(".", "[.]")),
+      path,
+    );
+    const declaration = API_ROUTES.find((entry) => entry.id === operation);
+    assert.ok(declaration, operation);
+    if (!declaration.csv_response) {
+      assert.match(
+        csv.headers.get("content-type") ?? "",
+        /application\/json/,
+        path,
+      );
+      const json = (await csv.json()) as Row;
+      assert.equal(json.meta.pagination.snapshot, receipt, path);
+      assert.deepEqual(json.data[key], [{ id: values[0].id }], path);
+      continue;
+    }
+    assert.match(csv.headers.get("content-type") ?? "", /text\/csv/, path);
+    const text = await csv.text();
+    assert.ok(text.includes(String(values[0].id)), path);
+    assert.ok(!text.includes(String(values[1].id)), path);
+  }
+});
+
+test("checked endpoint routes hash effective health even when every observation stamp is unchanged", async () => {
+  const stamp = new Date().toISOString();
+  const values: Row[] = rows
+    .slice(0, 3)
+    .map((row, index) => ({ ...row, surface_id: `surface-${index}` }));
+  const blob = artifact(values);
+  for (const path of [
+    "/api/v1/endpoints",
+    "/api/v1/rpc/endpoints",
+    "/api/v1/providers/fixture/endpoints",
+    "/api/v1/subnets/0/endpoints",
+  ]) {
+    let changed = false;
+    const env = {
+      METAGRAPH_ARCHIVE: { get: async () => ({ json: async () => blob }) },
+      METAGRAPH_CONTROL: {
+        get: async (key: string) => {
+          if (key === KV_HEALTH_META) return { last_run_at: stamp };
+          const live = values.map((row, i) => ({
+            id: row.id,
+            surface_id: row.surface_id,
+            netuid: 0,
+            status: changed && i === 0 ? "failed" : "ok",
+            last_checked: stamp,
+            latency_ms: 1,
+          }));
+          if (key === KV_HEALTH_CURRENT)
+            return { last_run_at: stamp, surfaces: live };
+          if (key === KV_HEALTH_RPC_POOL)
+            return { last_run_at: stamp, endpoints: live };
+          return null;
+        },
+      },
+    } as unknown as Env;
+    const first = await rest(
+      { limit: "1", fields: "id", page_snapshot: "start" },
+      path,
+      env,
+    );
+    assert.equal(first.response.status, 200, path);
+    const receipt = first.body.meta.pagination.snapshot;
+    changed = true;
+    const next = await rest(
+      { limit: "1", fields: "id", page_snapshot: receipt, cursor: "1" },
+      path,
+      env,
+    );
+    assert.equal(next.response.status, 400, path);
+    assert.deepEqual(
+      next.body.meta.catalog_paging,
+      { reason: "catalog_changed" },
+      path,
+    );
+    assert.equal(next.body.data, null, path);
+  }
 });

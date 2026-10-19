@@ -3,7 +3,28 @@ import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY } from "../src/chain-deregistrations-artifact.ts";
 import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "../src/uncurated-event-streams.ts";
-import type { Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountSummaryArtifactSchema } from "../schemas-src/routes/account-summary.ts";
+import { AccountExtrinsicsArtifactSchema } from "../schemas-src/routes/account-extrinsics.ts";
+import {
+  AccountEventsArtifactSchema,
+  AccountTransfersArtifactSchema,
+} from "../schemas-src/routes/account-events-feed.ts";
+import {
+  AccountPrometheusArtifactSchema,
+  AccountServingArtifactSchema,
+  AccountStakeFlowArtifactSchema,
+} from "../schemas-src/routes/account-activity.ts";
+import {
+  AccountAxonRemovalsArtifactSchema,
+  AccountDeregistrationsArtifactSchema,
+  AccountRegistrationsArtifactSchema,
+  AccountWeightSettersArtifactSchema,
+} from "../schemas-src/routes/account-activity-registrations.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -95,7 +116,9 @@ test("GET /accounts/{ss58}/events?format=csv emits a header-only CSV when cold",
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 
@@ -106,10 +129,14 @@ test("GET /accounts/{ss58} is schema-stable when the store is cold (never 404)",
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountSummaryArtifactSchema),
+  );
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.registrations), true);
   // Activity (#1847) is schema-stable on a cold store.
+  assert.ok(body.data.activity);
   assert.equal(body.data.activity.tx_count, 0);
   assert.equal(body.data.activity.last_tx_at, null);
   assert.deepEqual(body.data.activity.modules_called, []);
@@ -132,7 +159,10 @@ test("GET /accounts/{ss58}/extrinsics is schema-stable when the store is cold (n
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountExtrinsicsArtifactSchema),
+  );
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.extrinsic_count, 0);
   assert.equal(Array.isArray(body.data.extrinsics), true);
@@ -148,7 +178,9 @@ test("GET /accounts/{ss58}/extrinsics JSON varies on Accept when CSV is negotiat
   );
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
-  assert.match(res.headers.get("content-type"), /^application\/json/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /^application\/json/);
 });
 
 test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when the store is cold", async () => {
@@ -182,7 +214,7 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.error.code, "invalid_query");
   assert.equal(body.meta.parameter, "direction");
 });
@@ -194,7 +226,10 @@ test("GET /accounts/{ss58}/transfers is schema-stable when the store is cold (ne
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountTransfersArtifactSchema),
+  );
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.transfer_count, 0);
   assert.equal(Array.isArray(body.data.transfers), true);
@@ -210,7 +245,9 @@ test("GET /accounts/{ss58}/transfers JSON varies on Accept when CSV is negotiate
   );
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
-  assert.match(res.headers.get("content-type"), /^application\/json/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /^application\/json/);
 });
 
 test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when the store is cold", async () => {
@@ -235,7 +272,10 @@ test("GET /accounts/{ss58}/stake-flow is schema-stable when the store is cold (n
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountStakeFlowArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -248,7 +288,10 @@ test("GET /accounts/{ss58}/weight-setters is schema-stable when the store is col
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountWeightSettersArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -270,7 +313,7 @@ test("GET /accounts/{ss58}/weight-setters rejects an unsupported window with 400
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -281,7 +324,10 @@ test("GET /accounts/{ss58}/registrations is schema-stable when the store is cold
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountRegistrationsArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -303,7 +349,7 @@ test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400"
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -314,7 +360,10 @@ test("GET /accounts/{ss58}/serving is schema-stable when the store is cold (neve
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountServingArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -336,7 +385,7 @@ test("GET /accounts/{ss58}/serving rejects an unsupported window with 400", asyn
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -347,7 +396,10 @@ test("GET /accounts/{ss58}/deregistrations is schema-stable when the store is co
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountDeregistrationsArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -397,9 +449,13 @@ test("GET /accounts/{ss58}/deregistrations serves the slots where it was the PRE
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountDeregistrationsArtifactSchema),
+  );
   assert.equal(body.data.total_deregistrations, 2);
   assert.equal(body.data.subnets[0].netuid, 5);
+  assert.ok(body.data.derivation);
   assert.equal(body.data.derivation.unattributed_registrations, 11807);
   assert.equal(body.data.degraded, undefined);
   assert.equal(
@@ -417,7 +473,10 @@ test("GET /accounts/{ss58}/deregistrations marks the 90d window the lane never d
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountDeregistrationsArtifactSchema),
+  );
   assert.equal(body.data.window, "90d");
   assert.deepEqual(body.data.degraded, {
     reason: DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
@@ -440,7 +499,7 @@ test("GET /accounts/{ss58}/deregistrations rejects an unsupported window with 40
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -451,7 +510,10 @@ test("GET /accounts/{ss58}/prometheus is schema-stable when the store is cold (n
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountPrometheusArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -473,7 +535,7 @@ test("GET /accounts/{ss58}/prometheus rejects an unsupported window with 400", a
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -484,7 +546,10 @@ test("GET /accounts/{ss58}/axon-removals is schema-stable when the store is cold
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountAxonRemovalsArtifactSchema),
+  );
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
@@ -506,7 +571,7 @@ test("GET /accounts/{ss58}/axon-removals rejects an unsupported window with 400"
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "window");
 });
 
@@ -529,7 +594,10 @@ test("every account response publishes the tier's coverage horizon (`observed_th
     dbWith({ events: [] }) as never,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(AccountEventsArtifactSchema),
+  );
   assert.ok(
     "observed_through" in body.meta,
     `meta must carry the horizon; got ${JSON.stringify(Object.keys(body.meta))}`,

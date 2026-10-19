@@ -1,8 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import {
+  attachOrdinaryFixtureDiagnostics,
+  recordOrdinaryFixturePhase,
+  startOrdinaryFixtureDiagnostics,
+} from "./native-runtime-diagnostics.ts";
 
 // Keep chunk latency/failure under Playwright control; the PWA cache is tested separately.
 test.use({ serviceWorkers: "block" });
+test.beforeEach(async ({ page, baseURL }, testInfo) => {
+  if (testInfo.title === "a late settings chunk does not take focus after the popover closes")
+    await startOrdinaryFixtureDiagnostics(page, baseURL);
+});
+test.afterEach(async ({ page }, testInfo) => {
+  await attachOrdinaryFixtureDiagnostics(page, testInfo);
+});
 
 const SETTINGS_CHUNK = "**/assets/settings-panel-*.js";
 
@@ -14,16 +26,35 @@ async function delaySettings(page: Page) {
   });
   await page.route(SETTINGS_CHUNK, async (route) => {
     requests += 1;
+    recordOrdinaryFixturePhase(page, "settings-route-matched", { requests });
     await ready;
-    await route.continue();
+    recordOrdinaryFixturePhase(page, "settings-route-released", { requests });
+    try {
+      await route.continue();
+      recordOrdinaryFixturePhase(page, "settings-route-continued", { requests });
+    } catch (error) {
+      recordOrdinaryFixturePhase(page, "settings-route-error", {
+        error_type: error instanceof Error ? error.name.slice(0, 60) : typeof error,
+      });
+      throw error;
+    }
   });
-  return { release: () => release(), count: () => requests };
+  return {
+    release: () => {
+      recordOrdinaryFixturePhase(page, "settings-release-called", { requests });
+      release();
+    },
+    count: () => requests,
+  };
 }
 
 async function openPage(page: Page, width: number) {
   await page.setViewportSize({ width, height: 812 });
+  recordOrdinaryFixturePhase(page, "settings-navigation-start");
   await gotoThroughRestart(page, "/subnets");
+  recordOrdinaryFixturePhase(page, "settings-navigation-returned");
   await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+  recordOrdinaryFixturePhase(page, "settings-hydrated");
 }
 
 test.describe("Deferred preferences", () => {
@@ -51,13 +82,19 @@ test.describe("Deferred preferences", () => {
     await openPage(page, 1280);
     const trigger = page.getByRole("button", { name: "Settings", exact: true });
     await trigger.click();
+    recordOrdinaryFixturePhase(page, "settings-clicked", { requests: chunk.count() });
     await expect(page.getByText("Loading settings…", { exact: true })).toBeVisible();
+    recordOrdinaryFixturePhase(page, "settings-placeholder-visible", { requests: chunk.count() });
     await page.keyboard.press("Escape");
+    recordOrdinaryFixturePhase(page, "settings-escape-complete", { requests: chunk.count() });
     await expect(trigger).toBeFocused();
+    recordOrdinaryFixturePhase(page, "settings-trigger-focused", { requests: chunk.count() });
     const responseReady = page.waitForResponse(SETTINGS_CHUNK);
     chunk.release();
     const response = await responseReady;
+    recordOrdinaryFixturePhase(page, "settings-response-observed");
     await response.finished();
+    recordOrdinaryFixturePhase(page, "settings-response-finished");
     await page.evaluate(async (url) => {
       await import(url);
       await new Promise<void>((resolve) =>

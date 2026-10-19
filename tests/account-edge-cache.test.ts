@@ -21,7 +21,10 @@ import {
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
 import { isMainnetOnlyApiPath } from "../workers/api.ts";
-import { mockEnv, type Row } from "./row-type.ts";
+import { mockEnv, parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountEventsArtifactSchema } from "../schemas-src/routes/account-events-feed.ts";
+import { AccountPortfolioArtifactSchema } from "../schemas-src/routes/account-portfolio.ts";
 import { readFileSync } from "node:fs";
 
 const openapi = JSON.parse(
@@ -146,8 +149,14 @@ describe("the account edge cache", () => {
       `two repeats added ${queries.length - afterFirst} reads`,
     );
     assert.deepEqual(
-      await second.json(),
-      await first.clone().json(),
+      await parseJsonBody(
+        second,
+        successEnvelopeSchema(AccountEventsArtifactSchema),
+      ),
+      await parseJsonBody(
+        first.clone(),
+        successEnvelopeSchema(AccountEventsArtifactSchema),
+      ),
       "a hit must be the same body, not merely a fast one",
     );
   });
@@ -182,8 +191,82 @@ describe("the account edge cache", () => {
     );
   });
 
+  test("a warm portfolio cannot bypass principal guards at the same watermark", async () => {
+    const cache = mockCaches();
+    cache.install();
+    const path = `/api/v1/accounts/${ADDR}/portfolio`;
+    const legacyKey = `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+      CONTRACT_VERSION,
+    )}/8800000/accounts${path}`;
+    cache.store.set(
+      legacyKey,
+      Response.json({ data: { total_stake_tao: 123, positions: [] } }),
+    );
+    const portfolio = {
+      schema_version: 1,
+      ss58: ADDR,
+      captured_at: "2026-10-17T00:00:00.000Z",
+      subnet_count: 1,
+      position_count: 1,
+      validator_count: 1,
+      miner_count: 0,
+      total_stake_tao: null,
+      total_emission_tao: 2,
+      overall_yield: null,
+      stake_concentration: null,
+      positions: [
+        {
+          netuid: 3,
+          uid: 7,
+          role: "validator",
+          active: true,
+          stake_alpha: null,
+          emission_alpha: 4,
+          rank: 0.1,
+          trust: 0.8,
+          incentive: 0.2,
+          dividends: 0.3,
+          yield: null,
+        },
+      ],
+    };
+    let reads = 0;
+    const env = {
+      ...envAt(8_800_000),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async () => {
+          reads += 1;
+          return Response.json(portfolio);
+        },
+      },
+    } as unknown as Parameters<typeof handleRequest>[1];
+
+    const first = await get(path, env);
+    assert.equal(first.status, 200);
+    const firstBody = await parseJsonBody(
+      first,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
+    assert.deepEqual(firstBody.data, portfolio);
+    await Promise.resolve();
+    const repeat = await get(path.replace("/api/v1/", "/api/v1/finney/"), env);
+    const repeatBody = await parseJsonBody(
+      repeat,
+      successEnvelopeSchema(AccountPortfolioArtifactSchema),
+    );
+    assert.deepEqual(repeatBody.data, portfolio);
+    assert.equal(reads, 1);
+    assert.deepEqual(cache.putKeys, [
+      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+        CONTRACT_VERSION,
+      )}/8800000/account-portfolio-principal-unavailable${path}`,
+    ]);
+    assert.ok(cache.store.has(legacyKey), "no cache pruning is needed");
+  });
+
   test("BOTH SPELLINGS OF MAINNET share one entry", async () => {
-    // `/api/v1/…` and `/finney/api/v1/…` are the same request. Keying on the
+    // `/api/v1/…` and `/api/v1/finney/…` are the same request. Keying on the
     // raw path would compute the same body twice and store it twice, which is
     // a hit rate this can simply not lose.
     const cache = mockCaches();
@@ -191,10 +274,12 @@ describe("the account edge cache", () => {
     const queries = countLakehouse();
     const env = envAt(8_800_000);
 
-    await get(EVENTS, env);
+    const first = await get(EVENTS, env);
     const afterFirst = queries.length;
-    await get(`/finney${EVENTS}`, env);
+    const alias = await get(EVENTS.replace("/api/v1/", "/api/v1/finney/"), env);
 
+    assert.equal(alias.status, 200);
+    assert.deepEqual(await alias.json(), await first.json());
     assert.equal(queries.length, afterFirst, "the prefixed form re-read");
     assert.equal(cache.putKeys.length, 1);
   });

@@ -1,3 +1,8 @@
+import {
+  LEGACY_EMISSION_SHARE_DESCRIPTION,
+  MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
+  TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
+} from "../schemas-src/legacy-emission-share.ts";
 import { loadSubnetSnapshotCardsTier } from "./subnet-snapshot-cards-tier.ts";
 import { loadValidatorDetailBatchTier } from "./validator-detail-batch-tier.ts";
 import { withRequestCounters } from "./request-counters.ts";
@@ -282,7 +287,13 @@ import { MCP_TIERED_RATE_LIMIT } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { searchMatchingRows } from "../workers/list-query.ts";
-import { applyMcpQueryFilters } from "./mcp-list-query.ts";
+import { CatalogPagingFailureSchema } from "../schemas-src/query-params.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+} from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentDataApiTierFallbackGeneration,
@@ -712,6 +723,14 @@ import {
   GetPipelineHistoryInputSchema,
   GetPipelineHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline-history.ts";
+import {
+  GetSubnetPriceShareCompositionInputSchema,
+  GetSubnetPriceShareCompositionOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-price-share-composition.ts";
+import {
+  buildSubnetPriceShareComposition,
+  loadSubnetPriceShareComposition,
+} from "./subnet-price-share-composition.ts";
 import {
   GetDeregistrationHistoryInputSchema,
   GetDeregistrationHistoryOutputSchema,
@@ -2244,7 +2263,7 @@ export function toolResultContent(
 // - change or remove a tool's I/O       → MAJOR
 // - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.78.31";
+export const MCP_SERVER_VERSION = "1.78.32";
 // Price-impact thresholds for get_stake_action_preview's plan-shaped
 // `warnings`/`ok` advisory (#6894). There is no prior precedent for these in
 // this codebase, so they follow common AMM/DEX slippage conventions: ~1% is the
@@ -2576,7 +2595,7 @@ export const MCP_INSTRUCTIONS =
   GET_ECONOMICS_INSTRUCTIONS +
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
-  "get_emission_pipeline the v440 decomposition behind emission_share -- how " +
+  "get_emission_pipeline the separately reconstructed v440 pipeline -- how " +
   "much TAO each subnet actually receives, and the split between pool " +
   "injection and chain buys, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
@@ -2641,8 +2660,8 @@ export const MCP_INSTRUCTIONS =
   "cumulative claimed — read-only, never submits claim_root), " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered, get_account_portfolio " +
-  "its cross-subnet neuron portfolio (per-position economics + yield and wallet " +
-  "aggregates), get_account_stake_flow " +
+  "its registered memberships, scores and emission observations (capital, " +
+  "yield and stake concentration remain unavailable), get_account_stake_flow " +
   "its per-subnet staking flow with direction and concentration labels, " +
   "get_account_stake_moves its per-subnet StakeMoved re-delegation footprint " +
   "with movement counts, first/last timestamps, and concentration labels, " +
@@ -5455,7 +5474,10 @@ function applySubnetListQuery(
   // applyQueryFilters' unknown-collection passthrough, which would omit
   // total/returned/cursor entirely.
   const rows = data?.[dataKey];
-  const body = Array.isArray(rows) ? data : { ...data, [dataKey]: [] };
+  const body =
+    Array.isArray(rows) || args?.page_snapshot !== undefined
+      ? data
+      : { ...data, [dataKey]: [] };
   const queryUrl = new URL(`https://mcp.internal/${collection}`);
   if (defaultLimit !== null && args?.limit == null) {
     queryUrl.searchParams.set("limit", String(defaultLimit));
@@ -5466,6 +5488,11 @@ function applySubnetListQuery(
     if (value === undefined || value === null || value === "") continue;
     queryUrl.searchParams.set(key, String(value));
   }
+  catalogQueryUrl(
+    queryUrl,
+    args,
+    () => `/api/v1/subnets/${requireNetuid(args)}/${dataKey}`,
+  );
   const transformed = applyMcpQueryFilters(
     body,
     queryUrl,
@@ -5476,7 +5503,7 @@ function applySubnetListQuery(
     ).filter((name) => !subjectKeys.includes(name)),
   );
   if (transformed.error) {
-    throw toolError("invalid_params", transformed.error.message);
+    throw catalogQueryError(transformed.error);
   }
   const page = transformed.meta?.pagination as Row | undefined;
   return {
@@ -5488,6 +5515,7 @@ function applySubnetListQuery(
           cursor: page.cursor,
           limit: page.limit,
           next_cursor: page.next_cursor,
+          ...catalogPageReceipt(page),
         }
       : {}),
   };
@@ -6938,12 +6966,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "share, and pool reserves. Served live from the economics tier " +
       "(refreshed ~3h), falling back to the latest committed snapshot. Use it " +
       "to decide whether (and where) to register, mine, or validate. " +
-      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
-      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
-      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
-      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
-      "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " " +
       "SWEEPING SEVERAL SUBNETS? Pass `include_summary: false` — the `summary` " +
       "block is network-wide and identical on every call, so it is about 19% " +
       "of each response repeated once per subnet.",
@@ -7254,7 +7278,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "completeness, surface and endpoint counts, validator and miner counts, " +
       "total stake, alpha price, and emission share over time, plus 7d/30d " +
       "deltas. Use it to see whether a subnet is growing or contracting before " +
-      "committing resources.",
+      "committing resources. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetSubnetTrajectoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetTrajectoryInputSchema>,
@@ -7287,12 +7312,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "across all subnets: total stake, stake-weighted and median alpha price, " +
       "total validator and miner counts, and mean emission share. Mirrors " +
       "GET /api/v1/economics/trends. " +
-      "`emission_share` is the STAGE-1 PRICE SHARE of the v440 emission " +
-      "pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a " +
-      "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
-      "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
-      "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " " +
       `Windows up to ${FREE_HISTORY_WINDOW_DAYS} days (7d/30d/90d) are open to ` +
       "every caller; `1y` and `all` need a paid key and otherwise answer " +
       "`payment_required` with the upgrade path attached.",
@@ -7405,9 +7426,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and `liquidity_fraction`. Plus the network aggregate and the " +
       "issuance-derived block emission. " +
       "USE THIS RATHER THAN get_economics's `emission_share` whenever the " +
-      "question is how much TAO a subnet actually receives -- that field is " +
-      "the STAGE-1 PRICE SHARE, and this tool is the decomposition that " +
-      "separates the two. " +
+      "question is how much TAO a subnet actually receives -- the economics " +
+      "field normalizes the reported price set, while this tool reconstructs " +
+      "the eligible runtime pipeline from pinned inputs. " +
       "EVERY SHARE HERE IS RECONSTRUCTED, NOT READ: the chain publishes the " +
       "inputs, not the decomposition. `field_sources` gives each field its " +
       "kind (measured|reconstructed) and, for measurements, the storage item " +
@@ -9197,7 +9218,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "list_subnets: member subnet count, total stake, total emission share, " +
       "and within-domain emission concentration, per domain tag. Pass `domain` " +
       "for one tag's own rollup (mirrors GET /api/v1/domains/{tag}/summary); " +
-      "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains).",
+      "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains). " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetDomainSummaryInputSchema),
     async handler(
       args: z.infer<typeof GetDomainSummaryInputSchema>,
@@ -9468,12 +9490,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the network-wide validator/operator leaderboard: validator-permit " +
       "identities grouped by hotkey across all current subnet memberships, with " +
-      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
-      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "trust metrics, emission totals, and membership rows. Capital totals, " +
+      "stake dominance, and APY are unavailable (null): neuron voting weight " +
+      "does not establish investment principal. Sort by subnet_count (default), uid_count, " +
       "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
       `or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, ` +
-      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
-      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Legacy capital sorts retain deterministic ` +
+      "tie ordering over unavailable values. Find operators spanning many subnets. Mirrors " +
       "GET /api/v1/validators.",
     inputSchema: inputJsonSchema(ListGlobalValidatorsInputSchema),
     async handler(
@@ -9507,10 +9530,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Get one validator's cross-subnet detail",
     description:
       "Fetch a single validator identity's validator_permit rows aggregated " +
-      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
-      "totals, avg/max validator trust, and the full per-subnet membership list. " +
-      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
-      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
+      "across every subnet it operates in: coldkey, emission totals, avg/max " +
+      "validator trust, and the full membership list. Capital value and APY " +
+      "are unavailable (null), with APY eligible count zero: voting weight is " +
+      "not independent principal. Legacy stake_alpha is raw voting weight, " +
+      "not an alpha holding. A cold/absent hotkey has an empty list, never an " +
       "error. Mirrors GET /api/v1/validators/{hotkey}.",
     inputSchema: inputJsonSchema(GetValidatorDetailInputSchema),
     async handler(
@@ -9535,11 +9559,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Compare validators side by side (read-only)",
     description:
       "Place several validators side by side for a stake/delegate decision: " +
-      "for each hotkey, its take rate, estimated APY, nominator count, and " +
-      "on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust " +
+      "for each hotkey, its take rate, nominator count, and " +
+      "on-chain (coldkey) identity, plus the emission/trust " +
       "aggregates that give those numbers context -- the same per-validator " +
       "detail list_global_validators / get_validator_detail expose, projected " +
-      "to the fields that drive a delegate choice. Pass an optional netuid to " +
+      "to the fields that drive a delegate choice. Capital and APY are " +
+      "unavailable (null), not zero; voting weight cannot establish principal. Pass an optional netuid to " +
       "add each validator's membership in that one subnet (subnet_context). " +
       "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
       "produces no signable/extrinsic artifact, and never touches a wallet or " +
@@ -9778,11 +9803,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_validator_history",
-    title: "Get a validator's staked-over-time history",
+    title: "Get a validator's membership history",
     description:
-      "Fetch one validator's cross-subnet staked-over-time history: one point " +
-      "per day, summed across every subnet it validates in, plus a rewards-per-" +
-      "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
+      "Fetch daily membership and emission history for one validator. Capital " +
+      "history and principal-derived reward ratios are unavailable (null), " +
+      "because historical voting weight is not investment principal. " +
+      "Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
       "Pass netuid to scope the series to ONE subnet, which adds that subnet's " +
       "daily alpha earnings, vTrust, consensus, dividends, take and whether the " +
       "validator permit was held that day. Mirrors GET /api/v1/validators/" +
@@ -10959,10 +10985,31 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_price_share_composition",
+    title: "Get estimated subnet price-share composition",
+    description:
+      "Fetch estimated_observed_price_set composition over up to 56 closed UTC days and six fixed netuids, not project identities. Uses one bounded snapshot read; malformed, mixed, partially normalized or truncated dates are omitted. Other artifact-normalized price share is the exact residual of one after selected shares, not a network total. Writer timestamp consistency is not source-artifact identity or completed-pass certification. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+    inputSchema: inputJsonSchema(GetSubnetPriceShareCompositionInputSchema),
+    async handler(
+      _args: z.infer<typeof GetSubnetPriceShareCompositionInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const nowMs = Date.now();
+      return buildSubnetPriceShareComposition(
+        await loadSubnetPriceShareComposition(
+          readStore(ctx.env, SUBNET_SNAPSHOT_TABLES),
+          { nowMs },
+        ),
+        { nowMs },
+      );
+    },
+  },
+  {
     name: "get_emission_pipeline_history",
     title: "Get a subnet's emission-pipeline series",
     description:
-      "Fetch ONE SUBNET'S emission-pipeline decomposition OVER TIME (#9625) " +
+      "Fetch ONE SUBNET'S stored pipeline inputs and legacy price share OVER TIME (#9625) " +
       "-- emission share, the TAO split (pool-liquidity injection vs chain " +
       "buys), alpha in/out emission, miner burned fraction, whether emission " +
       "is enabled -- one point per day, each pinned to the block it was " +
@@ -10982,7 +11029,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "re-measured. window is 7d, 30d (default), 90d or 180d. An empty series " +
       "is a measurement -- a subnet registered after the capture began " +
       "returns one legitimately. Mainnet only. Mirrors GET " +
-      "/api/v1/subnets/{netuid}/emission-pipeline/history.",
+      "/api/v1/subnets/{netuid}/emission-pipeline/history. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     inputSchema: inputJsonSchema(GetPipelineHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetPipelineHistoryInputSchema>,
@@ -11682,14 +11730,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_account_portfolio",
-    title: "Get a wallet's cross-subnet portfolio",
+    title: "Get a hotkey's registered memberships",
     description:
-      "A wallet's cross-subnet neuron portfolio (by SS58 hotkey): each position's " +
-      "economics (stake, emission, rank, trust, incentive, dividends, role) and " +
-      "emission/stake yield, plus aggregates (totals, subnet/validator counts, " +
-      "overall return, and how concentrated the wallet's stake is across subnets). " +
-      "Richer than get_account_subnets; computed live from the neurons tier. An " +
-      "unregistered address returns an empty portfolio, not an error.",
+      "One SS58 hotkey's current registered subnet memberships: emission, rank, " +
+      "trust, incentive, dividends, role and footprint counts, in netuid/uid order. " +
+      "Voting weight does not establish asset quantities or investment principal, " +
+      "so stake_alpha, total_stake_tao, yield, overall_yield and stake_concentration " +
+      "are unavailable (null), including on empty cards. This is registration " +
+      "evidence, not wallet holdings or allocation. Computed from the neurons tier.",
     inputSchema: inputJsonSchema(GetAccountPortfolioInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPortfolioInputSchema>,
@@ -11712,14 +11760,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_account_positions",
     title: "Get an account's nominator-side positions",
     description:
-      "This account's reconstructed nominator-side positions (by SS58 coldkey): " +
-      "what it holds delegated across every hotkey/subnet — hotkey, netuid, " +
-      "share_fraction (0-1, this account's share of that hotkey's alpha-pool " +
-      "shares on that subnet), and the derived stake_tao. Distinct from " +
-      "get_account_portfolio's hotkey-scoped view — a pure delegator shows " +
-      "near-zero there since its stake lives on someone ELSE's hotkey row. Root " +
-      "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
-      "no delegated positions returns an empty card, not an error. Mirrors " +
+      "Fetch periodic nominator-side records for one SS58 coldkey. Preserve " +
+      "observed hotkey/subnet relationships and capture time. Legacy stake_tao " +
+      "reconstruction can use neuron voting weight, and these wire keys do not " +
+      "identify an authoritative asset-quantity basis. Amounts and share " +
+      "fractions must not establish holdings, allocation or unstake Max. Root " +
+      "holdings are not covered; an empty response does not establish an empty " +
+      "wallet. Mirrors " +
       "GET /api/v1/accounts/{ss58}/positions.",
     inputSchema: inputJsonSchema(GetAccountPositionsInputSchema),
     async handler(
@@ -11758,7 +11805,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Get one account's compound snapshot (5 views in one call)",
     description:
       "Fan out to five of an account's live views in a single round trip: " +
-      "live TAO balance, cross-subnet portfolio (hotkey-scoped), cross-subnet " +
+      "live TAO balance, registered membership portfolio (hotkey-scoped), cross-subnet " +
       "footprint (registered subnets), nominator-side positions (coldkey-scoped), " +
       "and the most recent chain events (default 10, cap with recent_events_limit). " +
       "The same ss58 is used for every view -- portfolio/subnets are only " +
@@ -11767,7 +11814,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "erroring. Equivalent to calling get_account_balance + get_account_portfolio " +
       "+ get_account_subnets + get_account_positions + get_account_events " +
       "separately -- use this instead when an agent needs a broad picture of one " +
-      "wallet rather than drilling into just one facet.",
+      "wallet rather than drilling into just one facet. The portfolio preserves " +
+      "emission and membership observations; its capital, yields and stake " +
+      "concentration are null because voting weight does not establish holdings.",
     inputSchema: inputJsonSchema(GetAccountSnapshotInputSchema),
     async handler(
       args: z.infer<typeof GetAccountSnapshotInputSchema>,
@@ -13013,11 +13062,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "list_accounts",
     title: "List the site-wide accounts leaderboard",
     description:
-      "Fetch the site-wide accounts leaderboard: every currently-registered " +
-      "hotkey (miners included, not just validator_permit=1 rows), sortable by " +
-      "total_stake (default), total_emission, subnet_count, uid_count, " +
-      "validator_count, stake_dominance, or last_active. The all-accounts " +
-      "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
+      "Fetch currently registered hotkeys (miners included), with membership " +
+      "counts and emission observations. Capital, dominance and nested stake_alpha " +
+      "are null: neuron voting weight does not establish holdings. Sort by " +
+      "total_emission, subnet_count, uid_count, validator_count or last_active; " +
+      "legacy total_stake (default) and stake_dominance sorts use neutral hotkey " +
+      "ordering. Membership slices use netuid/uid order. Mirrors GET /api/v1/accounts.",
     inputSchema: inputJsonSchema(ListAccountsInputSchema),
     async handler(args: z.infer<typeof ListAccountsInputSchema>, ctx: McpCtx) {
       const sort =
@@ -13779,7 +13829,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // corrupted one) must still report an empty list, not fall through
       // applyQueryFilters' own "unknown collection" passthrough (which would
       // omit total/returned/cursor entirely).
-      if (!Array.isArray(data?.endpoints)) {
+      if (args.page_snapshot === undefined && !Array.isArray(data?.endpoints)) {
         data = { ...data, endpoints: [] };
       }
       // Delegate filter/sort/projection/pagination to the shared
@@ -13813,6 +13863,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (fields) queryUrl.searchParams.set("fields", fields);
       if (limit !== null) queryUrl.searchParams.set("limit", String(limit));
       if (cursor > 0) queryUrl.searchParams.set("cursor", String(cursor));
+      catalogQueryUrl(queryUrl, args, () => "/api/v1/endpoints");
       const transformed = applyMcpQueryFilters(
         data,
         queryUrl,
@@ -13820,7 +13871,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ENDPOINTS_QUERY_FILTER_NAMES,
       );
       if (transformed.error) {
-        throw toolError("invalid_params", transformed.error.message);
+        throw catalogQueryError(transformed.error);
       }
       // config/data_key are guaranteed here (the "endpoints" collection always
       // exists and data.endpoints is always an array by this point, thanks to
@@ -13839,6 +13890,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         cursor: page?.cursor ?? cursor,
         limit: page?.limit ?? rows.length,
         next_cursor: page?.next_cursor ?? null,
+        ...catalogPageReceipt(page),
         sort: page?.sort ?? null,
         order: page?.order ?? null,
       };
@@ -15619,6 +15671,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_chain_holders: () => outputJsonSchema(GetChainHoldersOutputSchema),
   get_chain_concentration_history: () =>
     outputJsonSchema(GetChainConcentrationHistoryOutputSchema),
+  get_subnet_price_share_composition: () =>
+    outputJsonSchema(GetSubnetPriceShareCompositionOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>
@@ -16649,10 +16703,10 @@ export const MCP_PROMPTS = [
     ],
     build: (a: Row) =>
       `Monitor Bittensor validator ${a.hotkey}:\n` +
-      `1. get_validator_detail { hotkey: ${JSON.stringify(a.hotkey)} } — current stake, trust, APY, nominator count.\n` +
-      `2. get_validator_history { hotkey: ${JSON.stringify(a.hotkey)}, window: "30d" } — daily stake/emission trend, not just the latest snapshot.\n` +
+      `1. get_validator_detail { hotkey: ${JSON.stringify(a.hotkey)} } — membership, trust and nominator evidence; capital/APY unavailable.\n` +
+      `2. get_validator_history { hotkey: ${JSON.stringify(a.hotkey)}, window: "30d" } — daily membership/emission evidence; no principal-derived yield.\n` +
       `3. get_validator_nominators { hotkey: ${JSON.stringify(a.hotkey)} } — net_staked_tao per nominator, the honest flow signal (not gross_staked_tao alone).\n` +
-      `A zeroed response with nominator_count: 0 means a cold/never-registered hotkey, not an error — double-check the ss58 (a coldkey passed where a hotkey was expected is the common mistake). ${UNTRUSTED_DATA_NOTE}`,
+      `An empty or unavailable response does not establish zero principal or yield. Double-check the ss58 and source availability before drawing a conclusion. ${UNTRUSTED_DATA_NOTE}`,
   },
   {
     name: "audit_account_history",
@@ -17524,6 +17578,9 @@ async function dispatchTool(
   } catch (rawError) {
     const error = rawError as Row;
     if (error?.toolError) {
+      const catalogFailure = CatalogPagingFailureSchema.safeParse(
+        error.catalog_paging,
+      );
       // Classified AND captured, for the one family that is both (#10641).
       // Keyed on the MARKER, never on the code: `ai_unavailable` is also what
       // requireAi throws for "no AI binding here", which is an expected
@@ -17557,6 +17614,12 @@ async function dispatchTool(
             // block is shaped to later carry an x402 challenge as one more
             // member rather than a second error vocabulary.
             ...(error.payment ? { payment: error.payment } : {}),
+            ...(typeof error.parameter === "string"
+              ? { parameter: error.parameter }
+              : {}),
+            ...(catalogFailure.success
+              ? { catalog_paging: catalogFailure.data }
+              : {}),
           },
         },
         isError: true,

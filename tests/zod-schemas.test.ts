@@ -403,7 +403,7 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-async function realBody(path: string) {
+async function realBody(path: string): Promise<unknown> {
   const env = createLocalArtifactEnv();
   const res = await handleRequest(req(path), env as unknown as Env, {});
   assert.equal(

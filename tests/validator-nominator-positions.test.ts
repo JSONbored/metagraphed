@@ -39,7 +39,12 @@ import {
   type NominatorPositionsRead,
 } from "../src/validator-nominator-positions.ts";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import {
+  ValidatorNominatorPositionsSchema,
+  ValidatorNominatorsArtifactSchema,
+} from "../schemas-src/routes/validator-nominators.ts";
 
 const MIGRATIONS = [
   "0011_nominator_positions.sql",
@@ -373,7 +378,12 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
     );
   const body = async (res: Response) => {
     assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-    return ((await res.json()) as Row).data as Row;
+    return (
+      await parseJsonBody(
+        res,
+        successEnvelopeSchema(ValidatorNominatorPositionsSchema),
+      )
+    ).data;
   };
 
   test("serves the positions basis", async () => {
@@ -390,10 +400,13 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
   test("the DEFAULT basis is unchanged", async () => {
     // The flow basis must keep answering as it always has: changing the default
     // would silently change what every existing caller's numbers mean.
-    const data = await body(
-      await get(`/api/v1/validators/${HOTKEY}/nominators`),
+    const res = await get(`/api/v1/validators/${HOTKEY}/nominators`);
+    assert.equal(res.status, 200);
+    const { data } = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ValidatorNominatorsArtifactSchema),
     );
-    assert.equal(data.basis, undefined);
+    assert.equal(Object.hasOwn(data, "basis"), false);
     assert.equal(Array.isArray(data.nominators), true);
   });
 

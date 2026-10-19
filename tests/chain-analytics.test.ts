@@ -11,7 +11,21 @@ import {
 } from "../src/chain-analytics.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import {
+  ChainActivityArtifactSchema,
+  ChainCallsArtifactSchema,
+  ChainFeesArtifactSchema,
+  ChainSignersArtifactSchema,
+} from "../schemas-src/routes/chain-analytics.ts";
+import {
+  ChainTransferPairsArtifactSchema,
+  ChainTransfersArtifactSchema,
+} from "../schemas-src/routes/chain-transfers.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
 // not a `globalThis` property -- so stubbing/restoring it for a test needs
@@ -238,7 +252,10 @@ test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", as
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainActivityArtifactSchema),
+  );
   assert.equal(body.data.schema_version, 1);
   assert.equal(body.data.window, "7d");
   assert.equal(body.data.day_count, 2);
@@ -257,7 +274,8 @@ test("GET /api/v1/chain/activity rejects an unsupported window with 400", async 
     {},
   );
   assert.equal(res.status, 400);
-  assert.equal((await res.json()).error.code, "invalid_query");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.code, "invalid_query");
 });
 
 test("GET /api/v1/chain/activity is schema-stable empty when the store is cold", async () => {
@@ -267,7 +285,10 @@ test("GET /api/v1/chain/activity is schema-stable empty when the store is cold",
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainActivityArtifactSchema),
+  );
   assert.equal(body.data.day_count, 0);
   assert.deepEqual(body.data.days, []);
 });
@@ -381,7 +402,10 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainCallsArtifactSchema),
+  );
   assert.equal(body.data.total_extrinsics, 120);
   assert.equal(body.data.calls[0].share, 0.5); // 60/120 (full window), not 60/90
 
@@ -433,7 +457,10 @@ test("GET /api/v1/chain/calls declines a call_module scope rather than answering
     {},
   );
   assert.equal(scoped.status, 200);
-  const scopedBody = await scoped.json();
+  const scopedBody = await parseJsonBody(
+    scoped,
+    successEnvelopeSchema(ChainCallsArtifactSchema),
+  );
   assert.deepEqual(scopedBody.data.calls, []);
 
   // Unscoped, the same projection answers with its rows.
@@ -444,7 +471,10 @@ test("GET /api/v1/chain/calls declines a call_module scope rather than answering
     env as unknown as Env,
     {},
   );
-  const unscopedBody = await unscoped.json();
+  const unscopedBody = await parseJsonBody(
+    unscoped,
+    successEnvelopeSchema(ChainCallsArtifactSchema),
+  );
   assert.equal(unscopedBody.data.calls[0].call_function, "add_stake");
 });
 
@@ -463,7 +493,8 @@ test("GET /api/v1/chain/calls rejects an inert group_by and an out-of-range limi
       {},
     );
     assert.equal(res.status, 400, path);
-    assert.equal((await res.json()).meta.parameter, parameter);
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.meta.parameter, parameter);
   }
 });
 
@@ -578,7 +609,10 @@ test("GET /api/v1/chain/signers never queries the store even when mocked with re
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainSignersArtifactSchema),
+  );
   assert.equal(body.data.sort, "tx_count");
   assert.deepEqual(body.data.signers, []);
   assert.equal(d1Called, false);
@@ -593,7 +627,10 @@ test("GET /api/v1/chain/signers echoes the requested sort with an empty leaderbo
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainSignersArtifactSchema),
+  );
   assert.equal(body.data.sort, "total_fee_tao");
   assert.deepEqual(body.data.signers, []);
 });
@@ -607,7 +644,10 @@ test("GET /api/v1/chain/signers still shape-validates call_module even though it
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainSignersArtifactSchema),
+  );
   assert.deepEqual(body.data.signers, []);
 });
 
@@ -618,7 +658,7 @@ test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
     {},
   );
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
   assert.equal(body.meta.parameter, "sort");
 });
 
@@ -646,7 +686,10 @@ test("GET /api/v1/chain/transfers never queries the store even when mocked with 
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainTransfersArtifactSchema),
+  );
   assert.equal(body.data.window, "7d");
   assert.equal(body.data.total_volume_tao, 0);
   assert.deepEqual(body.data.top_senders, []);
@@ -750,7 +793,10 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
       {},
     );
     assert.equal(get.status, 200);
-    const body = await get.json();
+    const body = await parseJsonBody(
+      get,
+      successEnvelopeSchema(ChainTransfersArtifactSchema),
+    );
     assert.equal(body.data.total_volume_tao, 0);
     assert.equal(
       captured.length,
@@ -864,9 +910,13 @@ test("GET /api/v1/chain/transfers CSV export with ?format=csv is header-only eve
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
+  const contentDisposition = res.headers.get("content-disposition");
+  assert.ok(contentDisposition);
   assert.match(
-    res.headers.get("content-disposition"),
+    contentDisposition,
     /attachment; filename="chain-transfers\.csv"/,
   );
   const lines = (await res.text()).trim().split("\r\n");
@@ -887,7 +937,9 @@ test("GET /api/v1/chain/transfers honors Accept: text/csv the same as ?format=cs
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
 });
 
 test("GET /api/v1/chain/transfers emits a header-only CSV on a cold store", async () => {
@@ -897,7 +949,9 @@ test("GET /api/v1/chain/transfers emits a header-only CSV on a cold store", asyn
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), TRANSFERS_CSV_HEADER);
 });
 
@@ -966,7 +1020,9 @@ test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receive
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines[0], TRANSFERS_CSV_HEADER);
   assert.equal(lines.length, 3);
@@ -997,7 +1053,10 @@ test("GET /api/v1/chain/transfers: flag=postgres falls back to the empty card wh
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainTransfersArtifactSchema),
+  );
   assert.equal(body.data.total_volume_tao, 0);
 });
 
@@ -1025,7 +1084,10 @@ test("GET /api/v1/chain/transfer-pairs never queries the store even when mocked 
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainTransferPairsArtifactSchema),
+  );
   assert.equal(body.data.window, "7d");
   assert.equal(body.data.sort, "count");
   assert.equal(body.data.total_volume_tao, 0);
@@ -1104,9 +1166,13 @@ test("GET /api/v1/chain/transfer-pairs CSV export with ?format=csv is header-onl
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
+  const contentDisposition = res.headers.get("content-disposition");
+  assert.ok(contentDisposition);
   assert.match(
-    res.headers.get("content-disposition"),
+    contentDisposition,
     /attachment; filename="chain-transfer-pairs\.csv"/,
   );
   const lines = (await res.text()).trim().split("\r\n");
@@ -1126,7 +1192,9 @@ test("GET /api/v1/chain/transfer-pairs honors Accept: text/csv the same as ?form
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
 });
 
 test("GET /api/v1/chain/transfer-pairs emits a header-only CSV on a cold store", async () => {
@@ -1138,7 +1206,9 @@ test("GET /api/v1/chain/transfer-pairs emits a header-only CSV on a cold store",
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal((await res.text()).trim(), PAIRS_CSV_HEADER);
 });
 
@@ -1155,7 +1225,9 @@ test("HEAD /api/v1/chain/transfer-pairs?format=csv returns the CSV headers with 
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const contentType = res.headers.get("content-type");
+  assert.ok(contentType);
+  assert.match(contentType, /text\/csv/);
   assert.equal(await res.text(), "");
 });
 
@@ -1220,7 +1292,7 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
       {},
     );
     assert.equal(res.status, 400, path);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
   }
 });
@@ -1272,7 +1344,10 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to the empty ca
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(ChainTransferPairsArtifactSchema),
+  );
   assert.equal(body.data.total_volume_tao, 0);
 });
 
@@ -1297,7 +1372,7 @@ test("chain signers/fees reject an over-long call_module with 400", async () => 
       {},
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.meta.parameter, "call_module");
   }
 });
@@ -1314,7 +1389,8 @@ test("GET /api/v1/chain/signers rejects an out-of-range limit", async () => {
       {},
     );
     assert.equal(res.status, 400, path);
-    assert.equal((await res.json()).meta.parameter, "limit");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.meta.parameter, "limit");
   }
 });
 
@@ -1476,15 +1552,25 @@ test("GET /api/v1/chain/fees rejects an out-of-range limit", async () => {
       {},
     );
     assert.equal(res.status, 400, path);
-    assert.equal((await res.json()).meta.parameter, "limit");
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(body.meta.parameter, "limit");
   }
 });
 
 test("the new chain routes are schema-stable empty when the store is cold", async () => {
-  for (const path of [
-    "/api/v1/chain/calls",
-    "/api/v1/chain/signers",
-    "/api/v1/chain/fees",
+  for (const { path, schema } of [
+    {
+      path: "/api/v1/chain/calls",
+      schema: successEnvelopeSchema(ChainCallsArtifactSchema),
+    },
+    {
+      path: "/api/v1/chain/signers",
+      schema: successEnvelopeSchema(ChainSignersArtifactSchema),
+    },
+    {
+      path: "/api/v1/chain/fees",
+      schema: successEnvelopeSchema(ChainFeesArtifactSchema),
+    },
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
@@ -1492,7 +1578,7 @@ test("the new chain routes are schema-stable empty when the store is cold", asyn
       {},
     );
     assert.equal(res.status, 200, `${path} cold → 200`);
-    const body = await res.json();
+    const body = await parseJsonBody(res, schema);
     assert.equal(body.ok, true);
     assert.equal(body.data.schema_version, 1);
   }

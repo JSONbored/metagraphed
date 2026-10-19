@@ -7,6 +7,8 @@ installNativeSurfaceFixtures();
 import { nativeOwnershipEnv } from "./helpers/native-ownership-env.ts";
 import { nativeRuntimeEnv } from "./helpers/native-runtime-env.ts";
 import { nativeDetailReaders } from "./helpers/native-detail-readers.ts";
+import { nativeAccountRow } from "./helpers/native-account-row.ts";
+import * as accountFeeds from "../src/indexed-account-feeds.ts";
 import assert from "node:assert/strict";
 import { visibleInWindow } from "./helpers/scan-window.ts";
 import {
@@ -16247,6 +16249,55 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.equal(out.stake_concentration, null);
   });
 
+  test("get_account_portfolio retains membership evidence while clearing legacy financial values", async () => {
+    const res = await callTool(
+      "get_account_portfolio",
+      { ss58: SS58 },
+      {
+        env: {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async () =>
+              Response.json({
+                ss58: SS58,
+                position_count: 1,
+                total_stake_tao: 0,
+                total_emission_tao: 4,
+                overall_yield: 0,
+                stake_concentration: { hhi: 0 },
+                positions: [
+                  {
+                    netuid: 3,
+                    uid: 8,
+                    stake_alpha: 0,
+                    yield: 0,
+                    emission_alpha: 4,
+                    trust: 0.9,
+                  },
+                ],
+              }),
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_stake_tao, null);
+    assert.equal(out.overall_yield, null);
+    assert.equal(out.stake_concentration, null);
+    assert.equal(out.total_emission_tao, 4);
+    assert.deepEqual(out.positions, [
+      {
+        netuid: 3,
+        uid: 8,
+        stake_alpha: null,
+        yield: null,
+        emission_alpha: 4,
+        trust: 0.9,
+      },
+    ]);
+  });
+
   test("get_account_events rejects a non-string kind", async () => {
     const res = await callTool(
       "get_account_events",
@@ -16255,6 +16306,78 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /kind/);
+  });
+
+  test("account and subnet event tools forward exact fee kinds and preserve unvalued payer rows", async () => {
+    for (const kind of ["TransactionFeePaid", "TransactionFeePaidWithAlpha"]) {
+      for (const name of ["get_account_events", "get_subnet_events"]) {
+        const isAccount = name === "get_account_events";
+        const netuid = kind === "TransactionFeePaid" ? null : 7;
+        const rows =
+          isAccount || netuid != null
+            ? [
+                nativeAccountRow({
+                  event_kind: kind,
+                  hotkey: null,
+                  coldkey: SS58,
+                  netuid,
+                  amount_tao: null,
+                  alpha_amount: null,
+                }),
+              ]
+            : [];
+        const read = vi
+          .spyOn(accountFeeds, "loadIndexedAccountFeedPage")
+          .mockResolvedValue(rows);
+        try {
+          const res = await callTool(name, {
+            ...(isAccount ? { ss58: SS58 } : {}),
+            kind,
+            ...(!isAccount || netuid != null ? { netuid: 7 } : {}),
+            block_start: 10,
+            block_end: 200,
+            limit: 2,
+          });
+          assert.equal(res.body.result.isError, false);
+          const out = res.body.result.structuredContent;
+          assert.equal(out.event_count, rows.length);
+          if (rows.length) {
+            const [event] = out.events;
+            assert.equal(event.event_kind, kind);
+            assert.equal(event.hotkey, null);
+            assert.equal(event.coldkey, SS58);
+            assert.equal(event.netuid, netuid);
+            assert.equal(event.amount_tao, null);
+            assert.equal(event.alpha_amount, null);
+            assert.equal(event.price_at_tx, null);
+            assert.equal(event.price_basis, null);
+          } else {
+            assert.deepEqual(out.events, []);
+          }
+          assert.equal(read.mock.calls.length, 1);
+          const filters = {
+            kind,
+            netuid: isAccount ? netuid : 7,
+            blockStart: 10,
+            blockEnd: 200,
+            cursor: null,
+          };
+          assert.deepEqual(
+            read.mock.lastCall?.[1],
+            isAccount
+              ? ["hotkey", "coldkey"].map((side) => ({
+                  ...filters,
+                  side,
+                  account: SS58,
+                }))
+              : [{ ...filters, side: "all", account: "*" }],
+          );
+          assert.equal(read.mock.lastCall?.[2], 2);
+        } finally {
+          read.mockRestore();
+        }
+      }
+    }
   });
 
   test("the account tools reject a malformed ss58", async () => {
@@ -21959,7 +22082,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   // called with []) -- row-shaping over real rows is covered directly against
   // the pure builders in tests/validator-nominators.test.ts and
   // tests/validator-history.test.ts; this only proves the MCP wiring.
-  test("get_validator_detail returns a schema-stable zeroed aggregate", async () => {
+  test("get_validator_detail keeps capital unavailable on the empty base", async () => {
     const res = await callTool("get_validator_detail", { hotkey: HOTKEY });
     const out = res.body.result.structuredContent;
     assert.equal(out.hotkey, HOTKEY);
@@ -21967,6 +22090,53 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.subnet_count, 0);
     assert.deepEqual(out.subnets, []);
     assert.equal(out.take, null);
+    assert.equal(out.total_stake_tao, null);
+    assert.equal(out.root_stake_tao, null);
+    assert.equal(out.alpha_stake_tao, null);
+    assert.equal(out.apy_estimate, null);
+    assert.equal(out.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("get_validator_detail withholds legacy service capital and realized returns", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            hotkey: HOTKEY,
+            total_stake_tao: 1000,
+            root_stake_tao: 100,
+            alpha_stake_tao: 900,
+            apy_estimate: 0.2,
+            apy_estimate_eligible_subnet_count: 2,
+            realized_return_1d: 0.1,
+            realized_return_1w: 0.2,
+            realized_return_1m: 0.3,
+            realized_return_1d_as_of: "2026-10-16",
+            realized_return_1w_as_of: "2026-10-16",
+            realized_return_1m_as_of: "2026-10-16",
+            take: 0.1,
+            total_emission_tao: 5,
+            subnets: [],
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_validator_detail",
+      { hotkey: HOTKEY },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_stake_tao, null);
+    assert.equal(out.apy_estimate, null);
+    assert.equal(out.apy_estimate_eligible_subnet_count, 0);
+    for (const window of ["1d", "1w", "1m"]) {
+      assert.equal(out[`realized_return_${window}`], null);
+      assert.equal(out[`realized_return_${window}_as_of`], null);
+    }
+    assert.equal(out.take, 0.1);
+    assert.equal(out.total_emission_tao, 5);
   });
 
   test("get_validator_detail rejects a missing/invalid hotkey", async () => {
@@ -22070,6 +22240,9 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.validators[0].take, 0.18);
     assert.equal(out.validators[0].nominator_count, 42);
+    assert.equal(out.validators[0].total_stake_tao, null);
+    assert.equal(out.validators[0].apy_estimate, null);
+    assert.equal(out.validators[0].apy_estimate_eligible_subnet_count, 0);
     assert.deepEqual(out.validators[0].coldkey_identity, {
       has_identity: true,
       name: "Alice",
@@ -23121,7 +23294,28 @@ describe("MCP get_account_snapshot", () => {
               schema_version: 1,
               ss58: SS58,
               position_count: 2,
-              positions: [],
+              total_stake_tao: 1000,
+              total_emission_tao: 6,
+              overall_yield: 0.1,
+              stake_concentration: { hhi: 0.8 },
+              positions: [
+                {
+                  netuid: 7,
+                  uid: 9,
+                  stake_alpha: 900,
+                  yield: 0.1,
+                  emission_alpha: 4,
+                  trust: 0.9,
+                },
+                {
+                  netuid: 1,
+                  uid: 3,
+                  stake_alpha: 100,
+                  yield: 0.2,
+                  emission_alpha: 2,
+                  trust: 0.8,
+                },
+              ],
             });
           }
           if (url.pathname === `/api/v1/accounts/${SS58}/subnets`) {
@@ -23153,6 +23347,28 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.ss58, SS58);
       assert.equal(out.balance.balance_tao, 2.5);
       assert.equal(out.portfolio.position_count, 2);
+      assert.equal(out.portfolio.total_stake_tao, null);
+      assert.equal(out.portfolio.overall_yield, null);
+      assert.equal(out.portfolio.stake_concentration, null);
+      assert.equal(out.portfolio.total_emission_tao, 6);
+      assert.deepEqual(out.portfolio.positions, [
+        {
+          netuid: 1,
+          uid: 3,
+          stake_alpha: null,
+          yield: null,
+          emission_alpha: 2,
+          trust: 0.8,
+        },
+        {
+          netuid: 7,
+          uid: 9,
+          stake_alpha: null,
+          yield: null,
+          emission_alpha: 4,
+          trust: 0.9,
+        },
+      ]);
       assert.equal(out.subnets.subnet_count, 3);
       assert.equal(
         out.positions.position_count,
@@ -23467,6 +23683,35 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(out.limit, 20);
     assert.equal(out.account_count, 0);
     assert.deepEqual(out.accounts, []);
+  });
+
+  test("list_accounts declines an already capped legacy financial page", async () => {
+    const res = await callTool(
+      "list_accounts",
+      { limit: 1 },
+      {
+        env: {
+          METAGRAPH_NEURONS_SOURCE: "data-api",
+          DATA_API: {
+            fetch: async () =>
+              Response.json({
+                account_count: 300,
+                accounts: [
+                  {
+                    hotkey: "legacy-selected",
+                    total_stake_tao: 0,
+                    stake_dominance: 0,
+                    subnets: [],
+                  },
+                ],
+              }),
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.account_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.accounts, []);
   });
 
   test("list_accounts accepts each REST-supported sort key with an empty leaderboard", async () => {
@@ -23863,6 +24108,10 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
             return Response.json({
               schema_version: 1,
               marker: "from-postgres",
+              ...(tool === "list_global_validators" ? { validators: [] } : {}),
+              ...(tool === "list_accounts" ? { accounts: [] } : {}),
+              ...(tool === "get_validator_history" ? { points: [] } : {}),
+              ...(tool === "get_account_portfolio" ? { positions: [] } : {}),
             });
           },
         },

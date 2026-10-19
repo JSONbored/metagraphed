@@ -1,5 +1,5 @@
-/** First-party identity originals can be PNG, JPEG, GIF or vector SVG. WebP
- * and ICO cannot be decoded by the bundled social-card renderer. */
+/** First-party sharing derivatives are PNG. Keep the bounded legacy readers
+ * for supported originals; WebP and ICO require build-time conversion. */
 export interface EntityLogo {
   bytes: ArrayBuffer;
   contentType: string;

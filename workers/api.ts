@@ -41,6 +41,7 @@ import {
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
+  contractPathForPathname,
   liveOnlyArtifactRoute,
 } from "../src/contracts.ts";
 import {
@@ -324,7 +325,15 @@ import {
   accountEdgeCacheEligible,
 } from "./account-edge-cache.ts";
 import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
-import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
+import {
+  readExplorerDirectoryCacheStamp,
+  hasNeuronCapitalPolicy,
+  normalizeNeuronCapitalForRoute,
+} from "./data-api-tier.ts";
+import {
+  ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
+  VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
+} from "./request-handlers/explorer-directories.ts";
 import {
   DEGRADED_HEADER,
   degradedSince,
@@ -396,6 +405,7 @@ import {
   handleAttributionCandidatesReview,
   handleSubnetDeregistrationHistory,
   handleSubnetPipelineHistory,
+  handleSubnetPriceShareComposition,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -5573,7 +5583,11 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
  * early returns, and wrapping it from outside is what makes the label
  * unforgettable rather than 40 more places to remember.
  */
-export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   env = withArchiveObjects(env);
   return withResponseTiming(async () => {
     try {
@@ -5609,7 +5623,11 @@ export async function handleRequest(request: Request, env: Env, ctx: Ctx = {}) {
  * producer entirely: it would evict answers that had not changed and, worse,
  * hold answers across a decode publish that had.
  */
-async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
+async function dispatchCached(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   const url = new URL(request.url);
   // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
   // reach one entry instead of computing the same body under two keys.
@@ -5647,7 +5665,11 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      ACCOUNT_EDGE_CACHE_LABEL,
+      // A warm legacy portfolio can contain unqualified capital. Keep it out
+      // of the corrected response path even when the decode stamp is unchanged.
+      ACCOUNT_PORTFOLIO_PATH_PATTERN.test(resolved.pathname.replace(/\/$/, ""))
+        ? "account-portfolio-principal-unavailable"
+        : ACCOUNT_EDGE_CACHE_LABEL,
       // Takes the argument on purpose: `withEdgeCache` only folds HEAD into the
       // GET key when the builder accepts the normalized request, and a builder
       // closing over the original HEAD would seed the GET entry with an empty
@@ -5659,7 +5681,11 @@ async function dispatchCached(request: Request, env: Env, ctx: Ctx = {}) {
   });
 }
 
-async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
+async function dispatchRequest(
+  request: Request,
+  env: Env,
+  ctx: Ctx = {},
+): Promise<Response> {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
@@ -6241,8 +6267,9 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
   // added; the fix was to stop shipping workers-og in any live Worker at
   // all, not to relocate the render into a second Worker). See
   // src/og-image.ts's own header for the full rationale.
-  if (url.pathname === "/og.png" || url.pathname === "/og") {
-    return handleOgImage(request, env, url, { readR2Object });
+  {
+    const ogImage = await handleOgImage(request, env, url, { readR2Object });
+    if (ogImage) return ogImage;
   }
 
   // Per-entity cards (#11075): /og/subnets/{netuid}.png, /og/accounts/{ss58}.png.
@@ -6421,7 +6448,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "validator-operator-directory",
+      VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
       (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
       url.pathname,
       async () => null,
@@ -6440,7 +6467,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "global-validators",
+      "global-validators-principal-unavailable",
       (cacheRequest) => handleGlobalValidators(cacheRequest, env, url),
       validatorsCache.cachePathAndSearch,
       async () => null,
@@ -6457,21 +6484,20 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "accounts-list",
+      "accounts-list-principal-unavailable",
       () => handleAccountsList(request, env, url),
       accountsCache.cachePathAndSearch,
     );
   }
 
-  // Canonical website-sized holder directory. One response contains the
-  // three bounded rankings the page switches between, and invalidates only
-  // when a complete neuron pass advances.
+  // Canonical website-sized registered-hotkey directory. The separate
+  // namespace prevents a legacy financial ranking from bypassing its guard.
   if (url.pathname === "/api/v1/accounts/directory") {
     return withEdgeCache(
       request,
       ctx,
       env,
-      "account-holder-directory",
+      ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
       (cacheRequest) => handleAccountHolderDirectory(cacheRequest, env),
       url.pathname,
       readExplorerDirectoryCacheStamp,
@@ -6531,7 +6557,7 @@ async function dispatchRequest(request: Request, env: Env, ctx: Ctx = {}) {
       request,
       ctx,
       env,
-      "validator-history",
+      "validator-history-principal-unavailable",
       () => handleValidatorHistory(request, env, validatorHistoryMatch[1], url),
       canonicalValidatorHistoryCachePath(url),
     );
@@ -8121,6 +8147,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/indexer-lag" ||
     // #9628: neuron_daily carries no network dimension.
     pathname === "/api/v1/chain/concentration/history" ||
+    pathname === "/api/v1/chain/subnet-price-share-composition" ||
     // #9625: subnet_snapshots carries no network dimension, so a testnet-
     // addressed request would be served MAINNET pipeline captures.
     SUBNET_PIPELINE_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -8319,8 +8346,22 @@ async function dispatchLiveChainRoute(
   if (pathname === "/api/v1/chain/indexer-lag") {
     return handleIndexerLag(request, env, new URL(request.url));
   }
-  // #9628: the network-wide concentration series. Exact-path match, and placed
-  // before the bare /chain/concentration check so the suffix is not swallowed.
+  // #11550: bounded observed price shares, using the existing short cache.
+  if (pathname === "/api/v1/chain/subnet-price-share-composition") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "subnet-price-share-composition",
+      (cacheRequest) =>
+        handleSubnetPriceShareComposition(
+          cacheRequest,
+          env,
+          new URL(cacheRequest.url),
+        ),
+    );
+  }
+  // #9628: the network-wide concentration series, before its bare route.
   if (pathname === "/api/v1/chain/concentration/history") {
     return handleChainConcentrationHistory(request, env, new URL(request.url));
   }
@@ -8573,26 +8614,12 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * were charged against what they got, and dropping it turns a settled payment
  * into one the caller has no record of.
  */
-/**
- * GENERIC, and passthrough on purpose.
- *
- * `dispatchRequest` infers `any` (its handler union bottoms out in one), so
- * `handleRequest` has always returned `any` and ~1,230 `(await
- * handleRequest(...)).json()` reads across eight test files depend on it. An
- * annotation of `Promise<Response>` here is more accurate AND propagates that
- * accuracy up the whole dispatch chain, which surfaces every one of them at
- * once -- a real finding, and not one a payments change should carry.
- *
- * So this returns what its work returns, plus the rejection it may substitute.
- * That is the honest type for a transparent wrapper either way; tightening
- * `dispatchRequest` is its own change, filed separately.
- */
-async function withX402<T extends Response>(
+async function withX402(
   request: Request,
   env: Env,
   pathname: string,
-  work: () => Promise<T>,
-): Promise<T | Response> {
+  work: () => Promise<Response>,
+): Promise<Response> {
   const gate = await enforceX402(request, env, pathname);
   if (gate && "reject" in gate) return gate.reject;
   const response = await work();
@@ -8797,7 +8824,7 @@ async function handleNetworkScopedRequest(
   url: URL,
   network: typeof DEFAULT_NETWORK,
   ctx: Ctx = {},
-) {
+): Promise<Response> {
   const isApiPath =
     url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/");
 
@@ -9002,6 +9029,24 @@ async function handleRawArtifactRequest(
       artifact_path: networkPath,
     });
   }
+  // Bounded computed routes can still have older stored objects. Apply the
+  // same provenance policy as service responses before publish stamping.
+  const route = API_ROUTES.find((entry) => entry.id === matched.id);
+  const routePath = route?.path ?? "";
+  const capitalPolicy = hasNeuronCapitalPolicy(routePath);
+  const normalized = capitalPolicy
+    ? rowOf(artifact.data) === null
+      ? null
+      : normalizeNeuronCapitalForRoute(routePath, artifact.data as Row)
+    : (artifact.data as Row);
+  if (capitalPolicy && normalized === null) {
+    return errorResponse(
+      "artifact_principal_unavailable",
+      "Stored rankings do not establish holdings or principal; use the live API endpoints.",
+      503,
+      { artifact_path: networkPath },
+    );
+  }
   // Live per-endpoint health overlay: raw artifacts that embed the shared
   // EndpointResource list (endpoints.json, subnets/{n}.json, profiles/{n}.json,
   // provider endpoints) must not serve build-time operational health as fresh.
@@ -9009,7 +9054,7 @@ async function handleRawArtifactRequest(
   // the same live status the /api/v1 routes do; surfaces with no live reading
   // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
   // that actually carry probed endpoints.
-  let data = artifact.data as Row;
+  let data = normalized as Row;
   if (
     network.isDefault &&
     Array.isArray(data?.endpoints) &&
@@ -9497,6 +9542,18 @@ async function handleApiRequest(
   }
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
+  const checkedCatalog = url.searchParams.has("page_snapshot");
+  // Generic stored bodies cannot establish requested identities or history
+  // scope. Variants must reach the live handler before any cache or read.
+  // A matched route comes from the same published contract table.
+  if (hasNeuronCapitalPolicy(contractPathForPathname(url.pathname)!)) {
+    return errorResponse(
+      "artifact_computed_live",
+      "This route is served by its live handler; use the canonical API path without a trailing slash.",
+      404,
+      { artifact_path: artifactPath },
+    );
+  }
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold
@@ -9507,6 +9564,7 @@ async function handleApiRequest(
   const edgeCacheable =
     request.method === "GET" &&
     !wantsCsv &&
+    !checkedCatalog &&
     isStaticEdgeCacheEligible(matched, network)
       ? cacheableWith(
           new Request(
@@ -9524,6 +9582,7 @@ async function handleApiRequest(
   const overlayCacheStore =
     request.method === "GET" &&
     !wantsCsv &&
+    !checkedCatalog &&
     network.isDefault &&
     CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
       ? edgeCacheStore()
@@ -9806,12 +9865,18 @@ async function handleApiRequest(
     url,
     matched.queryCollection,
     matched.queryFilterNames,
-    { csvResponse: matched.csvResponse === true },
+    {
+      csvResponse: matched.csvResponse === true,
+      snapshotUrl: networkPublicUrl(url, network),
+    },
   );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: artifactPath,
       parameter: transformed.error.parameter,
+      ...(transformed.error.reason
+        ? { catalog_paging: { reason: transformed.error.reason } }
+        : {}),
     });
   }
   // Advertise the page chain via an RFC 8288 Link header on paginated list
@@ -9860,7 +9925,15 @@ async function handleApiRequest(
       matched.cache as CacheProfile,
       request,
       transformed.meta.projection?.fields,
-      linkValue ? { link: linkValue } : {},
+      {
+        ...(linkValue ? { link: linkValue } : {}),
+        ...(checkedCatalog
+          ? {
+              "cache-control": "no-store",
+              "x-metagraph-cache-profile": "no-store",
+            }
+          : {}),
+      },
       {
         stream: matched.id === "endpoints" || matched.id === "subnet-endpoints",
       },
@@ -10010,6 +10083,12 @@ async function handleApiRequest(
       // entries, so a live-overlay response with no artifact behind it simply
       // omits them rather than asserting a tier it did not read.
       ...artifactDiagnosticHeaders(artifact),
+      ...(checkedCatalog
+        ? {
+            "cache-control": "no-store",
+            "x-metagraph-cache-profile": "no-store",
+          }
+        : {}),
     },
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
@@ -10425,7 +10504,10 @@ async function createWebhookSubscription(
   );
 }
 
-function validateWebhookSubscriptionToken(request: Request, env: Env) {
+function validateWebhookSubscriptionToken(
+  request: Request,
+  env: Env,
+): { ok: true } | { ok: false; response: Response } {
   const configured = env.METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN;
   if (typeof configured !== "string" || configured.length === 0) {
     return {

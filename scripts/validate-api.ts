@@ -985,8 +985,9 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     "/api/v1/accounts/directory",
     (body) => {
       assert.equal(typeof body.data.account_count, "number");
-      assert.equal(typeof body.data.priced_registered_stake_tao, "number");
-      assert.equal(Array.isArray(body.data.rankings?.stake), true);
+      // Voting weight does not establish holdings, even for an empty snapshot.
+      assert.equal(body.data.priced_registered_stake_tao, null);
+      assert.deepEqual(body.data.rankings?.stake, []);
       assert.equal(Array.isArray(body.data.rankings?.emission), true);
       assert.equal(Array.isArray(body.data.rankings?.reach), true);
     },
@@ -1208,10 +1209,7 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       assert.equal(body.data.schema_version, 1);
       assert.equal(Array.isArray(body.data.positions), true);
       assert.equal(typeof body.data.position_count, "number");
-      assert.ok(
-        body.data.stake_concentration === null ||
-          typeof body.data.stake_concentration === "object",
-      );
+      assert.equal(body.data.stake_concentration, null);
     },
   ],
   [
@@ -1741,6 +1739,19 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       // Oldest first, so a caller plotting the series need not reverse it.
       const days = body.data.points.map((p: { day: string }) => p.day);
       assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
+    "/api/v1/chain/subnet-price-share-composition",
+    (body) => {
+      assert.equal(body.data.quality, "estimated_observed_price_set");
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(body.data.points.length <= 56, true);
+      assert.equal(body.data.series.length <= 6, true);
+      assert.equal(
+        body.data.point_count,
+        body.data.degraded ? null : body.data.points.length,
+      );
     },
   ],
   [

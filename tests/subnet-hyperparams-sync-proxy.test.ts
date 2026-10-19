@@ -1,3 +1,5 @@
+import { parseJsonBody } from "./row-type.ts";
+import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 // Unit tests for the /api/v1/internal/subnet-hyperparams-sync proxy
 // (workers/api.ts's handleSubnetHyperparamsSyncProxy, #4832 gap-closure),
 // which forwards to workers/data-api.ts's handleSubnetHyperparamsSync via
@@ -113,7 +115,7 @@ test("returns 502 when the upstream response body is unreadable", async () => {
   );
   assert.equal(res.status, 502);
   assert.equal(
-    (await res.json()).error.code,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code,
     "subnet_hyperparams_sync_unavailable",
   );
 });

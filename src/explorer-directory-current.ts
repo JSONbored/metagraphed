@@ -6,6 +6,8 @@ import {
 } from "./kv-keys.ts";
 import type { ExplorerDirectoryMaterialization } from "./explorer-directory-materialization.ts";
 import { missedTicksMs } from "./producer-cadence.ts";
+import { hasLegacyValidatorOperatorCapital } from "./validator-operator-directory.ts";
+import { hasLegacyAccountHolderCapital } from "./account-holder-directory.ts";
 
 // A valid KV value can outlive its producer. After eight metagraph passes,
 // use the source route, which can repair publication from a completed pass.
@@ -42,24 +44,30 @@ async function readCurrentDirectory<T extends { captured_at: string | null }>(
   }
 }
 
-export function readCurrentAccountDirectory(
+export async function readCurrentAccountDirectory(
   kv: DirectoryKv | null | undefined,
 ): Promise<ExplorerDirectoryMaterialization["accounts"] | null> {
-  return readCurrentDirectory(
+  const directory = await readCurrentDirectory(
     kv,
     KV_EXPLORER_ACCOUNT_DIRECTORY_CURRENT,
     AccountHolderDirectoryArtifactSchema,
     "account",
   );
+  return directory === null || hasLegacyAccountHolderCapital(directory)
+    ? null
+    : directory;
 }
 
-export function readCurrentValidatorDirectory(
+export async function readCurrentValidatorDirectory(
   kv: DirectoryKv | null | undefined,
 ): Promise<ExplorerDirectoryMaterialization["validators"] | null> {
-  return readCurrentDirectory(
+  const directory = await readCurrentDirectory(
     kv,
     KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
     ValidatorOperatorDirectoryArtifactSchema,
     "validator",
   );
+  return directory === null || hasLegacyValidatorOperatorCapital(directory)
+    ? null
+    : directory;
 }

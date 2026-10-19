@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetDetailArtifactSchema } from "../schemas-src/routes/subnet-detail.ts";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -2354,7 +2357,10 @@ test("Worker API serves public artifact envelopes", async () => {
     response.headers.get("x-metagraph-contract-version"),
     CONTRACT_VERSION,
   );
-  const body = await response.json();
+  const body = await parseJsonBody(
+    response,
+    successEnvelopeSchema(SubnetDetailArtifactSchema),
+  );
   assert.equal(body.ok, true);
   assert.equal(body.data.subnet.netuid, 7);
 });

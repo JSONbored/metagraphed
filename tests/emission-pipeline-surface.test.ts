@@ -523,7 +523,9 @@ describe("emission-pipeline surface — MCP", () => {
     const data = result.structuredContent;
     assert.equal(data.chain_state.block, 8_740_436);
     assert.equal(data.subnets.length, 2);
-    assert.equal(data.field_sources.emission_share.kind, "measured");
+    assert.equal(data.field_sources.emission_share.kind, "reconstructed");
+    assert.equal(data.field_sources.emission_share.storage, null);
+    assert.equal(data.field_sources.moving_price.kind, "measured");
     assert.equal(typeof data.verification.verified, "boolean");
   });
 

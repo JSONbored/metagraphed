@@ -14,7 +14,11 @@ import {
   handleAccountEntities,
 } from "../workers/request-handlers/entities.ts";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import type { z } from "zod";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { AccountEntitiesArtifactSchema } from "../schemas-src/routes/account-entities.ts";
+import { AccountSummaryArtifactSchema } from "../schemas-src/routes/account-summary.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
@@ -24,9 +28,12 @@ function req(path: string): Request {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-async function json(res: Response): Promise<Row> {
+async function json<DataSchema extends z.ZodType>(
+  res: Response,
+  dataSchema: DataSchema,
+) {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-  const body = (await res.json()) as Row;
+  const body = await parseJsonBody(res, successEnvelopeSchema(dataSchema));
   assert.equal(body.ok, true);
   return body;
 }
@@ -73,6 +80,7 @@ describe("handleAccountEntities", () => {
         {} as unknown as Env,
         SS58,
       ),
+      AccountEntitiesArtifactSchema,
     );
     assert.equal(body.data.ss58, SS58);
     assert.deepEqual(body.data.labels, []);
@@ -98,6 +106,7 @@ describe("handleAccountEntities", () => {
         env as unknown as Env,
         SS58,
       ),
+      AccountEntitiesArtifactSchema,
     );
     assert.equal(body.data.labels.length, 1);
     assert.equal(body.data.labels[0].name, "Example Foundation");
@@ -128,7 +137,8 @@ describe("handleAccount labels join", () => {
       env as unknown as Env,
       SS58,
     );
-    const body = await json(res);
+    const body = await json(res, AccountSummaryArtifactSchema);
+    assert.ok(body.data.labels);
     assert.equal(body.data.labels.length, 1);
     assert.equal(body.data.labels[0].name, "Example Exchange");
   });
@@ -143,7 +153,7 @@ describe("workers/api.ts dispatch", () => {
       {} as unknown as Env,
       ctx,
     );
-    const body = await json(res);
+    const body = await json(res, AccountEntitiesArtifactSchema);
     assert.equal(body.data.ss58, SS58);
   });
 

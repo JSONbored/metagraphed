@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildAccountsList as buildAccountsListRaw,
+  hasLegacyAccountsListCapital,
   loadAccountsList,
   ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
@@ -9,11 +10,15 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../src/accounts-list.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
 
-// An ACCOUNTS_LIST read-columns-shaped row (netuid, uid, hotkey, coldkey,
-// validator_permit, emission_tao, stake_tao, block_number, captured_at).
+// Includes legacy stake_tao to prove voting weight cannot establish capital.
 const ROW = {
   netuid: 1,
   uid: 0,
@@ -28,14 +33,8 @@ const ROW = {
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
-// #9051 price table for the ACCUMULATION tests below. Every netuid is priced
-// at exactly 1 on purpose: those tests assert grouping, rao-exact summation
-// and APY blending, so the figure under test must be the SUM, not a product.
-// Pricing itself is asserted separately, against a realistic non-unit table,
-// in the "#9051" describe block -- which declares its own local PRICES.
-// Passed explicitly at every call site: buildGlobalValidators and friends
-// REQUIRE priceByNetuid (no default), so a test cannot silently price at 1:1
-// the way production could before that argument became mandatory.
+// Unit prices isolate membership grouping and independent emission summation.
+// Non-unit and unknown prices are covered separately below.
 const ACCUMULATION_PRICES: Map<number, number | null> = new Map(
   Array.from({ length: 300 }, (_, netuid) => [netuid, 1]),
 );
@@ -121,7 +120,8 @@ describe("buildAccountsList", () => {
     assert.equal(top.uid_count, 3);
     assert.equal(top.validator_count, 2);
     assert.equal(top.miner_count, 1);
-    assert.equal(top.total_stake_tao, 151.123456789);
+    assert.equal(top.total_stake_tao, null);
+    assert.equal(top.stake_dominance, null);
     assert.equal(top.total_emission_tao, 16);
     assert.equal(top.latest_captured_at, new Date(1750000001000).toISOString());
     assert.equal(top.latest_block_number, 12);
@@ -133,6 +133,7 @@ describe("buildAccountsList", () => {
         [5, 3],
       ],
     );
+    assert.ok(top.subnets.every((subnet) => subnet.stake_alpha === null));
   });
 
   test("is cold-safe and normalizes direct-call options", () => {
@@ -178,40 +179,49 @@ describe("buildAccountsList", () => {
     assert.equal(data.account_count, 0);
   });
 
-  test("rolls up stake/emission totals and stake dominance across accounts", () => {
+  test("does not price positive voting weights or derive network capital shares", () => {
     const data = buildAccountsList([
       { ...ROW, hotkey: "hk-a", netuid: 1, uid: 0, stake_tao: 300 },
       { ...ROW, hotkey: "hk-b", netuid: 1, uid: 1, stake_tao: 100 },
     ]);
     const a = data.accounts.find((e) => e.hotkey === "hk-a")!;
     const b = data.accounts.find((e) => e.hotkey === "hk-b")!;
-    assert.equal(a.stake_dominance, 0.75);
-    assert.equal(b.stake_dominance, 0.25);
+    assert.equal(a.total_stake_tao, null);
+    assert.equal(b.total_stake_tao, null);
+    assert.equal(a.stake_dominance, null);
+    assert.equal(b.stake_dominance, null);
+    assert.equal(a.total_emission_tao, ROW.emission_tao);
+    assert.equal(b.total_emission_tao, ROW.emission_tao);
   });
 
-  test("nulls stake dominance when network stake is zero", () => {
+  test("zero voting weights do not establish zero holdings or dominance", () => {
     const data = buildAccountsList([
       { ...ROW, hotkey: "hk-a", stake_tao: 0 },
       { ...ROW, hotkey: "hk-b", netuid: 2, stake_tao: 0 },
     ]);
     for (const entry of data.accounts) {
+      assert.equal(entry.total_stake_tao, null);
       assert.equal(entry.stake_dominance, null);
+      assert.equal(entry.subnets[0].stake_alpha, null);
     }
   });
 
-  test("caps the per-account subnets[] slice at ten, ranked by membership stake", () => {
+  test("selects the first ten memberships by netuid before capping, independently of weight and emission", () => {
     const rows = Array.from({ length: 15 }, (_, i) => ({
       ...ROW,
       hotkey: "hk-a",
-      netuid: i,
+      netuid: 14 - i,
       uid: 0,
       stake_tao: 15 - i,
+      emission_tao: 15 - i,
     }));
     const data = buildAccountsList(rows);
     assert.equal(data.accounts[0].subnet_count, 15);
     assert.equal(data.accounts[0].subnets.length, 10);
-    // Highest-stake memberships first.
-    assert.equal(data.accounts[0].subnets[0].netuid, 0);
+    assert.deepEqual(
+      data.accounts[0].subnets.map((subnet) => subnet.netuid),
+      Array.from({ length: 10 }, (_, i) => i),
+    );
   });
 
   test("reports a null block_number as null, not a fabricated 0", () => {
@@ -261,12 +271,15 @@ describe("buildAccountsList", () => {
     assert.equal(data.captured_at, null);
   });
 
-  test("a null/negative/non-numeric stake or emission cell degrades to 0, not NaN", () => {
-    const data = buildAccountsList([
-      { ...ROW, hotkey: "hk-a", stake_tao: -5, emission_tao: "not-a-number" },
-    ]);
-    assert.equal(data.accounts[0].total_stake_tao, 0);
-    assert.equal(data.accounts[0].total_emission_tao, 0);
+  test("invalid weight stays unavailable while invalid emission retains zero normalization", () => {
+    for (const stake_tao of [null, -5, "not-a-number"]) {
+      const data = buildAccountsList([
+        { ...ROW, hotkey: "hk-a", stake_tao, emission_tao: "not-a-number" },
+      ]);
+      assert.equal(data.accounts[0].total_stake_tao, null);
+      assert.equal(data.accounts[0].subnets[0].stake_alpha, null);
+      assert.equal(data.accounts[0].total_emission_tao, 0);
+    }
   });
 
   test("the primary coldkey ties break alphabetically", () => {
@@ -278,20 +291,22 @@ describe("buildAccountsList", () => {
     assert.equal(data.accounts[0].coldkey_count, 2);
   });
 
-  test("sorting by stake_dominance when every account is null-dominance is stable", () => {
-    // Zero network stake -> every entry's stake_dominance is null, exercising
-    // accountSortValue's non-numeric fallback (sorts by hotkey only).
-    const data = buildAccountsList(
-      [
-        { ...ROW, hotkey: "hk-z", stake_tao: 0 },
-        { ...ROW, hotkey: "hk-a", netuid: 2, stake_tao: 0 },
-      ],
-      { sort: "stake_dominance" },
-    );
-    assert.deepEqual(
-      data.accounts.map((e) => e.hotkey),
-      ["hk-a", "hk-z"],
-    );
+  test("legacy financial sorts select by hotkey before the page limit", () => {
+    for (const sort of ["total_stake", "stake_dominance"]) {
+      const data = buildAccountsList(
+        [
+          { ...ROW, hotkey: "hk-z", stake_tao: 900 },
+          { ...ROW, hotkey: "hk-a", netuid: 2, stake_tao: 0 },
+        ],
+        { sort, limit: 1 },
+      );
+      assert.equal(data.sort, sort);
+      assert.equal(data.account_count, 2);
+      assert.deepEqual(
+        data.accounts.map((entry) => entry.hotkey),
+        ["hk-a"],
+      );
+    }
   });
 
   test("uses deterministic hotkey tie-breakers when sort values are equal", () => {
@@ -308,11 +323,7 @@ describe("buildAccountsList", () => {
     );
   });
 
-  test("caps subnets[] and tie-breaks equal stake by emission, then netuid, then uid", () => {
-    // Deliberately ascending input order for the stake_tao=1 row (lowest
-    // stake, listed first) so the comparator's b.stake_tao - a.stake_tao
-    // exercises BOTH a positive and a negative outcome, not just one
-    // direction of an already-descending input.
+  test("orders memberships by netuid regardless of weight and emission", () => {
     const data = buildAccountsList([
       {
         ...ROW,
@@ -358,24 +369,24 @@ describe("buildAccountsList", () => {
     assert.deepEqual(
       data.accounts[0].subnets.map((s) => [s.netuid, s.uid]),
       [
+        [1, 0],
         [2, 0],
         [3, 0],
         [4, 1],
-        [1, 0],
         [5, 0],
       ],
     );
   });
 
-  test("falls all the way through to the uid tie-break when stake, emission, and netuid all tie", () => {
+  test("orders repeated netuid memberships by uid regardless of weight and emission", () => {
     const data = buildAccountsList([
       {
         ...ROW,
         hotkey: "hk-a",
         netuid: 9,
         uid: 3,
-        stake_tao: 5,
-        emission_tao: 1,
+        stake_tao: 500,
+        emission_tao: 100,
       },
       {
         ...ROW,
@@ -392,17 +403,45 @@ describe("buildAccountsList", () => {
     );
   });
 
-  test("every documented sort key is a valid, applicable sort", () => {
-    for (const sort of ACCOUNTS_LIST_SORTS) {
+  test("retains every sort input and its independent ordering", () => {
+    const expected = {
+      total_stake: ["hk-a", "hk-b"],
+      total_emission: ["hk-b", "hk-a"],
+      subnet_count: ["hk-b", "hk-a"],
+      uid_count: ["hk-b", "hk-a"],
+      validator_count: ["hk-b", "hk-a"],
+      stake_dominance: ["hk-a", "hk-b"],
+      last_active: ["hk-b", "hk-a"],
+    };
+    assert.deepEqual(Object.keys(expected), ACCOUNTS_LIST_SORTS);
+    for (const [sort, hotkeys] of Object.entries(expected)) {
       const data = buildAccountsList(
         [
-          { ...ROW, hotkey: "hk-a", stake_tao: 10, emission_tao: 1 },
-          { ...ROW, hotkey: "hk-b", netuid: 2, stake_tao: 5, emission_tao: 5 },
+          {
+            ...ROW,
+            hotkey: "hk-a",
+            stake_tao: 10,
+            emission_tao: 1,
+            validator_permit: 0,
+          },
+          {
+            ...ROW,
+            hotkey: "hk-b",
+            netuid: 2,
+            stake_tao: 5,
+            emission_tao: 5,
+            block_number: ROW.block_number + 1,
+          },
+          { ...ROW, hotkey: "hk-b", netuid: 3, emission_tao: 0 },
         ],
         { sort },
       );
       assert.equal(data.sort, sort, sort);
-      assert.equal(data.accounts.length, 2, sort);
+      assert.deepEqual(
+        data.accounts.map((entry) => entry.hotkey),
+        hotkeys,
+        sort,
+      );
     }
   });
 });
@@ -435,6 +474,8 @@ describe("loadAccountsList", () => {
     // spelling stops testing anything the moment the other is used.
     assert.doesNotMatch(captured!.sql, /validator_permit\s*=/i);
     assert.match(captured!.sql, /WHERE hotkey IS NOT NULL/);
+    assert.doesNotMatch(captured!.sql, /stake_tao/);
+    assert.match(captured!.sql, /ORDER BY hotkey ASC, netuid ASC, uid ASC/);
     assert.deepEqual(captured!.params, []);
     assert.equal(data.account_count, 2);
   });
@@ -479,7 +520,10 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountsListArtifactSchema),
+    );
     assert.equal(body.data.account_count, 0);
   });
 
@@ -490,7 +534,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
   });
@@ -535,12 +579,19 @@ describe("GET /api/v1/accounts via the Worker", () => {
                 uid_count: 1,
                 validator_count: 1,
                 miner_count: 0,
-                total_stake_tao: 1000.5,
+                total_stake_tao: null,
                 total_emission_tao: 22.1,
-                stake_dominance: 1,
+                stake_dominance: null,
                 latest_captured_at: new Date(1750000000000).toISOString(),
                 latest_block_number: 8454388,
-                subnets: [{ netuid: 1, uid: 0 }],
+                subnets: [
+                  {
+                    netuid: 1,
+                    uid: 0,
+                    stake_alpha: null,
+                    emission_alpha: 22.1,
+                  },
+                ],
               },
             ],
           }),
@@ -552,10 +603,15 @@ describe("GET /api/v1/accounts via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
     assert.match(lines[1], /^hk-a,ck-a,/);
+    assert.equal(lines[1].split(",")[7], "");
+    assert.equal(lines[1].split(",")[8], "22.1");
+    assert.equal(lines[1].split(",")[9], "");
   });
 
   test("testnet has no variant (mainnet-only neurons-derived leaderboard)", async () => {
@@ -568,9 +624,8 @@ describe("GET /api/v1/accounts via the Worker", () => {
   });
 });
 
-// #9051: same TAO-pricing contract as the validator leaderboard.
-describe("TAO-priced accounts leaderboard (#9051)", () => {
-  test("prices each row through its subnet, residualizing the priceless ones", () => {
+describe("accounts emission pricing and unavailable capital", () => {
+  test("keeps root and per-subnet emission pricing without treating any weight as principal", () => {
     const data = buildAccountsListRaw(
       [
         { ...ROW, netuid: 0, hotkey: "hk", stake_tao: 10, emission_tao: 1 },
@@ -584,9 +639,78 @@ describe("TAO-priced accounts leaderboard (#9051)", () => {
         ]),
       },
     );
-    const acct = data.accounts[0] as unknown as Record<string, number>;
-    assert.equal(acct.total_stake_tao, 110); // 10 root + 400*0.25
+    const acct = data.accounts[0];
+    assert.equal(acct.total_stake_tao, null);
+    assert.equal(acct.stake_dominance, null);
+    assert.ok(acct.subnets.every((subnet) => subnet.stake_alpha === null));
     assert.equal(acct.total_emission_tao, 6); // 1 + 20*0.25
     assert.equal(acct.subnet_count, 3); // membership footprint is unaffected
+  });
+
+  test("zero, missing, invalid, and unknown prices do not recover capital", () => {
+    for (const price of [0, null, undefined, -1, Number.NaN]) {
+      const data = buildAccountsListRaw(
+        [{ ...ROW, stake_tao: 400, emission_tao: 2 }],
+        {
+          priceByNetuid: new Map<number, number | null>(
+            price === undefined ? [] : [[1, price]],
+          ),
+        },
+      );
+      assert.equal(data.accounts[0].total_stake_tao, null);
+      assert.equal(data.accounts[0].subnets[0].stake_alpha, null);
+      assert.equal(data.accounts[0].total_emission_tao, 0);
+      assert.equal(data.accounts[0].uid_count, 1);
+      assert.equal(data.captured_at, new Date(ROW.captured_at).toISOString());
+      assert.equal(data.block_number, ROW.block_number);
+    }
+  });
+});
+
+describe("hasLegacyAccountsListCapital", () => {
+  const account = {
+    total_stake_tao: null,
+    stake_dominance: null,
+    subnets: [{ stake_alpha: null }],
+  };
+
+  test("accepts fresh unavailable capital and schema-stable empty pages", () => {
+    assert.equal(hasLegacyAccountsListCapital(buildAccountsList([ROW])), false);
+    assert.equal(hasLegacyAccountsListCapital(buildAccountsList(null)), false);
+    assert.equal(hasLegacyAccountsListCapital({ accounts: [account] }), false);
+  });
+
+  test("rejects positive, zero, and missing capital even on a capped page", () => {
+    for (const value of [10, 0, undefined]) {
+      for (const field of ["total_stake_tao", "stake_dominance"]) {
+        assert.equal(
+          hasLegacyAccountsListCapital({
+            limit: 1,
+            accounts: [{ ...account, [field]: value }],
+          }),
+          true,
+        );
+      }
+      assert.equal(
+        hasLegacyAccountsListCapital({
+          accounts: [{ ...account, subnets: [{ stake_alpha: value }] }],
+        }),
+        true,
+      );
+    }
+  });
+
+  test("fails closed for malformed page, account, or membership shapes", () => {
+    for (const value of [
+      null,
+      [],
+      {},
+      { accounts: null },
+      { accounts: [null] },
+      { accounts: [{ ...account, subnets: null }] },
+      { accounts: [{ ...account, subnets: [null] }] },
+    ]) {
+      assert.equal(hasLegacyAccountsListCapital(value), true);
+    }
   });
 });

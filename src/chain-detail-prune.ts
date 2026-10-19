@@ -245,7 +245,7 @@ export interface ChainDetailPruneResult {
   /** The window this run computed, absent when nothing could be computed. */
   keep_from?: number;
   retained_blocks?: number;
-  /** Exclusive upper bound of the range this run actually deleted. */
+  /** Exclusive upper bound of the coverage range when pruning ran. */
   deleted_below?: number;
   /** Width of the coverage block range processed, capped per run. */
   blocks_pruned?: number;
@@ -379,7 +379,8 @@ export async function pruneChainDetail(
               // Replays can lower coverage between batches. Retain advertised
               // children unless this same transaction also retires their block.
               guard =
-                " AND (block_number < (SELECT MIN(block_number) FROM chain_detail_blocks)";
+                " AND (block_number < COALESCE((SELECT MIN(block_number) FROM chain_detail_blocks), ?)";
+              values.push(last);
               if (offset < coverageSpan) {
                 guard += " OR (block_number >= ? AND block_number < ?)";
                 values.push(

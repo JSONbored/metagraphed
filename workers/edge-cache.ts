@@ -5,7 +5,7 @@ import {
   DEFAULT_CHAIN_NETWORK,
 } from "../src/chain-network.ts";
 import { createRequestCounter } from "../src/request-counters.ts";
-import { ifNoneMatchSatisfied, withCacheStatus } from "./http.ts";
+import { ifNoneMatchSatisfied, withCacheStatus, withNoStore } from "./http.ts";
 import { contractVersion } from "./responses.ts";
 import { currentDataApiTierFallbackGeneration } from "./data-api-tier.ts";
 import { currentOffsetCapDeclineGeneration } from "../src/cold-tier-offset.ts";
@@ -273,6 +273,22 @@ export function edgeCacheScope(
   return network === DEFAULT_CHAIN_NETWORK ? label : `${label}:${network}`;
 }
 
+// A cached response may carry a different browser TTL than its source. Keep
+// the exact handler policy on the stored clone; neither header leaves the cache.
+const STORED_CACHE_CONTROL_HEADER = "x-metagraph-stored-cache-control";
+const STORED_EXPIRES_HEADER = "x-metagraph-stored-expires";
+
+/** Nonempty metadata distinguishes original absence from an unqualified entry. */
+function storedCacheHeader(
+  headers: Headers,
+  name: string,
+): string | null | undefined {
+  const value = headers.get(name);
+  if (value === "-") return null;
+  if (value?.startsWith("+")) return value.slice(1);
+  return undefined;
+}
+
 export async function withStampedEdgeCache(
   request: Request,
   ctx: EdgeCacheCtx | undefined,
@@ -283,6 +299,7 @@ export async function withStampedEdgeCache(
   resolveCacheStamp: (env: Env) => Promise<string | null>,
 ): Promise<Response> {
   const isHead = request.method === "HEAD";
+  const checkedCatalog = new URL(request.url).searchParams.has("page_snapshot");
   // Only opt HEAD into the GET cache path for handlers that accept the
   // normalized request. Legacy zero-arg builders may close over the original
   // HEAD request and return a bodyless response, which must not seed the GET
@@ -298,7 +315,7 @@ export async function withStampedEdgeCache(
   // it as unconditionally present, which would be true at compile time but
   // false at this test-runtime.
   const cache =
-    cacheRequest.method === "GET"
+    cacheRequest.method === "GET" && !checkedCatalog
       ? (globalThis as { caches?: CacheStorage }).caches?.default
       : null;
   // Cheap freshness read. On a hit this + the cache match is the whole request
@@ -318,20 +335,38 @@ export async function withStampedEdgeCache(
     );
     const hit = await cache.match(cacheKey);
     if (hit) {
-      // Honour conditional requests against the cached body's weak ETag so
-      // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
-      if (ifNoneMatchSatisfied(request, hit.headers.get("etag") || "")) {
+      const cacheControl = storedCacheHeader(
+        hit.headers,
+        STORED_CACHE_CONTROL_HEADER,
+      );
+      const expires = storedCacheHeader(hit.headers, STORED_EXPIRES_HEADER);
+      // Older entries cannot prove the handler's original policy. Rebuild
+      // rather than infer it from a profile or forward a rewritten TTL.
+      if (cacheControl !== undefined && expires !== undefined) {
+        const headers = new Headers(hit.headers);
+        headers.delete(STORED_CACHE_CONTROL_HEADER);
+        headers.delete(STORED_EXPIRES_HEADER);
+        if (cacheControl === null) headers.delete("cache-control");
+        else headers.set("cache-control", cacheControl);
+        if (expires === null) headers.delete("expires");
+        else headers.set("expires", expires);
+        // Honour conditional requests against the cached body's weak ETag so
+        // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
+        if (ifNoneMatchSatisfied(request, hit.headers.get("etag") || "")) {
+          return withCacheStatus(
+            new Response(null, { status: 304, headers }),
+            "hit",
+          );
+        }
         return withCacheStatus(
-          new Response(null, { status: 304, headers: hit.headers }),
+          new Response(normalizesHead ? null : hit.body, {
+            status: hit.status,
+            statusText: hit.statusText,
+            headers,
+          }),
           "hit",
         );
       }
-      return withCacheStatus(
-        normalizesHead
-          ? new Response(null, { status: hit.status, headers: hit.headers })
-          : hit,
-        "hit",
-      );
     }
   }
   const before = degradedSnapshot();
@@ -369,19 +404,34 @@ export async function withStampedEdgeCache(
   } else if (labelled && moved.unmeasured) {
     response = withDegradedHeader(built);
   }
+  if (checkedCatalog) response = withNoStore(response);
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
   // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (
     cache &&
     cacheKey &&
+    ctx?.waitUntil &&
     response.status === 200 &&
     !DATA_API_TIER_FALLBACK_RESPONSES.has(response) &&
     !moved.transient
   ) {
-    ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
+    const headers = new Headers(response.headers);
+    const cacheControl = response.headers.get("cache-control");
+    const expires = response.headers.get("expires");
+    headers.set(
+      STORED_CACHE_CONTROL_HEADER,
+      cacheControl === null ? "-" : `+${cacheControl}`,
+    );
+    headers.set(STORED_EXPIRES_HEADER, expires === null ? "-" : `+${expires}`);
+    const stored = new Response(response.clone().body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+    ctx.waitUntil(cache.put(cacheKey, stored));
   }
-  // Stamped AFTER the `cache.put` above, which stores `response.clone()`, so
-  // the stored copy stays unlabelled. See `withCacheStatus`.
+  // Stamped AFTER the `cache.put` above, so the stored clone stays unlabelled.
+  // See `withCacheStatus`.
   return withCacheStatus(
     normalizesHead
       ? new Response(null, {

@@ -1,5 +1,15 @@
 Synthetic flat Parquet fixtures generated with PyArrow 25.0.1. No production records.
 
+`economics-wide.parquet` was generated in native CI with PyArrow 26.0.0. It has
+12 synthetic extrinsics in four-row groups, all at block 42 / observed_at 10,
+with signer `synthetic-signer`, fee 0.125 and tip 0.005. Each `call_args` JSON
+object contains a payload just over 1 MiB and nested IDs 0, 7 and 9. For row i,
+the payload is `random.Random(i).randbytes(32768).hex()` repeated 16 times plus
+`x`. Calls are `{name: src_netuid, value: "7"}`, `{destination_netuid: 9}` and
+`{netuid: 0}`. Encoding uses Python's default `json.dumps`, ZSTD level 3,
+no dictionary, statistics only for block_number/observed_at, 65,536-byte pages,
+one-row write batches, page V2 and page indexes. There are no production rows.
+
 Each has 2,000 rows and row groups of 800, 800, and 400 rows. The columns are:
 
 - `id`: INT64, `9007199254740993 + row` (deliberately above JavaScript's safe integer limit).

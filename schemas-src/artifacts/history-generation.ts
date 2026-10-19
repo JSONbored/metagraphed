@@ -15,6 +15,24 @@ export const HistoryObjectSchema = z.strictObject({
   etag: z.string().min(1),
   bytes: count.positive(),
 });
+export const HistoryEconomicsSubnetIdsSchema = z
+  .array(count)
+  .max(4096)
+  .refine((ids) => ids.every((id, i) => i === 0 || ids[i - 1] < id), {
+    message: "Economics subnet IDs must be unique and sorted",
+  });
+/** One unchanged physical source part, shared by preparation and serving. */
+export const HistoryEconomicsSourceSchema = HistoryObjectSchema.extend({
+  rows: count.positive().max(65536),
+});
+export const HistoryEconomicsAttributionSchema = z.strictObject({
+  version: z.literal(1),
+  source: HistoryEconomicsSourceSchema,
+  subnetIds: z.array(HistoryEconomicsSubnetIdsSchema).min(1).max(65536),
+});
+export type HistoryEconomicsSource = z.infer<
+  typeof HistoryEconomicsSourceSchema
+>;
 /** The publisher writes this last, after qualifying every file and hash shard. */
 const generationFields = {
   ...scope,
@@ -48,6 +66,7 @@ export const HistoryFileSchema = z.strictObject({
         rowStart: count,
         rows: count.positive().max(65536),
         index: HistoryObjectSchema,
+        economics: HistoryObjectSchema.optional(),
       }),
     )
     .min(1),

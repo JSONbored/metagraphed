@@ -21,6 +21,7 @@ import {
   type ParquetRangeSource,
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
+import { readHistoryEconomicsAttribution } from "./history-economics-attribution.ts";
 
 type Scope = Pick<HistoryBlockGeneration, "generation" | "network" | "table">;
 type Generation = HistoryGeneration | HistoryBlockGeneration;
@@ -252,7 +253,8 @@ async function readFileRanges(
   sourceIdentity?: string,
   projection?: {
     columns: string[];
-    consume(
+    compactAttribution?: boolean;
+    consume?(
       rows: Record<string, unknown>[],
       start: number,
       identity: string,
@@ -325,6 +327,19 @@ async function readFileRanges(
       throw new Error("History page index does not identify its bounded part");
     validateParquetPageIndex(index);
 
+    const attribution =
+      projection?.compactAttribution && part.economics
+        ? await readHistoryEconomicsAttribution(
+            source,
+            part.economics,
+            part,
+            budget,
+          )
+        : undefined;
+    const columns = attribution
+      ? projection!.columns.filter((column) => column !== "call_args")
+      : (projection?.columns ?? Object.keys(index.groups[0].columns));
+
     // Share single-page decoding, discard gaps, then restore run order.
     // Preserve multi-page pruning and streaming memory bounds.
     const batches: {
@@ -339,7 +354,7 @@ async function readFileRanges(
       if (previous)
         while (groupEnd < previous.end) groupEnd += index.groups[++group].rows;
       if (
-        !projection &&
+        !projection?.consume &&
         previous &&
         selection.start < groupEnd &&
         Object.values(index.groups[group].columns).every(
@@ -353,7 +368,7 @@ async function readFileRanges(
     for (const { start, end, selections } of batches) {
       // Streaming releases each part: bound resident batches separately
       // from the cumulative I/O quota.
-      const partBudget = projection
+      const partBudget = projection?.consume
         ? { ...budget, decodedBytes: 0, values: 0 }
         : budget;
       let batch: Record<string, unknown>[];
@@ -363,14 +378,19 @@ async function readFileRanges(
           index,
           start,
           end,
-          projection?.columns ?? Object.keys(index.groups[0].columns),
+          columns,
           partBudget,
         );
       } finally {
         budget.bytes = partBudget.bytes;
         budget.requests = partBudget.requests;
       }
-      if (projection)
+      if (attribution)
+        batch = batch.map((row, i) => ({
+          ...row,
+          __economics_subnet_ids: attribution[start + i],
+        }));
+      if (projection?.consume)
         projection.consume(batch, start + part.rowStart, file.sourceIdentity);
       else
         for (const selection of selections)
@@ -389,7 +409,11 @@ export async function readHistoryBlock(
   scope: Scope,
   block: number,
   budget: ParquetReadBudget,
+  columns?: string[],
+  compactAttribution = false,
 ): Promise<Record<string, unknown>[]> {
+  if (compactAttribution && (scope.table !== "extrinsics" || !columns))
+    throw new Error("Compact attribution requires an extrinsic projection");
   const generation = validateHistoryBlockGeneration(input, scope);
   const index = await readJson(
     source,
@@ -422,6 +446,13 @@ export async function readHistoryBlock(
         end: run.rowStart + run.rows,
       })),
       budget,
+      undefined,
+      columns
+        ? {
+            columns: [...new Set(["block_number", "observed_at", ...columns])],
+            compactAttribution,
+          }
+        : undefined,
     );
     let offset = 0;
     for (const run of group)

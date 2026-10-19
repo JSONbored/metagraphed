@@ -21,6 +21,11 @@
 // conflating the two is what #10772 spent an issue undoing.
 
 import {
+  LEGACY_EMISSION_SHARE_DESCRIPTION,
+  MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
+  TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
+} from "../legacy-emission-share.ts";
+import {
   DECLARATIONS_REQUIRING_A_GPU,
   MIN_COMPUTE_SURFACES_REGISTERED,
   SUBNETS_IN_REGISTRY,
@@ -303,14 +308,16 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "domains",
     returns: "DomainOverview!",
     description:
-      "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains.",
+      "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains. " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "domain_summary",
     operation: "domain-summary",
     returns: "DomainSummary!",
     description:
-      "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary.",
+      "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary. " +
+      TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "compare_validators",
@@ -571,11 +578,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Whether the NETWORK is getting more concentrated: the network-wide concentration card as a per-day series, each point carrying the same five lenses the live card does (stake, emission, entity_stake, entity_emission, validator_stake) plus uids_per_entity and the shape of the day it was computed over. subnet_concentration_history answers one subnet at a time; this answers the whole network. READ builder_versions BEFORE DRAWING A TREND -- each point is a STORED computation, so if the builder changed, points before and after disagree BY CONSTRUCTION rather than because the network moved, and more than one version means the series changes DEFINITION partway along. The depth is the rollup's: neuron_daily is ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS, and a day the capture did not run is ABSENT rather than a zero-concentration point. A NULL scorecard means no measurable distribution, not a missing one. window is 7d, 30d (default) or 90d. An empty window is a measurement. Mainnet only. Mirrors GET /api/v1/chain/concentration/history.",
   },
   {
+    field: "subnet_price_share_composition",
+    operation: "subnet-price-share-composition",
+    returns: "SubnetPriceShareComposition!",
+    description:
+      "Estimated artifact-normalized moving-price share over up to 56 closed UTC days and six stable netuids. Other is an exact residual. No runtime eligibility or complete source-pass certification; Root stays in the stored denominator. Mixed, malformed, partial or cap-truncated dates are omitted. Mainnet only. Mirrors GET /api/v1/chain/subnet-price-share-composition. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+  },
+  {
     field: "subnet_emission_pipeline_history",
     operation: "subnet-emission-pipeline-history",
     returns: "SubnetPipelineHistory!",
     description:
-      "One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history.",
+      "One subnet's stored pipeline inputs and legacy price share OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "emission_changes",
@@ -645,7 +661,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-trajectory",
     returns: "SubnetTrajectory!",
     description:
-      "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory.",
+      "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "subnet_metagraph",
@@ -696,7 +713,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "economics",
     returns: "EconomicsList!",
     description:
-      "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics.",
+      "Paginated per-subnet economic + validator metrics with full REST filter parity: optionally scope to one subnet (netuid), filter by registration_allowed, search by name/slug (q), sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/economics. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "surfaces",
@@ -1093,7 +1111,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "account-portfolio",
     returns: "AccountPortfolio!",
     description:
-      "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
+      "One hotkey's cross-subnet neuron memberships in netuid/uid order, with observed scores, role, active state, native emission, counts and priced emission totals. Legacy stake quantities, total capital, concentration and investment yield are unavailable and remain null, including for an empty card; metagraph voting weight cannot establish independent principal. An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
   },
   {
     field: "account_positions",
@@ -1198,7 +1216,8 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "economics-trends",
     returns: "EconomicsTrends!",
     description:
-      "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends.",
+      "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. " +
+      MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
   },
   {
     field: "subnet_revenue",

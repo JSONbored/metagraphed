@@ -4,6 +4,7 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import {
   AskArtifactSchema,
   SemanticSearchArtifactSchema,
@@ -77,7 +78,11 @@ const EconomicBoardEntrySchema = z
     // `total_stake_tao` under the board's own name -- a rename in the
     // projection, not two readings.
     tao_in_emission_tao: z.number().nullable().optional(),
-    emission_share: z.number().nullable().optional(),
+    emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(LEGACY_EMISSION_SHARE_DESCRIPTION),
     emission_enabled: z.boolean().nullable().optional(),
     total_stake_alpha: z.number().nullable().optional(),
     validator_count: z.number().nullable().optional(),

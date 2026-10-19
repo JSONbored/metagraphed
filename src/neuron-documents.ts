@@ -194,24 +194,10 @@ function documentStatements(
 
 /** One transaction includes all three families, pruning and the pass tally. */
 function neuronDocumentWrite(input: NeuronMirrorInput) {
-  const statements = [
-    ...documentStatements(
-      "neurons",
-      documents("neurons", input.rows, NEURON_INSERT_COLUMNS),
-    ),
-    ...documentStatements(
-      "neuron_daily",
-      documents("neuron_daily", input.dailyRows, NEURON_DAILY_COLUMNS),
-    ),
-    ...documentStatements(
-      "account_position_daily",
-      documents(
-        "account_position_daily",
-        input.positionRows,
-        ACCOUNT_POSITION_DAILY_COLUMNS,
-      ),
-    ),
-  ];
+  const statements = documentStatements(
+    "neurons",
+    documents("neurons", input.rows, NEURON_INSERT_COLUMNS),
+  );
   const cutoffs = [...(input.netuidMaxCapturedAt ?? [])];
   if (cutoffs.length) {
     if (
@@ -237,6 +223,23 @@ function neuronDocumentWrite(input: NeuronMirrorInput) {
       values: [value, value, value],
     });
   }
+  // Finish current-state replacement before allocating its daily siblings.
+  // The final current prune stays after its upserts; all families and the pass
+  // still commit together, so a later history failure rolls back this prune.
+  statements.push(
+    ...documentStatements(
+      "neuron_daily",
+      documents("neuron_daily", input.dailyRows, NEURON_DAILY_COLUMNS),
+    ),
+    ...documentStatements(
+      "account_position_daily",
+      documents(
+        "account_position_daily",
+        input.positionRows,
+        ACCOUNT_POSITION_DAILY_COLUMNS,
+      ),
+    ),
+  );
   const passWrite = input.pass
     ? neuronPassWrite(input.pass, input.rows)
     : undefined;

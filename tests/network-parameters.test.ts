@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { NetworkParametersArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -610,7 +613,10 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
         {},
       );
       assert.equal(res.status, 200);
-      const body = await res.json();
+      const body = await parseJsonBody(
+        res,
+        successEnvelopeSchema(NetworkParametersArtifactSchema),
+      );
       assert.equal(body.ok, true);
       assert.equal(body.data.schema_version, 1);
       assert.equal(body.data.tao_weight, GOLDEN_TAO_WEIGHT);
@@ -635,7 +641,10 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
           {},
         );
         assert.equal(res.status, 200);
-        const body = await res.json();
+        const body = await parseJsonBody(
+          res,
+          successEnvelopeSchema(NetworkParametersArtifactSchema),
+        );
         assert.equal(body.data.tao_weight, null);
       },
     );

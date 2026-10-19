@@ -116,14 +116,14 @@ describe("isChecksumValidSs58 (metagraphed-infra#376)", () => {
 });
 
 describe("account holder directory", () => {
-  it("normalizes the three fixed rankings and complete stake denominator", () => {
+  it.each([0, 1_000])("discards legacy capital %s", (capital) => {
     const data = normalizeAccountHolderDirectory({
       schema_version: 1,
       captured_at: "2026-08-29T00:00:00.000Z",
       block_number: 8_950_000,
       account_count: 42,
       limit: 20,
-      priced_registered_stake_tao: 1_000,
+      priced_registered_stake_tao: capital,
       rankings: {
         stake: [
           {
@@ -131,28 +131,81 @@ describe("account holder directory", () => {
             coldkey: "5Cold",
             subnet_count: 7,
             uid_count: 8,
-            total_stake_tao: 100,
+            total_stake_tao: capital,
             total_emission_tao: 2,
             stake_dominance: 0.1,
           },
           { not_an_account: true },
         ],
-        emission: [],
-        reach: [],
+        emission: [
+          {
+            hotkey: "5Emission",
+            subnet_count: 1,
+            uid_count: 2,
+            total_emission_tao: 9,
+            total_stake_tao: capital,
+            stake_dominance: 0.5,
+          },
+        ],
+        reach: [
+          {
+            hotkey: "5Reach",
+            subnet_count: 7,
+            uid_count: 8,
+            total_emission_tao: 3,
+            total_stake_tao: capital,
+            stake_dominance: 0.75,
+          },
+        ],
       },
     });
 
     expect(data.account_count).toBe(42);
-    expect(data.priced_registered_stake_tao).toBe(1_000);
-    expect(data.rankings.stake).toEqual([
-      expect.objectContaining({ hotkey: "5Hot", stake_dominance: 0.1 }),
+    expect(data.limit).toBe(20);
+    expect(data.captured_at).toBe("2026-08-29T00:00:00.000Z");
+    expect(data.block_number).toBe(8_950_000);
+    expect(data.priced_registered_stake_tao).toBeNull();
+    expect(data.rankings.stake).toEqual([]);
+    expect(data.rankings.emission).toEqual([
+      expect.objectContaining({
+        hotkey: "5Emission",
+        total_emission_tao: 9,
+        total_stake_tao: null,
+        stake_dominance: null,
+      }),
     ]);
+    expect(data.rankings.reach).toEqual([
+      expect.objectContaining({
+        hotkey: "5Reach",
+        subnet_count: 7,
+        uid_count: 8,
+        total_stake_tao: null,
+        stake_dominance: null,
+      }),
+    ]);
+  });
+
+  it("never fabricates reach from an old stake-selected slice", () => {
+    const data = normalizeAccountHolderDirectory({
+      rankings: { stake: [{ hotkey: "5Hot", subnet_count: 99, total_stake_tao: 10 }] },
+    });
+    expect(data.rankings).toEqual({ stake: [], emission: [], reach: [] });
+  });
+
+  it("preserves unknown counts and emission instead of manufacturing zero", () => {
+    const data = normalizeAccountHolderDirectory({ rankings: { reach: [{ hotkey: "5Hot" }] } });
+    expect(data.rankings.reach[0]).toMatchObject({
+      subnet_count: null,
+      uid_count: null,
+      total_emission_tao: null,
+    });
   });
 
   it("is schema-stable for malformed input and uses one cache lane", () => {
     expect(normalizeAccountHolderDirectory(null)).toMatchObject({
-      account_count: 0,
-      priced_registered_stake_tao: 0,
+      account_count: null,
+      limit: null,
+      priced_registered_stake_tao: null,
       rankings: { stake: [], emission: [], reach: [] },
     });
     expect(accountHolderDirectoryQuery().queryKey).toContain("account-holder-directory");

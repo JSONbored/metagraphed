@@ -9,6 +9,7 @@
 // hand-edited DomainSummaryArtifact/DomainsArtifact components they
 // replace.
 import { z } from "zod";
+import { TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { ConcentrationMetricsSchema } from "../shared.ts";
 
 /**
@@ -43,7 +44,10 @@ export const DomainSummaryArtifactSchema = z
       .describe(
         "This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. The economics tier carries a price for every subnet, so a member without one is a data defect and is excluded from the total.",
       ),
-    total_emission_share: z.number().nullable(),
+    total_emission_share: z
+      .number()
+      .nullable()
+      .describe(TOTAL_LEGACY_EMISSION_SHARE_DESCRIPTION),
     emission_concentration: ConcentrationScorecardSchema.nullable().describe(
       "Within-domain emission concentration scorecard; null when the domain has no members. Declared Float until #9889 — the route has served the full 12-key scorecard for long enough that the scalar coerced to null on every domain, which this type's own comment then read as 'no members'.",
     ),

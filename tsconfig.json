@@ -10,6 +10,7 @@
     "lib": ["ES2023", "ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
-import type { Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { SubnetsArtifactSchema } from "../schemas-src/routes/subnets.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 const env = createLocalArtifactEnv();
 const get = (path: string) =>
@@ -16,9 +21,12 @@ describe("batch subnet lookups (?netuids=)", () => {
   test("returns only the requested netuids", async () => {
     const res = await get("/api/v1/subnets?netuids=0,7&sort=netuid");
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
     const netuids = body.data.subnets
-      .map((s: Row) => s.netuid)
+      .map((subnet) => subnet.netuid)
       .sort((a: number, b: number) => a - b);
     assert.deepEqual(netuids, [0, 7]);
   });
@@ -26,33 +34,44 @@ describe("batch subnet lookups (?netuids=)", () => {
   test("a single netuid works", async () => {
     const res = await get("/api/v1/subnets?netuids=7");
     assert.equal(res.status, 200);
-    const netuids = (await res.json()).data.subnets.map((s: Row) => s.netuid);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
+    const netuids = body.data.subnets.map((subnet) => subnet.netuid);
     assert.deepEqual(netuids, [7]);
   });
 
   test("rejects a malformed netuids value with 400 invalid_query", async () => {
     const res = await get("/api/v1/subnets?netuids=abc");
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_query");
   });
 
   test("rejects an oversized netuids list with 400 invalid_query", async () => {
     const netuids = Array.from({ length: 129 }, (_, i) => i).join(",");
     const res = await get(`/api/v1/subnets?netuids=${netuids}`);
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_query");
   });
 
   test("rejects oversized netuid members with 400 invalid_query", async () => {
     const res = await get("/api/v1/subnets?netuids=100000");
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error.code, "invalid_query");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "invalid_query");
   });
 
   test("the single netuid filter still works alongside", async () => {
     const res = await get("/api/v1/subnets?netuid=7");
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.subnets[0].netuid, 7);
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetsArtifactSchema),
+    );
+    assert.equal(body.data.subnets[0].netuid, 7);
   });
 });
 
@@ -148,7 +167,8 @@ describe("RPC proxy rate-limit headers", () => {
       {},
     );
     assert.equal(res.status, 429);
-    assert.equal((await res.json()).error.code, "rpc_rate_limited");
+    const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+    assert.equal(resBody.error.code, "rpc_rate_limited");
     assert.equal(res.headers.get("retry-after"), "60");
     assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   });

@@ -15,9 +15,18 @@ export class ApiError extends Error {
    * relying on a specific error `code`.
    */
   network?: string;
+  parameter?: string;
+  catalogReason?: NonNullable<ApiMeta["catalog_paging"]>["reason"];
   constructor(
     message: string,
-    opts: { status: number; code?: string; url: string; network?: string },
+    opts: {
+      status: number;
+      code?: string;
+      url: string;
+      network?: string;
+      parameter?: string;
+      catalogReason?: NonNullable<ApiMeta["catalog_paging"]>["reason"];
+    },
   ) {
     super(message);
     this.name = "ApiError";
@@ -25,6 +34,8 @@ export class ApiError extends Error {
     this.code = opts.code;
     this.url = opts.url;
     this.network = opts.network;
+    this.parameter = opts.parameter;
+    this.catalogReason = opts.catalogReason;
   }
 }
 
@@ -98,6 +109,7 @@ export async function apiFetch<T>(
     headers: { Accept: "application/json" },
     signal: opts.signal,
     ...opts.init,
+    ...(opts.params?.page_snapshot !== undefined ? { cache: "no-store" as const } : {}),
   };
   let res: Response;
   let text: string;
@@ -137,6 +149,8 @@ export async function apiFetch<T>(
       code: env?.error?.code,
       url: redactUrlForError(url),
       network: env?.meta?.network,
+      parameter: typeof env?.meta?.parameter === "string" ? env.meta.parameter : undefined,
+      catalogReason: env?.meta?.catalog_paging?.reason,
     });
   }
 
@@ -149,6 +163,8 @@ export async function apiFetch<T>(
         code: env.error?.code,
         url: redactUrlForError(url),
         network: env.meta?.network,
+        parameter: typeof env.meta?.parameter === "string" ? env.meta.parameter : undefined,
+        catalogReason: env.meta?.catalog_paging?.reason,
       });
     }
     // Some collection routes deliberately return a schema-stable empty 200

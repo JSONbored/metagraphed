@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart";
+import { matchedCatalogFixture } from "./catalog-fixture";
 
 const QUERY = "needle operator";
 const RESERVED = "?x=1&y=two+three#fragment%_";
@@ -21,6 +22,7 @@ async function searchFixture(page: Page) {
     reads: [] as {
       q: string;
       cursor: string | null;
+      snapshot: string | null;
       provider: string | null;
       status: string | null;
       knownStatus: string | null;
@@ -39,6 +41,7 @@ async function searchFixture(page: Page) {
       state.reads.push({
         q,
         cursor,
+        snapshot: params.get("page_snapshot"),
         provider: params.get("provider"),
         status: params.get("status"),
         knownStatus: params.get("known_status"),
@@ -74,32 +77,25 @@ async function searchFixture(page: Page) {
         (!params.get("status") || params.get("status") === row.status) &&
         (params.get("known_status") !== "true" || row.status !== "unknown"),
     );
-    const offset = Number(cursor ?? 0);
-    const limit = Number(params.get("limit") ?? 200);
-    const endpoints = matched.slice(offset, offset + limit);
     try {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          data: {
-            endpoints,
-            summary: {
-              endpoint_count: ROWS.length,
-              monitored_count: 449,
-              by_status: { ok: 449, unknown: 1 },
-            },
-            operational_observed_at: "2026-09-01T10:00:00Z",
-          },
-          meta: {
-            pagination: {
-              ...(state.omitTotal ? {} : { total: matched.length }),
-              next_cursor: offset + limit < matched.length ? offset + limit : null,
+      await route.fulfill(
+        matchedCatalogFixture(
+          new URL(route.request().url()),
+          "endpoints",
+          matched,
+          {
+            data: {
+              summary: {
+                endpoint_count: ROWS.length,
+                monitored_count: 449,
+                by_status: { ok: 449, unknown: 1 },
+              },
+              operational_observed_at: "2026-09-01T10:00:00Z",
             },
           },
-        }),
-      });
+          { omitTotal: state.omitTotal },
+        ),
+      );
     } finally {
       if (q === "slow") state.slowFinished = true;
     }
@@ -124,11 +120,12 @@ for (const width of [375, 768, 1280]) {
     await expect(directory).toContainText("200 loaded of 250 matching");
     await expect(directory).toContainText("450 tracked across the fleet");
     await expect(directory.locator(".mg-dt-caption")).toContainText("250");
-    expect(state.reads.at(-1)).toMatchObject({ q: QUERY, cursor: null });
+    expect(state.reads.at(-1)).toMatchObject({ q: QUERY, cursor: "0", snapshot: "start" });
     expect(new URL(page.url()).hash).toBe("#directory");
     await directory.getByRole("button", { name: "Load more", exact: true }).click();
     await expect(directory).toContainText("250 loaded of 250 matching");
     expect(state.reads.at(-1)).toMatchObject({ q: QUERY, cursor: "200" });
+    expect(state.reads.at(-1)?.snapshot).toMatch(/^v1\.[0-9a-f]{64}$/);
     await directory
       .locator(".mg-dt-footer")
       .getByRole("button", { name: "Page 5", exact: true })
@@ -141,7 +138,7 @@ for (const width of [375, 768, 1280]) {
       directory.getByRole("link", { name: "node401.example", exact: true }),
     ).toBeVisible();
     await expect(directory).toContainText("1 loaded of 1 matching");
-    expect(state.reads.at(-1)).toMatchObject({ q: "second", cursor: null });
+    expect(state.reads.at(-1)).toMatchObject({ q: "second", cursor: "0", snapshot: "start" });
     await page.goBack();
     await expect(search).toHaveValue(QUERY);
     await expect(
@@ -319,7 +316,7 @@ test("combines server facets and known-status filtering with search", async ({ p
   expect(state.reads.at(-1)).toMatchObject({ q: "second", status: null, knownStatus: "true" });
 });
 
-test("retains only the current query on refresh failure and retries its first page", async ({
+test("retains the accepted generation on refresh failure and retries its first page", async ({
   page,
 }) => {
   const state = await searchFixture(page);
@@ -328,9 +325,18 @@ test("retains only the current query on refresh failure and retries its first pa
   await expect(directory).toContainText("1 loaded of 1 matching");
   state.failed.add("second");
   await page.getByRole("button", { name: "refresh", exact: true }).click();
-  await expect(directory.getByRole("alert")).toContainText("endpoint refresh");
+  await expect(directory.getByRole("alert")).toContainText("Previously accepted rows retained");
+  await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toHaveCount(
+    1,
+  );
+  await expect(directory).toContainText("Previously accepted rows retained");
+  await expect(directory).toContainText("current freshness unverified");
+  await expect(directory).toContainText("1 loaded of 1 matching");
+  state.failed.delete("second");
+  await directory.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(directory).toContainText("1 loaded of 1 matching");
   await expect(directory.getByRole("link", { name: "node401.example", exact: true })).toBeVisible();
-  await expect(directory).toContainText("previously loaded endpoints remain visible");
+  expect(state.reads.at(-1)).toMatchObject({ q: "second", cursor: "0", snapshot: "start" });
   state.failed.add(RESERVED);
   await page.getByRole("searchbox", { name: "Search endpoints", exact: true }).fill(RESERVED);
   await expect(directory.getByRole("alert")).toContainText("tracked endpoints");
@@ -342,7 +348,7 @@ test("retains only the current query on refresh failure and retries its first pa
   await directory.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(directory).toContainText("1 loaded of 1 matching");
   await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toBeVisible();
-  expect(state.reads.at(-1)).toMatchObject({ q: RESERVED, cursor: null });
+  expect(state.reads.at(-1)).toMatchObject({ q: RESERVED, cursor: "0", snapshot: "start" });
 });
 
 test("does not substitute fleet totals when result metadata is unavailable", async ({ page }) => {
@@ -350,9 +356,104 @@ test("does not substitute fleet totals when result metadata is unavailable", asy
   state.omitTotal = true;
   await gotoThroughRestart(page, "/apis/endpoints?q=second");
   const directory = page.locator("section#directory");
-  await expect(directory).toContainText("1 loaded · match count unavailable");
-  await expect(directory).toContainText("450 tracked across the fleet");
+  await expect(directory.getByRole("alert")).toContainText("could not be verified");
+  await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(0);
+  await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+  await expect(page.locator("section#fleet")).toContainText("450");
+  await expect(directory).not.toContainText("450 matching");
   await expect(directory.locator(".mg-dt-caption")).not.toContainText("450");
+});
+
+test("restarts a rejected catalog generation with only fresh rows and the same search intent", async ({
+  page,
+}) => {
+  let rows = ROWS.slice(200, 203).map((row) => ({ ...row, provider: "fixture-a" }));
+  let failRestart = false;
+  const reads: { cursor: string | null; snapshot: string | null; status: number }[] = [];
+  await page.route("**/api/v1/endpoints?*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("limit") === "1") {
+      await route.fulfill(
+        matchedCatalogFixture(url, "endpoints", ROWS, {
+          data: {
+            summary: {
+              endpoint_count: ROWS.length,
+              monitored_count: 449,
+              by_status: { ok: 449, unknown: 1 },
+            },
+          },
+        }),
+      );
+      return;
+    }
+    expect(url.searchParams.get("q")).toBe(QUERY);
+    expect(url.searchParams.get("provider")).toBe("fixture-a");
+    expect(url.searchParams.get("status")).toBe("ok");
+    const result =
+      failRestart && url.searchParams.get("page_snapshot") === "start"
+        ? {
+            status: 503,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: { code: "unavailable", message: "restart unavailable" },
+              meta: {},
+            }),
+          }
+        : matchedCatalogFixture(url, "endpoints", rows, {}, { pageSize: 2 });
+    reads.push({
+      cursor: url.searchParams.get("cursor"),
+      snapshot: url.searchParams.get("page_snapshot"),
+      status: result.status,
+    });
+    await route.fulfill(result);
+  });
+  await gotoThroughRestart(
+    page,
+    "/apis/endpoints?" + new URLSearchParams({ q: QUERY, provider: "fixture-a", status: "ok" }),
+  );
+  const directory = page.locator("section#directory");
+  const search = page.getByRole("searchbox", { name: "Search endpoints", exact: true });
+  await expect(directory).toContainText("2 loaded of 3 matching");
+  await expect(directory.getByRole("link", { name: "node200.example", exact: true })).toBeVisible();
+  rows = [ROWS[402]].map((row) => ({ ...row, provider: "fixture-a" }));
+  await directory.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(directory).toContainText("These results changed or could not be verified");
+  expect(reads).toHaveLength(2);
+  expect(reads[1]).toMatchObject({ cursor: "2", status: 400 });
+  expect(reads[1].snapshot).toMatch(/^v1\.[0-9a-f]{64}$/);
+  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toHaveCount(
+    0,
+  );
+
+  await expect(
+    directory.getByRole("button", { name: "Restart results", exact: true }),
+  ).toBeVisible();
+  failRestart = true;
+  await directory.getByRole("button", { name: "Restart results", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(directory).toContainText("restart unavailable");
+  await expect(directory).toContainText("current freshness unverified");
+  await expect(directory).toContainText("2 loaded of 3 matching");
+  await expect(directory.getByRole("link", { name: "node200.example", exact: true })).toBeVisible();
+  expect(reads).toHaveLength(3);
+  expect(reads[2]).toEqual({ cursor: "0", snapshot: "start", status: 503 });
+  failRestart = false;
+  await directory.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(directory).toContainText("1 loaded of 1 matching");
+  await expect(directory.getByRole("link", { name: "node402.example", exact: true })).toBeVisible();
+  for (const host of ["node200.example", "node201.example", "node202.example"])
+    await expect(directory.getByRole("link", { name: host, exact: true })).toHaveCount(0);
+  await expect(directory.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(1);
+  await expect(directory.locator(".mg-dt-caption")).toContainText("1");
+  await expect(directory).not.toContainText("3 matching");
+  await expect(directory.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+  await expect(directory.getByRole("alert")).toHaveCount(0);
+  await expect(search).toHaveValue(QUERY);
+  expect(new URL(page.url()).searchParams.get("provider")).toBe("fixture-a");
+  expect(new URL(page.url()).searchParams.get("status")).toBe("ok");
+  expect(reads).toHaveLength(4);
+  expect(reads[3]).toEqual({ cursor: "0", snapshot: "start", status: 200 });
 });
 
 test.describe("catalog-wide known status", () => {
@@ -393,29 +494,17 @@ test.describe("catalog-wide known status", () => {
             : p.get("known_status") === "true"
               ? known
               : [...unknown, ...known];
-        const offset = Number(p.get("cursor") ?? 0);
-        const limit = Number(p.get("limit") ?? 200);
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ok: true,
+        await route.fulfill(
+          matchedCatalogFixture(new URL(route.request().url()), "endpoints", matches, {
             data: {
-              endpoints: matches.slice(offset, offset + limit),
               summary: {
                 endpoint_count: 450,
                 monitored_count: 400,
                 by_status: { ok: 84, degraded: 83, failed: 83, unknown: 200 },
               },
             },
-            meta: {
-              pagination: {
-                total: matches.length,
-                next_cursor: offset + limit < matches.length ? offset + limit : null,
-              },
-            },
           }),
-        });
+        );
       });
       await gotoThroughRestart(page, "/endpoints?status=monitored#directory");
       const directory = page.locator("section#directory");
@@ -439,7 +528,7 @@ test.describe("catalog-wide known status", () => {
       await expect(directory).toContainText("2 loaded of 2 matching");
       expect(reads.at(-1)?.get("q")).toBe("late known");
       expect(reads.at(-1)?.get("known_status")).toBe("true");
-      expect(reads.at(-1)?.has("cursor")).toBe(false);
+      expect(reads.at(-1)?.get("cursor")).toBe("0");
       await page.goBack();
       await expect(search).toHaveValue("");
       await expect(directory).toContainText("250 loaded of 250 matching");

@@ -1,6 +1,11 @@
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { BlockEventsArtifactSchema } from "../schemas-src/routes/block-events.ts";
+import { parseJsonBody } from "./row-type.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+
+const responseSchema = successEnvelopeSchema(BlockEventsArtifactSchema);
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -65,7 +70,7 @@ test("GET /blocks/{ref}/events honors ?limit and rejects bad params", async () =
     {},
   );
   assert.equal(ok.status, 200);
-  assert.equal((await ok.json()).data.limit, 10);
+  assert.equal((await parseJsonBody(ok, responseSchema)).data.limit, 10);
 
   const bad = await handleRequest(
     req("/api/v1/blocks/1000000/events?bogus=1"),
@@ -85,7 +90,7 @@ test("GET /blocks/{ref}/events is schema-stable for an unknown ref (never 404)",
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, responseSchema);
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);
@@ -102,7 +107,7 @@ test("GET /blocks/{number}/events resolves an unknown numeric ref to block_numbe
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, responseSchema);
   assert.equal(body.data.ref, "777");
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.event_count, 0);
@@ -117,7 +122,7 @@ test("GET /blocks/{number}/events ignores orphaned account_events when block is 
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, responseSchema);
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.event_count, 0);
   assert.deepEqual(body.data.events, []);

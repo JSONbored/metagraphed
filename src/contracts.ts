@@ -1,3 +1,5 @@
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../schemas-src/legacy-emission-share.ts";
+import { buildSubnetPriceShareComposition } from "./subnet-price-share-composition.ts";
 import {
   CONTRACT_VERSION,
   ARTIFACT_BASE_PATH,
@@ -16,6 +18,7 @@ import {
 } from "./compute-declaration-figures.ts";
 import { z } from "zod";
 import {
+  collectionSnapshotParamSchema,
   fieldsSchema,
   filterTokenSchema,
   limitSchema,
@@ -1067,7 +1070,8 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "economics",
     "/metagraph/economics.json",
-    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height. `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition.",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "EconomicsArtifact",
   ),
   // --- The AI-native layer (ADR 0003), registered by #9092 -----------------
@@ -1451,28 +1455,28 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "global-validators",
     "/metagraph/validators.json",
-    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons store at /api/v1/validators (no static file).",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across current subnet memberships, with footprint, trust and emission observations. Capital, APY, realized returns and dominance are unavailable because voting weight does not establish independent investment principal. Legacy capital sorts retain deterministic tie ordering. Computed at /api/v1/validators (no static file).",
     "GlobalValidatorsArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "validator-operator-directory",
     "/metagraph/validators/operators.json",
-    "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Multi-key unique nominator counts are unavailable. Computed live at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators; the rich per-hotkey REST/MCP response remains unchanged.",
+    "Website-sized validator operator directory: current validator hotkeys grouped only by a shared unambiguous observed owner account, with stable network-scoped IDs and explicit ownership evidence. Declared names do not establish ownership; unknown or conflicting owners remain hotkey-scoped. Capital, APY, dominance and multi-key unique nominator counts are unavailable. Operators and their primary hotkeys use neutral address ordering. Computed at /api/v1/validators/operators from the same neurons snapshot as /api/v1/validators.",
     "ValidatorOperatorDirectoryArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "accounts-list",
     "/metagraph/accounts.json",
-    "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons store at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
+    "Currently registered hotkeys with membership counts and emission observations. Capital, dominance and nested stake_alpha are unavailable because voting weight does not establish holdings. Legacy capital sorts use neutral hotkey ordering; compact membership slices use netuid/uid order. Computed at /api/v1/accounts (no static file).",
     "AccountsListArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "account-holder-directory",
     "/metagraph/accounts/directory.json",
-    "Website-sized account holder directory: bounded stake, emission and subnet-reach rankings derived together from one complete neuron snapshot, with the compact fields the account directory renders and each account's share of priced registered stake. Computed live at /api/v1/accounts/directory; the rich independently sortable /api/v1/accounts response remains unchanged.",
+    "Website account directory with bounded emission and subnet-reach rankings from one complete neuron snapshot. Capital and dominance are unavailable, the stake ranking is empty, and priced_registered_stake_tao is null: voting weight does not establish holdings or network-wide stake shares. Computed at /api/v1/accounts/directory (no static file).",
     "AccountHolderDirectoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -1486,7 +1490,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "validator-detail",
     "/metagraph/validators/{hotkey}.json",
-    "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons store at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
+    "Cross-subnet detail for one validator identity: membership, trust, take and emission observations from its validator_permit=1 rows. Voting weight remains per subnet; capital, APY and realized returns are unavailable without independently measured principal. Computed at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
     "ValidatorDetailArtifact",
     COMPUTED_LIVE,
   ),
@@ -1500,7 +1504,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "validator-history",
     "/metagraph/validators/{hotkey}/history.json",
-    "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily store tier at /api/v1/validators/{hotkey}/history (no static file).",
+    "Daily validator membership and emission observations, rolled up from neuron_daily at /api/v1/validators/{hotkey}/history (no static file). Capital history and principal-derived reward ratios are unavailable because historical voting weight does not establish investment principal. Per-subnet operational observations remain scoped to one netuid.",
     "ValidatorHistoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -1752,14 +1756,14 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-portfolio",
     "/metagraph/accounts/{ss58}/portfolio.json",
-    "A wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration) — richer than the /subnets registration footprint, computed live from the neurons store at /api/v1/accounts/{ss58}/portfolio (no static file).",
+    "One hotkey's current registered memberships, with emission, rank, trust, incentive, dividends, role and footprint counts in netuid/uid order. Capital, yields and stake concentration are unavailable because voting weight does not establish holdings or investment principal. Computed at /api/v1/accounts/{ss58}/portfolio (no static file).",
     "AccountPortfolioArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "account-positions",
     "/metagraph/accounts/{ss58}/positions.json",
-    "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons store's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
+    "Periodic nominator-side records for one account, served at /api/v1/accounts/{ss58}/positions (no static file). Preserve observed hotkey/subnet relationships and capture time. Legacy stake_tao reconstruction can use neuron voting weight; the public response does not identify an authoritative asset-quantity basis, so its amounts and share fractions must not establish holdings, allocation or unstake Max. Root holdings are not covered.",
     "AccountPositionsArtifact",
     COMPUTED_LIVE,
   ),
@@ -1953,9 +1957,18 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Estimated artifact-normalized moving-price share composition over up to 56 closed UTC days, with six fixed netuid series and an exact residual. Numeric shares must share a persisted writer timestamp and satisfy six-decimal normalization checks; this is not completed-pass certification or proof of complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "SubnetPriceShareCompositionArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-emission-pipeline-history",
     "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
-    "One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+    "One subnet's stored pipeline inputs and legacy price share OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted pipeline inputs alongside its legacy emission_share daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "PipelineHistoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -2326,21 +2339,23 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "compare-validators",
     "/metagraph/compare/validators.json",
-    "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates, plus an optional single-subnet membership context — the validator equivalent of /api/v1/compare, computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+    "Several validators placed side by side in requested order: take, nominator count, identity, emission, trust and optional single-subnet membership evidence. Capital and APY are unavailable (null), with an APY eligible count of zero; metagraph voting weight cannot establish investment principal. Computed live at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
     "CompareValidatorsArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "domains",
     "/metagraph/domains.json",
-    "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
+    "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "DomainsArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
     "domain-summary",
     "/metagraph/domains/{tag}/summary.json",
-    "One domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains/{tag}/summary (no static file). Single-tag drill-down from /api/v1/domains.",
+    "One domain/capability tag's own rollup: member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains/{tag}/summary (no static file). Single-tag drill-down from /api/v1/domains. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "DomainSummaryArtifact",
     COMPUTED_LIVE,
   ),
@@ -2709,7 +2724,9 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending — note that `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is the legacy price share descending. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. Per-subnet recipient-class economics (who the emission actually goes to -- validators, miners, the burn sink, in alpha and derived USD per day) are NOT here: /subnets/{netuid}/emission-split/history measures that split per day; never reconstruct it from an assumed constant. Registry screening signals (repo health via github_commits_weekly/github_last_push_at, testnet lineage via also_on, the declared miner hardware floor via gpu_required/min_vram_gb) are also NOT here: /api/v1/subnets serves them in bulk behind its fields= projection, e.g. ?fields=netuid,github_commits_weekly,also_on,gpu_required.",
     "standard",
     ["subnets"],
     csvListQuery("economics"),
@@ -2817,7 +2834,9 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics/trends",
     "/metagraph/economics/trends.json",
-    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup. `mean_emission_share` averages the legacy snapshot values. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION +
+      " The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
     "short",
     ["subnets", "analytics"],
     csvRouteQuery([]),
@@ -3330,7 +3349,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    `Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Computed live from the neurons store.`,
+    `Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across current subnet memberships, with trust metrics, emission totals, and membership rows. Neuron stake is voting weight, not independently measured investment principal. Legacy capital totals, stake dominance, and APY are unavailable (null); the APY eligible count is zero. Membership stake_alpha retains its legacy name for raw voting-weight evidence and must not be priced or summed across subnets. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, or total_emission; total_stake and stake_dominance remain accepted compatibility sorts with unavailable values and deterministic tie ordering. Limit defaults to ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, max ${GLOBAL_VALIDATOR_LIMIT_MAX}.`,
     "short",
     ["validators", "analytics"],
     csvRouteQuery([]),
@@ -3341,7 +3360,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators/operators",
     "/metagraph/validators/operators.json",
-    "Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same complete neuron snapshot as /api/v1/validators without changing that full response.",
+    "Fetch the compact validator operator directory used by the website: hotkeys sharing one observed owner account form a group, while unknown or conflicting owners remain separate. Stable IDs are scoped to the response network; ownership agreement does not verify a declared brand or organization. Retains the primary key and multi-key expansion in deterministic key order. Capital totals, APY, and stake dominance are unavailable (null): neuron voting weight cannot establish investment principal. Unique nominator counts are available only for singletons because per-hotkey counts cannot deduplicate accounts across members. Computed from the same neuron snapshot as /api/v1/validators.",
     "short",
     ["validators", "analytics"],
     [],
@@ -3352,7 +3371,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts",
     "/metagraph/accounts.json",
-    `Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default ${ACCOUNTS_LIST_LIMIT_DEFAULT}, max ${ACCOUNTS_LIST_LIMIT_MAX}). Computed live from the neurons store. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.`,
+    `Fetch currently registered hotkeys with membership counts and emission observations. Capital, dominance and nested stake_alpha are null because voting weight does not establish holdings. Sort by total_emission, subnet_count, uid_count, validator_count or last_active; legacy total_stake (default) and stake_dominance use neutral hotkey ordering. Membership slices use netuid/uid order. Limit defaults to ${ACCOUNTS_LIST_LIMIT_DEFAULT}, max ${ACCOUNTS_LIST_LIMIT_MAX}.`,
     "short",
     ["accounts", "analytics"],
     csvRouteQuery([]),
@@ -3363,7 +3382,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/directory",
     "/metagraph/accounts/directory.json",
-    "Fetch the compact account holder directory used by the website: top stake, emission and subnet-reach rankings derived from one complete neuron-snapshot aggregation. Each bounded row carries the account identifiers, totals, footprint and share of priced registered stake required by the directory. The rich independently sortable /api/v1/accounts response remains unchanged.",
+    "Fetch the compact account directory: bounded emission and subnet-reach rankings from one complete neuron snapshot. Capital and dominance are null, rankings.stake is empty and priced_registered_stake_tao is null because voting weight does not establish holdings or stake shares. Legacy financial rankings decline until the source recomputes independent evidence.",
     "short",
     ["accounts", "analytics"],
     [],
@@ -3385,7 +3404,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators/{hotkey}",
     "/metagraph/validators/{hotkey}.json",
-    "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons store. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
+    "Fetch cross-subnet membership detail for one validator identity, including emission totals and trust metrics. Legacy total_stake_tao, root_stake_tao, alpha_stake_tao, and apy_estimate are unavailable (null), with apy_estimate_eligible_subnet_count zero: the neuron snapshot records voting weight, not independent principal. Per-membership stake_alpha keeps its legacy name for raw voting weight; it is not an alpha holding or TAO valuation. A cold/absent hotkey returns an empty subnets array and unknown capital, never a 404 or a fabricated zero holding.",
     "short",
     ["validators", "analytics"],
     [],
@@ -3407,7 +3426,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators/{hotkey}/history",
     "/metagraph/validators/{hotkey}/history.json",
-    "Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily rollup tier. ?window=7d|30d|90d|1y|all.",
+    "Fetch daily membership and emission history for one validator from the neuron_daily rollup. Capital history and rewards-per-1000 principal ratios are unavailable (null): historical neuron voting weight is not investment principal. With a subnet context, raw voting weight and observed trust, consensus, dividends, take, and permit state remain available independently. ?window=7d|30d|90d|1y|all.",
     "short",
     ["validators", "analytics"],
     [],
@@ -3835,7 +3854,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/portfolio",
     "/metagraph/accounts/{ss58}/portfolio.json",
-    "Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons store.",
+    "Fetch one hotkey's current registered memberships in netuid/uid order, preserving emission, rank, trust, incentive, dividends, role and footprint counts. stake_alpha, total_stake_tao, yield, overall_yield and stake_concentration are null because voting weight does not establish holdings, allocation or investment principal. Unavailable fields stay null on empty cards.",
     "short",
     ["accounts", "analytics"],
     [],
@@ -3846,7 +3865,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/positions",
     "/metagraph/accounts/{ss58}/positions.json",
-    "Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons store. Root (netuid 0) stake is not covered.",
+    "Fetch periodic nominator-side records for this account. Observed hotkey/subnet relationships and capture time remain useful; legacy reconstructed amounts and share fractions do not establish holdings, allocation or unstake Max because the wire response does not identify an authoritative asset-quantity basis. Root holdings are not covered.",
     "short",
     ["accounts", "analytics"],
     [],
@@ -4197,11 +4216,24 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "subnet-price-share-composition",
+    "GET",
+    "/api/v1/chain/subnet-price-share-composition",
+    "/metagraph/chain/subnet-price-share-composition.json",
+    "Fetch an estimated artifact-normalized moving-price share composition timeline. Mainnet only; at most 56 closed UTC daily points, six fixed netuids chosen from the newest eligible date with netuid tie-breaking, and one bounded indexed query of existing snapshots. Series identify netuids, not projects across reuse. Each day requires unique netuids, one persisted writer timestamp for numeric shares, six-decimal units and a total within the source rounding envelope. Mixed, malformed, partially normalized, uncaptured, cap-truncated days and missing selected observations are omitted, never zero-filled. Other artifact-normalized price share is the exact residual of one after selected recorded shares, not a stored bucket or a sum of unselected rows. A cold or unavailable store returns a schema-stable decline. Quality is estimated_observed_price_set: these checks do not identify a source artifact or certify complete chain coverage. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
+    "short",
+    ["chain"],
+    [],
+    [],
+  ),
+  route(
     "subnet-emission-pipeline-history",
     "GET",
     "/api/v1/subnets/{netuid}/emission-pipeline/history",
     "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
-    "Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+    "Fetch one subnet's emission-pipeline series. One subnet's stored pipeline inputs and legacy price share OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted pipeline inputs alongside its legacy emission_share daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "short",
     ["subnets"],
     [],
@@ -4917,7 +4949,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/compare/validators",
     "/metagraph/compare/validators.json",
-    "Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare.",
+    "Place several validators side by side by take rate, nominator count, on-chain identity, emission, and trust. Capital valuation and APY are unavailable (null), with APY eligible count zero, because neuron voting weight does not establish principal. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` optionally includes each validator's raw membership row in that subnet (or null with no permit there); its legacy stake_alpha field is voting weight, not an alpha holding. Composed live with the requested order preserved.",
     "standard",
     ["validators", "analytics"],
     [],
@@ -4928,7 +4960,8 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/domains",
     "/metagraph/domains.json",
-    "Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets.",
+    "Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets. " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "standard",
     ["subnets", "analytics"],
     [],
@@ -4939,7 +4972,8 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/domains/{tag}/summary",
     "/metagraph/domains/{tag}/summary.json",
-    "Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (the sum of the stage-1 price shares, not TAO received), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file).",
+    "Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share (a sum of legacy artifact-normalized moving-price shares), and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file). " +
+      LEGACY_EMISSION_SHARE_DESCRIPTION,
     "standard",
     ["subnets", "analytics"],
     [],
@@ -5461,6 +5495,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // served MAINNET holders. Same posture as /accounts/{ss58}/positions below,
   // which reads the first of those two tables.
   "/api/v1/subnets/{netuid}/holders",
+  "/api/v1/chain/subnet-price-share-composition",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -5881,10 +5916,10 @@ function openApiResponseSchemaForRoute(entry: (typeof API_ROUTES)[number]) {
 // written once into `components.examples`, and every media type that shows it
 // carries `examples: { <name>: { $ref } }` instead of its own `example:` copy.
 //
-// WHY. An example is a PURE FUNCTION of the response schema
-// (openApiExampleForRoute -> sampleFromSchema), so any two routes wrapping the
-// same artifact component sample byte-identically — and a network-addressed
-// variant (#8698) is an exact second copy of its base route's whole operation.
+// WHY. Examples sample the response schema with route-specific availability
+// and fixture overrides. Routes sharing an artifact component must share those
+// semantics; the registry rejects differing values. A network-addressed
+// variant (#8698) copies its base route's whole operation and example.
 // Inlining meant serializing the same blob once per route that showed it: 335
 // media types carrying 211 distinct examples, ~94 KB of duplicate JSON in a
 // document we ask clients to download.
@@ -5950,10 +5985,9 @@ export function buildOpenApiExampleRegistry(
       componentSchemas,
     );
     const existing = examples[name] as { value: unknown } | undefined;
-    // One component, one worked example. The sampler is deterministic, so two
-    // routes on the same component disagreeing means the example stopped being
-    // a function of the schema — a silent contract bug that would otherwise
-    // surface as one route's example quietly overwriting another's.
+    // One component, one worked example. Sampling and route overrides are
+    // deterministic, so routes on the same component must share their example
+    // semantics, rather than one route quietly overwriting another's value.
     //
     // Reachable, not theoretical: openApiExampleForRoute overrides the sampled
     // value for `fixture-detail`, so a second route added on that same artifact
@@ -6356,6 +6390,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   // not recognise, so /api/v1/ask leads with `Generate` and says what it
   // generates.
   ask: "Generate a grounded answer with citations",
+  "subnet-price-share-composition":
+    "Fetch an estimated subnet price-share timeline",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
   "subnet-health": "Fetch probe-derived health for one subnet",
@@ -6857,6 +6893,74 @@ const FIXTURE_DETAIL_OPENAPI_EXAMPLE = {
   },
 };
 
+const UNAVAILABLE_VALIDATOR_EXAMPLE_ROUTES = new Set([
+  "global-validators",
+  "validator-detail",
+  "compare-validators",
+  "validator-history",
+  "validator-operator-directory",
+]);
+const UNAVAILABLE_VALIDATOR_EXAMPLE_FIELDS = new Set([
+  "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
+  "apy_estimate",
+  "stake_dominance",
+  "rewards_per_1000_tao",
+  "rewards_per_1000_alpha",
+  "stake_share",
+  "dividend_efficiency",
+  "realized_return_1d",
+  "realized_return_1d_as_of",
+  "realized_return_1w",
+  "realized_return_1w_as_of",
+  "realized_return_1m",
+  "realized_return_1m_as_of",
+]);
+const UNAVAILABLE_ACCOUNT_EXAMPLE_ROUTES = new Set([
+  "accounts-list",
+  "account-holder-directory",
+  "account-portfolio",
+]);
+const UNAVAILABLE_ACCOUNT_EXAMPLE_FIELDS = new Set([
+  "total_stake_tao",
+  "stake_dominance",
+  "priced_registered_stake_tao",
+  "stake_alpha",
+  "yield",
+  "overall_yield",
+  "stake_concentration",
+]);
+
+// Nullable compatibility schemas also accept old payloads. Their worked examples
+// must describe current availability, rather than the sampler's numeric branch.
+// Only sampled fields are copied; absent fields stay absent in strict schemas.
+function unavailableCapitalExample(
+  value: unknown,
+  fields: Set<string>,
+  omitStakeRanking = false,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((cell) =>
+      unavailableCapitalExample(cell, fields, omitStakeRanking),
+    );
+  }
+  const row = rowOf(value);
+  if (!row) return value;
+  return Object.fromEntries(
+    Object.entries(row).map(([key, cell]) => [
+      key,
+      omitStakeRanking && key === "stake"
+        ? []
+        : fields.has(key)
+          ? null
+          : key === "apy_estimate_eligible_subnet_count"
+            ? 0
+            : unavailableCapitalExample(cell, fields, omitStakeRanking),
+    ]),
+  );
+}
+
 function openApiExampleForRoute(
   entry: (typeof API_ROUTES)[number],
   responseSchema: Row,
@@ -6865,6 +6969,25 @@ function openApiExampleForRoute(
   const example =
     rowOf(sampleFromSchema(responseSchema, componentSchemas)) ??
     EMPTY_CONTRACT_ROW;
+  if (entry.id === "subnet-price-share-composition") {
+    // The generic sampler includes optional degradation independently of the
+    // measurements. Use the canonical decline so the worked example cannot
+    // claim both an unavailable store and a populated timeline.
+    return { ...example, data: buildSubnetPriceShareComposition(null) };
+  }
+  if (UNAVAILABLE_VALIDATOR_EXAMPLE_ROUTES.has(entry.id)) {
+    return unavailableCapitalExample(
+      example,
+      UNAVAILABLE_VALIDATOR_EXAMPLE_FIELDS,
+    );
+  }
+  if (UNAVAILABLE_ACCOUNT_EXAMPLE_ROUTES.has(entry.id)) {
+    return unavailableCapitalExample(
+      example,
+      UNAVAILABLE_ACCOUNT_EXAMPLE_FIELDS,
+      entry.id === "account-holder-directory",
+    );
+  }
   if (entry.id !== "fixture-detail") {
     return example;
   }
@@ -7396,6 +7519,7 @@ export function listQuerySchema(
   shape.fields = fieldsSchema().optional();
   shape.limit = limitSchema(MAX_LIMIT).optional();
   shape.cursor = numericCursorSchema().optional();
+  shape.page_snapshot = collectionSnapshotParamSchema().optional();
   // A collection that declares no sort keys publishes `enum: []`, which
   // `z.enum()` cannot express — it stays absent rather than being invented.
   const sortFields = config.sort_fields as string[];
@@ -8027,6 +8151,10 @@ function listQuery(collection: string, options: { exclude?: string[] } = {}) {
         schema: parameterSchema(numericCursorSchema()),
       },
       {
+        name: "page_snapshot",
+        schema: parameterSchema(collectionSnapshotParamSchema()),
+      },
+      {
         name: "sort",
         description:
           "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
@@ -8107,13 +8235,13 @@ function csvExampleForRoute(entry: (typeof API_ROUTES)[number]) {
   if (entry.id === "global-validators") {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
-      'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+      'hk_sample,ck_sample,1,3,3,,10.25,,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     ].join("\r\n");
   }
   if (entry.id === "accounts-list") {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,validator_count,miner_count,total_stake_tao,total_emission_tao,stake_dominance,latest_captured_at,latest_block_number,subnets",
-      'hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+      'hk_sample,ck_sample,1,3,3,1,2,,10.25,,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     ].join("\r\n");
   }
   if (entry.id === "subnet-metagraph" || entry.id === "subnet-validators") {

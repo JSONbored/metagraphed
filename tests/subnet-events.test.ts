@@ -1,3 +1,6 @@
+import { parseJsonBody, requiredHeader } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetEventsArtifactSchema } from "../schemas-src/routes/subnet-events.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -28,7 +31,7 @@ test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold"
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(requiredHeader(res, "content-type"), /text\/csv/);
   assert.equal((await res.text()).trim(), EVENTS_CSV_HEADER);
 });
 
@@ -39,7 +42,10 @@ test("GET /subnets/{netuid}/events is schema-stable when the store is cold (neve
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(
+    res,
+    successEnvelopeSchema(SubnetEventsArtifactSchema),
+  );
   assert.equal(body.data.netuid, 7);
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);

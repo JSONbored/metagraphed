@@ -1,3 +1,6 @@
+import { parseJsonBody } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { SubnetHyperparametersArtifactSchema } from "../schemas-src/routes/subnet-hyperparameters.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -210,7 +213,10 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(SubnetHyperparametersArtifactSchema),
+    );
     assert.equal(body.data.netuid, 7);
     assert.equal("hyperparameters" in body.data, true);
     assert.equal(body.data.hyperparameters, null);

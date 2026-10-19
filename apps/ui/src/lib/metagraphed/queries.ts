@@ -345,7 +345,7 @@ import type {
 } from "./types";
 
 const STALE_SHORT = 30_000;
-const STALE_MED = 60_000;
+export const STALE_MED = 60_000;
 const STALE_LONG = 5 * 60_000;
 
 const MAX_TRAJECTORY_POINTS = 104;
@@ -2840,49 +2840,32 @@ function normalizeAccountRegistration(raw: unknown): AccountRegistration | null 
   return registration.netuid != null || registration.uid != null ? registration : null;
 }
 
-// One cross-subnet neuron position (#3491). Strict on render fields — object/junk
-// economic cells coerce to null (never NaN or `[object Object]`), an unknown role
-// drops to null — and a row with no numeric netuid is discarded.
+// One recorded neuron membership. The legacy stake field can be voting weight;
+// neither a native-alpha principal nor a return denominator is established.
+// Use an allowlist so legacy capital aliases cannot survive normalization.
 export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | null {
   if (!isRecord(raw)) return null;
   const netuid = firstFiniteNumber(raw.netuid);
   if (netuid == null) return null;
   const role = firstString(raw.role);
   return {
-    ...(raw as object),
     netuid,
     uid: firstFiniteNumber(raw.uid) ?? null,
     role: role === "validator" || role === "miner" ? role : null,
     active: booleanValue(raw.active),
-    stake_alpha: firstFiniteNumber(raw.stake_alpha) ?? null,
+    stake_alpha: null,
     emission_alpha: firstFiniteNumber(raw.emission_alpha) ?? null,
     rank: firstFiniteNumber(raw.rank) ?? null,
     trust: firstFiniteNumber(raw.trust) ?? null,
     incentive: firstFiniteNumber(raw.incentive) ?? null,
     dividends: firstFiniteNumber(raw.dividends) ?? null,
-    yield: firstFiniteNumber(raw.yield) ?? null,
+    yield: null,
   };
 }
 
-// The portfolio's stake-concentration lens (#3491).
-export function normalizePortfolioConcentration(raw: unknown): PortfolioConcentration | null {
-  if (!isRecord(raw)) return null;
-  const holders = firstFiniteNumber(raw.holders) ?? null;
-  const gini = firstFiniteNumber(raw.gini) ?? null;
-  const hhi_normalized = firstFiniteNumber(raw.hhi_normalized) ?? null;
-  const nakamoto_coefficient = firstFiniteNumber(raw.nakamoto_coefficient) ?? null;
-  // Cold / empty distribution: a zero-holder object, or one with no populated
-  // lens fields (e.g. `{}` or all-null), is not a real concentration card — the
-  // backend emits null there, and so do we (the ConcentrationMetrics
-  // null-when-empty contract). Guards a malformed body from rendering a non-null
-  // card built entirely from nulls.
-  if (
-    holders === 0 ||
-    (holders == null && gini == null && hhi_normalized == null && nakamoto_coefficient == null)
-  ) {
-    return null;
-  }
-  return { ...(raw as object), holders, gini, hhi_normalized, nakamoto_coefficient };
+// Capital concentration remains unavailable even in a finite legacy payload.
+export function normalizePortfolioConcentration(_raw: unknown): PortfolioConcentration | null {
+  return null;
 }
 
 function accountEventString(value: unknown): string | undefined {
@@ -3603,22 +3586,25 @@ export const accountPortfolioQuery = (ss58: string) =>
       });
       const d = isRecord(res.data) ? res.data : {};
       const positions = Array.isArray(d.positions)
-        ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
-            const normalized = normalizePortfolioPosition(position);
-            return normalized ? [normalized] : [];
-          })
+        ? d.positions
+            .flatMap((position) => {
+              const normalized = normalizePortfolioPosition(position);
+              return normalized ? [normalized] : [];
+            })
+            .sort((a, b) => a.netuid - b.netuid || (a.uid ?? -1) - (b.uid ?? -1))
+            .slice(0, MAX_ACCOUNT_POSITIONS)
         : [];
       return {
         data: {
           ss58: firstString(d.ss58) ?? ss58,
           captured_at: firstString(d.captured_at) ?? null,
-          subnet_count: firstFiniteNumber(d.subnet_count) ?? positions.length,
-          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
-          validator_count: firstFiniteNumber(d.validator_count) ?? 0,
-          miner_count: firstFiniteNumber(d.miner_count) ?? 0,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          position_count: firstFiniteNumber(d.position_count) ?? null,
+          validator_count: firstFiniteNumber(d.validator_count) ?? null,
+          miner_count: firstFiniteNumber(d.miner_count) ?? null,
+          total_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
-          overall_yield: firstFiniteNumber(d.overall_yield) ?? null,
+          overall_yield: null,
           stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
           positions,
         } as AccountPortfolio,
@@ -3633,18 +3619,22 @@ export function normalizeAccountPosition(raw: unknown): AccountPosition | null {
   if (!isRecord(raw)) return null;
   const hotkey = firstString(raw.hotkey);
   const netuid = firstFiniteNumber(raw.netuid);
-  const shareFraction = firstFiniteNumber(raw.share_fraction);
-  const stakeTao = firstFiniteNumber(raw.stake_tao);
-  if (!hotkey || netuid == null || shareFraction == null || stakeTao == null) return null;
-  return { hotkey, netuid, share_fraction: shareFraction, stake_tao: stakeTao };
+  if (!hotkey || netuid == null || !Number.isSafeInteger(netuid) || netuid < 0) return null;
+  return {
+    hotkey,
+    netuid,
+    // Legacy values can be fractions of voting weight. The wire response
+    // does not identify an authoritative token quantity or ownership basis.
+    share_fraction: null,
+    stake_tao: null,
+  };
 }
 
 /**
  * #5233: the coldkey-scoped counterpart to accountPortfolioQuery. NOT a live
  * query -- see AccountPositions' own doc comment (types.ts) for the
- * daily/weekly-scan + zero-root-coverage caveats. Callers using this to
- * prefill a stake/unstake "Max" amount must surface captured_at as a
- * staleness label, and must not offer Max at all for netuid 0.
+ * snapshot + coverage caveats. This response supports recorded relationships
+ * and clocks, not token quantities, ownership shares or an unstake Max.
  */
 export const accountPositionsQuery = (ss58: string) =>
   queryOptions({
@@ -3660,13 +3650,31 @@ export const accountPositionsQuery = (ss58: string) =>
             return normalized ? [normalized] : [];
           })
         : [];
+      const count = firstFiniteNumber(d.position_count);
+      const incomplete =
+        !Array.isArray(d.positions) ||
+        d.positions.length > MAX_ACCOUNT_POSITIONS ||
+        positions.length !== d.positions.length ||
+        count == null ||
+        count !== positions.length ||
+        (d.degraded != null && !isRecord(d.degraded));
+      const sourceDegraded = isRecord(d.degraded) ? d.degraded : null;
       return {
         data: {
           ss58: firstString(d.ss58) ?? ss58,
           captured_at: firstString(d.captured_at) ?? null,
-          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
-          total_stake_alpha: firstFiniteNumber(d.total_stake_alpha) ?? 0,
+          position_count: count != null && Number.isSafeInteger(count) && count >= 0 ? count : null,
+          total_stake_alpha: null,
           positions,
+          ...(sourceDegraded || incomplete
+            ? {
+                degraded: {
+                  reason: firstString(sourceDegraded?.reason) ?? "positions_response_incomplete",
+                  snapshot_captured_at: firstString(sourceDegraded?.snapshot_captured_at) ?? null,
+                  latest_stake_event_at: firstString(sourceDegraded?.latest_stake_event_at) ?? null,
+                },
+              }
+            : {}),
         } as AccountPositions,
         meta: res.meta,
         url: res.url,
@@ -6167,40 +6175,17 @@ export const topHoldersQuery = (limit = 25) =>
   });
 
 /**
- * One account's root-claim state (#10300).
+ * Legacy Root-claim compatibility at one finalized block (#12017).
  *
- * `field_sources` is carried through rather than dropped, because it says the
- * hotkey list is RECONSTRUCTED while the claim type is MEASURED. Those are
- * different confidences: one was read from chain storage, the other inferred,
- * and rendering them identically would present an inference as a reading.
+ * Keep the generated contract intact: null is unsupported or unavailable,
+ * while an empty hotkey list is a supported empty legacy result. This does
+ * not describe native Root basket holdings or entitlement.
  */
 export const accountRootClaimQuery = (ss58: string) =>
   queryOptions({
     queryKey: k("account-root-claim", ss58),
-    queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`,
-        { signal },
-      );
-      const d = isRecord(res.data) ? res.data : {};
-      const claim = isRecord(d.claim_type) ? d.claim_type : {};
-      const sources = isRecord(d.field_sources) ? d.field_sources : {};
-      const hotkeySource = isRecord(sources.hotkeys) ? sources.hotkeys : {};
-      return {
-        data: {
-          ss58: firstString(d.ss58) ?? ss58,
-          claim_kind: firstString(claim.kind) ?? null,
-          hotkeys: (Array.isArray(d.hotkeys) ? d.hotkeys : [])
-            .map((h) => firstString(h))
-            .filter((h): h is string => h !== undefined),
-          // "reconstructed" vs "measured" -- an inference is not a reading.
-          hotkeys_source: firstString(hotkeySource.kind) ?? null,
-          queried_at: firstString(d.queried_at) ?? null,
-        } satisfies RootClaim,
-        meta: res.meta,
-        url: res.url,
-      };
-    },
+    queryFn: ({ signal }) =>
+      apiFetch<RootClaim>(`/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`, { signal }),
     staleTime: STALE_MED,
   });
 
@@ -8433,8 +8418,13 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
   return {
     netuid,
     uid,
-    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
-    emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
+    stake_tao:
+      coerceFiniteNumber(Object.hasOwn(raw, "stake_alpha") ? raw.stake_alpha : raw.stake_tao) ??
+      null,
+    emission_tao:
+      coerceFiniteNumber(
+        Object.hasOwn(raw, "emission_alpha") ? raw.emission_alpha : raw.emission_tao,
+      ) ?? null,
     validator_trust:
       raw.validator_trust == null ? null : (coerceFiniteNumber(raw.validator_trust) ?? null),
   };
@@ -8463,24 +8453,22 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     take: nullableNum(raw.take),
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
-    root_stake_tao: coerceFiniteNumber(raw.root_stake_tao) ?? 0,
-    alpha_stake_tao: coerceFiniteNumber(raw.alpha_stake_tao) ?? 0,
+    // Older API/cache values priced voting weight as principal. No published
+    // principal contract supports those numbers, even when they are finite.
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
     nominator_count: nullableNum(raw.nominator_count),
-    apy_estimate: nullableNum(raw.apy_estimate),
-    apy_estimate_eligible_subnet_count:
-      coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
-    // On the wire since the leaderboard shipped, and dropped here until now --
-    // this builder is an allowlist, so a field the API returns is invisible to
-    // the entire UI unless it is named. That is why the table could not offer
-    // realized return at all.
-    realized_return_1d: nullableNum(raw.realized_return_1d),
-    realized_return_1w: nullableNum(raw.realized_return_1w),
-    realized_return_1m: nullableNum(raw.realized_return_1m),
-    stake_dominance: nullableNum(raw.stake_dominance),
+    // A change in voting weight does not establish realized investment return.
+    realized_return_1d: null,
+    realized_return_1w: null,
+    realized_return_1m: null,
+    stake_dominance: null,
     latest_captured_at: typeof raw.latest_captured_at === "string" ? raw.latest_captured_at : null,
     latest_block_number: nullableNum(raw.latest_block_number),
     subnets,
@@ -8793,11 +8781,11 @@ export function projectOperatorValidator(validator: GlobalValidator): OperatorVa
     subnet_count: validator.subnet_count,
     uid_count: validator.uid_count,
     take: validator.take,
-    total_stake_tao: validator.total_stake_tao,
+    total_stake_tao: null,
     total_emission_tao: validator.total_emission_tao,
     nominator_count: validator.nominator_count,
-    apy_estimate: validator.apy_estimate,
-    stake_dominance: validator.stake_dominance,
+    apy_estimate: null,
+    stake_dominance: null,
     subnets: [],
   };
 }
@@ -8887,7 +8875,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
         const primaryHotkey = firstString(entry.primary_hotkey);
         if (!primaryHotkey) return [];
         const identityName = firstString(entry.identity_name) ?? null;
-        const totalStakeTao = coerceFiniteNumber(entry.total_stake_tao) ?? 0;
+        const totalStakeTao = null;
         const takeMin = coerceFiniteNumber(entry.take_min) ?? null;
         const takeMax = coerceFiniteNumber(entry.take_max) ?? null;
         const children = Array.isArray(entry.hotkeys)
@@ -8898,7 +8886,7 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
               return [
                 {
                   hotkey: childHotkey,
-                  totalStakeTao: coerceFiniteNumber(child.total_stake_tao) ?? 0,
+                  totalStakeTao: null,
                   take: coerceFiniteNumber(child.take) ?? null,
                 },
               ];
@@ -8928,8 +8916,8 @@ export function normalizeValidatorOperatorDirectory(raw: unknown): ValidatorOper
             uidCount: coerceFiniteNumber(entry.uid_count) ?? 0,
             takeMin,
             takeMax,
-            apyEstimate: coerceFiniteNumber(entry.apy_estimate) ?? null,
-            dominance: coerceFiniteNumber(entry.stake_dominance) ?? null,
+            apyEstimate: null,
+            dominance: null,
           },
         ];
       })
@@ -8963,10 +8951,8 @@ export const validatorOperatorDirectoryQuery = () =>
     staleTime: STALE_SHORT,
   });
 
-// #8252: site-wide accounts leaderboard -- the collection-level counterpart
-// to validatorsQuery above, generalized to every registered hotkey (miners
-// included) rather than just validator_permit=1 rows. Same aggregate row
-// shape minus the validator-only take/APY/nominator fields.
+// Registered-hotkey membership/emission directory. Numeric legacy capital
+// fields cannot establish principal, even when a snapshot clock is present.
 function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
   if (!isRecord(raw)) return null;
   const hotkey = firstString(raw.hotkey);
@@ -8974,14 +8960,14 @@ function normalizeAccountListEntry(raw: unknown): AccountListEntry | null {
   return {
     hotkey,
     coldkey: firstString(raw.coldkey) ?? null,
-    coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
-    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
-    uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
-    validator_count: coerceFiniteNumber(raw.validator_count) ?? 0,
-    miner_count: coerceFiniteNumber(raw.miner_count) ?? 0,
-    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
-    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
-    stake_dominance: coerceFiniteNumber(raw.stake_dominance) ?? null,
+    coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? null,
+    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? null,
+    uid_count: coerceFiniteNumber(raw.uid_count) ?? null,
+    validator_count: coerceFiniteNumber(raw.validator_count) ?? null,
+    miner_count: coerceFiniteNumber(raw.miner_count) ?? null,
+    total_stake_tao: null,
+    total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? null,
+    stake_dominance: null,
     latest_captured_at: firstString(raw.latest_captured_at) ?? null,
     latest_block_number: coerceFiniteNumber(raw.latest_block_number) ?? null,
   };
@@ -9015,11 +9001,11 @@ export function normalizeAccountHolderDirectory(raw: unknown): AccountHolderDire
     schema_version: coerceFiniteNumber(data.schema_version),
     captured_at: coerceString(data.captured_at),
     block_number: coerceFiniteNumber(data.block_number),
-    account_count: coerceFiniteNumber(data.account_count) ?? 0,
-    limit: coerceFiniteNumber(data.limit) ?? 0,
-    priced_registered_stake_tao: coerceFiniteNumber(data.priced_registered_stake_tao) ?? 0,
+    account_count: coerceFiniteNumber(data.account_count) ?? null,
+    limit: coerceFiniteNumber(data.limit) ?? null,
+    priced_registered_stake_tao: null,
     rankings: {
-      stake: normalizeRanking(rankings.stake),
+      stake: [],
       emission: normalizeRanking(rankings.emission),
       reach: normalizeRanking(rankings.reach),
     },
@@ -9068,7 +9054,7 @@ function normalizeValidatorDetailSubnet(raw: unknown): ValidatorDetailSubnet | n
 
 /** Cross-subnet validator detail — a validator's rows joined across every subnet
  * they operate in (#4335/7.1). Schema-stable: a cold/unknown hotkey resolves to
- * a zeroed aggregate rather than an error, so this never throws on a bad hotkey. */
+ * unavailable capital metrics rather than an error for an unknown hotkey. */
 export const validatorDetailQuery = (hotkey: string) =>
   queryOptions({
     queryKey: k("validator-detail", hotkey),
@@ -9092,17 +9078,16 @@ export const validatorDetailQuery = (hotkey: string) =>
           subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
           take: firstFiniteNumber(d.take) ?? null,
           nominator_count: firstFiniteNumber(d.nominator_count) ?? null,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
-          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
-          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
+          total_stake_tao: null,
+          root_stake_tao: null,
+          alpha_stake_tao: null,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
-          apy_estimate: firstFiniteNumber(d.apy_estimate) ?? null,
-          apy_estimate_eligible_subnet_count:
-            firstFiniteNumber(d.apy_estimate_eligible_subnet_count) ?? 0,
-          realized_return_1d: firstFiniteNumber(d.realized_return_1d) ?? null,
-          realized_return_1w: firstFiniteNumber(d.realized_return_1w) ?? null,
-          realized_return_1m: firstFiniteNumber(d.realized_return_1m) ?? null,
+          apy_estimate: null,
+          apy_estimate_eligible_subnet_count: 0,
+          realized_return_1d: null,
+          realized_return_1w: null,
+          realized_return_1m: null,
           max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
           captured_at: firstString(d.captured_at) ?? null,
           block_number: firstFiniteNumber(d.block_number) ?? null,
@@ -9158,9 +9143,9 @@ function normalizeValidatorHistoryPoint(raw: unknown): ValidatorHistoryPoint | n
   return {
     snapshot_date: snapshotDate,
     subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
-    total_stake_tao: firstFiniteNumber(raw.total_stake_tao) ?? null,
+    total_stake_tao: null,
     total_emission_tao: firstFiniteNumber(raw.total_emission_tao) ?? null,
-    rewards_per_1000_tao: firstFiniteNumber(raw.rewards_per_1000_tao) ?? null,
+    rewards_per_1000_tao: null,
   };
 }
 
@@ -9870,10 +9855,10 @@ function normalizeCompareValidator(raw: unknown): CompareValidator | null {
     coldkey: coerceString(raw.coldkey) ?? null,
     coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
     take: nullableNum(raw.take),
-    apy_estimate: nullableNum(raw.apy_estimate),
-    apy_estimate_eligible_subnet_count: nullableNum(raw.apy_estimate_eligible_subnet_count),
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
     nominator_count: nullableNum(raw.nominator_count),
-    total_stake_tao: nullableNum(raw.total_stake_tao),
+    total_stake_tao: null,
     total_emission_tao: nullableNum(raw.total_emission_tao),
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
@@ -10071,7 +10056,7 @@ export function validateNextCursor(
 }
 
 /** Pages on the infinite query carry the validation flag for the UI. */
-type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
+export type InfinitePage<T> = ApiResult<T[]> & { cursorInvalid?: boolean };
 
 async function fetchInfinitePage<T>(
   path: string,
@@ -10178,29 +10163,6 @@ export const recentChainEventsQuery = (baseParams: QueryParams = {}) =>
     staleTime: STALE_SHORT,
   });
 
-/** Server-driven cursor-paginated subnets. */
-/** Server-driven cursor-paginated surfaces. */
-export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("surfaces-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/surfaces",
-        "surfaces",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      // Normalize on the infinite-query path so provider_slug, curation_level
-      // (from authority), provider, last_verified_at, and the provider filter
-      // are populated — same mapping the non-paginated surfacesQuery applies.
-      return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
-    },
-    getNextPageParam,
-    staleTime: STALE_MED,
-  });
-
 function asString(v: unknown): string | undefined {
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
@@ -10275,7 +10237,7 @@ const UNREAD_ENDPOINT_FIELDS = [
   "pool_eligibility_reasons",
 ] as const;
 
-function normalizeEndpoint(raw: unknown): Endpoint {
+export function normalizeEndpoint(raw: unknown): Endpoint {
   if (!raw || typeof raw !== "object") return raw as Endpoint;
   const e = raw as Record<string, unknown>;
   const lean: Record<string, unknown> = { ...e };
@@ -10294,7 +10256,7 @@ function normalizeEndpoint(raw: unknown): Endpoint {
   } as Endpoint;
 }
 
-function normalizeSurface(raw: unknown): Surface {
+export function normalizeSurface(raw: unknown): Surface {
   if (!raw || typeof raw !== "object") return raw as Surface;
   const s = raw as Record<string, unknown>;
   return {
@@ -10388,25 +10350,6 @@ export const endpointsSummaryQuery = () =>
         },
       };
     },
-    staleTime: STALE_MED,
-  });
-
-/** Cursor-paginated endpoints, for the directory's own server-side facets. */
-export const endpointsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
-  infiniteQueryOptions({
-    queryKey: k("endpoints-infinite", baseParams, initialCursor),
-    initialPageParam: initialCursor,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchInfinitePage<unknown>(
-        "/api/v1/endpoints",
-        "endpoints",
-        baseParams,
-        pageParam as string,
-        signal,
-      );
-      return { ...page, data: page.data.map(normalizeEndpoint) } as InfinitePage<Endpoint>;
-    },
-    getNextPageParam,
     staleTime: STALE_MED,
   });
 

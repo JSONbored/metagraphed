@@ -8,7 +8,13 @@
 // mirrors provider-endpoints-mcp.ts (endpoints collection filters) and
 // rpc-pools-mcp.ts (live overlay before filter).
 
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
@@ -219,7 +225,7 @@ export function rpcEndpointsQueryUrl(
   }
   const cursor = resolveCursor(args);
   if (cursor !== null) url.searchParams.set("cursor", String(cursor));
-  return url;
+  return catalogQueryUrl(url, args, () => "/api/v1/rpc/endpoints");
 }
 
 export interface RpcEndpointsListResult {
@@ -235,6 +241,7 @@ export interface RpcEndpointsListResult {
   limit: unknown;
   cursor: unknown;
   next_cursor: unknown;
+  snapshot?: string;
   sort: unknown;
   order: unknown;
 }
@@ -296,9 +303,7 @@ export async function loadRpcEndpointsList(
   }
 
   const transformed = applyMcpQueryFilters(overlaid, queryUrl, "endpoints", []);
-  if (transformed.error) {
-    throw rpcEndpointsMcpError("invalid_params", transformed.error.message);
-  }
+  if (transformed.error) throw catalogQueryError(transformed.error);
   const data = transformed.data as Record<string, unknown>;
   const meta = (transformed.meta ?? {}) as Record<string, unknown>;
   const page = (meta.pagination as Record<string, unknown>) || {};
@@ -317,6 +322,7 @@ export async function loadRpcEndpointsList(
     limit: page.limit ?? rowLen,
     cursor: page.cursor ?? 0,
     next_cursor: page.next_cursor ?? null,
+    ...catalogPageReceipt(page),
     sort: page.sort ?? null,
     order: page.order ?? null,
   };

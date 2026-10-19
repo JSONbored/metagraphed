@@ -24,6 +24,7 @@ import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
   McpListPageFields,
+  McpCatalogPageFields,
   McpSubnetListArtifactStamp,
   kindSchema,
   limitSchema,
@@ -248,6 +249,7 @@ export const GetSubnetSurfacesOutputSchema =
     // The page block the MCP loader adds on top of the route's artifact --
     // undeclared until #10790, when `.strict()` first rejected it.
     ...McpUnsortedPageFields,
+    ...McpCatalogPageFields,
     surfaces: projectableRows(SubnetSurfacesArtifactSchema.shape.surfaces),
   });
 export type GetSubnetSurfacesOutput = z.infer<

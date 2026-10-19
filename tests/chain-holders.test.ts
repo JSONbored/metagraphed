@@ -48,7 +48,11 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainHoldersArtifactSchema } from "../schemas-src/routes/chain-holders.ts";
+
+const responseSchema = successEnvelopeSchema(ChainHoldersArtifactSchema);
 
 const MIGRATIONS = [
   "0011_nominator_positions.sql",
@@ -579,21 +583,21 @@ describe("GET /api/v1/chain/holders", () => {
     );
   const body = async (res: Response) => {
     assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-    return ((await res.json()) as Row).data as Row;
+    return (await parseJsonBody(res, responseSchema)).data;
   };
 
   test("serves the ranking", async () => {
     threeSubnets();
     const data = await body(await get("/api/v1/chain/holders"));
     assert.equal(data.subnet_count, 3);
-    assert.equal((data.subnets as Row[])[0].netuid, 1);
-    assert.equal((data.network as Row).subnets_with_single_holder, 1);
+    assert.equal(data.subnets[0].netuid, 1);
+    assert.equal(data.network.subnets_with_single_holder, 1);
   });
 
   test("?limit= slices without moving subnet_count", async () => {
     threeSubnets();
     const data = await body(await get("/api/v1/chain/holders?limit=1"));
-    assert.equal((data.subnets as Row[]).length, 1);
+    assert.equal(data.subnets.length, 1);
     assert.equal(data.subnet_count, 3);
   });
 

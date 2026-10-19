@@ -5,8 +5,13 @@
 // Mirrors tests/alert-triggers-proxy.test.ts's shape exactly; the downstream
 // challenge/mint logic itself is covered by tests/watch-auth-route.test.ts.
 import assert from "node:assert/strict";
+import {
+  ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 function req(
   path: string,
@@ -32,7 +37,8 @@ test("returns 503 when DATA_API is not bound", async () => {
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "watch_auth_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "watch_auth_unavailable");
 });
 
 test("forwards POST /challenges to DATA_API and envelope-wraps a successful response", async () => {
@@ -57,7 +63,7 @@ test("forwards POST /challenges to DATA_API and envelope-wraps a successful resp
   assert.equal(receivedPath, "/api/v1/watch/challenges");
   assert.equal(receivedMethod, "POST");
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
   assert.equal(body.ok, true);
   assert.deepEqual(body.data, { message: "sign me", expires_in_seconds: 300 });
 });
@@ -81,9 +87,11 @@ test("forwards POST /tokens to DATA_API, including the signed body", async () =>
     } as unknown as Env,
     {},
   );
-  assert.equal((receivedBody as { ss58: string }).ss58, SS58);
+  assert.ok(receivedBody && typeof receivedBody === "object");
+  assert.ok("ss58" in receivedBody);
+  assert.equal(receivedBody.ss58, SS58);
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, {
+  assert.deepEqual((await parseJsonBody(res, SuccessEnvelopeSchema)).data, {
     token: "tok-1",
     expires_in_seconds: 7776000,
   });
@@ -106,7 +114,7 @@ test("relays a non-2xx upstream status with the upstream's error message", async
   );
   assert.equal(res.status, 401);
   assert.equal(
-    (await res.json()).error.message,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.message,
     "signature verification failed",
   );
 });
@@ -125,7 +133,7 @@ test("relays a non-2xx upstream status with a generic message when the body has 
   );
   assert.equal(res.status, 503);
   assert.match(
-    (await res.json()).error.message,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.message,
     /watch-alert-issuance tier returned an error/,
   );
 });
@@ -143,7 +151,8 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "watch_auth_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "watch_auth_unavailable");
 });
 
 test("maps a 429 upstream to watch_auth_rate_limited and forwards the rate-limit header family end-to-end", async () => {
@@ -172,7 +181,8 @@ test("maps a 429 upstream to watch_auth_rate_limited and forwards the rate-limit
     {},
   );
   assert.equal(res.status, 429);
-  assert.equal((await res.json()).error.code, "watch_auth_rate_limited");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "watch_auth_rate_limited");
   assert.equal(res.headers.get("retry-after"), "60");
   assert.equal(res.headers.get("x-ratelimit-limit"), "10");
   assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");
@@ -195,7 +205,7 @@ test("maps each upstream status to a distinct, condition-specific error code", a
       {},
     );
     assert.equal(res.status, status);
-    return (await res.json()).error.code;
+    return (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code;
   };
   assert.equal(await codeFor(400), "watch_auth_invalid");
   assert.equal(await codeFor(401), "watch_auth_unauthorized");
@@ -226,7 +236,8 @@ test("does not attach rate-limit headers when the upstream error carries none", 
     {},
   );
   assert.equal(res.status, 401);
-  assert.equal((await res.json()).error.code, "watch_auth_unauthorized");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "watch_auth_unauthorized");
   assert.equal(res.headers.get("retry-after"), null);
   assert.equal(res.headers.get("x-ratelimit-limit"), null);
 });

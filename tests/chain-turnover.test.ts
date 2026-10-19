@@ -8,7 +8,11 @@ import {
 } from "../src/chain-turnover.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainTurnoverArtifactSchema } from "../schemas-src/routes/chain-turnover.ts";
+
+const responseSchema = successEnvelopeSchema(ChainTurnoverArtifactSchema);
 
 // One neuron_daily validator row (the loader scopes the read to validator_permit = TRUE).
 function vrow(
@@ -400,7 +404,7 @@ describe("GET /api/v1/chain/turnover", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.comparable, false);
     assert.deepEqual(body.data.subnets, []);
     assert.equal(body.data.stability_distribution, null);
@@ -447,7 +451,9 @@ describe("GET /api/v1/chain/turnover", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
   });
 
   test("emits a header-only CSV on a cold store", async () => {
@@ -457,7 +463,9 @@ describe("GET /api/v1/chain/turnover", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal((await res.text()).trim(), TURNOVER_CSV_HEADER);
   });
 
@@ -470,7 +478,9 @@ describe("GET /api/v1/chain/turnover", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /text\/csv/);
     assert.equal(await res.text(), ""); // HEAD carries no body
   });
 

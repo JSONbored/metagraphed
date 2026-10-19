@@ -6,8 +6,13 @@
 // errorResponse -- see handleAlertTriggersProxy's own comment. The
 // downstream CRUD logic itself is covered by tests/alert-triggers-route.test.ts.
 import assert from "node:assert/strict";
+import {
+  ErrorEnvelopeSchema,
+  SuccessEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { parseJsonBody } from "./row-type.ts";
 
 function req(
   path: string,
@@ -31,7 +36,8 @@ test("returns 503 when DATA_API is not bound", async () => {
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_triggers_unavailable");
 });
 
 test("forwards POST to DATA_API and envelope-wraps a successful response", async () => {
@@ -60,7 +66,7 @@ test("forwards POST to DATA_API and envelope-wraps a successful response", async
   assert.equal(receivedPath, "/api/v1/alerts/triggers");
   assert.equal(receivedMethod, "POST");
   assert.equal(res.status, 201);
-  const body = await res.json();
+  const body = await parseJsonBody(res, SuccessEnvelopeSchema);
   assert.equal(body.ok, true);
   assert.deepEqual(body.data, { id: "1", owner_token: "abc", netuid: 7 });
 });
@@ -86,7 +92,8 @@ test("forwards GET /{id} to DATA_API, including the owner-token header", async (
   );
   assert.equal(receivedToken, "abc");
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, { id: "1", netuid: 7 });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { id: "1", netuid: 7 });
 });
 
 test("forwards PATCH to DATA_API", async () => {
@@ -133,7 +140,8 @@ test("forwards DELETE to DATA_API", async () => {
     {},
   );
   assert.equal(receivedMethod, "DELETE");
-  assert.deepEqual((await res.json()).data, { id: "1", deleted: true });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { id: "1", deleted: true });
 });
 
 test("relays a non-2xx upstream status with the upstream's error message", async () => {
@@ -156,7 +164,8 @@ test("relays a non-2xx upstream status with the upstream's error message", async
     {},
   );
   assert.equal(res.status, 401);
-  assert.equal((await res.json()).error.message, "provide a valid token");
+  const body = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(body.error.message, "provide a valid token");
 });
 
 test("relays a non-2xx upstream status with a generic message when the body has no error string", async () => {
@@ -173,7 +182,7 @@ test("relays a non-2xx upstream status with a generic message when the body has 
   );
   assert.equal(res.status, 503);
   assert.match(
-    (await res.json()).error.message,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.message,
     /alert triggers tier returned an error/,
   );
 });
@@ -191,7 +200,8 @@ test("returns 502 when the upstream response body is unreadable", async () => {
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_triggers_unavailable");
 });
 
 // #5475: distinct error code per upstream failure condition + rate-limit header
@@ -227,7 +237,8 @@ test("maps a 429 upstream to alert_trigger_rate_limited and forwards the rate-li
     {},
   );
   assert.equal(res.status, 429);
-  assert.equal((await res.json()).error.code, "alert_trigger_rate_limited");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_trigger_rate_limited");
   assert.equal(res.headers.get("retry-after"), "60");
   assert.equal(res.headers.get("x-ratelimit-limit"), "10");
   assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");
@@ -253,7 +264,7 @@ test("maps each upstream status to a distinct, condition-specific error code", a
       {},
     );
     assert.equal(res.status, status);
-    return (await res.json()).error.code;
+    return (await parseJsonBody(res, ErrorEnvelopeSchema)).error.code;
   };
   assert.equal(await codeFor(400), "alert_trigger_invalid");
   assert.equal(await codeFor(401), "alert_trigger_unauthorized");
@@ -298,7 +309,8 @@ test("forwards GET /api/v1/watch/triggers to DATA_API", async () => {
   assert.equal(receivedPath, "/api/v1/watch/triggers");
   assert.equal(receivedMethod, "GET");
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, { triggers: [] });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { triggers: [] });
 });
 
 test("forwards PATCH /api/v1/watch/triggers/{id} to DATA_API", async () => {
@@ -343,7 +355,8 @@ test("forwards DELETE /api/v1/watch/triggers/{id} to DATA_API", async () => {
     {},
   );
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, { id: "1", deleted: true });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { id: "1", deleted: true });
 });
 
 test("forwards GET /api/v1/watch/triggers/{id}/deliveries to DATA_API", async () => {
@@ -366,7 +379,8 @@ test("forwards GET /api/v1/watch/triggers/{id}/deliveries to DATA_API", async ()
     {},
   );
   assert.equal(receivedPath, "/api/v1/watch/triggers/1/deliveries");
-  assert.deepEqual((await res.json()).data, { deliveries: [] });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { deliveries: [] });
 });
 
 test("returns 503 for /api/v1/watch/triggers when DATA_API is not bound", async () => {
@@ -376,7 +390,8 @@ test("returns 503 for /api/v1/watch/triggers when DATA_API is not bound", async 
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_triggers_unavailable");
 });
 
 test("relays a non-2xx upstream status for /api/v1/watch/triggers with the upstream's error message", async () => {
@@ -400,7 +415,7 @@ test("relays a non-2xx upstream status for /api/v1/watch/triggers with the upstr
   );
   assert.equal(res.status, 401);
   assert.equal(
-    (await res.json()).error.message,
+    (await parseJsonBody(res, ErrorEnvelopeSchema)).error.message,
     "invalid or expired x-watch-trigger-token",
   );
 });
@@ -466,12 +481,13 @@ test("forwards GET /api/v1/watch/push-subscriptions to DATA_API", async () => {
   assert.equal(receivedMethod, "GET");
   assert.equal(receivedToken, "tok");
   assert.equal(res.status, 200);
-  assert.deepEqual((await res.json()).data, { devices: [] });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { devices: [] });
 });
 
 test("forwards POST /api/v1/watch/push-subscriptions to DATA_API with the request body intact", async () => {
   let receivedMethod;
-  let receivedBody;
+  let receivedBody: unknown;
   const res = await handleRequest(
     req("/api/v1/watch/push-subscriptions", {
       method: "POST",
@@ -517,7 +533,8 @@ test("forwards DELETE /api/v1/watch/push-subscriptions/9 to DATA_API", async () 
   );
   assert.equal(receivedPath, "/api/v1/watch/push-subscriptions/9");
   assert.equal(receivedMethod, "DELETE");
-  assert.deepEqual((await res.json()).data, { id: "9", deleted: true });
+  const resBody = await parseJsonBody(res, SuccessEnvelopeSchema);
+  assert.deepEqual(resBody.data, { id: "9", deleted: true });
 });
 
 test("returns 503 for /api/v1/watch/push-subscriptions when DATA_API is not bound", async () => {
@@ -527,7 +544,8 @@ test("returns 503 for /api/v1/watch/push-subscriptions when DATA_API is not boun
     {},
   );
   assert.equal(res.status, 503);
-  assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_triggers_unavailable");
 });
 
 test("OPTIONS /api/v1/watch/push-subscriptions advertises GET, POST, DELETE, OPTIONS", async () => {
@@ -572,7 +590,8 @@ test("does not attach rate-limit headers when the upstream error carries none", 
     {},
   );
   assert.equal(res.status, 404);
-  assert.equal((await res.json()).error.code, "alert_trigger_not_found");
+  const resBody = await parseJsonBody(res, ErrorEnvelopeSchema);
+  assert.equal(resBody.error.code, "alert_trigger_not_found");
   assert.equal(res.headers.get("retry-after"), null);
   assert.equal(res.headers.get("x-ratelimit-limit"), null);
 });

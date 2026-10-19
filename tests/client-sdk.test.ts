@@ -551,3 +551,141 @@ describe("createLruEtagCache", () => {
     expect(cache.get("c")?.body).toBe("C");
   });
 });
+
+describe("checked SDK catalog walks", () => {
+  const token = "v1." + "a".repeat(64);
+  const page = (
+    ids: string[],
+    cursor: number,
+    total: number,
+    snapshot = token,
+  ) => ({
+    ok: true,
+    data: { endpoints: ids.map((id) => ({ id })) },
+    meta: {
+      pagination: {
+        collection: "endpoints",
+        cursor,
+        total,
+        returned: ids.length,
+        snapshot,
+        next_cursor: cursor + ids.length < total ? cursor + ids.length : null,
+      },
+    },
+  });
+  for (const factory of [false, true]) {
+    test(`forwards receipts before yielding and preserves caller options (factory=${factory})`, async () => {
+      const fetchMock = stubFetch(async (url, init) => {
+        expect(init.cache).toBe("no-store");
+        const cursor = url.searchParams.get("cursor");
+        expect(url.searchParams.get("page_snapshot")).toBe(
+          cursor === "2" ? token : "start",
+        );
+        return jsonResponse(
+          cursor === "2" ? page(["c"], 2, 3) : page(["a", "b"], 0, 3),
+        );
+      });
+      const query = { page_snapshot: "start", limit: 2, kind: "rpc" };
+      const pages = factory
+        ? createMetagraphedClient({ cache: true }).paginate(
+            "/api/v1/endpoints",
+            { query: query as never },
+          )
+        : metagraphedPaginate("/api/v1/endpoints", { query: query as never });
+      const accepted: unknown[] = [];
+      for await (const value of pages) accepted.push(value);
+      expect(accepted).toHaveLength(2);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(query).toEqual({ page_snapshot: "start", limit: 2, kind: "rpc" });
+    });
+    test.each([
+      ["changed receipt", { snapshot: "v1." + "b".repeat(64) }],
+      ["changed total", { total: 2 }],
+      ["missing receipt", { snapshot: undefined }],
+      ["missing next cursor", { next_cursor: undefined }],
+      ["repeated cursor", { next_cursor: 2 }],
+      ["wrong returned", { returned: 99 }],
+      ["wrong offset", { cursor: 0 }],
+      ["changed collection", { collection: "other" }],
+      ["negative total", { total: -1 }],
+    ])(
+      `rejects %s before yielding (factory=${factory})`,
+      async (_name, change) => {
+        const broken = page(["c"], 2, 3);
+        Object.assign(broken.meta.pagination, change);
+        const fetchMock = stubFetch(async () =>
+          jsonResponse(
+            fetchMock.mock.calls.length === 1 ? page(["a", "b"], 0, 3) : broken,
+          ),
+        );
+        const iterator = factory
+          ? createMetagraphedClient().paginate("/api/v1/endpoints", {
+              query: { page_snapshot: "start" },
+            })
+          : metagraphedPaginate("/api/v1/endpoints", {
+              query: { page_snapshot: "start" },
+            });
+        expect((await iterator.next()).value).toMatchObject({
+          data: { endpoints: [{ id: "a" }, { id: "b" }] },
+        });
+        await expect(iterator.next()).rejects.toMatchObject({
+          code: "catalog_restart_required",
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      },
+    );
+  }
+  test("checked factory requests never use ETag cache, retry, or accept a bodyless 304", async () => {
+    const get = vi.fn();
+    const set = vi.fn();
+    const fetchMock = stubFetch(async (_url, init) => {
+      expect(init.cache).toBe("no-store");
+      expect(init.headers).not.toHaveProperty("if-none-match");
+      return new Response(null, { status: 304 });
+    });
+    const client = createMetagraphedClient({
+      cache: { get, set },
+      retry: true,
+      headers: { "if-none-match": "old" },
+    });
+    await expect(
+      client.fetchAll("/api/v1/endpoints", {
+        query: { page_snapshot: "start" },
+      }),
+    ).rejects.toMatchObject({ code: "catalog_restart_required" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
+  test("checked fetchAll rejects a failed continuation without returning partial rows or retrying", async () => {
+    const fetchMock = stubFetch(async () => {
+      if (fetchMock.mock.calls.length === 1)
+        return jsonResponse(page(["a"], 0, 2));
+      return jsonResponse(
+        {
+          ok: false,
+          error: { code: "invalid_query", message: "Narrow filters" },
+          meta: {
+            parameter: "page_snapshot",
+            catalog_paging: { reason: "catalog_budget_exceeded" },
+          },
+        },
+        503,
+      );
+    });
+    const client = createMetagraphedClient({ retry: true });
+    await expect(
+      client.fetchAll("/api/v1/endpoints", {
+        query: { page_snapshot: "start" },
+      }),
+    ).rejects.toMatchObject({
+      code: "catalog_budget_exceeded",
+      message: "Narrow filters",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0].searchParams.get("page_snapshot")).toBe(
+      token,
+    );
+    expect(fetchMock.mock.calls[1][0].searchParams.get("cursor")).toBe("1");
+  });
+});

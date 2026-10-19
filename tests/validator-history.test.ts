@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildValidatorHistory } from "../src/validator-history.ts";
+import {
+  buildValidatorHistory,
+  unavailableValidatorHistoryCapital,
+} from "../src/validator-history.ts";
 import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
@@ -29,6 +36,33 @@ function historyEnv(rows: Row[], captured: Row = {}) {
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
+test("legacy history projection copies financial fields without mutating source evidence", () => {
+  const original = {
+    total_stake_tao: 100,
+    rewards_per_1000_tao: 2,
+    rewards_per_1000_alpha: 3,
+    stake_share: 0.5,
+    dividend_efficiency: 1.2,
+    stake_alpha: 180,
+    total_emission_tao: 4,
+    take: 0.18,
+    validator_trust: 0.9,
+  };
+  const before = { ...original };
+  assert.deepEqual(unavailableValidatorHistoryCapital(original), {
+    ...original,
+    total_stake_tao: null,
+    rewards_per_1000_tao: null,
+    rewards_per_1000_alpha: null,
+    stake_share: null,
+    dividend_efficiency: null,
+  });
+  assert.deepEqual(original, before);
+  assert.deepEqual(unavailableValidatorHistoryCapital({ take: 0 }), {
+    take: 0,
+  });
+});
+
 describe("buildValidatorHistory", () => {
   test("shapes per-day aggregates", () => {
     const out = buildValidatorHistory(
@@ -49,11 +83,11 @@ describe("buildValidatorHistory", () => {
     assert.equal(out.point_count, 1);
     assert.equal(out.points[0].snapshot_date, "2026-06-20");
     assert.equal(out.points[0].subnet_count, 3);
-    assert.equal(out.points[0].total_stake_tao, 1000);
+    assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, 12.3);
   });
 
-  test("computes rewards_per_1000_tao from the day's totals", () => {
+  test("refuses a principal-based reward rate from priced voting-weight totals", () => {
     const out = buildValidatorHistory(
       [
         {
@@ -65,8 +99,7 @@ describe("buildValidatorHistory", () => {
       ],
       HOTKEY,
     ) as Row;
-    // 10 / 2000 * 1000 = 5
-    assert.equal(out.points[0].rewards_per_1000_tao, 5);
+    assert.equal(out.points[0].rewards_per_1000_tao, null);
   });
 
   test("rewards_per_1000_tao is null when stake is zero, negative, or absent", () => {
@@ -81,11 +114,7 @@ describe("buildValidatorHistory", () => {
         ],
         HOTKEY,
       ) as Row;
-      assert.equal(
-        out.points[0].rewards_per_1000_tao,
-        null,
-        `total_stake_tao=${JSON.stringify(total_stake_tao)}`,
-      );
+      assert.equal(out.points[0].rewards_per_1000_tao, null);
     }
   });
 
@@ -103,7 +132,7 @@ describe("buildValidatorHistory", () => {
     assert.equal(out.points[0].rewards_per_1000_tao, null);
   });
 
-  test("rounds the per-day TAO sums to drop float noise", () => {
+  test("rounds emission while keeping capital unavailable", () => {
     const out = buildValidatorHistory(
       [
         {
@@ -114,7 +143,7 @@ describe("buildValidatorHistory", () => {
       ],
       HOTKEY,
     ) as Row;
-    assert.equal(out.points[0].total_stake_tao, 0.3);
+    assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, 3.01);
   });
 
@@ -201,7 +230,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
   });
@@ -226,7 +255,10 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(ValidatorHistoryArtifactSchema),
+    );
     assert.deepEqual(body.data.points, []);
     assert.equal(body.data.point_count, 0);
   });
@@ -267,22 +299,18 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     assert.equal(point.validator_permit, true);
   });
 
-  test("alpha is reported as alpha, beside the TAO conversion", () => {
-    // #8945 is the standing reminder: an alpha value in a `*_tao` field is how
-    // this goes wrong. Both units are present and they are NOT equal.
+  test("raw scoped voting weight never establishes capital or a reward denominator", () => {
+    // Raw weight and native emission remain distinct; neither validates an
+    // investment-principal denominator.
     const point = (
       buildValidatorHistory([scopedRow], HOTKEY, { netuid: 64 }).points as Row[]
     )[0];
     assert.equal(point.stake_alpha, 2120377.1);
     assert.equal(point.emission_alpha, 80.6312);
-    assert.equal(point.total_stake_tao, 179750.8);
+    assert.equal(point.total_stake_tao, null);
     assert.notEqual(point.stake_alpha, point.total_stake_tao);
-    // The alpha-denominated reward rate, computed from the alpha pair rather
-    // than borrowed from the TAO one.
-    assert.equal(
-      point.rewards_per_1000_alpha,
-      Math.round((80.6312 / 2120377.1) * 1000 * 1e6) / 1e6,
-    );
+    // The legacy weight cannot establish an alpha-principal reward rate.
+    assert.equal(point.rewards_per_1000_alpha, null);
   });
 
   test("a lost permit is reported, not dropped", () => {
@@ -307,8 +335,8 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     assert.ok(!("validator_trust" in point));
     assert.ok(!("consensus" in point));
     assert.ok(!("stake_alpha" in point));
-    // The cross-subnet fields it DOES own are untouched.
-    assert.equal(point.total_stake_tao, 179750.8);
+    // Membership remains available; voting weight is never economic capital.
+    assert.equal(point.total_stake_tao, null);
     assert.equal(point.subnet_count, 1);
   });
 
@@ -429,7 +457,7 @@ describe("buildValidatorHistory — operator signals (#9390)", () => {
     assert.equal(card.take_change_observable, false);
   });
 
-  test("dividend efficiency is dividend share over stake share", () => {
+  test("voting weight and economic subnet stake do not establish dividend efficiency", () => {
     const point = (
       buildValidatorHistory(
         [
@@ -445,12 +473,10 @@ describe("buildValidatorHistory — operator signals (#9390)", () => {
         { netuid: 64 },
       ).points as Row[]
     )[0];
-    // 2,118,872 / 3,899,868 = 0.54331890… -> 0.543319 at 6dp
-    assert.equal(point.stake_share, 0.543319);
-    // 0.546273 / 0.543319 = 1.005437 -> earning slightly above its stake share
-    assert.ok(
-      Math.abs((point.dividend_efficiency as number) - 1.005437) < 1e-5,
-    );
+    assert.equal(point.stake_alpha, 2_118_872);
+    assert.equal(point.dividends, 0.546273);
+    assert.equal(point.stake_share, null);
+    assert.equal(point.dividend_efficiency, null);
   });
 
   test("efficiency is null rather than Infinity when there is no stake", () => {
@@ -474,7 +500,7 @@ describe("buildValidatorHistory — operator signals (#9390)", () => {
           { netuid: 64 },
         ).points as Row[]
       )[0];
-      assert.equal(point.dividend_efficiency, null, `${stake}/${total}`);
+      assert.equal(point.dividend_efficiency, null);
     }
   });
 

@@ -772,13 +772,20 @@ describe("withEdgeCache", () => {
     const request = req("/api/v1/health/trends");
     const cacheRoute = "/api/v1/health/trends";
     const key = expectedKey("bulk-trends", cacheRoute);
-    cache.store.set(
-      key,
-      new Response(JSON.stringify({ ok: true, cached: true }), {
-        status: 200,
-        headers: { etag: '"cached"' },
-      }),
+    await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "bulk-trends",
+      async () =>
+        new Response(JSON.stringify({ ok: true, cached: true }), {
+          status: 200,
+          headers: { etag: '"cached"' },
+        }),
+      cacheRoute,
     );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [key]);
 
     let built = false;
     const res = await withEdgeCache(
@@ -809,7 +816,16 @@ describe("withEdgeCache", () => {
       status: 200,
       headers: { etag: '"snap-etag"', "cache-control": "max-age=60" },
     });
-    cache.store.set(key, cached);
+    await withEdgeCache(
+      req(cacheRoute),
+      ctx,
+      env,
+      "trends",
+      async () => cached,
+      cacheRoute,
+    );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [key]);
 
     const res = await withEdgeCache(
       req(cacheRoute, { headers: { "if-none-match": '"snap-etag"' } }),
@@ -1575,6 +1591,48 @@ describe("handleGlobalIncidents", () => {
     assert.ok(link.includes('rel="next"'));
     // window is pinned onto every page link, never dropped back to the 7d default.
     assert.ok(link.includes("window=7d"));
+  });
+
+  test("checked incident paging pins the default window and rejects cross-window reuse", async () => {
+    const path = `${base}?limit=1&page_snapshot=start`;
+    const response = await handleGlobalIncidents(
+      req(path),
+      withSurfaces(SURFACE_ROWS),
+      url(path),
+    );
+    assert.equal(response.status, 200);
+    const match = response.headers.get("link")?.match(/<([^>]+)>; rel="next"/);
+    assert.ok(match);
+    const next = new URL(match[1]);
+    assert.equal(next.searchParams.get("window"), "7d");
+    const continued = await handleGlobalIncidents(
+      new Request(next),
+      withSurfaces(SURFACE_ROWS),
+      next,
+    );
+    assert.equal(continued.status, 200);
+
+    // Empty rows are identical in both windows, so only explicit scope
+    // binding can reject this switch; a row-only digest would accept it.
+    const emptyPath = `${base}?window=7d&page_snapshot=start`;
+    const empty = await json(
+      await handleGlobalIncidents(
+        req(emptyPath),
+        withSurfaces([]),
+        url(emptyPath),
+      ),
+    );
+    const switched = url(`${base}?window=30d`);
+    switched.searchParams.set("page_snapshot", empty.meta.pagination.snapshot);
+    const rejected = await errorJson(
+      await handleGlobalIncidents(
+        new Request(switched),
+        withSurfaces([]),
+        switched,
+      ),
+    );
+    assert.equal(rejected.error.code, "invalid_query");
+    assert.equal(rejected.meta.parameter, "page_snapshot");
   });
 
   test("sort + order reorder the surfaces list", async () => {

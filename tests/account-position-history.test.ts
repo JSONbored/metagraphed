@@ -5,6 +5,12 @@ import {
   buildAccountPositionHistory,
 } from "../src/account-position-history.ts";
 import { handleRequest } from "../workers/api.ts";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { AccountPositionHistoryArtifactSchema } from "../schemas-src/routes/account-positions.ts";
+import { parseJsonBody } from "./row-type.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
@@ -261,11 +267,16 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionHistoryArtifactSchema),
+    );
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.points[0].snapshot_date, "2026-06-20");
-    assert.match(res.headers.get("content-type"), /^application\/json/);
+    const contentType = res.headers.get("content-type");
+    assert.ok(contentType);
+    assert.match(contentType, /^application\/json/);
   });
 
   test("an unsupported ?window is a 400, never a silent coerce", async () => {
@@ -277,7 +288,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       ctx,
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
   });
@@ -296,7 +307,10 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionHistoryArtifactSchema),
+    );
     assert.equal(body.data.window, "all");
   });
 
@@ -309,7 +323,10 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       ctx,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionHistoryArtifactSchema),
+    );
     assert.deepEqual(body.data.points, []);
     assert.equal(body.data.point_count, 0);
   });
@@ -338,7 +355,10 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       env as unknown as Env,
       ctx,
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionHistoryArtifactSchema),
+    );
     assert.equal(
       body.meta.generated_at,
       new Date(1_780_000_000_000).toISOString(),
@@ -354,7 +374,10 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       positionHistoryEnv() as unknown as Env,
       ctx,
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(AccountPositionHistoryArtifactSchema),
+    );
     assert.equal(body.meta.generated_at, null);
   });
 

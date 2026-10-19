@@ -7,7 +7,13 @@ import {
 } from "../src/chain-identity-history.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import type { Row } from "./row-type.ts";
+import { parseJsonBody, type Row } from "./row-type.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { ChainIdentityHistoryArtifactSchema } from "../schemas-src/routes/chain-identity-history.ts";
+
+const responseSchema = successEnvelopeSchema(
+  ChainIdentityHistoryArtifactSchema,
+);
 
 // A network feed: identity changes from two subnets, newest first (the loader
 // reads block_number DESC, netuid ASC).
@@ -177,7 +183,7 @@ describe("GET /api/v1/chain/identity-history", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.count, 0);
     assert.equal(body.data.subnet_count, 0);
@@ -211,7 +217,7 @@ describe("GET /api/v1/chain/identity-history", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.count, 0);
   });
 
@@ -235,7 +241,7 @@ describe("GET /api/v1/chain/identity-history", () => {
     };
     const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = await parseJsonBody(res, responseSchema);
     assert.equal(body.data.count, 0);
     assert.deepEqual(body.data.changes, []);
   });

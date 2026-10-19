@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
+import { startRuntimeDiagnostics } from "./native-runtime-diagnostics.ts";
 
 // The keyboard path, which nothing measured until #11689. Three defects it
 // found, each invisible to the design gates because none of them changes a
@@ -101,6 +102,14 @@ test.describe("keyboard", () => {
 });
 
 test.describe("mobile navigation access", () => {
+  const diagnostics = new WeakMap<object, Awaited<ReturnType<typeof startRuntimeDiagnostics>>>();
+  test.beforeEach(async ({ page, baseURL }) => {
+    diagnostics.set(page, await startRuntimeDiagnostics(page, baseURL));
+  });
+  test.afterEach(async ({ page }, testInfo) => {
+    await diagnostics.get(page)?.attach(testInfo);
+  });
+
   for (const viewport of [
     { width: 375, height: 812 },
     { width: 375, height: 568 },

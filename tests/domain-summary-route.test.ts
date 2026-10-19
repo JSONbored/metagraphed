@@ -1,3 +1,13 @@
+import type { z } from "zod";
+import {
+  ErrorEnvelopeSchema,
+  successEnvelopeSchema,
+} from "../schemas-src/envelope.ts";
+import { parseJsonBody } from "./row-type.ts";
+import {
+  DomainSummaryArtifactSchema,
+  DomainsArtifactSchema,
+} from "../schemas-src/routes/domains.ts";
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -6,17 +16,23 @@ import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 
 describe("GET /api/v1/domains", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path: string) => {
+  const get = async <Schema extends z.ZodType>(
+    path: string,
+    schema: Schema,
+  ) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env as unknown as Env,
       {},
     );
-    return { status: res.status, body: await res.json() };
+    return { status: res.status, body: await parseJsonBody(res, schema) };
   };
 
   test("returns one entry per domain tag in the fixed taxonomy", async () => {
-    const { status, body } = await get("/api/v1/domains");
+    const { status, body } = await get(
+      "/api/v1/domains",
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     assert.equal(status, 200);
     assert.equal(body.ok, true);
     assert.equal(body.data.domain_count, DOMAIN_TAGS.length);
@@ -29,7 +45,10 @@ describe("GET /api/v1/domains", () => {
   });
 
   test("every domain entry matches the DomainSummaryArtifact shape", async () => {
-    const { body } = await get("/api/v1/domains");
+    const { body } = await get(
+      "/api/v1/domains",
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     for (const entry of body.data.domains) {
       assert.equal(typeof entry.subnet_count, "number");
       assert.ok(Array.isArray(entry.netuids));
@@ -57,7 +76,10 @@ describe("GET /api/v1/domains", () => {
       coldEnv as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     assert.equal(res.status, 200);
     assert.equal(body.data.domain_count, DOMAIN_TAGS.length);
     for (const entry of body.data.domains) {
@@ -96,7 +118,10 @@ describe("GET /api/v1/domains", () => {
       noTimestampEnv as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     assert.equal(res.status, 200);
     assert.equal(body.meta.generated_at, null);
   });
@@ -109,12 +134,15 @@ describe("GET /api/v1/domains", () => {
     // when an owner updates their on-chain identity. Pick a member from that
     // source of truth instead of pinning this precedence test to one subnet's
     // mutable description.
-    const { body: registryOverview } = await get("/api/v1/domains");
+    const { body: registryOverview } = await get(
+      "/api/v1/domains",
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     const domainNetuid = registryOverview.data.domains
       .flatMap((domain: { netuids: number[] }) => domain.netuids)
       .find((netuid: unknown) => Number.isInteger(netuid));
     assert.ok(
-      Number.isInteger(domainNetuid),
+      domainNetuid !== undefined && Number.isInteger(domainNetuid),
       "expected a domain-tagged subnet",
     );
 
@@ -143,7 +171,10 @@ describe("GET /api/v1/domains", () => {
       liveEnv as unknown as Env,
       {},
     );
-    const body = await res.json();
+    const body = await parseJsonBody(
+      res,
+      successEnvelopeSchema(DomainsArtifactSchema),
+    );
     assert.equal(res.status, 200);
     const domainWithSubnet = body.data.domains.find(
       (d: { netuids: number[] }) => d.netuids.includes(domainNetuid),
@@ -158,19 +189,25 @@ describe("GET /api/v1/domains", () => {
 
 describe("GET /api/v1/domains/{tag}/summary", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path: string) => {
+  const get = async <Schema extends z.ZodType>(
+    path: string,
+    schema: Schema,
+  ) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env as unknown as Env,
       {},
     );
-    return { status: res.status, body: await res.json() };
+    return { status: res.status, body: await parseJsonBody(res, schema) };
   };
 
   test("returns one domain tag's own rollup, matching /api/v1/domains' own entry for it", async () => {
     const [{ body: overview }, { status, body }] = await Promise.all([
-      get("/api/v1/domains"),
-      get("/api/v1/domains/inference/summary"),
+      get("/api/v1/domains", successEnvelopeSchema(DomainsArtifactSchema)),
+      get(
+        "/api/v1/domains/inference/summary",
+        successEnvelopeSchema(DomainSummaryArtifactSchema),
+      ),
     ]);
     assert.equal(status, 200);
     assert.equal(body.data.domain, "inference");
@@ -188,6 +225,7 @@ describe("GET /api/v1/domains/{tag}/summary", () => {
   test("rejects an unknown domain tag as a 400, not a 404", async () => {
     const { status, body } = await get(
       "/api/v1/domains/not-a-real-tag/summary",
+      ErrorEnvelopeSchema,
     );
     assert.equal(status, 400);
     assert.equal(body.error.code, "invalid_request");

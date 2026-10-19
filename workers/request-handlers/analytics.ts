@@ -259,6 +259,7 @@ export function canonicalHealthWindowCachePath(url: URL): string {
 function analyticsQueryError(error: QueryError): Response {
   return errorResponse("invalid_query", error.message, 400, {
     parameter: error.parameter,
+    ...(error.reason ? { catalog_paging: { reason: error.reason } } : {}),
   });
 }
 
@@ -667,7 +668,11 @@ export async function handleGlobalIncidents(
   // collection's own vocabulary and would otherwise reject it as an unknown param.
   const listUrl = new URL(url.href);
   listUrl.searchParams.delete("window");
-  const transformed = applyQueryFilters(data, listUrl, "incidents");
+  const snapshotUrl = new URL(url.href);
+  snapshotUrl.searchParams.set("window", label);
+  const transformed = applyQueryFilters(data, listUrl, "incidents", [], {
+    snapshotUrl,
+  });
   if (transformed.error) {
     return analyticsQueryError(transformed.error);
   }

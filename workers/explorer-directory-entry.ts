@@ -3,6 +3,8 @@
 import {
   handleAccountHolderDirectory,
   handleValidatorOperatorDirectory,
+  ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
+  VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
 } from "./request-handlers/explorer-directories.ts";
 import { withStampedEdgeCache } from "./edge-cache.ts";
 import { readExplorerDirectoryCacheStamp } from "./data-api-tier.ts";
@@ -17,6 +19,7 @@ export const EXPLORER_DIRECTORY_ENTRIES = [
   {
     path: "/api/v1/accounts/directory",
     id: "account-holder-directory",
+    cacheLabel: ACCOUNT_HOLDER_DIRECTORY_CACHE_LABEL,
     artifactTemplate: "/metagraph/accounts/directory.json",
     artifactPath: "/metagraph/accounts/directory.json",
     handle: handleAccountHolderDirectory,
@@ -24,6 +27,7 @@ export const EXPLORER_DIRECTORY_ENTRIES = [
   {
     path: "/api/v1/validators/operators",
     id: "validator-operator-directory",
+    cacheLabel: VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
     artifactTemplate: "/metagraph/validators/operators.json",
     artifactPath: "/metagraph/validators/operators.json",
     handle: handleValidatorOperatorDirectory,
@@ -69,7 +73,7 @@ export async function handleDefaultExplorerDirectory(
           request,
           ctx,
           env,
-          entry.id,
+          entry.cacheLabel,
           (cacheRequest) => entry.handle(cacheRequest, env),
           entry.path,
           entry.id === "validator-operator-directory"

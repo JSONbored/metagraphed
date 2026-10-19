@@ -221,6 +221,11 @@ import {
   loadPipelineHistory,
 } from "../../src/emission-pipeline-history.ts";
 import {
+  buildSubnetPriceShareComposition,
+  loadSubnetPriceShareComposition,
+} from "../../src/subnet-price-share-composition.ts";
+
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -1385,9 +1390,9 @@ export async function handleGlobalValidators(
 // from the current neurons snapshot. The collection-level counterpart to
 // /api/v1/validators (which this route follows as its precedent), generalized
 // to every account rather than just validator_permit=1 rows. See
-// src/accounts-list.ts's header for the "Free"/"Total" balance columns this
-// deliberately does NOT carry (no balance-tracking tier exists to derive them
-// from). A cold or absent store returns a schema-stable empty list.
+// src/accounts-list.ts's header for the membership scope and unavailable
+// principal. Legacy financial sorts use stable hotkey ties; independent
+// membership and emission sorts remain available.
 function parseAccountsListQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
@@ -2264,7 +2269,12 @@ export function canonicalSubnetHistoryCachePath(url: URL) {
 }
 
 export function canonicalValidatorHistoryCachePath(url: URL) {
-  return canonicalWindowedCachePath(url);
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = historyWindow(url);
+  const netuid = routeQuery(url).netuid as number | undefined;
+  return `${url.pathname}?window=${encodeURIComponent(label)}${
+    netuid == null ? "" : `&netuid=${netuid}`
+  }`;
 }
 
 export function canonicalSubnetConcentrationHistoryCachePath(
@@ -5404,10 +5414,9 @@ export async function handleAccountSubnets(
   );
 }
 
-// GET /api/v1/accounts/{ss58}/portfolio: the wallet's cross-subnet neuron
-// positions with per-position economics + yield and wallet-level aggregates
-// (totals, counts, overall return, stake concentration), from the neurons D1
-// tier. Richer than /subnets (registration footprint only). Cold/absent → empty.
+// GET /api/v1/accounts/{ss58}/portfolio: a hotkey's registered memberships,
+// scores and emission observations. Neuron voting weight does not establish
+// account principal, yield or value concentration; those legacy keys are null.
 export async function handleAccountPortfolio(
   request: Request,
   env: Env,
@@ -5434,19 +5443,15 @@ export async function handleAccountPortfolio(
   );
 }
 
-// GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
-// nominator-side positions -- what it holds delegated across every
-// hotkey/subnet, distinct from /portfolio above (hotkey-scoped).
+// GET /api/v1/accounts/{ss58}/positions (#5233): periodically observed
+// nominator-side hotkey/subnet relationships, distinct from the hotkey-scoped
+// portfolio. Legacy reconstructed numbers do not certify asset holdings.
 //
-// D1 hot tier → lakehouse cold tier → LABELLED empty card (#9273).
-// The D1 leg is the live one: `nominator_positions` had no live writer at all
-// between the box's decommission and #9273, so the lakehouse leg (#9266) is a
-// frozen export whose `captured_at` can never advance. The hot leg declines
-// while its table is empty, which makes the cutover a property of the data
-// rather than of a deploy. The final card is `unavailableAccountPositions`,
-// not a bare `buildAccountPositions([], ...)`: when every tier declines, this
-// route's zero is a read failure, and it now says so instead of publishing a
-// confident `total_stake_alpha: 0`.
+// D1 hot tier → lakehouse cold tier → labelled unavailable card (#9273).
+// A hot-tier read is not a live-chain observation: retain each result's capture
+// time and coverage/degradation evidence. Root holdings are outside this source;
+// an empty, stale or failed read must not establish an empty wallet. Public
+// consumers withhold unsupported quantities under the account-positions schema.
 //
 // ## NO DATA_API LEG, BECAUSE DATA_API DOES NOT DISPATCH THIS PATH
 //
@@ -6438,6 +6443,28 @@ export async function handleChainConcentrationHistory(
     { data, meta: { contract_version: contractVersion(env) } },
     "short",
   );
+}
+
+// #11550: one bounded read of estimated artifact-normalized price shares.
+export async function handleSubnetPriceShareComposition(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateResponseFormat(url);
+  if (validationError) return analyticsQueryError(validationError);
+  const nowMs = Date.now();
+  const rows = await loadSubnetPriceShareComposition(
+    readStore(env, SUBNET_SNAPSHOT_TABLES),
+    { nowMs },
+  );
+  const data = buildSubnetPriceShareComposition(rows, { nowMs });
+  const response = await envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // GET /api/v1/subnets/{netuid}/emission-pipeline/history (#9625): one subnet's

@@ -120,6 +120,8 @@ export async function readSelectedHistoryBlock(
   block: number,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
   budget: ParquetReadBudget = parquetReadBudget(),
+  columns?: string[],
+  compactAttribution = false,
 ): Promise<Record<string, unknown>[] | null | undefined> {
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
@@ -140,8 +142,26 @@ export async function readSelectedHistoryBlock(
       selected,
       budget,
     );
+    // Runtime curation identifies corrected kinds before replacing the base
+    // rows. A projection must retain that discriminator as well as row keys.
+    const projection = columns
+      ? [
+          ...new Set([
+            ...columns,
+            ...(table === "account_events" ? ["event_kind"] : []),
+          ]),
+        ]
+      : undefined;
     const rows = (
-      await readHistoryBlock(source, generation, selected, block, budget)
+      await readHistoryBlock(
+        source,
+        generation,
+        selected,
+        block,
+        budget,
+        projection,
+        compactAttribution,
+      )
     ).map(catalogRow);
     if (table !== "account_events") return rows;
     const correction = await loadRuntimeAccountCuration(
@@ -174,6 +194,7 @@ export async function readSelectedHistoryBlock(
         correction.selection,
         block,
         budget,
+        projection,
       )
     ).map(catalogRow);
     if (corrected.some((row) => !isRuntimeCorrectedRow(correction, row)))

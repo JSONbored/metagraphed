@@ -2,7 +2,13 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/surfaces.json artifact.
 
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  catalogQueryUrl,
+  catalogQueryError,
+  catalogPageReceipt,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -127,7 +133,7 @@ export function surfacesQueryUrl(
     }
     url.searchParams.set("cursor", String(args.cursor));
   }
-  return url;
+  return catalogQueryUrl(url, args, () => "/api/v1/surfaces");
 }
 
 interface SurfacesListResult {
@@ -139,6 +145,7 @@ interface SurfacesListResult {
   limit: unknown;
   cursor: unknown;
   next_cursor: unknown;
+  snapshot?: string;
   sort: unknown;
   order: unknown;
 }
@@ -185,9 +192,7 @@ export async function loadSurfacesList(
     "curated-surfaces",
     [],
   );
-  if (transformed.error) {
-    throw surfacesMcpError("invalid_params", transformed.error.message);
-  }
+  if (transformed.error) throw catalogQueryError(transformed.error);
   const { data, meta } = transformed;
   const page = ((meta ?? {}).pagination || {}) as Row;
   const rows = Array.isArray((data as Row).surfaces)
@@ -203,6 +208,7 @@ export async function loadSurfacesList(
     limit: page.limit ?? rowLen,
     cursor: page.cursor ?? 0,
     next_cursor: page.next_cursor ?? null,
+    ...catalogPageReceipt(page),
     sort: page.sort ?? null,
     order: page.order ?? null,
   };

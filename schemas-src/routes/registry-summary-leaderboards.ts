@@ -12,6 +12,7 @@
 // hand-edited RegistrySummaryArtifact/RegistryLeaderboardsArtifact
 // components they replace.
 import { z } from "zod";
+import { LEGACY_EMISSION_SHARE_DESCRIPTION } from "../legacy-emission-share.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CoverageCompletenessSchema } from "./coverage.ts";
 
@@ -114,7 +115,11 @@ const LeaderboardEntrySchema = z
     registration_allowed: z.boolean().nullable().optional(),
     // highest-emission / validator-headroom
     tao_in_emission_tao: z.number().nullable().optional(),
-    emission_share: z.number().nullable().optional(),
+    emission_share: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(LEGACY_EMISSION_SHARE_DESCRIPTION),
     emission_enabled: z.boolean().nullable().optional(),
     total_stake_alpha: z.number().nullable().optional(),
     validator_count: z.int().min(0).nullable().optional(),
