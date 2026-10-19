@@ -69,7 +69,11 @@ import { canWaitUntil, createPgSql } from "./pg-sql.ts";
 import { selfHealthSql } from "./self-health-store.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
-import { withLaneHealth, type SelfHealth } from "./self-health.ts";
+import {
+  withLaneHealth,
+  withCurrentComponentHealth,
+  type SelfHealth,
+} from "./self-health.ts";
 import { loadLaneMaxGap, LANE_ALARM_CADENCE_WINDOW_MS } from "./lane-alarm.ts";
 import {
   GetSelfHealthInputSchema,
@@ -204,8 +208,8 @@ export async function loadSelfHealth(
   //
   // The cast is safe by construction and no wider than what the tiers already
   // guarantee: the cold tier and the empty floor are both buildSelfHealth output,
-  // the artifact is schema-checked on read, and withLaneHealth only spreads the
-  // value and appends two fields.
+  // the artifact is schema-checked on read, and both final transforms preserve
+  // its published shape and observed history.
   const lanes = await loadLatestLaneHealth(
     // laneHealthStore, not the binding (#10148). Every other lane_health
     // reader already goes through it; this one still named D1, so self-health
@@ -219,7 +223,9 @@ export async function loadSelfHealth(
     laneHealthStore(ctx.env),
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
-  return withLaneHealth(card as SelfHealth, lanes, { cadences });
+  return withLaneHealth(withCurrentComponentHealth(card as SelfHealth), lanes, {
+    cadences,
+  });
 }
 
 export const GET_SELF_HEALTH_INSTRUCTIONS =

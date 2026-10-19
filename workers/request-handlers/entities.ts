@@ -321,7 +321,10 @@ import {
 import { answerAccountEntities } from "../../src/account-entities-answer.ts";
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "../../src/lane-health.ts";
-import { withLaneHealth } from "../../src/self-health.ts";
+import {
+  withLaneHealth,
+  withCurrentComponentHealth,
+} from "../../src/self-health.ts";
 import {
   loadLaneMaxGap,
   LANE_ALARM_CADENCE_WINDOW_MS,
@@ -2199,7 +2202,9 @@ export async function handleSelfHealth(
     laneHealthStore(env) as Parameters<typeof loadLaneMaxGap>[0],
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
-  const withLanes = withLaneHealth(data, lanes, { cadences });
+  const withLanes = withLaneHealth(withCurrentComponentHealth(data), lanes, {
+    cadences,
+  });
   return envelopeResponse(
     request,
     {

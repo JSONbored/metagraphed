@@ -37,7 +37,7 @@ const SAMPLE_SELF_HEALTH = {
       current_ok: true,
       http_status: 200,
       latency_ms: 42,
-      checked_at: "2026-07-01T00:00:00.000Z",
+      checked_at: new Date().toISOString(),
       note: null,
       days: [
         { day: "2026-06-30", checks: 1440, ok_count: 1440, uptime_ratio: 1 },
@@ -62,11 +62,11 @@ const SAMPLE_SELF_HEALTH = {
       verdict: "stale",
       age_ms: 14_400_000,
       detail: "hot_window.to frozen at 8,765,682",
-      checked_at: "2026-07-01T00:00:00.000Z",
+      checked_at: new Date().toISOString(),
     },
   ],
   stale_lane_count: 1,
-  observed_at: "2026-07-01T00:00:00.000Z",
+  observed_at: new Date().toISOString(),
 };
 
 beforeEach(() => {
@@ -175,7 +175,7 @@ describe("self-health-mcp", () => {
           ok: false,
           http_status: 503,
           latency_ms: 12,
-          checked_at_ms: 1_786_000_000_000,
+          checked_at_ms: Date.now(),
         },
       ],
     },

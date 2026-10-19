@@ -33,7 +33,8 @@ import {
   laneSilenceThresholdMs,
 } from "./lane-alarm.ts";
 import { DEAD_LETTER_LANES } from "./dead-letter.ts";
-import { laneSilenceCadenceMs } from "./producer-cadence.ts";
+import { cronIntervalSecs, laneSilenceCadenceMs } from "./producer-cadence.ts";
+import { SELF_HEALTH_PROBE_CRON } from "../workers/config.ts";
 
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
 
@@ -153,6 +154,43 @@ export function selfHealthVerdict(
   );
   if (nonPublishFailing) return "degraded";
   return "operational";
+}
+
+/** Use the existing silence policy for the actual probe schedule. */
+export function selfHealthProbeMaxAgeMs(
+  expression: string = SELF_HEALTH_PROBE_CRON,
+): number | null {
+  const cadence = cronIntervalSecs(expression);
+  return cadence === null ? null : laneSilenceThresholdMs(cadence * 1000);
+}
+
+/** A last observation remains history after its probe stops reporting. */
+export function withCurrentComponentHealth(
+  card: SelfHealth,
+  nowMs: number = Date.now(),
+  maxAge: number | null = selfHealthProbeMaxAgeMs(),
+): SelfHealth {
+  const components = card.components.map((component) => {
+    const checkedAt = Date.parse(component.checked_at ?? "");
+    const current =
+      maxAge !== null &&
+      Number.isFinite(checkedAt) &&
+      checkedAt <= nowMs &&
+      nowMs - checkedAt <= maxAge;
+    if (component.current_ok === null || current) return component;
+    return {
+      ...component,
+      current_ok: null,
+      note: "No current probe reading; the last observation is retained.",
+    };
+  });
+  return {
+    ...card,
+    components,
+    verdict: selfHealthVerdict(components),
+    measured_component_count: components.filter((c) => c.current_ok !== null)
+      .length,
+  };
 }
 
 /**

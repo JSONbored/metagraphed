@@ -8,6 +8,7 @@ import { loadSelfHealthNeon } from "../src/self-health-neon.ts";
 import { loadSelfHealth } from "../src/self-health-mcp.ts";
 import { handleSelfHealth } from "../workers/request-handlers/entities.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
+import { handleGraphQLRequest } from "../src/graphql.ts";
 
 const runtime = new Miniflare({
   modules: true,
@@ -163,4 +164,52 @@ test("a malformed latest-row result retains measured daily history without inven
     assert.equal(component.current_ok, null);
     assert.equal(component.days[0].checks, 1);
   }
+});
+
+test("REST and agent health do not present stopped probes as current success", async () => {
+  const old = stamp - 3 * 60 * 60 * 1000;
+  await runSelfHealthProbe(env(), null, { ...deps, now: () => old });
+  const environment = env();
+  const response = await handleSelfHealth(
+    new Request("https://example.com/api/v1/self-health"),
+    environment,
+  );
+  assert.equal(response.status, 200);
+  const rest = await response.json<{ data: {
+    verdict: string;
+    measured_component_count: number;
+    observed_at: string;
+    components: { current_ok: boolean | null; checked_at: string; days: { checks: number; ok_count: number }[] }[];
+  } }>();
+  assert.equal(rest.data.verdict, "degraded");
+  assert.equal(rest.data.measured_component_count, 0);
+  assert.equal(rest.data.observed_at, new Date(old).toISOString());
+  for (const component of rest.data.components) {
+    assert.equal(component.current_ok, null);
+    assert.equal(component.checked_at, new Date(old).toISOString());
+    assert.equal(component.days[0].checks, 1);
+    assert.equal(component.days[0].ok_count, 1);
+  }
+  const agent = await loadSelfHealth({
+    env: environment,
+    readArtifact: async () => { throw new Error("Unexpected fallback"); },
+  });
+  assert.deepEqual(agent, rest.data);
+  const graphqlResponse = await handleGraphQLRequest(
+    new Request("https://example.com/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: "{ self_health { schema_version verdict measured_component_count observed_at components { component current_ok http_status latency_ms checked_at note uptime_90d days { day checks ok_count uptime_ratio } } lanes { lane verdict age_ms detail checked_at } stale_lane_count } }",
+      }),
+    }),
+    environment,
+  );
+  assert.equal(graphqlResponse.status, 200);
+  const graphql = await graphqlResponse.json<{
+    errors?: unknown[];
+    data?: { self_health: unknown };
+  }>();
+  assert.equal(graphql.errors, undefined);
+  assert.deepEqual(graphql.data?.self_health, rest.data);
 });

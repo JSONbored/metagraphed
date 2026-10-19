@@ -1,0 +1,54 @@
+name: Self-health component freshness native qualification
+
+on:
+  push:
+    branches:
+      - ci/self-health-component-freshness-qualification-20261019
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-health-component-freshness-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format only candidate sources and diagnostic driver
+        run: npx prettier --write src/self-health.ts src/self-health-mcp.ts workers/request-handlers/entities.ts schemas-src/routes/self-health.ts tests/self-health-d1.test.ts tests/self-health-component-freshness.test.ts tests/self-health-mcp.test.ts .github/scripts/qualify-component-freshness.ts .github/workflows/component-freshness-qualification.yml
+      - name: Lint candidate runtime and regression fixtures
+        run: npx eslint src/self-health.ts src/self-health-mcp.ts workers/request-handlers/entities.ts schemas-src/routes/self-health.ts tests/self-health-d1.test.ts tests/self-health-component-freshness.test.ts tests/self-health-mcp.test.ts
+      - name: Cold typecheck
+        run: npm run typecheck -- --incremental false
+      - name: Validate workflow policy
+        run: npm run validate:workflows
+      - name: Regenerate canonical contracts and fixture artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+      - name: Prove old failure and fixed native transport parity
+        run: node .github/scripts/qualify-component-freshness.ts
+      - name: Retain only formatted source, generated contracts and synthetic receipt
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: component-freshness-native-source
+          path: component-freshness-source/
+          retention-days: 1
+          if-no-files-found: error

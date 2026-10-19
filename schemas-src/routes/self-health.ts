@@ -26,12 +26,12 @@ export type SelfHealthDay = z.infer<typeof SelfHealthDaySchema>;
 export const SelfHealthComponentSchema = z
   .object({
     component: z.string(),
-    // Null, not false, when the component has never been probed: "not
-    // measured" and "down" are different claims.
+    // Null, not false, without a current probe: "not measured" and "down"
+    // are different claims. Historical observations retain their timestamp.
     current_ok: z
       .boolean()
       .nullable()
-      .describe("Null when the component has never been probed -- NOT false."),
+      .describe("Null without a current probe, including a stopped prober; NOT false. checked_at preserves the last observation."),
     http_status: z.int().nullable(),
     latency_ms: DurationMillisSchema.nullable(),
     checked_at: z.string().nullable(),
@@ -44,7 +44,7 @@ export const SelfHealthComponentSchema = z
       .string()
       .nullable()
       .describe(
-        "Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add.",
+        "Qualifies a non-HTTP failure or missing current probe. Null when there is nothing to add.",
       ),
     // Days with no rows are absent, never zero-filled -- a gap means "we
     // weren't measuring", and 0% would invent an outage.
@@ -109,7 +109,7 @@ export const SelfHealthArtifactSchema = z
       .int()
       .min(0)
       .describe(
-        "Components with data. Zero means the poller hasn't written anything yet.",
+        "Components with current probe data. Zero means there is no current measurement.",
       ),
     // Stale lanes lead, then alphabetical -- the rows an operator acts on first.
     lanes: z.array(SelfHealthLaneSchema),
