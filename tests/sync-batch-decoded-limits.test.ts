@@ -93,7 +93,10 @@ describe("the derived sync-batch envelope", () => {
 
   test("retains every block at the admitted block-count ceiling", async () => {
     const result = await roundTrip({
-      blocks: Array.from({ length: CHAIN_DETAIL_SYNC_MAX_BLOCKS }, (_value, index) => block({ block_number: index })),
+      blocks: Array.from(
+        { length: CHAIN_DETAIL_SYNC_MAX_BLOCKS },
+        (_value, index) => block({ block_number: index }),
+      ),
     });
     assert.equal(result.message.families!.blockRows!.length, 16);
   });

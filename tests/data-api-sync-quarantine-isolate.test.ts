@@ -410,12 +410,14 @@ test("native expansion refusal retries its bytes and the DLQ retains exact custo
     listed.keys.map(async ({ name }) => JSON.parse((await kv.get(name))!)),
   );
   const custody = envelopes.filter(
-    (envelope) => envelope.kind === "custody" && envelope.message_id === refused.id,
+    (envelope) =>
+      envelope.kind === "custody" && envelope.message_id === refused.id,
   );
   expect(custody).toHaveLength(1);
   expect(custody[0].representation).toBe("bytes");
   expect(custody[0].body_sha256).toBe(sha256(compressed));
-  expect(Buffer.from(custody[0].payload, "base64")).toEqual(Buffer.from(compressed));
+  expect(Buffer.from(custody[0].payload, "base64")).toEqual(
+    Buffer.from(compressed),
+  );
   expect(outbound).toEqual([]);
 }, 60_000);
-

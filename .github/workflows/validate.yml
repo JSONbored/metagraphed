@@ -255,15 +255,14 @@ jobs:
 
   # Retain focused source evidence alongside the full gates for this draft.
   bundle-source:
-    name: queue decode source qualification
+    name: bundle source qualification
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/bounded-sync-batch-decode-20261019' }}
+    timeout-minutes: 10
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018' }}
     steps:
       - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -271,65 +270,42 @@ jobs:
           node-version: 22.23.2
       - name: Install without lifecycle scripts
         run: npm ci --ignore-scripts
-      - name: Native source formatting
-        run: npx prettier --write src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts docs/sync-batch-decoding.md
-      - name: Preserve exact native formatted sources
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: queue-native-formatted
-          path: |
-            src/sync-batch-limits.ts
-            src/sync-batch-compress.ts
-            src/chain-detail-sync-payload.ts
-            workers/data-api.ts
-            tests/sync-batch-decoded-limits.test.ts
-            tests/data-api-sync-queue-consumer.test.ts
-            tests/data-api-sync-quarantine-isolate.test.ts
-            docs/sync-batch-decoding.md
-      - name: Build normal fixture prerequisites
-        run: npm run build
-      - name: Lint and cold TypeScript
+      - name: Check source formatting
+        id: format
+        run: npx prettier --check scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Retain native formatting diff on failure
+        if: failure() && steps.format.outcome == 'failure'
         run: |
-          npx eslint src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts
-          npm run typecheck -- --incremental false
-      - name: Corrected source compatibility and consumer regressions
-        run: npx vitest run tests/sync-batch-decoded-limits.test.ts tests/sync-batch-compress.test.ts tests/sync-batch-queue.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts --reporter=default --reporter=json --outputFile=/tmp/queue-corrected.json --coverage --coverage.include=src/sync-batch-compress.ts --coverage.reporter=json --coverage.reporter=json-summary --coverage.reporter=lcov
-      - name: Retain causal failures against unchanged main
-        shell: bash
+          npx prettier --write scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+          git diff -- scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Lint source support
+        run: npx eslint scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts
+      - name: Typecheck source support and regression fixtures
         run: |
-          cp src/sync-batch-compress.ts /tmp/corrected-compress.ts
-          cp workers/data-api.ts /tmp/corrected-data-api.ts
-          git show 9819c77bdeabe50c9a10be21063184e56e5cfe2b:src/sync-batch-compress.ts > src/sync-batch-compress.ts
-          git show 9819c77bdeabe50c9a10be21063184e56e5cfe2b:workers/data-api.ts > workers/data-api.ts
-          set +e
-          npx vitest run tests/data-api-sync-queue-consumer.test.ts --testNamePattern 'disposes each compressed delivery|expansion refusal retries original' --reporter=json --outputFile=/tmp/queue-before.json
-          before_exit=$?
-          set -e
-          cp /tmp/corrected-compress.ts src/sync-batch-compress.ts
-          cp /tmp/corrected-data-api.ts workers/data-api.ts
-          test "$before_exit" -ne 0
           node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          import { readFileSync, writeFileSync } from 'node:fs';
-          const report = JSON.parse(readFileSync('/tmp/queue-before.json', 'utf8'));
-          const failed = report.testResults.flatMap(file => file.assertionResults).filter(test => test.status === 'failed');
-          assert.equal(failed.length, 2);
-          assert.ok(failed.some(test => test.fullName.includes('disposes each') && test.failureMessages.join('').includes('neighbour was read before disposal')));
-          assert.ok(failed.some(test => test.fullName.includes('expansion refusal') && /ack/.test(test.failureMessages.join('')) && /retry/.test(test.failureMessages.join(''))));
-          writeFileSync('/tmp/queue-before-receipt.json', JSON.stringify({base:'9819c77bdeabe50c9a10be21063184e56e5cfe2b',failed:failed.map(test => ({name:test.fullName,messages:test.failureMessages}))},null,2));
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('.bundle-source.tsconfig.json', JSON.stringify({
+            extends: './tsconfig.json',
+            compilerOptions: { incremental: false },
+            include: [
+              'scripts/archive-policy-bundles.ts',
+              'scripts/archive-policy-d1-source.ts',
+              'scripts/validate-archive-policy.ts',
+              'tests/archive-policy-bundles.test.ts',
+              'tests/archive-policy-d1-source.test.ts',
+              'tests/archive-policy.test.ts',
+              'tests/d1-schema-snapshot.test.ts',
+              'workers/**/*.d.ts'
+            ]
+          }));
           NODE
-      - name: Preserve native evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: queue-source-qualification
-          path: |
-            /tmp/queue-before.json
-            /tmp/queue-corrected.json
-            /tmp/queue-before-receipt.json
-            coverage/coverage-summary.json
-            coverage/coverage-final.json
-            coverage/lcov.info
+          npx tsc --project .bundle-source.tsconfig.json --noEmit
+      - name: Test snapshot extraction and archive-policy wiring
+        run: npx vitest run tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts tests/archive-policy.test.ts tests/d1-schema-snapshot.test.ts
+      - name: Audit committed snapshots and workflow rules
+        run: |
+          npm run validate:archive-policy
+          npm run validate:workflows
 
   validate:
     name: validate
