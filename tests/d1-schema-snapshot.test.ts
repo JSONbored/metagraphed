@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
   readFileSync,
@@ -8,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 import {
   normalizeSchema,
@@ -80,3 +82,31 @@ test("physical D1 schema snapshot writes, verifies and detects drift in both art
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test.each(["true", "false"])(
+  "schema verification emits only a fixed failure with GITHUB_ACTIONS=%s",
+  (actions) => {
+    const entry = fileURLToPath(
+      new URL("../scripts/snapshot-d1-schema.ts", import.meta.url),
+    );
+    const result = spawnSync(process.execPath, [entry], {
+      encoding: "utf8",
+      timeout: 10_000,
+      // No account/database configuration: fail before any request.
+      env: {
+        GITHUB_ACTIONS: actions,
+        NODE_NO_WARNINGS: "1",
+        CLOUDFLARE_API_TOKEN: "fixture-private-marker",
+      } as unknown as NodeJS.ProcessEnv,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    const prefix = actions === "true" ? "::error::" : "";
+    assert.equal(
+      result.stderr,
+      `${prefix}D1 schema verification failed (unclassified)\n`,
+    );
+    assert.equal(result.stderr.includes("fixture-private-marker"), false);
+  },
+);

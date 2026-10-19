@@ -133,7 +133,11 @@ if (process.argv[1]?.endsWith("snapshot-d1-schema.ts")) {
     await snapshotD1Schema(args.includes("--write"));
   };
   verify().catch((error: unknown) => {
-    console.error(d1SchemaVerificationFailure(error));
+    const failure = d1SchemaVerificationFailure(error);
+    // Only the fixed classifier enters workflow metadata, never raw errors.
+    console.error(
+      process.env.GITHUB_ACTIONS === "true" ? `::error::${failure}` : failure,
+    );
     process.exitCode = 1;
   });
 }
