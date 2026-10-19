@@ -6,7 +6,7 @@ import { builtinModules } from "node:module";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { build } from "esbuild";
-import { Miniflare } from "miniflare";
+import { Miniflare, NoOpLog } from "miniflare";
 import WebSocket from "ws";
 
 const scenario = process.argv[2];
@@ -39,14 +39,17 @@ const compatibleDate = "2026-06-06";
 const result: Record<string, unknown> = {
   scenario, variant, sourceBase: base, counterfactualOverlayBase: variant === "before-atomic" ? previous : null,
   sourceReceipt, workerSha256: workerHash, schemaReceipt, compatibilityDate: compatibleDate,
+  formattedDriverSha256: digest(readFileSync(process.argv[1])),
   productionActions: false, outboundRequests: 0,
   scope: "Actual data-api code in isolated local workerd; synthetic D1 only. The before-atomic variant overlays only three pinned modules on the same current worker, queue and HTTP admission source. It is not a historical deployment.",
 };
 let mf: Miniflare | undefined;
 let sockets: WebSocket[] = [];
 let samplerStopped = false;
-let sampledHeap = { samples: 0, maxUsedSize: 0, maxTotalSize: 0, maxEmbedderHeapUsedSize: 0, maxBackingStorageSize: 0, errors: 0 };
+let sampledHeap = { samples: 0, maxUsedSize: 0, maxTotalSize: 0, maxEmbedderHeapUsedSize: null as number | null, maxBackingStorageSize: null as number | null, embedderSamples: 0, backingStorageSamples: 0, errors: 0 };
 let rss = { samples: 0, maxVmRSSBytes: 0, maxVmHWMBytes: 0, maxNodeVmRSSBytes: 0, maxNodeVmHWMBytes: 0 };
+let runtimeRestarts = 0;
+const structuredLogs: Record<string, number> = { info: 0, warn: 0, error: 0, debug: 0, other: 0 };
 let sampler: Promise<void> | undefined;
 const started = Date.now();
 const deadline = started + 240_000;
@@ -142,7 +145,7 @@ export default { ...worker, async fetch(request, env, ctx) {
  return Response.json({ counts, firstPayloadBytes: bytes.length, firstPayloadSha256: hash });
 }};`;
   const builtins = new Set(builtinModules.map(name => name.replace(/^node:/, "")));
-  const bundle = await build({ stdin: { contents: entry, resolveDir: root, sourcefile: "resource-harness.ts", loader: "ts" }, bundle: true, format: "esm", platform: "browser", target: "es2022", conditions: ["workerd", "worker", "browser"], external: ["node:*", "cloudflare:*"], plugins: [{ name: "native-node-compat", setup(builder) { builder.onResolve({ filter: /^[a-z][a-z0-9_/-]*$/ }, args => builtins.has(args.path) ? { path: `node:${args.path}`, external: true } : undefined); } }], write: false, logLevel: "silent" });
+  const bundle = await build({ stdin: { contents: entry, resolveDir: root, sourcefile: "resource-harness.ts", loader: "ts" }, bundle: true, format: "esm", platform: "browser", target: "es2022", conditions: ["workerd", "worker", "browser"], external: ["node:*", "cloudflare:*"], banner: { js: 'import { createRequire as __resourceCreateRequire } from "node:module"; const require = __resourceCreateRequire(import.meta.url);' }, plugins: [{ name: "native-node-compat", setup(builder) { builder.onResolve({ filter: /^[a-z][a-z0-9_/-]*$/ }, args => builtins.has(args.path) ? { path: `node:${args.path}`, external: true } : undefined); } }], write: false, logLevel: "silent" });
   assert.equal(bundle.outputFiles.length, 1);
   const script = bundle.outputFiles[0].text;
   result.bundleSha256 = digest(script);
@@ -150,6 +153,9 @@ export default { ...worker, async fetch(request, env, ctx) {
   let outbound = 0;
   mf = new Miniflare({ modules: true, name: "resource-ingestion", script, compatibilityDate: compatibleDate,
     compatibilityFlags: ["nodejs_compat"], inspectorPort: 0,
+    log: new NoOpLog(),
+    handleStructuredLogs: event => { const level = ["info", "warn", "error", "debug"].includes(event.level) ? event.level : "other"; structuredLogs[level]++; },
+    unsafeHandleRuntimeRestart: () => { runtimeRestarts++; },
     bindings: { CHAIN_DETAIL_SYNC_SECRET: "synthetic-resource-secret", D1_STATE_TABLES: "blocks_head,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events" },
     d1Databases: ["D1_STATE"],
     outboundService: async () => { outbound++; return new Response("blocked synthetic qualification outbound", { status: 503 }); },
@@ -185,8 +191,14 @@ export default { ...worker, async fetch(request, env, ctx) {
     sampledHeap.samples++;
     sampledHeap.maxUsedSize = Math.max(sampledHeap.maxUsedSize, heap.usedSize);
     sampledHeap.maxTotalSize = Math.max(sampledHeap.maxTotalSize, heap.totalSize);
-    sampledHeap.maxEmbedderHeapUsedSize = Math.max(sampledHeap.maxEmbedderHeapUsedSize, heap.embedderHeapUsedSize ?? 0);
-    sampledHeap.maxBackingStorageSize = Math.max(sampledHeap.maxBackingStorageSize, heap.backingStorageSize ?? 0);
+    if (Number.isFinite(heap.embedderHeapUsedSize) && heap.embedderHeapUsedSize >= 0) {
+      sampledHeap.embedderSamples++;
+      sampledHeap.maxEmbedderHeapUsedSize = Math.max(sampledHeap.maxEmbedderHeapUsedSize ?? 0, heap.embedderHeapUsedSize);
+    }
+    if (Number.isFinite(heap.backingStorageSize) && heap.backingStorageSize >= 0) {
+      sampledHeap.backingStorageSamples++;
+      sampledHeap.maxBackingStorageSize = Math.max(sampledHeap.maxBackingStorageSize ?? 0, heap.backingStorageSize);
+    }
     const runtimeStatus = status(pid), nodeStatus = status(process.pid);
     rss.samples++;
     rss.maxVmRSSBytes = Math.max(rss.maxVmRSSBytes, runtimeStatus.rss);
@@ -222,6 +234,8 @@ export default { ...worker, async fetch(request, env, ctx) {
   } else {
     const { parseChainDetailSync } = await import(path.join(root, "src/chain-detail-sync-payload.ts"));
     const { validSyncBatchMessage } = await import(path.join(root, "src/sync-batch-queue.ts"));
+    const { SYNC_BATCH_MAX_DECODED_BYTES } = await import(path.join(root, "src/sync-batch-limits.ts"));
+    const { decompressSyncBatchMessage } = await import(path.join(root, "src/sync-batch-compress.ts"));
     const large = '"' + "x".repeat(16 * 1024 * 1024 - 2) + '"';
     expectedPayload = large;
     expectedBlocks = scenario === "queue-two-ten" ? 20 : 10;
@@ -235,21 +249,27 @@ export default { ...worker, async fetch(request, env, ctx) {
       if (!parsed.ok) throw new Error("synthetic_parser_refused");
       const rows = parsed.rows;
       rows.extrinsicRows[0].call_args = large;
-      rows.extrinsicRows.push({ ...rows.extrinsicRows[0], extrinsic_index: 1 });
+      rows.extrinsicRows.push({ ...rows.extrinsicRows[0], extrinsic_index: 1, extrinsic_hash: "0x" + (9_000_003 + index).toString(16).padStart(64, "0") });
       rows.chainEventRows[0].args = large;
       rows.chainEventRows.push({ ...rows.chainEventRows[0], event_index: 1 });
       Object.assign(rows.blockRows[0], { extrinsic_count: 2, chain_event_count: 2 });
       const message = { lane: "chain-detail", captured_at: 1_790_090_000_000, families: { blockRows: rows.blockRows, extrinsicRows: rows.extrinsicRows, chainEventRows: rows.chainEventRows, accountEventRows: rows.accountEventRows } };
       assert.equal(validSyncBatchMessage(message), true);
       const json = JSON.stringify(message);
+      assert.ok(Buffer.byteLength(json) <= SYNC_BATCH_MAX_DECODED_BYTES);
       const bytes = gzipSync(json);
       assert.ok(bytes.length <= 96 * 1024);
+      if (index === 0) {
+        const decoded = await decompressSyncBatchMessage(new Uint8Array(bytes));
+        assert.equal(validSyncBatchMessage(decoded), true);
+        assert.equal(digest(JSON.stringify(decoded)), digest(json));
+      }
       maximumDecodedBytes = Math.max(maximumDecodedBytes, Buffer.byteLength(json));
       maximumWireBytes = Math.max(maximumWireBytes, bytes.length);
       inputHashes.push(digest(json));
       messages.push({ id: `synthetic-${index}`, timestamp: new Date(1_790_090_000_000), body: new Uint8Array(bytes), attempts: 1 });
     }
-    result.fixture = { messages: expectedBlocks, events: expectedBlocks / 10, messagesPerEvent: 10, maximumWireBytes, maximumDecodedBytes, inputHashes, familyRowsPerMessage: { blocks: 1, extrinsics: 2, chainEvents: 2, accountEvents: 1 }, perValueBytes: 16 * 1024 * 1024, perPayloadFamilyBytes: 32 * 1024 * 1024, sourceReachability: "Direct valid queue contract and writer budget; not claimed derivable from a single maximum HTTP POST", scheduling: "Driver issues one or two simultaneous actual workerd queue events; not production broker scheduling acceptance" };
+    result.fixture = { messages: expectedBlocks, events: expectedBlocks / 10, messagesPerEvent: 10, maximumWireBytes, maximumDecodedBytes, globalDecodedCeilingBytes: SYNC_BATCH_MAX_DECODED_BYTES, exactDecodeRoundTripVerified: true, inputHashes, familyRowsPerMessage: { blocks: 1, extrinsics: 2, chainEvents: 2, accountEvents: 1 }, perValueBytes: 16 * 1024 * 1024, perPayloadFamilyBytes: 32 * 1024 * 1024, sourceReachability: "Direct valid queue contract and writer budget; not claimed derivable from a single maximum HTTP POST", scheduling: "Driver issues one or two simultaneous actual workerd queue events; not production broker scheduling acceptance" };
     operation = async () => {
       const outcomes = await Promise.all(Array.from({ length: expectedBlocks / 10 }, (_, event) => fetcher.queue("sync-batches", messages.slice(event * 10, (event + 1) * 10))));
       result.queueOutcomes = outcomes;
@@ -293,24 +313,28 @@ export default { ...worker, async fetch(request, env, ctx) {
   result.correctness = verification;
   result.outboundRequests = outbound;
   assert.equal(outbound, 0);
+  assert.equal(runtimeRestarts, 0, "runtime did not silently restart");
   result.status = "passed";
 } catch (error) {
   result.status = "failed";
   result.failureStage = stage;
-  const message = error instanceof Error ? error.message : "non_error";
-  result.safeFailure = /MF-Proxy|secret|authorization|token/i.test(message) ? "diagnostic_withheld" : message.slice(0,1400);
+  const classes = new Set(["AssertionError", "Error", "TypeError", "RangeError", "MiniflareCoreError"]);
+  result.failureClass = error instanceof Error && classes.has(error.name) ? error.name : "unclassified";
   process.exitCode = 1;
 } finally {
   samplerStopped = true;
   if (sampler) await sampler.catch(() => undefined);
   for (const socket of sockets) socket.terminate();
-  if (mf) await mf.dispose();
+  if (mf) await mf.dispose().catch(() => { result.cleanupFailure = true; process.exitCode = 1; });
+  result.runtimeRestarts = runtimeRestarts;
+  result.structuredLogCounts = structuredLogs;
   result.measurements = { sampledUserIsolateHeap: sampledHeap, processRss: rss,
     heapScope: "Sampled marked user workerd isolate only, no forced GC; observed maximum is a lower bound and is not total isolate allocation or Cloudflare memory-limit proof",
     rssScope: "Actual workerd PID process RSS/HWM includes Miniflare system and D1 helper isolates; Node driver is reported separately. It cannot be interpreted as user-isolate heap or subtract D1 overhead.",
     acceptance: "No production 128 MiB clearance, sustained workload, regional placement, provider scheduling, or shared-account capacity acceptance" };
   result.elapsedMs = Date.now() - started;
   const output = `${scenario}-${variant}.json`;
+  writeFileSync(path.join(reportDirectory, "driver.ts"), readFileSync(process.argv[1]));
   writeFileSync(path.join(reportDirectory, output), JSON.stringify(result, null, 2) + "\n");
   console.log(JSON.stringify({ scenario, variant, status: result.status, stage: result.failureStage, sampledHeap, rss, elapsedMs: result.elapsedMs }));
 }
