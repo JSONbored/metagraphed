@@ -39,7 +39,7 @@ envelope. The accounting deliberately does not substitute the independent
 - Let C be source bytes containing `call_args`. Every distinct derived netuid
   comes from a named `netuid`/longer key or the longer name/value object form.
   A named entry needs at least ten inner JSON bytes, before outer escaping. A
-  finite JavaScript number serializes in at most 24 ASCII bytes; its comma costs
+  nonnegative integer serializes in at most 24 ASCII bytes; its comma costs
   one more. Charging 3C therefore bounds the derived numeric list. Repeated
   discoveries collapse in a Set. Direct account-row netuids are charged below.
 - A and C are disjoint source spans, so retained source plus 2A + 3C is <= 4B.

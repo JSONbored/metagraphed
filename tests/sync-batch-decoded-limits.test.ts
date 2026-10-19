@@ -6,13 +6,13 @@ import {
   readSyncBatchJson,
   SyncBatchExpansionError,
 } from "../src/sync-batch-compress.ts";
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "../src/sync-batch-limits.ts";
 import {
+  parseChainDetailSync,
   CHAIN_DETAIL_SYNC_MAX_BLOCKS,
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
   CHAIN_DETAIL_SYNC_MAX_ROWS,
-  SYNC_BATCH_MAX_DECODED_BYTES,
-} from "../src/sync-batch-limits.ts";
-import { parseChainDetailSync } from "../src/chain-detail-sync-payload.ts";
+} from "../src/chain-detail-sync-payload.ts";
 import {
   packMultiFamilyMessage,
   SYNC_BATCH_MAX_BYTES,
