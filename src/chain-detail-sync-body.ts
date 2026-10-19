@@ -9,7 +9,8 @@ const DECODE_SLICE_BYTES = 64 * 1024;
 export async function readChainDetailSyncBody(
   request: Request,
 ): Promise<string | null> {
-  if (request.bodyUsed) throw new TypeError("Request body has already been used");
+  if (request.bodyUsed)
+    throw new TypeError("Request body has already been used");
   if (!request.body) return "";
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
@@ -32,7 +33,11 @@ export async function readChainDetailSyncBody(
       // An upstream read can return one very large chunk. Bound our decoding
       // and re-encoding temporaries even in that case; the upstream allocation
       // itself is outside this reader's control.
-      for (let offset = 0; offset < next.value.byteLength; offset += DECODE_SLICE_BYTES) {
+      for (
+        let offset = 0;
+        offset < next.value.byteLength;
+        offset += DECODE_SLICE_BYTES
+      ) {
         const chunk = next.value.subarray(offset, offset + DECODE_SLICE_BYTES);
         if (!append(decoder.decode(chunk, { stream: true }))) return null;
       }

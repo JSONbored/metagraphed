@@ -189,30 +189,47 @@ test("native HTTP admission preserves decoded UTF-8 rather than raw wire size", 
   const encoder = new TextEncoder();
   const limit = 16_000_000;
   const block = {
-    block_number: 1, block_hash: `0x${"ab".repeat(32)}`, spec_version: 479,
-    observed_at: 1_780_000_000_000, extrinsics: [], chain_events: [], account_events: [],
+    block_number: 1,
+    block_hash: `0x${"ab".repeat(32)}`,
+    spec_version: 479,
+    observed_at: 1_780_000_000_000,
+    extrinsics: [],
+    chain_events: [],
+    account_events: [],
   };
   const json = JSON.stringify({ blocks: [block] });
-  const headers = { "x-chain-detail-sync-token": "native-chain-detail-fixture" };
+  const headers = {
+    "x-chain-detail-sync-token": "native-chain-detail-fixture",
+  };
   const bom = encoder.encode(`\ufeff${json.padEnd(limit, " ")}`);
   expect(bom.byteLength).toBe(limit + 3);
-  const accepted = await runtime.dispatchFetch("https://example.test/api/v1/internal/chain-detail-sync", { method: "POST", headers, body: bom });
+  const accepted = await runtime.dispatchFetch(
+    "https://example.test/api/v1/internal/chain-detail-sync",
+    { method: "POST", headers, body: bom },
+  );
   // A valid admitted body reaches the existing store-availability decision.
   // No production store is bound and no write is attempted in this fixture.
   expect(accepted.status).toBe(503);
-  expect(await accepted.json()).toEqual({ error: "no store bound for this route" });
+  expect(await accepted.json()).toEqual({
+    error: "no store bound for this route",
+  });
 
   const prefix = encoder.encode(`${json.slice(0, -1)},"padding":"`);
   const suffix = encoder.encode('"}');
   for (const extra of [0, 1]) {
     const fill = limit - prefix.byteLength - suffix.byteLength - 3 + extra;
-    const bytes = new Uint8Array(prefix.byteLength + 1 + fill + suffix.byteLength);
+    const bytes = new Uint8Array(
+      prefix.byteLength + 1 + fill + suffix.byteLength,
+    );
     bytes.set(prefix);
     bytes[prefix.byteLength] = 0xff;
     bytes.fill(120, prefix.byteLength + 1, prefix.byteLength + 1 + fill);
     bytes.set(suffix, bytes.length - suffix.byteLength);
     expect(bytes.byteLength).toBe(limit - 2 + extra);
-    const result = await runtime.dispatchFetch("https://example.test/api/v1/internal/chain-detail-sync", { method: "POST", headers, body: bytes });
+    const result = await runtime.dispatchFetch(
+      "https://example.test/api/v1/internal/chain-detail-sync",
+      { method: "POST", headers, body: bytes },
+    );
     expect(result.status).toBe(extra === 0 ? 503 : 413);
   }
   expect(outbound).toEqual([]);

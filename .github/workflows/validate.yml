@@ -275,8 +275,10 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { Miniflare } from 'miniflare';
-          import { writeFileSync } from 'node:fs';
-          const runtime = new Miniflare({modules:true,script:'export default {async fetch(request) {return Response.json({text:await request.text()});}}',compatibilityDate:'2026-08-05',cf:false});
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { stripJsonComments } from './scripts/lib.ts';
+          const config=JSON.parse(stripJsonComments(readFileSync('wrangler.data.jsonc','utf8')));
+          const runtime = new Miniflare({modules:true,script:'export default {async fetch(request) {return Response.json({text:await request.text()});}}',compatibilityDate:config.compatibility_date,compatibilityFlags:config.compatibility_flags,cf:false});
           const output=[];
           for(let boms=0;boms<=4;boms++) {
             const body=new TextEncoder().encode('\ufeff'.repeat(boms)+'{}');
