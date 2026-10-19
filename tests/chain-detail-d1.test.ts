@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, test } from "vitest";
 import { Miniflare } from "miniflare";
 import { createD1Store } from "../src/d1-store.ts";
@@ -110,10 +111,22 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
+  await db
+    .prepare(
+      readFileSync(
+        new URL(
+          "../migrations/d1/0024_chain_detail_payload_chunks.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    )
+    .run();
 });
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
-  for (const table of tables) await db.prepare(`DELETE FROM ${table}`).run();
+  for (const table of [...tables, "chain_detail_payload_chunks"])
+    await db.prepare(`DELETE FROM ${table}`).run();
 });
 
 test("native chain detail preserves nullable outcomes and reader parity on replay", async () => {
@@ -567,5 +580,141 @@ test("D1 extrinsic feeds apply all bounds before LIMIT and cross tuple ties exac
       [102, 2],
       [102, 0],
     ],
+  );
+});
+
+test("native D1 distinct failed payloads roll back without leaving chunks", async () => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const rows = input(
+      JSON.stringify({ bytes: randomBytes(200000).toString("base64") }),
+    );
+    rows.blockRows[0].block_hash = null;
+    const result = await writeChainDetailD1(createD1Store(db), env(), rows);
+    assert.ok(Object.values(result).every((row) => !row.ok));
+    assert.equal(await count("chain_detail_payload_chunks"), 0);
+    for (const table of chainDetailTables())
+      assert.equal(await count(table), 0);
+  }
+});
+
+test("native D1 rejects a later payload family before publishing any chunks", async () => {
+  const rows = input(
+    JSON.stringify({ bytes: randomBytes(200000).toString("base64") }),
+  );
+  rows.chainEventRows[0].args = "\0metagraphed:payload:v1:reserved";
+  const result = await writeChainDetailD1(createD1Store(db), env(), rows);
+  assert.ok(
+    Object.values(result).every(
+      (row) => !row.ok && /Reserved/.test(row.reason!),
+    ),
+  );
+  assert.equal(await count("chain_detail_payload_chunks"), 0);
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
+});
+
+test("native D1 shared chunks survive a competing late failure and exact replay", async () => {
+  const value = JSON.stringify({
+    bytes: randomBytes(200000).toString("base64"),
+  });
+  const good = input(value),
+    bad = input(value);
+  bad.blockRows[0].block_hash = null;
+  const results = await Promise.all(
+    [good, bad].map((rows) =>
+      writeChainDetailD1(createD1Store(db), env(), rows),
+    ),
+  );
+  assert.ok(Object.values(results[0]).every((result) => result.ok));
+  assert.ok(Object.values(results[1]).every((result) => !result.ok));
+  assert.equal(await count("chain_detail_payload_chunks"), 1);
+  const before = (
+    await db
+      .prepare(
+        "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY sha256,part",
+      )
+      .all()
+  ).results;
+  const replay = await writeChainDetailD1(createD1Store(db), env(), good);
+  assert.ok(Object.values(replay).every((result) => result.ok));
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY sha256,part",
+        )
+        .all()
+    ).results,
+    before,
+  );
+  const selected = (
+    await db.prepare("SELECT call_args FROM chain_detail_extrinsics").all()
+  ).results;
+  const { restoreChainDetailPayloads } =
+    await import("../src/chain-detail-payloads.ts");
+  assert.equal(
+    (await restoreChainDetailPayloads(env(), selected))[0].call_args,
+    value,
+  );
+});
+
+test("native D1 counts planned chunks against the existing atomic statement budget", async () => {
+  const large = input(
+    JSON.stringify({ bytes: randomBytes(200000).toString("base64") }),
+  );
+  const small = input().extrinsicRows[0];
+  large.chainEventRows = [];
+  large.extrinsicRows = [
+    large.extrinsicRows[0],
+    ...Array.from({ length: 89899 }, () => small),
+  ];
+  const result = await writeChainDetailD1(createD1Store(db), env(), large);
+  assert.ok(
+    Object.values(result).every(
+      (row) => !row.ok && /statement budget/.test(row.reason!),
+    ),
+  );
+  assert.equal(await count("chain_detail_payload_chunks"), 0);
+  for (const table of chainDetailTables()) assert.equal(await count(table), 0);
+});
+
+test("native D1 replays an atomic payload after a lost committed acknowledgement", async () => {
+  const value = JSON.stringify({
+    bytes: randomBytes(200000).toString("base64"),
+  });
+  const rows = input(value);
+  let calls = 0;
+  // The actual binding is an RPC proxy; inject the lost reply around its real batch.
+  const store = createD1Store({
+    prepare(text) {
+      return db.prepare(text);
+    },
+    async batch<T>(statements: D1PreparedStatement[]) {
+      const committed = await db.batch<T>(statements);
+      if (++calls === 1) throw new Error("lost committed acknowledgement");
+      return committed;
+    },
+  });
+  const uncertain = await writeChainDetailD1(store, env(), rows);
+  assert.equal(calls, 1);
+  assert.ok(Object.values(uncertain).every((row) => !row.ok));
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await count("chain_detail_payload_chunks"), 1);
+  const before = (
+    await db
+      .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+      .all()
+  ).results;
+  const replay = await writeChainDetailD1(store, env(), rows);
+  assert.equal(calls, 2);
+  assert.ok(Object.values(replay).every((row) => row.ok));
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await count("chain_detail_extrinsics"), 1);
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+        .all()
+    ).results,
+    before,
   );
 });
