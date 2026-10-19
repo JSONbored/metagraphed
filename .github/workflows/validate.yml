@@ -272,7 +272,7 @@ jobs:
       - name: Install without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Native source formatting
-        run: npx prettier --write src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts docs/sync-batch-decoding.md
+        run: npx prettier --write src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts docs/sync-batch-decoding.md
       - name: Preserve exact native formatted sources
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -284,15 +284,16 @@ jobs:
             workers/data-api.ts
             tests/sync-batch-decoded-limits.test.ts
             tests/data-api-sync-queue-consumer.test.ts
+            tests/data-api-sync-quarantine-isolate.test.ts
             docs/sync-batch-decoding.md
       - name: Build normal fixture prerequisites
         run: npm run build
       - name: Lint and cold TypeScript
         run: |
-          npx eslint src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts
+          npx eslint src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts
           npm run typecheck -- --incremental false
       - name: Corrected source compatibility and consumer regressions
-        run: npx vitest run tests/sync-batch-decoded-limits.test.ts tests/sync-batch-compress.test.ts tests/sync-batch-queue.test.ts tests/data-api-sync-queue-consumer.test.ts --coverage --coverage.reporter=json --coverage.reporter=json-summary --coverage.reporter=lcov
+        run: npx vitest run tests/sync-batch-decoded-limits.test.ts tests/sync-batch-compress.test.ts tests/sync-batch-queue.test.ts tests/data-api-sync-queue-consumer.test.ts tests/data-api-sync-quarantine-isolate.test.ts --reporter=default --reporter=json --outputFile=/tmp/queue-corrected.json --coverage --coverage.include=src/sync-batch-compress.ts --coverage.reporter=json --coverage.reporter=json-summary --coverage.reporter=lcov
       - name: Retain causal failures against unchanged main
         shell: bash
         run: |
@@ -324,6 +325,7 @@ jobs:
           name: queue-source-qualification
           path: |
             /tmp/queue-before.json
+            /tmp/queue-corrected.json
             /tmp/queue-before-receipt.json
             coverage/coverage-summary.json
             coverage/coverage-final.json

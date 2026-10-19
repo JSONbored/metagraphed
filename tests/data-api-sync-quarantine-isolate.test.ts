@@ -13,6 +13,7 @@ import { gzipSync } from "node:zlib";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 import { SYNC_QUARANTINE_PREFIX } from "../src/sync-dead-letter-store.ts";
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "../src/sync-batch-limits.ts";
 
 let outdir: string;
 let runtime: Miniflare;
@@ -368,3 +369,53 @@ test("a native per-message retry preserves its valid suffix and later attempts r
   }
   expect(outbound).toEqual([]);
 });
+
+test("native expansion refusal retries its bytes and the DLQ retains exact custody", async () => {
+  const compressed = Uint8Array.from(
+    gzipSync(`"${"x".repeat(SYNC_BATCH_MAX_DECODED_BYTES)}"`),
+  );
+  expect(compressed.byteLength).toBeLessThan(96 * 1024);
+  const timestamp = new Date(1_780_000_000_789);
+  const refused = {
+    id: "native-expansion-refusal-ci",
+    body: compressed.buffer,
+    timestamp,
+    attempts: 1,
+  };
+  const suffix = {
+    id: "native-expansion-suffix-ci",
+    body: null,
+    timestamp,
+    attempts: 1,
+  };
+  const target = await runtime.getWorker();
+  const delivered = await target.queue("sync-batches", [refused, suffix]);
+  expect(delivered).toMatchObject({
+    outcome: "ok",
+    ackAll: false,
+    retryBatch: { retry: false },
+    explicitAcks: [suffix.id],
+  });
+  expect(delivered.retryMessages).toEqual([
+    expect.objectContaining({ msgId: refused.id }),
+  ]);
+  const preserved = await target.queue("sync-batches-dlq", [
+    { ...refused, attempts: 7 },
+  ]);
+  expect(preserved.explicitAcks).toEqual([refused.id]);
+  expect(preserved.retryMessages).toEqual([]);
+  const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
+  const listed = await kv.list({ prefix: SYNC_QUARANTINE_PREFIX });
+  const envelopes = await Promise.all(
+    listed.keys.map(async ({ name }) => JSON.parse((await kv.get(name))!)),
+  );
+  const custody = envelopes.filter(
+    (envelope) => envelope.kind === "custody" && envelope.message_id === refused.id,
+  );
+  expect(custody).toHaveLength(1);
+  expect(custody[0].representation).toBe("bytes");
+  expect(custody[0].body_sha256).toBe(sha256(compressed));
+  expect(Buffer.from(custody[0].payload, "base64")).toEqual(Buffer.from(compressed));
+  expect(outbound).toEqual([]);
+}, 60_000);
+

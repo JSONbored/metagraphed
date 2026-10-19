@@ -37,10 +37,10 @@ function block(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function roundTrip(body: unknown) {
-  const sourceBytes = encoder.encode(JSON.stringify(body)).byteLength;
+async function roundTrip(body: unknown, wire = JSON.stringify(body)) {
+  const sourceBytes = encoder.encode(wire).byteLength;
   assert.ok(sourceBytes <= CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);
-  const parsed = parseChainDetailSync(body, NOW);
+  const parsed = parseChainDetailSync(JSON.parse(wire), NOW);
   assert.ok(parsed.ok);
   const { blockRows, extrinsicRows, chainEventRows, accountEventRows } =
     parsed.rows;
@@ -100,7 +100,7 @@ describe("the derived sync-batch envelope", () => {
 
   test("covers decimal duplication, named attribution, escapes and numeric normalization", async () => {
     const amount = "9".repeat(10_000);
-    const result = await roundTrip({
+    const body = {
       blocks: [
         block({
           block_number: 1e20,
@@ -140,7 +140,11 @@ describe("the derived sync-batch envelope", () => {
           ],
         }),
       ],
-    });
+    };
+    const result = await roundTrip(
+      body,
+      JSON.stringify(body).replaceAll("100000000000000000000", "1e20"),
+    );
     const row = result.message.families!.blockRows![0]!;
     assert.equal(row.native_transfer_tao, amount);
     assert.equal(row.economic_activity_tao, amount);
