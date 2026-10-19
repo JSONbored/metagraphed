@@ -110,3 +110,59 @@ test.each(["true", "false"])(
     assert.equal(result.stderr.includes("fixture-private-marker"), false);
   },
 );
+
+test.each(["true", "false"])(
+  "the actual verification CLI retains only the safe provider code with GITHUB_ACTIONS=%s",
+  (actions) => {
+    const entry = fileURLToPath(
+      new URL("../scripts/snapshot-d1-schema.ts", import.meta.url),
+    );
+    const preload = `
+      let calls = 0;
+      globalThis.fetch = async () => {
+        calls++;
+        return Response.json({
+          success: false,
+          errors: [{
+            code: 10000,
+            message: "fixture-private-marker",
+            error_chain: [{ code: "fixture-private-marker" }],
+          }],
+          messages: ["fixture-private-marker"],
+        }, { status: 401 });
+      };
+      process.once("exit", () => {
+        if (calls !== 1) process.exitCode = 2;
+      });
+    `;
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        `data:text/javascript,${encodeURIComponent(preload)}`,
+        entry,
+        "--verify-ledger",
+      ],
+      {
+        encoding: "utf8",
+        timeout: 10_000,
+        env: {
+          GITHUB_ACTIONS: actions,
+          NODE_NO_WARNINGS: "1",
+          CLOUDFLARE_ACCOUNT_ID: "a".repeat(32),
+          CLOUDFLARE_D1_DATABASE_ID: "11111111-1111-1111-1111-111111111111",
+          CLOUDFLARE_API_TOKEN: "fixture-private-marker",
+        } as unknown as NodeJS.ProcessEnv,
+      },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    const prefix = actions === "true" ? "::error::" : "";
+    assert.equal(
+      result.stderr,
+      `${prefix}D1 schema verification failed (http_401); Cloudflare error codes: 10000\n`,
+    );
+    assert.equal(result.stderr.includes("fixture-private-marker"), false);
+  },
+);

@@ -22,8 +22,10 @@ command only checks for drift. Set `CLOUDFLARE_ACCOUNT_ID`,
 environment; never place a token in a command argument or tracked file.
 
 In GitHub Actions, verification failures publish the existing fixed failure
-classification as an error annotation. This makes an HTTP or ledger failure
-class available without a complete job-log download. Provider text, SQL,
+classification as an error annotation. The exact allowlisted provider code
+`10000` also survives when the complete helper error has its known fixed shape;
+all other suffixes are discarded. This makes an HTTP or ledger failure class
+and that safe provider diagnostic available without a complete job-log download. Provider text, SQL,
 identifiers and credentials never enter the annotation. An unclassified error
 remains unclassified; this is not a substitute for authorized live diagnosis.
 
