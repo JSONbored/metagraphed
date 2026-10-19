@@ -2,6 +2,7 @@ import {
   HistoryEconomicsAttributionSchema,
   HistoryObjectSchema,
   type HistoryObject,
+  type HistoryEconomicsSource,
 } from "../schemas-src/artifacts/history-generation.ts";
 import { historyJson, historySha256 } from "./history-sha256.ts";
 import {
@@ -11,12 +12,12 @@ import {
 } from "./indexed-parquet.ts";
 
 const MAX_BYTES = 2 * 1024 * 1024;
-type Part = HistoryObject & { rows: number };
-const prefix = (part: Part) => part.key.replace(/\.parquet$/, ".economics-");
+const prefix = (part: HistoryEconomicsSource) =>
+  part.key.replace(/\.parquet$/, ".economics-");
 
 /** Offline only: caller must derive IDs from every pinned physical row in order. */
 export function buildHistoryEconomicsAttribution(
-  part: Part,
+  part: HistoryEconomicsSource,
   subnetIds: readonly number[][],
 ) {
   const value = HistoryEconomicsAttributionSchema.parse({
@@ -43,7 +44,7 @@ export function buildHistoryEconomicsAttribution(
 
 export function validateHistoryEconomicsReference(
   input: HistoryObject,
-  part: Part,
+  part: HistoryEconomicsSource,
 ) {
   const object = HistoryObjectSchema.parse(input);
   const suffix = object.key.slice(prefix(part).length);
@@ -61,7 +62,7 @@ export function validateHistoryEconomicsReference(
 export async function readHistoryEconomicsAttribution(
   source: ParquetRangeSource,
   input: HistoryObject,
-  part: Part,
+  part: HistoryEconomicsSource,
   budget: ParquetReadBudget,
 ): Promise<number[][]> {
   const object = validateHistoryEconomicsReference(input, part);

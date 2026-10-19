@@ -21,12 +21,18 @@ export const HistoryEconomicsSubnetIdsSchema = z
   .refine((ids) => ids.every((id, i) => i === 0 || ids[i - 1] < id), {
     message: "Economics subnet IDs must be unique and sorted",
   });
-/** Derived attribution for every physical row of one unchanged source part. */
+/** One unchanged physical source part, shared by preparation and serving. */
+export const HistoryEconomicsSourceSchema = HistoryObjectSchema.extend({
+  rows: count.positive().max(65536),
+});
 export const HistoryEconomicsAttributionSchema = z.strictObject({
   version: z.literal(1),
-  source: HistoryObjectSchema.extend({ rows: count.positive().max(65536) }),
+  source: HistoryEconomicsSourceSchema,
   subnetIds: z.array(HistoryEconomicsSubnetIdsSchema).min(1).max(65536),
 });
+export type HistoryEconomicsSource = z.infer<
+  typeof HistoryEconomicsSourceSchema
+>;
 /** The publisher writes this last, after qualifying every file and hash shard. */
 const generationFields = {
   ...scope,
