@@ -13012,6 +13012,89 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 92,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn92:hyperparam:9305408:max_burn_tao",
+            "chain:sn92:hyperparam:9305408:immunity_period",
+            "chain:sn92:hyperparam:9295811:min_burn_tao",
+            "chain:sn92:hyperparam:9294909:max_burn_tao",
+            "chain:sn92:hyperparam:9294909:subnet_is_active"
+          ],
+          "text": "Subnet 92 recorded five hyperparameter changes between 16 October and 17 October."
+        }
+      ],
+      "slug": "2026-w42",
+      "sources": [
+        {
+          "id": "chain:sn92:hyperparam:9305408:max_burn_tao",
+          "summary": "Maximum burn changed from 2 to 5 at block #9305408.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn92"
+          ],
+          "timestamp": "2026-10-17T20:06:12.041Z",
+          "title": "Subnet 92: Maximum burn 2 → 5",
+          "url": "https://metagraph.sh/blocks/9305408"
+        },
+        {
+          "id": "chain:sn92:hyperparam:9305408:immunity_period",
+          "summary": "Immunity period changed from 5000 to 7200 at block #9305408.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn92"
+          ],
+          "timestamp": "2026-10-17T20:06:12.041Z",
+          "title": "Subnet 92: Immunity period 5000 → 7200",
+          "url": "https://metagraph.sh/blocks/9305408"
+        },
+        {
+          "id": "chain:sn92:hyperparam:9295811:min_burn_tao",
+          "summary": "Minimum burn changed from 0.0005 to 0.5 at block #9295811.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn92"
+          ],
+          "timestamp": "2026-10-16T12:06:55.136Z",
+          "title": "Subnet 92: Minimum burn 0.0005 → 0.5",
+          "url": "https://metagraph.sh/blocks/9295811"
+        },
+        {
+          "id": "chain:sn92:hyperparam:9294909:max_burn_tao",
+          "summary": "Maximum burn changed from 100 to 2 at block #9294909.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn92"
+          ],
+          "timestamp": "2026-10-16T09:06:31.746Z",
+          "title": "Subnet 92: Maximum burn 100 → 2",
+          "url": "https://metagraph.sh/blocks/9294909"
+        },
+        {
+          "id": "chain:sn92:hyperparam:9294909:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9294909.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn92"
+          ],
+          "timestamp": "2026-10-16T09:06:31.746Z",
+          "title": "Subnet 92: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9294909"
+        }
+      ],
+      "substantive_count": 5,
+      "week": 42,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 93,
       "schema_version": 1,
       "sentences": [
