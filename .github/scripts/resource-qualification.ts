@@ -109,10 +109,21 @@ async function connect(url: string, expectedPort: string) {
     ws.once("error", () => { clearTimeout(timer); reject(new Error("inspector_open_failed")); });
   });
   let id = 0;
+  const contextIds = new Set<number>();
   const waiting = new Map<number, { resolve(value: any): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
   ws.on("message", raw => {
     assert.ok(raw.length <= 65536, "bounded inspector message");
     const message = JSON.parse(raw.toString());
+    if (message.method === "Runtime.executionContextCreated") {
+      const contextId = message.params?.context?.id;
+      assert.ok(Number.isSafeInteger(contextId) && contextId > 0 && contextId <= 0x7fffffff && contextIds.size < 32);
+      contextIds.add(contextId);
+      return;
+    }
+    if (message.method === "Runtime.executionContextDestroyed") {
+      contextIds.delete(message.params?.executionContextId);
+      return;
+    }
     const request = waiting.get(message.id);
     if (!request) return;
     clearTimeout(request.timer);
@@ -126,6 +137,7 @@ async function connect(url: string, expectedPort: string) {
   });
   return {
     ws,
+    get contextIds() { return [...contextIds]; },
     call(method: string, params: Record<string, unknown> = {}) {
       assert.ok(["Runtime.enable", "Runtime.evaluate", "Runtime.getHeapUsage"].includes(method));
       const requestId = ++id;
@@ -229,7 +241,7 @@ export default { ...worker, async fetch(request, env, ctx) {
   const targets = JSON.parse(listingText);
   assert.ok(Array.isArray(targets) && targets.length <= 32);
   const ownedTargets = targets.filter(target => target.id === "core:user:resource-ingestion");
-  const inspectorDiscovery = { targets: targets.length, exactOwnedIdMatches: ownedTargets.length, inspected: 0, markerMatches: 0, unavailableContexts: 0 };
+  const inspectorDiscovery = { targets: targets.length, exactOwnedIdMatches: ownedTargets.length, inspected: 0, markerMatches: 0, executionContexts: 0, unavailableContexts: 0 };
   result.inspectorDiscovery = inspectorDiscovery;
   let client: Awaited<ReturnType<typeof connect>> | undefined;
   for (const target of ownedTargets.length === 1 ? ownedTargets : targets) {
@@ -237,17 +249,26 @@ export default { ...worker, async fetch(request, env, ctx) {
     stage = "inspector-connect";
     const candidate = await connect(target.webSocketDebuggerUrl, inspector.port);
     stage = "inspector-marker";
-    let evaluation;
+    let markerMatches = 0;
     try {
       await candidate.call("Runtime.enable");
-      evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", returnByValue: true });
+      await pause(0);
+      const contexts = candidate.contextIds;
+      inspectorDiscovery.executionContexts += contexts.length;
+      for (const contextId of contexts) {
+        try {
+          const evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", contextId, returnByValue: true });
+          inspectorDiscovery.inspected++;
+          if (evaluation.result?.value === true) markerMatches++;
+        } catch { inspectorDiscovery.unavailableContexts++; }
+      }
     } catch {
       inspectorDiscovery.unavailableContexts++;
       candidate.ws.close();
       continue;
     }
-    inspectorDiscovery.inspected++;
-    if (evaluation.result?.value === true) { inspectorDiscovery.markerMatches++; assert.equal(client, undefined); client = candidate; }
+    assert.ok(markerMatches <= 1);
+    if (markerMatches === 1) { inspectorDiscovery.markerMatches++; assert.equal(client, undefined); client = candidate; }
     else candidate.ws.close();
   }
   stage = "inspector-target";
