@@ -307,41 +307,6 @@ jobs:
           npm run validate:archive-policy
           npm run validate:workflows
 
-  health-migration-source:
-    name: health migration source qualification
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'fix/lane-health-trigger-migration-20261019' }}
-    steps:
-      - name: Checkout exact source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Setup Node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 22.23.2
-      - name: Install
-        uses: ./.github/actions/install-deps
-      - name: Format only authored source and generate prospective physical schema
-        run: |
-          npx prettier --write tests/lane-health-migration-candidate.test.ts tests/helpers/lane-health-retention-fixture.ts docs/lane-health-retention.md
-          LANE_HEALTH_SCHEMA_OUTPUT="$PWD" npx vitest run tests/lane-health-migration-candidate.test.ts
-      - name: Qualify the canonical migration and unchanged retention boundaries
-        run: npx vitest run tests/lane-health-migration-candidate.test.ts tests/lane-health-retention-migration.test.ts tests/lane-health-retention-ready.test.ts tests/lane-health-packet-work.test.ts tests/retention-housekeeping.test.ts tests/retention-work-budget.test.ts tests/subnet-burn-history.test.ts
-      - name: Retain native authored bytes and prospective schema
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: health-migration-native-source
-          retention-days: 7
-          path: |
-            tests/lane-health-migration-candidate.test.ts
-            tests/helpers/lane-health-retention-fixture.ts
-            docs/lane-health-retention.md
-            generated/db/d1-schema.json
-            db/d1-schema.sql
-
   validate:
     name: validate
     needs: changes

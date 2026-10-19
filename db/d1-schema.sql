@@ -1372,18 +1372,16 @@ WHEN OLD.snapshot_date < date('now') OR NEW.snapshot_date < date('now') BEGIN
 END;
 
 CREATE TRIGGER lane_health_clocks_delete AFTER DELETE ON lane_health BEGIN
-    UPDATE lane_health_clocks SET occurrences = occurrences - 1 WHERE lane = OLD.lane AND checked_at = OLD.checked_at;
-    DELETE FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;
+    UPDATE lane_health_clocks SET occurrences = occurrences - 1
+    WHERE lane = OLD.lane AND checked_at = OLD.checked_at;
+    DELETE FROM lane_health_clocks
+    WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;
     UPDATE lane_health_clocks SET previous_at =
         (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at < OLD.checked_at)
-    WHERE lane = OLD.lane AND previous_at = OLD.checked_at
+    WHERE lane = OLD.lane AND checked_at =
+        (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at > OLD.checked_at)
+        AND previous_at = OLD.checked_at
         AND NOT EXISTS (SELECT 1 FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at);
-
-    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;
-    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)
-    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict
-    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at
-    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;
 END;
 
 CREATE TRIGGER lane_health_clocks_insert AFTER INSERT ON lane_health BEGIN
@@ -1402,11 +1400,15 @@ END;
 
 CREATE TRIGGER lane_health_clocks_update AFTER UPDATE OF lane, checked_at ON lane_health
 WHEN OLD.lane IS NOT NEW.lane OR OLD.checked_at IS NOT NEW.checked_at BEGIN
-    UPDATE lane_health_clocks SET occurrences = occurrences - 1 WHERE lane = OLD.lane AND checked_at = OLD.checked_at;
-    DELETE FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;
+    UPDATE lane_health_clocks SET occurrences = occurrences - 1
+    WHERE lane = OLD.lane AND checked_at = OLD.checked_at;
+    DELETE FROM lane_health_clocks
+    WHERE lane = OLD.lane AND checked_at = OLD.checked_at AND occurrences = 0;
     UPDATE lane_health_clocks SET previous_at =
         (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at < OLD.checked_at)
-    WHERE lane = OLD.lane AND previous_at = OLD.checked_at
+    WHERE lane = OLD.lane AND checked_at =
+        (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at > OLD.checked_at)
+        AND previous_at = OLD.checked_at
         AND NOT EXISTS (SELECT 1 FROM lane_health_clocks WHERE lane = OLD.lane AND checked_at = OLD.checked_at);
 
     INSERT INTO lane_health_clocks (lane, checked_at, occurrences, previous_at)
@@ -1414,7 +1416,8 @@ WHEN OLD.lane IS NOT NEW.lane OR OLD.checked_at IS NOT NEW.checked_at BEGIN
         (SELECT MAX(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at < NEW.checked_at))
     ON CONFLICT(lane, checked_at) DO UPDATE SET occurrences = occurrences + 1;
     UPDATE lane_health_clocks SET previous_at = NEW.checked_at
-    WHERE lane = NEW.lane AND checked_at = (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at > NEW.checked_at)
+    WHERE lane = NEW.lane AND checked_at =
+        (SELECT MIN(checked_at) FROM lane_health_clocks WHERE lane = NEW.lane AND checked_at > NEW.checked_at)
         AND previous_at IS NOT NEW.checked_at;
 END;
 
@@ -1448,15 +1451,33 @@ CREATE TRIGGER lane_health_current_update AFTER UPDATE ON lane_health BEGIN
     ) WHERE position = 1;
 END;
 
-CREATE TRIGGER lane_health_verdict_update AFTER UPDATE OF lane, verdict, checked_at ON lane_health
-WHEN OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_at IS NOT NEW.checked_at BEGIN
-    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at;
+CREATE TRIGGER lane_health_verdict_delete AFTER DELETE ON lane_health
+WHEN EXISTS (SELECT 1 FROM lane_health_verdict_latest
+        WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at)
+    AND NOT EXISTS (SELECT 1 FROM lane_health
+        WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at) BEGIN
+    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict;
     INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)
-    SELECT lane, verdict, MAX(checked_at) FROM lane_health WHERE lane = OLD.lane AND verdict = OLD.verdict GROUP BY lane, verdict
-    ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at
-    WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;
+    SELECT lane, verdict, checked_at FROM lane_health
+    WHERE lane = OLD.lane AND verdict = OLD.verdict ORDER BY checked_at DESC LIMIT 1;
+END;
 
-    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at) VALUES (NEW.lane, NEW.verdict, NEW.checked_at)
+CREATE TRIGGER lane_health_verdict_update AFTER UPDATE OF lane, verdict, checked_at ON lane_health
+WHEN (OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_at IS NOT NEW.checked_at)
+    AND EXISTS (SELECT 1 FROM lane_health_verdict_latest
+        WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at)
+    AND NOT EXISTS (SELECT 1 FROM lane_health
+        WHERE lane = OLD.lane AND verdict = OLD.verdict AND checked_at = OLD.checked_at) BEGIN
+    DELETE FROM lane_health_verdict_latest WHERE lane = OLD.lane AND verdict = OLD.verdict;
+    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)
+    SELECT lane, verdict, checked_at FROM lane_health
+    WHERE lane = OLD.lane AND verdict = OLD.verdict ORDER BY checked_at DESC LIMIT 1;
+END;
+
+CREATE TRIGGER lane_health_verdict_update_new AFTER UPDATE OF lane, verdict, checked_at ON lane_health
+WHEN OLD.lane IS NOT NEW.lane OR OLD.verdict IS NOT NEW.verdict OR OLD.checked_at IS NOT NEW.checked_at BEGIN
+    INSERT INTO lane_health_verdict_latest (lane, verdict, checked_at)
+    VALUES (NEW.lane, NEW.verdict, NEW.checked_at)
     ON CONFLICT(lane, verdict) DO UPDATE SET checked_at = excluded.checked_at
     WHERE excluded.checked_at > lane_health_verdict_latest.checked_at;
 END;

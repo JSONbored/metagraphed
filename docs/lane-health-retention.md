@@ -77,8 +77,10 @@ through the existing Validate workflow; no project tooling runs on the Mac.
 The migration and physical snapshot paths match the existing D1-maintenance push
 filter. A main merge automatically runs `npm run migrate:d1 -- --remote`, applying
 **every** pending tracked migration before ledger and physical-schema verification.
-Normal public Worker builds and contract sync run independently. No private
-Container publication is part of this PR. A check failure after application does
+The generated snapshot matches production build paths for the API, data API and
+registry-sync API. It does not match WSS-LB's production paths. Those three builds
+and contract sync run independently. No private Container publication is part of
+this PR. A check failure after application does
 not establish DDL rollback or authorize a blind retry.
 
 Consequently this is not a dormant main merge: application enables the existing
