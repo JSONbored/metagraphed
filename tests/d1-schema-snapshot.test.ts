@@ -97,7 +97,7 @@ test.each(["true", "false"])(
         GITHUB_ACTIONS: actions,
         NODE_NO_WARNINGS: "1",
         CLOUDFLARE_API_TOKEN: "fixture-private-marker",
-      } as NodeJS.ProcessEnv,
+      } as unknown as NodeJS.ProcessEnv,
     });
     assert.equal(result.error, undefined);
     assert.equal(result.status, 1);

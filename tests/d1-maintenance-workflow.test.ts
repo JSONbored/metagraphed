@@ -129,7 +129,7 @@ function migrationChanges(
     PATH: process.env.PATH ?? "",
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: "/dev/null",
-  } as NodeJS.ProcessEnv;
+  } as unknown as NodeJS.ProcessEnv;
   const git = (...args: string[]) =>
     execFileSync(
       "git",
