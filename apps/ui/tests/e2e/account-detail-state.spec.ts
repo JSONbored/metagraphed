@@ -233,7 +233,9 @@ test.describe("account detail query states", () => {
 
         await gotoThroughRestart(page, ROUTE);
         const positions = page.locator("#positions");
-        await expect(positions).toContainText("No position relationships recorded in this response.");
+        await expect(positions).toContainText(
+          "No position relationships recorded in this response.",
+        );
         await expect(positions).toContainText("Root holdings are not covered");
         await expect(positions).toContainText("do not establish wallet holdings");
         await expect(positions).toContainText("Relationship snapshot");
