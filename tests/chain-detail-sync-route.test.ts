@@ -220,6 +220,72 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal(badRow.status, 400);
   });
 
+  test("refuses an oversized prefix without draining its tail or writing any family", async () => {
+    let reads = 0;
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reads += 1;
+          if (reads === 1)
+            controller.enqueue(
+              new TextEncoder().encode("x".repeat(16_000_001)),
+            );
+          else controller.close();
+        },
+        cancel() {
+          cancelled = true;
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: SECRET },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+      env,
+      CTX,
+    );
+    assert.equal(response.status, 413);
+    assert.deepEqual(await response.json(), {
+      error: "body exceeds 16000000 bytes",
+    });
+    assert.equal(reads, 1, "admission read past the oversized prefix");
+    assert.equal(cancelled, true);
+    assert.equal(stream.locked, false);
+    assert.equal(insertedTables().length, 0);
+  });
+
+  test("keeps authorization before streaming body admission", async () => {
+    let reads = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reads += 1;
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: "wrong" },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+      env,
+      CTX,
+    );
+    assert.equal(response.status, 401);
+    assert.equal(reads, 0);
+    assert.equal(stream.locked, false);
+    assert.equal(insertedTables().length, 0);
+  });
+
   test("a valid batch with no store bound is 503, not a silent success", async () => {
     const res = await dataApi.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {

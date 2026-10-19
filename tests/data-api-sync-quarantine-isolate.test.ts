@@ -164,6 +164,7 @@ beforeAll(async () => {
     host: "127.0.0.1",
     port: 0,
     cf: false,
+    bindings: { CHAIN_DETAIL_SYNC_SECRET: "native-chain-detail-fixture" },
     kvNamespaces: ["METAGRAPH_CONTROL"],
     outboundService(request) {
       outbound.push(request.url);
@@ -184,6 +185,111 @@ test("the raw Wrangler Data API deployment graph registers without an entrypoint
   expect(outbound).toEqual([]);
   console.info("data-api-deployment-graph", JSON.stringify(deploymentProof));
 });
+
+test("native HTTP admission preserves decoded UTF-8 rather than raw wire size", async () => {
+  const encoder = new TextEncoder();
+  const limit = 16_000_000;
+  const block = {
+    block_number: 1,
+    block_hash: `0x${"ab".repeat(32)}`,
+    spec_version: 479,
+    observed_at: 1_780_000_000_000,
+    extrinsics: [],
+    chain_events: [],
+    account_events: [],
+  };
+  const json = JSON.stringify({ blocks: [block] });
+  const headers = {
+    "x-chain-detail-sync-token": "native-chain-detail-fixture",
+  };
+  const bom = encoder.encode(`\ufeff${json.padEnd(limit, " ")}`);
+  expect(bom.byteLength).toBe(limit + 3);
+  const accepted = await runtime.dispatchFetch(
+    "https://example.test/api/v1/internal/chain-detail-sync",
+    { method: "POST", headers, body: bom },
+  );
+  // A valid admitted body reaches the existing store-availability decision.
+  // No production store is bound and no write is attempted in this fixture.
+  expect(accepted.status).toBe(503);
+  expect(await accepted.json()).toEqual({
+    error: "no store bound for this route",
+  });
+
+  const prefix = encoder.encode(`${json.slice(0, -1)},"padding":"`);
+  const suffix = encoder.encode('"}');
+  for (const extra of [0, 1]) {
+    const fill = limit - prefix.byteLength - suffix.byteLength - 3 + extra;
+    const bytes = new Uint8Array(
+      prefix.byteLength + 1 + fill + suffix.byteLength,
+    );
+    bytes.set(prefix);
+    bytes[prefix.byteLength] = 0xff;
+    bytes.fill(120, prefix.byteLength + 1, prefix.byteLength + 1 + fill);
+    bytes.set(suffix, bytes.length - suffix.byteLength);
+    expect(bytes.byteLength).toBe(limit - 2 + extra);
+    const result = await runtime.dispatchFetch(
+      "https://example.test/api/v1/internal/chain-detail-sync",
+      { method: "POST", headers, body: bytes },
+    );
+    expect(result.status).toBe(extra === 0 ? 503 : 413);
+  }
+  expect(outbound).toEqual([]);
+}, 60_000);
+
+test("native Fetch keeps the same BOM admission decisions as the deployed bundle", async () => {
+  const oracle = new Miniflare({
+    modules: true,
+    script:
+      "export default {async fetch(request) {return Response.json({text:await request.text()});}}",
+    compatibilityDate: deploymentProof.compatibility_date,
+    compatibilityFlags: deploymentProof.compatibility_flags,
+    host: "127.0.0.1",
+    port: 0,
+    cf: false,
+    outboundService(request) {
+      outbound.push(request.url);
+      return new MiniflareResponse(null, { status: 502 });
+    },
+  });
+  const json = JSON.stringify({
+    blocks: [
+      {
+        block_number: 1,
+        block_hash: `0x${"ab".repeat(32)}`,
+        spec_version: 479,
+        observed_at: 1_780_000_000_000,
+        extrinsics: [],
+        chain_events: [],
+        account_events: [],
+      },
+    ],
+  });
+  try {
+    for (let count = 0; count <= 4; count += 1) {
+      const wire = new TextEncoder().encode("\ufeff".repeat(count) + json);
+      const control = await oracle.dispatchFetch("https://oracle.test", {
+        method: "POST",
+        body: wire,
+      });
+      const native = (await control.json()) as { text: string };
+      expect(native.text).toBe("\ufeff".repeat(Math.max(0, count - 1)) + json);
+      const response = await runtime.dispatchFetch(
+        "https://example.test/api/v1/internal/chain-detail-sync",
+        {
+          method: "POST",
+          headers: {
+            "x-chain-detail-sync-token": "native-chain-detail-fixture",
+          },
+          body: wire,
+        },
+      );
+      expect(response.status).toBe(count <= 1 ? 503 : 400);
+    }
+  } finally {
+    await oracle.dispose();
+  }
+  expect(outbound).toEqual([]);
+}, 60_000);
 
 test("the isolated Data API queue preserves JSON and binary custody with explicit acknowledgments", async () => {
   const queue = "sync-batches-dlq";
