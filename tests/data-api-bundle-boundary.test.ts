@@ -93,6 +93,7 @@ describe("data-api's bundle boundary", () => {
     "src/raw-capture-sync.ts",
     "src/account-balance.ts",
     "src/account-nominator-positions.ts",
+    "src/health-prober.ts",
     "src/chain-burn.ts",
     "src/subnet-burn-history.ts",
     "src/network-parameters.ts",
@@ -165,6 +166,13 @@ test("indexed chain windows do not import capture cron wiring or route contracts
     "workers/config.ts",
   ])
     assert.ok(!graph[forbidden], `history reader imports ${forbidden}`);
+});
+
+test("retention plans share the policy without importing the health cron", () => {
+  const graph = inputs("src/neon-prune.ts");
+  assert.ok(graph["src/health-history-retention.ts"]);
+  assert.ok(!graph["src/health-prober.ts"]);
+  assert.ok(!graph["src/operational-surfaces-sync.ts"]);
 });
 
 test("websocket worker bundles without Node compatibility", () => {

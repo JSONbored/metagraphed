@@ -93,7 +93,8 @@ const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
  * a copy of this number there would be a second source of truth for one
  * retention, and the failure when they drift is silent: the stores keep
  * different amounts of history and parity reports a gap nobody can explain. */
-export const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+import { HISTORY_RETENTION_MS } from "./health-history-retention.ts";
+export { HISTORY_RETENTION_MS } from "./health-history-retention.ts";
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];

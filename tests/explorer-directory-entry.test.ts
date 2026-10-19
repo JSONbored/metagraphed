@@ -322,7 +322,9 @@ describe("default directory entry", () => {
       expect(await conditional!.text()).toBe("");
       expect(f.fetch).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 0 : 3);
       expect(cache.put).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 1 : 0);
-      expect(cache.match).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 3 : 0);
+      expect(cache.match).toHaveBeenCalledTimes(
+        entry.path === ACCOUNT_PATH ? 3 : 0,
+      );
     },
   );
 

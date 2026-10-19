@@ -64,8 +64,8 @@ jobs:
       - name: Qualify reconciled receiver regressions
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/alpha-runtime-receiver-recovery'
         run: |
-          npx prettier --check tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts src/chain-detail-prune.ts
-          npx vitest run tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts tests/data-api-bundle-boundary.test.ts
+          npx prettier --check tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts src/chain-detail-prune.ts src/health-history-retention.ts src/health-prober.ts src/neon-prune.ts tests/data-api-bundle-boundary.test.ts
+          npx vitest run tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts tests/data-api-bundle-boundary.test.ts tests/neon-prune.test.ts tests/health-prober.test.ts
       - name: Retain native receiver source evidence
         if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/alpha-runtime-receiver-recovery'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
