@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createCipheriv, createHash } from "node:crypto";
-import { mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
-import { builtinModules } from "node:module";
+import { mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
-import { build } from "esbuild";
 import { Miniflare, NoOpLog } from "miniflare";
 import WebSocket from "ws";
 
@@ -157,15 +155,26 @@ export default { ...worker, async fetch(request, env, ctx) {
  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
  return Response.json({ counts, firstPayloadBytes: bytes.length, firstPayloadSha256: hash });
 }};`;
-  const builtins = new Set(builtinModules.map(name => name.replace(/^node:/, "")));
-  const bundle = await build({ stdin: { contents: entry, resolveDir: root, sourcefile: "resource-harness.ts", loader: "ts" }, bundle: true, format: "esm", platform: "browser", target: "es2022", conditions: ["workerd", "worker", "browser"], external: ["node:*", "cloudflare:*"], banner: { js: 'import { createRequire as __resourceCreateRequire } from "node:module"; const require = __resourceCreateRequire(import.meta.url);' }, plugins: [{ name: "native-node-compat", setup(builder) { builder.onResolve({ filter: /^[a-z][a-z0-9_/-]*$/ }, args => builtins.has(args.path) ? { path: `node:${args.path}`, external: true } : undefined); } }], write: false, logLevel: "silent" });
-  assert.equal(bundle.outputFiles.length, 1);
-  const script = bundle.outputFiles[0].text;
-  result.bundleSha256 = digest(script);
-  stage = "runtime";
+  const scratch = path.resolve(".resource-qualification");
+  const bundled = path.join(scratch, "bundle");
+  mkdirSync(bundled, { recursive: true });
+  const entryPath = path.join(scratch, "resource-harness.ts");
+  const configPath = path.join(scratch, "wrangler.json");
+  writeFileSync(entryPath, entry);
+  writeFileSync(configPath, JSON.stringify({ name: "resource-ingestion", main: entryPath, compatibility_date: compatibleDate, compatibility_flags: ["nodejs_compat"] }));
+  const bundle = spawnSync(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "deploy", "--dry-run", "--config", configPath, "--outdir", bundled], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 90_000, maxBuffer: 256 * 1024, env: { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_WRITE_LOGS: "false", CI: "true", BROWSER: "false" } });
+  assert.equal(bundle.error, undefined, "native dry-run bundler launched");
+  assert.equal(bundle.status, 0, "native dry-run bundler succeeded");
+  const entryFiles = readdirSync(bundled).filter(file => file.endsWith(".js"));
+  assert.equal(entryFiles.length, 1, "one native bundled entry");
+  const scriptPath = path.join(bundled, entryFiles[0]);
+  result.bundleSha256 = digest(readFileSync(scriptPath));
+  result.harnessEntrySha256 = digest(entry);
+  result.bundler = { nativeWranglerDryRun: true, stdoutRetained: false, stderrRetained: false };
+  stage = "runtime-constructor";
   checkpoint();
   let outbound = 0;
-  mf = new Miniflare({ modules: true, name: "resource-ingestion", script, compatibilityDate: compatibleDate,
+  mf = new Miniflare({ modules: true, name: "resource-ingestion", scriptPath, compatibilityDate: compatibleDate,
     compatibilityFlags: ["nodejs_compat"], inspectorPort: 0,
     log: new NoOpLog(),
     handleStructuredLogs: event => { const level = ["info", "warn", "error", "debug"].includes(event.level) ? event.level : "other"; structuredLogs[level]++; },
@@ -174,13 +183,29 @@ export default { ...worker, async fetch(request, env, ctx) {
     d1Databases: ["D1_STATE"],
     outboundService: async () => { outbound++; return new Response("blocked synthetic qualification outbound", { status: 503 }); },
   });
+  stage = "runtime-ready";
+  checkpoint();
   await mf.ready;
+  stage = "schema";
+  checkpoint();
   const db = await mf.getD1Database("D1_STATE");
   for (const file of schemaPaths)
     for (const statement of readFileSync(file, "utf8").split("-- statement-breakpoint"))
       if (statement.trim()) await db.prepare(statement).run();
+  stage = "runtime-identity";
+  checkpoint();
   const pid = workerdPid();
-  stage = "inspector";
+  const packageVersion = (file: string, name: string) => {
+    const info = JSON.parse(readFileSync(file, "utf8"));
+    assert.equal(info.name, name);
+    assert.match(info.version, /^[0-9][0-9A-Za-z.+-]{0,63}$/);
+    return info.version;
+  };
+  result.runtimeVersions = { node: process.versions.node,
+    miniflare: packageVersion(path.resolve("node_modules/miniflare/package.json"), "miniflare"),
+    wrangler: packageVersion(path.resolve("node_modules/wrangler/package.json"), "wrangler"),
+    workerd: packageVersion(path.resolve(path.dirname(realpathSync(`/proc/${pid}/exe`)), "..", "package.json"), "@cloudflare/workerd-linux-64") };
+  stage = "inspector-discovery";
   checkpoint();
   const inspector = await mf.getInspectorURL();
   assert.equal(inspector.hostname, "127.0.0.1");
@@ -191,6 +216,7 @@ export default { ...worker, async fetch(request, env, ctx) {
   const targets = JSON.parse(listingText);
   assert.ok(Array.isArray(targets) && targets.length <= 32);
   let client: Awaited<ReturnType<typeof connect>> | undefined;
+  stage = "inspector-target";
   for (const target of targets) {
     if (typeof target.webSocketDebuggerUrl !== "string") continue;
     const candidate = await connect(target.webSocketDebuggerUrl);
@@ -199,6 +225,7 @@ export default { ...worker, async fetch(request, env, ctx) {
     else candidate.ws.close();
   }
   assert.ok(client, "marked user isolate inspector selected");
+  stage = "inspector-heap";
   const sample = async () => {
     const heap = await client!.call("Runtime.getHeapUsage");
     for (const key of ["usedSize", "totalSize"])
@@ -345,7 +372,8 @@ export default { ...worker, async fetch(request, env, ctx) {
   result.status = "failed";
   result.failureStage = stage;
   const classes = new Set(["AssertionError", "Error", "TypeError", "RangeError", "MiniflareCoreError"]);
-  result.failureClass = error instanceof Error && classes.has(error.name) ? error.name : "unclassified";
+  const kind = error instanceof Error ? error.constructor.name : "unclassified";
+  result.failureClass = classes.has(kind) ? kind : "unclassified";
   process.exitCode = 1;
 } finally {
   samplerStopped = true;
