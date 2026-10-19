@@ -46,7 +46,8 @@ async function d1ErrorCodes(response: Response): Promise<string> {
           )
             return "";
           return payload.errors.some(
-            (error) => error && typeof error === "object" && error.code === 10000,
+            (error) =>
+              error && typeof error === "object" && error.code === 10000,
           )
             ? "; Cloudflare error codes: 10000"
             : "";

@@ -216,8 +216,8 @@ test("D1 HTTP diagnostics accept complete chunked JSON up to the byte limit", as
   const unicodeSplit = encoded.indexOf(0xce) + 1;
   const padding = new Uint8Array(8 * 1024 - encoded.byteLength).fill(32);
   await assert.rejects(
-    d1AdminBatch([statement], credentials, async () =>
-      new Response(
+    d1AdminBatch([statement], credentials, async () => {
+      return new Response(
         new ReadableStream({
           start(controller) {
             controller.enqueue(encoded.subarray(0, unicodeSplit));
@@ -227,8 +227,8 @@ test("D1 HTTP diagnostics accept complete chunked JSON up to the byte limit", as
           },
         }),
         { status: 401 },
-      ),
-    ),
+      );
+    }),
     { message: codeFailure },
   );
 });
@@ -236,8 +236,8 @@ test("D1 HTTP diagnostics accept complete chunked JSON up to the byte limit", as
 test("D1 HTTP diagnostics discard an oversized body without awaiting cancellation", async () => {
   let cancellations = 0;
   await assert.rejects(
-    d1AdminBatch([statement], credentials, async () =>
-      new Response(
+    d1AdminBatch([statement], credentials, async () => {
+      return new Response(
         new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode(providerFailure));
@@ -249,8 +249,8 @@ test("D1 HTTP diagnostics discard an oversized body without awaiting cancellatio
           },
         }),
         { status: 401 },
-      ),
-    ),
+      );
+    }),
     { message: httpFailure },
   );
   assert.equal(cancellations, 1);
@@ -283,7 +283,9 @@ test("D1 HTTP diagnostics bound empty chunks and suppress cleanup failures", asy
   try {
     for (const cleanupFails of [false, true, "reject"]) {
       const reader = {
-        read: vi.fn(async () => ({ done: false, value: new Uint8Array() })),
+        read: vi.fn(async () => {
+          return { done: false, value: new Uint8Array() };
+        }),
         cancel: vi.fn(() => {
           if (cleanupFails === true) throw new Error(credentials.apiToken);
           if (cleanupFails === "reject")
