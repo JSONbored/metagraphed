@@ -29,7 +29,6 @@ describe("chain-detail normalized text admission", () => {
     encoder.encode('\ufeff{"text":"界 😀 \\ud800"}'),
     new Uint8Array([34, 0xff, 0xc2, 34]),
     new Uint8Array([0xef, 0xbb, 0xbf]),
-    encoder.encode("\ufeff\ufeff{}"),
     new Uint8Array([0xef, 0xbb]),
     new Uint8Array([0xf0, 0x9f, 0x98]),
     new Uint8Array(),
@@ -48,6 +47,17 @@ describe("chain-detail normalized text admission", () => {
       }
     });
   }
+
+  test("keeps workerd's single-BOM rule instead of Node's double-BOM quirk", async () => {
+    const wire = encoder.encode("\ufeff\ufeff{}");
+    assert.equal(await request([wire]).text(), "{}");
+    for (let split = 0; split <= wire.length; split += 1) {
+      const actual = await readChainDetailSyncBody(request([
+        wire.subarray(0, split), wire.subarray(split),
+      ]));
+      assert.equal(actual, "\ufeff{}");
+    }
+  });
 
   test("preserves a BOM-prefixed request at the decoded ceiling despite its larger wire length", async () => {
     const text = "x".repeat(CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);

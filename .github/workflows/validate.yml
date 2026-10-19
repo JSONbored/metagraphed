@@ -324,6 +324,8 @@ jobs:
         run: |
           cp workers/data-api.ts /tmp/http-corrected-worker.ts
           git show 9819c77bdeabe50c9a10be21063184e56e5cfe2b:workers/data-api.ts > workers/data-api.ts
+          trap 'cp /tmp/http-corrected-worker.ts workers/data-api.ts' EXIT
+          npx vitest run tests/data-api-sync-quarantine-isolate.test.ts --testNamePattern 'native HTTP admission|native Fetch keeps' --reporter=default --reporter=json --outputFile=/tmp/http-native-main-control.json
           set +e
           npx vitest run tests/chain-detail-sync-route.test.ts --testNamePattern 'refuses an oversized prefix without draining' --reporter=json --outputFile=/tmp/http-before.json
           before_exit=$?
@@ -348,6 +350,7 @@ jobs:
             /tmp/http-corrected.json
             /tmp/http-before.json
             /tmp/http-before-receipt.json
+            /tmp/http-native-main-control.json
             coverage/coverage-summary.json
             coverage/lcov.info
 

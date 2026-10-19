@@ -235,6 +235,41 @@ test("native HTTP admission preserves decoded UTF-8 rather than raw wire size", 
   expect(outbound).toEqual([]);
 }, 60_000);
 
+test("native Fetch keeps the same BOM admission decisions as the deployed bundle", async () => {
+  const oracle = new Miniflare({
+    modules: true,
+    script: 'export default {async fetch(request) {return Response.json({text:await request.text()});}}',
+    compatibilityDate: deploymentProof.compatibility_date,
+    compatibilityFlags: deploymentProof.compatibility_flags,
+    host: "127.0.0.1",
+    port: 0,
+    cf: false,
+    outboundService(request) {
+      outbound.push(request.url);
+      return new MiniflareResponse(null, { status: 502 });
+    },
+  });
+  const json = JSON.stringify({ blocks: [{
+    block_number: 1, block_hash: `0x${"ab".repeat(32)}`, spec_version: 479,
+    observed_at: 1_780_000_000_000, extrinsics: [], chain_events: [], account_events: [],
+  }] });
+  try {
+    for (let count = 0; count <= 4; count += 1) {
+      const wire = new TextEncoder().encode("\ufeff".repeat(count) + json);
+      const control = await oracle.dispatchFetch("https://oracle.test", { method: "POST", body: wire });
+      const native = await control.json() as { text: string };
+      expect(native.text).toBe("\ufeff".repeat(Math.max(0, count - 1)) + json);
+      const response = await runtime.dispatchFetch("https://example.test/api/v1/internal/chain-detail-sync", {
+        method: "POST", headers: { "x-chain-detail-sync-token": "native-chain-detail-fixture" }, body: wire,
+      });
+      expect(response.status).toBe(count <= 1 ? 503 : 400);
+    }
+  } finally {
+    await oracle.dispose();
+  }
+  expect(outbound).toEqual([]);
+}, 60_000);
+
 test("the isolated Data API queue preserves JSON and binary custody with explicit acknowledgments", async () => {
   const queue = "sync-batches-dlq";
   const timestamp = new Date(1_780_000_000_123);

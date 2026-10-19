@@ -43,3 +43,9 @@ interruption and refusing/cancelling before a tail is read. The existing raw
 Wrangler deployment-bundle harness checks actual workerd HTTP admission with no
 production store or outbound access. A pinned original-main control must fail
 the route regression specifically because it reads past the oversized prefix.
+
+The pinned Node test host strips two leading BOMs; workerd's native Fetch strips
+one. That host behavior is not used to redefine production admission. An isolated
+native Fetch oracle using the deployment compatibility date and flags verifies
+zero through four leading BOMs, and the actual deployment bundle preserves the
+same 503/400 decisions. The original-main bundle must pass those controls too.
