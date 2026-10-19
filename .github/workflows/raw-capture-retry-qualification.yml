@@ -1,0 +1,65 @@
+name: Raw capture durable retry qualification
+
+on:
+  push:
+    branches:
+      - ci/raw-capture-retry-qualification-20261019
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-retry-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain native formatting
+        run: npx prettier --write src/raw-capture-d1.ts src/raw-chain-capture.ts src/raw-capture-retry-intent.ts src/raw-capture-retry-store.ts tests/raw-capture-d1.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-retry-intent.test.ts tests/raw-capture-retry-d1.test.ts tests/raw-capture-cron-wiring.test.ts .github/workflows/raw-capture-retry-qualification.yml .github/scripts/qualify-raw-capture-retry.ts .github/vitest.raw-capture.config.ts
+      - name: Lint actual source and fixtures
+        run: npx eslint src/raw-capture-d1.ts src/raw-chain-capture.ts src/raw-capture-retry-intent.ts src/raw-capture-retry-store.ts tests/raw-capture-d1.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-retry-intent.test.ts tests/raw-capture-retry-d1.test.ts tests/raw-capture-cron-wiring.test.ts
+      - name: Cold typecheck
+        run: npm run typecheck -- --incremental false
+      - name: Validate workflow policies
+        run: npm run validate:workflows
+      - name: Prove actual baseline and candidate D1, capture and bundle contracts
+        run: node .github/scripts/qualify-raw-capture-retry.ts
+      - name: Retain only formatted source and curated synthetic receipt
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-retry-qualified-source
+          path: |
+            src/raw-capture-d1.ts
+            src/raw-chain-capture.ts
+            src/raw-capture-retry-intent.ts
+            src/raw-capture-retry-store.ts
+            tests/raw-capture-d1.test.ts
+            tests/raw-chain-capture.test.ts
+            tests/raw-capture-retry-intent.test.ts
+            tests/raw-capture-retry-d1.test.ts
+            tests/raw-capture-cron-wiring.test.ts
+            raw-capture-retry-reports/source-receipt.json
+          retention-days: 1
+          if-no-files-found: error
+

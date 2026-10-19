@@ -28,7 +28,7 @@ test("the deployed cron wires the D1 raw writer only for explicit D1 selection",
     );
     const calls = capture.mock.calls as unknown as [
       unknown,
-      { d1CaptureStore?: { put: unknown } },
+      { d1CaptureStore?: { put: unknown; pending: unknown; acknowledgeWatermark: unknown } },
     ][];
     const [received, deps] = calls.at(-1)!;
     assert.equal(received, env);
@@ -36,6 +36,9 @@ test("the deployed cron wires the D1 raw writer only for explicit D1 selection",
       typeof deps.d1CaptureStore?.put,
       storage === "d1" ? "function" : "undefined",
     );
+    assert.equal(typeof deps.d1CaptureStore?.pending, storage === "d1" ? "function" : "undefined");
+    assert.equal(typeof deps.d1CaptureStore?.acknowledgeWatermark, storage === "d1" ? "function" : "undefined");
     await Promise.all(pending);
   }
 });
+

@@ -1,0 +1,129 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+
+const base = "7afb1a5fb1aa00eb0dd261861d9f56f59c3db80d";
+const baseSources = new Map([
+  ["src/raw-capture-d1.ts", "a2117ac28687f6e83b1c0c9f63d3c7996702cde1"],
+  ["src/raw-chain-capture.ts", "ba70a0a49d560f013b5468cf022038f00dd58948"],
+]);
+const files = [
+  "src/raw-capture-d1.ts", "src/raw-chain-capture.ts",
+  "src/raw-capture-retry-intent.ts", "src/raw-capture-retry-store.ts",
+  "tests/raw-capture-d1.test.ts", "tests/raw-chain-capture.test.ts",
+  "tests/raw-capture-retry-intent.test.ts", "tests/raw-capture-retry-d1.test.ts",
+  "tests/raw-capture-cron-wiring.test.ts",
+];
+const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
+const candidates = new Map(files.map((path) => [path, readFileSync(path, "utf8")]));
+const original = new Map<string, string>();
+for (const [path, expected] of baseSources) {
+  const blob = spawnSync("git", ["rev-parse", base + ":" + path], {encoding:"utf8"});
+  assert.equal(blob.status, 0);
+  assert.equal(blob.stdout.trim(), expected);
+  const content = spawnSync("git", ["show", base + ":" + path], {encoding:"utf8"});
+  assert.equal(content.status, 0);
+  original.set(path, content.stdout);
+  assert.notEqual(digest(content.stdout), digest(candidates.get(path)!));
+}
+const baselineFixture = readFileSync(".github/fixtures/raw-capture-retry-baseline.test.ts", "utf8");
+assert.equal(digest(baselineFixture), "8315db29336d73c8eba07b12770b1dcf211f40aa1a2a425ba0e8f6c2775a92a8");
+mkdirSync("raw-capture-retry-reports", {recursive:true});
+interface Case { fullName: string; status: string; failureMessages: string[]; duration?: number; }
+interface Report { numFailedTests: number; numPassedTests: number; testResults: { assertionResults: Case[]; message: string; }[]; }
+const selected = new Map([
+  ["fresh capture provenance resumes one incomplete reservation", "failed"],
+  ["exact original replay completes its incomplete reservation", "passed"],
+]);
+function run(label: string, tests: string[], extra: string[] = []) {
+  const path = "raw-capture-retry-reports/" + label + ".json";
+  const rss = "raw-capture-retry-reports/" + label + "-rss.txt";
+  const start = Date.now();
+  const result = spawnSync("/usr/bin/time", ["-f", "%M", "-o", rss,
+    process.execPath, "node_modules/vitest/vitest.mjs", "run", ...tests,
+    "--retry=0", "--reporter=json", "--outputFile=" + path, ...extra],
+    {encoding:"utf8",maxBuffer:8*1024*1024,timeout:300_000,
+      env:{...process.env,FORCE_COLOR:"0",WRANGLER_SEND_METRICS:"false",WRANGLER_WRITE_LOGS:"false"}});
+  assert.equal(result.error, undefined, label + " process starts and finishes in bound");
+  assert.equal(result.signal, null);
+  if (/Unhandled Errors|Vitest caught \d+ unhandled errors?|Source Errors|Unhandled Rejection|Uncaught Exception/i.test(result.stdout+"\n"+result.stderr))
+    throw new Error(label + " unclassified native failure; raw output withheld");
+  const raw = readFileSync(path,"utf8");
+  assert.ok(!/MF-Proxy-Shared-Secret/i.test(raw));
+  const report = JSON.parse(raw) as Report;
+  if (report.testResults.some((file) => file.message !== ""))
+    throw new Error(label + " file/hook failure; raw output withheld");
+  const cases = report.testResults.flatMap((file) => file.assertionResults);
+  const peak = Number(readFileSync(rss,"utf8").trim().split("\n").at(-1))*1024;
+  assert.ok(Number.isSafeInteger(peak) && peak > 0);
+  return {status:result.status,report,cases,elapsed_ms:Date.now()-start,gnu_time_max_rss_bytes:peak};
+}
+try {
+  for (const [path, content] of original) writeFileSync(path,content);
+  writeFileSync("tests/raw-capture-d1.test.ts",baselineFixture);
+  const baseline = run("baseline",["tests/raw-capture-d1.test.ts"],[
+    "--testNamePattern",[...selected.keys()].map((name) => "^"+name+"$").join("|"),
+  ]);
+  assert.equal(baseline.status,1);
+  assert.equal(baseline.report.numFailedTests,1);
+  assert.equal(baseline.report.numPassedTests,1);
+  assert.equal(baseline.report.testResults.length,1);
+  for (const [name, status] of selected) {
+    const matches=baseline.cases.filter((row) => row.fullName===name);
+    assert.equal(matches.length,1);
+    assert.equal(matches[0].status,status);
+    assert.equal(matches[0].failureMessages.length,status==="failed"?1:0);
+  }
+  assert.ok(baseline.cases.filter((row) => !selected.has(row.fullName))
+    .every((row) => ["pending","skipped"].includes(row.status)));
+  const state=JSON.parse(readFileSync("raw-capture-retry-reports/fresh-state.json","utf8"));
+  assert.equal(state.before.objects,1);
+  assert.equal(state.before.complete,0);
+  assert.equal(state.after.objects,2);
+  assert.equal(state.after.complete,0);
+  assert.equal(state.budget.objects,2);
+  assert.equal(state.budget.bytes,state.after.bytes);
+  assert.ok(state.after.bytes>state.before.bytes && state.before.bytes>8*65_536);
+  assert.equal(state.selected,null);
+  assert.notEqual(state.originalSha,state.freshSha);
+  assert.equal(state.chunks.length,2);
+  assert.deepEqual(new Set(state.chunks.map((row:{sha256:string})=>row.sha256)),new Set([state.originalSha,state.freshSha]));
+  for (const chunk of state.chunks) {
+    assert.equal(chunk.parts,8);
+    assert.equal(chunk.bytes,8*65_536);
+  }
+  for (const [path, content] of candidates) writeFileSync(path,content);
+  const tests = readdirSync("tests").filter((name) => /^raw-capture-.*\.test\.ts$/.test(name))
+    .map((name) => "tests/"+name);
+  tests.push("tests/raw-chain-capture.test.ts","tests/d1-capture-governance.test.ts","tests/data-api-bundle-boundary.test.ts");
+  const candidate = run("candidate",tests,["--config",".github/vitest.raw-capture.config.ts","--coverage"]);
+  const failures=candidate.cases.filter((row)=>row.status==="failed");
+  if (candidate.status !== 0 || candidate.report.numFailedTests !== 0 || failures.length)
+    throw new Error("Candidate qualification failed; inspect bounded curated test metadata, not raw logs");
+  assert.ok(candidate.report.numPassedTests>300);
+  assert.ok(candidate.cases.every((row)=>row.status==="passed" && row.failureMessages.length===0));
+  const coverage=JSON.parse(readFileSync("coverage/coverage-summary.json","utf8"));
+  const summary=Object.fromEntries(files.filter((path)=>path.startsWith("src/")).map((path)=>{
+    const item=Object.entries(coverage).find(([entry])=>entry.endsWith("/"+path));
+    assert(item);
+    return [path,item[1]];
+  }));
+  const receipt={
+    source_commit:process.env.GITHUB_SHA,base_commit:base,
+    files:Object.fromEntries(files.map((path)=>[path,digest(readFileSync(path))])),
+    baseline:{failed:1,passed:1,filtered:baseline.cases.length-2,actual_state:state,
+      elapsed_ms:baseline.elapsed_ms,gnu_time_max_rss_bytes:baseline.gnu_time_max_rss_bytes},
+    candidate:{passed:candidate.report.numPassedTests,failed:0,files:tests,
+      elapsed_ms:candidate.elapsed_ms,gnu_time_max_rss_bytes:candidate.gnu_time_max_rss_bytes,
+      bounded_census_cases:candidate.cases.filter((row)=>/16384|16385|staging census cap/.test(row.fullName))
+        .map((row)=>({name:row.fullName,duration_ms:row.duration??null})),coverage:summary},
+    scope:"Hosted Node writer fixtures with actual Miniflare D1 storage and unchanged bundle boundary; process metrics include fixture setup and are not production isolate/headroom acceptance",
+    production_actions:false,raw_output_retained:false,
+  };
+  writeFileSync("raw-capture-retry-reports/source-receipt.json",JSON.stringify(receipt,null,2)+"\n");
+  console.log(JSON.stringify(receipt));
+} finally {
+  for (const [path,content] of candidates) writeFileSync(path,content);
+}
+

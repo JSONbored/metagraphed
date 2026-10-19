@@ -1,68 +1,20 @@
-import { createHash } from "node:crypto";
-import { Buffer } from "node:buffer";
-import { gzipSync } from "node:zlib";
 import type { RawCaptureStore } from "./raw-chain-capture.ts";
 
-const CHUNK = 65_536;
-const MAX_RAW = 32 * 1024 * 1024;
-const KEY = /^chain\/raw\/(testnet\/)?blocks\/(\d{12})-(\d{12})\.ndjson$/;
-const hash = (bytes: Uint8Array) =>
-  createHash("sha256").update(bytes).digest("hex");
+import { RAW_CAPTURE_CHUNK_BYTES as CHUNK } from "./raw-capture-retry-intent.ts";
+import { rawCaptureRetryStore } from "./raw-capture-retry-store.ts";
+import { RAW_CAPTURE_GENESIS_FLOOR, TESTNET_RAW_CAPTURE_GENESIS_FLOOR } from "./raw-capture-floors.ts";
+
 const SELECTION =
   "SELECT sha256 FROM (SELECT sha256,captured_at FROM raw_capture_selected WHERE key=? UNION ALL SELECT sha256,captured_at FROM raw_capture_archives WHERE key=? AND selected=1) ORDER BY captured_at DESC LIMIT 1";
 type Db = Pick<D1Database, "prepare" | "batch">;
 
 /** Keep exact SCALE bytes in bounded D1 chunks; never acknowledge a partial batch. */
 export function rawCaptureD1(db: Db): RawCaptureStore {
+  const intents = rawCaptureRetryStore(db);
   return {
+    pending: intents.pending,
+    acknowledgeWatermark: intents.acknowledgeWatermark,
     async put(key, value) {
-      const match = KEY.exec(key);
-      if (!match || typeof value !== "string" || !value.endsWith("\n"))
-        throw new Error("Invalid raw capture object");
-      const first = Number(match[2]),
-        last = Number(match[3]);
-      const raw = Buffer.from(value);
-      if (
-        !raw.length ||
-        raw.length > MAX_RAW ||
-        last < first ||
-        last - first >= 4096
-      )
-        throw new Error("Raw capture exceeds its storage budget");
-      const rows = value.trimEnd().split("\n");
-      let capturedAt = 0;
-      if (rows.length !== last - first + 1)
-        throw new Error("Raw capture range differs from its records");
-      for (let index = 0; index < rows.length; index++) {
-        const row = JSON.parse(rows[index]!);
-        if (
-          row?.block_number !== first + index ||
-          !Number.isSafeInteger(row.captured_at) ||
-          row.captured_at <= 0
-        )
-          throw new Error("Raw capture identity differs");
-        capturedAt = Math.max(capturedAt, row.captured_at);
-      }
-      const compressed = gzipSync(raw, { level: 6 });
-      // The reservation's compressed_bytes/parts CHECKs enforce the compressed
-      // budget before any chunk is written; the input bound caps compression.
-      const digest = hash(raw),
-        compressedDigest = hash(compressed);
-      const parts = Math.ceil(compressed.length / CHUNK);
-      const network = match[1] ? "testnet" : "mainnet";
-      const descriptor = {
-        key,
-        sha256: digest,
-        network,
-        first_block: first,
-        last_block: last,
-        raw_bytes: raw.length,
-        compressed_bytes: compressed.length,
-        compressed_sha256: compressedDigest,
-        parts,
-        captured_at: capturedAt,
-      };
-      const values = Object.values(descriptor);
       // Reads and immutable writes replay the same pinned capture. Allow one
       // delayed transient-storage retry per object; every existing readback still
       // has to pass before the caller can advance its watermark.
@@ -86,6 +38,11 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
           return operation();
         }
       };
+      const { prepared, receipt: intentReceipt } = await intents.prepare(key, value, retry);
+      const { descriptor, compressed } = prepared;
+      const { sha256: digest, compressed_sha256: compressedDigest, parts, network,
+        first_block: first, last_block: last } = descriptor;
+      const values = Object.values(descriptor);
       const archived = await retry(() =>
         db
           .prepare(
@@ -110,14 +67,14 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
         );
         if (current?.sha256 !== digest)
           throw new Error("Raw capture selection was not acknowledged");
-        return;
+        return intentReceipt;
       }
       await retry(() =>
         db
           .prepare(
-            "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key,sha256) DO NOTHING",
+            "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) SELECT ?,?,?,?,?,?,?,?,?,? FROM (WITH staging AS (SELECT key,sha256,network,first_block,last_block,complete FROM raw_capture_batches LIMIT 16385) SELECT 1 WHERE (SELECT count(*) FROM staging)<=16384 AND EXISTS(SELECT 1 FROM generated_artifacts WHERE key=? AND payload=?) AND (EXISTS(SELECT 1 FROM raw_capture_state WHERE network=? AND typeof(last_contiguous_block)='integer' AND last_contiguous_block=?) OR (?=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_state WHERE network=?))) AND NOT EXISTS(SELECT 1 FROM raw_capture_batches WHERE key=? AND sha256<>?) AND NOT EXISTS(SELECT 1 FROM staging WHERE network=? AND complete=0 AND first_block<=? AND last_block>=? AND NOT(key=? AND sha256=?)) AND NOT EXISTS(SELECT 1 FROM raw_capture_archives WHERE key=? AND sha256<>?)) WHERE true ON CONFLICT(key,sha256) DO NOTHING",
           )
-          .bind(...values)
+          .bind(...values, intentReceipt.intentKey, intentReceipt.payload, network, first - 1, first === (network === "mainnet" ? RAW_CAPTURE_GENESIS_FLOOR : TESTNET_RAW_CAPTURE_GENESIS_FLOOR) ? 1 : 0, network, key, digest, network, last, first, key, digest, key, digest)
           .run(),
       );
       const selected = await retry(() =>
@@ -134,8 +91,8 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       )
         throw new Error("Raw capture reservation readback differs");
 
-      // Eight chunks keep every request and response below one MiB. Replaying
-      // immutable inserts after an unknown response cannot select partial data.
+      // Eight chunks bound each write and readback window; hex responses also
+      // include their JSON envelope. Immutable replay cannot select partial data.
       for (let start = 0; start < parts; start += 8) {
         const count = Math.min(8, parts - start);
         const chunks = Array.from({ length: count }, (_, i) =>
@@ -203,6 +160,8 @@ export function rawCaptureD1(db: Db): RawCaptureStore {
       );
       if (receipt?.sha256 !== digest)
         throw new Error("Raw capture selection was not acknowledged");
+      return intentReceipt;
     },
   };
 }
+
