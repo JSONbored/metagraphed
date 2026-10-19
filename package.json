@@ -266,7 +266,7 @@
     "@tanstack/start-server-core": "1.169.40",
     "dompurify": "3.4.16",
     "fast-uri": "3.1.8",
-    "ip-address": "10.7.1",
+    "ip-address": "10.7.4",
     "proxy-addr": "2.0.8",
     "shell-quote": "1.11.0"
   }
