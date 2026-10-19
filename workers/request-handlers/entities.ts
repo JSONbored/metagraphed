@@ -5440,19 +5440,15 @@ export async function handleAccountPortfolio(
   );
 }
 
-// GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
-// nominator-side positions -- what it holds delegated across every
-// hotkey/subnet, distinct from /portfolio above (hotkey-scoped).
+// GET /api/v1/accounts/{ss58}/positions (#5233): periodically observed
+// nominator-side hotkey/subnet relationships, distinct from the hotkey-scoped
+// portfolio. Legacy reconstructed numbers do not certify asset holdings.
 //
-// D1 hot tier → lakehouse cold tier → LABELLED empty card (#9273).
-// The D1 leg is the live one: `nominator_positions` had no live writer at all
-// between the box's decommission and #9273, so the lakehouse leg (#9266) is a
-// frozen export whose `captured_at` can never advance. The hot leg declines
-// while its table is empty, which makes the cutover a property of the data
-// rather than of a deploy. The final card is `unavailableAccountPositions`,
-// not a bare `buildAccountPositions([], ...)`: when every tier declines, this
-// route's zero is a read failure, and it now says so instead of publishing a
-// confident `total_stake_alpha: 0`.
+// D1 hot tier → lakehouse cold tier → labelled unavailable card (#9273).
+// A hot-tier read is not a live-chain observation: retain each result's capture
+// time and coverage/degradation evidence. Root holdings are outside this source;
+// an empty, stale or failed read must not establish an empty wallet. Public
+// consumers withhold unsupported quantities under the account-positions schema.
 //
 // ## NO DATA_API LEG, BECAUSE DATA_API DOES NOT DISPATCH THIS PATH
 //

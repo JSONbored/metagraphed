@@ -1,35 +1,25 @@
 import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
-// coldkey-scoped counterpart to buildAccountPortfolio's hotkey-scoped view
-// (src/account-portfolio.ts), which only ever showed near-zero for a pure
-// delegator (its stake lives on someone ELSE's hotkey row, not its own).
+// original feature's question, not an asset-quantity guarantee. This legacy
+// reconstruction preserves periodically observed coldkey/hotkey/subnet ties.
+// The sibling portfolio is hotkey-scoped; neither scope proves wallet holdings.
 //
-// Sourced from nominator_positions (migration 0044, populated by the same
-// SubtensorModule::Alpha scan as validator_nominator_counts, #2549) joined
-// against the live neurons stake_tao for each referenced (hotkey, netuid) --
-// see that migration's header comment for why this table stores a
-// dimensionless share_fraction rather than a snapshotted TAO figure. Pure +
-// exported for tests; the Worker does the Postgres reads and calls
-// buildAccountPositions with both result sets.
+// Legacy rows join nominator_positions.share_fraction to neurons.stake_tao
+// for the referenced (hotkey, netuid). That neuron field records runtime
+// voting weight (inherited alpha plus weighted inherited Root), not an
+// independently measured native-alpha or TAO principal. Multiplying it by a
+// fraction or price does not repair the missing quantity basis (#12014).
 //
-// Known scope limitation (documented in the fetch script + migration too):
-// root (netuid 0) stake is NOT covered -- SubtensorModule::Alpha carries no
-// root data at all (root is TAO-denominated 1:1, no alpha pool, #2550), so a
-// coldkey that only holds root-delegated stake shows zero positions here,
-// not because it holds nothing but because this source can't see it yet.
+// Root holdings are outside this ledger's coverage. Missing relationships,
+// failed reads and observations predating activity must not imply an empty
+// wallet. Preserve capture/coverage evidence independently of numeric fields.
 //
-// That same limitation is why the aggregate is `total_stake_alpha`, renamed
-// from total_stake_tao in #8803. Because root is excluded, EVERY position
-// here sits on a netuid != 0, and non-root neurons.stake_tao is that
-// subnet's alpha token rather than TAO (src/metagraph-neurons.ts, #2550) --
-// so the aggregate is a sum of different subnets' alpha, which is a count,
-// not a TAO value. It is named for what it is instead of being converted:
-// unlike /accounts/top-holders (#8803), nothing here adds it to real TAO, so
-// the only harm was the name, and a rename cannot silently change a number
-// under an existing consumer the way a conversion would. positions[] keeps
-// its per-row `stake_tao` -- that is the on-chain column name every
-// neurons-tier route uses, and renaming it repo-wide is its own change.
+// stake_tao and total_stake_alpha remain legacy wire keys. Their names and
+// finite values do not qualify asset units, cross-subnet totals, allocation
+// or investment yield. Keep historical bytes/behavior compatible; public
+// consumers withhold unsupported amounts until a separately qualified source
+// establishes the quantity basis. See schemas-src/routes/account-positions.ts.
 
 export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "coldkey",
@@ -50,7 +40,7 @@ export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "captured_at",
 ];
 
-// A finite, non-negative TAO cell, or null when absent/blank/non-numeric.
+// A finite, non-negative legacy numeric cell; this does not certify TAO units.
 // Blank Postgres cells coerce via Number("") -> 0; skip those rather than
 // joining a phantom zero-stake hotkey (mirrors buildGlobalValidators/
 // numberOrZero's sibling null-safety elsewhere in this codebase).
@@ -69,8 +59,7 @@ function nullableFraction(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-// 1 TAO = 1e9 rao; round tao outputs to that precision (matches the sibling
-// account-tier modules' own round9/roundTao helpers).
+// Preserve the legacy wire precision; rounding does not establish asset units.
 
 function round6(value: number | null): number | null {
   if (value == null || !Number.isFinite(value)) return null;
@@ -111,25 +100,12 @@ export const POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY =
   "snapshot_predates_stake_activity";
 
 /**
- * The ledger HAS rows for this coldkey, but one or more of them could not be
- * priced, so they are absent from `positions` and from `total_stake_alpha`.
- *
- * Positions are priced off the live `neurons` table, which carries only
- * CURRENTLY-registered neurons, while the position ledger is a snapshot. A
- * hotkey that has since deregistered -- or that the ledger saw and `neurons`
- * has not -- prices to nothing, and the position is excluded rather than
- * reported with a fabricated 0 stake_tao (#9066's rule: no unpriced values).
- *
- * Excluding it is right. Saying nothing about it was not. Sampling eight
- * distinct hotkeys from the live ledger, only ONE was present in `neurons`, so
- * a coldkey whose positions all price to nothing published
- * `position_count: 0, total_stake_alpha: 0` with no marker at all -- a
- * confident zero over real holdings, indistinguishable from "delegates
- * nothing" (#9305).
- *
- * Fires whenever ANY row was dropped, not only when all of them were: a
- * partially-priced total understates the account's real position just as
- * silently, it is merely harder to notice.
+ * Some ledger rows could not be reconstructed or their quantities are
+ * unqualified. Legacy reconstruction excludes rows missing a sibling neuron
+ * observation instead of inventing zero. The marker preserves that incomplete
+ * coverage, including when only some rows were excluded (#9305).
+ * Its historical name does not certify a price or an asset quantity. Absence
+ * of this marker does not qualify the remaining legacy numbers as holdings.
  */
 export const POSITIONS_DEGRADED_UNPRICEABLE = "positions_unpriceable";
 
@@ -172,16 +148,14 @@ export interface AccountPositionsResult {
   total_stake_alpha: number;
   positions: AccountNominatorPosition[];
   /**
-   * Present ONLY when this payload's zero is not a measurement. Absent on
-   * every trustworthy answer, so a consumer that ignores it reads exactly what
-   * it read before -- and one that checks it can tell "delegates nothing" from
-   * "we cannot currently say".
+   * Read/coverage degradation evidence. Absence does not establish complete
+   * wallet coverage or an authoritative asset basis for legacy numeric fields.
    */
   degraded?: AccountPositionsDegraded;
 }
 
 // hotkeyNetuidStake: a Map keyed by "hotkey|netuid" -> stake_tao, built by
-// the caller (loadNeuronStakeByHotkey below) from a live neurons read. A
+// the caller from periodic neuron observations. A
 // position whose hotkey+netuid isn't in the map (the hotkey deregistered,
 // or the daily neurons snapshot hasn't caught up to a brand-new stake
 // event) is excluded rather than reported with a fabricated 0 stake_tao --
@@ -197,7 +171,7 @@ export function buildAccountPositions(
   const positions: AccountNominatorPosition[] = [];
   let totalStakeAlpha = 0;
   let latestCapturedAt: number | null = null;
-  // Rows the ledger holds that no live `neurons` row could price. Counted
+  // Ledger rows lacking a sibling neuron observation for reconstruction. Counted
   // rather than merely skipped so the payload can say so -- see
   // POSITIONS_DEGRADED_UNPRICEABLE.
   let unpriceable = 0;
@@ -234,7 +208,8 @@ export function buildAccountPositions(
     });
   }
 
-  // Biggest position first; tie-break by hotkey then netuid for a stable order.
+  // Preserve legacy numeric order for compatibility, not a holdings-value rank.
+  // Tie-break by hotkey then netuid for a stable order.
   positions.sort(
     (a, b) =>
       b.stake_tao - a.stake_tao ||
