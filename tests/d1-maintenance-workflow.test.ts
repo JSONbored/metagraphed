@@ -124,11 +124,12 @@ function migrationChanges(
 ) {
   const directory = mkdtempSync(path.join(tmpdir(), "d1-workflow-"));
   const output = path.join(directory, "output");
+  // This shell fixture intentionally has no application settings or credentials.
   const env = {
     PATH: process.env.PATH ?? "",
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: "/dev/null",
-  };
+  } as NodeJS.ProcessEnv;
   const git = (...args: string[]) =>
     execFileSync(
       "git",
