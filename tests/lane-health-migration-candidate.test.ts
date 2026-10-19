@@ -170,7 +170,9 @@ test("native candidate schema changes only the five repaired definitions and rep
     }));
   assert.equal(oldTriggers.length, 3);
   const baseline = normalizeSchema([
-    ...expected.filter((row) => !repairedNames.includes(row.name)),
+    ...expected
+      .filter((row) => !repairedNames.includes(row.name))
+      .map((row) => ({ ...row })),
     ...oldTriggers,
   ]);
   const runtime = freshRuntime();
