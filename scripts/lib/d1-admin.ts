@@ -25,7 +25,10 @@ async function d1ErrorCodes(response: Response): Promise<string> {
   const deadline = Date.now() + 500;
   try {
     const read = async () => {
-      const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+      const decoder = new TextDecoder("utf-8", {
+        fatal: true,
+        ignoreBOM: false,
+      });
       let bytes = 0,
         text = "";
       for (let chunks = 0; chunks < 64; chunks++) {
