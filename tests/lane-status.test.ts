@@ -64,45 +64,58 @@ test("the scheduled sweep scopes dedicated D1 credentials to its status read", (
   }
 });
 
-test("an unauthorized status read stops without retries, verdicts or alerts", async () => {
-  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
-  vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-general-token");
-  vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-token");
-  vi.stubEnv(
-    "CLOUDFLARE_D1_DATABASE_ID",
-    "11111111-1111-1111-1111-111111111111",
-  );
-  vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "https://alerts.example.test/hook");
-  const fetcher = vi.fn<typeof fetch>(async (url, init) => {
-    assert.equal(
-      String(url),
-      `https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/d1/database/11111111-1111-1111-1111-111111111111/query`,
+test.each([401, 403])(
+  "an unauthorized HTTP %s status read stops without retries, verdicts or alerts",
+  async (status) => {
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "fixture-general-token");
+    vi.stubEnv("CLOUDFLARE_D1_API_TOKEN", "fixture-d1-token");
+    vi.stubEnv(
+      "CLOUDFLARE_D1_DATABASE_ID",
+      "11111111-1111-1111-1111-111111111111",
     );
-    assert.equal(
-      new Headers(init?.headers).get("authorization"),
-      "Bearer fixture-d1-token",
-    );
-    return new Response("Forbidden", { status: 403 });
-  });
-  vi.stubGlobal("fetch", fetcher);
-  const output = vi
-    .spyOn(process.stdout, "write")
-    .mockImplementation(() => true);
-  const errors = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
-  const exit = vi.spyOn(process, "exit").mockImplementation(() => {
-    throw new Error("unexpected verdict exit");
-  });
+    vi.stubEnv("LIVE_ALERT_WEBHOOK_URL", "https://alerts.example.test/hook");
+    const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+      assert.equal(
+        String(url),
+        `https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/d1/database/11111111-1111-1111-1111-111111111111/query`,
+      );
+      assert.equal(
+        new Headers(init?.headers).get("authorization"),
+        "Bearer fixture-d1-token",
+      );
+      return status === 401
+        ? Response.json(
+            {
+              success: false,
+              errors: [{ code: 10000, message: "fixture-d1-token" }],
+            },
+            { status },
+          )
+        : new Response("Forbidden", { status });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const output = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const errors = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const exit = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("unexpected verdict exit");
+    });
 
-  await assert.rejects(checkLaneStatus(), {
-    message: "D1 maintenance request failed with HTTP 403",
-  });
-  assert.equal(fetcher.mock.calls.length, 1);
-  assert.equal(output.mock.calls.length, 0);
-  assert.equal(errors.mock.calls.length, 0);
-  assert.equal(exit.mock.calls.length, 0);
-});
+    await assert.rejects(checkLaneStatus(), {
+      message: `D1 maintenance request failed with HTTP ${status}${
+        status === 401 ? "; Cloudflare error codes: 10000" : ""
+      }`,
+    });
+    assert.equal(fetcher.mock.calls.length, 1);
+    assert.equal(output.mock.calls.length, 0);
+    assert.equal(errors.mock.calls.length, 0);
+    assert.equal(exit.mock.calls.length, 0);
+  },
+);
 
 test("the lane sweep reads D1 once and still fails on missing producers", async () => {
   vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
