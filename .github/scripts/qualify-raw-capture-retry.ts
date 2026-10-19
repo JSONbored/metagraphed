@@ -99,8 +99,14 @@ try {
   tests.push("tests/raw-chain-capture.test.ts","tests/d1-capture-governance.test.ts","tests/data-api-bundle-boundary.test.ts");
   const candidate = run("candidate",tests,["--config",".github/vitest.raw-capture.config.ts","--coverage"]);
   const failures=candidate.cases.filter((row)=>row.status==="failed");
-  if (candidate.status !== 0 || candidate.report.numFailedTests !== 0 || failures.length)
-    throw new Error("Candidate qualification failed; inspect bounded curated test metadata, not raw logs");
+  if (candidate.status !== 0 || candidate.report.numFailedTests !== 0 || failures.length) {
+    console.error(JSON.stringify({ phase: "candidate_failure", exit_code: candidate.status,
+      failed: candidate.report.numFailedTests, passed: candidate.report.numPassedTests,
+      cases: failures.map((row) => ({ name: row.fullName.slice(0,240),
+        frames: [...row.failureMessages.join("\n").matchAll(/(?:src|tests)\/raw-[A-Za-z0-9.-]+\.ts:\d+:\d+/g)]
+          .map((match) => match[0]).slice(0,12) })) }));
+    throw new Error("Candidate qualification failed; raw logs withheld");
+  }
   assert.ok(candidate.report.numPassedTests>300);
   assert.ok(candidate.cases.every((row)=>row.status==="passed" && row.failureMessages.length===0));
   const coverage=JSON.parse(readFileSync("coverage/coverage-summary.json","utf8"));

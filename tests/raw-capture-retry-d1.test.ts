@@ -25,7 +25,7 @@ function adapter(before?: Hook, after?: Hook) {
   const wrap = (sql: string, raw: D1PreparedStatement) => {
     const statement = {
       bind(...values: unknown[]) { return wrap(sql, raw.bind(...values)); },
-      async first<T>(column?: string) { await before?.(sql); return raw.first<T>(column); },
+      async first<T>(column?: string) { await before?.(sql); return column === undefined ? raw.first<T>() : raw.first<T>(column); },
       async all<T>() { await before?.(sql); return raw.all<T>(); },
       async run<T>() { await before?.(sql); const result = await raw.run<T>(); await after?.(sql); return result; },
     };
