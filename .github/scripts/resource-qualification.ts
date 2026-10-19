@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createCipheriv, createHash } from "node:crypto";
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -43,6 +43,17 @@ const result: Record<string, unknown> = {
   productionActions: false, outboundRequests: 0,
   scope: "Actual data-api code in isolated local workerd; synthetic D1 only. The before-atomic variant overlays only three pinned modules on the same current worker, queue and HTTP admission source. It is not a historical deployment.",
 };
+const output = `${scenario}-${variant}.json`;
+let lastCheckpoint = 0;
+function checkpoint() {
+  const body = JSON.stringify({ ...result, status: "incomplete", incompleteStage: stage,
+    checkpointAt: new Date().toISOString(), sampledHeap, rss, runtimeRestarts }, null, 2) + "\n";
+  assert.ok(Buffer.byteLength(body) <= 65536);
+  const temporary = path.join(reportDirectory, ".checkpoint.tmp");
+  writeFileSync(temporary, body);
+  renameSync(temporary, path.join(reportDirectory, output));
+  lastCheckpoint = Date.now();
+}
 let mf: Miniflare | undefined;
 let sockets: WebSocket[] = [];
 let samplerStopped = false;
@@ -54,6 +65,8 @@ let sampler: Promise<void> | undefined;
 const started = Date.now();
 const deadline = started + 240_000;
 const pause = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+writeFileSync(path.join(reportDirectory, "driver.ts"), readFileSync(process.argv[1]));
+checkpoint();
 
 function status(pid: number) {
   const text = readFileSync(`/proc/${pid}/status`, "utf8");
@@ -150,6 +163,7 @@ export default { ...worker, async fetch(request, env, ctx) {
   const script = bundle.outputFiles[0].text;
   result.bundleSha256 = digest(script);
   stage = "runtime";
+  checkpoint();
   let outbound = 0;
   mf = new Miniflare({ modules: true, name: "resource-ingestion", script, compatibilityDate: compatibleDate,
     compatibilityFlags: ["nodejs_compat"], inspectorPort: 0,
@@ -167,6 +181,7 @@ export default { ...worker, async fetch(request, env, ctx) {
       if (statement.trim()) await db.prepare(statement).run();
   const pid = workerdPid();
   stage = "inspector";
+  checkpoint();
   const inspector = await mf.getInspectorURL();
   assert.equal(inspector.hostname, "127.0.0.1");
   const listing = await fetch(`http://127.0.0.1:${inspector.port}/json/list`, { signal: AbortSignal.timeout(3000) });
@@ -205,10 +220,12 @@ export default { ...worker, async fetch(request, env, ctx) {
     rss.maxVmHWMBytes = Math.max(rss.maxVmHWMBytes, runtimeStatus.hwm);
     rss.maxNodeVmRSSBytes = Math.max(rss.maxNodeVmRSSBytes, nodeStatus.rss);
     rss.maxNodeVmHWMBytes = Math.max(rss.maxNodeVmHWMBytes, nodeStatus.hwm);
+    if (Date.now() - lastCheckpoint >= 1000) checkpoint();
   };
   await sample();
   const initialHeap = { ...sampledHeap }, initialRss = { ...rss };
   stage = "fixture";
+  checkpoint();
   const fetcher = await mf.getWorker();
   let expectedPayload: string;
   let operation: () => Promise<void>;
@@ -268,6 +285,10 @@ export default { ...worker, async fetch(request, env, ctx) {
       maximumWireBytes = Math.max(maximumWireBytes, bytes.length);
       inputHashes.push(digest(json));
       messages.push({ id: `synthetic-${index}`, timestamp: new Date(1_790_090_000_000), body: new Uint8Array(bytes), attempts: 1 });
+      if (Date.now() - lastCheckpoint >= 1000) {
+        result.fixtureProgress = { preparedMessages: index + 1, expectedMessages: expectedBlocks, maximumDecodedBytes, maximumWireBytes, inputHashes };
+        checkpoint();
+      }
     }
     result.fixture = { messages: expectedBlocks, events: expectedBlocks / 10, messagesPerEvent: 10, maximumWireBytes, maximumDecodedBytes, globalDecodedCeilingBytes: SYNC_BATCH_MAX_DECODED_BYTES, exactDecodeRoundTripVerified: true, inputHashes, familyRowsPerMessage: { blocks: 1, extrinsics: 2, chainEvents: 2, accountEvents: 1 }, perValueBytes: 16 * 1024 * 1024, perPayloadFamilyBytes: 32 * 1024 * 1024, sourceReachability: "Direct valid queue contract and writer budget; not claimed derivable from a single maximum HTTP POST", scheduling: "Driver issues one or two simultaneous actual workerd queue events; not production broker scheduling acceptance" };
     operation = async () => {
@@ -283,6 +304,11 @@ export default { ...worker, async fetch(request, env, ctx) {
   }
   stage = "ingestion";
   const operationStarted = Date.now();
+  result.operationStartedAt = new Date(operationStarted).toISOString();
+  result.initialHeap = initialHeap;
+  result.initialRss = initialRss;
+  result.expectedFirstPayloadSha256 = digest(expectedPayload);
+  checkpoint();
   sampler = (async () => {
     while (!samplerStopped && sampledHeap.samples < 10_000 && Date.now() < deadline) {
       try { await sample(); } catch { sampledHeap.errors++; }
@@ -333,7 +359,6 @@ export default { ...worker, async fetch(request, env, ctx) {
     rssScope: "Actual workerd PID process RSS/HWM includes Miniflare system and D1 helper isolates; Node driver is reported separately. It cannot be interpreted as user-isolate heap or subtract D1 overhead.",
     acceptance: "No production 128 MiB clearance, sustained workload, regional placement, provider scheduling, or shared-account capacity acceptance" };
   result.elapsedMs = Date.now() - started;
-  const output = `${scenario}-${variant}.json`;
   writeFileSync(path.join(reportDirectory, "driver.ts"), readFileSync(process.argv[1]));
   writeFileSync(path.join(reportDirectory, output), JSON.stringify(result, null, 2) + "\n");
   console.log(JSON.stringify({ scenario, variant, status: result.status, stage: result.failureStage, sampledHeap, rss, elapsedMs: result.elapsedMs }));
