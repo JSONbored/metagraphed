@@ -178,6 +178,13 @@ function callArgs(value: unknown): unknown {
   }
 }
 
+/** The same bounded attribution rule used by serving and offline companions. */
+export function extrinsicSubnetIds(value: unknown): number[] {
+  const ids = new Set<number>();
+  collectNamedNetuids(callArgs(value), ids);
+  return [...ids].sort((left, right) => left - right);
+}
+
 /**
  * Summarise one fully decoded block.
  *
@@ -188,13 +195,14 @@ function callArgs(value: unknown): unknown {
 export function summarizeBlockEconomics(
   extrinsics: readonly Row[],
   accountEvents: readonly Row[],
+  additionalSubnetIds: readonly number[] = [],
 ): BlockEconomicsSummary {
   const native = { total: 0n, complete: true };
   const stake = { total: 0n, complete: true };
   const issuance = { total: 0n, complete: true };
   const fees = { total: 0n, complete: true };
   const tips = { total: 0n, complete: true };
-  const subnetIds = new Set<number>();
+  const subnetIds = new Set<number>(additionalSubnetIds);
 
   for (const event of accountEvents) {
     const kind = typeof event.event_kind === "string" ? event.event_kind : "";
@@ -213,7 +221,7 @@ export function summarizeBlockEconomics(
       add(extrinsic.fee_tao, fees);
       add(extrinsic.tip_tao, tips);
     }
-    collectNamedNetuids(callArgs(extrinsic.call_args), subnetIds);
+    for (const netuid of extrinsicSubnetIds(extrinsic.call_args)) subnetIds.add(netuid);
   }
 
   const nativeValue = result(native);

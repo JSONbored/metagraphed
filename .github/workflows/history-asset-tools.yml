@@ -31,6 +31,48 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci --ignore-scripts
+      - name: Prepare synthetic economics source fixture
+        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/compact-block-attribution-20261018'
+        run: |
+          python3 -m pip install --target "$RUNNER_TEMP/economics-python" pyarrow==26.0.0
+          PYTHONPATH="$RUNNER_TEMP/economics-python" python3 - <<'PY'
+          import json
+          import random
+          import pyarrow as pa
+          import pyarrow.parquet as pq
+
+          rows = []
+          for row in range(12):
+              word = random.Random(row).randbytes(32 * 1024).hex()
+              args = {"payload": word * 16 + "x", "calls": [
+                  {"name": "src_netuid", "value": "7"},
+                  {"destination_netuid": 9}, {"netuid": 0}]}
+              rows.append({"block_number": 42, "observed_at": 10,
+                           "signer": "synthetic-signer", "fee_tao": 0.125,
+                           "tip_tao": 0.005, "call_args": json.dumps(args)})
+          pq.write_table(pa.Table.from_pylist(rows), "tests/fixtures/parquet/economics-wide.parquet",
+                         row_group_size=4, compression="zstd", compression_level=3,
+                         use_dictionary=False, write_statistics=["block_number", "observed_at"],
+                         data_page_size=65536, write_batch_size=1,
+                         data_page_version="2.0", write_page_index=True)
+          PY
+      - name: Qualify compact economics source
+        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/compact-block-attribution-20261018'
+        run: |
+          node_modules/.bin/prettier --write schemas-src/artifacts/history-generation.ts schemas-src/artifacts/native-history-assets.ts src/block-economics.ts src/history-economics-attribution.ts src/history-generation.ts src/indexed-history-store.ts src/r2-sql-blocks.ts scripts/prepare-history-economics.ts tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts
+          mkdir -p "$RUNNER_TEMP/economics-source"
+          git diff --binary > "$RUNNER_TEMP/economics-source/format.patch"
+          cp tests/fixtures/parquet/economics-wide.parquet "$RUNNER_TEMP/economics-source/"
+          node_modules/.bin/tsc --noEmit
+          node_modules/.bin/vitest run tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts tests/block-economics.test.ts tests/history-block-generation.test.ts tests/indexed-history-store.test.ts
+      - name: Retain synthetic economics source and formatting
+        if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/compact-block-attribution-20261018'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: economics-source-${{ github.sha }}
+          path: ${{ runner.temp }}/economics-source/
+          if-no-files-found: error
+          retention-days: 7
       - name: Build portable transfer module
         run: node_modules/.bin/esbuild src/history-asset-transfer.ts --bundle --platform=neutral --format=esm --external:node:* --outfile=dist/history-asset-tools/transfer.mjs
       - name: Upload transfer module

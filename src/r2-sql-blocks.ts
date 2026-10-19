@@ -41,19 +41,27 @@ import {
 } from "./indexed-parquet.ts";
 import { recordOrNull } from "./read-store.ts";
 import { readRetainedBlockRows } from "./retained-blocks-d1.ts";
+import { HistoryEconomicsSubnetIdsSchema } from "../schemas-src/artifacts/history-generation.ts";
 
 // Keep generated catalog types while requiring every reducer input to exist.
 // In particular, an omitted signer must not turn an unknown fee into zero.
-// call_args remains necessary for canonical subnet attribution in existing
-// captures; removing it needs a separately qualified compact source format.
-const economicsExtrinsicSchema = ExtrinsicsRowSchema.pick({
+// Existing captures need call_args; qualified companions carry the same derived
+// subnet IDs without materializing those arguments on the serving path.
+const economicsExtrinsicFields = ExtrinsicsRowSchema.pick({
   block_number: true,
   observed_at: true,
   signer: true,
   fee_tao: true,
   tip_tao: true,
-  call_args: true,
 }).required();
+const legacyEconomicsExtrinsicSchema = economicsExtrinsicFields.extend(
+  ExtrinsicsRowSchema.pick({ call_args: true }).required().shape,
+);
+const economicsExtrinsicSchema = legacyEconomicsExtrinsicSchema.or(
+  economicsExtrinsicFields.extend({
+    __economics_subnet_ids: HistoryEconomicsSubnetIdsSchema,
+  }),
+);
 const economicsEventSchema = AccountEventsRowSchema.pick({
   block_number: true,
   observed_at: true,
@@ -86,7 +94,8 @@ async function loadBlockEconomicsFromIndexes(
     height,
     network,
     budget,
-    Object.keys(economicsExtrinsicSchema.shape),
+    Object.keys(legacyEconomicsExtrinsicSchema.shape),
+    true,
   );
   const selectedEvents = await readSelectedHistoryBlock(
     env,
@@ -114,6 +123,9 @@ async function loadBlockEconomicsFromIndexes(
       ...row,
       amount_tao: lakehouseDecimal(row.amount_tao),
     })),
+    parsedExtrinsics.data.flatMap((row) =>
+      "__economics_subnet_ids" in row ? row.__economics_subnet_ids : [],
+    ),
   );
 }
 

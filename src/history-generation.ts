@@ -21,6 +21,7 @@ import {
   type ParquetRangeSource,
   type ParquetReadBudget,
 } from "./indexed-parquet.ts";
+import { readHistoryEconomicsAttribution } from "./history-economics-attribution.ts";
 
 type Scope = Pick<HistoryBlockGeneration, "generation" | "network" | "table">;
 type Generation = HistoryGeneration | HistoryBlockGeneration;
@@ -252,6 +253,7 @@ async function readFileRanges(
   sourceIdentity?: string,
   projection?: {
     columns: string[];
+    compactAttribution?: boolean;
     consume?(
       rows: Record<string, unknown>[],
       start: number,
@@ -325,6 +327,14 @@ async function readFileRanges(
       throw new Error("History page index does not identify its bounded part");
     validateParquetPageIndex(index);
 
+    const attribution =
+      projection?.compactAttribution && part.economics
+        ? await readHistoryEconomicsAttribution(source, part.economics, part, budget)
+        : undefined;
+    const columns = attribution
+      ? projection!.columns.filter((column) => column !== "call_args")
+      : projection?.columns ?? Object.keys(index.groups[0].columns);
+
     // Share single-page decoding, discard gaps, then restore run order.
     // Preserve multi-page pruning and streaming memory bounds.
     const batches: {
@@ -363,13 +373,18 @@ async function readFileRanges(
           index,
           start,
           end,
-          projection?.columns ?? Object.keys(index.groups[0].columns),
+          columns,
           partBudget,
         );
       } finally {
         budget.bytes = partBudget.bytes;
         budget.requests = partBudget.requests;
       }
+      if (attribution)
+        batch = batch.map((row, i) => ({
+          ...row,
+          __economics_subnet_ids: attribution[start + i],
+        }));
       if (projection?.consume)
         projection.consume(batch, start + part.rowStart, file.sourceIdentity);
       else
@@ -390,7 +405,10 @@ export async function readHistoryBlock(
   block: number,
   budget: ParquetReadBudget,
   columns?: string[],
+  compactAttribution = false,
 ): Promise<Record<string, unknown>[]> {
+  if (compactAttribution && (scope.table !== "extrinsics" || !columns))
+    throw new Error("Compact attribution requires an extrinsic projection");
   const generation = validateHistoryBlockGeneration(input, scope);
   const index = await readJson(
     source,
@@ -425,7 +443,10 @@ export async function readHistoryBlock(
       budget,
       undefined,
       columns
-        ? { columns: [...new Set(["block_number", "observed_at", ...columns])] }
+        ? {
+            columns: [...new Set(["block_number", "observed_at", ...columns])],
+            compactAttribution,
+          }
         : undefined,
     );
     let offset = 0;
