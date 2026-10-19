@@ -804,6 +804,44 @@ describe("multi-family messages (metagraphed-infra#359)", () => {
     accountEventRows: [{ account: "5A" }],
   });
 
+  test("packing accepts exactly the whole-message row ceiling", () => {
+    const message = packMultiFamilyMessage({
+      lane: "chain-detail",
+      capturedAt: 1,
+      families: {
+        blockRows: [{ number: 1 }],
+        extrinsicRows: [{ hash: "0x1" }],
+        chainEventRows: Array.from(
+          { length: SYNC_BATCH_MAX_ROWS - 3 },
+          (_, event_index) => ({ event_index }),
+        ),
+        accountEventRows: [{ account: "5A" }],
+      },
+    });
+    assert.equal(syncBatchRowCount(message), SYNC_BATCH_MAX_ROWS);
+    assert.equal(validSyncBatchMessage(message), true);
+  });
+
+  test("packing refuses a sum above the consumer row ceiling", () => {
+    assert.throws(
+      () =>
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: 1,
+          families: {
+            blockRows: [{ number: 1 }],
+            extrinsicRows: [{ hash: "0x1" }],
+            chainEventRows: Array.from(
+              { length: SYNC_BATCH_MAX_ROWS - 2 },
+              (_, event_index) => ({ event_index }),
+            ),
+            accountEventRows: [{ account: "5A" }],
+          },
+        }),
+      /invalid multi-family message/,
+    );
+  });
+
   test("carries families instead of rows, and validates", () => {
     const m = packMultiFamilyMessage({
       lane: "chain-detail",

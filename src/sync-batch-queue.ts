@@ -535,6 +535,11 @@ export function packMultiFamilyMessage(input: {
   // `rows` is absent by construction here; the validator refuses a message
   // carrying both, so the type's optional `rows` is deliberately not set.
   delete (message as { rows?: unknown }).rows;
+  // Never acknowledge a POST with a message the consumer will reject and ACK
+  // without writing. The byte budget is still checked after compression.
+  if (!validSyncBatchMessage(message)) {
+    throw new Error("sync-batches: invalid multi-family message");
+  }
   return message;
 }
 
