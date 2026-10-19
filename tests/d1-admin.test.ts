@@ -169,7 +169,7 @@ test("D1 HTTP diagnostics expose only an allowlisted code, never provider text o
       error instanceof Error &&
       error.message === codeFailure &&
       d1SchemaVerificationFailure(error) ===
-        "D1 schema verification failed (http_401)" &&
+        "D1 schema verification failed (http_401); Cloudflare error codes: 10000" &&
       !Object.hasOwn(error, "cause"),
   );
   assert.equal(calls, 1);
