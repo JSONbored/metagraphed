@@ -1,0 +1,50 @@
+name: Raw capture incomplete retry baseline
+
+on:
+  push:
+    branches:
+      - ci/raw-capture-retry-baseline-20261019
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-retry-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout exact diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format diagnostic fixtures with existing tooling
+        run: npx prettier --write tests/raw-capture-d1.test.ts .github/scripts/qualify-raw-capture-retry.ts .github/workflows/raw-capture-retry-baseline.yml
+      - name: Qualify actual baseline failure and exact-byte replay control
+        run: node .github/scripts/qualify-raw-capture-retry.ts
+      - name: Retain only synthetic receipt and fixture
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-retry-baseline
+          path: |
+            raw-capture-retry-reports/source-receipt.json
+            tests/raw-capture-d1.test.ts
+          retention-days: 1
+          if-no-files-found: error

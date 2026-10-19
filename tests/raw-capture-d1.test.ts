@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { gunzipSync } from "node:zlib";
 import { afterEach, test, vi } from "vitest";
@@ -625,4 +625,55 @@ test("D1 selection with a missing database cannot fall through to an R2 writer",
   );
   assert.equal(result.ok, false);
   assert.equal(writes, 0);
+});
+
+
+test("fresh capture provenance resumes one incomplete reservation", async () => {
+  const f = fixture();
+  const extrinsics = [randomBytes(900_000).toString("hex")];
+  const original = value(1000, extrinsics);
+  const fresh = value(2000, extrinsics);
+  let windows = 0;
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks") && ++windows === 2)
+      throw new Error("synthetic persistent second-window failure");
+  });
+  await assert.rejects(f.store.put(key(), original), /second-window failure/);
+  const before = f.sql.prepare(
+    "SELECT count(*) objects,sum(complete) complete,sum(compressed_bytes) bytes FROM raw_capture_batches",
+  ).get()!;
+  assert.equal(before.objects, 1);
+  assert.equal(before.complete, 0);
+  assert.equal(f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n, 8);
+  windows = 0;
+  await assert.rejects(rawCaptureD1(f.db).put(key(), fresh), /second-window failure/);
+  const after = f.sql.prepare(
+    "SELECT count(*) objects,sum(complete) complete,sum(compressed_bytes) bytes FROM raw_capture_batches",
+  ).get()!;
+  const budget = f.sql.prepare("SELECT objects,bytes FROM raw_capture_budget").get()!;
+  const chunks = f.sql.prepare(
+    "SELECT sha256,count(*) parts,sum(length(data)) bytes FROM raw_capture_chunks GROUP BY sha256 ORDER BY sha256",
+  ).all();
+  writeFileSync("raw-capture-retry-reports/fresh-state.json", JSON.stringify({
+    before, after, budget, chunks, selected: f.selected() ?? null,
+    originalSha: createHash("sha256").update(original).digest("hex"),
+    freshSha: createHash("sha256").update(fresh).digest("hex"),
+  }, null, 2) + "\n");
+  assert.equal(after.objects, 1, "fresh tick must resume the original reservation");
+});
+
+test("exact original replay completes its incomplete reservation", async () => {
+  const f = fixture();
+  const original = value(1000, [randomBytes(900_000).toString("hex")]);
+  let windows = 0;
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks") && ++windows === 2)
+      throw new Error("synthetic persistent second-window failure");
+  });
+  await assert.rejects(f.store.put(key(), original), /second-window failure/);
+  f.failWith();
+  await rawCaptureD1(f.db).put(key(), original);
+  assert.equal(f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects, 1);
+  assert.equal(f.sql.prepare("SELECT sum(complete) n FROM raw_capture_batches").get()?.n, 1);
+  assert.equal(f.selected(), createHash("sha256").update(original).digest("hex"));
 });
