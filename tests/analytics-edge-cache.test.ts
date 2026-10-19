@@ -54,6 +54,7 @@ import {
 } from "../src/metagraph-neurons.ts";
 import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
 import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
+import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
 import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
@@ -1667,7 +1668,11 @@ describe("analytics edge cache", () => {
           ctx,
         );
         assert.equal(response.status, 200);
-        assert.deepEqual((await response.json()).data, current);
+        const body = await parseJsonBody(
+          response,
+          successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+        );
+        assert.deepEqual(body.data, current);
         assert.equal(response.headers.get("cache-control"), "no-store");
       }
       unavailable = true;
@@ -1677,7 +1682,11 @@ describe("analytics edge cache", () => {
         ctx,
       );
       assert.equal(failed.status, 200);
-      assert.deepEqual((await failed.json()).data, buildDirectory(null));
+      const failedBody = await parseJsonBody(
+        failed,
+        successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+      );
+      assert.deepEqual(failedBody.data, buildDirectory(null));
       assert.equal(failed.headers.get("cache-control"), "no-store");
       assert.equal(
         failed.headers.get(DEGRADED_HEADER),
@@ -2782,7 +2791,10 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       assert.equal(response.headers.get("cache-control"), "no-store");
       previousEtag = response.headers.get("etag");
       assert.ok(previousEtag);
-      const body = await response.json();
+      const body = await parseJsonBody(
+        response,
+        successEnvelopeSchema(GlobalValidatorsArtifactSchema),
+      );
       assert.equal(body.data.validators[0].nominator_count, current);
       observedStamps.push(body.data.captured_at);
     }
@@ -2867,7 +2879,11 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       );
       assert.equal(response.status, 200);
       assert.equal(response.headers.get("cache-control"), "no-store");
-      assert.equal((await response.json()).data.nominator_count, current);
+      const body = await parseJsonBody(
+        response,
+        successEnvelopeSchema(ValidatorDetailArtifactSchema),
+      );
+      assert.equal(body.data.nominator_count, current);
     }
     assert.equal(calls, 3);
     assert.equal(cache.matchCalls, 0);

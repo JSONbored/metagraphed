@@ -26,6 +26,8 @@ import {
   resetDecodeWatermarkCache,
 } from "../src/decode-watermark.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
+import { assertJsonObject, parseJsonBody } from "./row-type.ts";
 
 const COLDKEY = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
@@ -649,8 +651,12 @@ describe("canonical Alpha quantities across existing readers", () => {
         {},
       );
       assert.equal(response.status, 200);
-      const body = await response.json();
+      const body = await parseJsonBody(
+        response,
+        successEnvelopeSchema(AccountPositionsArtifactSchema),
+      );
       AccountPositionsArtifactSchema.parse(body.data);
+      assert.ok(body.data.degraded);
       assert.equal(body.data.degraded.reason, POSITIONS_DEGRADED_UNPRICEABLE);
       const sql = "SELECT share_fraction FROM alpha_snapshot_rows";
       const statement = sqlite.prepare(sql);
@@ -839,7 +845,9 @@ describe("public Alpha cache", () => {
         apiEnv({ ...env, D1_STATE_TABLES: "neurons" }),
         {},
       );
-      assert.equal((await response.json()).obsolete, true);
+      const body: unknown = await response.json();
+      assertJsonObject(body);
+      assert.equal(body.obsolete, true);
     }
     assert.equal(match.mock.calls.length, paths.length);
     match.mockClear();
@@ -856,7 +864,9 @@ describe("public Alpha cache", () => {
           {},
         );
         assert.equal(response.status, 200);
-        assert.equal((await response.json()).obsolete, undefined);
+        const body: unknown = await response.json();
+        assertJsonObject(body);
+        assert.equal(body.obsolete, undefined);
       }
       assert.equal(match.mock.calls.length, 0);
       assert.equal(put.mock.calls.length, 0);
