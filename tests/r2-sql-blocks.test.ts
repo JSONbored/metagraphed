@@ -235,6 +235,28 @@ describe("loadBlockWithEconomicsFromR2Sql", () => {
     assert.deepEqual(data?.block?.subnet_ids, [7, 9, 19]);
   });
 
+  test("accepts qualified compact attribution without accepting absent or malformed IDs", async () => {
+    const compact: Record<string, unknown> = economicsExtrinsic();
+    delete compact.call_args;
+    for (const ids of [[0, 7, 9], undefined, [9, 7], [7, 7]]) {
+      native.block.mockImplementation(
+        async (_env, table, height, _network, _budget, _columns, enabled) => {
+          if (table === "blocks") return [row(height)];
+          if (table === "account_events") return [economicsEvent()];
+          assert.equal(enabled, true);
+          return [
+            { ...compact, ...(ids ? { __economics_subnet_ids: ids } : {}) },
+          ];
+        },
+      );
+      const data = await loadBlockWithEconomicsFromR2Sql(TOKEN, "42");
+      if (ids?.join() === "0,7,9") {
+        assert.deepEqual(data?.block?.subnet_ids, [0, 7, 9, 19]);
+        assert.equal(data?.block?.fee_tao, 0.125);
+      } else assert.equal(data?.block?.fee_tao, null);
+    }
+  });
+
   for (const [table, columns] of Object.entries(fields)) {
     for (const missing of columns) {
       test(`missing ${table}.${missing} cannot become a measured zero`, async () => {

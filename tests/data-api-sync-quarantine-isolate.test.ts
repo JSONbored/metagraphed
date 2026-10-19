@@ -13,6 +13,7 @@ import { gzipSync } from "node:zlib";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 import { SYNC_QUARANTINE_PREFIX } from "../src/sync-dead-letter-store.ts";
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "../src/sync-batch-limits.ts";
 
 let outdir: string;
 let runtime: Miniflare;
@@ -163,6 +164,7 @@ beforeAll(async () => {
     host: "127.0.0.1",
     port: 0,
     cf: false,
+    bindings: { CHAIN_DETAIL_SYNC_SECRET: "native-chain-detail-fixture" },
     kvNamespaces: ["METAGRAPH_CONTROL"],
     outboundService(request) {
       outbound.push(request.url);
@@ -183,6 +185,111 @@ test("the raw Wrangler Data API deployment graph registers without an entrypoint
   expect(outbound).toEqual([]);
   console.info("data-api-deployment-graph", JSON.stringify(deploymentProof));
 });
+
+test("native HTTP admission preserves decoded UTF-8 rather than raw wire size", async () => {
+  const encoder = new TextEncoder();
+  const limit = 16_000_000;
+  const block = {
+    block_number: 1,
+    block_hash: `0x${"ab".repeat(32)}`,
+    spec_version: 479,
+    observed_at: 1_780_000_000_000,
+    extrinsics: [],
+    chain_events: [],
+    account_events: [],
+  };
+  const json = JSON.stringify({ blocks: [block] });
+  const headers = {
+    "x-chain-detail-sync-token": "native-chain-detail-fixture",
+  };
+  const bom = encoder.encode(`\ufeff${json.padEnd(limit, " ")}`);
+  expect(bom.byteLength).toBe(limit + 3);
+  const accepted = await runtime.dispatchFetch(
+    "https://example.test/api/v1/internal/chain-detail-sync",
+    { method: "POST", headers, body: bom },
+  );
+  // A valid admitted body reaches the existing store-availability decision.
+  // No production store is bound and no write is attempted in this fixture.
+  expect(accepted.status).toBe(503);
+  expect(await accepted.json()).toEqual({
+    error: "no store bound for this route",
+  });
+
+  const prefix = encoder.encode(`${json.slice(0, -1)},"padding":"`);
+  const suffix = encoder.encode('"}');
+  for (const extra of [0, 1]) {
+    const fill = limit - prefix.byteLength - suffix.byteLength - 3 + extra;
+    const bytes = new Uint8Array(
+      prefix.byteLength + 1 + fill + suffix.byteLength,
+    );
+    bytes.set(prefix);
+    bytes[prefix.byteLength] = 0xff;
+    bytes.fill(120, prefix.byteLength + 1, prefix.byteLength + 1 + fill);
+    bytes.set(suffix, bytes.length - suffix.byteLength);
+    expect(bytes.byteLength).toBe(limit - 2 + extra);
+    const result = await runtime.dispatchFetch(
+      "https://example.test/api/v1/internal/chain-detail-sync",
+      { method: "POST", headers, body: bytes },
+    );
+    expect(result.status).toBe(extra === 0 ? 503 : 413);
+  }
+  expect(outbound).toEqual([]);
+}, 60_000);
+
+test("native Fetch keeps the same BOM admission decisions as the deployed bundle", async () => {
+  const oracle = new Miniflare({
+    modules: true,
+    script:
+      "export default {async fetch(request) {return Response.json({text:await request.text()});}}",
+    compatibilityDate: deploymentProof.compatibility_date,
+    compatibilityFlags: deploymentProof.compatibility_flags,
+    host: "127.0.0.1",
+    port: 0,
+    cf: false,
+    outboundService(request) {
+      outbound.push(request.url);
+      return new MiniflareResponse(null, { status: 502 });
+    },
+  });
+  const json = JSON.stringify({
+    blocks: [
+      {
+        block_number: 1,
+        block_hash: `0x${"ab".repeat(32)}`,
+        spec_version: 479,
+        observed_at: 1_780_000_000_000,
+        extrinsics: [],
+        chain_events: [],
+        account_events: [],
+      },
+    ],
+  });
+  try {
+    for (let count = 0; count <= 4; count += 1) {
+      const wire = new TextEncoder().encode("\ufeff".repeat(count) + json);
+      const control = await oracle.dispatchFetch("https://oracle.test", {
+        method: "POST",
+        body: wire,
+      });
+      const native = (await control.json()) as { text: string };
+      expect(native.text).toBe("\ufeff".repeat(Math.max(0, count - 1)) + json);
+      const response = await runtime.dispatchFetch(
+        "https://example.test/api/v1/internal/chain-detail-sync",
+        {
+          method: "POST",
+          headers: {
+            "x-chain-detail-sync-token": "native-chain-detail-fixture",
+          },
+          body: wire,
+        },
+      );
+      expect(response.status).toBe(count <= 1 ? 503 : 400);
+    }
+  } finally {
+    await oracle.dispose();
+  }
+  expect(outbound).toEqual([]);
+}, 60_000);
 
 test("the isolated Data API queue preserves JSON and binary custody with explicit acknowledgments", async () => {
   const queue = "sync-batches-dlq";
@@ -368,3 +475,55 @@ test("a native per-message retry preserves its valid suffix and later attempts r
   }
   expect(outbound).toEqual([]);
 });
+
+test("native expansion refusal retries its bytes and the DLQ retains exact custody", async () => {
+  const compressed = Uint8Array.from(
+    gzipSync(`"${"x".repeat(SYNC_BATCH_MAX_DECODED_BYTES)}"`),
+  );
+  expect(compressed.byteLength).toBeLessThan(96 * 1024);
+  const timestamp = new Date(1_780_000_000_789);
+  const refused = {
+    id: "native-expansion-refusal-ci",
+    body: compressed.buffer,
+    timestamp,
+    attempts: 1,
+  };
+  const suffix = {
+    id: "native-expansion-suffix-ci",
+    body: null,
+    timestamp,
+    attempts: 1,
+  };
+  const target = await runtime.getWorker();
+  const delivered = await target.queue("sync-batches", [refused, suffix]);
+  expect(delivered).toMatchObject({
+    outcome: "ok",
+    ackAll: false,
+    retryBatch: { retry: false },
+    explicitAcks: [suffix.id],
+  });
+  expect(delivered.retryMessages).toEqual([
+    expect.objectContaining({ msgId: refused.id }),
+  ]);
+  const preserved = await target.queue("sync-batches-dlq", [
+    { ...refused, attempts: 7 },
+  ]);
+  expect(preserved.explicitAcks).toEqual([refused.id]);
+  expect(preserved.retryMessages).toEqual([]);
+  const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
+  const listed = await kv.list({ prefix: SYNC_QUARANTINE_PREFIX });
+  const envelopes = await Promise.all(
+    listed.keys.map(async ({ name }) => JSON.parse((await kv.get(name))!)),
+  );
+  const custody = envelopes.filter(
+    (envelope) =>
+      envelope.kind === "custody" && envelope.message_id === refused.id,
+  );
+  expect(custody).toHaveLength(1);
+  expect(custody[0].representation).toBe("bytes");
+  expect(custody[0].body_sha256).toBe(sha256(compressed));
+  expect(Buffer.from(custody[0].payload, "base64")).toEqual(
+    Buffer.from(compressed),
+  );
+  expect(outbound).toEqual([]);
+}, 60_000);
