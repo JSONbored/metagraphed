@@ -183,3 +183,30 @@ test("CLI diagnostics retain ledger classifications without trusting error messa
     "D1 schema verification failed (unclassified)",
   );
 });
+
+test("CLI diagnostics retain only the exact allowlisted provider-code suffix", () => {
+  for (const status of [401, 403]) {
+    const message = `D1 maintenance request failed with HTTP ${status}`;
+    const classification = `D1 schema verification failed (http_${status})`;
+    assert.equal(
+      d1SchemaVerificationFailure(
+        new Error(`${message}; Cloudflare error codes: 10000`),
+      ),
+      `${classification}; Cloudflare error codes: 10000`,
+    );
+    for (const suffix of [
+      "; Cloudflare error codes: 9109",
+      "; Cloudflare error codes: 10000, 9109",
+      "; Cloudflare error codes: 100000",
+      '; Cloudflare error codes: "10000"',
+      "; Cloudflare error codes: 10000; private-query-and-credential",
+      "; Cloudflare error codes: 10000\nprivate-query-and-credential",
+      "; provider_message=private-query-and-credential",
+    ]) {
+      assert.equal(
+        d1SchemaVerificationFailure(new Error(message + suffix)),
+        classification,
+      );
+    }
+  }
+});
