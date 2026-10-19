@@ -9,11 +9,9 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { decompressSyncBatchMessage } from "../src/sync-batch-compress.ts";
-import {
-  SYNC_BATCH_MAX_ROWS,
-  syncBatchRowCount,
-  validSyncBatchMessage,
-} from "../src/sync-batch-queue.ts";
+import * as syncBatchQueue from "../src/sync-batch-queue.ts";
+const { SYNC_BATCH_MAX_ROWS, syncBatchRowCount, validSyncBatchMessage } =
+  syncBatchQueue;
 
 // One store since #10179. Both halves of this route -- the batch write through
 // mirrorChainDetailToNeon and the head read through readStore -- build their
@@ -203,24 +201,61 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     });
   }
 
+  function queueEnv(sent: unknown[]) {
+    return {
+      CHAIN_DETAIL_SYNC_SECRET: SECRET,
+      ...pgMockEnv(),
+      SYNC_QUEUE_LANES: "chain-detail",
+      SYNC_BATCHES: { send: async (message: unknown) => void sent.push(message) },
+    } as never;
+  }
+
   async function queuedPost(payload: unknown, sent: unknown[]) {
-    return dataApi.fetch(
+    // Chain-detail remains excluded in production. Qualify the dormant enqueue
+    // branch explicitly, without changing that independent activation guard.
+    const eligibility = vi
+      .spyOn(syncBatchQueue, "syncLaneUsesQueue")
+      .mockReturnValue(true);
+    try {
+      return await dataApi.fetch(
+        new Request("https://d/api/v1/internal/chain-detail-sync", {
+          method: "POST",
+          headers: { "content-type": "application/json", [HEADER]: SECRET },
+          body: JSON.stringify(payload),
+        }),
+        queueEnv(sent),
+        CTX,
+      );
+    } finally {
+      eligibility.mockRestore();
+    }
+  }
+
+  test("the existing exclusion keeps a queue-flagged batch on direct writes", async () => {
+    const sent: unknown[] = [];
+    const response = await dataApi.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {
         method: "POST",
         headers: { "content-type": "application/json", [HEADER]: SECRET },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(rowBoundaryBody(SYNC_BATCH_MAX_ROWS + 1)),
       }),
-      {
-        CHAIN_DETAIL_SYNC_SECRET: SECRET,
-        ...pgMockEnv(),
-        SYNC_QUEUE_LANES: "chain-detail",
-        SYNC_BATCHES: { send: async (message: unknown) => void sent.push(message) },
-      } as never,
+      queueEnv(sent),
       CTX,
     );
-  }
+    assert.equal(response.status, 200);
+    const result = (await response.json()) as { stores: string[]; head: number };
+    assert.deepEqual(result.stores, ["neon"]);
+    assert.equal(result.head, BLOCK);
+    assert.equal(sent.length, 0);
+    assert.deepEqual([...new Set(insertedTables())].sort(), [
+      "chain_detail_account_events",
+      "chain_detail_blocks",
+      "chain_detail_chain_events",
+      "chain_detail_extrinsics",
+    ]);
+  });
 
-  test("queue refusal cannot acknowledge a batch above its row ceiling", async () => {
+  test("qualified queue refusal cannot acknowledge a batch above its row ceiling", async () => {
     const sent: unknown[] = [];
     const response = await queuedPost(
       rowBoundaryBody(SYNC_BATCH_MAX_ROWS + 1),
@@ -232,7 +267,7 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal(insertedTables().length, 0, "refusal wrote a partial family");
   });
 
-  test("the whole-message row boundary reaches the queue consumer intact", async () => {
+  test("the qualified row boundary reaches the queue consumer intact", async () => {
     const sent: unknown[] = [];
     const response = await queuedPost(rowBoundaryBody(SYNC_BATCH_MAX_ROWS), sent);
     assert.equal(response.status, 200);

@@ -14,9 +14,10 @@ const digest = (value: string) => createHash("sha256").update(value).digest("hex
 const selected = new Map([
   ["packing accepts exactly the whole-message row ceiling", "passed"],
   ["packing refuses a sum above the consumer row ceiling", "failed"],
-  ["queue refusal cannot acknowledge a batch above its row ceiling", "failed"],
-  ["the whole-message row boundary reaches the queue consumer intact", "passed"],
+  ["qualified queue refusal cannot acknowledge a batch above its row ceiling", "failed"],
+  ["the qualified row boundary reaches the queue consumer intact", "passed"],
   ["direct writes keep their existing larger HTTP row admission", "passed"],
+  ["the existing exclusion keeps a queue-flagged batch on direct writes", "passed"],
 ]);
 
 if (process.argv[2] === "--verify-uploaded") {
@@ -40,7 +41,7 @@ if (process.argv[2] === "--verify-uploaded") {
     assert.equal(digest(readFileSync(path, "utf8")), hash);
   }
   assert.equal(receipt.baseline.failed, 2);
-  assert.equal(receipt.baseline.passed, 3);
+  assert.equal(receipt.baseline.passed, 4);
   assert.equal(receipt.candidate.failed, 0);
   assert.ok(receipt.candidate.passed > selected.size);
   console.log(JSON.stringify({
@@ -92,9 +93,13 @@ function run(label: string, filtered: boolean) {
 try {
   writeFileSync(source, original.stdout);
   const baseline = run("baseline", true);
+  console.log(JSON.stringify({ phase: "baseline-dispositions", selected: baseline.cases
+    .filter((item) => [...selected.keys()].some((name) => item.fullName.endsWith(name)))
+    .map((item) => ({ name: item.fullName, status: item.status,
+      failure_class: /(?:AssertionError|TypeError|RangeError|SyntaxError|Error)/.exec(item.failureMessages.join(" "))?.[0] ?? null })) }));
   assert.equal(baseline.result.status, 1);
   assert.equal(baseline.report.numFailedTests, 2);
-  assert.equal(baseline.report.numPassedTests, 3);
+  assert.equal(baseline.report.numPassedTests, 4);
   const selectedCases = [];
   for (const [name, expected] of selected) {
     const matches = baseline.cases.filter((item) => item.fullName.endsWith(name));
@@ -128,9 +133,9 @@ try {
     base_commit: base,
     source_blob: sourceBlob,
     files: Object.fromEntries(files.map((path) => [path, digest(readFileSync(path, "utf8"))])),
-    baseline: { failed: 2, passed: 3, elapsed_ms: baseline.elapsed_ms, selected: selectedCases },
+    baseline: { failed: 2, passed: 4, elapsed_ms: baseline.elapsed_ms, selected: selectedCases },
     candidate: { passed: fixed.report.numPassedTests, failed: 0, elapsed_ms: fixed.elapsed_ms },
-    qualification_scope: "Hosted native handler/consumer fixtures; not production capacity, workerd memory or configured concurrency acceptance",
+    qualification_scope: "Hosted dormant HTTP branch with explicit eligibility spy and pg-mock consumer/writer seam; not live routing, production capacity, workerd memory or concurrency acceptance",
     production_actions: false,
   };
   writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + "\n");
