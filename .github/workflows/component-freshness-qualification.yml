@@ -44,6 +44,11 @@ jobs:
         env:
           METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
+      - name: Rebuild the generated client consumer
+        run: npm run build --workspace=packages/client
+      - name: Regenerate API reference documentation
+        working-directory: apps/ui
+        run: node scripts/generate-openapi-docs.ts
       - name: Prove old failure and fixed native transport parity
         run: node .github/scripts/qualify-component-freshness.ts
       - name: Retain only formatted source, generated contracts and synthetic receipt

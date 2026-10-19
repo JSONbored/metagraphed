@@ -88,11 +88,11 @@ try {
   const diff = spawnSync("git", ["diff", "--name-only", base], { encoding: "utf8" });
   assert.equal(diff.status, 0);
   const generated = diff.stdout.trim().split("\n").filter(path =>
-    /^(generated\/|public\/metagraph\/)/.test(path) || path === "openapi.json");
+    /^(generated\/|public\/metagraph\/|packages\/client\/|packages\/contract\/|apps\/ui\/content\/docs\/)/.test(path) || path === "openapi.json");
   for (const path of generated)
     assert.ok(/^[A-Za-z0-9_./-]+$/.test(path) && !path.split("/").includes(".."));
   const files = [...new Set([...sourcePaths, ...generated])].filter(path =>
-    !["public/metagraph/r2-manifest.json", "public/metagraph/schemas/index.json"].includes(path));
+    !["public/metagraph/r2-manifest.json", "public/metagraph/schemas/index.json", "public/metagraph/operational-surfaces.json"].includes(path));
   const receipts: Record<string, string> = {};
   for (const path of files) {
     receipts[path] = digest(readFileSync(path, "utf8"));

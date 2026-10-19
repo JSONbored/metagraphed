@@ -194,11 +194,9 @@ export function withCurrentComponentHealth(
 }
 
 /**
- * `note` text for a component's current reading. Only `publish` gets one
- * today -- its bare "down" would otherwise read exactly like an HTTP-level
- * outage (api/site's failure mode), when it actually means "past its
- * expected cadence". Every other component's plain up/down already says
- * everything there is to say.
+ * `note` for a current observation. A failed publish describes a cadence
+ * miss rather than an HTTP outage. The read-boundary freshness transform
+ * separately explains a missing current probe while retaining its history.
  */
 function componentNote(
   component: string,
