@@ -44,8 +44,9 @@ test("the tracked successor applies to all 38 historical migrations and alone en
   const files = readdirSync(new URL("../migrations/d1/", import.meta.url))
     .filter((name) => name.endsWith(".sql"))
     .sort();
-  assert.equal(files.at(-1), HEALTH_RETENTION_MIGRATION);
-  const history = files.slice(0, -1);
+  const healthIndex = files.indexOf(HEALTH_RETENTION_MIGRATION);
+  assert.notEqual(healthIndex, -1);
+  const history = files.slice(0, healthIndex);
   assert.equal(history.length, 38);
   assert.equal(history.at(-1), "0038_raw_capture_publications.sql");
   const runtime = freshRuntime();
