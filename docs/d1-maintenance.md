@@ -21,6 +21,12 @@ command only checks for drift. Set `CLOUDFLARE_ACCOUNT_ID`,
 `CLOUDFLARE_D1_DATABASE_ID` and `CLOUDFLARE_API_TOKEN` in the maintainer's protected
 environment; never place a token in a command argument or tracked file.
 
+In GitHub Actions, verification failures publish the existing fixed failure
+classification as an error annotation. This makes an HTTP or ledger failure
+class available without a complete job-log download. Provider text, SQL,
+identifiers and credentials never enter the annotation. An unclassified error
+remains unclassified; this is not a substitute for authorized live diagnosis.
+
 The retained `generated/db/schema.json` remains the logical row/type contract
 used by generated TypeScript types and archive exports. It is not a live Neon
 dependency. SQLite introspection cannot infer the numeric types of JSON-backed
