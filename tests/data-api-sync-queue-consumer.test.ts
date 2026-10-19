@@ -347,6 +347,38 @@ describe("the sync queue consumer", () => {
     assert.deepEqual(m.calls, ["ack"]);
   });
 
+  test("disposes each compressed delivery before reading the next body", async () => {
+    const packed = gzipSync(JSON.stringify(positionMessage().body));
+    let acknowledged = 0;
+    const messages = Array.from({ length: 10 }, (_unused, index) => {
+      const item = message(packed);
+      Object.defineProperty(item, "body", { get() {
+        assert.equal(acknowledged, index, "a neighbour was read before disposal");
+        return packed;
+      } });
+      item.ack = () => { item.calls.push("ack"); acknowledged += 1; };
+      return item;
+    });
+    await consume(messages);
+    assert.equal(acknowledged, 10);
+    assert.equal(rows().length, 10);
+    for (const item of messages) assert.deepEqual(item.calls, ["ack"]);
+  });
+
+  test("expansion refusal retries original bytes while its neighbour lands", async () => {
+    const { SYNC_BATCH_MAX_DECODED_BYTES } = await import("../src/sync-batch-limits.ts");
+    const original = { ...positionMessage().body as Record<string, unknown>, padding: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) };
+    const packed = gzipSync(JSON.stringify(original));
+    assert.ok(packed.byteLength < 96 * 1024, "the oversized expansion fits normal transport");
+    const refused = message(packed);
+    const neighbour = positionMessage();
+    await consume([refused, neighbour]);
+    assert.equal(refused.body, packed, "custody retains the transport representation");
+    assert.deepEqual(refused.calls, ["retry"]);
+    assert.deepEqual(neighbour.calls, ["ack"]);
+    assert.equal(rows().length, 1);
+  });
+
   test("carries a declared pass through the queue to a tally write (metagraphed#9783)", async () => {
     // The declaration has to survive the queue: a queue knows a message
     // arrived, not whether the whole scan did.

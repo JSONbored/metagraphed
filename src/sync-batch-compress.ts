@@ -33,10 +33,54 @@
 // compressed body from any lane, so opting one in later is a producer-side
 // change with no consumer deploy -- but nothing is opted in today.
 
-/** The only algorithm here. `gzip` rather than `deflate-raw` because both ends
- * are workerd and the header costs 18 bytes against a 40 KiB payload, which
- * buys a self-describing stream for nothing that matters. */
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "./sync-batch-limits.ts";
+
+/** gzip keeps the existing self-describing wire encoding. */
 export const SYNC_BATCH_COMPRESSION = "gzip" as const;
+
+/** Resource refusal is not malformed JSON. Retrying retains the original
+ * compressed delivery through the existing DLQ custody path instead of ACKing
+ * a payload whose contents could not be inspected within the bound. */
+export class SyncBatchExpansionError extends Error {
+  constructor() {
+    super(
+      `sync-batches: decoded JSON exceeds ${SYNC_BATCH_MAX_DECODED_BYTES} UTF-8 bytes`,
+    );
+    this.name = "SyncBatchExpansionError";
+  }
+}
+
+/** Count actual stream bytes before decoding or retaining each chunk. Decode
+ * incrementally so no expanded byte arrays or second contiguous byte copy are
+ * retained beside the JSON text. The bound does not depend on a gzip trailer. */
+export async function readSyncBatchJson(
+  stream: ReadableStream<Uint8Array>,
+): Promise<unknown> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const parts: string[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      if (next.value.byteLength > SYNC_BATCH_MAX_DECODED_BYTES - total) {
+        throw new SyncBatchExpansionError();
+      }
+      total += next.value.byteLength;
+      parts.push(decoder.decode(next.value, { stream: true }));
+    }
+    parts.push(decoder.decode());
+  } finally {
+    // Cancellation can reject or never acknowledge. Neither may hold the
+    // refusal or the next independent delivery hostage.
+    void reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+  const text = parts.join("");
+  parts.length = 0;
+  return JSON.parse(text) as unknown;
+}
 
 /**
  * The first two bytes of a gzip stream (0x1f 0x8b).
@@ -94,7 +138,13 @@ export async function compressSyncBatchMessage(
   maxBytes: number,
 ): Promise<Uint8Array> {
   const json = JSON.stringify(message);
+  if (json.length > SYNC_BATCH_MAX_DECODED_BYTES) {
+    throw new SyncBatchExpansionError();
+  }
   const raw = new TextEncoder().encode(json);
+  if (raw.byteLength > SYNC_BATCH_MAX_DECODED_BYTES) {
+    throw new SyncBatchExpansionError();
+  }
   // A one-chunk ReadableStream rather than a Blob: `Blob` is present in
   // workerd but its `BlobPart` type is not in this project's lib set, and a
   // stream is the shape CompressionStream wants anyway.
@@ -141,7 +191,7 @@ export async function decompressSyncBatchMessage(
     return null;
   }
   try {
-    const raw = await drain(
+    return await readSyncBatchJson(
       new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(bytes);
@@ -149,8 +199,8 @@ export async function decompressSyncBatchMessage(
         },
       }).pipeThrough(new DecompressionStream(SYNC_BATCH_COMPRESSION)),
     );
-    return JSON.parse(new TextDecoder().decode(raw)) as unknown;
-  } catch {
+  } catch (error) {
+    if (error instanceof SyncBatchExpansionError) throw error;
     // Truncated bytes, a corrupted stream, or valid gzip that is not JSON. All
     // three are "this will not parse on the fifth attempt either".
     return null;
