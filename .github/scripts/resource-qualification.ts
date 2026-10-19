@@ -1,0 +1,316 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createCipheriv, createHash } from "node:crypto";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { builtinModules } from "node:module";
+import path from "node:path";
+import { gzipSync } from "node:zlib";
+import { build } from "esbuild";
+import { Miniflare } from "miniflare";
+import WebSocket from "ws";
+
+const scenario = process.argv[2];
+const variant = process.argv[3];
+assert.ok(["http-exact", "http-chunks", "queue-ten", "queue-two-ten"].includes(scenario));
+assert.ok(["current", "before-atomic"].includes(variant));
+const base = "7afb1a5fb1aa00eb0dd261861d9f56f59c3db80d";
+const previous = "4411b7cba04221610f989e74a479380f85e17ed6";
+const root = process.cwd();
+const reportDirectory = path.resolve("resource-reports");
+mkdirSync(reportDirectory, { recursive: true });
+const sourcePaths = ["src/chain-detail-d1-write.ts", "src/chain-detail-native-payloads.ts", "src/chain-detail-payloads.ts"];
+const expectedPrevious = ["2d0e61cbe326f0355404c4e4ed7ba8ffbe7e63dd", "68e45729e938790e9853c6c82381d95612a7800f", "afdc726980946e16a9e95f3d6c539f05c65218ce"];
+const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
+const sourceReceipt: Record<string, { blob: string; sha256: string }> = {};
+const schemaPaths = ["migrations/d1/0014_recent_chain_state.sql", "migrations/d1/0024_chain_detail_payload_chunks.sql"];
+let stage = "source";
+for (const [index, file] of sourcePaths.entries()) {
+  const ref = variant === "current" ? base : previous;
+  const blob = execFileSync("git", ["rev-parse", `${ref}:${file}`], { encoding: "utf8" }).trim();
+  if (variant === "before-atomic") assert.equal(blob, expectedPrevious[index]);
+  const source = execFileSync("git", ["show", `${ref}:${file}`], { encoding: "utf8" });
+  if (variant === "current") assert.equal(source, readFileSync(file, "utf8"));
+  else writeFileSync(file, source);
+  sourceReceipt[file] = { blob, sha256: digest(source) };
+}
+const schemaReceipt = Object.fromEntries(schemaPaths.map(file => [file, digest(readFileSync(file))]));
+const workerHash = digest(readFileSync("workers/data-api.ts"));
+const compatibleDate = "2026-06-06";
+const result: Record<string, unknown> = {
+  scenario, variant, sourceBase: base, counterfactualOverlayBase: variant === "before-atomic" ? previous : null,
+  sourceReceipt, workerSha256: workerHash, schemaReceipt, compatibilityDate: compatibleDate,
+  productionActions: false, outboundRequests: 0,
+  scope: "Actual data-api code in isolated local workerd; synthetic D1 only. The before-atomic variant overlays only three pinned modules on the same current worker, queue and HTTP admission source. It is not a historical deployment.",
+};
+let mf: Miniflare | undefined;
+let sockets: WebSocket[] = [];
+let samplerStopped = false;
+let sampledHeap = { samples: 0, maxUsedSize: 0, maxTotalSize: 0, maxEmbedderHeapUsedSize: 0, maxBackingStorageSize: 0, errors: 0 };
+let rss = { samples: 0, maxVmRSSBytes: 0, maxVmHWMBytes: 0, maxNodeVmRSSBytes: 0, maxNodeVmHWMBytes: 0 };
+let sampler: Promise<void> | undefined;
+const started = Date.now();
+const deadline = started + 240_000;
+const pause = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+function status(pid: number) {
+  const text = readFileSync(`/proc/${pid}/status`, "utf8");
+  const value = (key: string) => {
+    const match = new RegExp(`^${key}:\\s+(\\d+) kB$`, "m").exec(text);
+    assert.ok(match, `missing ${key}`);
+    return Number(match[1]) * 1024;
+  };
+  return { rss: value("VmRSS"), hwm: value("VmHWM") };
+}
+function children(pid: number): number[] {
+  const names = readFileSync(`/proc/${pid}/task/${pid}/children`, "utf8").trim();
+  return names ? names.split(/\s+/).map(Number) : [];
+}
+function workerdPid() {
+  const pending = children(process.pid), seen = new Set<number>();
+  const matches: number[] = [];
+  while (pending.length) {
+    const pid = pending.shift()!;
+    assert.ok(!seen.has(pid) && seen.size < 32);
+    seen.add(pid);
+    const executable = path.basename(realpathSync(`/proc/${pid}/exe`));
+    if (executable === "workerd") matches.push(pid);
+    pending.push(...children(pid));
+  }
+  assert.equal(matches.length, 1, "one attributable workerd process");
+  return matches[0];
+}
+async function connect(url: string) {
+  const target = new URL(url);
+  assert.equal(target.protocol, "ws:");
+  assert.equal(target.hostname, "127.0.0.1");
+  assert.equal(target.username + target.password, "");
+  const ws = new WebSocket(target);
+  sockets.push(ws);
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("inspector_open_timeout")), 3000);
+    ws.once("open", () => { clearTimeout(timer); resolve(); });
+    ws.once("error", () => { clearTimeout(timer); reject(new Error("inspector_open_failed")); });
+  });
+  let id = 0;
+  const waiting = new Map<number, { resolve(value: any): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
+  ws.on("message", raw => {
+    assert.ok(raw.length <= 65536, "bounded inspector message");
+    const message = JSON.parse(raw.toString());
+    const request = waiting.get(message.id);
+    if (!request) return;
+    clearTimeout(request.timer);
+    waiting.delete(message.id);
+    if (message.error) request.reject(new Error("inspector_method_failed"));
+    else request.resolve(message.result);
+  });
+  return {
+    ws,
+    call(method: string, params: Record<string, unknown> = {}) {
+      assert.ok(["Runtime.evaluate", "Runtime.getHeapUsage"].includes(method));
+      const requestId = ++id;
+      return new Promise<any>((resolve, reject) => {
+        const timer = setTimeout(() => { waiting.delete(requestId); reject(new Error("inspector_reply_timeout")); }, 3000);
+        waiting.set(requestId, { resolve, reject, timer });
+        ws.send(JSON.stringify({ id: requestId, method, params }));
+      });
+    },
+  };
+}
+
+function payload(data: string, block = 9_000_001) {
+  const observed = 1_790_090_000_000;
+  const hash = "0x" + block.toString(16).padStart(64, "0");
+  return { blocks: [{ block_number: block, block_hash: hash, observed_at: observed, spec_version: 291,
+    extrinsics: [{ block_number: block, extrinsic_index: 0, extrinsic_hash: "0x" + (block + 1).toString(16).padStart(64, "0"), signer: null, call_module: "System", call_function: "remark", success: null, fee_tao: null, tip_tao: null, call_args: JSON.stringify([{ name: "memo", type: "Bytes", value: data }]), observed_at: observed }],
+    chain_events: [{ block_number: block, event_index: 0, pallet: "System", method: "ExtrinsicSuccess", args: "[]", phase: "ApplyExtrinsic", extrinsic_index: 0, observed_at: observed }],
+    account_events: [{ block_number: block, event_index: 1, extrinsic_index: 0, event_kind: "Transfer", hotkey: "h", coldkey: "c", netuid: null, uid: null, amount_tao: "1.000000001", alpha_amount: null, observed_at: observed }] }] };
+}
+
+try {
+  stage = "bundle";
+  const entry = `import worker from ${JSON.stringify(path.join(root, "workers/data-api.ts"))};
+import { restoreChainDetailPayloads } from ${JSON.stringify(path.join(root, "src/chain-detail-payloads.ts"))};
+globalThis.__metagraphed_resource_target = true;
+export default { ...worker, async fetch(request, env, ctx) {
+ if (new URL(request.url).pathname !== '/__qualification/verify') return worker.fetch(request, env, ctx);
+ const counts = {};
+ for (const name of ['chain_detail_blocks','chain_detail_extrinsics','chain_detail_chain_events','chain_detail_account_events','chain_detail_payload_chunks']) counts[name] = await env.D1_STATE.prepare('SELECT COUNT(*) n FROM '+name).first('n');
+ const row = await env.D1_STATE.prepare('SELECT call_args FROM chain_detail_extrinsics ORDER BY block_number,extrinsic_index LIMIT 1').first();
+ const restored = (await restoreChainDetailPayloads(env, [row]))[0].call_args;
+ const bytes = new TextEncoder().encode(restored);
+ const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
+ return Response.json({ counts, firstPayloadBytes: bytes.length, firstPayloadSha256: hash });
+}};`;
+  const builtins = new Set(builtinModules.map(name => name.replace(/^node:/, "")));
+  const bundle = await build({ stdin: { contents: entry, resolveDir: root, sourcefile: "resource-harness.ts", loader: "ts" }, bundle: true, format: "esm", platform: "browser", target: "es2022", conditions: ["workerd", "worker", "browser"], external: ["node:*", "cloudflare:*"], plugins: [{ name: "native-node-compat", setup(builder) { builder.onResolve({ filter: /^[a-z][a-z0-9_/-]*$/ }, args => builtins.has(args.path) ? { path: `node:${args.path}`, external: true } : undefined); } }], write: false, logLevel: "silent" });
+  assert.equal(bundle.outputFiles.length, 1);
+  const script = bundle.outputFiles[0].text;
+  result.bundleSha256 = digest(script);
+  stage = "runtime";
+  let outbound = 0;
+  mf = new Miniflare({ modules: true, name: "resource-ingestion", script, compatibilityDate: compatibleDate,
+    compatibilityFlags: ["nodejs_compat"], inspectorPort: 0,
+    bindings: { CHAIN_DETAIL_SYNC_SECRET: "synthetic-resource-secret", D1_STATE_TABLES: "blocks_head,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events" },
+    d1Databases: ["D1_STATE"],
+    outboundService: async () => { outbound++; return new Response("blocked synthetic qualification outbound", { status: 503 }); },
+  });
+  await mf.ready;
+  const db = await mf.getD1Database("D1_STATE");
+  for (const file of schemaPaths)
+    for (const statement of readFileSync(file, "utf8").split("-- statement-breakpoint"))
+      if (statement.trim()) await db.prepare(statement).run();
+  const pid = workerdPid();
+  stage = "inspector";
+  const inspector = await mf.getInspectorURL();
+  assert.equal(inspector.hostname, "127.0.0.1");
+  const listing = await fetch(`http://127.0.0.1:${inspector.port}/json/list`, { signal: AbortSignal.timeout(3000) });
+  assert.equal(listing.status, 200);
+  const listingText = await listing.text();
+  assert.ok(Buffer.byteLength(listingText) <= 65536);
+  const targets = JSON.parse(listingText);
+  assert.ok(Array.isArray(targets) && targets.length <= 32);
+  let client: Awaited<ReturnType<typeof connect>> | undefined;
+  for (const target of targets) {
+    if (typeof target.webSocketDebuggerUrl !== "string") continue;
+    const candidate = await connect(target.webSocketDebuggerUrl);
+    const evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", returnByValue: true });
+    if (evaluation.result?.value === true) { assert.equal(client, undefined); client = candidate; }
+    else candidate.ws.close();
+  }
+  assert.ok(client, "marked user isolate inspector selected");
+  const sample = async () => {
+    const heap = await client!.call("Runtime.getHeapUsage");
+    for (const key of ["usedSize", "totalSize"])
+      assert.ok(Number.isFinite(heap[key]) && heap[key] >= 0);
+    sampledHeap.samples++;
+    sampledHeap.maxUsedSize = Math.max(sampledHeap.maxUsedSize, heap.usedSize);
+    sampledHeap.maxTotalSize = Math.max(sampledHeap.maxTotalSize, heap.totalSize);
+    sampledHeap.maxEmbedderHeapUsedSize = Math.max(sampledHeap.maxEmbedderHeapUsedSize, heap.embedderHeapUsedSize ?? 0);
+    sampledHeap.maxBackingStorageSize = Math.max(sampledHeap.maxBackingStorageSize, heap.backingStorageSize ?? 0);
+    const runtimeStatus = status(pid), nodeStatus = status(process.pid);
+    rss.samples++;
+    rss.maxVmRSSBytes = Math.max(rss.maxVmRSSBytes, runtimeStatus.rss);
+    rss.maxVmHWMBytes = Math.max(rss.maxVmHWMBytes, runtimeStatus.hwm);
+    rss.maxNodeVmRSSBytes = Math.max(rss.maxNodeVmRSSBytes, nodeStatus.rss);
+    rss.maxNodeVmHWMBytes = Math.max(rss.maxNodeVmHWMBytes, nodeStatus.hwm);
+  };
+  await sample();
+  const initialHeap = { ...sampledHeap }, initialRss = { ...rss };
+  stage = "fixture";
+  const fetcher = await mf.getWorker();
+  let expectedPayload: string;
+  let operation: () => Promise<void>;
+  let expectedBlocks = 1, expectedRows = 1;
+  if (scenario.startsWith("http")) {
+    const target = 16_000_000;
+    const empty = JSON.stringify(payload(""));
+    const length = target - Buffer.byteLength(empty);
+    const data = scenario === "http-exact" ? "x".repeat(length) : createCipheriv("aes-256-ctr", Buffer.alloc(32, 7), Buffer.alloc(16, 9)).update(Buffer.alloc(Math.ceil(length * 3 / 4))).toString("base64").slice(0, length);
+    const input = payload(data);
+    expectedPayload = input.blocks[0].extrinsics[0].call_args;
+    const body = JSON.stringify(input);
+    assert.equal(Buffer.byteLength(body), target);
+    result.fixture = { bodyBytes: target, sha256: digest(body), allFourFamilies: true, highEntropy: scenario === "http-chunks" };
+    operation = async () => {
+      const response = await fetcher.fetch("https://resource.invalid/api/v1/internal/chain-detail-sync", { method: "POST", headers: { "x-chain-detail-sync-token": "synthetic-resource-secret", "content-type": "application/json" }, body });
+      result.httpStatus = response.status;
+      const outcome = await response.json();
+      assert.equal(response.status, 200, "maximum admitted HTTP payload durable write");
+      assert.equal(outcome.ok, true);
+      assert.deepEqual(outcome.stores, ["d1"]);
+    };
+  } else {
+    const { parseChainDetailSync } = await import(path.join(root, "src/chain-detail-sync-payload.ts"));
+    const { validSyncBatchMessage } = await import(path.join(root, "src/sync-batch-queue.ts"));
+    const large = '"' + "x".repeat(16 * 1024 * 1024 - 2) + '"';
+    expectedPayload = large;
+    expectedBlocks = scenario === "queue-two-ten" ? 20 : 10;
+    expectedRows = expectedBlocks * 2;
+    const messages = [];
+    let maximumDecodedBytes = 0, maximumWireBytes = 0;
+    const inputHashes: string[] = [];
+    for (let index = 0; index < expectedBlocks; index++) {
+      const parsed = parseChainDetailSync(payload("", 9_000_001 + index), 1_790_090_000_000);
+      assert.equal(parsed.ok, true);
+      if (!parsed.ok) throw new Error("synthetic_parser_refused");
+      const rows = parsed.rows;
+      rows.extrinsicRows[0].call_args = large;
+      rows.extrinsicRows.push({ ...rows.extrinsicRows[0], extrinsic_index: 1 });
+      rows.chainEventRows[0].args = large;
+      rows.chainEventRows.push({ ...rows.chainEventRows[0], event_index: 1 });
+      Object.assign(rows.blockRows[0], { extrinsic_count: 2, chain_event_count: 2 });
+      const message = { lane: "chain-detail", captured_at: 1_790_090_000_000, families: { blockRows: rows.blockRows, extrinsicRows: rows.extrinsicRows, chainEventRows: rows.chainEventRows, accountEventRows: rows.accountEventRows } };
+      assert.equal(validSyncBatchMessage(message), true);
+      const json = JSON.stringify(message);
+      const bytes = gzipSync(json);
+      assert.ok(bytes.length <= 96 * 1024);
+      maximumDecodedBytes = Math.max(maximumDecodedBytes, Buffer.byteLength(json));
+      maximumWireBytes = Math.max(maximumWireBytes, bytes.length);
+      inputHashes.push(digest(json));
+      messages.push({ id: `synthetic-${index}`, timestamp: new Date(1_790_090_000_000), body: new Uint8Array(bytes), attempts: 1 });
+    }
+    result.fixture = { messages: expectedBlocks, events: expectedBlocks / 10, messagesPerEvent: 10, maximumWireBytes, maximumDecodedBytes, inputHashes, familyRowsPerMessage: { blocks: 1, extrinsics: 2, chainEvents: 2, accountEvents: 1 }, perValueBytes: 16 * 1024 * 1024, perPayloadFamilyBytes: 32 * 1024 * 1024, sourceReachability: "Direct valid queue contract and writer budget; not claimed derivable from a single maximum HTTP POST", scheduling: "Driver issues one or two simultaneous actual workerd queue events; not production broker scheduling acceptance" };
+    operation = async () => {
+      const outcomes = await Promise.all(Array.from({ length: expectedBlocks / 10 }, (_, event) => fetcher.queue("sync-batches", messages.slice(event * 10, (event + 1) * 10))));
+      result.queueOutcomes = outcomes;
+      for (const [index, outcome] of outcomes.entries()) {
+        assert.equal(outcome.outcome, "ok");
+        assert.equal(outcome.retryBatch.retry, false);
+        assert.deepEqual(outcome.retryMessages, []);
+        assert.deepEqual([...outcome.explicitAcks].sort(), messages.slice(index * 10, (index + 1) * 10).map(message => message.id).sort());
+      }
+    };
+  }
+  stage = "ingestion";
+  const operationStarted = Date.now();
+  sampler = (async () => {
+    while (!samplerStopped && sampledHeap.samples < 10_000 && Date.now() < deadline) {
+      try { await sample(); } catch { sampledHeap.errors++; }
+      await pause(25);
+    }
+  })();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([operation(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("synthetic_case_deadline")), Math.max(1, deadline - Date.now())); })]);
+  } finally { clearTimeout(timer); }
+  samplerStopped = true;
+  await sampler;
+  await sample();
+  result.ingestionElapsedMs = Date.now() - operationStarted;
+  result.initialHeap = initialHeap;
+  result.initialRss = initialRss;
+  stage = "correctness";
+  const verificationResponse = await fetcher.fetch("https://resource.invalid/__qualification/verify");
+  assert.equal(verificationResponse.status, 200);
+  const verification = await verificationResponse.json();
+  assert.equal(verification.counts.chain_detail_blocks, expectedBlocks);
+  assert.equal(verification.counts.chain_detail_extrinsics, expectedRows);
+  assert.equal(verification.counts.chain_detail_chain_events, expectedRows);
+  assert.equal(verification.counts.chain_detail_account_events, expectedBlocks);
+  assert.equal(verification.firstPayloadBytes, Buffer.byteLength(expectedPayload));
+  assert.equal(verification.firstPayloadSha256, digest(expectedPayload));
+  if (scenario === "http-chunks") assert.ok(verification.counts.chain_detail_payload_chunks > 0);
+  result.correctness = verification;
+  result.outboundRequests = outbound;
+  assert.equal(outbound, 0);
+  result.status = "passed";
+} catch (error) {
+  result.status = "failed";
+  result.failureStage = stage;
+  const message = error instanceof Error ? error.message : "non_error";
+  result.safeFailure = /MF-Proxy|secret|authorization|token/i.test(message) ? "diagnostic_withheld" : message.slice(0,1400);
+  process.exitCode = 1;
+} finally {
+  samplerStopped = true;
+  if (sampler) await sampler.catch(() => undefined);
+  for (const socket of sockets) socket.terminate();
+  if (mf) await mf.dispose();
+  result.measurements = { sampledUserIsolateHeap: sampledHeap, processRss: rss,
+    heapScope: "Sampled marked user workerd isolate only, no forced GC; observed maximum is a lower bound and is not total isolate allocation or Cloudflare memory-limit proof",
+    rssScope: "Actual workerd PID process RSS/HWM includes Miniflare system and D1 helper isolates; Node driver is reported separately. It cannot be interpreted as user-isolate heap or subtract D1 overhead.",
+    acceptance: "No production 128 MiB clearance, sustained workload, regional placement, provider scheduling, or shared-account capacity acceptance" };
+  result.elapsedMs = Date.now() - started;
+  const output = `${scenario}-${variant}.json`;
+  writeFileSync(path.join(reportDirectory, output), JSON.stringify(result, null, 2) + "\n");
+  console.log(JSON.stringify({ scenario, variant, status: result.status, stage: result.failureStage, sampledHeap, rss, elapsedMs: result.elapsedMs }));
+}
