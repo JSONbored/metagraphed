@@ -511,13 +511,10 @@ export function packSyncBatchMessages(input: {
  * and wrong. So an oversize chunk THROWS rather than degrading into the split
  * this shape exists to prevent.
  *
- * IT DOES NOT MEASURE ITSELF ANY MORE. It used to check `JSON.stringify(...)`
- * against the budget, and that was measuring the wrong thing once the message
- * started travelling compressed: one chain-detail block is 476.6 KiB of JSON
- * and 40.5 KiB on the wire, so a raw-bytes check refuses messages that fit.
- * `compressSyncBatchMessage` owns the budget now, because it is the only place
- * that knows the size the transport actually sees -- and it keeps the same
- * loud-throw posture, for the same reason.
+ * Validate the consumer's structural and total-row limits before enqueueing.
+ * A rejected delivery is ACKed without a write. The compressor owns the byte
+ * budget: one block is 476.6 KiB of JSON and 40.5 KiB on the wire, so measuring
+ * raw JSON would refuse a message that fits.
  */
 export function packMultiFamilyMessage(input: {
   lane: SyncBatchLane;
@@ -535,8 +532,6 @@ export function packMultiFamilyMessage(input: {
   // `rows` is absent by construction here; the validator refuses a message
   // carrying both, so the type's optional `rows` is deliberately not set.
   delete (message as { rows?: unknown }).rows;
-  // Never acknowledge a POST with a message the consumer will reject and ACK
-  // without writing. The byte budget is still checked after compression.
   if (!validSyncBatchMessage(message)) {
     throw new Error("sync-batches: invalid multi-family message");
   }
