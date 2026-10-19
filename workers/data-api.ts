@@ -1,4 +1,5 @@
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
+import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
@@ -1027,8 +1028,8 @@ async function handleChainDetailSync(
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
 
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > CHAIN_DETAIL_SYNC_MAX_BODY_BYTES) {
+  const raw = await readChainDetailSyncBody(request);
+  if (raw === null) {
     return writeJson(
       { error: `body exceeds ${CHAIN_DETAIL_SYNC_MAX_BODY_BYTES} bytes` },
       413,
