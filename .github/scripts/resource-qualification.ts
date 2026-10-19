@@ -93,12 +93,14 @@ function workerdPid() {
   assert.equal(matches.length, 1, "one attributable workerd process");
   return matches[0];
 }
-async function connect(url: string) {
+async function connect(url: string, expectedPort: string) {
   const target = new URL(url);
   assert.equal(target.protocol, "ws:");
-  assert.equal(target.hostname, "127.0.0.1");
+  assert.ok(["127.0.0.1", "localhost"].includes(target.hostname));
+  assert.equal(target.port, expectedPort);
   assert.equal(target.username + target.password, "");
-  const ws = new WebSocket(target);
+  target.hostname = "127.0.0.1";
+  const ws = new WebSocket(target, { followRedirects: false, maxPayload: 65536 });
   sockets.push(ws);
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("inspector_open_timeout")), 3000);
@@ -192,6 +194,12 @@ export default { ...worker, async fetch(request, env, ctx) {
   for (const file of schemaPaths)
     for (const statement of readFileSync(file, "utf8").split("-- statement-breakpoint"))
       if (statement.trim()) await db.prepare(statement).run();
+  stage = "warmup";
+  checkpoint();
+  const fetcher = await mf.getWorker();
+  const warmup = await fetcher.fetch("https://resource.invalid/api/v1/internal/chain-detail-sync/head", { headers: { "x-chain-detail-sync-token": "synthetic-resource-secret" } });
+  assert.equal(warmup.status, 200);
+  assert.deepEqual(await warmup.json(), { head: null });
   stage = "runtime-identity";
   checkpoint();
   const pid = workerdPid();
@@ -215,15 +223,20 @@ export default { ...worker, async fetch(request, env, ctx) {
   assert.ok(Buffer.byteLength(listingText) <= 65536);
   const targets = JSON.parse(listingText);
   assert.ok(Array.isArray(targets) && targets.length <= 32);
+  const inspectorDiscovery = { targets: targets.length, inspected: 0, markerMatches: 0 };
+  result.inspectorDiscovery = inspectorDiscovery;
   let client: Awaited<ReturnType<typeof connect>> | undefined;
-  stage = "inspector-target";
   for (const target of targets) {
     if (typeof target.webSocketDebuggerUrl !== "string") continue;
-    const candidate = await connect(target.webSocketDebuggerUrl);
+    stage = "inspector-connect";
+    const candidate = await connect(target.webSocketDebuggerUrl, inspector.port);
+    stage = "inspector-marker";
     const evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", returnByValue: true });
-    if (evaluation.result?.value === true) { assert.equal(client, undefined); client = candidate; }
+    inspectorDiscovery.inspected++;
+    if (evaluation.result?.value === true) { inspectorDiscovery.markerMatches++; assert.equal(client, undefined); client = candidate; }
     else candidate.ws.close();
   }
+  stage = "inspector-target";
   assert.ok(client, "marked user isolate inspector selected");
   stage = "inspector-heap";
   const sample = async () => {
@@ -253,7 +266,6 @@ export default { ...worker, async fetch(request, env, ctx) {
   const initialHeap = { ...sampledHeap }, initialRss = { ...rss };
   stage = "fixture";
   checkpoint();
-  const fetcher = await mf.getWorker();
   let expectedPayload: string;
   let operation: () => Promise<void>;
   let expectedBlocks = 1, expectedRows = 1;
