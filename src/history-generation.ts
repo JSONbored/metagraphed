@@ -329,11 +329,16 @@ async function readFileRanges(
 
     const attribution =
       projection?.compactAttribution && part.economics
-        ? await readHistoryEconomicsAttribution(source, part.economics, part, budget)
+        ? await readHistoryEconomicsAttribution(
+            source,
+            part.economics,
+            part,
+            budget,
+          )
         : undefined;
     const columns = attribution
       ? projection!.columns.filter((column) => column !== "call_args")
-      : projection?.columns ?? Object.keys(index.groups[0].columns);
+      : (projection?.columns ?? Object.keys(index.groups[0].columns));
 
     // Share single-page decoding, discard gaps, then restore run order.
     // Preserve multi-page pruning and streaming memory bounds.

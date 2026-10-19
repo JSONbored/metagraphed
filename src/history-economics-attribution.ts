@@ -21,13 +21,19 @@ export function buildHistoryEconomicsAttribution(
 ) {
   const value = HistoryEconomicsAttributionSchema.parse({
     version: 1,
-    source: { key: part.key, etag: part.etag, bytes: part.bytes, rows: part.rows },
+    source: {
+      key: part.key,
+      etag: part.etag,
+      bytes: part.bytes,
+      rows: part.rows,
+    },
     subnetIds,
   });
   if (value.subnetIds.length !== part.rows || !part.key.endsWith(".parquet"))
     throw new Error("Economics companion source census mismatch");
   const bytes = new TextEncoder().encode(historyJson(value));
-  if (bytes.length > MAX_BYTES) throw new Error("Economics companion exceeds size bound");
+  if (bytes.length > MAX_BYTES)
+    throw new Error("Economics companion exceeds size bound");
   return {
     value,
     bytes,
@@ -69,7 +75,9 @@ export async function readHistoryEconomicsAttribution(
     throw new Error("Indexed Parquet decoded memory budget exceeded");
   budget.decodedBytes += raw.length;
   const value = HistoryEconomicsAttributionSchema.parse(
-    JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw)),
+    JSON.parse(
+      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw),
+    ),
   );
   if (
     value.source.key !== part.key ||
@@ -79,7 +87,10 @@ export async function readHistoryEconomicsAttribution(
     value.subnetIds.length !== part.rows
   )
     throw new Error("Economics companion source census mismatch");
-  const values = value.subnetIds.reduce((total, ids) => total + ids.length + 1, 0);
+  const values = value.subnetIds.reduce(
+    (total, ids) => total + ids.length + 1,
+    0,
+  );
   if (budget.values + values > 1_000_000)
     throw new Error("Indexed Parquet decoded memory budget exceeded");
   budget.values += values;

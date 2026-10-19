@@ -143,18 +143,27 @@ test("publication accepts only bounded extrinsic companion references beside the
   for (const table of ["extrinsics", "chain_events"] as const) {
     const value = fixture(table);
     const economics = {
-      key: value.file.parts[0].key.replace(/\.parquet$/, `.economics-${"d".repeat(64)}.json`),
+      key: value.file.parts[0].key.replace(
+        /\.parquet$/,
+        `.economics-${"d".repeat(64)}.json`,
+      ),
       etag: "companion",
       bytes: 100,
     };
     Object.assign(value.file.parts[0], { economics });
     if (table === "chain_events") {
-      assert.throws(() => qualifyHistoryPublication(value.build()), /require extrinsic/);
+      assert.throws(
+        () => qualifyHistoryPublication(value.build()),
+        /require extrinsic/,
+      );
       continue;
     }
     assert.equal(qualifyHistoryPublication(value.build()).rows, 3);
     economics.key = "foreign";
-    assert.throws(() => qualifyHistoryPublication(value.build()), /identity or size/);
+    assert.throws(
+      () => qualifyHistoryPublication(value.build()),
+      /identity or size/,
+    );
   }
 });
 

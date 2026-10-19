@@ -221,7 +221,8 @@ export function summarizeBlockEconomics(
       add(extrinsic.fee_tao, fees);
       add(extrinsic.tip_tao, tips);
     }
-    for (const netuid of extrinsicSubnetIds(extrinsic.call_args)) subnetIds.add(netuid);
+    for (const netuid of extrinsicSubnetIds(extrinsic.call_args))
+      subnetIds.add(netuid);
   }
 
   const nativeValue = result(native);
