@@ -121,6 +121,7 @@ export async function readSelectedHistoryBlock(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
   budget: ParquetReadBudget = parquetReadBudget(),
   columns?: string[],
+  compactAttribution = false,
 ): Promise<Record<string, unknown>[] | null | undefined> {
   const bucket = (env as HistoryEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket) return undefined;
@@ -159,6 +160,7 @@ export async function readSelectedHistoryBlock(
         block,
         budget,
         projection,
+        compactAttribution,
       )
     ).map(catalogRow);
     if (table !== "account_events") return rows;

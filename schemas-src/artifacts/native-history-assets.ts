@@ -7,7 +7,7 @@ import {
 
 const nativeRoot = `metagraph/indexed-history/v1/(?:mainnet|testnet)/(?:${CHAIN_FIREHOSE_TOPICS.join("|")})/`;
 export const NATIVE_HISTORY_ASSET_OBJECT_KEY = new RegExp(
-  `^${nativeRoot}(?:generations/[a-f0-9]{64}/(?:block-manifest\\.json|manifest\\.json|files/\\d{5}\\.json|hash/(?:[a-f0-9]{3}|packed)\\.bin|blocks/(?:index\\.json|[a-f0-9]{4}\\.bin))|[a-f0-9]{64}/\\d{5,10}-[a-f0-9]{64}\\.(?:parquet|page-index\\.json))$`,
+  `^${nativeRoot}(?:generations/[a-f0-9]{64}/(?:block-manifest\\.json|manifest\\.json|files/\\d{5}\\.json|hash/(?:[a-f0-9]{3}|packed)\\.bin|blocks/(?:index\\.json|[a-f0-9]{4}\\.bin))|[a-f0-9]{64}/\\d{5,10}-[a-f0-9]{64}\\.(?:parquet|page-index\\.json|economics-[a-f0-9]{64}\\.json))$`,
 );
 
 /** Native releases use the canonical catalog vocabulary with explicit native
