@@ -52,9 +52,9 @@ describe("chain-detail normalized text admission", () => {
     const wire = encoder.encode("\ufeff\ufeff{}");
     assert.equal(await request([wire]).text(), "{}");
     for (let split = 0; split <= wire.length; split += 1) {
-      const actual = await readChainDetailSyncBody(request([
-        wire.subarray(0, split), wire.subarray(split),
-      ]));
+      const actual = await readChainDetailSyncBody(
+        request([wire.subarray(0, split), wire.subarray(split)]),
+      );
       assert.equal(actual, "\ufeff{}");
     }
   });

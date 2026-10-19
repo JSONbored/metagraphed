@@ -255,15 +255,14 @@ jobs:
 
   # Retain focused source evidence alongside the full gates for this draft.
   bundle-source:
-    name: streamed HTTP source qualification
+    name: bundle source qualification
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/chain-detail-streamed-admission-20261019' }}
+    timeout-minutes: 10
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018' }}
     steps:
       - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -271,88 +270,42 @@ jobs:
           node-version: 22.23.2
       - name: Install without lifecycle scripts
         run: npm ci --ignore-scripts
-      - name: Native Fetch text normalization oracle
+      - name: Check source formatting
+        id: format
+        run: npx prettier --check scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Retain native formatting diff on failure
+        if: failure() && steps.format.outcome == 'failure'
+        run: |
+          npx prettier --write scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+          git diff -- scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts docs/d1-maintenance.md .github/workflows/validate.yml
+      - name: Lint source support
+        run: npx eslint scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts
+      - name: Typecheck source support and regression fixtures
         run: |
           node --input-type=module <<'NODE'
-          import { Miniflare } from 'miniflare';
-          import { readFileSync, writeFileSync } from 'node:fs';
-          import { stripJsonComments } from './scripts/lib.ts';
-          const config=JSON.parse(stripJsonComments(readFileSync('wrangler.data.jsonc','utf8')));
-          const runtime = new Miniflare({modules:true,script:'export default {async fetch(request) {return Response.json({text:await request.text()});}}',compatibilityDate:config.compatibility_date,compatibilityFlags:config.compatibility_flags,cf:false});
-          const output=[];
-          for(let boms=0;boms<=4;boms++) {
-            const body=new TextEncoder().encode('\ufeff'.repeat(boms)+'{}');
-            const response=await runtime.dispatchFetch('http://oracle.test',{method:'POST',body});
-            const native=await response.json();
-            const host=await new Request('http://oracle.test',{method:'POST',body}).text();
-            output.push({boms,native:native.text,host});
-          }
-          await runtime.dispose();
-          console.log(JSON.stringify(output));
-          writeFileSync('/tmp/http-native-fetch-oracle.json',JSON.stringify(output,null,2));
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('.bundle-source.tsconfig.json', JSON.stringify({
+            extends: './tsconfig.json',
+            compilerOptions: { incremental: false },
+            include: [
+              'scripts/archive-policy-bundles.ts',
+              'scripts/archive-policy-d1-source.ts',
+              'scripts/validate-archive-policy.ts',
+              'tests/archive-policy-bundles.test.ts',
+              'tests/archive-policy-d1-source.test.ts',
+              'tests/archive-policy.test.ts',
+              'tests/d1-schema-snapshot.test.ts',
+              'workers/**/*.d.ts'
+            ]
+          }));
           NODE
-      - name: Preserve Fetch oracle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: http-native-fetch-oracle
-          path: /tmp/http-native-fetch-oracle.json
-      - name: Native formatting
-        run: npx prettier --write src/chain-detail-sync-body.ts workers/data-api.ts tests/chain-detail-sync-body.test.ts tests/chain-detail-sync-route.test.ts tests/data-api-sync-quarantine-isolate.test.ts docs/chain-detail-sync-admission.md
-      - name: Preserve exact formatted source
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: http-native-formatted
-          path: |
-            src/chain-detail-sync-body.ts
-            workers/data-api.ts
-            tests/chain-detail-sync-body.test.ts
-            tests/chain-detail-sync-route.test.ts
-            tests/data-api-sync-quarantine-isolate.test.ts
-            docs/chain-detail-sync-admission.md
-      - name: Normal build prerequisites
-        run: npm run build
-      - name: Lint cold types and unchanged source gates
+          npx tsc --project .bundle-source.tsconfig.json --noEmit
+      - name: Test snapshot extraction and archive-policy wiring
+        run: npx vitest run tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts tests/archive-policy.test.ts tests/d1-schema-snapshot.test.ts
+      - name: Audit committed snapshots and workflow rules
         run: |
-          npx eslint src/chain-detail-sync-body.ts workers/data-api.ts tests/chain-detail-sync-body.test.ts tests/chain-detail-sync-route.test.ts tests/data-api-sync-quarantine-isolate.test.ts
-          npm run typecheck -- --incremental false
-          npm run validate:unreferenced-exports
-          npm run worker:bundle:budget
-      - name: Corrected normalized admission and actual workerd HTTP
-        run: npx vitest run tests/chain-detail-sync-body.test.ts tests/chain-detail-sync-route.test.ts tests/chain-detail-sync-payload.test.ts tests/data-api-sync-quarantine-isolate.test.ts --reporter=default --reporter=json --outputFile=/tmp/http-corrected.json --coverage --coverage.include=src/chain-detail-sync-body.ts --coverage.reporter=json-summary --coverage.reporter=lcov
-      - name: Retain causal original-main failure
-        shell: bash
-        run: |
-          cp workers/data-api.ts /tmp/http-corrected-worker.ts
-          git show 9819c77bdeabe50c9a10be21063184e56e5cfe2b:workers/data-api.ts > workers/data-api.ts
-          trap 'cp /tmp/http-corrected-worker.ts workers/data-api.ts' EXIT
-          npx vitest run tests/data-api-sync-quarantine-isolate.test.ts --testNamePattern 'native HTTP admission|native Fetch keeps' --reporter=default --reporter=json --outputFile=/tmp/http-native-main-control.json
-          set +e
-          npx vitest run tests/chain-detail-sync-route.test.ts --testNamePattern 'refuses an oversized prefix without draining' --reporter=json --outputFile=/tmp/http-before.json
-          before_exit=$?
-          set -e
-          cp /tmp/http-corrected-worker.ts workers/data-api.ts
-          test "$before_exit" -ne 0
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          import { readFileSync, writeFileSync } from 'node:fs';
-          const report=JSON.parse(readFileSync('/tmp/http-before.json','utf8'));
-          const failed=report.testResults.flatMap(file=>file.assertionResults).filter(test=>test.status==='failed');
-          assert.equal(failed.length,1);
-          assert.ok(failed[0].failureMessages.join('').includes('admission read past the oversized prefix'));
-          writeFileSync('/tmp/http-before-receipt.json',JSON.stringify({base:'9819c77bdeabe50c9a10be21063184e56e5cfe2b',failed},null,2));
-          NODE
-      - name: Preserve native evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: http-source-qualification
-          path: |
-            /tmp/http-corrected.json
-            /tmp/http-before.json
-            /tmp/http-before-receipt.json
-            /tmp/http-native-main-control.json
-            coverage/coverage-summary.json
-            coverage/lcov.info
+          npm run validate:archive-policy
+          npm run validate:workflows
 
   validate:
     name: validate
