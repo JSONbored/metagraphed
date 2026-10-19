@@ -808,7 +808,17 @@ describe("materialized top-holder quantities", () => {
 
 describe("public Alpha cache", () => {
   test("installed capture schema and failed selected-owner reads bypass obsolete public cache entries", async () => {
-    const match = vi.fn(async () => Response.json({ obsolete: true }));
+    const match = vi.fn(async () =>
+      Response.json(
+        { obsolete: true },
+        {
+          headers: {
+            "x-metagraph-stored-cache-control": "+public, max-age=60",
+            "x-metagraph-stored-expires": "-",
+          },
+        },
+      ),
+    );
     const put = vi.fn(async () => {});
     vi.stubGlobal("caches", { default: { match, put } });
     resetDecodeWatermarkCache();

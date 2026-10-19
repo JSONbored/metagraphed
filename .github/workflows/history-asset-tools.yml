@@ -31,6 +31,49 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci --ignore-scripts
+      - name: Inspect the reconciled receiver import graph
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/alpha-runtime-receiver-recovery'
+        run: |
+          git fetch origin 9819c77bdeabe50c9a10be21063184e56e5cfe2b
+          git worktree add --detach "$RUNNER_TEMP/receiver-source-base" 9819c77bdeabe50c9a10be21063184e56e5cfe2b
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/receiver-source-base/node_modules"
+          node --input-type=module <<'NODE'
+          import { build } from 'esbuild';
+          import { gzipSync } from 'node:zlib';
+          import { writeFileSync } from 'node:fs';
+          const graph = async root => {
+            const result = await build({absWorkingDir: root, entryPoints: ['workers/data-api.ts'], bundle: true,
+              format: 'esm', platform: 'node', external: ['cloudflare:workers', 'node:*'], minify: true,
+              metafile: true, write: false});
+            const inputs = Object.fromEntries(Object.entries(result.metafile.inputs)
+              .filter(([name]) => /^(src|workers|schemas-src|generated)\//.test(name)));
+            const bytes = result.outputFiles[0].contents;
+            return {inputs, sourceBytes: Object.values(inputs).reduce((total, input) => total + input.bytes, 0),
+              emittedBytes: bytes.length, gzipBytes: gzipSync(bytes).length};
+          };
+          const base = await graph(process.env.RUNNER_TEMP + '/receiver-source-base');
+          const head = await graph(process.env.GITHUB_WORKSPACE);
+          const delta = Object.entries(head.inputs).map(([name, input]) => ({name, bytes: input.bytes,
+            delta: input.bytes - (base.inputs[name]?.bytes ?? 0), imports: input.imports}))
+            .filter(input => input.delta !== 0).sort((a, b) => b.delta - a.delta);
+          const evidence = {commit: process.env.GITHUB_SHA, base, head, delta};
+          writeFileSync('receiver-source-graph.json', JSON.stringify(evidence, null, 2));
+          console.log(JSON.stringify({commit: evidence.commit, base: {...base, inputs: undefined},
+            head: {...head, inputs: undefined}, delta}, null, 2));
+          NODE
+      - name: Qualify reconciled receiver regressions
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/alpha-runtime-receiver-recovery'
+        run: |
+          npx prettier --check tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts src/chain-detail-prune.ts
+          npx vitest run tests/alpha-canonical-readers.test.ts tests/analytics-edge-cache.test.ts tests/explorer-directory-entry.test.ts tests/retention-d1.test.ts tests/data-api-bundle-boundary.test.ts
+      - name: Retain native receiver source evidence
+        if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/alpha-runtime-receiver-recovery'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: receiver-source-graph-${{ github.sha }}
+          path: receiver-source-graph.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Build portable transfer module
         run: node_modules/.bin/esbuild src/history-asset-transfer.ts --bundle --platform=neutral --format=esm --external:node:* --outfile=dist/history-asset-tools/transfer.mjs
       - name: Upload transfer module

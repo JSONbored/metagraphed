@@ -210,7 +210,7 @@ describe("default directory entry", () => {
       [123, 0].map((capital) => ({ entry, capital })),
     ),
   )(
-    "$entry.id skips legacy capital $capital and shares the corrected cache within the minute bound",
+    "$entry.id skips legacy capital $capital and preserves its source freshness policy",
     async ({ entry, capital }) => {
       const f = fixture();
       const cache = cacheFixture();
@@ -243,22 +243,31 @@ describe("default directory entry", () => {
       expect(await first!.json()).toMatchObject({ data });
       await Promise.all(f.pending);
       const general = await api.fetch(request(entry.path), f.env, f.ctx);
-      expect(general.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(general.headers.get("x-metagraph-cache")).toBe(
+        account ? "hit" : "miss",
+      );
       expect(await general.json()).toMatchObject({ data });
       expect(await cache.values.get(legacyKey)!.json()).toEqual({
         data: legacy,
       });
-      expect(cache.match.mock.calls[0][0].url).toContain(
-        `/${entry.id}-principal-unavailable${entry.path}`,
+      if (account)
+        expect(cache.match.mock.calls[0][0].url).toContain(
+          `/${entry.id}-principal-unavailable${entry.path}`,
+        );
+      else expect(cache.match).not.toHaveBeenCalled();
+      expect(cache.put).toHaveBeenCalledTimes(account ? 1 : 0);
+      expect(f.get.mock.calls.filter(([key]) => key === kvKey)).toHaveLength(
+        account ? 1 : 0,
       );
-      expect(cache.put).toHaveBeenCalledTimes(1);
-      expect(f.get.mock.calls.filter(([key]) => key === kvKey)).toHaveLength(1);
+      expect(f.fetch).toHaveBeenCalledTimes(account ? 0 : 2);
       const advanced = {
         ...data,
         captured_at: new Date(NOW + 60_000).toISOString(),
         block_number: 8_983_010,
       };
       f.values.set(kvKey, advanced);
+      if (!account)
+        f.fetch.mockImplementation(async () => Response.json(advanced));
       vi.mocked(Date.now).mockReturnValue(NOW + 61_000);
       const next = await handleDefaultExplorerDirectory(
         request(entry.path),
@@ -267,17 +276,22 @@ describe("default directory entry", () => {
       );
       expect(next!.headers.get("x-metagraph-cache")).toBe("miss");
       expect(await next!.json()).toMatchObject({ data: advanced });
-      expect(cache.match.mock.calls[0][0].url).not.toBe(
-        cache.match.mock.calls[2][0].url,
-      );
+      if (account)
+        expect(cache.match.mock.calls[0][0].url).not.toBe(
+          cache.match.mock.calls[2][0].url,
+        );
+      else {
+        expect(cache.match).not.toHaveBeenCalled();
+        expect(f.fetch).toHaveBeenCalledTimes(3);
+      }
     },
   );
 
   test.each(EXPLORER_DIRECTORY_ENTRIES)(
-    "$id cold HEAD retains the GET body and conditional requests still return 304",
+    "$id HEAD and conditional GET preserve the source freshness policy",
     async (entry) => {
       const f = fixture();
-      cacheFixture();
+      const cache = cacheFixture();
       const head = await handleDefaultExplorerDirectory(
         request(entry.path, { method: "HEAD" }),
         f.env,
@@ -291,7 +305,9 @@ describe("default directory entry", () => {
         f.env,
         f.ctx,
       );
-      expect(get!.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(get!.headers.get("x-metagraph-cache")).toBe(
+        entry.path === ACCOUNT_PATH ? "hit" : "miss",
+      );
       expect(await get!.json()).toMatchObject({
         data: entry.path === ACCOUNT_PATH ? f.accounts : f.validators,
       });
@@ -304,6 +320,9 @@ describe("default directory entry", () => {
       );
       expect(conditional!.status).toBe(304);
       expect(await conditional!.text()).toBe("");
+      expect(f.fetch).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 0 : 3);
+      expect(cache.put).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 1 : 0);
+      expect(cache.match).toHaveBeenCalledTimes(entry.path === ACCOUNT_PATH ? 3 : 0);
     },
   );
 
