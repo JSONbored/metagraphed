@@ -9,7 +9,7 @@ import { extrinsicSubnetIds } from "../src/block-economics.ts";
 import { HistoryEconomicsSubnetIdsSchema } from "../schemas-src/artifacts/history-generation.ts";
 
 const PartSchema = z.strictObject({
-  key: z.string().min(1),
+  key: z.string().regex(/^metagraph\/indexed-history\/v1\/(?:mainnet|testnet)\/extrinsics\/[a-f0-9]{64}\/\d{5,10}-[a-f0-9]{64}\.parquet$/),
   etag: z.string().regex(/^[a-f0-9]{32}$/),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   bytes: z.int().positive().max(128 * 1024 * 1024),
@@ -21,6 +21,7 @@ export async function prepareHistoryEconomics(bytes: Uint8Array, input: unknown)
   const identity = PartSchema.parse(input);
   if (
     bytes.length !== identity.bytes ||
+    !identity.key.endsWith(`-${identity.sha256}.parquet`) ||
     createHash("md5").update(bytes).digest("hex") !== identity.etag ||
     createHash("sha256").update(bytes).digest("hex") !== identity.sha256
   ) throw new Error("Economics source identity mismatch");

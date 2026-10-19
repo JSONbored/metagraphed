@@ -89,10 +89,11 @@ test("declared companion corruption, substitution and cumulative budgets fail cl
 
 test("real wide Parquet preparation preserves attribution and avoids wide serving decode", async () => {
   const bytes = await readFile("tests/fixtures/parquet/economics-wide.parquet");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
   const identity = {
-    key,
+    key: key.replace("b".repeat(64), sha256),
     etag: createHash("md5").update(bytes).digest("hex"),
-    sha256: createHash("sha256").update(bytes).digest("hex"),
+    sha256,
     bytes: bytes.length,
     rows: 12,
   };
@@ -164,7 +165,7 @@ test("real wide Parquet preparation preserves attribution and avoids wide servin
   // Old manifests remain readable through the ordinary projection. Full detail
   // ignores an optional companion even if that object subsequently goes missing.
   objects.delete(prepared.descriptor.key);
-  assert.equal((await readHistoryBlock(indexedSource, generation, scope, 42, parquetReadBudget()))[0].call_args?.toString().length! > 1024 * 1024, true);
+  assert.ok(((await readHistoryBlock(indexedSource, generation, scope, 42, parquetReadBudget()))[0].call_args as string).length > 1024 * 1024);
   await assert.rejects(readHistoryBlock(indexedSource, generation, scope, 42, parquetReadBudget(), [...fields, "call_args"], true), /missing or changed/);
   delete (file.parts[0] as { economics?: unknown }).economics;
   generation.files[0] = { ...put(fileDescriptor.key, file), rows: 12 };

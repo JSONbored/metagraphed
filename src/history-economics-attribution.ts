@@ -35,13 +35,10 @@ export function buildHistoryEconomicsAttribution(
   };
 }
 
-/** A declared but invalid companion fails closed; it never buys a wide fallback. */
-export async function readHistoryEconomicsAttribution(
-  source: ParquetRangeSource,
+export function validateHistoryEconomicsReference(
   input: HistoryObject,
   part: Part,
-  budget: ParquetReadBudget,
-): Promise<number[][]> {
+) {
   const object = HistoryObjectSchema.parse(input);
   const suffix = object.key.slice(prefix(part).length);
   if (
@@ -51,6 +48,18 @@ export async function readHistoryEconomicsAttribution(
     object.bytes > MAX_BYTES
   )
     throw new Error("Economics companion identity or size mismatch");
+  return object;
+}
+
+/** A declared but invalid companion fails closed; it never buys a wide fallback. */
+export async function readHistoryEconomicsAttribution(
+  source: ParquetRangeSource,
+  input: HistoryObject,
+  part: Part,
+  budget: ParquetReadBudget,
+): Promise<number[][]> {
+  const object = validateHistoryEconomicsReference(input, part);
+  const suffix = object.key.slice(prefix(part).length);
   const raw = new Uint8Array(
     await boundedParquetBuffer(source, object, budget).slice(0, object.bytes),
   );
@@ -60,7 +69,7 @@ export async function readHistoryEconomicsAttribution(
     throw new Error("Indexed Parquet decoded memory budget exceeded");
   budget.decodedBytes += raw.length;
   const value = HistoryEconomicsAttributionSchema.parse(
-    JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)),
+    JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw)),
   );
   if (
     value.source.key !== part.key ||

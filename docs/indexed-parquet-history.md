@@ -56,6 +56,42 @@ after a budget failure. The table adapter must decode each returned range and
 verify its logical block before serving it; this primitive does not select a
 production generation or change any REST, GraphQL or MCP route.
 
+## Optional compact block attribution
+
+Block economics still needs nested subnet IDs from legacy `call_args`. An
+extrinsic part may declare an optional `economics` object reference in its file
+manifest. This companion contains only the canonical, sorted subnet IDs for
+every physical source row, plus that unchanged part's key, ETag, bytes and row
+count. Its key is the source key with `.parquet` replaced by
+`.economics-<sha256-of-companion>.json`. No source rows are rewritten.
+
+`scripts/prepare-history-economics.ts` prepares this object from a pinned local
+Parquet part and an identity JSON containing `key`, `etag`, `sha256`, `bytes` and
+`rows`. It writes a new local output file with exclusive creation and prints its
+candidate descriptor. It has no credentials, upload, manifest or pointer path.
+The part must fit the existing 128 MiB/65,536-row bounds and 512-row groups.
+Preparation uses bounded batches and the canonical serving extractor, retaining
+its nested-name, depth, null and Root semantics. It refuses unsupported or
+oversized input instead of emitting partial attribution.
+
+Companions are at most 2 MiB, with at most 4,096 unique safe-integer IDs per row.
+Serving verifies the content hash, exact source identity, complete physical-row
+census and sorted IDs. Companion reads consume the operation's existing byte,
+request, decoded-byte and value budgets. Only the block-economics projection
+uses a companion; ordinary extrinsic detail still reads the original arguments.
+An absent declaration preserves the legacy projection. A declared but missing,
+corrupt or mismatched companion declines the economics read without buying a
+wide fallback or manufacturing zero. The latest-block feed is unchanged.
+
+This is source preparation. Before publishing any declaration, independently
+qualify its complete pinned source, derivation and publication, upload/verify
+every immutable companion, then construct a new complete generation and its
+atomic selection through the existing reviewed publication path. Never mutate
+an already selected file manifest or use this descriptor as a deletion receipt.
+Keep the original Parquet objects and rollback generations. The synthetic wide
+fixture measures native point-read costs; it does not establish live transport
+latency or authorize a production publication.
+
 ## Bounded account-feed compaction
 
 `scripts/compact-account-feed.ts` exports `compactAccountFeed(manifest, selection,

@@ -124,7 +124,9 @@ async function loadBlockEconomicsFromIndexes(
       amount_tao: lakehouseDecimal(row.amount_tao),
     })),
     parsedExtrinsics.data.flatMap((row) =>
-      "__economics_subnet_ids" in row ? row.__economics_subnet_ids : [],
+      Object.hasOwn(row, "call_args")
+        ? []
+        : HistoryEconomicsSubnetIdsSchema.parse(row.__economics_subnet_ids),
     ),
   );
 }

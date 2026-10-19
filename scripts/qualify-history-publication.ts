@@ -5,6 +5,7 @@ import { z } from "zod";
 import { HistoryFileSchema } from "../schemas-src/artifacts/history-generation.ts";
 import { HistorySelectionSchema } from "../schemas-src/artifacts/history-selection.ts";
 import { validateHistoryBlockIndex } from "../src/history-block-index.ts";
+import { validateHistoryEconomicsReference } from "../src/history-economics-attribution.ts";
 import {
   validateHistoryBlockGeneration,
   validateHistoryGeneration,
@@ -101,6 +102,11 @@ export function qualifyHistoryPublication(input: unknown) {
         part.index.key !== part.key.replace(/\.parquet$/, ".page-index.json")
       )
         throw new Error("Publication part scope or coverage mismatch");
+      if (part.economics) {
+        if (file.table !== "extrinsics")
+          throw new Error("Economics companions require extrinsic parts");
+        validateHistoryEconomicsReference(part.economics, part);
+      }
       rows += part.rows;
     }
     if (rows !== file.rows) throw new Error("Publication part census mismatch");

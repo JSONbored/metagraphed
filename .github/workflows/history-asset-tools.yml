@@ -59,12 +59,13 @@ jobs:
       - name: Qualify compact economics source
         if: github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/compact-block-attribution-20261018'
         run: |
-          node_modules/.bin/prettier --write schemas-src/artifacts/history-generation.ts schemas-src/artifacts/native-history-assets.ts src/block-economics.ts src/history-economics-attribution.ts src/history-generation.ts src/indexed-history-store.ts src/r2-sql-blocks.ts scripts/prepare-history-economics.ts tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts
+          node_modules/.bin/prettier --write schemas-src/artifacts/history-generation.ts schemas-src/artifacts/native-history-assets.ts src/block-economics.ts src/history-economics-attribution.ts src/history-generation.ts src/indexed-history-store.ts src/r2-sql-blocks.ts scripts/prepare-history-economics.ts scripts/qualify-history-publication.ts tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts tests/scripts/qualify-history-publication.test.ts
           mkdir -p "$RUNNER_TEMP/economics-source"
           git diff --binary > "$RUNNER_TEMP/economics-source/format.patch"
           cp tests/fixtures/parquet/economics-wide.parquet "$RUNNER_TEMP/economics-source/"
+          npm run build --workspace=packages/chain-summaries
           node_modules/.bin/tsc --noEmit
-          node_modules/.bin/vitest run tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts tests/block-economics.test.ts tests/history-block-generation.test.ts tests/indexed-history-store.test.ts
+          node_modules/.bin/vitest run tests/history-economics-attribution.test.ts tests/r2-sql-blocks.test.ts tests/block-economics.test.ts tests/history-block-generation.test.ts tests/indexed-history-store.test.ts tests/scripts/qualify-history-publication.test.ts
       - name: Retain synthetic economics source and formatting
         if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'codex/compact-block-attribution-20261018'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -10,7 +10,7 @@ import {
 } from "../../scripts/qualify-history-publication.ts";
 
 function fixture(
-  table: "blocks" | "chain_events" = "chain_events",
+  table: "blocks" | "extrinsics" | "chain_events" = "chain_events",
   empty = false,
 ) {
   const scope = {
@@ -86,7 +86,7 @@ function fixture(
       blockIndex: descriptor(blockIndex),
     });
     const hashManifest =
-      table === "blocks"
+      table === "blocks" || table === "extrinsics"
         ? object(`${root}/manifest.json`, {
             ...common,
             shards: Array.from({ length: 4096 }, (_, i) => ({
@@ -136,6 +136,25 @@ test("publication validates exact metadata bytes, packed hashes and empty ranges
       assert.equal(proof.lastBlock, 12);
       assert.equal(Boolean(proof.hashManifest), table === "blocks");
     }
+  }
+});
+
+test("publication accepts only bounded extrinsic companion references beside their source part", () => {
+  for (const table of ["extrinsics", "chain_events"] as const) {
+    const value = fixture(table);
+    const economics = {
+      key: value.file.parts[0].key.replace(/\.parquet$/, `.economics-${"d".repeat(64)}.json`),
+      etag: "companion",
+      bytes: 100,
+    };
+    Object.assign(value.file.parts[0], { economics });
+    if (table === "chain_events") {
+      assert.throws(() => qualifyHistoryPublication(value.build()), /require extrinsic/);
+      continue;
+    }
+    assert.equal(qualifyHistoryPublication(value.build()).rows, 3);
+    economics.key = "foreign";
+    assert.throws(() => qualifyHistoryPublication(value.build()), /identity or size/);
   }
 });
 
