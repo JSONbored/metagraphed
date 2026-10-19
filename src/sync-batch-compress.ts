@@ -122,10 +122,9 @@ export function isCompressedSyncBatchBody(
 /**
  * Compress a message, and refuse it if it STILL does not fit.
  *
- * THE BUDGET MEASURES THE COMPRESSED SIZE, which is the whole point: measuring
- * the JSON would keep refusing messages that fit, and measuring nothing would
- * reintroduce metagraphed-infra#360 -- a lane that stopped rather than degraded,
- * because nothing measured a message before sending it.
+ * The transport budget still measures compressed size. A separate shared
+ * decoded ceiling covers the full admitted parser/transform envelope, so it
+ * does not substitute the small wire budget for legitimate expanded JSON.
  *
  * 11.8x is one block's ratio, not a guarantee. A block whose events happen to
  * be less repetitive compresses worse, and the failure has to stay LOUD: the

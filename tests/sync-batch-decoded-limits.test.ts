@@ -42,7 +42,8 @@ async function roundTrip(body: unknown) {
   assert.ok(sourceBytes <= CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);
   const parsed = parseChainDetailSync(body, NOW);
   assert.ok(parsed.ok);
-  const { blockRows, extrinsicRows, chainEventRows, accountEventRows } = parsed.rows;
+  const { blockRows, extrinsicRows, chainEventRows, accountEventRows } =
+    parsed.rows;
   const message = packMultiFamilyMessage({
     lane: "chain-detail",
     capturedAt: NOW,
@@ -50,7 +51,10 @@ async function roundTrip(body: unknown) {
   });
   const decodedBytes = encoder.encode(JSON.stringify(message)).byteLength;
   assert.ok(decodedBytes <= SYNC_BATCH_MAX_DECODED_BYTES);
-  const compressed = await compressSyncBatchMessage(message, SYNC_BATCH_MAX_BYTES);
+  const compressed = await compressSyncBatchMessage(
+    message,
+    SYNC_BATCH_MAX_BYTES,
+  );
   assert.ok(compressed.byteLength <= SYNC_BATCH_MAX_BYTES);
   const restored = await decompressSyncBatchMessage(compressed);
   assert.deepEqual(restored, message);
@@ -79,30 +83,64 @@ describe("the derived sync-batch envelope", () => {
     };
     const body = { blocks: [block({ chain_events: [event] })] };
     event.args = "x".repeat(
-      CHAIN_DETAIL_SYNC_MAX_BODY_BYTES - encoder.encode(JSON.stringify(body)).byteLength,
+      CHAIN_DETAIL_SYNC_MAX_BODY_BYTES -
+        encoder.encode(JSON.stringify(body)).byteLength,
     );
     const result = await roundTrip(body);
     assert.equal(result.sourceBytes, CHAIN_DETAIL_SYNC_MAX_BODY_BYTES);
     assert.equal(validSyncBatchMessage(result.message), true);
   });
 
+  test("retains every block at the admitted block-count ceiling", async () => {
+    const result = await roundTrip({
+      blocks: Array.from({ length: CHAIN_DETAIL_SYNC_MAX_BLOCKS }, (_value, index) => block({ block_number: index })),
+    });
+    assert.equal(result.message.families!.blockRows!.length, 16);
+  });
+
   test("covers decimal duplication, named attribution, escapes and numeric normalization", async () => {
     const amount = "9".repeat(10_000);
-    const result = await roundTrip({ blocks: [block({
-      block_number: 1e20,
-      extrinsics: [{
-        block_number: 1e20, extrinsic_index: 1e20, extrinsic_hash: null,
-        signer: null, call_module: null, call_function: null, success: null,
-        fee_tao: null, tip_tao: null,
-        call_args: JSON.stringify({ netuid: 1e20, children: [{name: "netuid", value: "19"}], text: "界\u0000\ud800" }),
-        observed_at: NOW,
-      }],
-      account_events: [{
-        block_number: 1e20, event_index: 0, extrinsic_index: null,
-        event_kind: "Transfer", hotkey: null, coldkey: null, netuid: 19,
-        uid: null, amount_tao: amount, alpha_amount: null, observed_at: NOW,
-      }],
-    })] });
+    const result = await roundTrip({
+      blocks: [
+        block({
+          block_number: 1e20,
+          extrinsics: [
+            {
+              block_number: 1e20,
+              extrinsic_index: 1e20,
+              extrinsic_hash: null,
+              signer: null,
+              call_module: null,
+              call_function: null,
+              success: null,
+              fee_tao: null,
+              tip_tao: null,
+              call_args: JSON.stringify({
+                netuid: 1e20,
+                children: [{ name: "netuid", value: "19" }],
+                text: "界\u0000\ud800",
+              }),
+              observed_at: NOW,
+            },
+          ],
+          account_events: [
+            {
+              block_number: 1e20,
+              event_index: 0,
+              extrinsic_index: null,
+              event_kind: "Transfer",
+              hotkey: null,
+              coldkey: null,
+              netuid: 19,
+              uid: null,
+              amount_tao: amount,
+              alpha_amount: null,
+              observed_at: NOW,
+            },
+          ],
+        }),
+      ],
+    });
     const row = result.message.families!.blockRows![0]!;
     assert.equal(row.native_transfer_tao, amount);
     assert.equal(row.economic_activity_tao, amount);
@@ -112,16 +150,39 @@ describe("the derived sync-batch envelope", () => {
 
   test("keeps 80,000-row parser admission and the separate 5,000-row consumer refusal", async () => {
     const event = {
-      block_number: 1, event_index: 0, pallet: "System", method: "Remarked",
-      args: null, phase: "Initialization", extrinsic_index: null, observed_at: 1,
+      block_number: 1,
+      event_index: 0,
+      pallet: "System",
+      method: "Remarked",
+      args: null,
+      phase: "Initialization",
+      extrinsic_index: null,
+      observed_at: 1,
     };
-    const result = await roundTrip({ blocks: [block({
-      chain_events: Array.from({ length: CHAIN_DETAIL_SYNC_MAX_ROWS }, () => event),
-    })] });
-    assert.equal(result.message.families!.chainEventRows!.length, 1, "normal deduplication remains");
+    const result = await roundTrip({
+      blocks: [
+        block({
+          chain_events: Array.from(
+            { length: CHAIN_DETAIL_SYNC_MAX_ROWS },
+            () => event,
+          ),
+        }),
+      ],
+    });
+    assert.equal(
+      result.message.families!.chainEventRows!.length,
+      1,
+      "normal deduplication remains",
+    );
     const oversized = packMultiFamilyMessage({
-      lane: "chain-detail", capturedAt: NOW,
-      families: { chainEventRows: Array.from({ length: SYNC_BATCH_MAX_ROWS + 1 }, () => event) },
+      lane: "chain-detail",
+      capturedAt: NOW,
+      families: {
+        chainEventRows: Array.from(
+          { length: SYNC_BATCH_MAX_ROWS + 1 },
+          () => event,
+        ),
+      },
     });
     assert.equal(oversized.families!.chainEventRows!.length, 5_001);
     assert.equal(validSyncBatchMessage(oversized), false);
@@ -132,19 +193,25 @@ describe("bounded expanded stream reads", () => {
   test("accepts exactly the decoded byte ceiling", async () => {
     let remaining = SYNC_BATCH_MAX_DECODED_BYTES - 2;
     let opened = false;
-    const value = await readSyncBatchJson(new ReadableStream<Uint8Array>({
-      pull(controller) {
-        if (!opened) { opened = true; controller.enqueue(encoder.encode('"')); return; }
-        if (remaining > 0) {
-          const size = Math.min(65_536, remaining);
-          controller.enqueue(new Uint8Array(size).fill(32));
-          remaining -= size;
-          return;
-        }
-        controller.enqueue(encoder.encode('"'));
-        controller.close();
-      },
-    }));
+    const value = await readSyncBatchJson(
+      new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (!opened) {
+            opened = true;
+            controller.enqueue(encoder.encode('"'));
+            return;
+          }
+          if (remaining > 0) {
+            const size = Math.min(65_536, remaining);
+            controller.enqueue(new Uint8Array(size).fill(32));
+            remaining -= size;
+            return;
+          }
+          controller.enqueue(encoder.encode('"'));
+          controller.close();
+        },
+      }),
+    );
     assert.equal(typeof value, "string");
     assert.equal((value as string).length, SYNC_BATCH_MAX_DECODED_BYTES - 2);
   });
@@ -154,7 +221,9 @@ describe("bounded expanded stream reads", () => {
     for (const cancellation of ["reject", "pending"] as const) {
       let cancelled = false;
       const stream = new ReadableStream<Uint8Array>({
-        start(controller) { controller.enqueue(tooLarge); },
+        start(controller) {
+          controller.enqueue(tooLarge);
+        },
         cancel() {
           cancelled = true;
           return cancellation === "reject"
@@ -170,25 +239,40 @@ describe("bounded expanded stream reads", () => {
 
   test("preserves split UTF-8 and releases a failed stream", async () => {
     const bytes = encoder.encode('{"value":"界"}');
-    const stream = new ReadableStream<Uint8Array>({ start(controller) {
-      for (const byte of bytes) controller.enqueue(new Uint8Array([byte]));
-      controller.close();
-    } });
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of bytes) controller.enqueue(new Uint8Array([byte]));
+        controller.close();
+      },
+    });
     assert.deepEqual(await readSyncBatchJson(stream), { value: "界" });
     assert.equal(stream.locked, false);
     const failure = new Error("source failed");
-    const failed = new ReadableStream<Uint8Array>({ start(controller) { controller.error(failure); } });
-    await assert.rejects(readSyncBatchJson(failed), (error) => error === failure);
+    const failed = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(failure);
+      },
+    });
+    await assert.rejects(
+      readSyncBatchJson(failed),
+      (error) => error === failure,
+    );
     assert.equal(failed.locked, false);
   });
 
   test("the producer enforces both character and actual UTF-8 expansion limits", async () => {
     await assert.rejects(
-      compressSyncBatchMessage({ text: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) }, SYNC_BATCH_MAX_BYTES),
+      compressSyncBatchMessage(
+        { text: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) },
+        SYNC_BATCH_MAX_BYTES,
+      ),
       SyncBatchExpansionError,
     );
     await assert.rejects(
-      compressSyncBatchMessage({ text: "界".repeat(Math.floor(SYNC_BATCH_MAX_DECODED_BYTES / 3) + 1) }, SYNC_BATCH_MAX_BYTES),
+      compressSyncBatchMessage(
+        { text: "界".repeat(Math.floor(SYNC_BATCH_MAX_DECODED_BYTES / 3) + 1) },
+        SYNC_BATCH_MAX_BYTES,
+      ),
       SyncBatchExpansionError,
     );
   });

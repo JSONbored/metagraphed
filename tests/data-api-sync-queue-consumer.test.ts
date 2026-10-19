@@ -352,11 +352,21 @@ describe("the sync queue consumer", () => {
     let acknowledged = 0;
     const messages = Array.from({ length: 10 }, (_unused, index) => {
       const item = message(packed);
-      Object.defineProperty(item, "body", { get() {
-        assert.equal(acknowledged, index, "a neighbour was read before disposal");
-        return packed;
-      } });
-      item.ack = () => { item.calls.push("ack"); acknowledged += 1; };
+      Object.defineProperty(item, "body", {
+        get() {
+          assert.equal(
+            acknowledged,
+            index,
+            "a neighbour was read before disposal",
+          );
+          return packed;
+        },
+      });
+      item.ack = () => {
+        item.calls.push("ack");
+        acknowledged += 1;
+        return item.calls.length;
+      };
       return item;
     });
     await consume(messages);
@@ -366,14 +376,25 @@ describe("the sync queue consumer", () => {
   });
 
   test("expansion refusal retries original bytes while its neighbour lands", async () => {
-    const { SYNC_BATCH_MAX_DECODED_BYTES } = await import("../src/sync-batch-limits.ts");
-    const original = { ...positionMessage().body as Record<string, unknown>, padding: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES) };
+    const { SYNC_BATCH_MAX_DECODED_BYTES } =
+      await import("../src/sync-batch-limits.ts");
+    const original = {
+      ...(positionMessage().body as Record<string, unknown>),
+      padding: "x".repeat(SYNC_BATCH_MAX_DECODED_BYTES),
+    };
     const packed = gzipSync(JSON.stringify(original));
-    assert.ok(packed.byteLength < 96 * 1024, "the oversized expansion fits normal transport");
+    assert.ok(
+      packed.byteLength < 96 * 1024,
+      "the oversized expansion fits normal transport",
+    );
     const refused = message(packed);
     const neighbour = positionMessage();
     await consume([refused, neighbour]);
-    assert.equal(refused.body, packed, "custody retains the transport representation");
+    assert.equal(
+      refused.body,
+      packed,
+      "custody retains the transport representation",
+    );
     assert.deepEqual(refused.calls, ["retry"]);
     assert.deepEqual(neighbour.calls, ["ack"]);
     assert.equal(rows().length, 1);

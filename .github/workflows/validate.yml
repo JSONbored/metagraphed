@@ -290,7 +290,7 @@ jobs:
       - name: Lint and cold TypeScript
         run: |
           npx eslint src/sync-batch-limits.ts src/sync-batch-compress.ts src/chain-detail-sync-payload.ts workers/data-api.ts tests/sync-batch-decoded-limits.test.ts tests/data-api-sync-queue-consumer.test.ts
-          npx tsc --noEmit --incremental false
+          npm run typecheck -- --incremental false
       - name: Corrected source compatibility and consumer regressions
         run: npx vitest run tests/sync-batch-decoded-limits.test.ts tests/sync-batch-compress.test.ts tests/sync-batch-queue.test.ts tests/data-api-sync-queue-consumer.test.ts --coverage --coverage.reporter=json --coverage.reporter=json-summary --coverage.reporter=lcov
       - name: Retain causal failures against unchanged main
