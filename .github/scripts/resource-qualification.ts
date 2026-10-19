@@ -59,6 +59,7 @@ let sampledHeap = { samples: 0, maxUsedSize: 0, maxTotalSize: 0, maxEmbedderHeap
 let rss = { samples: 0, maxVmRSSBytes: 0, maxVmHWMBytes: 0, maxNodeVmRSSBytes: 0, maxNodeVmHWMBytes: 0 };
 let runtimeRestarts = 0;
 const structuredLogs: Record<string, number> = { info: 0, warn: 0, error: 0, debug: 0, other: 0 };
+const inspectorProtocolErrors = { methodNotFound: 0, invalidParameters: 0, serverError: 0, other: 0 };
 let sampler: Promise<void> | undefined;
 const started = Date.now();
 const deadline = started + 240_000;
@@ -116,13 +117,17 @@ async function connect(url: string, expectedPort: string) {
     if (!request) return;
     clearTimeout(request.timer);
     waiting.delete(message.id);
-    if (message.error) request.reject(new Error("inspector_method_failed"));
+    if (message.error) {
+      const key = message.error.code === -32601 ? "methodNotFound" : message.error.code === -32602 ? "invalidParameters" : message.error.code === -32000 ? "serverError" : "other";
+      inspectorProtocolErrors[key]++;
+      request.reject(new Error("inspector_method_failed"));
+    }
     else request.resolve(message.result);
   });
   return {
     ws,
     call(method: string, params: Record<string, unknown> = {}) {
-      assert.ok(["Runtime.evaluate", "Runtime.getHeapUsage"].includes(method));
+      assert.ok(["Runtime.enable", "Runtime.evaluate", "Runtime.getHeapUsage"].includes(method));
       const requestId = ++id;
       return new Promise<any>((resolve, reject) => {
         const timer = setTimeout(() => { waiting.delete(requestId); reject(new Error("inspector_reply_timeout")); }, 3000);
@@ -223,15 +228,24 @@ export default { ...worker, async fetch(request, env, ctx) {
   assert.ok(Buffer.byteLength(listingText) <= 65536);
   const targets = JSON.parse(listingText);
   assert.ok(Array.isArray(targets) && targets.length <= 32);
-  const inspectorDiscovery = { targets: targets.length, inspected: 0, markerMatches: 0 };
+  const ownedTargets = targets.filter(target => target.id === "core:user:resource-ingestion");
+  const inspectorDiscovery = { targets: targets.length, exactOwnedIdMatches: ownedTargets.length, inspected: 0, markerMatches: 0, unavailableContexts: 0 };
   result.inspectorDiscovery = inspectorDiscovery;
   let client: Awaited<ReturnType<typeof connect>> | undefined;
-  for (const target of targets) {
+  for (const target of ownedTargets.length === 1 ? ownedTargets : targets) {
     if (typeof target.webSocketDebuggerUrl !== "string") continue;
     stage = "inspector-connect";
     const candidate = await connect(target.webSocketDebuggerUrl, inspector.port);
     stage = "inspector-marker";
-    const evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", returnByValue: true });
+    let evaluation;
+    try {
+      await candidate.call("Runtime.enable");
+      evaluation = await candidate.call("Runtime.evaluate", { expression: "globalThis.__metagraphed_resource_target === true", returnByValue: true });
+    } catch {
+      inspectorDiscovery.unavailableContexts++;
+      candidate.ws.close();
+      continue;
+    }
     inspectorDiscovery.inspected++;
     if (evaluation.result?.value === true) { inspectorDiscovery.markerMatches++; assert.equal(client, undefined); client = candidate; }
     else candidate.ws.close();
@@ -394,6 +408,7 @@ export default { ...worker, async fetch(request, env, ctx) {
   if (mf) await mf.dispose().catch(() => { result.cleanupFailure = true; process.exitCode = 1; });
   result.runtimeRestarts = runtimeRestarts;
   result.structuredLogCounts = structuredLogs;
+  result.inspectorProtocolErrors = inspectorProtocolErrors;
   result.measurements = { sampledUserIsolateHeap: sampledHeap, processRss: rss,
     heapScope: "Sampled marked user workerd isolate only, no forced GC; observed maximum is a lower bound and is not total isolate allocation or Cloudflare memory-limit proof",
     rssScope: "Actual workerd PID process RSS/HWM includes Miniflare system and D1 helper isolates; Node driver is reported separately. It cannot be interpreted as user-isolate heap or subtract D1 overhead.",
