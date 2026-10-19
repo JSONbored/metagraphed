@@ -70,12 +70,12 @@ function provenance(value: string, first: number, last: number): Span[] {
       else if (char === "}" || char === "]") depth--;
       else if (char === '"') {
         const start = cursor;
-        do {
+        for (;;) {
           cursor = line.indexOf('"', cursor + 1);
           let escapes = 0;
           for (let before = cursor - 1; line[before] === "\\"; before--) escapes++;
           if (escapes % 2 === 0) break;
-        } while (true);
+        }
         if (depth !== 1) continue;
         const name: unknown = JSON.parse(line.slice(start, cursor + 1));
         if (name !== "captured_at" && name !== "block_number") continue;
