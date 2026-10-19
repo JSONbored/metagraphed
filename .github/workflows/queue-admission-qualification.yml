@@ -1,0 +1,68 @@
+name: Queue whole-family admission native qualification
+
+on:
+  push:
+    branches:
+      - ci/queue-family-admission-qualification-20261019
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queue-family-admission-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact diagnostic source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Fetch exact baseline for regression controls
+        run: git fetch --no-tags --depth=1 origin adf7d871efceb07ef3017e4a7709dc53d177e9ed
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain native formatting
+        run: |
+          npx prettier --write src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts .github/scripts/qualify-queue-admission.ts .github/workflows/queue-admission-qualification.yml
+          git diff -- src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts
+      - name: Lint focused source and fixtures
+        run: npx eslint src/sync-batch-queue.ts tests/sync-batch-queue.test.ts tests/chain-detail-sync-route.test.ts
+      - name: Cold typecheck
+        run: npm run typecheck -- --incremental false
+      - name: Validate workflow policy
+        run: npm run validate:workflows
+      - name: Build existing fixture artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+      - name: Require actual baseline failures and candidate passes
+        run: node .github/scripts/qualify-queue-admission.ts
+      - name: Persist only formatted source and synthetic receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: queue-admission-native-source
+          path: |
+            src/sync-batch-queue.ts
+            tests/sync-batch-queue.test.ts
+            tests/chain-detail-sync-route.test.ts
+            queue-admission-reports/source-receipt.json
+          retention-days: 1
+          if-no-files-found: error
+      - name: Download persisted artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: queue-admission-native-source
+          path: queue-admission-artifact-readback
+      - name: Verify exact artifact members and hashes
+        run: node .github/scripts/qualify-queue-admission.ts --verify-uploaded
