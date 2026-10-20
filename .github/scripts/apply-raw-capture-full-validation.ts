@@ -26,6 +26,9 @@ const EXPECTED_PATHS = [
   "tests/raw-capture-retry-intent.test.ts",
   "tests/raw-capture-retry-d1.test.ts",
   "tests/raw-capture-cron-wiring.test.ts",
+  "scripts/pipeline.ts",
+  "tests/fixtures/pipeline-emission-original.ts.payload",
+  "tests/pipeline-emission.test.ts",
 ];
 const ALLOWED_CARRIER_FILES = new Set([
   ".github/scripts/apply-raw-capture-full-validation.ts",
@@ -104,7 +107,7 @@ assert.deepEqual(
   manifest.files.map((entry) => entry.path).sort(),
   [...EXPECTED_PATHS].sort(),
 );
-assert.equal(new Set(manifest.files.map((entry) => entry.path)).size, 9);
+assert.equal(new Set(manifest.files.map((entry) => entry.path)).size, 12);
 const pending = manifest.files.map((entry) => {
   assert.match(entry.sha256, /^[a-f0-9]{64}$/);
   assert.match(entry.git_blob_sha, /^[a-f0-9]{40}$/);
@@ -157,7 +160,7 @@ const staged = git(["diff", "--cached", "--name-only"]);
 assert.deepEqual(staged.split("\n").sort(), [...EXPECTED_PATHS].sort());
 // Git-ref validators need a candidate object, rather than the canonical HEAD.
 // Build that unpublished object from a separate base-seeded index, so the
-// virtual candidate contains the nine source edits and no carrier files.
+// virtual candidate contains the reviewed source edits and no carrier files.
 mkdirSync("tmp/raw-capture-full-validation", { recursive: true });
 const candidateIndex = path.join(
   root,
