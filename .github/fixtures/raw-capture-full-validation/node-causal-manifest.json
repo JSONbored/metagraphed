@@ -58,5 +58,46 @@
       "target": "AGENTS.md",
       "git_blob_sha": "47dc3e3d863cfb5727b87d785d09abf9743c0a72"
     }
+  },
+  "validate_11": {
+    "payload": {
+      "path": ".github/fixtures/raw-capture-full-validation/commands/validate-11.sh.payload",
+      "bytes": 1817,
+      "sha256": "94ed6cca541bc4e8650ddadb0c79cdb7378c588d03dc37b256d56c99a5460312"
+    },
+    "wrapper": {
+      "path": ".github/scripts/run-step.sh",
+      "bytes": 2687,
+      "sha256": "28024f8c2e1192d72df624364ae7cb1c9d7e2c41e0f4ccc676baf8c3d9370952"
+    },
+    "commands": [
+      "validate:contract-drift",
+      "validate:db-types-drift",
+      "validate:lane-topology",
+      "validate:coverage-scoping",
+      "validate:lakehouse-types-drift",
+      "validate:lakehouse-readers",
+      "validate:store-type-parity",
+      "validate:featured-validators-drift",
+      "validate:rpc-usage-slots-drift",
+      "validate:retired-storage",
+      "validate:archive-policy",
+      "validate:schema-enums",
+      "validate:openapi-examples",
+      "validate:generated-client",
+      "validate:graphql-types-drift",
+      "validate:worker-types-parity",
+      "validate:graphql-route-parity",
+      "validate:graphql-hand-written-checks",
+      "validate:graphql-component-parity",
+      "validate:graphql-query-arguments",
+      "validate:published-names",
+      "validate:graphql-tier-parity",
+      "validate:committed-seed",
+      "validate:ui-docs-drift",
+      "validate:ui-route-coverage",
+      "validate:untyped-db-reads",
+      "validate:readme-catalog"
+    ]
   }
 }

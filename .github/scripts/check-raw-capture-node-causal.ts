@@ -33,6 +33,7 @@ interface Input {
   raw_pairs: { original: string; fixed: string; destination: string }[];
   parser_pair: { original: string; fixed: string };
   full_manifest_sha256: string;
+  validate_11: { payload: Source; wrapper: Source; commands: string[] };
   tracked: {
     count: number;
     path_mode_sha256: string;
@@ -57,9 +58,89 @@ interface Native {
     source_sha256: string;
     line: number;
     column: number | null;
+    occurrences: number;
   }[];
   frames_truncated: boolean;
   cwd_id: "root" | "ui";
+  run_steps: RunSteps | null;
+}
+interface RunSteps {
+  groups: number[];
+  failures: { ordinal: number; exit: number }[];
+  summary_list: number[];
+  unknown_groups: number;
+  unknown_failures: number;
+  unknown_summary_lines: number;
+  summary_count: number;
+  summary_passed: number | null;
+  summary_failed: number | null;
+}
+function observeRunSteps(output: string, commands: string[]): RunSteps {
+  const result: RunSteps = { groups: [], failures: [], summary_list: [], unknown_groups: 0, unknown_failures: 0, unknown_summary_lines: 0, summary_count: 0, summary_passed: null, summary_failed: null };
+  const ids = new Map(commands.map((command, ordinal) => ["npm run " + command, ordinal]));
+  let inFailedSummary = false;
+  for (const raw of stripVTControlCharacters(output).split(/\r?\n/)) {
+    if (raw.startsWith("::group::")) {
+      const ordinal = ids.get(raw.slice(9));
+      if (ordinal === undefined || result.groups.length === 27) result.unknown_groups++;
+      else result.groups.push(ordinal);
+    } else if (raw.startsWith("::error::")) {
+      const summary = /^::error::([1-9]\d?) step\(s\) failed:$/.exec(raw);
+      const failure = /^::error::(.+) failed \(exit ([1-9]\d{0,2})\)$/.exec(raw);
+      if (summary && Number(summary[1]) <= 27) {
+        result.summary_count++; result.summary_failed = Number(summary[1]); inFailedSummary = true;
+      } else if (failure) {
+        const ordinal = ids.get(failure[1]!); const exit = Number(failure[2]);
+        if (ordinal === undefined || exit > 255 || result.failures.length === 27) result.unknown_failures++;
+        else result.failures.push({ ordinal, exit });
+      } else result.unknown_failures++;
+    } else {
+      const passed = /^All ([1-9]\d?) step\(s\) passed\.$/.exec(raw);
+      if (passed) { result.summary_count++; result.summary_passed = Number(passed[1]); }
+      else if (inFailedSummary && raw !== "") {
+        const ordinal = raw.startsWith("  - ") ? ids.get(raw.slice(4)) : undefined;
+        if (ordinal === undefined || result.summary_list.length === 27) result.unknown_summary_lines++;
+        else result.summary_list.push(ordinal);
+      }
+    }
+  }
+  return result;
+}
+function validateRunSteps(result: RunSteps | null, failed: boolean) {
+  assert.ok(result);
+  assert.deepEqual(result.groups, Array.from({ length: 27 }, (_, i) => i));
+  assert.equal(result.unknown_groups, 0); assert.equal(result.unknown_failures, 0); assert.equal(result.unknown_summary_lines, 0); assert.equal(result.summary_count, 1);
+  assert.equal(new Set(result.failures.map((item) => item.ordinal)).size, result.failures.length);
+  if (failed) {
+    assert.ok(result.failures.length > 0); assert.equal(result.summary_passed, null);
+    assert.equal(result.summary_failed, result.failures.length); assert.deepEqual(result.summary_list, result.failures.map((item) => item.ordinal));
+  } else {
+    assert.deepEqual(result.failures, []); assert.deepEqual(result.summary_list, []); assert.equal(result.summary_passed, 27); assert.equal(result.summary_failed, null);
+  }
+}
+function runStepControls(commands: string[]) {
+  const groups = commands.map((command) => "::group::npm run " + command + "\n::endgroup::\n").join("");
+  const passed = groups + "All 27 step(s) passed.\n";
+  const failed = (ordinals: number[], exit = 1) => groups + ordinals.map((ordinal) => "::error::npm run " + commands[ordinal]! + " failed (exit " + exit + ")\n").join("") + "::error::" + ordinals.length + " step(s) failed:\n" + ordinals.map((ordinal) => "  - npm run " + commands[ordinal]! + "\n").join("");
+  validateRunSteps(observeRunSteps(passed, commands), false);
+  validateRunSteps(observeRunSteps(failed([0]), commands), true);
+  validateRunSteps(observeRunSteps(failed([1, 26], 143), commands), true);
+  validateRunSteps(observeRunSteps(failed(Array.from({ length: 27 }, (_, i) => i), 255), commands), true);
+  validateRunSteps(observeRunSteps("\u001b[32m" + passed.replaceAll("\n", "\r\n") + "\u001b[0m", commands), false);
+  const refused = [
+    { text: passed.replace("::group::npm run " + commands[0]!, "::group::npm run validate:unknown"), failed: false },
+    { text: passed.replace("::group::npm run " + commands[0]! + "\n::endgroup::\n", ""), failed: false },
+    { text: "::group::npm run " + commands[0]! + "\n" + passed, failed: false },
+    { text: failed([0, 0]), failed: true },
+    { text: failed([0]).replace("exit 1", "exit 0"), failed: true },
+    { text: failed([0]).replace("exit 1", "exit 256"), failed: true },
+    { text: failed([0]).replace("1 step(s) failed:", "2 step(s) failed:"), failed: true },
+    { text: failed([0]).replace("  - npm run " + commands[0]!, "  - npm run " + commands[1]!), failed: true },
+    { text: passed + "::error::unknown\n", failed: false },
+    { text: passed + "All 27 step(s) passed.\n", failed: false },
+  ];
+  for (const item of refused) assert.throws(() => validateRunSteps(observeRunSteps(item.text, commands), item.failed));
+  return 5 + refused.length;
 }
 interface TrackedFile {
   path: string;
@@ -137,6 +218,7 @@ function native(
   const unhandled = clean.split(/\r?\n/).some(unhandledLine);
   const frames: Native["frames"] = [];
   let framesTruncated = false;
+  let frameOccurrences = 0;
   for (const source of [
     ...aliases,
     { id: 3, file: SELF, expected: sha(readFileSync(SELF)) },
@@ -159,15 +241,19 @@ function native(
         line <= lines.length &&
           (column === null || column <= lines[line - 1]!.length + 1),
       );
-      if (frames.length === 8) {
+      if (++frameOccurrences > 1024) {
         framesTruncated = true;
         break;
       }
+      const existing = frames.find((frame) => frame.source_id === source.id && frame.source_sha256 === source.expected && frame.line === line && frame.column === column);
+      if (existing) { existing.occurrences++; continue; }
+      if (frames.length === 8) { framesTruncated = true; break; }
       frames.push({
         source_id: source.id,
         source_sha256: source.expected,
         line,
         column,
+        occurrences: 1,
       });
     }
   }
@@ -185,6 +271,7 @@ function native(
     frames_truncated: framesTruncated,
     ts_codes: [...new Set(clean.match(/\bTS\d{4,5}\b/g) ?? [])].slice(0, 32),
     cwd_id: cwdId,
+    run_steps: id.endsWith("-validate-11") ? observeRunSteps(stdout, input.validate_11.commands) : null,
   };
   nativeReceipts.push(receipt);
   assert.equal(receipt.signal, null);
@@ -362,6 +449,10 @@ assert.deepEqual(
 );
 assert.equal(input.sources.length, 6);
 assert.equal(input.raw_pairs.length, 2);
+assert.equal(input.validate_11.commands.length, 27); assert.equal(new Set(input.validate_11.commands).size, 27);
+for (const label of input.validate_11.commands) assert.match(label, /^validate:[a-z0-9:-]+$/);
+assert.deepEqual(pins([input.validate_11.payload.path])[0], input.validate_11.payload);
+assert.deepEqual(pins([input.validate_11.wrapper.path])[0], input.validate_11.wrapper);
 assert.equal(
   sha(readFileSync(F + "manifest.json")),
   input.full_manifest_sha256,
@@ -411,7 +502,9 @@ assert.equal(head.stderr, "");
 assert.equal(head.stdout.trim(), identity.head);
 let stage = "input";
 let status = "failed_or_incomplete";
+let observerControls = 0;
 try {
+  stage = "observer_controls"; observerControls = runStepControls(input.validate_11.commands);
   if (mode === "preflight") {
     stage = "format";
     pass(
@@ -549,7 +642,9 @@ try {
         args: ["scripts/generate-limits-docs.ts"],
         cwd: "ui",
       },
+      { id: "validate-11", command: "bash", args: ["-eo", "pipefail", input.validate_11.payload.path], cwd: "root" },
     ];
+    const originals: { id: string; result: ReturnType<typeof native> }[] = [];
     for (const item of prerequisites) {
       stage = "original_" + item.id;
       const original = prerequisite(
@@ -559,9 +654,20 @@ try {
         originalTracked,
         item.cwd,
       );
-      assert.equal(original.receipt.exit, 1);
-      assert.equal(original.receipt.unsupported_typescript, true);
-      assert.ok(original.receipt.frames.some((frame) => frame.source_id === 0));
+      originals.push({ id: item.id, result: original });
+    }
+    for (const { id, result: original } of originals) {
+      stage = "original_expectation_" + id;
+      if (id === "contract-drift") pass(original);
+      else if (id === "validate-11") {
+        assert.equal(original.receipt.exit, 1);
+        validateRunSteps(original.receipt.run_steps, true);
+      }
+      else {
+        assert.equal(original.receipt.exit, 1);
+        assert.equal(original.receipt.unsupported_typescript, true);
+        assert.ok(original.receipt.frames.some((frame) => frame.source_id === 0));
+      }
     }
     assert.deepEqual(
       pins(full.files.map((file) => file.path)),
@@ -604,15 +710,15 @@ try {
       );
     for (const item of prerequisites) {
       stage = "fixed_" + item.id;
-      pass(
-        prerequisite(
+      const fixed = prerequisite(
           "fixed-" + item.id,
           item.command,
           item.args,
           expectedTracked,
           item.cwd,
-        ),
-      );
+        );
+      pass(fixed);
+      if (item.id === "validate-11") validateRunSteps(fixed.receipt.run_steps, false);
     }
     const expectedRuntime = originalRuntimePins.map((file) => {
       const pair = input.raw_pairs.find(
@@ -627,7 +733,7 @@ try {
       expectedRuntime,
     );
     status =
-      "native_original_failure_fixed_import_and_three_prerequisites_passed_not_full_acceptance";
+      "native_original_failure_fixed_import_and_four_prerequisites_passed_not_full_acceptance";
   }
 } catch {
   process.exitCode = 1;
@@ -647,6 +753,7 @@ try {
       native_receipts: nativeReceipts,
       syntax_receipts: syntaxReceipts,
       tracked_receipts: trackedReceipts,
+      observer_controls: observerControls,
       raw_output_retained: false,
       full_acceptance: false,
       resource_acceptance: false,
