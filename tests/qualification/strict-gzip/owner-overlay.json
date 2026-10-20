@@ -3,6 +3,16 @@
   "qualificationHead": "88b3cededcf01ddf82c86c10ca80c4e5284bb3b3",
   "files": [
     {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-probe.cases.ts",
+      "sha256": "ca235b6e6d7f4333b23b2a80dd6114c472599034a9cdfb87e976812482674b26",
+      "bytes": 69351
+    },
+    {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-probe.ts",
+      "sha256": "7c158675c0786ca6423877170abaf8376b3d44121bdd0fc95bf7c843724f40b4",
+      "bytes": 17663
+    },
+    {
       "path": "tests/qualification/strict-gzip/discarded-input-pins.ts",
       "sha256": "d7bd9326fd3d0d4935f78d8650f169d9cd9e6ff27dc78014f2239302c49225ca",
       "bytes": 15490
@@ -89,13 +99,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-diagnostics.cases.ts",
-      "sha256": "0cf899e71858fbba868c4088f7a37a602d7cbaae641c18f4f53b86e836ca636b",
-      "bytes": 17339
+      "sha256": "1287bfd568e223e8bb4c125066287d50c700d90f6f057c3bab4f7a911af09e17",
+      "bytes": 20883
     },
     {
       "path": "tests/qualification/strict-gzip/owner-diagnostics.ts",
-      "sha256": "a3fe6746f9cec3bcf9ccd0689b55eef55bff776d55e7e12ee70b2698765a45fd",
-      "bytes": 10995
+      "sha256": "3fc3a9897032eea25de51c50e3f628029db7e6338af0419468376b444e9607e7",
+      "bytes": 11998
     },
     {
       "path": "tests/qualification/strict-gzip/owner-discarded-input.cases.ts",
@@ -109,13 +119,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-input-diagnostics.cases.ts",
-      "sha256": "6f08e0a81a0d02e9d1017c58748cb79a6b7179309ae1ada86f82fa34bad1beec",
-      "bytes": 10409
+      "sha256": "e70f2503f56b444013aafe77ce8972cb09c6c84fb29ff5af44ddd1d27400e50f",
+      "bytes": 11073
     },
     {
       "path": "tests/qualification/strict-gzip/owner-input-diagnostics.ts",
-      "sha256": "7ed54c2443961ac30276330a42230f58b47aa04c3e1f9e6adccc468fc21fc0ef",
-      "bytes": 7234
+      "sha256": "44514d592c065e86ad2d64a4f12e60fd989d0f6f17e91398d432584431eb040a",
+      "bytes": 7701
     },
     {
       "path": "tests/qualification/strict-gzip/owner-native-evidence.cases.ts",

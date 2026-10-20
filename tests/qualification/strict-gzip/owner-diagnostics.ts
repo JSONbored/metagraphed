@@ -11,6 +11,7 @@ import {
 } from "./optional-pg-import.ts";
 import { OWNER_REFUSED_IMPORTS } from "./owner-resource-policy.ts";
 import { publicInputIdentityDiagnostics } from "./owner-input-diagnostics.ts";
+import { parseChainSummaryWorkspaceMarker } from "./chain-summary-workspace-probe.ts";
 // Optional bounded diagnostics only. Never participates in acceptance decisions.
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -62,9 +63,30 @@ export function publicBuildProofDiagnostics(value: unknown) {
     ? parseOptionalPgInputKeyCountsMarker(keyMessages[0])
     : null;
   if (keyMessages.length && inputKeys === null) return null;
+  const workspaceMessages = messages.filter((message) =>
+    message.includes("[owner-workspace-input"),
+  );
+  if (workspaceMessages.length > 1) return null;
+  const workspaceInput = workspaceMessages.length
+    ? parseChainSummaryWorkspaceMarker(workspaceMessages[0])
+    : null;
+  if (workspaceMessages.length && workspaceInput === null) return null;
+  if (
+    workspaceInput?.inputScanComplete &&
+    (!inputKeys?.complete ||
+      workspaceInput.inputCount !== inputKeys.scanned ||
+      workspaceInput.escapedCount !== inputKeys.counts["escaped-root"] ||
+      inputKeys.duplicateLogicalIdentities !== 0 ||
+      inputKeys.counts["invalid-builtin-namespace"] !== 0 ||
+      inputKeys.counts["disabled-namespace"] !== 0 ||
+      inputKeys.counts["other-namespace"] !== 0 ||
+      inputKeys.counts["invalid-path"] !== 0)
+  )
+    return null;
   const extras = {
     ...(reason ? { reason } : {}),
     ...(inputKeys ? { inputKeys } : {}),
+    ...(workspaceInput ? { workspaceInput } : {}),
   };
   const markers: string[] = [];
   const prefix =
@@ -82,7 +104,7 @@ export function publicBuildProofDiagnostics(value: unknown) {
     if (markers.length > 3) return null;
   }
   if (markers.length === 1) {
-    if (inputKeys) return null;
+    if (inputKeys || workspaceInput) return null;
     const match = /^\[owner-build-proof-failed:([a-z-]+):([a-z-]+)\]$/.exec(
       markers[0]!,
     );

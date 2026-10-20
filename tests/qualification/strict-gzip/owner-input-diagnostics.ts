@@ -15,6 +15,10 @@ import {
 } from "./input-only-public-diagnostics.ts";
 import { optionalProofDiagnosticMarkers } from "./optional-pg-import.ts";
 import { boundedFile } from "./receipt-files.ts";
+import {
+  probeChainSummaryWorkspaceIdentity,
+  chainSummaryWorkspaceMarker,
+} from "./chain-summary-workspace-probe.ts";
 
 export const OWNER_PUBLIC_SOURCE_INDEX_SHA256 =
   "925030f85772dc33c2ef3557b3b092b2801e59f9f82304a152112b01623e9b80";
@@ -157,7 +161,19 @@ export function withPublicInputDiagnostics(
     assert.ok(validated);
     const marker = prefix + JSON.stringify(validated) + suffix;
     assert.ok(marker.length <= markerLimit);
-    const message = original + "\n" + marker;
+    let workspaceMarker = "";
+    try {
+      workspaceMarker = chainSummaryWorkspaceMarker(
+        probeChainSummaryWorkspaceIdentity(root, dependencyRoot, metafile),
+      );
+    } catch {
+      // Optional diagnostics never replace the original proof refusal.
+    }
+    const message =
+      original +
+      "\n" +
+      marker +
+      (workspaceMarker ? "\n" + workspaceMarker : "");
     // Keep the original failure privately. A rendered Error.cause chain would
     // duplicate its proof markers and correctly fail strict public parsing.
     const error = inheritOwnerProofReason(new Error(message), cause);

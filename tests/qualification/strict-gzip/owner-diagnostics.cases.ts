@@ -15,6 +15,7 @@ import {
   publicBuildProofFailure,
 } from "./owner-diagnostics.ts";
 import { OWNER_TESTS, OWNER_TITLES } from "./owner-test-evidence.ts";
+import { chainSummaryWorkspaceMarker } from "./chain-summary-workspace-probe.ts";
 const root = "/synthetic-candidate",
   secret = "private-URL-token-data";
 function fixture() {
@@ -469,5 +470,101 @@ test("passed owner assertions cannot publish stale reason or census diagnostics"
   suite.assertionResults[0]!.failureMessages = [
     proofMarkers() + "\n[owner-proof-reason:opg-001]\n" + validInputKeyMarker,
   ];
+  assert.equal(publicOwnerProgress(value, root)[0]!.buildProof, null);
+});
+const workspaceInputReport = {
+  version: 1,
+  identity: "chain-summaries-dist",
+  status: "identified",
+  inputScanComplete: true,
+  inputCount: 1483,
+  escapedCount: 1,
+  exactMatches: 1,
+  otherEscapedCount: 0,
+  matchedEdges: 2,
+} as const;
+const workspaceCensus =
+  "[owner-optional-input-key-counts:1:1483:0:878:593:11:0:0:0:0:1]";
+function workspaceProofMessages() {
+  return [
+    proofMarkers(),
+    workspaceCensus,
+    chainSummaryWorkspaceMarker(workspaceInputReport),
+  ];
+}
+test("failed proof can publish a fixed workspace identity observation with matching census", () => {
+  const result = publicBuildProofDiagnostics(workspaceProofMessages());
+  assert.deepEqual(result?.workspaceInput, workspaceInputReport);
+  assert.ok(!JSON.stringify(result).includes(root));
+  assert.ok(!JSON.stringify(result).includes(secret));
+});
+for (const [label, mutate] of Object.entries({
+  missingCensus: (messages: string[]) => messages.filter((_, i) => i !== 1),
+  incompleteCensus: (messages: string[]) => [
+    messages[0]!,
+    "[owner-optional-input-key-counts:0:0:0:0:0:0:0:0:0:0:0]",
+    messages[2]!,
+  ],
+  wrongInputTotal: (messages: string[]) =>
+    messages.map((value, i) =>
+      i === 1 ? value.replace(":1483:0:878:", ":1482:0:877:") : value,
+    ),
+  wrongEscapedCount: (messages: string[]) =>
+    messages.map((value, i) =>
+      i === 1
+        ? value.replace(":878:593:11:0:0:0:0:1]", ":879:593:11:0:0:0:0:0]")
+        : value,
+    ),
+  duplicateMarker: (messages: string[]) => [...messages, messages[2]!],
+  repeatedWithinMessage: (messages: string[]) =>
+    messages.map((value, i) => (i === 2 ? value + value : value)),
+  malformedMarker: (messages: string[]) => [
+    ...messages,
+    "[owner-workspace-input]",
+  ],
+  unknownMarker: (messages: string[]) => [
+    messages[0]!,
+    messages[1]!,
+    "[owner-workspace-input:private-secret]",
+  ],
+}))
+  test(`workspace observation refuses ${label} without weakening proof failure`, () => {
+    assert.equal(
+      publicBuildProofDiagnostics(mutate(workspaceProofMessages())),
+      null,
+    );
+  });
+test("workspace observation cannot attach to an unrelated surrounding build stage", () => {
+  assert.equal(
+    publicBuildProofDiagnostics([
+      "[owner-build-proof-failed:raw-build:builder]",
+      chainSummaryWorkspaceMarker(workspaceInputReport),
+    ]),
+    null,
+  );
+});
+for (const [label, census] of Object.entries({
+  duplicateIdentity:
+    "[owner-optional-input-key-counts:1:1483:1:878:593:11:0:0:0:0:1]",
+  invalidBuiltinNamespace:
+    "[owner-optional-input-key-counts:1:1483:0:877:593:11:1:0:0:0:1]",
+  disabledNamespace:
+    "[owner-optional-input-key-counts:1:1483:0:877:593:11:0:1:0:0:1]",
+  otherNamespace:
+    "[owner-optional-input-key-counts:1:1483:0:877:593:11:0:0:1:0:1]",
+  invalidPath:
+    "[owner-optional-input-key-counts:1:1483:0:877:593:11:0:0:0:1:1]",
+}))
+  test(`complete workspace observation rejects contradictory ${label} census`, () => {
+    const messages = workspaceProofMessages();
+    messages[1] = census;
+    assert.equal(publicBuildProofDiagnostics(messages), null);
+  });
+test("passed owner assertions cannot publish stale workspace observations", () => {
+  const value = fixture(),
+    suite = value.testResults[0]!;
+  suite.status = "passed";
+  suite.assertionResults[0]!.status = "passed";
+  suite.assertionResults[0]!.failureMessages = workspaceProofMessages();
   assert.equal(publicOwnerProgress(value, root)[0]!.buildProof, null);
 });

@@ -339,6 +339,41 @@ and no diagnostic field participates in acceptance. The source fixture, runtime,
 service, network and production builder policies are unchanged. Final independent
 review and an exact hosted rerun remain required.
 
+## Exact escaped-root result and workspace identity diagnostic
+
+The independently verified diagnostics run
+[39501225759](https://github.com/JSONbored/metagraphed/actions/runs/39501225759)
+at head `09ed4ec8881fd40e8ea664a836cb083c2ae48038` failed raw proof at
+`source-file-identity`, reason `opg-011`: the root-containment assertion. Its
+complete 1,483-input census contains 878 project files, 593 dependency files,
+11 valid builtin adapters and one escaped-root input. All other shape counts and
+duplicate identities are zero. All 490 baseline assertions and the real queue
+owner assertion passed, with zero denials and two completed guarded threads.
+Four generic native exits remain unobserved. Coverage and combined completion
+evidence are unavailable; service setup and container cleanup succeeded.
+Artifact 12300725713 has ZIP SHA-256
+`078e027fbb1b45867cca499127cfc2f48e62aa9e8c906e2f799ef3d71f437667`.
+Normal Validate 39501225699 passed its changes job and skipped six heavy gates
+under the unchanged draft policy.
+
+Source review identifies a candidate mechanism, not the actual escaped key:
+the pinned npm workspace link for `@jsonbored/chain-summaries` resolves its
+checked-in `dist/index.js` into the separate base checkout. The production
+builder canonicalizes that path, which is outside both the isolated candidate
+and canonical node_modules roots. The fixed entry remains `workers/api.entry.ts`;
+the fixture creates no replacement source entry. The tracked dist file is
+31,640 bytes, Git blob `75dda6fbb5ab18adaea081c4fe2a44a08dd1095d`, SHA-256
+`196d83987a00f8d68c3888b6f3bef917c13c9300c22dbbc2a0a22a4c55011131`.
+
+The next diagnostic probes only that exact canonical workspace key after the
+original proof has already failed. It verifies the fixed link, candidate/base
+source counterparts, pinned package/lock/importer bytes and two source-owned
+import edges. It emits only a fixed identity/status and bounded counts. Unknown
+keys, source bytes, filenames, paths and errors are not copied into the report.
+The probe does not map or admit an input, and root containment plus every
+existing build/custody gate remain unchanged. An actual hosted identity match
+and a separately reviewed correction are required before any acceptance change.
+
 ## Third-party fixture notice
 
 The inert source strings in owner-pg-source-fixtures.json and

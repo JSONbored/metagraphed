@@ -88,6 +88,7 @@ jobs:
           env -i PATH="$PATH" CI=true node "$harness/owner-input-diagnostics.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/owner-discarded-input.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/owner-proof-reasons.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/chain-summary-workspace-probe.cases.ts"
 
       - name: Install the full pinned base lockfile without lifecycle scripts
         working-directory: qualification-base

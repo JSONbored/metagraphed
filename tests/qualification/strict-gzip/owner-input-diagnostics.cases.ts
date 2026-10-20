@@ -319,3 +319,21 @@ test("a matching output target prevents an input-only identity", () =>
     assert.equal(report.refused.emittedTarget, 1);
     assert.equal(report.identifiedCount, 1);
   }));
+test("failure-only workspace probe retains the original refusal and existing identity markers", () =>
+  fixture(({ failure }) => {
+    const error = failure();
+    const report = publicBuildProofFailure(error);
+    assert.equal(report?.scope, "optional-pg");
+    assert.ok(report?.workspaceInput);
+    assert.notEqual(report.workspaceInput.status, "identified");
+    assert.equal(report.workspaceInput.exactMatches, 0);
+    assert.equal(publicInputIdentityFailure(error)?.identifiedCount, 2);
+    assert.equal(
+      (
+        publicInputDiagnosticMarkers(error).match(
+          /\[owner-workspace-input:/g,
+        ) ?? []
+      ).length,
+      1,
+    );
+  }));
