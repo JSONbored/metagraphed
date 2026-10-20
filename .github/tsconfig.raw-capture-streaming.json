@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [
+    "scripts/check-raw-capture-streaming.ts",
+    "vitest.raw-capture-streaming.config.ts"
+  ],
+  "exclude": []
+}

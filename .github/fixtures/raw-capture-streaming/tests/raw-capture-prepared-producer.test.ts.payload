@@ -1,0 +1,210 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+import { createRawCaptureBulkLease } from "../src/raw-capture-bulk-lease.ts";
+import {
+  captureTick,
+  rawBatchKey,
+  type RawCaptureStore,
+  type RawBlockCapture,
+} from "../src/raw-chain-capture.ts";
+
+function node(head: number, observe: (url: string, method: string) => void,
+  fail?: (url: string, height: number) => boolean): typeof fetch {
+  return async (input, init) => {
+    const url = String(input);
+    const body: unknown = JSON.parse(String(init?.body));
+    const answer = (call: { method: string; params: unknown[]; id?: number }) => {
+      observe(url, call.method);
+      let result: unknown;
+      if (call.method === "chain_getHeader") result = { number: `0x${head.toString(16)}` };
+      else if (call.method === "chain_getBlockHash") {
+        const heights = call.params[0];
+        assert(Array.isArray(heights));
+        result = heights.map((height) => `0xh${height}`);
+      } else if (call.method === "chain_getBlock") {
+        const height = Number(String(call.params[0]).slice(3));
+        if (fail?.(url, height)) return { id: call.id, error: { message: "synthetic pruned" } };
+        result = { block: { header: { parentHash: `0xh${height - 1}`, number: `0x${height.toString(16)}` }, extrinsics: [`0xext${height}`] } };
+      } else result = "0xevents";
+      return { id: call.id, result };
+    };
+    // These tests exercise the still-legacy RPC transport explicitly; they do
+    // not claim a bounded Response.json allocation or whole-owner memory cap.
+    const calls = body as { method: string; params: unknown[]; id?: number } | { method: string; params: unknown[]; id?: number }[];
+    return { ok: true, json: async () => Array.isArray(calls)
+      ? calls.map(answer).reverse() : answer(calls) } as Response;
+  };
+}
+
+test("the disabled producer keeps the legacy put contract", async () => {
+  let rowsCalled = false;
+  let raw = "";
+  await captureTick({ rpcUrls: ["https://mainnet.example"], genesisFloor: 1,
+    maxPerTick: 1, now: () => 1000,
+    watermark: { read: async () => 0, write: async () => undefined },
+    store: { put: async (_key, value) => { raw = value; },
+      putRows: async () => { rowsCalled = true; } },
+    fetchImpl: node(1, () => undefined),
+  });
+  assert.equal(rowsCalled, false);
+  assert.equal(JSON.parse(raw).captured_at, 1000);
+});
+
+test("prepared capture requires the explicit store seam before reading RPC", async () => {
+  let fetched = false;
+  await assert.rejects(captureTick({ rpcUrls: ["https://mainnet.example"],
+    genesisFloor: 1, maxPerTick: 1,
+    preparedCapture: { bulkLease: createRawCaptureBulkLease() },
+    watermark: { read: async () => 0, write: async () => undefined },
+    store: { put: async () => undefined },
+    fetchImpl: node(1, () => { fetched = true; }),
+  }), /prepared store is unavailable/);
+  assert.equal(fetched, false);
+});
+
+test("shared owner covers both lanes through durable watermark and acknowledgement", async () => {
+  const lease = createRawCaptureBulkLease();
+  const writes: string[] = [];
+  const rows = new Map<string, RawBlockCapture[]>();
+  const run = (network: "mainnet" | "testnet") => captureTick({
+    rpcUrls: [`https://${network}.example`], network, genesisFloor: 1,
+    maxPerTick: 3, flushEvery: 2, now: () => 1000,
+    preparedCapture: { bulkLease: lease },
+    watermark: { read: async () => 0, write: async (last) => {
+      assert.equal(lease.snapshot().active, network);
+      writes.push(`${network}:watermark:${last}`);
+    } },
+    store: {
+      put: async () => { throw new Error("legacy put must not run"); },
+      putRows: async (key, source) => {
+        assert.equal(lease.snapshot().active, network);
+        const result: RawBlockCapture[] = [];
+        for await (const row of source) result.push(row);
+        rows.set(key, result);
+        writes.push(`${network}:put:${result.at(-1)!.block_number}`);
+        return key;
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.equal(lease.snapshot().active, network);
+        assert.equal(receipt, key);
+        writes.push(`${network}:ack:${rows.get(key)!.at(-1)!.block_number}`);
+      },
+    },
+    fetchImpl: node(3, (url) => assert.equal(lease.snapshot().active,
+      url.includes("testnet") ? "testnet" : "mainnet")),
+  });
+  const result = await Promise.all([run("mainnet"), run("testnet")]);
+  assert.deepEqual(result.map((value) => value.captured), [3, 3]);
+  for (const network of ["mainnet", "testnet"] as const) {
+    assert.deepEqual(writes.filter((entry) => entry.startsWith(network)), [
+      `${network}:put:2`, `${network}:watermark:2`, `${network}:ack:2`,
+      `${network}:put:3`, `${network}:watermark:3`, `${network}:ack:3`,
+    ]);
+    assert.deepEqual(rows.get(rawBatchKey(1, 2, network))!.map((row) => row.block_number), [1, 2]);
+  }
+  assert.deepEqual(lease.snapshot(), { active: null, waiting: null });
+});
+
+test.each(["put", "watermark", "ack"] as const)("%s failure releases custody and preserves durable ordering", async (stage) => {
+  const lease = createRawCaptureBulkLease();
+  const fault = new Error(`synthetic ${stage}`);
+  const order: string[] = [];
+  let watermark = 0;
+  await assert.rejects(captureTick({ rpcUrls: ["https://mainnet.example"],
+    genesisFloor: 1, maxPerTick: 1,
+    preparedCapture: { bulkLease: lease },
+    watermark: { read: async () => watermark, write: async (last) => {
+      order.push("watermark");
+      if (stage === "watermark") throw fault;
+      watermark = last;
+    } },
+    store: { put: async () => { throw new Error("legacy path"); },
+      putRows: async (_key, source) => {
+        order.push("put");
+        for await (const row of source) assert.equal(row.block_number, 1);
+        if (stage === "put") throw fault;
+        return "receipt";
+      },
+      acknowledgeWatermark: async () => {
+        order.push("ack");
+        if (stage === "ack") throw fault;
+      } },
+    fetchImpl: node(1, () => assert.equal(lease.snapshot().active, "mainnet")),
+  }), (error: unknown) => error === fault);
+  assert.deepEqual(order, stage === "put" ? ["put"] : stage === "watermark" ? ["put", "watermark"] : ["put", "watermark", "ack"]);
+  assert.equal(watermark, stage === "ack" ? 1 : 0);
+  assert.deepEqual(lease.snapshot(), { active: null, waiting: null });
+  const next = await lease.acquire("testnet");
+  next.release();
+});
+
+test("lease waiting does not shorten the next actual RPC start gap", async () => {
+  const owner = createRawCaptureBulkLease();
+  let at = 0, acquisitions = 0;
+  const starts: number[] = [], slept: number[] = [];
+  await captureTick({ rpcUrls: ["https://mainnet.example"], genesisFloor: 1,
+    maxPerTick: 2, flushEvery: 1, minGapMs: 5, now: () => at,
+    preparedCapture: { bulkLease: {
+      async acquire(network, signal) {
+        if (++acquisitions === 2) at = 100;
+        return owner.acquire(network, signal);
+      }, snapshot: owner.snapshot,
+    } },
+    sleepFn: async (ms) => { slept.push(ms); at += ms; },
+    watermark: { read: async () => 0, write: async () => undefined },
+    store: { put: async () => { throw new Error("legacy path"); },
+      putRows: async (_key, source) => { for await (const row of source) assert(row); } },
+    fetchImpl: node(2, (_url, method) => { if (method === "chain_getBlockHash") starts.push(at); }),
+  });
+  assert.deepEqual(starts, [100, 105]);
+  assert.deepEqual(slept, [5]);
+  assert.deepEqual(owner.snapshot(), { active: null, waiting: null });
+});
+
+test("already-watermarked pending acknowledgement retains the same bulk owner", async () => {
+  const lease = createRawCaptureBulkLease();
+  let acknowledged = false;
+  const result = await captureTick({ rpcUrls: ["https://mainnet.example"],
+    genesisFloor: 1, maxPerTick: 1,
+    preparedCapture: { bulkLease: lease },
+    watermark: { read: async () => 1, write: async () => { throw new Error("no new frontier"); } },
+    store: { put: async () => { throw new Error("no new capture"); },
+      putRows: async () => { throw new Error("no new capture"); },
+      pending: async () => ({ key: rawBatchKey(1, 1), first: 1, last: 1, receipt: "exact original" }),
+      acknowledgeWatermark: async (_key, receipt) => {
+        assert.equal(lease.snapshot().active, "mainnet");
+        assert.equal(receipt, "exact original");
+        acknowledged = true;
+      } },
+    fetchImpl: node(1, () => assert.equal(lease.snapshot().active, "mainnet")),
+  });
+  assert(acknowledged);
+  assert.equal(result.captured, 0);
+  assert.deepEqual(lease.snapshot(), { active: null, waiting: null });
+});
+
+test.each([false, true])("prepared prefix and pending fallback preserve existing selection (pending=%s)", async (pending) => {
+  const observed: string[] = [];
+  const written: number[][] = [];
+  const store: RawCaptureStore = {
+    put: async () => { throw new Error("legacy path"); },
+    putRows: async (_key, source) => {
+      const heights: number[] = [];
+      for await (const row of source) heights.push(row.block_number);
+      written.push(heights);
+    },
+    acknowledgeWatermark: async () => undefined,
+    ...(pending ? { pending: async () => ({ key: rawBatchKey(1, 2), first: 1, last: 2, receipt: "original" }) } : {}),
+  };
+  const result = await captureTick({ rpcUrls: ["https://primary.example", "https://secondary.example"],
+    genesisFloor: 1, maxPerTick: 2, now: () => 1000,
+    preparedCapture: { bulkLease: createRawCaptureBulkLease() }, store,
+    watermark: { read: async () => 0, write: async () => undefined },
+    fetchImpl: node(2, (url, method) => {
+      if (method === "chain_getBlock") observed.push(url);
+    }, (url, height) => url.includes("primary") && height === 2),
+  });
+  assert.deepEqual(written, pending ? [[1, 2]] : [[1]]);
+  assert.equal(result.captured, pending ? 2 : 1);
+  assert.equal(observed.some((url) => url.includes("secondary")), pending);
+});

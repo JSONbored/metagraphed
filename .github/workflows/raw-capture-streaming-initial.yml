@@ -1,0 +1,108 @@
+name: Raw capture streaming initial diagnostics
+
+on:
+  push:
+    branches:
+      - ci/raw-capture-streaming-initial-20261020
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-streaming-initial-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/ci/raw-capture-streaming-initial-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout exact source carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing locked workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Verify canonical Git tree and apply exact pinned source only in runner
+        id: overlay
+        run: node .github/scripts/check-raw-capture-streaming.ts apply
+      - name: Verify bounded diagnostic projection controls
+        id: controls
+        run: node .github/scripts/check-raw-capture-streaming.ts controls
+      - name: Obtain actual native formatting
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts format
+      - name: Lint exact source and carrier helpers
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts lint
+      - name: Cold canonical workspace typecheck
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts types
+      - name: Typecheck the diagnostic helper with inherited strict options
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts helper_types
+      - name: Validate unchanged canonical boundary-cast policy
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts boundary
+      - name: Validate unchanged workflow policy
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts workflow
+      - name: Run seventeen focused native Vitest files
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts tests
+      - name: Require every initial diagnostic phase before success
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-streaming.ts summary
+      - name: Retain exact public formatted source and bounded curated receipts
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-streaming-initial-${{ github.run_attempt }}-${{ job.status }}-source
+          path: |
+            src/raw-capture-bulk-lease.ts
+            src/raw-capture-d1.ts
+            src/raw-capture-retry-intent.ts
+            src/raw-capture-retry-store.ts
+            src/raw-capture-rpc-policy.ts
+            src/raw-capture-stream-prepare.ts
+            src/raw-capture-sync.ts
+            src/raw-chain-capture.ts
+            tests/raw-capture-bulk-lease.test.ts
+            tests/raw-capture-cron-wiring.test.ts
+            tests/raw-capture-d1.test.ts
+            tests/raw-capture-number-equivalence.test.ts
+            tests/raw-capture-prepared-producer.test.ts
+            tests/raw-capture-retry-d1.test.ts
+            tests/raw-capture-retry-intent.test.ts
+            tests/raw-capture-rpc-policy.test.ts
+            tests/raw-capture-single-validation.test.ts
+            tests/raw-capture-stream-native.test.ts
+            tests/raw-capture-stream-prepare.test.ts
+            tests/raw-chain-capture.test.ts
+            tests/raw-capture-sync.test.ts
+            tests/raw-capture-frontier-ack.test.ts
+            tests/raw-capture-watermark-store.test.ts
+            tests/raw-capture-endpoints.test.ts
+            tests/data-api-bundle-boundary.test.ts
+            .github/scripts/check-raw-capture-streaming.ts
+            .github/tsconfig.raw-capture-streaming.json
+            .github/vitest.raw-capture-streaming.config.ts
+            .github/workflows/raw-capture-streaming-initial.yml
+            .github/fixtures/raw-capture-streaming/manifest.json
+            raw-streaming-reports/*-receipt.json
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+

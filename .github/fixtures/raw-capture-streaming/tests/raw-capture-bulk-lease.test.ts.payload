@@ -1,0 +1,97 @@
+import { describe, expect, it } from "vitest";
+import {
+  createRawCaptureBulkLease,
+  RawCaptureBulkLeaseError,
+} from "../src/raw-capture-bulk-lease.ts";
+
+describe("raw capture bulk ownership", () => {
+  it("admits only one producer and hands ownership to the other waiting lane", async () => {
+    const owner = createRawCaptureBulkLease();
+    const first = await owner.acquire("mainnet");
+    let consumed = false;
+    const second = owner.acquire("testnet").then((lease) => {
+      consumed = true;
+      return lease;
+    });
+    await Promise.resolve();
+    expect(consumed).toBe(false);
+    expect(owner.snapshot()).toEqual({ active: "mainnet", waiting: "testnet" });
+    first.release();
+    const next = await second;
+    expect(consumed).toBe(true);
+    expect(owner.snapshot()).toEqual({ active: "testnet", waiting: null });
+    first.release();
+    expect(owner.snapshot().active).toBe("testnet");
+    next.release();
+    expect(owner.snapshot()).toEqual({ active: null, waiting: null });
+  });
+
+  it("bounds overlapping cron waiters without starving the already queued other lane", async () => {
+    const owner = createRawCaptureBulkLease();
+    const first = await owner.acquire("mainnet");
+    const other = owner.acquire("testnet");
+    await expect(owner.acquire("mainnet")).rejects.toMatchObject({ code: "raw_capture_bulk_busy" });
+    await expect(owner.acquire("testnet")).rejects.toMatchObject({ code: "raw_capture_bulk_waiter_exists" });
+    expect(owner.snapshot()).toEqual({ active: "mainnet", waiting: "testnet" });
+    first.release();
+    const second = await other;
+    const mainnet = owner.acquire("mainnet");
+    second.release();
+    const third = await mainnet;
+    expect(third.network).toBe("mainnet");
+    third.release();
+  });
+
+  it("cancels an awaiting lane without releasing the active payload", async () => {
+    const owner = createRawCaptureBulkLease();
+    const active = await owner.acquire("mainnet");
+    const controller = new AbortController();
+    const waiting = owner.acquire("testnet", controller.signal);
+    const refusal = expect(waiting).rejects.toEqual(new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"));
+    controller.abort(new Error("untrusted reason must not become a lease error"));
+    await refusal;
+    expect(owner.snapshot()).toEqual({ active: "mainnet", waiting: null });
+    const replacement = owner.acquire("testnet");
+    active.release();
+    const handle = await replacement;
+    handle.release();
+  });
+
+  it("does not transfer an active lease on abort before operation cleanup", async () => {
+    const owner = createRawCaptureBulkLease();
+    const controller = new AbortController();
+    const active = await owner.acquire("mainnet", controller.signal);
+    let granted = false;
+    const waiting = owner.acquire("testnet").then((handle) => {
+      granted = true;
+      return handle;
+    });
+    controller.abort();
+    await Promise.resolve();
+    expect(granted).toBe(false);
+    expect(owner.snapshot().active).toBe("mainnet");
+    active.release();
+    (await waiting).release();
+  });
+
+  it("refuses an already cancelled acquisition without creating an owner", async () => {
+    const owner = createRawCaptureBulkLease();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(owner.acquire("mainnet", controller.signal)).rejects.toMatchObject({ code: "raw_capture_bulk_aborted" });
+    expect(owner.snapshot()).toEqual({ active: null, waiting: null });
+  });
+
+  it("releases on failed producer cleanup before admitting a different network", async () => {
+    const owner = createRawCaptureBulkLease();
+    const lease = await owner.acquire("mainnet");
+    const failure = new Error("synthetic RPC failure");
+    const operation = async () => {
+      try { throw failure; } finally { lease.release(); }
+    };
+    await expect(operation()).rejects.toBe(failure);
+    const next = await owner.acquire("testnet");
+    expect(next.network).toBe("testnet");
+    next.release();
+  });
+});

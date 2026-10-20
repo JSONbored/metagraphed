@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "fixed_branch": "ci/raw-capture-streaming-initial-20261020",
+  "scope": "initial_hosted_diagnostics_only",
+  "files": [
+    {
+      "path": "src/raw-capture-bulk-lease.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-bulk-lease.ts.payload",
+      "bytes": 4017,
+      "sha256": "c3d9a7175b3a5d6bcc88685af5b7049b78a95212cd58385ab6e5cc3a2076693a",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-d1.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-d1.ts.payload",
+      "bytes": 11893,
+      "sha256": "08ea89c2e7c79d022b3378afd754e2aebc62decaeeb5fb10fe8304a43b679ac5",
+      "expected_base_blob_sha": "a2117ac28687f6e83b1c0c9f63d3c7996702cde1"
+    },
+    {
+      "path": "src/raw-capture-retry-intent.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-retry-intent.ts.payload",
+      "bytes": 11280,
+      "sha256": "001041d69e3e2c55c40ca9268f33cd5ff3690cf0baf5e4b6dd60b12d8419e59d",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-retry-store.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-retry-store.ts.payload",
+      "bytes": 13956,
+      "sha256": "5dfd6366e9ac6279630970a17c627d8bb66f5590144d947a0f03ad5797dcd1b3",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-rpc-policy.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-rpc-policy.ts.payload",
+      "bytes": 8587,
+      "sha256": "09cd8b00ce69e57ffbc5c8063ad89f0c7c20d651c2d513fba3fd4a734b3d5e26",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-stream-prepare.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-stream-prepare.ts.payload",
+      "bytes": 13685,
+      "sha256": "ae8d5004bcada1d24b6d0be5e8306c3f05f1ed60a339c3ed033843deb2f61c3d",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-sync.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-sync.ts.payload",
+      "bytes": 30127,
+      "sha256": "ec9ba57bfe54b4903d41c7a95931c9ccaca7988b04a0d72ae87c6aee9b7cc6df",
+      "expected_base_blob_sha": "2b7919e346e991d130ec91d3c1c76f3fae8f26c5"
+    },
+    {
+      "path": "src/raw-chain-capture.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/src/raw-chain-capture.ts.payload",
+      "bytes": 30872,
+      "sha256": "c26c2ee3caf04375c12ef5ff73c6dd71e4b598a24c9fc013187d1f4fc4566fe7",
+      "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948"
+    },
+    {
+      "path": "tests/raw-capture-bulk-lease.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-bulk-lease.test.ts.payload",
+      "bytes": 4012,
+      "sha256": "149da7ec14d798e72b53d1f384579af5ee229f9431c9a3d5dbc317ffcc7a0323",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-cron-wiring.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-cron-wiring.test.ts.payload",
+      "bytes": 1788,
+      "sha256": "57512dbfa770ee8ab58446417e8abb35e74f22fd06870f6fb05fdee5f700f4a1",
+      "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d"
+    },
+    {
+      "path": "tests/raw-capture-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-d1.test.ts.payload",
+      "bytes": 44422,
+      "sha256": "967453df5403e00988fdbecd93986c04328668bda26638177b2aa3e3199a8c85",
+      "expected_base_blob_sha": "4792776d1bc7bd0eff1d54452b94eac37b52c3b9"
+    },
+    {
+      "path": "tests/raw-capture-number-equivalence.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-number-equivalence.test.ts.payload",
+      "bytes": 3177,
+      "sha256": "41b0f95a3dbce9f3ddaa29670fe52904066f87f92b1787088197ff87908a78c4",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-prepared-producer.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-prepared-producer.test.ts.payload",
+      "bytes": 9895,
+      "sha256": "053798e70c067df492ebf8cc99272a9b41895c36908a8f13d5fd315221eeeacb",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-retry-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-retry-d1.test.ts.payload",
+      "bytes": 25195,
+      "sha256": "a130bd0d3a4f34d12e4de085b27704d8f5ecd7ea0b09b348ddd0440989280976",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-retry-intent.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-retry-intent.test.ts.payload",
+      "bytes": 18027,
+      "sha256": "ed45d9010b7503d5947b636395905cf4c43e72198522075cbe658f0c9d86160f",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-rpc-policy.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-rpc-policy.test.ts.payload",
+      "bytes": 12452,
+      "sha256": "43ba5224ab1cc9db73b988cb55b403a0ef1f0af20ae68d5aefe10fbd03360528",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-single-validation.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-single-validation.test.ts.payload",
+      "bytes": 3447,
+      "sha256": "56961d12768056db0d16c961d29ea278fe48476c738e59eb64e9dd7b7ba291c3",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-stream-native.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-native.test.ts.payload",
+      "bytes": 6049,
+      "sha256": "7fcdbd57135379fb3c4eee0b6641d0ff41cfcd26df3dc997af77e9b8ab17dbac",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-stream-prepare.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-prepare.test.ts.payload",
+      "bytes": 18818,
+      "sha256": "ebfda947731c26b08ab617303aa2751a6a2916a141322de860c5923a2debfed6",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-chain-capture.test.ts",
+      "payload": ".github/fixtures/raw-capture-streaming/tests/raw-chain-capture.test.ts.payload",
+      "bytes": 60442,
+      "sha256": "4cb9cc1fee477160b069b3e69c18de091c7ff41cafbbafd6e9bfe0b4b492bbb3",
+      "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510"
+    }
+  ],
+  "carrier_files": [
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-bulk-lease.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-d1.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-retry-intent.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-retry-store.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-rpc-policy.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-stream-prepare.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-capture-sync.ts.payload",
+    ".github/fixtures/raw-capture-streaming/src/raw-chain-capture.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-bulk-lease.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-cron-wiring.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-number-equivalence.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-prepared-producer.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-retry-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-retry-intent.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-rpc-policy.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-single-validation.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-native.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-prepare.test.ts.payload",
+    ".github/fixtures/raw-capture-streaming/tests/raw-chain-capture.test.ts.payload",
+    ".github/scripts/check-raw-capture-streaming.ts",
+    ".github/tsconfig.raw-capture-streaming.json",
+    ".github/vitest.raw-capture-streaming.config.ts",
+    ".github/workflows/raw-capture-streaming-initial.yml",
+    ".github/fixtures/raw-capture-streaming/manifest.json"
+  ],
+  "tests": [
+    "tests/data-api-bundle-boundary.test.ts",
+    "tests/raw-capture-bulk-lease.test.ts",
+    "tests/raw-capture-cron-wiring.test.ts",
+    "tests/raw-capture-d1.test.ts",
+    "tests/raw-capture-endpoints.test.ts",
+    "tests/raw-capture-frontier-ack.test.ts",
+    "tests/raw-capture-number-equivalence.test.ts",
+    "tests/raw-capture-prepared-producer.test.ts",
+    "tests/raw-capture-retry-d1.test.ts",
+    "tests/raw-capture-retry-intent.test.ts",
+    "tests/raw-capture-rpc-policy.test.ts",
+    "tests/raw-capture-single-validation.test.ts",
+    "tests/raw-capture-stream-native.test.ts",
+    "tests/raw-capture-stream-prepare.test.ts",
+    "tests/raw-capture-sync.test.ts",
+    "tests/raw-capture-watermark-store.test.ts",
+    "tests/raw-chain-capture.test.ts"
+  ],
+  "required_phases": [
+    "apply",
+    "controls",
+    "format",
+    "lint",
+    "types",
+    "helper_types",
+    "boundary",
+    "workflow",
+    "tests"
+  ],
+  "format_files": [
+    "src/raw-capture-bulk-lease.ts",
+    "src/raw-capture-d1.ts",
+    "src/raw-capture-retry-intent.ts",
+    "src/raw-capture-retry-store.ts",
+    "src/raw-capture-rpc-policy.ts",
+    "src/raw-capture-stream-prepare.ts",
+    "src/raw-capture-sync.ts",
+    "src/raw-chain-capture.ts",
+    "tests/raw-capture-bulk-lease.test.ts",
+    "tests/raw-capture-cron-wiring.test.ts",
+    "tests/raw-capture-d1.test.ts",
+    "tests/raw-capture-number-equivalence.test.ts",
+    "tests/raw-capture-prepared-producer.test.ts",
+    "tests/raw-capture-retry-d1.test.ts",
+    "tests/raw-capture-retry-intent.test.ts",
+    "tests/raw-capture-rpc-policy.test.ts",
+    "tests/raw-capture-single-validation.test.ts",
+    "tests/raw-capture-stream-native.test.ts",
+    "tests/raw-capture-stream-prepare.test.ts",
+    "tests/raw-chain-capture.test.ts",
+    ".github/scripts/check-raw-capture-streaming.ts",
+    ".github/tsconfig.raw-capture-streaming.json",
+    ".github/vitest.raw-capture-streaming.config.ts",
+    ".github/workflows/raw-capture-streaming-initial.yml",
+    ".github/fixtures/raw-capture-streaming/manifest.json"
+  ],
+  "lint_files": [
+    "src/raw-capture-bulk-lease.ts",
+    "src/raw-capture-d1.ts",
+    "src/raw-capture-retry-intent.ts",
+    "src/raw-capture-retry-store.ts",
+    "src/raw-capture-rpc-policy.ts",
+    "src/raw-capture-stream-prepare.ts",
+    "src/raw-capture-sync.ts",
+    "src/raw-chain-capture.ts",
+    "tests/raw-capture-bulk-lease.test.ts",
+    "tests/raw-capture-cron-wiring.test.ts",
+    "tests/raw-capture-d1.test.ts",
+    "tests/raw-capture-number-equivalence.test.ts",
+    "tests/raw-capture-prepared-producer.test.ts",
+    "tests/raw-capture-retry-d1.test.ts",
+    "tests/raw-capture-retry-intent.test.ts",
+    "tests/raw-capture-rpc-policy.test.ts",
+    "tests/raw-capture-single-validation.test.ts",
+    "tests/raw-capture-stream-native.test.ts",
+    "tests/raw-capture-stream-prepare.test.ts",
+    "tests/raw-chain-capture.test.ts",
+    ".github/scripts/check-raw-capture-streaming.ts",
+    ".github/vitest.raw-capture-streaming.config.ts"
+  ],
+  "source_ids": [
+    "src/raw-capture-bulk-lease.ts",
+    "src/raw-capture-d1.ts",
+    "src/raw-capture-retry-intent.ts",
+    "src/raw-capture-retry-store.ts",
+    "src/raw-capture-rpc-policy.ts",
+    "src/raw-capture-stream-prepare.ts",
+    "src/raw-capture-sync.ts",
+    "src/raw-chain-capture.ts",
+    "tests/raw-capture-bulk-lease.test.ts",
+    "tests/raw-capture-cron-wiring.test.ts",
+    "tests/raw-capture-d1.test.ts",
+    "tests/raw-capture-number-equivalence.test.ts",
+    "tests/raw-capture-prepared-producer.test.ts",
+    "tests/raw-capture-retry-d1.test.ts",
+    "tests/raw-capture-retry-intent.test.ts",
+    "tests/raw-capture-rpc-policy.test.ts",
+    "tests/raw-capture-single-validation.test.ts",
+    "tests/raw-capture-stream-native.test.ts",
+    "tests/raw-capture-stream-prepare.test.ts",
+    "tests/raw-chain-capture.test.ts",
+    "tests/raw-capture-sync.test.ts",
+    "tests/raw-capture-frontier-ack.test.ts",
+    "tests/raw-capture-watermark-store.test.ts",
+    "tests/raw-capture-endpoints.test.ts",
+    "tests/data-api-bundle-boundary.test.ts",
+    ".github/scripts/check-raw-capture-streaming.ts",
+    ".github/tsconfig.raw-capture-streaming.json",
+    ".github/vitest.raw-capture-streaming.config.ts",
+    ".github/workflows/raw-capture-streaming-initial.yml",
+    ".github/fixtures/raw-capture-streaming/manifest.json"
+  ],
+  "helper_sha256": "16bacf0589f0487c853dcccfd659b678c028b1ea6adc049266c7e0c164f41476"
+}
