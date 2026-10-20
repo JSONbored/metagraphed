@@ -1,0 +1,267 @@
+import path from "node:path";
+import { FOCUSED_TESTS } from "./verify-candidate.ts";
+
+export const COVERED_SOURCES = [
+  "src/strict-gzip-reader.ts",
+  "src/sync-batch-compress.ts",
+] as const;
+export const RAW_LIMITS = {
+  "receipt.json": 128 * 1024,
+  "vitest-results.json": 4 * 1024 * 1024,
+  "network-events.ndjson": 4 * 1024 * 1024,
+  "network-events.ndjson.failed": 64,
+  "guard-config.json": 32 * 1024,
+  "native-output.txt": 8 * 1024 * 1024,
+  "coverage/coverage-summary.json": 32 * 1024,
+  "coverage/lcov.info": 1024 * 1024,
+} as const;
+export const PUBLIC_LIMITS = {
+  "qualification-summary.json": 128 * 1024,
+  "candidate-coverage.lcov": 1024 * 1024,
+} as const;
+
+export const REQUIRED_ASSERTIONS: Record<string, readonly string[]> = {
+  "tests/data-api-sync-queue-consumer.test.ts": [
+    "refuses before any business write, keeps exact retry bytes, and preserves each malformed tail before DLQ ACK",
+    "an unconfirmed custody write never ACKs malformed original bytes",
+    "small valid compressed input still writes the identical business rows and ACKs",
+    "a rejected malformed-tail delivery does not withhold a valid neighbor",
+    "cancels the strict reader before retry and admits a compressed neighbor",
+  ],
+  "tests/data-api-sync-quarantine-isolate.test.ts": [
+    "proposed resource-first malformed tails retry and retain exact native DLQ custody",
+  ],
+  "tests/strict-gzip-host-guard.test.ts": [
+    "refuses empty IPC path with external host before the underlying connector",
+    "refuses numeric-string TCP with external host before the underlying connector",
+    "refuses TLS and restores the captured synthetic connectors",
+  ],
+  "tests/sync-batch-strict-reader.test.ts": [
+    "cancels before exposing over-budget refusal and never demands the tail",
+  ],
+};
+
+function requireValue(condition: unknown): asserts condition {
+  if (!condition) throw new Error("Invalid qualification evidence");
+}
+export function object(value: unknown): Record<string, unknown> {
+  requireValue(
+    value !== null && typeof value === "object" && !Array.isArray(value),
+  );
+  return value as Record<string, unknown>;
+}
+function integer(value: unknown, maximum = 10_000_000): number {
+  requireValue(
+    Number.isSafeInteger(value) &&
+      Number(value) >= 0 &&
+      Number(value) <= maximum,
+  );
+  return Number(value);
+}
+function sourcePath(
+  value: unknown,
+  root: string,
+  allowed: readonly string[],
+): string {
+  requireValue(typeof value === "string");
+  const normalized = path.relative(root, value);
+  requireValue(path.isAbsolute(value) && allowed.includes(normalized));
+  return normalized;
+}
+
+export function validateTestEvidence(value: unknown, root: string) {
+  const input = object(value);
+  requireValue(input.success === true);
+  requireValue(integer(input.numFailedTests) === 0);
+  requireValue(integer(input.numPendingTests) === 0);
+  requireValue(integer(input.numTodoTests ?? 0) === 0);
+  requireValue(integer(input.numFailedTestSuites) === 0);
+  requireValue(Array.isArray(input.testResults));
+  requireValue(input.testResults.length === FOCUSED_TESTS.length);
+  const seen = new Set<string>();
+  let total = 0;
+  const suites = input.testResults.map((raw: unknown) => {
+    const suite = object(raw);
+    const file = sourcePath(suite.name, root, FOCUSED_TESTS);
+    requireValue(!seen.has(file) && suite.status === "passed");
+    seen.add(file);
+    requireValue(Array.isArray(suite.assertionResults));
+    requireValue(
+      suite.assertionResults.length > 0 &&
+        suite.assertionResults.length <= 10_000,
+    );
+    if (file === "tests/strict-gzip-host-guard.test.ts")
+      requireValue(suite.assertionResults.length === 18);
+    const titles = new Set<string>();
+    for (const rawAssertion of suite.assertionResults) {
+      const assertion = object(rawAssertion);
+      requireValue(
+        assertion.status === "passed" && typeof assertion.title === "string",
+      );
+      titles.add(assertion.title);
+    }
+    for (const required of REQUIRED_ASSERTIONS[file] ?? [])
+      requireValue(titles.has(required));
+    total += suite.assertionResults.length;
+    return { path: file, passed: suite.assertionResults.length };
+  });
+  requireValue(integer(input.numPassedTests) === total);
+  requireValue(integer(input.numTotalTests) === total);
+  return {
+    suites: suites.sort((a, b) => a.path.localeCompare(b.path)),
+    passed: total,
+    failed: 0,
+    skipped: 0,
+  };
+}
+
+export function validateCoverageEvidence(value: unknown, root: string) {
+  const input = object(value);
+  requireValue(Object.keys(input).length === COVERED_SOURCES.length + 1);
+  const report: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(input)) {
+    const file =
+      key === "total" ? "total" : sourcePath(key, root, COVERED_SOURCES);
+    const metricSet = object(raw);
+    const metrics: Record<string, unknown> = {};
+    for (const metric of ["lines", "statements", "functions", "branches"]) {
+      const row = object(metricSet[metric]);
+      const total = integer(row.total);
+      const covered = integer(row.covered);
+      const skipped = integer(row.skipped);
+      requireValue(total > 0 && covered <= total && skipped === 0);
+      requireValue(
+        typeof row.pct === "number" &&
+          Number.isFinite(row.pct) &&
+          row.pct >= 0 &&
+          row.pct <= 100,
+      );
+      metrics[metric] = { total, covered, skipped, pct: row.pct };
+    }
+    report[file] = metrics;
+  }
+  requireValue(Object.hasOwn(report, "total"));
+  for (const file of COVERED_SOURCES) requireValue(Object.hasOwn(report, file));
+  return report;
+}
+
+/** Keep numeric line/branch evidence; omit function names, test names and paths. */
+export function redactLcov(input: string, root: string): string {
+  requireValue(Buffer.byteLength(input) <= RAW_LIMITS["coverage/lcov.info"]);
+  const seen = new Set<string>();
+  const output: string[] = [];
+  let active = false;
+  let lines = 0;
+  for (const line of input.split(/\r?\n/)) {
+    requireValue(line.length <= 4096);
+    if (!line) continue;
+    if (line.startsWith("TN:")) {
+      output.push("TN:");
+    } else if (line.startsWith("SF:")) {
+      requireValue(!active);
+      const rawFile = line.slice(3);
+      const file = COVERED_SOURCES.includes(
+        rawFile as (typeof COVERED_SOURCES)[number],
+      )
+        ? rawFile
+        : sourcePath(rawFile, root, COVERED_SOURCES);
+      requireValue(!seen.has(file));
+      seen.add(file);
+      output.push(`SF:${file}`);
+      active = true;
+      lines = 0;
+    } else if (line === "end_of_record") {
+      requireValue(active && lines > 0);
+      active = false;
+      output.push(line);
+    } else {
+      requireValue(active);
+      if (line.startsWith("FN:") || line.startsWith("FNDA:")) continue;
+      if (/^(FNF|FNH|LF|LH|BRF|BRH):\d+$/.test(line)) {
+        integer(Number(line.split(":")[1]));
+        output.push(line);
+      } else if (/^DA:\d+,\d+(?:,[a-fA-F0-9]+)?$/.test(line)) {
+        const [number, count] = line.slice(3).split(",");
+        integer(Number(number));
+        integer(Number(count));
+        lines++;
+        output.push(`DA:${number},${count}`);
+      } else if (/^BRDA:\d+,\d+,\d+,(?:\d+|-)$/.test(line)) {
+        for (const value of line.slice(5).split(","))
+          if (value !== "-") integer(Number(value));
+        output.push(line);
+      } else {
+        throw new Error("Invalid qualification coverage record");
+      }
+    }
+  }
+  requireValue(!active && seen.size === COVERED_SOURCES.length);
+  return output.join("\n") + "\n";
+}
+
+const CHECK_NAMES = [
+  "coordinatorGuard",
+  "workerGuard",
+  "wranglerGuard",
+  "wranglerCliGuard",
+  "everyNodeChildGuarded",
+  "unchangedFixture",
+  "unchangedCandidate",
+  "completionEvidence",
+] as const;
+
+/** No arbitrary error text, arguments, URLs, environment values or log text escapes. */
+export function publicRunSummary(value: unknown) {
+  const input = object(value);
+  requireValue(input.status === "passed" || input.status === "failed");
+  const checks: Record<string, boolean> = {};
+  for (const key of CHECK_NAMES) {
+    requireValue(typeof input[key] === "boolean");
+    checks[key] = input[key];
+  }
+  const code = input.code === null ? null : integer(input.code, 255);
+  const deniedAttempts = integer(input.deniedAttempts, 100_000);
+  const interceptedWrangler = integer(input.interceptedWrangler, 100);
+  const unobservedNativeExits = integer(input.unobservedNativeExits, 10_000);
+  requireValue(typeof input.outputLimitExceeded === "boolean");
+  requireValue(typeof input.guardRecordingFailed === "boolean");
+  const outputLimitExceeded = input.outputLimitExceeded;
+  const guardRecordingFailed = input.guardRecordingFailed;
+  if (input.status === "passed") {
+    requireValue(
+      code === 0 && input.signal === null && input.launchError === null,
+    );
+    requireValue(Object.values(checks).every(Boolean));
+    requireValue(
+      deniedAttempts === 0 &&
+        interceptedWrangler === 1 &&
+        !outputLimitExceeded &&
+        !guardRecordingFailed,
+    );
+  }
+  return {
+    status: input.status,
+    code,
+    signalled: input.signal !== null,
+    launchFailed: input.launchError !== null,
+    deniedAttempts,
+    interceptedWrangler,
+    unobservedNativeExits,
+    outputLimitExceeded,
+    guardRecordingFailed,
+    checks,
+  };
+}
+
+export function validateCompletionEvidence(
+  tests: unknown,
+  coverage: unknown,
+  lcov: string,
+  root: string,
+) {
+  return {
+    tests: validateTestEvidence(tests, root),
+    coverage: validateCoverageEvidence(coverage, root),
+    lcov: redactLcov(lcov, root),
+  };
+}

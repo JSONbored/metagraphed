@@ -1,0 +1,187 @@
+{
+  "baseCommit": "6b8422966b1411dff6d7c486f4e9a549acecc761",
+  "primitiveCommit": "1c4518f8b4b6837f8978222bcab83c7a41ec9f7d",
+  "patchSha256": "9918d3bd7b76bc4452915dff522e5afcc8fc688412382c57416c1e519bf09f32",
+  "files": [
+    {
+      "path": "docs/strict-gzip-reader.md",
+      "baseGitBlob": null,
+      "sha256": "4db30a92062f0ce8923240996bdf416ec1c89cd81425854010de7ea19cfd0750"
+    },
+    {
+      "path": "docs/sync-batch-decoding.md",
+      "baseGitBlob": "2f3f2c74d6750f7dfe20167afd4884118ed6d791",
+      "sha256": "8d1915497a14848bff1721ca5c58cc7398ad3ff88743120c3f03596e3349c2ed"
+    },
+    {
+      "path": "package-lock.json",
+      "baseGitBlob": "5b0282bb9e45bab1fd38e28725d7f87ea6bb6ad8",
+      "sha256": "8082ef81ed8d765c977314cf17bb77946043a0d8a8ec2668a660b3c4d756f7eb"
+    },
+    {
+      "path": "package.json",
+      "baseGitBlob": "343585bc503509c335f39baa74cb60b33352ad10",
+      "sha256": "4fb747252be82015272e8fbbb7393a691eea17b21fa01e753d1b9c1b48ecb8bd"
+    },
+    {
+      "path": "scripts/lib.ts",
+      "baseGitBlob": "b8264c746c4012707c56cb57785b92b3a2b1e58e",
+      "sha256": "a0f124e2c063c7558676fea7d4b78303be5867a28585f3f526d44586c36a4030"
+    },
+    {
+      "path": "src/strict-gzip-reader.ts",
+      "baseGitBlob": null,
+      "sha256": "5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec"
+    },
+    {
+      "path": "src/sync-batch-compress.ts",
+      "baseGitBlob": "42a5706bbf6391a3649862d967799c8a9fa1cb2b",
+      "sha256": "9a2fe296fd45e78e9925a0768f1cad2e31f2771139300bbb22541e9709179d52"
+    },
+    {
+      "path": "src/sync-batch-limits.ts",
+      "baseGitBlob": "9a4c2c54f7f6ac0fadd09aca7e4278c3734b1265",
+      "sha256": "3583a6d396b1b34ed479130bf65d99929dde396e9a727c5c2523e3b769465cc9"
+    },
+    {
+      "path": "src/sync-batch-queue.ts",
+      "baseGitBlob": "5d473771c147986f91470d882ddfeb9dcf43f587",
+      "sha256": "cad94eee15721bc988d8e66f61067cf184b7e62378dd26cd5390421d3b97cf43"
+    },
+    {
+      "path": "src/sync-dead-letter-store.ts",
+      "baseGitBlob": "8b06697194c5f97f5b04b43e87919453619b3310",
+      "sha256": "e9a918048a42fba9ff0a005cc5c726c1c4497b6f1958af172fdf361e58e3ae51"
+    },
+    {
+      "path": "tests/data-api-sync-quarantine-isolate.test.ts",
+      "baseGitBlob": "6c0e73d0210cbfef7d0f00b4c57833b012f0e077",
+      "sha256": "1add88e8f1543b1f3171c6c9611e00923e09ba105eb3ff21f379a3ff5d15ea4d"
+    },
+    {
+      "path": "tests/data-api-sync-queue-consumer.test.ts",
+      "baseGitBlob": "5f1e619fc750e68433219fffb8a6560978c788cd",
+      "sha256": "852b380ac74762a9e0ce31f493a4901843d4a4eb7dea2b60f04883cf78a5bca7"
+    },
+    {
+      "path": "tests/fixtures/strict-gzip-observer.ts",
+      "baseGitBlob": null,
+      "sha256": "cfc0c75c256149755bb920081acdfefee110e68ccd1fe9a9a7ddb391961c6dcf"
+    },
+    {
+      "path": "tests/fixtures/strict-gzip-policy-differences.ts",
+      "baseGitBlob": null,
+      "sha256": "6ea71b05ef42921690282cde1a5f7b057109a068d546ea363c59c48de88cbfbe"
+    },
+    {
+      "path": "tests/fixtures/strict-gzip-worker.ts",
+      "baseGitBlob": null,
+      "sha256": "95a866359bce95f0b6bedcbe8f7aa22eb68738c139e2a6f53edd912c8076d108"
+    },
+    {
+      "path": "tests/helpers/pg-mock.ts",
+      "baseGitBlob": "6944b38777f5f0aa9b1e24e9d1e75ddc4252207a",
+      "sha256": "2fc280648973de3f417e44625bf3450c38e3cdbb6b3e939b386d91ae5c1e97d4"
+    },
+    {
+      "path": "tests/helpers/strict-gzip-corpus.ts",
+      "baseGitBlob": null,
+      "sha256": "b68309aafb6a8a80c6aeb8e01fed20be3654780834d1445f19b643f509ccdf27"
+    },
+    {
+      "path": "tests/helpers/strict-gzip-host-guard.ts",
+      "baseGitBlob": null,
+      "sha256": "dc0b7d080b6e8c36ac8583f9d3b70b7dea87529a6ec1ad63a24787fe903bc92f"
+    },
+    {
+      "path": "tests/helpers/strict-gzip-native.ts",
+      "baseGitBlob": null,
+      "sha256": "09730ff140bb3bfb0226febd4d7ecfe3cde835d949525517c52296fb914d2228"
+    },
+    {
+      "path": "tests/helpers/sync-dead-letter-kv.ts",
+      "baseGitBlob": "9a209379725cfa554da1ce357d919f9aec36ef41",
+      "sha256": "8afecd877ef457e3cae302423cc98c484ac72078a632a40fd541dc80a42a507a"
+    },
+    {
+      "path": "tests/helpers/sync-resource-first-fixtures.ts",
+      "baseGitBlob": null,
+      "sha256": "4e19f5ef393e90d82a422a66a30c2aad1f4b6f591a59f9b9d5aa5e9fe3a685b9"
+    },
+    {
+      "path": "tests/setup/clock-skew.ts",
+      "baseGitBlob": "77be7c6dd8ff7abbc76c83368f8d3ccf0a445954",
+      "sha256": "4497fe3934210eb265658aa6561c22070b89647356fb4c5ee8d8269b76af283b"
+    },
+    {
+      "path": "tests/setup/no-outbound-fetch.ts",
+      "baseGitBlob": "81480e5c172e7458f5357ad34c2a1a035dfd3b83",
+      "sha256": "45cc742d253dd60a5378a0ac24a92ad323ee8a2968c397a0a74f413f2fdc6117"
+    },
+    {
+      "path": "tests/setup/reset-module-state.ts",
+      "baseGitBlob": "367a5789925b96074eb0e8ef626f4f42b8a59cd8",
+      "sha256": "88d4d37fe1b1546f36bec3150e2e89ea86a7510a390c8cc382479be6874899a1"
+    },
+    {
+      "path": "tests/strict-gzip-host-guard.test.ts",
+      "baseGitBlob": null,
+      "sha256": "2b0d536dfc694735e8e1cffae3cb8638a3eaf663e980d5d54b48cce5c008cde6"
+    },
+    {
+      "path": "tests/strict-gzip-reader-coordinator.test.ts",
+      "baseGitBlob": null,
+      "sha256": "527f59dede760615bf77649357ed491be5607d4b97bfa9db70701c85e6b49ea1"
+    },
+    {
+      "path": "tests/strict-gzip-reader-isolate.test.ts",
+      "baseGitBlob": null,
+      "sha256": "8aebbbdb3c9034fd53161186c838560d0844fd213de4d8386154ec03ef5548b0"
+    },
+    {
+      "path": "tests/strict-gzip-reader.test.ts",
+      "baseGitBlob": null,
+      "sha256": "beb6208cee46796fd53dcdbc529d9c9002a7dbe44942b4ef7f9d1d2bf35d5e0e"
+    },
+    {
+      "path": "tests/sync-batch-compress.test.ts",
+      "baseGitBlob": "cac80fe5876c1ba282ffde5069eb32109fa81854",
+      "sha256": "690d2568bc221fa1a25bdc02a272fd8ba340e4525f716606ae02c4a3039aacdd"
+    },
+    {
+      "path": "tests/sync-batch-decoded-limits.test.ts",
+      "baseGitBlob": "ffd1e9c7ec6ab7ce14bdc0f402f0b388d08f4257",
+      "sha256": "52a3a00f0b4ced1ed590d1cb70ac0598c2e22676b841e2bfd1c59eca76959dba"
+    },
+    {
+      "path": "tests/sync-batch-strict-reader.test.ts",
+      "baseGitBlob": null,
+      "sha256": "20110d3e78deec1ee94b0638ccde0095efc4263fb275fe947d2a3b99c35fdee2"
+    },
+    {
+      "path": "tests/sync-dead-letter-store.test.ts",
+      "baseGitBlob": "5d2a6e829b0f08f270a78c6ecec1f8d6e9414977",
+      "sha256": "c3ac96a7af39814a1da4701dd42660faa0c5a10f35326cfcd928d11dd835989e"
+    },
+    {
+      "path": "vitest.config.ts",
+      "baseGitBlob": "6ecc0d4f919df22d0726a2cd3e7648f81ad6cf30",
+      "sha256": "902575d6ec0c99f87513878937232df69376abf49ef941f6514f53853beb8617"
+    },
+    {
+      "path": "vitest.targeted.config.ts",
+      "baseGitBlob": "63f84d28da1e05ca3efdfc0391560966147de7b0",
+      "sha256": "a28ccd5d82c8705c478383f2cf91ea0a9d52c1bca99378fb7b02600626377fdf"
+    },
+    {
+      "path": "workers/data-api.ts",
+      "baseGitBlob": "2aab2e6ddc156307678bc5e1d3675d791bc79a9a",
+      "sha256": "5672235a6874245cceb6df7b449c1f14b7f130f56c4de26fb100591fad98ffa0"
+    },
+    {
+      "path": "wrangler.data.jsonc",
+      "baseGitBlob": "ce4e7b666b69d7236e0cee7890869d2040a5fe49",
+      "sha256": "9856eb4f6efb2efc4f27af8770163f7ad74a0fea1fd21243a56a08d8df86ebad"
+    }
+  ]
+}

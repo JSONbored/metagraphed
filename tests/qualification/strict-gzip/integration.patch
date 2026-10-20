@@ -1,0 +1,3022 @@
+--- /dev/null
++++ b/docs/strict-gzip-reader.md
+@@ -0,0 +1,188 @@
++# Inactive strict gzip primitive candidate
++
++This repository-layout draft adds a standalone primitive and focused tests.
++It is inactive: no existing production module, Worker entry, queue consumer,
++limit, retry/custody path, or configuration is modified.
++
++`src/strict-gzip-reader.ts` has this final repository-formatted identity:
++
++```
++5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec
++```
++
++The pre-format tested source SHA-256 was
++`ee7e96a9ea415685cd823819282eb7631911df8e73ced7d6ec28c810fe228d43`.
++The intermediate formatted source was
++`35ecab0f350a22fc3b5e86a97aa04534ca5b8537fdaa46ca46468340191c95dd`.
++Formatting changed only grouping parentheses and whitespace in `u32`; normalized
++TypeScript semantic ASTs were verified identical. That source passed the same
++78-test isolated native policy qualification. Those receipts remain unchanged.
++
++The current scoped refactor removes only the two redundant range checks inside
++private integer-read helpers. Exact executable-token comparison verifies that
++no other executable code changed. Both `u16` calls are bounded by the initial
++length >= 18 check and optional-field cursor <= length - 8. Both `u32` calls
++follow the short-circuiting exact eight-byte trailer check and read at length - 8
++and length - 4. All reachable header/trailer validation remains. These invariants
++require the documented immutable compressed snapshot. The current final bytes
++also passed the 78-test isolated native policy suite, exit 0, with no recorded
++host or Worker outbound attempt and all historical receipt hashes unchanged.
++Genuine boundary fixtures
++exercise exact/overlapping optional headers and trailer write splits.
++
++The native helper asserts this final SHA-256 and records the fixture bundle digest.
++Its bundle permits exactly three source files: the primitive, the synthetic
++Worker fixture, and the synchronous observer. Built-in Node modules are external.
++Changing the primitive requires a fresh review and qualification; do not update
++the expected digest merely to silence a test.
++
++## Primitive contract
++
++The caller owns an immutable compressed snapshot. The primitive returns at most
++8192 decoded bytes per demand, admits at most 4096 compressed bytes per native
++write, and permits one pending write/end. It validates single-member gzip
++framing, CRC32, ISIZE, optional headers and FHCRC. It rejects trailing data and
++concatenated members.
++
++`cancel()` is synchronous. It wakes a pending `next()`, destroys the inflater,
++and does not wait for a native callback. `return()` performs the same cancellation
++and returns a done result. Concurrent `next()` calls are rejected.
++
++Compressed-input admission and decoded-size policy remain caller concerns.
++The 8192-byte delivery size is not total memory. A readable threshold may
++overshoot by one output chunk, and current, queued, native and compressed backing
++allocations can coexist.
++
++The finite-output-credit argument was checked against the matching workerd
++release source at commit `26b5461b7dcc640bb16072f1ba6f2c6df82572ba`
++(`v1.20260730.1`): the [zlib continuation](https://github.com/cloudflare/workerd/blob/26b5461b7dcc640bb16072f1ba6f2c6df82572ba/src/node/internal/internal_zlib_base.ts),
++[Readable queue](https://github.com/cloudflare/workerd/blob/26b5461b7dcc640bb16072f1ba6f2c6df82572ba/src/node/internal/streams_readable.js),
++and [Transform coordination](https://github.com/cloudflare/workerd/blob/26b5461b7dcc640bb16072f1ba6f2c6df82572ba/src/node/internal/streams_transform.js).
++That is release-source provenance, not reproducible binary-source attestation.
++The observed readable-queue maximum is neither a whole-owner hard memory bound
++nor isolate-charged memory. Process RSS and sparse JavaScript heap observations
++cannot substitute for the latter.
++
++## Deliberately proposed resource-first policy
++
++The byte-limit policy appears only in the synthetic Worker consumer. Once a
++decoded chunk would exceed its budget, it synchronously cancels and reports a
++resource refusal. It does not decode the tail to replace that refusal with a
++later malformed-gzip classification.
++
++The original equivalence gate remains failed on these exact cases:
++
++| Original failing test                            | Prior native result | Bounded result   |
++| ------------------------------------------------ | ------------------- | ---------------- |
++| native error/expansion precedence: bad-crc       | malformed           | resource refusal |
++| native error/expansion precedence: bad-isize     | malformed           | resource refusal |
++| native error/expansion precedence: truncated     | malformed           | resource refusal |
++| native error/expansion precedence: trailing-zero | malformed           | resource refusal |
++
++The machine-readable names and original observations are in
++[`tests/fixtures/strict-gzip-policy-differences.ts`](../tests/fixtures/strict-gzip-policy-differences.ts).
++New tests assert these differences explicitly as a proposed policy. They do not
++rename, delete, skip, or turn the original standalone equivalence failures green.
++Accepted in-budget inputs still match the native reference and their expected
++bytes/digests; malformed cases below the budget remain malformed.
++
++This proposal concerns resource correctness only. It does not change ACK/retry,
++custody, production imports or deployment. Whole-isolate peak memory and
++production CPU remain unqualified.
++
++## Isolated evidence already obtained
++
++The earlier standalone native primitive suite preserved four leaf equivalence
++failures. Its other framing, backpressure, and cancellation checks passed. The
++separately authorized proposed resource-first suite subsequently passed 78/78
++tests while hashing and preserving those original failing receipts.
++
++The latter run accepted exactly 79,393,024 valid decoded bytes. Its larger
++refusal case accepted 79,392,752 bytes before an 8192-byte overflow chunk; native
++production was 79,413,248 bytes, observed queue peak was 15,788, and at most one
++write remained outstanding. Input/output counters did not advance after cancel.
++Of the fixture's 16 MiB beyond the ceiling, 20,224 bytes were materialized as
++bounded witness/prefetch and 16,756,992 bytes remained unexpanded. The claim is
++an unread tail beyond accounted credit, not an entirely untouched final 16 MiB.
++
++The actual repository-layout adaptation also ran under Vitest 4.1.11 with the
++exact main targeted config and all three setup files, using pinned dependencies.
++All 393 new tests passed: 188 direct real-Node tests, five isolated coordinator
++doubles, and 200 real-workerd tests. Four existing pure module-state-registry
++tests also passed. Its fifth test imports the absent whole Worker graph and was
++explicitly unrun in this partial source workspace; no new test was skipped.
++
++The changed primitive measured 100% host-V8 coverage: 101/101 lines, 115/115
++statements, 15/15 functions and 60/60 branches. Existing coverage include/exclude
++rules and thresholds (85 branches, 90 functions, 92 lines/statements) were
++unchanged and passed across the two-source partial workspace. This is measured
++changed-source coverage, not a Codecov verdict or full-repository CI result.
++The first adaptation run's 374 passing tests and failed coverage gate remain
++preserved; the boundary/coordinator tests and scoped refactor address its gaps.
++
++Scoped strict TypeScript checks and the pinned Prettier 3.9.6 check pass. Main's
++full configured typecheck, lint, complete test graph and CI remain unrun. No
++whole-isolate peak-memory or production CPU conclusion follows from coverage.
++
++## Repository-native test layout
++
++- `tests/strict-gzip-reader.test.ts` imports the primitive directly under
++  Vitest's Node environment for host-V8 coverage. It exercises framing,
++  optional headers, truncation/corruption, native errors, cancellation,
++  concurrent reads and completion without mocking the codec. It makes no
++  workerd memory claim.
++- `tests/strict-gzip-reader-coordinator.test.ts` uses a per-file isolated
++  `createInflateRaw` double for synchronous event/lifecycle timing. It covers
++  write failure, cancellation/error during read, newly readable output and
++  no-output callback wakeups. These five tests provide no decompression or
++  native-resource evidence; real CRC and framing generation remain intact.
++- `tests/strict-gzip-reader-isolate.test.ts` uses main's `beforeAll`/`afterAll`
++  Miniflare lifecycle style with a focused helper. It checks actual workerd
++  inflater behavior, late stalls, pending cancellation, and proposed resource
++  refusal. It does not build Wrangler or import the application entry.
++- Fixture generation happens in Node. Large original strings/buffers never
++  enter the Worker; only gzip bytes and scalar controls do.
++- The synchronous observer delegates the real inflater methods without an
++  extra output queue or async output wrapper. Its controlled callback gate is
++  used solely for pending-read lifecycle tests, never resource bounds.
++- Host guards are restored and native runtimes disposed in failure paths and
++  `afterAll`. Node unit readers are cancelled in `afterEach`. The coordinator mock remains in its isolated test file; production modules
++  and application state are not imported.
++
++Native child-process execution does not produce host-V8 source coverage.
++The separate direct-import Node and isolated coordinator suites supply host
++coverage. Their measured percentages above are not native-memory evidence.
++Existing coverage gates remain unchanged.
++
++## Native fixture safety and scope
++
++The helper uses installed esbuild and Miniflare, `cf: false`, host
++`127.0.0.1`, port `0`, and a rejecting/counting Worker outbound service.
++A temporary host socket guard permits only numeric loopback/IPC and rejects
++TLS/external sockets. Runtime/binary override environment variables are rejected.
++No Wrangler command, production config, provider, storage binding, credential,
++download, installation, publication, or deployment is involved.
++
++Pinned fixture versions match main's installed test stack: Miniflare
++`5.20260730.0-alpha`, workerd `1.20260730.1`, and esbuild `0.28.2`.
++The host guard is defense in depth, not a child-process firewall. Main's own
++no-outbound setup remains enabled.
++
++After this draft is deliberately applied to an appropriate main checkout and
++the exact action is separately approved, the focused command would use the
++existing harness, for example:
++
++```sh
++env -u ESBUILD_BINARY_PATH -u MINIFLARE_WORKERD_PATH \
++  -u MINIFLARE_WORKERD_V8_FLAGS -u MINIFLARE_WORKERD_AUTOGATES \
++  -u MINIFLARE_WORKERD_CONFIG_DEBUG -u VSCODE_INSPECTOR_OPTIONS \
++  NODE_OPTIONS= NODE_ENV=test CLOUDFLARE_CF_FETCH_ENABLED=false \
++  node node_modules/vitest/vitest.mjs run --config vitest.targeted.config.ts \
++    tests/strict-gzip-reader.test.ts tests/strict-gzip-reader-isolate.test.ts \
++    tests/strict-gzip-reader-coordinator.test.ts
++```
++
++This example is not execution approval and is not a substitute for the real
++configured suite or coverage gates. Do not run it in the isolated draft tree:
++the tree intentionally has no dependency installation or copied repository
++configuration.
+--- a/docs/sync-batch-decoding.md
++++ b/docs/sync-batch-decoding.md
+@@ -73,3 +73,26 @@
+ decoding avoids retaining expanded byte chunks and a second contiguous byte
+ buffer. Full-message JSON parsing and real isolate headroom remain separate
+ resource limits; this change does not certify production memory at the ceiling.
++
++## Proposed strict gzip integration
++
++The isolated integration replaces native `DecompressionStream` with the
++reviewed strict, demand-driven single-member gzip reader. It snapshots compressed
++input and cancels the reader synchronously when parsing completes or refuses.
++The decoded ceiling, UTF-8 decoding, JSON parsing, producer limits, lane
++admission, writer selection, and dead-letter protocol are unchanged.
++
++The error priority deliberately changes: once expanded bytes cross the ceiling,
++resource refusal takes precedence over an unread malformed tail. The four
++recorded differences are a bad CRC, a bad ISIZE, a truncated trailer, and a
++trailing zero after an over-budget member. These deliveries retry rather than
++returning null and being acknowledged as malformed. The reader must not finish
++the unread tail merely to recover a later gzip error. This is a proposed
++resource-first contract, not an equivalence claim or deployment authorization.
++
++Wiring this decoder into a production entrypoint would affect every compressed
++queue delivery accepted by `decompressSyncBatchMessage`. Qualification applies
++the integration only in a separate test tree; it does not activate a queue
++route. The main consumer still retains complete JSON text and parsed objects.
++No whole-owner 128 MiB bound, three-scan projected-pipeline result, provider retry
++exhaustion, production retention, or production KV consistency is established.
+--- /dev/null
++++ b/src/strict-gzip-reader.ts
+@@ -0,0 +1,214 @@
++import type { TransformOptions } from "node:stream";
++import { crc32, createInflateRaw, type ZlibOptions } from "node:zlib";
++
++/**
++ * STATIC DESIGN CANDIDATE ONLY. Not integrated or qualified.
++ *
++ * The pinned workerd node:zlib shim caps native output with avail_out and
++ * pauses its native continuation when push() reaches readable highWaterMark.
++ * Unlike DecompressionStream, it does not inflate an entire input slice into
++ * an unbounded native output vector.
++ */
++const INPUT_BYTES = 4096;
++const OUTPUT_BYTES = 8192;
++
++function invalid(): never {
++  throw new TypeError("Invalid gzip stream");
++}
++
++// Private reads from the caller's immutable snapshot. headerEnd admits length
++// >= 18 and keeps its cursor between 10 and length - 8 before either u16 call.
++function u16(input: Uint8Array, at: number): number {
++  return input[at]! | (input[at + 1]! << 8);
++}
++
++// The only callers follow the exact trailer + 8 === length check, at offsets
++// length - 8 and length - 4. Keep that framing check before both reads.
++function u32(input: Uint8Array, at: number): number {
++  return (
++    (input[at]! |
++      (input[at + 1]! << 8) |
++      (input[at + 2]! << 16) |
++      (input[at + 3]! << 24)) >>>
++    0
++  );
++}
++
++/** Header metadata is skipped in the immutable compressed snapshot. No
++ * potentially unbounded FNAME/FCOMMENT string or FEXTRA copy is created. */
++function headerEnd(input: Uint8Array): number {
++  if (
++    input.length < 18 ||
++    input[0] !== 0x1f ||
++    input[1] !== 0x8b ||
++    input[2] !== 8 ||
++    (input[3]! & 0xe0) !== 0
++  )
++    return invalid();
++  const flags = input[3]!;
++  let at = 10;
++  if (flags & 4) {
++    const length = u16(input, at);
++    at += 2 + length;
++    if (at > input.length - 8) return invalid();
++  }
++  for (const flag of [8, 16]) {
++    if (flags & flag) {
++      while (at < input.length - 8 && input[at] !== 0) at++;
++      if (at >= input.length - 8) return invalid();
++      at++;
++    }
++  }
++  if (flags & 2) {
++    if (u16(input, at) !== (crc32(input.subarray(0, at)) & 0xffff))
++      return invalid();
++    at += 2;
++  }
++  if (at > input.length - 8) return invalid();
++  return at;
++}
++
++/**
++ * Demand-driven native raw inflate plus strict single-member gzip framing.
++ * At most one write is pending. This iterator has no background input loop:
++ * returning an output chunk suspends all further compressed writes until the
++ * caller demands the next chunk. A current native write can settle while the
++ * caller is stalled, but its output is bounded by the native shim's credit.
++ * OUTPUT_BYTES is a delivery size, not a total memory bound: readable-queue
++ * overshoot, the current result and the native output allocation can coexist.
++ * A compressed-input ceiling remains a caller/protocol precondition.
++ *
++ * read()/readableLength are synchronous queue-state APIs. No timeout or
++ * microtask ordering is used to guess whether output is buffered.
++ */
++export interface StrictGzipReader extends AsyncIterableIterator<Uint8Array> {
++  next(): Promise<IteratorResult<Uint8Array, void>>;
++  return(): Promise<IteratorResult<Uint8Array, void>>;
++  cancel(): void;
++}
++
++export function readStrictGzip(owned: Uint8Array): StrictGzipReader {
++  const start = headerEnd(owned);
++  const options: ZlibOptions & TransformOptions = {
++    chunkSize: OUTPUT_BYTES,
++    readableHighWaterMark: OUTPUT_BYTES,
++    writableHighWaterMark: INPUT_BYTES,
++  };
++  const inflater = createInflateRaw(options);
++  let at = start;
++  let writing = false;
++  let closing = false;
++  let ended = false;
++  let failure: Error | undefined;
++  let revision = 0;
++  let wake: (() => void) | undefined;
++  let checksum = 0;
++  let size = 0;
++  let stopped = false;
++  let reading = false;
++  const notify = () => {
++    revision++;
++    const resolve = wake;
++    wake = undefined;
++    resolve?.();
++  };
++  inflater.on("readable", notify);
++  inflater.on("error", (error: Error) => {
++    failure = error;
++    notify();
++  });
++  inflater.on("end", () => {
++    ended = true;
++    notify();
++  });
++  inflater.on("close", () => {
++    if (!ended && !failure) failure = new TypeError("Gzip stream closed early");
++    notify();
++  });
++  const written = (error?: Error | null) => {
++    writing = false;
++    if (error) failure = error;
++    notify();
++  };
++  const cancel = () => {
++    // Cancellation must interrupt a pending next(), not wait behind it as an
++    // async generator's return() would. Incidental close/error events lose to
++    // the explicit stopped state. Keep the error listener for deferred errors.
++    stopped = true;
++    notify();
++    inflater.destroy();
++  };
++  const reader: StrictGzipReader = {
++    [Symbol.asyncIterator]() {
++      return reader;
++    },
++    cancel,
++    return() {
++      cancel();
++      return Promise.resolve({ done: true, value: undefined });
++    },
++    async next() {
++      if (stopped) return { done: true, value: undefined };
++      if (reading) throw new TypeError("Concurrent gzip read");
++      reading = true;
++      try {
++        for (;;) {
++          if (stopped) return { done: true, value: undefined };
++          if (failure) throw failure;
++          const observedRevision = revision;
++          // read(0) starts a pending native continuation if the readable side
++          // needs it; positive reads return at most our output delivery size.
++          const chunk: Uint8Array | null = inflater.read(
++            Math.min(inflater.readableLength, OUTPUT_BYTES),
++          );
++          if (chunk !== null) {
++            checksum = crc32(chunk, checksum);
++            size = (size + chunk.byteLength) >>> 0;
++            return { done: false, value: chunk };
++          }
++          if (stopped) return { done: true, value: undefined };
++          if (failure) throw failure;
++          if (ended) {
++            // Raw inflate stops at the first final deflate block. bytesWritten
++            // counts consumed input, not submitted input. Only an exact
++            // eight-byte gzip trailer may remain, even across write boundaries.
++            const trailer = start + inflater.bytesWritten;
++            if (
++              trailer + 8 !== owned.length ||
++              u32(owned, trailer) !== checksum ||
++              u32(owned, trailer + 4) !== size
++            )
++              invalid();
++            cancel();
++            return { done: true, value: undefined };
++          }
++          // A synchronous native continuation started by read(0) may have just
++          // filled the readable queue. Drain it before admitting more input.
++          if (inflater.readableLength > 0) continue;
++          if (!writing && !closing) {
++            writing = true;
++            if (at < owned.length) {
++              const end = Math.min(at + INPUT_BYTES, owned.length);
++              const input = owned.subarray(at, end);
++              at = end;
++              inflater.write(input, written);
++            } else {
++              closing = true;
++              inflater.end(written);
++            }
++          }
++          if (revision !== observedRevision) continue;
++          await new Promise<void>((resolve) => {
++            wake = resolve;
++          });
++        }
++      } catch (error) {
++        cancel();
++        throw error;
++      } finally {
++        reading = false;
++      }
++    },
++  };
++  return reader;
++}
+--- a/src/sync-batch-compress.ts
++++ b/src/sync-batch-compress.ts
+@@ -34,6 +34,7 @@
+ // change with no consumer deploy -- but nothing is opted in today.
+ 
+ import { SYNC_BATCH_MAX_DECODED_BYTES } from "./sync-batch-limits.ts";
++import { readStrictGzip } from "./strict-gzip-reader.ts";
+ 
+ /** gzip keeps the existing self-describing wire encoding. */
+ export const SYNC_BATCH_COMPRESSION = "gzip" as const;
+@@ -57,12 +58,30 @@
+   stream: ReadableStream<Uint8Array>,
+ ): Promise<unknown> {
+   const reader = stream.getReader();
++  return readSyncBatchJsonChunks(
++    () => reader.read(),
++    () => {
++      // Cancellation can reject or never acknowledge. Neither may hold the
++      // refusal or the next independent delivery hostage.
++      void reader.cancel().catch(() => undefined);
++      reader.releaseLock();
++    },
++  );
++}
++
++type SyncBatchJsonChunk =
++  { done: true; value?: unknown } | { done?: false; value: Uint8Array };
++
++async function readSyncBatchJsonChunks(
++  read: () => Promise<SyncBatchJsonChunk>,
++  dispose: () => void,
++): Promise<unknown> {
+   const decoder = new TextDecoder();
+   const parts: string[] = [];
+   let total = 0;
+   try {
+     for (;;) {
+-      const next = await reader.read();
++      const next = await read();
+       if (next.done) break;
+       if (next.value.byteLength > SYNC_BATCH_MAX_DECODED_BYTES - total) {
+         throw new SyncBatchExpansionError();
+@@ -72,10 +91,7 @@
+     }
+     parts.push(decoder.decode());
+   } finally {
+-    // Cancellation can reject or never acknowledge. Neither may hold the
+-    // refusal or the next independent delivery hostage.
+-    void reader.cancel().catch(() => undefined);
+-    reader.releaseLock();
++    dispose();
+   }
+   const text = parts.join("");
+   parts.length = 0;
+@@ -190,13 +206,13 @@
+     return null;
+   }
+   try {
+-    return await readSyncBatchJson(
+-      new ReadableStream<Uint8Array>({
+-        start(controller) {
+-          controller.enqueue(bytes);
+-          controller.close();
+-        },
+-      }).pipeThrough(new DecompressionStream(SYNC_BATCH_COMPRESSION)),
++    // The strict reader owns an immutable compressed snapshot. Stop on the
++    // decoded ceiling without reading the remaining tail to recover a later
++    // framing error; that resource-first priority is an intentional change.
++    const reader = readStrictGzip(Uint8Array.from(bytes));
++    return await readSyncBatchJsonChunks(
++      () => reader.next(),
++      () => reader.cancel(),
+     );
+   } catch (error) {
+     if (error instanceof SyncBatchExpansionError) throw error;
+--- a/tests/data-api-sync-quarantine-isolate.test.ts
++++ b/tests/data-api-sync-quarantine-isolate.test.ts
+@@ -527,3 +527,101 @@
+   );
+   expect(outbound).toEqual([]);
+ }, 60_000);
++
++// This explicit resource-first contract keeps the original four isolated-native
++// equivalence failures as evidence. It uses the exact deployment bundle above.
++
++test("proposed resource-first malformed tails retry and retain exact native DLQ custody", async () => {
++  const { resourceFirstVariants } =
++    await import("./helpers/sync-resource-first-fixtures.ts");
++  const variants = resourceFirstVariants(
++    JSON.stringify({
++      lane: "hotkey-alpha",
++      captured_at: 1_780_000_000_000,
++      key_complete: true,
++      rows: [],
++    }),
++    SYNC_BATCH_MAX_DECODED_BYTES,
++  );
++  const target = await runtime.getWorker();
++  const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
++  for (const [kind, wire] of variants) {
++    const original = Uint8Array.from(wire);
++    const timestamp = new Date(1_780_000_000_987);
++    const refused = {
++      id: `native-resource-first-${kind}`,
++      body: original.buffer,
++      timestamp,
++      attempts: 1,
++    };
++    const suffix = {
++      id: `${refused.id}-invalid-suffix`,
++      body: null,
++      timestamp,
++      attempts: 1,
++    };
++    const delivered = await target.queue("sync-batches", [refused, suffix]);
++    expect(delivered).toMatchObject({
++      outcome: "ok",
++      ackAll: false,
++      retryBatch: { retry: false },
++      explicitAcks: [suffix.id],
++    });
++    expect(delivered.retryMessages).toEqual([
++      expect.objectContaining({ msgId: refused.id }),
++    ]);
++    expect(new Uint8Array(refused.body)).toEqual(wire);
++    expect(outbound).toEqual([]);
++
++    // Explicitly deliver the same bytes to the DLQ entry point. This proves
++    // handler custody, not provider retry scheduling/exhaustion or retention.
++    const preserved = await target.queue("sync-batches-dlq", [
++      { ...refused, attempts: 7 },
++    ]);
++    expect(preserved).toMatchObject({
++      outcome: "ok",
++      ackAll: false,
++      retryBatch: { retry: false },
++      explicitAcks: [refused.id],
++      retryMessages: [],
++    });
++    const listed = await kv.list({ prefix: SYNC_QUARANTINE_PREFIX });
++    expect(listed.list_complete).toBe(true);
++    const records = await Promise.all(
++      listed.keys.map(async ({ name }) => {
++        const text = await kv.get(name);
++        expect(text).not.toBeNull();
++        return { name, text: text!, value: JSON.parse(text!) };
++      }),
++    );
++    const custody = records.filter(
++      ({ value }) =>
++        value.kind === "custody" && value.message_id === refused.id,
++    );
++    expect(custody).toHaveLength(1);
++    const record = custody[0]!;
++    expect(record.name).toBe(SYNC_QUARANTINE_PREFIX + sha256(record.text));
++    expect(record.value).toEqual({
++      version: 2,
++      kind: "custody",
++      queue: "sync-batches-dlq",
++      message_id: refused.id,
++      published_at: timestamp.getTime(),
++      representation: "bytes",
++      body_bytes: wire.byteLength,
++      body_sha256: sha256(wire),
++      payload: Buffer.from(wire).toString("base64"),
++    });
++    expect(Buffer.from(record.value.payload, "base64")).toEqual(
++      Buffer.from(wire),
++    );
++    const observation = records.filter(
++      ({ value }) =>
++        value.kind === "observation" &&
++        value.custody_sha256 === sha256(record.text),
++    );
++    expect(observation).toHaveLength(1);
++    expect(observation[0]!.value.attempts).toBe(7);
++    expect(outbound).toEqual([]);
++  }
++}, 120_000);
+--- a/tests/data-api-sync-queue-consumer.test.ts
++++ b/tests/data-api-sync-queue-consumer.test.ts
+@@ -588,3 +588,226 @@
+     );
+   });
+ });
++
++// These are explicit RESOURCE-FIRST contract expectations, not equivalence.
++// Keep the isolated native equivalence gate and its four failures unchanged.
++
++describe("proposed resource-first malformed-tail custody", () => {
++  test("refuses before any business write, keeps exact retry bytes, and preserves each malformed tail before DLQ ACK", async () => {
++    const { createHash } = await import("node:crypto");
++    const { SYNC_BATCH_MAX_DECODED_BYTES } =
++      await import("../src/sync-batch-limits.ts");
++    const { resourceFirstVariants } =
++      await import("./helpers/sync-resource-first-fixtures.ts");
++    const variants = resourceFirstVariants(
++      JSON.stringify(positionMessage().body),
++      SYNC_BATCH_MAX_DECODED_BYTES,
++    );
++    for (const [kind, wire] of variants) {
++      for (const representation of ["view", "array-buffer"] as const) {
++        pg.control.queries.length = 0;
++        const original = Uint8Array.from(wire);
++        const body = representation === "view" ? wire : wire.slice().buffer;
++        const refused = {
++          ...message(body),
++          id: `resource-first-${kind}-${representation}`,
++          timestamp: new Date(1_780_000_000_123),
++          attempts: 1,
++        };
++        refused.retry = () => {
++          assert.equal(
++            pg.control.queries.length,
++            0,
++            `${kind}: no SQL may precede decode refusal`,
++          );
++          assert.equal(refused.body, body);
++          assert.deepEqual(
++            new Uint8Array(
++              body instanceof ArrayBuffer ? body : body.buffer,
++              body instanceof ArrayBuffer ? 0 : body.byteOffset,
++              body.byteLength,
++            ),
++            original,
++          );
++          return refused.calls.push("retry");
++        };
++        const pending: Promise<unknown>[] = [];
++        await worker.queue!(
++          { queue: "sync-batches", messages: [refused] } as never,
++          pgMockEnv() as never,
++          {
++            waitUntil: (task: Promise<unknown>) => pending.push(task),
++          } as never,
++        );
++        await Promise.all(pending);
++        assert.deepEqual(refused.calls, ["retry"], kind);
++        assert.equal(pg.control.queries.length, 0);
++        assert.equal(refused.body, body);
++
++        const f = syncDeadLetterKv();
++        refused.calls.length = 0;
++        const terminal = {
++          ...refused,
++          attempts: 7,
++          ack() {
++            // Both exact records must have been read back before ACK.
++            assert.equal(f.values.size, 2);
++            assert.equal(f.puts.length, 2);
++            assert.equal(f.gets.at(-2)!.key, f.puts[0]!.key);
++            assert.equal(f.gets.at(-1)!.key, f.puts[1]!.key);
++            refused.calls.push("ack");
++          },
++        };
++        await worker.queue!(
++          { queue: "sync-batches-dlq", messages: [terminal] } as never,
++          { METAGRAPH_CONTROL: f.kv } as never,
++          { waitUntil: () => {} } as never,
++        );
++        assert.deepEqual(refused.calls, ["ack"]);
++        assert.equal(pg.control.queries.length, 0);
++        const records = [...f.values.values()].map((text) => JSON.parse(text));
++        const custody = records.find((value) => value.kind === "custody");
++        assert.ok(custody);
++        assert.equal(custody.representation, "bytes");
++        assert.equal(custody.body_bytes, original.byteLength);
++        assert.equal(
++          custody.body_sha256,
++          createHash("sha256").update(original).digest("hex"),
++        );
++        assert.deepEqual(
++          Buffer.from(custody.payload, "base64"),
++          Buffer.from(original),
++        );
++        assert.ok(
++          records.some(
++            (value) => value.kind === "observation" && value.attempts === 7,
++          ),
++        );
++      }
++    }
++  }, 120_000);
++
++  test("an unconfirmed custody write never ACKs malformed original bytes", async () => {
++    const f = syncDeadLetterKv();
++    f.hooks.read = () => null; // Writes remain invisible on confirmation.
++    const body = new Uint8Array([0x1f, 0x8b, 0x00, 0xff]).buffer;
++    const item = {
++      ...message(body),
++      id: "resource-first-unconfirmed",
++      timestamp: new Date(1_780_000_000_123),
++      attempts: 7,
++    };
++    await worker.queue!(
++      { queue: "sync-batches-dlq", messages: [item] } as never,
++      { METAGRAPH_CONTROL: f.kv } as never,
++      { waitUntil: () => {} } as never,
++    );
++    assert.deepEqual(item.calls, ["retry"]);
++    assert.equal(item.body, body);
++    assert.equal(pg.control.queries.length, 0);
++  });
++
++  test("small valid compressed input still writes the identical business rows and ACKs", async () => {
++    const clock = vi.spyOn(Date, "now").mockReturnValue(1_780_000_000_001);
++    try {
++      const expected = positionMessage();
++      await consume([expected]);
++      assert.deepEqual(expected.calls, ["ack"]);
++      const baseline = structuredClone(pg.control.queries);
++      const packed = Uint8Array.from(gzipSync(JSON.stringify(expected.body)));
++      for (const body of [packed, packed.slice().buffer]) {
++        pg.control.queries.length = 0;
++        const item = message(body);
++        await consume([item]);
++        assert.deepEqual(item.calls, ["ack"]);
++        assert.deepEqual(pg.control.queries, baseline);
++      }
++    } finally {
++      clock.mockRestore();
++    }
++  });
++
++  test("a rejected malformed-tail delivery does not withhold a valid neighbor", async () => {
++    const { SYNC_BATCH_MAX_DECODED_BYTES } =
++      await import("../src/sync-batch-limits.ts");
++    const { resourceFirstVariants } =
++      await import("./helpers/sync-resource-first-fixtures.ts");
++    const wire = resourceFirstVariants(
++      JSON.stringify(positionMessage().body),
++      SYNC_BATCH_MAX_DECODED_BYTES,
++    ).get("bad-crc")!;
++    const refused = message(wire);
++    const good = positionMessage();
++    await consume([refused, good]);
++    assert.deepEqual(refused.calls, ["retry"]);
++    assert.deepEqual(good.calls, ["ack"]);
++    assert.equal(rows().length, 1);
++    assert.equal(refused.body, wire);
++  }, 60_000);
++
++  test("cancels the strict reader before retry and admits a compressed neighbor", async () => {
++    const strict = await import("../src/strict-gzip-reader.ts");
++    const { SYNC_BATCH_MAX_DECODED_BYTES } =
++      await import("../src/sync-batch-limits.ts");
++    const { resourceFirstVariants } =
++      await import("./helpers/sync-resource-first-fixtures.ts");
++    const originalRead = strict.readStrictGzip;
++    const observations: { cancelled: boolean; reads: number }[] = [];
++    const spy = vi
++      .spyOn(strict, "readStrictGzip")
++      .mockImplementation((owned) => {
++        const inner = originalRead(owned);
++        const state = { cancelled: false, reads: 0 };
++        observations.push(state);
++        const reader: ReturnType<typeof originalRead> = {
++          [Symbol.asyncIterator]() {
++            return reader;
++          },
++          next() {
++            assert.equal(state.cancelled, false);
++            state.reads++;
++            return inner.next();
++          },
++          return() {
++            state.cancelled = true;
++            return inner.return();
++          },
++          cancel() {
++            state.cancelled = true;
++            inner.cancel();
++          },
++        };
++        return reader;
++      });
++    try {
++      const wire = resourceFirstVariants(
++        JSON.stringify(positionMessage().body),
++        SYNC_BATCH_MAX_DECODED_BYTES,
++      ).get("bad-crc")!;
++      const refused = message(wire);
++      refused.retry = () => {
++        assert.equal(pg.control.queries.length, 0);
++        assert.equal(observations.length, 1);
++        assert.equal(observations[0]!.cancelled, true);
++        return refused.calls.push("retry");
++      };
++      const good = message(
++        Uint8Array.from(gzipSync(JSON.stringify(positionMessage().body))),
++      );
++      await consume([refused, good]);
++      assert.deepEqual(refused.calls, ["retry"]);
++      assert.deepEqual(good.calls, ["ack"]);
++      assert.equal(rows().length, 1);
++      assert.equal(observations.length, 2);
++      assert.ok(observations.every((state) => state.cancelled));
++      const reads = observations.map((state) => state.reads);
++      await new Promise<void>((resolve) => setImmediate(resolve));
++      assert.deepEqual(
++        observations.map((state) => state.reads),
++        reads,
++      );
++    } finally {
++      spy.mockRestore();
++    }
++  }, 60_000);
++});
+--- /dev/null
++++ b/tests/fixtures/strict-gzip-observer.ts
+@@ -0,0 +1,251 @@
++/**
++ * DRAFT ONLY. Synchronous, test-only observation of the actual native inflater.
++ * No TransformStream, output queue, async output tap, or replacement codec.
++ * The optional callback gate is used only by separate lifecycle tests.
++ */
++type Callback = (error?: Error | null) => void;
++type Inflater = {
++  readableLength: number;
++  bytesWritten: number;
++  destroyed: boolean;
++  write(chunk: Uint8Array, callback: Callback): unknown;
++  end(callback: Callback): unknown;
++  read(size: number): Uint8Array | null;
++  push(chunk: Uint8Array | null, ...args: unknown[]): boolean;
++  destroy(error?: Error): unknown;
++  on(event: "error", callback: (error: Error) => void): unknown;
++  on(event: "readable" | "end" | "close", callback: () => void): unknown;
++};
++
++export type Snapshot = {
++  submitted: number;
++  consumed: number;
++  drained: number;
++  produced: number;
++  writes: number;
++  reads: number;
++  pending: number;
++  queued: number;
++  destroyed: boolean;
++};
++
++type WriteEvent = Snapshot & {
++  operation: "write" | "end";
++  phase: string;
++  bytes: number;
++  at: "call" | "callback" | "throw";
++  error?: string;
++};
++
++export type Observation = ReturnType<typeof makeObservation>;
++let active: Observation | undefined;
++
++export function makeObservation() {
++  let inflater: Inflater | undefined;
++  let holdCallbacks = false;
++  const heldCallbacks: (() => void)[] = [];
++  let callbackEntered!: () => void;
++  const firstHeldCallback = new Promise<void>((resolve) => {
++    callbackEntered = resolve;
++  });
++  const state = {
++    phase: "decode",
++    instances: 0,
++    headerBytes: 0,
++    submitted: 0,
++    drained: 0,
++    produced: 0,
++    writes: 0,
++    reads: 0,
++    pending: 0,
++    maxPending: 0,
++    maxInput: 0,
++    maxOutput: 0,
++    maxPush: 0,
++    maxQueued: 0,
++    callbacks: 0,
++    endCallbacks: 0,
++    callbackThrows: [] as string[],
++    errors: [] as string[],
++    closes: 0,
++    ends: 0,
++    events: [] as WriteEvent[],
++    violations: [] as string[],
++  };
++  function snapshot(): Snapshot {
++    const queued = inflater?.readableLength ?? 0;
++    state.maxQueued = Math.max(state.maxQueued, queued);
++    return {
++      submitted: state.submitted,
++      consumed: inflater?.bytesWritten ?? 0,
++      drained: state.drained,
++      produced: state.produced,
++      writes: state.writes,
++      reads: state.reads,
++      pending: state.pending,
++      queued,
++      destroyed: inflater?.destroyed ?? false,
++    };
++  }
++  function violate(message: string) {
++    if (!state.violations.includes(message)) state.violations.push(message);
++  }
++  function attach(instance: Inflater, _owned: Uint8Array, start: number) {
++    state.instances++;
++    inflater = instance;
++    state.headerBytes = start;
++    if (state.instances !== 1) violate("More than one inflater instance");
++    const originalWrite = instance.write;
++    const originalEnd = instance.end;
++    const originalRead = instance.read;
++    const originalPush = instance.push;
++
++    function operation(
++      kind: "write" | "end",
++      chunk: Uint8Array | undefined,
++      callback: Callback,
++    ) {
++      const bytes = chunk?.byteLength ?? 0;
++      const before = snapshot();
++      if (before.pending !== 0)
++        violate("Overlapping native write/end operations");
++      if (before.queued !== 0) violate("Input submitted with output queued");
++      if (state.phase !== "decode")
++        violate(`Input submitted during ${state.phase}`);
++      if (kind === "write") {
++        if (bytes > 4096) violate("Native input write exceeds 4096");
++        state.writes++;
++        state.submitted += bytes;
++        state.maxInput = Math.max(state.maxInput, bytes);
++      }
++      state.pending++;
++      state.maxPending = Math.max(state.maxPending, state.pending);
++      state.events.push({
++        ...snapshot(),
++        operation: kind,
++        phase: state.phase,
++        bytes,
++        at: "call",
++      });
++      let called = false;
++      const observedCallback: Callback = (error) => {
++        if (called) violate("Native callback invoked more than once");
++        called = true;
++        state.pending--;
++        if (kind === "write") state.callbacks++;
++        else state.endCallbacks++;
++        state.events.push({
++          ...snapshot(),
++          operation: kind,
++          phase: state.phase,
++          bytes,
++          at: "callback",
++          ...(error ? { error: String(error) } : {}),
++        });
++        // Preserve native callback timing, arguments, and synchronous stack.
++        const forward = () => {
++          try {
++            callback(error);
++          } catch (caught) {
++            state.callbackThrows.push(String(caught));
++            throw caught;
++          }
++        };
++        if (holdCallbacks) {
++          // Lifecycle-only control. Preserve the actual callback and error.
++          // The expansion/stall tests never enable this control.
++          heldCallbacks.push(forward);
++          callbackEntered();
++        } else forward();
++      };
++      try {
++        return kind === "write"
++          ? originalWrite.call(instance, chunk!, observedCallback)
++          : originalEnd.call(instance, observedCallback);
++      } catch (error) {
++        if (!called) state.pending--;
++        state.events.push({
++          ...snapshot(),
++          operation: kind,
++          phase: state.phase,
++          bytes,
++          at: "throw",
++          error: String(error),
++        });
++        throw error;
++      }
++    }
++    instance.write = function (chunk, callback) {
++      return operation("write", chunk, callback);
++    };
++    instance.end = function (callback) {
++      return operation("end", undefined, callback);
++    };
++    instance.read = function (size) {
++      const result = originalRead.call(instance, size);
++      if (result !== null) {
++        state.reads++;
++        state.drained += result.byteLength;
++        state.maxOutput = Math.max(state.maxOutput, result.byteLength);
++        if (result.byteLength > 8192)
++          violate("Native output read exceeds 8192");
++      }
++      snapshot();
++      return result;
++    };
++    instance.push = function (chunk, ...args) {
++      if (chunk !== null) {
++        state.produced += chunk.byteLength;
++        state.maxPush = Math.max(state.maxPush, chunk.byteLength);
++        if (chunk.byteLength > 8192) violate("Native push exceeds 8192");
++      }
++      const result = originalPush.call(instance, chunk, ...args);
++      snapshot();
++      return result;
++    };
++    instance.on("readable", snapshot);
++    instance.on("error", (error: Error) => {
++      state.errors.push(String(error));
++      snapshot();
++    });
++    instance.on("end", () => {
++      state.ends++;
++      snapshot();
++    });
++    instance.on("close", () => {
++      state.closes++;
++      snapshot();
++    });
++  }
++  return {
++    state,
++    attach,
++    snapshot,
++    firstHeldCallback,
++    holdCallbacks() {
++      holdCallbacks = true;
++    },
++    releaseCallbacks() {
++      holdCallbacks = false;
++      for (const callback of heldCallbacks.splice(0)) callback();
++    },
++    destroy(error?: Error) {
++      if (!inflater) throw new Error("Inflater has not been created");
++      inflater.destroy(error);
++    },
++  };
++}
++
++export function activate(observation: Observation | undefined) {
++  active = observation;
++}
++
++/** Inserted immediately after createInflateRaw(), before let at = start. */
++export function observeInflater(
++  inflater: Inflater,
++  owned: Uint8Array,
++  start: number,
++) {
++  if (!active) throw new Error("Missing active test observation");
++  active.attach(inflater, owned, start);
++}
+--- /dev/null
++++ b/tests/fixtures/strict-gzip-policy-differences.ts
+@@ -0,0 +1,37 @@
++/**
++ * Historical standalone equivalence failures, preserved explicitly.
++ * This is proposed resource policy, not an equivalence waiver or active route.
++ */
++export const strictGzipPolicyDifferences = [
++  { name: "bad-crc", priorTest: "native error/expansion precedence: bad-crc" },
++  {
++    name: "bad-isize",
++    priorTest: "native error/expansion precedence: bad-isize",
++  },
++  {
++    name: "truncated",
++    priorTest: "native error/expansion precedence: truncated",
++  },
++  {
++    name: "trailing-zero",
++    priorTest: "native error/expansion precedence: trailing-zero",
++  },
++] as const;
++
++export const strictGzipPriorQualification = {
++  sourceSha256:
++    "ee7e96a9ea415685cd823819282eb7631911df8e73ced7d6ec28c810fe228d43",
++  formattedSourceSha256:
++    "35ecab0f350a22fc3b5e86a97aa04534ca5b8537fdaa46ca46468340191c95dd",
++  currentSourceSha256:
++    "5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec",
++  equivalenceGate: "failed-preserved",
++  oldNativeDisposition: "malformed",
++  boundedCandidateDisposition: "resource-refusal",
++  scaledBudget: 32_768,
++  decodedBytes: 65_537,
++  inputConsumedAtRefusal: 62,
++  acceptedBytesAtRefusal: 32_768,
++  outputDrainedAtRefusal: 40_960,
++  outputProducedAtRefusal: 49_152,
++} as const;
+--- /dev/null
++++ b/tests/fixtures/strict-gzip-worker.ts
+@@ -0,0 +1,253 @@
++/**
++ * Inactive primitive fixture. Receives compressed bytes, never original data.
++ * This file is not a Worker entry in any production configuration.
++ */
++import { createHash } from "node:crypto";
++import { readStrictGzip } from "../../src/strict-gzip-reader.ts";
++import {
++  activate,
++  makeObservation,
++  type Snapshot,
++} from "./strict-gzip-observer.ts";
++
++const turn = (milliseconds = 0) =>
++  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
++
++async function within<T>(promise: Promise<T>, label: string): Promise<T> {
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  try {
++    return await Promise.race([
++      promise,
++      new Promise<never>((_resolve, reject) => {
++        timer = setTimeout(
++          () => reject(new Error(`Lifecycle timeout: ${label}`)),
++          2000,
++        );
++      }),
++    ]);
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++async function reference(wire: Uint8Array, budget: number) {
++  // Only enabled for small known decoded outputs, including large metadata.
++  // This differential is correctness-only; no memory bound follows from it.
++  // The native DecompressionStream is untouched.
++  const input = new ReadableStream<BufferSource>({
++    start(controller) {
++      controller.enqueue(new Uint8Array(wire));
++      controller.close();
++    },
++  });
++  const reader = input.pipeThrough(new DecompressionStream("gzip")).getReader();
++  const hash = createHash("sha256");
++  let bytes = 0;
++  try {
++    for (;;) {
++      const result = await reader.read();
++      if (result.done) break;
++      if (result.value.byteLength > 262_144 - bytes)
++        throw new Error(
++          "Reference fixture exceeded its diagnostic size ceiling",
++        );
++      if (result.value.byteLength > budget - bytes)
++        throw new Error("TEST_EXPANSION_LIMIT");
++      bytes += result.value.byteLength;
++      hash.update(result.value);
++    }
++    return { ok: true, bytes, sha256: hash.digest("hex") };
++  } catch (error) {
++    return { ok: false, bytes, error: String(error) };
++  } finally {
++    void reader.cancel().catch(() => undefined);
++    reader.releaseLock();
++  }
++}
++
++export default {
++  async fetch(request: Request) {
++    const url = new URL(request.url);
++    const mode = url.searchParams.get("mode") ?? "decode";
++    const compare = url.searchParams.get("compare") === "1";
++    const budget = Number(
++      url.searchParams.get("budget") ?? Number.MAX_SAFE_INTEGER,
++    );
++    const started = Date.now();
++    let stallMilliseconds = 0;
++    const wire = new Uint8Array(await request.arrayBuffer());
++    if (compare && wire.byteLength > 3_145_728)
++      throw new Error("Reference input exceeds diagnostic metadata ceiling");
++    const observation = makeObservation();
++    const pendingMode = mode === "pending-return" || mode === "pending-cancel";
++    if (pendingMode) observation.holdCallbacks();
++    activate(observation);
++    const hash = createHash("sha256");
++    let iterator: ReturnType<typeof readStrictGzip> | undefined;
++    let bytes = 0;
++    let reads = 0;
++    let ok = false;
++    let cancelled = false;
++    let error: string | undefined;
++    let pendingTest: Record<string, unknown> | undefined;
++    let refusal:
++      | {
++          overflowBytes: number;
++          before: Snapshot;
++          immediatelyAfterCancel: Snapshot;
++          after: Snapshot;
++          doneAfterCancel: boolean;
++          afterDoneProbe: Snapshot;
++          endEventsAtRefusal: number;
++        }
++      | undefined;
++    const stalls: { afterReads: number; samples: Snapshot[] }[] = [];
++    let cancellation:
++      { before: Snapshot; after: Snapshot; returned: boolean } | undefined;
++    try {
++      iterator = readStrictGzip(wire);
++      if (pendingMode) {
++        let settled = false;
++        const pending = iterator.next().then(
++          (value) => {
++            settled = true;
++            return value;
++          },
++          (caught) => {
++            settled = true;
++            throw caught;
++          },
++        );
++        await within(observation.firstHeldCallback, "first native callback");
++        // The held callback belongs to an actual no-output raw write.
++        // No native output is fabricated, withheld, or requeued.
++        const settledBeforeCancel = settled;
++        let concurrentError: string | undefined;
++        try {
++          await within(iterator.next(), "concurrent next rejection");
++        } catch (caught) {
++          concurrentError = String(caught);
++        }
++        observation.state.phase = "cancel";
++        const before = observation.snapshot();
++        let returned: Promise<IteratorResult<Uint8Array, void>> | undefined;
++        if (mode === "pending-return") returned = iterator.return();
++        else iterator.cancel();
++        const synchronouslyDestroyed = observation.snapshot().destroyed;
++        const firstResult = await within(pending, "cancelled pending next");
++        const returnResult =
++          returned && (await within(returned, "return completion"));
++        observation.releaseCallbacks();
++        await turn(0);
++        pendingTest = {
++          settledBeforeCancel,
++          concurrentError,
++          synchronouslyDestroyed,
++          firstDone: firstResult.done,
++          returnDone: returnResult?.done,
++          nextAfterCancelDone: (await iterator.next()).done,
++          before,
++          after: observation.snapshot(),
++        };
++        cancelled = true;
++      }
++      while (!pendingMode) {
++        const next = await iterator.next();
++        if (next.done) {
++          ok = true;
++          break;
++        }
++        if (next.value.byteLength > budget - bytes) {
++          // Proposed consumer policy only. The primitive has no byte budget.
++          // Cancel without decoding the tail to replace resource refusal with
++          // a later framing error. The old equivalence gate remains failed.
++          observation.state.phase = "cancel";
++          const before = observation.snapshot();
++          const endEventsAtRefusal = observation.state.ends;
++          iterator.cancel();
++          const immediatelyAfterCancel = observation.snapshot();
++          await turn(0);
++          await turn(25);
++          const after = observation.snapshot();
++          const doneAfterCancel = (await iterator.next()).done === true;
++          refusal = {
++            overflowBytes: next.value.byteLength,
++            before,
++            immediatelyAfterCancel,
++            after,
++            doneAfterCancel,
++            afterDoneProbe: observation.snapshot(),
++            endEventsAtRefusal,
++          };
++          throw new Error("TEST_EXPANSION_LIMIT");
++        }
++        bytes += next.value.byteLength;
++        reads++;
++        hash.update(next.value);
++        if (mode === "stall" && [1024, 4096, 8192].includes(reads)) {
++          // Snapshot immediately on sink entry, before any settling turn.
++          // No iterator.next() is outstanding throughout the complete delay.
++          observation.state.phase = "stall";
++          const stallStarted = Date.now();
++          const samples = [observation.snapshot()];
++          for (const delay of [0, 5, 25]) {
++            await turn(delay);
++            samples.push(observation.snapshot());
++          }
++          stalls.push({ afterReads: reads, samples });
++          stallMilliseconds += Date.now() - stallStarted;
++          observation.state.phase = "decode";
++        }
++        if (mode === "cancel" && reads === 256) {
++          observation.state.phase = "cancel";
++          const before = observation.snapshot();
++          const returned = (await iterator.return()).done === true;
++          await turn(25);
++          cancellation = { before, after: observation.snapshot(), returned };
++          cancelled = true;
++          break;
++        }
++        if (mode === "destroy-error" && reads === 256) {
++          observation.destroy(new Error("Synthetic native lifecycle error"));
++          // The next demand must reject via the candidate's real error path.
++        } else if (mode === "destroy-close" && reads === 256) {
++          observation.destroy();
++          // No error supplied: exercise close-before-end handling.
++        }
++      }
++    } catch (caught) {
++      error = String(caught);
++    } finally {
++      // Capture deferred native error/close callbacks, with the original
++      // listener still installed. This is after operation completion only.
++      observation.releaseCallbacks();
++      await iterator?.return().catch((caught: unknown) => {
++        error ??= String(caught);
++      });
++      await turn(0);
++      await turn(0);
++      activate(undefined);
++    }
++    const last = observation.snapshot();
++    return Response.json({
++      ok,
++      cancelled,
++      error,
++      bytes,
++      reads,
++      sha256: hash.digest("hex"),
++      stalls,
++      cancellation,
++      pendingTest,
++      refusal,
++      last,
++      observation: observation.state,
++      timing: {
++        wallMilliseconds: Date.now() - started,
++        intentionalStallMilliseconds: stallMilliseconds,
++        meaning: "wall time only; not CPU or whole-isolate peak",
++      },
++      ...(compare ? { reference: await reference(wire, budget) } : {}),
++    });
++  },
++};
+--- /dev/null
++++ b/tests/helpers/strict-gzip-corpus.ts
+@@ -0,0 +1,370 @@
++/** Node-driver-only fixture manufacture. Never imported into the Worker. */
++import { createHash } from "node:crypto";
++import { constants, deflateRawSync, gzipSync } from "node:zlib";
++
++export type Fixture = {
++  name: string;
++  wire: Uint8Array;
++  accepted: boolean;
++  expectedBytes?: number;
++  expectedSha256?: string;
++  compare?: boolean;
++};
++
++export function crc32(bytes: Uint8Array) {
++  let crc = 0xffff_ffff;
++  for (const byte of bytes) {
++    crc ^= byte;
++    for (let bit = 0; bit < 8; bit++)
++      crc = (crc >>> 1) ^ (0xedb8_8320 & -(crc & 1));
++  }
++  return (crc ^ 0xffff_ffff) >>> 0;
++}
++
++function little32(value: number) {
++  const bytes = Buffer.alloc(4);
++  bytes.writeUInt32LE(value >>> 0);
++  return bytes;
++}
++
++export function gzip(
++  data: Uint8Array,
++  options: {
++    flags?: number;
++    extra?: Uint8Array;
++    name?: Uint8Array;
++    comment?: Uint8Array;
++    raw?: Uint8Array;
++    mtime?: number;
++    xfl?: number;
++    os?: number;
++  } = {},
++) {
++  const flags = options.flags ?? 0;
++  const parts: Uint8Array[] = [
++    Buffer.from([
++      0x1f,
++      0x8b,
++      8,
++      flags,
++      0,
++      0,
++      0,
++      0,
++      options.xfl ?? 0,
++      options.os ?? 255,
++    ]),
++  ];
++  parts[0]!.set(little32(options.mtime ?? 0), 4);
++  if (flags & 4) {
++    const extra = options.extra ?? Buffer.from([0x41, 0x42, 0, 0]);
++    if (extra.length > 65_535) throw new Error("Invalid test XLEN");
++    parts.push(Buffer.from([extra.length & 255, extra.length >>> 8]), extra);
++  }
++  if (flags & 8) parts.push(options.name ?? Buffer.from("name"), Buffer.of(0));
++  if (flags & 16)
++    parts.push(options.comment ?? Buffer.from("comment"), Buffer.of(0));
++  let header = Buffer.concat(parts);
++  if (flags & 2) {
++    const crc = crc32(header) & 0xffff;
++    header = Buffer.concat([header, Buffer.from([crc & 255, crc >>> 8])]);
++  }
++  return Buffer.concat([
++    header,
++    options.raw ?? deflateRawSync(data),
++    little32(crc32(data)),
++    little32(data.byteLength),
++  ]);
++}
++
++export function valid(
++  name: string,
++  data: Uint8Array,
++  wire = gzip(data),
++): Fixture {
++  return {
++    name,
++    wire,
++    accepted: true,
++    expectedBytes: data.byteLength,
++    expectedSha256: createHash("sha256").update(data).digest("hex"),
++    compare: wire.byteLength <= 3_145_728 && data.byteLength <= 65_536,
++  };
++}
++
++function invalid(name: string, wire: Uint8Array): Fixture {
++  return { name, wire, accepted: false, compare: wire.byteLength <= 16_384 };
++}
++
++function mutated(wire: Uint8Array, at: number, byte: number) {
++  const copy = Buffer.from(wire);
++  copy[at] = byte;
++  return copy;
++}
++
++/** Byte-aligned stored blocks, with arbitrary genuine empty deflate blocks. */
++export function stored(data: Uint8Array, leadingEmpty = 0, trailingEmpty = 0) {
++  const blocks: Buffer[] = [];
++  function block(part: Uint8Array, final: boolean) {
++    const n = part.byteLength;
++    if (n > 65_535) throw new Error("Stored block exceeds LEN");
++    blocks.push(
++      Buffer.from([
++        final ? 1 : 0,
++        n & 255,
++        n >>> 8,
++        ~n & 255,
++        (~n >>> 8) & 255,
++      ]),
++      Buffer.from(part),
++    );
++  }
++  for (let i = 0; i < leadingEmpty; i++) block(Buffer.alloc(0), false);
++  if (data.length === 0) {
++    block(data, trailingEmpty === 0);
++  } else {
++    for (let at = 0; at < data.length; at += 65_535) {
++      const end = Math.min(data.length, at + 65_535);
++      block(data.subarray(at, end), end === data.length && trailingEmpty === 0);
++    }
++  }
++  for (let i = 0; i < trailingEmpty; i++)
++    block(Buffer.alloc(0), i === trailingEmpty - 1);
++  return Buffer.concat(blocks);
++}
++
++export function smallAndFramingFixtures(): Fixture[] {
++  const fixtures: Fixture[] = [];
++  const text = Buffer.from("Strict gzip \u0000 Unicode: café 🦊\n");
++  for (let flags = 0; flags < 32; flags++) {
++    fixtures.push(
++      valid(`all-defined-flags-${flags}`, text, gzip(text, { flags })),
++    );
++  }
++  for (const [name, options] of [
++    ["empty-fextra", { flags: 4, extra: Buffer.alloc(0) }],
++    [
++      "empty-fname-comment",
++      { flags: 24, name: Buffer.alloc(0), comment: Buffer.alloc(0) },
++    ],
++    [
++      "eight-bit-fname-comment",
++      {
++        flags: 26,
++        name: Buffer.from([0x80, 0xff]),
++        comment: Buffer.from([1, 0xfe]),
++      },
++    ],
++    ["max-fextra-fhcrc", { flags: 6, extra: Buffer.alloc(65_535, 0xa5) }],
++    ["huge-fname-fhcrc", { flags: 10, name: Buffer.alloc(1_048_576, 0x61) }],
++    [
++      "huge-fcomment-fhcrc",
++      { flags: 18, comment: Buffer.alloc(1_048_576, 0x62) },
++    ],
++    [
++      "huge-all-fields",
++      {
++        flags: 31,
++        extra: Buffer.alloc(65_535, 0xa5),
++        name: Buffer.alloc(1_048_576, 0x61),
++        comment: Buffer.alloc(1_048_576, 0x62),
++      },
++    ],
++    ["arbitrary-metadata", { mtime: 0xffff_ffff, xfl: 255, os: 42 }],
++  ] as const)
++    fixtures.push(valid(name, text, gzip(text, options)));
++
++  const empty = Buffer.alloc(0);
++  fixtures.push(valid("empty-native-deflate", empty));
++  fixtures.push(
++    valid("empty-stored", empty, gzip(empty, { raw: stored(empty) })),
++  );
++  fixtures.push(
++    valid(
++      "many-empty-blocks",
++      empty,
++      gzip(empty, {
++        raw: stored(empty, 20_000, 20_000),
++      }),
++    ),
++  );
++  fixtures.push(
++    valid(
++      "no-output-before-and-after",
++      text,
++      gzip(text, {
++        raw: stored(text, 20_000, 20_000),
++      }),
++    ),
++  );
++  for (const [name, raw] of [
++    ["stored", deflateRawSync(text, { level: 0 })],
++    ["fixed", deflateRawSync(text, { strategy: constants.Z_FIXED })],
++    ["default", deflateRawSync(text)],
++  ] as const)
++    fixtures.push(valid(`raw-${name}`, text, gzip(text, { raw })));
++  const varied = Buffer.from(
++    Array.from({ length: 20_000 }, (_, i) => (i % 17 === 0 ? 0 : 97 + (i % 7))),
++  );
++  const dynamicRaw = deflateRawSync(varied);
++  if (((dynamicRaw[0]! >>> 1) & 3) !== 2)
++    throw new Error("Review fixture: expected a genuine dynamic Huffman block");
++  fixtures.push(
++    valid("dynamic-huffman", varied, gzip(varied, { raw: dynamicRaw })),
++  );
++
++  // Raw consumed length, not total gzip length, determines the write boundary.
++  // Cover all eight trailer splits plus an exact start on a new 4096-byte write.
++  for (let rawBytes = 4088; rawBytes <= 4104; rawBytes++) {
++    const data = Buffer.alloc(rawBytes - 5, 0x71);
++    const wire = gzip(data, { raw: stored(data) });
++    fixtures.push(valid(`trailer-boundary-raw-${rawBytes}`, data, wire));
++    fixtures.push(
++      invalid(
++        `trailer-boundary-corrupt-${rawBytes}`,
++        mutated(wire, wire.length - 8, wire[wire.length - 8]! ^ 1),
++      ),
++    );
++    fixtures.push(
++      invalid(
++        `trailer-boundary-truncated-${rawBytes}`,
++        wire.subarray(0, wire.length - 1),
++      ),
++    );
++  }
++  const canonical = gzip(text);
++  for (let end = 0; end < canonical.length; end++)
++    fixtures.push(
++      invalid(`truncate-every-byte-${end}`, canonical.subarray(0, end)),
++    );
++  for (const bit of [0x20, 0x40, 0x80])
++    fixtures.push(
++      invalid(`reserved-header-bit-${bit}`, mutated(canonical, 3, bit)),
++    );
++  fixtures.push(invalid("bad-magic-0", mutated(canonical, 0, 0)));
++  fixtures.push(invalid("bad-magic-1", mutated(canonical, 1, 0)));
++  fixtures.push(invalid("bad-method", mutated(canonical, 2, 0)));
++  fixtures.push(
++    invalid(
++      "bad-crc32",
++      mutated(
++        canonical,
++        canonical.length - 8,
++        canonical[canonical.length - 8]! ^ 1,
++      ),
++    ),
++  );
++  fixtures.push(
++    invalid(
++      "bad-isize",
++      mutated(
++        canonical,
++        canonical.length - 4,
++        canonical[canonical.length - 4]! ^ 1,
++      ),
++    ),
++  );
++  const headerCrc = gzip(text, { flags: 31 });
++  const headerLength = headerCrc.length - deflateRawSync(text).length - 8;
++  fixtures.push(
++    invalid(
++      "bad-fhcrc",
++      mutated(headerCrc, headerLength - 1, headerCrc[headerLength - 1]! ^ 1),
++    ),
++  );
++  fixtures.push(
++    invalid(
++      "fhcrc-header-byte-corruption",
++      mutated(headerCrc, 4, headerCrc[4]! ^ 1),
++    ),
++  );
++  const headerOnly = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255]);
++  fixtures.push(
++    invalid(
++      "fextra-length-overflow",
++      Buffer.concat([
++        mutated(headerOnly, 3, 4),
++        Buffer.from([255, 255]),
++        Buffer.alloc(8),
++      ]),
++    ),
++  );
++  // Header cursors exactly at the reserved trailer boundary must still fail
++  // for missing deflate bytes; one byte beyond must fail header admission.
++  for (const length of [1, 2])
++    fixtures.push(
++      invalid(
++        `fextra-reserved-trailer-boundary-${length}`,
++        Buffer.concat([
++          mutated(headerOnly, 3, 4),
++          Buffer.from([length, 0, 0x41]),
++          Buffer.alloc(8),
++        ]),
++      ),
++    );
++  const emptyHeaderCrc = gzip(empty, { flags: 2 });
++  for (const end of [18, 19, 20, 21])
++    fixtures.push(
++      invalid(
++        `fhcrc-reserved-trailer-boundary-${end}`,
++        emptyHeaderCrc.subarray(0, end),
++      ),
++    );
++  for (const flag of [8, 16])
++    fixtures.push(
++      invalid(
++        `unterminated-header-${flag}`,
++        Buffer.concat([
++          mutated(headerOnly, 3, flag),
++          Buffer.alloc(100, 65),
++          Buffer.alloc(8),
++        ]),
++      ),
++    );
++  fixtures.push(
++    invalid(
++      "missing-fhcrc",
++      Buffer.concat([mutated(headerOnly, 3, 2), Buffer.alloc(8)]),
++    ),
++  );
++  fixtures.push(
++    invalid(
++      "valid-fhcrc-overlaps-reserved-trailer",
++      gzip(empty, { flags: 2 }).subarray(0, 18),
++    ),
++  );
++  fixtures.push(
++    invalid(
++      "reserved-deflate-block-type",
++      gzip(text, {
++        raw: Buffer.from([7]),
++      }),
++    ),
++  );
++  const invalidStored = stored(text);
++  invalidStored[3] = invalidStored[3]! ^ 1;
++  fixtures.push(
++    invalid(
++      "stored-length-complement-corruption",
++      gzip(text, {
++        raw: invalidStored,
++      }),
++    ),
++  );
++  for (const [name, tail] of [
++    ["trailing-byte", Buffer.of(1)],
++    ["trailing-zero", Buffer.of(0)],
++    ["trailing-many-zeros", Buffer.alloc(8193)],
++    ["trailing-garbage", Buffer.from("garbage")],
++    ["concatenated-members", gzip(text)],
++    ["concatenated-empty-member", gzip(empty)],
++  ] as const)
++    fixtures.push(invalid(name, Buffer.concat([canonical, tail])));
++  return fixtures;
++}
++
++export function maximumExpansionFixture(decodedBytes: number) {
++  // Entire original input exists only in Node. The Worker sees wire bytes.
++  const original = Buffer.alloc(decodedBytes, 0x78);
++  return valid("maximum-expansion", original, gzipSync(original, { level: 9 }));
++}
+--- /dev/null
++++ b/tests/helpers/strict-gzip-host-guard.ts
+@@ -0,0 +1,57 @@
++/**
++ * DRAFT host-side defense in depth. Miniflare uses numeric loopback for its
++ * local control/dispatch channels. External sockets and all TLS are refused.
++ * This is not an OS firewall and does not claim to constrain child processes.
++ */
++import net from "node:net";
++import tls from "node:tls";
++
++export function installHostNetworkGuard() {
++  const denied: string[] = [];
++  const originalConnect = net.Socket.prototype.connect;
++  const originalTlsConnect = tls.connect;
++  function fail(target: string): never {
++    denied.push(target);
++    throw new Error(
++      `External networking forbidden in strict gzip test: ${target}`,
++    );
++  }
++  net.Socket.prototype.connect = function (
++    this: net.Socket,
++    ...args: unknown[]
++  ) {
++    let first = args[0];
++    if (Array.isArray(first)) first = first[0];
++    if (typeof first === "object" && first !== null) {
++      // Node selects IPC only for a truthy path; an empty string falls back
++      // to TCP and must still pass the numeric-loopback host check.
++      const path = (first as { path?: unknown }).path;
++      if (typeof path !== "string" || path.length === 0) {
++        const host = (first as { host?: unknown }).host ?? "127.0.0.1";
++        if (host !== "127.0.0.1" && host !== "::1") fail(String(host));
++      }
++    } else if (
++      typeof first === "number" ||
++      (typeof first === "string" && Number(first) >= 0)
++    ) {
++      // Node normalizes nonnegative numeric strings as TCP ports, not paths.
++      const host = typeof args[1] === "string" ? args[1] : "127.0.0.1";
++      if (host !== "127.0.0.1" && host !== "::1") fail(host);
++    } else if (typeof first !== "string") {
++      fail("unknown socket connection shape");
++    }
++    return (
++      originalConnect as (this: net.Socket, ...args: unknown[]) => net.Socket
++    ).apply(this, args);
++  } as typeof originalConnect;
++  tls.connect = function (..._args: unknown[]) {
++    return fail("TLS connection");
++  } as typeof originalTlsConnect;
++  return {
++    denied,
++    restore() {
++      net.Socket.prototype.connect = originalConnect;
++      tls.connect = originalTlsConnect;
++    },
++  };
++}
+--- /dev/null
++++ b/tests/helpers/strict-gzip-native.ts
+@@ -0,0 +1,157 @@
++import assert from "node:assert/strict";
++import { createHash } from "node:crypto";
++import { readFile } from "node:fs/promises";
++import { createRequire } from "node:module";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
++import type { Miniflare } from "miniflare";
++import { installHostNetworkGuard } from "./strict-gzip-host-guard.ts";
++
++export const STRICT_GZIP_TESTED_SOURCE_SHA256 =
++  "5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec";
++
++const sha256 = (bytes: string | Uint8Array) =>
++  createHash("sha256").update(bytes).digest("hex");
++
++/** Focused native primitive fixture. No Wrangler build or application graph. */
++export async function createStrictGzipNativeFixture() {
++  for (const name of [
++    "NODE_OPTIONS",
++    "VSCODE_INSPECTOR_OPTIONS",
++    "ESBUILD_BINARY_PATH",
++    "MINIFLARE_WORKERD_PATH",
++    "MINIFLARE_WORKERD_V8_FLAGS",
++    "MINIFLARE_WORKERD_AUTOGATES",
++    "MINIFLARE_WORKERD_CONFIG_DEBUG",
++  ])
++    assert.ok(
++      !process.env[name],
++      `Unexpected native fixture override: ${name}`,
++    );
++  const guard = installHostNetworkGuard();
++  let runtime: Miniflare | undefined;
++  const outbound: string[] = [];
++  try {
++    // Load installed packages only after host-side refusal is installed.
++    const { build } = await import("esbuild");
++    const { Miniflare, Response: MiniflareResponse } =
++      await import("miniflare");
++    const require = createRequire(import.meta.url);
++    const requireMiniflare = createRequire(
++      require.resolve("miniflare/package.json"),
++    );
++    const versions = {
++      miniflare: require("miniflare/package.json").version,
++      workerd: requireMiniflare("workerd/package.json").version,
++      esbuild: require("esbuild/package.json").version,
++    };
++    assert.deepEqual(versions, {
++      miniflare: "5.20260730.0-alpha",
++      workerd: "1.20260730.1",
++      esbuild: "0.28.2",
++    });
++    const sourcePath = fileURLToPath(
++      new URL("../../src/strict-gzip-reader.ts", import.meta.url),
++    );
++    const workerPath = fileURLToPath(
++      new URL("../fixtures/strict-gzip-worker.ts", import.meta.url),
++    );
++    const observerPath = fileURLToPath(
++      new URL("../fixtures/strict-gzip-observer.ts", import.meta.url),
++    );
++    const source = await readFile(sourcePath, "utf8");
++    assert.equal(
++      sha256(source),
++      STRICT_GZIP_TESTED_SOURCE_SHA256,
++      "Re-review changed primitive",
++    );
++    const marker = "  let at = start;\n";
++    assert.equal(source.split(marker).length - 1, 1);
++    const instrumented =
++      `import { observeInflater } from ${JSON.stringify(observerPath)};\n` +
++      source.replace(
++        marker,
++        `  observeInflater(inflater, owned, start);\n${marker}`,
++      );
++    const bundle = await build({
++      entryPoints: [workerPath],
++      bundle: true,
++      format: "esm",
++      platform: "neutral",
++      target: "es2022",
++      conditions: ["workerd", "worker", "browser"],
++      external: ["node:*"],
++      write: false,
++      metafile: true,
++      logLevel: "silent",
++      plugins: [
++        {
++          name: "observe-strict-gzip-primitive",
++          setup(build) {
++            build.onLoad({ filter: /strict-gzip-reader\.ts$/ }, (args) => {
++              assert.equal(args.path, sourcePath);
++              return {
++                contents: instrumented,
++                loader: "ts",
++                resolveDir: path.dirname(sourcePath),
++              };
++            });
++          },
++        },
++      ],
++    });
++    assert.equal(bundle.errors.length, 0);
++    assert.equal(bundle.outputFiles.length, 1);
++    const inputs = Object.keys(bundle.metafile.inputs)
++      .map((input) => path.resolve(input))
++      .sort();
++    assert.deepEqual(inputs, [sourcePath, workerPath, observerPath].sort());
++    const proof = {
++      source_sha256: sha256(source),
++      bundle_sha256: sha256(bundle.outputFiles[0]!.text),
++      compatibility_date: "2026-06-06",
++      compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
++      versions,
++      inputs,
++    };
++    runtime = new Miniflare({
++      modules: true,
++      script: bundle.outputFiles[0]!.text,
++      compatibilityDate: proof.compatibility_date,
++      compatibilityFlags: proof.compatibility_flags,
++      host: "127.0.0.1",
++      port: 0,
++      cf: false,
++      outboundService(request: { url: string }) {
++        outbound.push(request.url);
++        return new MiniflareResponse(null, { status: 502 });
++      },
++    });
++    await runtime.ready;
++    assert.deepEqual(guard.denied, []);
++    return {
++      runtime,
++      proof,
++      assertNoNetwork() {
++        assert.deepEqual(guard.denied, []);
++        assert.deepEqual(outbound, []);
++      },
++      async dispose() {
++        try {
++          await runtime?.dispose();
++          assert.deepEqual(guard.denied, []);
++          assert.deepEqual(outbound, []);
++        } finally {
++          guard.restore();
++        }
++      },
++    };
++  } catch (error) {
++    try {
++      await runtime?.dispose();
++    } finally {
++      guard.restore();
++    }
++    throw error;
++  }
++}
+--- /dev/null
++++ b/tests/helpers/sync-resource-first-fixtures.ts
+@@ -0,0 +1,41 @@
++import { gzipSync } from "node:zlib";
++
++export const RESOURCE_FIRST_DIFFERENCES = [
++  "bad-crc",
++  "bad-isize",
++  "truncated",
++  "trailing-zero",
++] as const;
++export type ResourceFirstDifference =
++  (typeof RESOURCE_FIRST_DIFFERENCES)[number];
++
++/** Driver/test-host fixture generation only. Never import into Worker code.
++ * The JSON is complete before compressible trailing whitespace crosses the
++ * decoded ceiling. The compressed bytes fit the unchanged queue wire ceiling.
++ * The maximum expansion allocation belongs to the test host, not the Worker.
++ */
++export function resourceFirstVariants(
++  json: string,
++  decodedCeiling: number,
++): Map<ResourceFirstDifference, Uint8Array> {
++  const bytes = Buffer.byteLength(json);
++  if (bytes > decodedCeiling)
++    throw new Error("Fixture JSON already exceeds ceiling");
++  const valid = gzipSync(json + " ".repeat(decodedCeiling + 65_537 - bytes), {
++    level: 9,
++  });
++  if (valid.length + 1 > 128 * 1024)
++    throw new Error("Fixture exceeds unchanged transport ceiling");
++  const crc = Uint8Array.from(valid);
++  crc[crc.length - 8]! ^= 1;
++  const isize = Uint8Array.from(valid);
++  isize[isize.length - 4]! ^= 1;
++  const zero = new Uint8Array(valid.length + 1);
++  zero.set(valid);
++  return new Map([
++    ["bad-crc", crc],
++    ["bad-isize", isize],
++    ["truncated", Uint8Array.from(valid.subarray(0, -1))],
++    ["trailing-zero", zero],
++  ]);
++}
+--- /dev/null
++++ b/tests/strict-gzip-host-guard.test.ts
+@@ -0,0 +1,111 @@
++import net from "node:net";
++import tls from "node:tls";
++import { expect, test, vi } from "vitest";
++import { installHostNetworkGuard } from "./helpers/strict-gzip-host-guard.ts";
++
++/**
++ * These are classification tests only. Replace the underlying connectors
++ * before installing the guard so even a failed assertion cannot open a socket.
++ * The receiver has a Socket prototype but no constructed native handle.
++ */
++function withStubbedConnectors(
++  run: (context: {
++    connect: (...args: unknown[]) => net.Socket;
++    originalConnect: ReturnType<typeof vi.fn>;
++    originalTlsConnect: ReturnType<typeof vi.fn>;
++    guard: ReturnType<typeof installHostNetworkGuard>;
++    socket: net.Socket;
++  }) => void,
++) {
++  const savedConnect = net.Socket.prototype.connect;
++  const savedTlsConnect = tls.connect;
++  const originalConnect = vi.fn(function (this: net.Socket) {
++    return this;
++  });
++  const originalTlsConnect = vi.fn(() => {
++    throw new Error("Synthetic TLS connector must never be reached");
++  });
++  net.Socket.prototype.connect = originalConnect as typeof savedConnect;
++  tls.connect = originalTlsConnect as typeof savedTlsConnect;
++  const guard = installHostNetworkGuard();
++  const socket = Object.create(net.Socket.prototype) as net.Socket;
++  try {
++    run({
++      connect: (...args) =>
++        (
++          net.Socket.prototype.connect as (
++            this: net.Socket,
++            ...args: unknown[]
++          ) => net.Socket
++        ).apply(socket, args),
++      originalConnect,
++      originalTlsConnect,
++      guard,
++      socket,
++    });
++  } finally {
++    guard.restore();
++    net.Socket.prototype.connect = savedConnect;
++    tls.connect = savedTlsConnect;
++  }
++}
++
++test.each([
++  [
++    "empty IPC path with external host",
++    [{ path: "", host: "203.0.113.1", port: 80 }],
++  ],
++  [
++    "normalized empty IPC path with external host",
++    [[{ path: "", host: "203.0.113.1", port: 80 }, undefined]],
++  ],
++  ["ordinary external TCP", [{ host: "203.0.113.1", port: 80 }]],
++  ["empty IPC path with hostname", [{ path: "", host: "localhost", port: 80 }]],
++  ["numeric TCP with external host", [80, "203.0.113.1"]],
++  ["numeric-string TCP with external host", ["80", "203.0.113.1"]],
++  ["empty-string TCP with external host", ["", "203.0.113.1"]],
++  ["unknown connection shape", [null]],
++])("refuses %s before the underlying connector", (_name, args) => {
++  withStubbedConnectors(({ connect, originalConnect, guard }) => {
++    expect(() => connect(...args)).toThrow("External networking forbidden");
++    expect(originalConnect).not.toHaveBeenCalled();
++    expect(guard.denied).toHaveLength(1);
++  });
++});
++
++test.each([
++  [
++    "nonempty IPC path",
++    [{ path: "/synthetic/never-opened.sock", host: "203.0.113.1" }],
++  ],
++  [
++    "empty IPC path with IPv4 loopback",
++    [{ path: "", host: "127.0.0.1", port: 80 }],
++  ],
++  ["empty IPC path with IPv6 loopback", [{ path: "", host: "::1", port: 80 }]],
++  ["empty IPC path with default loopback", [{ path: "", port: 80 }]],
++  ["numeric IPv4 loopback", [80, "127.0.0.1"]],
++  ["numeric IPv6 loopback", [80, "::1"]],
++  ["numeric default loopback", [80]],
++  ["numeric-string IPv4 loopback", ["80", "127.0.0.1"]],
++  ["string IPC path", ["/synthetic/never-opened.sock"]],
++])("delegates %s only to a synthetic connector", (_name, args) => {
++  withStubbedConnectors(({ connect, originalConnect, guard, socket }) => {
++    expect(connect(...args)).toBe(socket);
++    expect(originalConnect).toHaveBeenCalledExactlyOnceWith(...args);
++    expect(guard.denied).toEqual([]);
++  });
++});
++
++test("refuses TLS and restores the captured synthetic connectors", () => {
++  withStubbedConnectors(({ originalConnect, originalTlsConnect, guard }) => {
++    expect(() => tls.connect({ host: "127.0.0.1", port: 443 })).toThrow(
++      "External networking forbidden",
++    );
++    expect(originalTlsConnect).not.toHaveBeenCalled();
++    expect(guard.denied).toEqual(["TLS connection"]);
++    guard.restore();
++    expect(net.Socket.prototype.connect).toBe(originalConnect);
++    expect(tls.connect).toBe(originalTlsConnect);
++  });
++});
+--- /dev/null
++++ b/tests/strict-gzip-reader-coordinator.test.ts
+@@ -0,0 +1,209 @@
++import { EventEmitter } from "node:events";
++import { afterAll, afterEach, expect, test, vi } from "vitest";
++import {
++  readStrictGzip,
++  type StrictGzipReader,
++} from "../src/strict-gzip-reader.ts";
++import { gzip } from "./helpers/strict-gzip-corpus.ts";
++
++/**
++ * Isolated lifecycle/coordinator tests, not decompression or resource evidence.
++ * Main's CI separates files using vi.mock from shared-module test files.
++ * Only the factory is doubled; framing fixtures and CRC32 remain real.
++ */
++const control = vi.hoisted(() => ({
++  factory: undefined as undefined | ((options: unknown) => unknown),
++}));
++
++vi.mock("node:zlib", async (importOriginal) => {
++  const actual = await importOriginal<typeof import("node:zlib")>();
++  return {
++    ...actual,
++    createInflateRaw(options: unknown) {
++      if (!control.factory)
++        throw new Error(
++          "Coordinator double requires an explicit per-test factory",
++        );
++      return control.factory(options);
++    },
++  };
++});
++
++type WriteCallback = (error?: Error | null) => void;
++
++/** Models synchronous event timing at the codec boundary, not an inflater. */
++class ControlledCodec extends EventEmitter {
++  readableLength = 0;
++  bytesWritten: number;
++  destroyed = false;
++  destroyCalls = 0;
++  endCalls = 0;
++  readonly reads: number[] = [];
++  readonly writes: number[] = [];
++  writeCallback: WriteCallback | undefined;
++  onRead: ((size: number) => Uint8Array | null) | undefined;
++  onWrite: ((callback: WriteCallback) => void) | undefined;
++  onEnd: ((callback: WriteCallback) => void) | undefined;
++
++  constructor(consumedDeflateBytes: number) {
++    super();
++    this.bytesWritten = consumedDeflateBytes;
++  }
++
++  read(size: number) {
++    this.reads.push(size);
++    return this.onRead?.(size) ?? null;
++  }
++
++  write(input: Uint8Array, callback: WriteCallback) {
++    this.writes.push(input.byteLength);
++    this.writeCallback = callback;
++    this.onWrite?.(callback);
++    return true;
++  }
++
++  end(callback: WriteCallback) {
++    this.endCalls++;
++    this.onEnd?.(callback);
++    return this;
++  }
++
++  destroy() {
++    this.destroyCalls++;
++    if (!this.destroyed) {
++      this.destroyed = true;
++      this.emit("close");
++    }
++    return this;
++  }
++}
++
++const activeReaders = new Set<StrictGzipReader>();
++const activeCodecs = new Set<ControlledCodec>();
++
++function controlled(data = Buffer.alloc(0)) {
++  const wire = gzip(data);
++  const codec = new ControlledCodec(wire.length - 18);
++  activeCodecs.add(codec);
++  control.factory = (options) => {
++    expect(options).toEqual({
++      chunkSize: 8192,
++      readableHighWaterMark: 8192,
++      writableHighWaterMark: 4096,
++    });
++    return codec;
++  };
++  const reader = readStrictGzip(wire);
++  activeReaders.add(reader);
++  return { reader, codec, wire };
++}
++
++afterEach(() => {
++  for (const reader of activeReaders) reader.cancel();
++  for (const codec of activeCodecs) codec.removeAllListeners();
++  activeReaders.clear();
++  activeCodecs.clear();
++  control.factory = undefined;
++});
++
++afterAll(() => {
++  vi.doUnmock("node:zlib");
++});
++
++test("a failed write callback wakes a pending read and preserves its error", async () => {
++  const { reader, codec, wire } = controlled();
++  const pending = reader.next();
++  const refused = expect(pending).rejects.toBeDefined();
++  expect(codec.writes).toEqual([wire.length - 10]);
++  expect(codec.writeCallback).toBeTypeOf("function");
++  const error = new Error("controlled native write failure");
++  codec.writeCallback!(error);
++  await refused;
++  await expect(pending).rejects.toBe(error);
++  expect(codec.destroyed).toBe(true);
++  expect(codec.endCalls).toBe(0);
++  expect(codec.writes).toHaveLength(1);
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++});
++
++test("synchronous read cancellation wins over an incidental error before input", async () => {
++  const { reader, codec } = controlled();
++  codec.onRead = () => {
++    codec.emit("error", new Error("incidental error during cancellation"));
++    reader.cancel();
++    return null;
++  };
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  expect(codec.reads).toEqual([0]);
++  expect(codec.writes).toEqual([]);
++  expect(codec.endCalls).toBe(0);
++  expect(codec.destroyed).toBe(true);
++});
++
++test("an error emitted synchronously by read prevents any input admission", async () => {
++  const { reader, codec } = controlled();
++  const error = new Error("controlled native read failure");
++  codec.onRead = () => {
++    codec.emit("error", error);
++    return null;
++  };
++  await expect(reader.next()).rejects.toBe(error);
++  expect(codec.reads).toEqual([0]);
++  expect(codec.writes).toEqual([]);
++  expect(codec.endCalls).toBe(0);
++  expect(codec.destroyed).toBe(true);
++});
++
++test("output made ready by a null read is drained before another write or end", async () => {
++  const data = Buffer.from("x");
++  const { reader, codec, wire } = controlled(data);
++  codec.onWrite = (callback) => callback();
++  codec.onRead = (size) => {
++    if (codec.reads.length === 2) {
++      // Model a native continuation started by read(0): it fills readable
++      // state but this read still returns null. No asynchronous queue is added.
++      expect(size).toBe(0);
++      codec.readableLength = data.byteLength;
++      return null;
++    }
++    if (codec.reads.length === 3) {
++      expect(size).toBe(data.byteLength);
++      codec.readableLength = 0;
++      return data;
++    }
++    return null;
++  };
++  await expect(reader.next()).resolves.toEqual({ done: false, value: data });
++  expect(codec.reads).toEqual([0, 0, 1]);
++  expect(codec.writes).toEqual([wire.length - 10]);
++  expect(codec.endCalls).toBe(0);
++  codec.emit("end");
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  expect(codec.destroyed).toBe(true);
++});
++
++test("synchronous no-output callbacks progress without losing the wakeup", async () => {
++  const { reader, codec, wire } = controlled();
++  codec.onWrite = (callback) => callback();
++  codec.onEnd = (callback) => {
++    callback();
++    codec.emit("end");
++  };
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  expect(codec.reads).toEqual([0, 0, 0]);
++  expect(codec.writes).toEqual([wire.length - 10]);
++  expect(codec.endCalls).toBe(1);
++  expect(codec.destroyed).toBe(true);
++});
+--- /dev/null
++++ b/tests/strict-gzip-reader-isolate.test.ts
+@@ -0,0 +1,384 @@
++import assert from "node:assert/strict";
++import { afterAll, beforeAll, expect, test } from "vitest";
++import {
++  gzip,
++  maximumExpansionFixture,
++  smallAndFramingFixtures,
++  stored,
++  valid,
++  type Fixture,
++} from "./helpers/strict-gzip-corpus.ts";
++import {
++  createStrictGzipNativeFixture,
++  STRICT_GZIP_TESTED_SOURCE_SHA256,
++} from "./helpers/strict-gzip-native.ts";
++import {
++  strictGzipPolicyDifferences,
++  strictGzipPriorQualification,
++} from "./fixtures/strict-gzip-policy-differences.ts";
++import type { Observation, Snapshot } from "./fixtures/strict-gzip-observer.ts";
++
++type NativeResult = {
++  ok: boolean;
++  cancelled: boolean;
++  error?: string;
++  bytes: number;
++  reads: number;
++  sha256: string;
++  stalls: { afterReads: number; samples: Snapshot[] }[];
++  cancellation?: { before: Snapshot; after: Snapshot; returned: boolean };
++  pendingTest?: {
++    settledBeforeCancel: boolean;
++    concurrentError?: string;
++    synchronouslyDestroyed: boolean;
++    firstDone?: boolean;
++    returnDone?: boolean;
++    nextAfterCancelDone?: boolean;
++    before: Snapshot;
++    after: Snapshot;
++  };
++  refusal?: {
++    overflowBytes: number;
++    before: Snapshot;
++    immediatelyAfterCancel: Snapshot;
++    after: Snapshot;
++    doneAfterCancel: boolean;
++    afterDoneProbe: Snapshot;
++    endEventsAtRefusal: number;
++  };
++  last: Snapshot;
++  observation: Observation["state"];
++  timing: {
++    wallMilliseconds: number;
++    intentionalStallMilliseconds: number;
++    meaning: string;
++  };
++  reference?: {
++    ok: boolean;
++    bytes: number;
++    sha256?: string;
++    error?: string;
++  };
++};
++
++// Synthetic resource fixture size; importing the application's limits or
++// consumer would expand this deliberately isolated primitive test graph.
++const MAX_DECODED = 79_393_024;
++let fixture: Awaited<ReturnType<typeof createStrictGzipNativeFixture>>;
++
++beforeAll(async () => {
++  fixture = await createStrictGzipNativeFixture();
++}, 60_000);
++
++afterAll(async () => {
++  await fixture?.dispose();
++});
++
++async function inspect(
++  sample: Fixture,
++  mode = "decode",
++  budget = Number.MAX_SAFE_INTEGER,
++  compare = Boolean(sample.compare),
++) {
++  fixture.assertNoNetwork();
++  const response = await fixture.runtime.dispatchFetch(
++    `https://strict-gzip.fixture.invalid/?mode=${mode}&budget=${budget}&compare=${compare ? 1 : 0}`,
++    { method: "POST", body: sample.wire },
++  );
++  expect(response.status).toBe(200);
++  const result = (await response.json()) as NativeResult;
++  fixture.assertNoNetwork();
++  const observed = result.observation;
++  expect(observed.violations).toEqual([]);
++  expect(observed.callbackThrows).toEqual([]);
++  expect(observed.maxPending).toBeLessThanOrEqual(1);
++  expect(observed.maxInput).toBeLessThanOrEqual(4096);
++  expect(observed.maxOutput).toBeLessThanOrEqual(8192);
++  expect(observed.maxPush).toBeLessThanOrEqual(8192);
++  expect(observed.maxQueued).toBeLessThanOrEqual(16_384);
++  for (const event of observed.events) {
++    expect(event.consumed).toBeLessThanOrEqual(event.submitted);
++    expect(event.drained).toBeLessThanOrEqual(event.produced);
++    if (event.at === "call") {
++      expect(event.queued).toBe(0);
++      expect(event.phase).toBe("decode");
++    }
++  }
++  return result;
++}
++
++function disposition(result: { ok: boolean; error?: string }) {
++  return result.ok
++    ? "accepted"
++    : result.error?.includes("TEST_EXPANSION_LIMIT")
++      ? "resource-refusal"
++      : "malformed";
++}
++
++function expectRefusal(
++  result: NativeResult,
++  budget: number,
++  totalDecoded: number,
++  rawDeflateBytes: number,
++) {
++  expect(disposition(result)).toBe("resource-refusal");
++  expect(result.bytes).toBeLessThanOrEqual(budget);
++  expect(result.refusal!.overflowBytes).toBeGreaterThan(0);
++  expect(result.refusal!.overflowBytes).toBeLessThanOrEqual(8192);
++  const drained = result.bytes + result.refusal!.overflowBytes;
++  expect(drained).toBeGreaterThan(budget);
++  expect(drained).toBeLessThanOrEqual(budget + 8192);
++  expect(result.refusal!.before.drained).toBe(drained);
++  expect(result.last.produced).toBeLessThanOrEqual(drained + 16_384);
++  expect(result.last.produced).toBeLessThan(totalDecoded);
++  expect(result.last.consumed).toBeLessThan(rawDeflateBytes);
++  expect(result.refusal!.endEventsAtRefusal).toBe(0);
++  expect(result.observation.ends).toBe(0);
++  expect(result.refusal!.doneAfterCancel).toBe(true);
++  for (const snapshot of [
++    result.refusal!.immediatelyAfterCancel,
++    result.refusal!.after,
++    result.refusal!.afterDoneProbe,
++    result.last,
++  ]) {
++    for (const key of [
++      "submitted",
++      "consumed",
++      "produced",
++      "drained",
++      "writes",
++      "reads",
++    ] as const)
++      expect(snapshot[key]).toBe(result.refusal!.before[key]);
++    expect(snapshot.destroyed).toBe(true);
++  }
++}
++
++test("only the exact inactive primitive is bundled with fixture code", () => {
++  expect(fixture.proof.source_sha256).toBe(STRICT_GZIP_TESTED_SOURCE_SHA256);
++  expect(fixture.proof.source_sha256).toBe(
++    strictGzipPriorQualification.currentSourceSha256,
++  );
++  expect(fixture.proof.inputs).toHaveLength(3);
++  fixture.assertNoNetwork();
++  console.info("strict-gzip-primitive-proof", JSON.stringify(fixture.proof));
++});
++
++for (const sample of smallAndFramingFixtures()) {
++  test(`native framing: ${sample.name}`, async () => {
++    const result = await inspect(
++      sample,
++      "decode",
++      sample.expectedBytes ?? Number.MAX_SAFE_INTEGER,
++    );
++    expect(result.ok).toBe(sample.accepted);
++    if (sample.accepted) {
++      expect(result.bytes).toBe(sample.expectedBytes);
++      expect(result.sha256).toBe(sample.expectedSha256);
++      expect(result.observation.instances).toBe(1);
++      expect(result.observation.callbacks).toBe(result.observation.writes);
++      expect(result.last.produced).toBe(result.last.drained);
++      if (sample.compare) {
++        expect(result.reference!.ok).toBe(true);
++        expect(result.reference!.bytes).toBe(result.bytes);
++        expect(result.reference!.sha256).toBe(result.sha256);
++      }
++    } else {
++      expect(typeof result.error).toBe("string");
++      if (sample.compare) expect(result.reference!.ok).toBe(false);
++    }
++  });
++}
++
++test("valid exact maximum output stays bounded through late consumer stalls", async () => {
++  const sample = maximumExpansionFixture(MAX_DECODED);
++  const result = await inspect(sample, "stall", MAX_DECODED, false);
++  expect(result.ok).toBe(true);
++  expect(result.bytes).toBe(MAX_DECODED);
++  expect(result.sha256).toBe(sample.expectedSha256);
++  expect(result.stalls.map((stall) => stall.afterReads)).toEqual([
++    1024, 4096, 8192,
++  ]);
++  for (const stall of result.stalls) {
++    const first = stall.samples[0];
++    expect(first.writes).toBeGreaterThan(1);
++    expect(first.reads).toBeGreaterThanOrEqual(1024);
++    expect(first.submitted).toBeLessThan(
++      sample.wire.length - result.observation.headerBytes,
++    );
++    for (const snapshot of stall.samples) {
++      expect(snapshot.submitted).toBe(first.submitted);
++      expect(snapshot.drained).toBe(first.drained);
++      expect(snapshot.writes).toBe(first.writes);
++      expect(snapshot.queued).toBeLessThanOrEqual(16_384);
++      expect(snapshot.produced - first.produced).toBeLessThanOrEqual(16_384);
++    }
++  }
++}, 60_000);
++
++for (const mode of ["cancel", "destroy-error", "destroy-close"]) {
++  test(`native lifecycle: ${mode}`, async () => {
++    const sample = maximumExpansionFixture(8 * 1024 * 1024);
++    const result = await inspect(sample, mode, Number.MAX_SAFE_INTEGER, false);
++    expect(result.ok).toBe(false);
++    expect(result.last.destroyed).toBe(true);
++    expect(result.observation.closes).toBeGreaterThanOrEqual(1);
++    if (mode === "cancel") {
++      expect(result.cancelled).toBe(true);
++      expect(result.cancellation!.returned).toBe(true);
++      expect(result.cancellation!.after.submitted).toBe(
++        result.cancellation!.before.submitted,
++      );
++      expect(result.cancellation!.after.drained).toBe(
++        result.cancellation!.before.drained,
++      );
++    } else {
++      expect(result.error).toMatch(
++        mode === "destroy-error"
++          ? /Synthetic native lifecycle error/
++          : /closed early/i,
++      );
++    }
++  });
++}
++
++for (const mode of ["pending-return", "pending-cancel"]) {
++  test(`pending native read: ${mode}`, async () => {
++    const empty = Buffer.alloc(0);
++    const sample = valid(
++      "pending-empty-blocks",
++      empty,
++      gzip(empty, { raw: stored(empty, 20_000) }),
++    );
++    const result = await inspect(sample, mode, Number.MAX_SAFE_INTEGER, false);
++    expect(result.cancelled).toBe(true);
++    expect(result.pendingTest!.settledBeforeCancel).toBe(false);
++    expect(result.pendingTest!.concurrentError).toMatch(/Concurrent gzip read/);
++    expect(result.pendingTest!.synchronouslyDestroyed).toBe(true);
++    expect(result.pendingTest!.firstDone).toBe(true);
++    expect(result.pendingTest!.nextAfterCancelDone).toBe(true);
++    if (mode === "pending-return")
++      expect(result.pendingTest!.returnDone).toBe(true);
++    expect(result.pendingTest!.after.submitted).toBe(
++      result.pendingTest!.before.submitted,
++    );
++    expect(result.pendingTest!.after.drained).toBe(0);
++  });
++}
++
++test("proposed resource-first policy leaves an unread tail beyond bounded witness and prefetch", async () => {
++  const sample = maximumExpansionFixture(MAX_DECODED + 16_777_216);
++  expect(sample.wire.byteLength).toBeLessThan(128_000);
++  const result = await inspect(sample, "budget", MAX_DECODED, false);
++  expectRefusal(
++    result,
++    MAX_DECODED,
++    MAX_DECODED + 16_777_216,
++    sample.wire.length - 18,
++  );
++  expect(result.last.submitted).toBeLessThan(
++    sample.wire.length - result.observation.headerBytes,
++  );
++}, 60_000);
++
++function corrupt(
++  wire: Uint8Array,
++  variant: (typeof strictGzipPolicyDifferences)[number]["name"],
++) {
++  const result = Buffer.from(wire);
++  switch (variant) {
++    case "bad-crc":
++      result[result.length - 8] = result[result.length - 8]! ^ 1;
++      return result;
++    case "bad-isize":
++      result[result.length - 4] = result[result.length - 4]! ^ 1;
++      return result;
++    case "truncated":
++      return result.subarray(0, result.length - 1);
++    case "trailing-zero":
++      return Buffer.concat([result, Buffer.of(0)]);
++  }
++}
++
++test("the original four equivalence failures remain explicit", () => {
++  expect(strictGzipPriorQualification.equivalenceGate).toBe("failed-preserved");
++  expect(strictGzipPolicyDifferences.map(({ priorTest }) => priorTest)).toEqual(
++    [
++      "native error/expansion precedence: bad-crc",
++      "native error/expansion precedence: bad-isize",
++      "native error/expansion precedence: truncated",
++      "native error/expansion precedence: trailing-zero",
++    ],
++  );
++});
++
++for (const difference of strictGzipPolicyDifferences) {
++  test(`proposed resource-first difference: ${difference.priorTest}`, async () => {
++    const data = Buffer.alloc(65_537, 0x78);
++    const base = gzip(data);
++    const result = await inspect(
++      {
++        name: difference.name,
++        wire: corrupt(base, difference.name),
++        accepted: false,
++      },
++      "budget",
++      32_768,
++      true,
++    );
++    expectRefusal(result, 32_768, data.length, base.length - 18);
++    // This deliberately records a changed policy, not a repaired equivalence
++    // gate. The original standalone failing test and receipts are untouched.
++    expect(disposition(result.reference!)).toBe("malformed");
++    assert.notEqual(disposition(result), disposition(result.reference!));
++    console.info(
++      "strict-gzip-policy-difference",
++      JSON.stringify({
++        priorTest: difference.priorTest,
++        priorEquivalenceGate: "failed-preserved",
++        bounded: disposition(result),
++        native: disposition(result.reference!),
++      }),
++    );
++  });
++  test(`in-budget malformed policy unchanged: ${difference.name}`, async () => {
++    const base = gzip(Buffer.alloc(16_384, 0x78));
++    const result = await inspect(
++      {
++        name: difference.name,
++        wire: corrupt(base, difference.name),
++        accepted: false,
++      },
++      "budget",
++      32_768,
++      true,
++    );
++    expect(disposition(result)).toBe("malformed");
++    expect(disposition(result.reference!)).toBe("malformed");
++    expect(result.refusal).toBeUndefined();
++  });
++}
++
++test("valid scaled over-budget data is refused; malformed header remains malformed", async () => {
++  const data = Buffer.alloc(65_537, 0x78);
++  const sample = valid("valid-over-budget", data);
++  const refused = await inspect(sample, "budget", 32_768, true);
++  expectRefusal(refused, 32_768, data.length, sample.wire.length - 18);
++  expect(disposition(refused.reference!)).toBe("resource-refusal");
++  const badHeader = Buffer.from(sample.wire);
++  badHeader[2] = 0;
++  const malformed = await inspect(
++    {
++      name: "bad-header",
++      wire: badHeader,
++      accepted: false,
++    },
++    "budget",
++    32_768,
++    true,
++  );
++  expect(disposition(malformed)).toBe("malformed");
++  expect(disposition(malformed.reference!)).toBe("malformed");
++  expect(malformed.last.submitted).toBe(0);
++  assert.equal(malformed.last.produced, 0);
++});
+--- /dev/null
++++ b/tests/strict-gzip-reader.test.ts
+@@ -0,0 +1,136 @@
++import { createHash } from "node:crypto";
++import { afterEach, expect, test } from "vitest";
++import {
++  readStrictGzip,
++  type StrictGzipReader,
++} from "../src/strict-gzip-reader.ts";
++import {
++  gzip,
++  smallAndFramingFixtures,
++  stored,
++} from "./helpers/strict-gzip-corpus.ts";
++
++// Direct host-V8 coverage of the primitive. These tests do not substitute for
++// workerd backpressure/resource evidence or claim a Node-to-workerd memory bound.
++// No mock registry, module-global native guard, or application state is modified.
++const openReaders = new Set<StrictGzipReader>();
++
++function open(wire: Uint8Array) {
++  const reader = readStrictGzip(wire);
++  openReaders.add(reader);
++  return reader;
++}
++
++afterEach(async () => {
++  for (const reader of openReaders) reader.cancel();
++  openReaders.clear();
++  // Give already-attached native error/close listeners an event-loop turn.
++  // Do not wait for an input callback from a destroyed paused inflater.
++  await new Promise<void>((resolve) => setImmediate(resolve));
++});
++
++async function consume(wire: Uint8Array) {
++  const reader = open(wire);
++  const hash = createHash("sha256");
++  let bytes = 0;
++  let maxChunk = 0;
++  try {
++    for await (const chunk of reader) {
++      bytes += chunk.byteLength;
++      maxChunk = Math.max(maxChunk, chunk.byteLength);
++      hash.update(chunk);
++    }
++    return { bytes, maxChunk, sha256: hash.digest("hex") };
++  } finally {
++    reader.cancel();
++  }
++}
++
++for (const sample of smallAndFramingFixtures()) {
++  test(`host primitive: ${sample.name}`, async () => {
++    if (!sample.accepted) {
++      await expect(consume(sample.wire)).rejects.toThrow();
++      return;
++    }
++    const result = await consume(sample.wire);
++    expect(result.bytes).toBe(sample.expectedBytes);
++    expect(result.sha256).toBe(sample.expectedSha256);
++    expect(result.maxChunk).toBeLessThanOrEqual(8192);
++  });
++}
++
++test("header rejection is synchronous and does not create a returned reader", () => {
++  expect(() => open(new Uint8Array([0x1f, 0x8b]))).toThrow(
++    "Invalid gzip stream",
++  );
++  expect(openReaders.size).toBe(0);
++});
++
++test("cancel before any demand is synchronous and idempotent", async () => {
++  const reader = open(gzip(Buffer.from("unused")));
++  expect(reader[Symbol.asyncIterator]()).toBe(reader);
++  expect(reader.cancel()).toBeUndefined();
++  reader.cancel();
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  await expect(reader.return()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++});
++
++for (const method of ["cancel", "return"] as const) {
++  test(`${method} interrupts a pending native read; concurrent demand rejects`, async () => {
++    // Genuine no-output stored blocks. Node's native write callback is async;
++    // a first pending next() cannot reach the end synchronously.
++    const empty = Buffer.alloc(0);
++    const reader = open(gzip(empty, { raw: stored(empty, 20_000) }));
++    const first = reader.next();
++    await expect(reader.next()).rejects.toThrow("Concurrent gzip read");
++    if (method === "cancel") expect(reader.cancel()).toBeUndefined();
++    else
++      await expect(reader.return()).resolves.toEqual({
++        done: true,
++        value: undefined,
++      });
++    await expect(first).resolves.toEqual({ done: true, value: undefined });
++    await expect(reader.next()).resolves.toEqual({
++      done: true,
++      value: undefined,
++    });
++  });
++}
++
++test("return after a delivered chunk does not require consuming the tail", async () => {
++  const reader = open(gzip(Buffer.alloc(1024 * 1024, 0x78)));
++  const first = await reader.next();
++  expect(first.done).toBe(false);
++  if (first.done) throw new Error("Expected a real decoded chunk");
++  expect(first.value.byteLength).toBeLessThanOrEqual(8192);
++  await expect(reader.return()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++});
++
++test("completed readers stay done", async () => {
++  const reader = open(gzip(Buffer.alloc(0)));
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  await expect(reader.next()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++  await expect(reader.return()).resolves.toEqual({
++    done: true,
++    value: undefined,
++  });
++});
+--- /dev/null
++++ b/tests/sync-batch-strict-reader.test.ts
+@@ -0,0 +1,135 @@
++import assert from "node:assert/strict";
++import { gzipSync } from "node:zlib";
++import { afterEach, describe, test, vi } from "vitest";
++import {
++  decompressSyncBatchMessage,
++  readSyncBatchJson,
++  SyncBatchExpansionError,
++} from "../src/sync-batch-compress.ts";
++import { SYNC_BATCH_MAX_DECODED_BYTES } from "../src/sync-batch-limits.ts";
++import * as strict from "../src/strict-gzip-reader.ts";
++import { resourceFirstVariants } from "./helpers/sync-resource-first-fixtures.ts";
++
++afterEach(() => vi.restoreAllMocks());
++
++describe("proposed resource-first decoder integration", () => {
++  test("preserves valid JSON and offset-view ownership", async () => {
++    const value = { lane: "fixture", text: "€ 🫧", nested: [1, null, true] };
++    const wire = Uint8Array.from(gzipSync(JSON.stringify(value)));
++    const backing = new Uint8Array(wire.length + 12).fill(0x55);
++    backing.set(wire, 7);
++    const view = backing.subarray(7, 7 + wire.length);
++    for (const body of [wire, wire.slice().buffer, view]) {
++      assert.deepEqual(await decompressSyncBatchMessage(body), value);
++    }
++    assert.equal(backing[0], 0x55);
++    assert.equal(backing.at(-1), 0x55);
++    assert.deepEqual(view, wire);
++  });
++
++  test("keeps replacement UTF-8 decoding and malformed JSON behavior", async () => {
++    const invalidUtf8 = new Uint8Array([0x22, 0xc3, 0x28, 0x22]);
++    assert.equal(
++      await decompressSyncBatchMessage(gzipSync(invalidUtf8)),
++      "\ufffd(",
++    );
++    assert.equal(await decompressSyncBatchMessage(gzipSync("{")), null);
++  });
++
++  test("still rejects malformed framing below the resource ceiling", async () => {
++    const valid = Uint8Array.from(gzipSync('{"ok":true}'));
++    const crc = valid.slice();
++    crc[crc.length - 8]! ^= 1;
++    const size = valid.slice();
++    size[size.length - 4]! ^= 1;
++    const trailing = new Uint8Array(valid.length + 1);
++    trailing.set(valid);
++    for (const wire of [crc, size, valid.subarray(0, -1), trailing]) {
++      assert.equal(await decompressSyncBatchMessage(wire), null);
++    }
++  });
++
++  test("cancels before exposing over-budget refusal and never demands the tail", async () => {
++    const originalRead = strict.readStrictGzip;
++    const observations: {
++      cancelled: boolean;
++      reads: number;
++      bytes: number;
++      readsAtCancel: number;
++    }[] = [];
++    vi.spyOn(strict, "readStrictGzip").mockImplementation((owned) => {
++      const inner = originalRead(owned);
++      const state = {
++        cancelled: false,
++        reads: 0,
++        bytes: 0,
++        readsAtCancel: 0,
++      };
++      observations.push(state);
++      const observed: strict.StrictGzipReader = {
++        [Symbol.asyncIterator]() {
++          return observed;
++        },
++        async next() {
++          assert.equal(state.cancelled, false);
++          state.reads++;
++          const result = await inner.next();
++          if (!result.done) state.bytes += result.value.byteLength;
++          return result;
++        },
++        return() {
++          state.cancelled = true;
++          state.readsAtCancel = state.reads;
++          return inner.return();
++        },
++        cancel() {
++          state.cancelled = true;
++          state.readsAtCancel = state.reads;
++          inner.cancel();
++        },
++      };
++      return observed;
++    });
++    const variants = resourceFirstVariants(
++      '{"ok":true}',
++      SYNC_BATCH_MAX_DECODED_BYTES,
++    );
++    for (const [kind, wire] of variants) {
++      const before = wire.slice();
++      await assert.rejects(
++        decompressSyncBatchMessage(wire),
++        (error: unknown) => {
++          assert.ok(error instanceof SyncBatchExpansionError, kind);
++          assert.equal(observations.at(-1)!.cancelled, true);
++          return true;
++        },
++      );
++      assert.deepEqual(wire, before);
++      const state = observations.at(-1)!;
++      assert.ok(state.bytes > SYNC_BATCH_MAX_DECODED_BYTES);
++      assert.ok(state.bytes <= SYNC_BATCH_MAX_DECODED_BYTES + 8192);
++      await new Promise<void>((resolve) => setImmediate(resolve));
++      assert.equal(state.reads, state.readsAtCancel);
++    }
++  }, 60_000);
++
++  test("ordinary stream cancellation cannot hold parsing hostage", async () => {
++    for (const cancellation of ["reject", "pending"] as const) {
++      let cancelled = false;
++      const stream = new ReadableStream<Uint8Array>({
++        start(controller) {
++          controller.enqueue(new Uint8Array(SYNC_BATCH_MAX_DECODED_BYTES + 1));
++        },
++        cancel() {
++          cancelled = true;
++          return cancellation === "reject"
++            ? Promise.reject(new Error("fixture cancellation"))
++            : new Promise<void>(() => {});
++        },
++      });
++      await assert.rejects(readSyncBatchJson(stream), SyncBatchExpansionError);
++      assert.equal(cancelled, true);
++      assert.equal(stream.locked, false);
++    }
++  });
++});

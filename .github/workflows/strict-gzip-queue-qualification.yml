@@ -1,0 +1,118 @@
+name: Strict gzip queue qualification
+
+# Validation-only. This adds a focused job without changing Validate, its
+# thresholds, its draft behavior, deployment jobs, or publication permissions.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "tests/qualification/strict-gzip/**"
+      - ".github/workflows/strict-gzip-queue-qualification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: strict-gzip-queue-qualification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  strict-gzip-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Check out qualification harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: qualification-harness
+          persist-credentials: false
+
+      - name: Check out immutable base source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 6b8422966b1411dff6d7c486f4e9a549acecc761
+          path: qualification-base
+          persist-credentials: false
+
+      - name: Set up repository Node version
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache-dependency-path: qualification-base/package-lock.json
+
+      - name: Test qualification safety policies without native fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          harness="$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip"
+          env -i PATH="$PATH" CI=true node "$harness/launch-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/receipt-policy.cases.ts"
+
+      - name: Install the full pinned base lockfile without lifecycle scripts
+        working-directory: qualification-base
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 6b8422966b1411dff6d7c486f4e9a549acecc761
+          install_home="$RUNNER_TEMP/strict-gzip-install-home"
+          mkdir -p "$install_home"
+          env -i PATH="$PATH" HOME="$install_home" CI=true \
+            npm_config_cache="$RUNNER_TEMP/strict-gzip-npm-cache" \
+            WRANGLER_SEND_METRICS=false CLOUDFLARE_AUTH_USE_KEYRING=false \
+            npm ci --include=dev --ignore-scripts --no-audit --no-fund
+
+      - name: Apply the reviewed patch only inside an isolated candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$GITHUB_WORKSPACE/qualification-base"
+          candidate="$RUNNER_TEMP/strict-gzip-candidate"
+          harness="$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip"
+          mkdir "$candidate"
+          git -C "$base" archive 6b8422966b1411dff6d7c486f4e9a549acecc761 | tar -x -C "$candidate"
+          ln -s "$base/node_modules" "$candidate/node_modules"
+          git -C "$candidate" apply --check "$harness/integration.patch"
+          git -C "$candidate" apply "$harness/integration.patch"
+          git -C "$base" diff --exit-code
+
+      # Genuine source-bundle construction remains Wrangler deploy --dry-run.
+      # No Worker is selected/uploaded/deployed. No provider credentials are
+      # supplied. Unexpected guarded network attempts fail qualification.
+      # Every Node child shape is allowlisted and receives the guard; native
+      # compiler/runtime paths and digests are checked at every launch.
+      # The Node API preload is not native-socket/kernel containment.
+      - name: Verify pinned sources and run guarded focused host/native tests
+        shell: bash
+        env:
+          DECODER_QUALIFICATION_RECEIPTS: ${{ runner.temp }}/strict-gzip-receipts
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" CI=true DECODER_QUALIFICATION_RECEIPTS="$DECODER_QUALIFICATION_RECEIPTS" \
+            node "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/run.ts" \
+            "$RUNNER_TEMP/strict-gzip-candidate" \
+            "$GITHUB_WORKSPACE/qualification-base"
+
+      - name: Validate and redact publication artifacts
+        id: public_receipts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" CI=true node \
+            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/public-receipts.ts" \
+            "$RUNNER_TEMP/strict-gzip-receipts" \
+            "$RUNNER_TEMP/strict-gzip-public-receipts" \
+            "$RUNNER_TEMP/strict-gzip-candidate"
+
+      - name: Retain only bounded sanitized qualification artifacts
+        if: always() && steps.public_receipts.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: strict-gzip-queue-qualification-${{ github.run_id }}
+          path: ${{ runner.temp }}/strict-gzip-public-receipts/
+          retention-days: 7
+          if-no-files-found: error
