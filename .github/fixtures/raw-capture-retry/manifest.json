@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "scope": "reviewed v2 structural byte proof; frozen338-case tests; canonical runtime unchanged in carrier Git tree",
+  "files": [
+    {
+      "path": "src/raw-capture-d1.ts",
+      "payload": ".github/fixtures/raw-capture-retry/src/raw-capture-d1.ts.payload",
+      "sha256": "b7c86da367120a81186e7cab46e218a255bfa195c1205fcacd187e97767cac55",
+      "bytes": 9272,
+      "expected_base_blob_sha": "a2117ac28687f6e83b1c0c9f63d3c7996702cde1"
+    },
+    {
+      "path": "src/raw-chain-capture.ts",
+      "payload": ".github/fixtures/raw-capture-retry/src/raw-chain-capture.ts.payload",
+      "sha256": "a017f2075d25aa955ff0cfca2845cc278408c82726cf5e8fe29d028079dc15ad",
+      "bytes": 28826,
+      "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948"
+    },
+    {
+      "path": "src/raw-capture-retry-intent.ts",
+      "payload": ".github/fixtures/raw-capture-retry/src/raw-capture-retry-intent.ts.payload",
+      "sha256": "59431bc97dc13d8b0ea4395e103b55fb4afba88f10789f8d1a21f385cb20b860",
+      "bytes": 10425,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-retry-store.ts",
+      "payload": ".github/fixtures/raw-capture-retry/src/raw-capture-retry-store.ts.payload",
+      "sha256": "a19f5189eea2c2e09893961b9f606a23bcf7a927dedcb85fd51bbc99c99f794a",
+      "bytes": 12097,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-retry/tests/raw-capture-d1.test.ts.payload",
+      "sha256": "967453df5403e00988fdbecd93986c04328668bda26638177b2aa3e3199a8c85",
+      "bytes": 44422,
+      "expected_base_blob_sha": "4792776d1bc7bd0eff1d54452b94eac37b52c3b9"
+    },
+    {
+      "path": "tests/raw-chain-capture.test.ts",
+      "payload": ".github/fixtures/raw-capture-retry/tests/raw-chain-capture.test.ts.payload",
+      "sha256": "4cb9cc1fee477160b069b3e69c18de091c7ff41cafbbafd6e9bfe0b4b492bbb3",
+      "bytes": 60442,
+      "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510"
+    },
+    {
+      "path": "tests/raw-capture-retry-intent.test.ts",
+      "payload": ".github/fixtures/raw-capture-retry/tests/raw-capture-retry-intent.test.ts.payload",
+      "sha256": "ed45d9010b7503d5947b636395905cf4c43e72198522075cbe658f0c9d86160f",
+      "bytes": 18027,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-retry-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-retry/tests/raw-capture-retry-d1.test.ts.payload",
+      "sha256": "ff16bb920270693f0a686fa9f79bc10a6a5b495640cf50ffe436ecb3cd75f906",
+      "bytes": 16864,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-cron-wiring.test.ts",
+      "payload": ".github/fixtures/raw-capture-retry/tests/raw-capture-cron-wiring.test.ts.payload",
+      "sha256": "2be3d4c415f712c6adad4e09c61450525770197183da69221a169d574f69e3cd",
+      "bytes": 1702,
+      "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d"
+    }
+  ],
+  "baseline": {
+    "path": ".github/fixtures/raw-capture-retry/baseline.test.ts.payload",
+    "sha256": "8315db29336d73c8eba07b12770b1dcf211f40aa1a2a425ba0e8f6c2775a92a8",
+    "bytes": 22030
+  },
+  "carrier_files": [
+    ".github/fixtures/raw-capture-retry/baseline.test.ts.payload",
+    ".github/fixtures/raw-capture-retry/manifest.json",
+    ".github/fixtures/raw-capture-retry/src/raw-capture-d1.ts.payload",
+    ".github/fixtures/raw-capture-retry/src/raw-capture-retry-intent.ts.payload",
+    ".github/fixtures/raw-capture-retry/src/raw-capture-retry-store.ts.payload",
+    ".github/fixtures/raw-capture-retry/src/raw-chain-capture.ts.payload",
+    ".github/fixtures/raw-capture-retry/tests/raw-capture-cron-wiring.test.ts.payload",
+    ".github/fixtures/raw-capture-retry/tests/raw-capture-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-retry/tests/raw-capture-retry-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-retry/tests/raw-capture-retry-intent.test.ts.payload",
+    ".github/fixtures/raw-capture-retry/tests/raw-chain-capture.test.ts.payload",
+    ".github/scripts/apply-raw-capture-retry.ts",
+    ".github/scripts/qualify-raw-capture-retry.ts",
+    ".github/vitest.raw-capture.config.ts",
+    ".github/workflows/raw-capture-retry-source-qualification.yml"
+  ]
+}
