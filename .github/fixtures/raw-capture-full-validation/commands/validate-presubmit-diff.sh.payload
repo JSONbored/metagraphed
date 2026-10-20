@@ -1,0 +1,3 @@
+git diff --check
+git diff --cached --check
+git diff --check "$BASE_SHA" "$HEAD_SHA"
