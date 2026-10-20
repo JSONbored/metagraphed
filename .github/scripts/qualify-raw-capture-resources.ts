@@ -62,6 +62,26 @@ const result: Record<string, any> = {
   compatibilityFlags,
   transportScope: { logicalRpcUrl: LOGICAL_RPC_URL, logicalRole: "Fixed reserved fixture endpoint; no DNS or external fetch", actualTransport: "Owned 127.0.0.1 server only; ephemeral port and address are not retained" },
 };
+// Retain only fixed categories, numeric bundle lines and source-derived builtins.
+// Native error messages may contain ephemeral headers and are never retained.
+const diagnosticCodes = new Set(["ERR_ADDRESS_IN_USE", "ERR_DISPOSED", "ERR_MODULE_PARSE", "ERR_MODULE_STRING_SCRIPT", "ERR_MODULE_DYNAMIC_SPEC", "ERR_MODULE_RULE", "ERR_PERSIST_UNSUPPORTED", "ERR_FUTURE_COMPATIBILITY_DATE", "ERR_NO_WORKERS", "ERR_VALIDATION", "ERR_DUPLICATE_NAME", "ERR_DIFFERENT_STORAGE_BACKEND", "ERR_DIFFERENT_UNIQUE_KEYS", "ERR_DIFFERENT_PREVENT_EVICTION", "ERR_DIFFERENT_S3_CREDENTIALS", "ERR_MISSING_INSPECTOR_PROXY_PORT", "ERR_MISSING_EXPLORER_UI", "ERR_RUNTIME_FAILURE", "ERR_PLUGIN_LOADING_FAILED"]);
+const diagnosticClasses = ["TypeError", "ReferenceError", "SyntaxError", "RangeError", "EvalError", "URIError"];
+let diagnosticModules: string[] = [];
+const startupDiagnostic = { codes: [] as string[], exceptions: [] as string[], builtinModules: [] as string[], bundleLines: [] as number[] };
+function diagnose(error: unknown) {
+  const push = <T,>(values: T[], value: T, limit: number) => { if (!values.includes(value) && values.length < limit) values.push(value); };
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current instanceof Error; depth++) {
+    const code = (current as Error & { code?: unknown }).code;
+    if (typeof code === "string" && diagnosticCodes.has(code)) push(startupDiagnostic.codes, code, 8);
+    const text = current.message.slice(0, 65536);
+    for (const name of diagnosticClasses) if (text.includes(name + ":")) push(startupDiagnostic.exceptions, name, 6);
+    for (const name of diagnosticModules) if (text.includes(name)) push(startupDiagnostic.builtinModules, name, 16);
+    for (const match of text.matchAll(/\.js:([0-9]{1,7}):[0-9]{1,7}/g)) push(startupDiagnostic.bundleLines, Number(match[1]), 16);
+    current = (current as Error & { cause?: unknown }).cause;
+  }
+  result.startupDiagnostic = startupDiagnostic;
+}
 let stage = "source";
 let rpcServer: Server | undefined;
 let permittedOutbound = 0;
@@ -488,6 +508,8 @@ try {
   assert.equal(bundle.error, undefined); assert.equal(bundle.status, 0);
   const entries = readdirSync(bundled).filter(file => file.endsWith(".js")); assert.equal(entries.length, 1);
   const scriptPath = path.join(bundled, entries[0]); result.bundleSha256 = digest(readFileSync(scriptPath));
+  diagnosticModules = [...new Set([...readFileSync(scriptPath, "utf8").matchAll(/["']((?:node|cloudflare):[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*)["']/g)].map(match => match[1]))].sort();
+  assert.ok(diagnosticModules.length <= 128); result.diagnosticModuleAllowlistSha256 = digest(JSON.stringify(diagnosticModules));
   result.bundler = { nativeWranglerDryRun: true, stdoutRetained: false, stderrRetained: false };
   stage = "runtime-constructor"; checkpoint();
   mf = new Miniflare({
@@ -680,7 +702,7 @@ try {
   result.rpc = { logicalRpcUrl: LOGICAL_RPC_URL, logicalRole: "Reserved fixture name intercepted without DNS or external fetch", scope: "Mapped solely to exact owned loopback server with stripped headers, no redirects and finite timeout", permitted: permittedOutbound, blocked: blockedOutbound, requests: rpcRequests, responses: rpcReceipts };
   result.status = "passed";
 } catch (error) {
-  result.status = "failed"; result.failureStage = stage;
+  result.status = "failed"; result.failureStage = stage; diagnose(error);
   const allowed = new Set(["AssertionError", "Error", "TypeError", "RangeError", "MiniflareCoreError"]);
   const kind = error instanceof Error ? error.constructor.name : "unclassified";
   result.failureClass = allowed.has(kind) ? kind : "unclassified"; process.exitCode = 1;
