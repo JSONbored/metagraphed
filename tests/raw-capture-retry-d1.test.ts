@@ -1,19 +1,18 @@
 import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, beforeEach, test } from "vitest";
 import { Miniflare, NoOpLog } from "miniflare";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { prepareRawCapture, encodeRawCaptureIntent, rawCaptureIntentKey } from "../src/raw-capture-retry-intent.ts";
 
-const runtime = new Miniflare({
-  log: new NoOpLog(),
-  modules: true,
-  script: "export default {fetch(){return new Response('synthetic fixture')}}",
-  compatibilityDate: "2026-06-06",
-  d1Databases: ["DB"],
-});
+let runtime: Miniflare | undefined;
+function setupStage(stage: string, migration = -1, statement = -1) {
+  if (process.env.RAW_CAPTURE_QUALIFY_DIAGNOSTICS === "1")
+    writeFileSync("raw-capture-retry-reports/native-setup.json", JSON.stringify({stage,migration,statement}));
+}
+setupStage("fixture_loaded");
 let native: D1Database;
 const key = "chain/raw/blocks/000000000010-000000000010.ndjson";
 const value = (at = 1000, body = "0x00", height = 10) => JSON.stringify({
@@ -66,16 +65,32 @@ async function compressed(sha: string) {
   return Buffer.concat(chunks);
 }
 beforeAll(async () => {
+  setupStage("runtime_construct");
+  runtime = new Miniflare({
+    log: new NoOpLog(),
+    modules: true,
+    script: "export default {fetch(){return new Response('synthetic fixture')}}",
+    compatibilityDate: "2026-06-06",
+    d1Databases: ["DB"],
+  });
+  setupStage("database");
   native = await runtime.getD1Database("DB") as unknown as D1Database;
-  for (const path of ["0027_generated_artifacts.sql","0028_raw_capture_storage.sql","0029_raw_capture_archive.sql"]) {
+  for (const [migration,path] of ["0027_generated_artifacts.sql","0028_raw_capture_storage.sql","0029_raw_capture_archive.sql"].entries()) {
+    setupStage("migration_read",migration);
     const sql = readFileSync(new URL("../migrations/d1/"+path,import.meta.url),"utf8");
-    for (const statement of sql.split(/(?=^(?:CREATE (?:TABLE|TRIGGER|INDEX)|INSERT INTO))/m))
-      if (/^(?:CREATE|INSERT)/.test(statement.trim())) await native.prepare(statement).run();
+    for (const [ordinal,statement] of sql.split(/(?=^(?:CREATE (?:TABLE|TRIGGER|INDEX)|INSERT INTO))/m).entries())
+      if (/^(?:CREATE|INSERT)/.test(statement.trim())) {
+        setupStage("migration_statement",migration,ordinal);
+        await native.prepare(statement).run();
+      }
   }
+  setupStage("state_read");
   const schema = readFileSync(new URL("../db/d1-schema.sql",import.meta.url),"utf8");
   const watermark = /CREATE TABLE raw_capture_state[\s\S]*?;/.exec(schema);
   assert(watermark);
+  setupStage("state_statement");
   await native.prepare(watermark[0]).run();
+  setupStage("ready");
 });
 beforeEach(async () => {
   for (const table of ["raw_capture_selected","raw_capture_archives","raw_capture_batches","generated_artifacts","raw_capture_state"])
@@ -83,7 +98,7 @@ beforeEach(async () => {
   await native.prepare("INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES('mainnet',9,1000)").run();
   assert.equal(await native.prepare("SELECT objects FROM raw_capture_budget").first<number>("objects"),0);
 });
-afterAll(async () => { await runtime.dispose(); });
+afterAll(async () => { await runtime?.dispose(); });
 
 test("native D1 fresh provenance resumes exact original after partial failure and recreation", async () => {
   const body = randomBytes(900_000).toString("hex");

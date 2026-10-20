@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 
 const base = "7afb1a5fb1aa00eb0dd261861d9f56f59c3db80d";
 const baseSources = new Map([
@@ -46,6 +46,15 @@ function classification(message: string): string {
   if (/timeout|timed out/i.test(message)) return "timeout";
   if (/AssertionError|expected .* to /i.test(message)) return "assertion";
   if (/TypeError/.test(message)) return "type_error";
+  if (/ReferenceError/.test(message)) return "reference_error";
+  if (/RangeError/.test(message)) return "range_error";
+  if (/ENOENT/.test(message)) return "file_missing";
+  if (/Failed to load (?:url|module)|failed to resolve/i.test(message)) return "module_load";
+  if (/ERR_RUNTIME_FAILURE|runtime failed to start|workerd.*(?:failed|error)/i.test(message)) return "runtime_startup";
+  if (/ERR_VALIDATION|invalid (?:options|configuration)|validation error/i.test(message)) return "invalid_options";
+  if (/No test suite found/i.test(message)) return "no_tests";
+  if (/Worker exited|worker.*unexpectedly/i.test(message)) return "worker_exit";
+  if (/Outbound network call/i.test(message)) return "outbound_refusal";
   return "unclassified";
 }
 function frames(message: string) {
@@ -53,12 +62,22 @@ function frames(message: string) {
     .map((match) => match[0]).slice(0,12);
 }
 function retainFailure(label: string, report: Report, status: number | null) {
+  const setupPath = "raw-capture-retry-reports/native-setup.json";
+  let nativeSetup: unknown = null;
+  if (existsSync(setupPath)) {
+    const stage = JSON.parse(readFileSync(setupPath,"utf8"));
+    assert(["fixture_loaded","runtime_construct","database","migration_read","migration_statement","state_read","state_statement","ready"].includes(stage.stage));
+    assert(Number.isSafeInteger(stage.migration) && stage.migration >= -1 && stage.migration < 3);
+    assert(Number.isSafeInteger(stage.statement) && stage.statement >= -1 && stage.statement < 1000);
+    nativeSetup = stage;
+  }
   const receipt = {
     phase: label + "_failure", source_commit: process.env.GITHUB_SHA,
     failed: report.numFailedTests, passed: report.numPassedTests, exit_code: status,
     files: report.testResults.filter((file) => file.message !== "").map((file) => ({
       file: typeof file.name === "string" ? file.name.split("/").at(-1)?.slice(0,120) : null,
       classification: classification(file.message), frames: frames(file.message),
+      statuses: Object.fromEntries(["passed","failed","pending","skipped"].map((status) => [status,file.assertionResults.filter((row) => row.status === status).length])),
     })),
     cases: report.testResults.flatMap((file) => file.assertionResults)
       .filter((row) => row.status === "failed").map((row) => ({
@@ -67,6 +86,7 @@ function retainFailure(label: string, report: Report, status: number | null) {
         frames: frames(row.failureMessages.join("\n")),
       })),
     baseline: verifiedBaseline,
+    native_setup: nativeSetup,
     candidate_files: Object.fromEntries([...candidates].map(([path,content])=>[path,digest(content)])),
     raw_output_retained: false, production_actions: false,
   };
@@ -81,7 +101,7 @@ function run(label: string, tests: string[], extra: string[] = []) {
     process.execPath, "node_modules/vitest/vitest.mjs", "run", ...tests,
     "--retry=0", "--reporter=json", "--outputFile=" + path, ...extra],
     {encoding:"utf8",maxBuffer:8*1024*1024,timeout:300_000,
-      env:{...process.env,FORCE_COLOR:"0",WRANGLER_SEND_METRICS:"false",WRANGLER_WRITE_LOGS:"false"}});
+      env:{...process.env,FORCE_COLOR:"0",WRANGLER_SEND_METRICS:"false",WRANGLER_WRITE_LOGS:"false",RAW_CAPTURE_QUALIFY_DIAGNOSTICS:"1"}});
   assert.equal(result.error, undefined, label + " process starts and finishes in bound");
   assert.equal(result.signal, null);
   if (/Unhandled Errors|Vitest caught \d+ unhandled errors?|Source Errors|Unhandled Rejection|Uncaught Exception/i.test(result.stdout+"\n"+result.stderr))
