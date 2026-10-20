@@ -1,6 +1,7 @@
 // Proposed test-only metadata validator. Does not load pg, build, resolve, or run code.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { isBuiltin } from "node:module";
 import path from "node:path";
 
 export const OPTIONAL_PG_SOURCE_COMMIT =
@@ -77,7 +78,58 @@ interface Mapping {
 
 function absolute(value: string) {
   assert.equal(typeof value, "string");
-  assert.ok(path.isAbsolute(value) && path.normalize(value) === value);
+  assert.ok(
+    value.length > 1 &&
+      value.length <= 4096 &&
+      !/[\\\0-\x1f:]/.test(value) &&
+      path.isAbsolute(value) &&
+      path.normalize(value) === value &&
+      path.resolve(value) === value,
+  );
+}
+
+/**
+ * Map a genuine esbuild file-input key to one logical custody identity.
+ * The caller establishes these exact roots with realpath and enforces them on
+ * file reads. This lexical helper cannot authenticate roots or follow symlinks.
+ * esbuild's preserveSymlinks=false can emit a canonical dependency-root path
+ * relative to sourceRoot; preserve that actual key instead of rewriting it.
+ */
+export function ownerSourceIdentity(
+  sourceRoot: string,
+  dependencyRoot: string,
+  metafilePath: string,
+): string {
+  absolute(sourceRoot);
+  absolute(dependencyRoot);
+  assert.ok(
+    sourceRoot !== dependencyRoot &&
+      !sourceRoot.startsWith(dependencyRoot + path.sep),
+    "Dependency root cannot contain the project root",
+  );
+  assert.equal(typeof metafilePath, "string");
+  assert.ok(
+    metafilePath.length > 0 &&
+      metafilePath.length <= 4096 &&
+      !path.isAbsolute(metafilePath) &&
+      !/[\\\0-\x1f:]/.test(metafilePath),
+    "Expected a genuine relative file-input key",
+  );
+  const resolved = path.resolve(sourceRoot, metafilePath);
+  assert.equal(
+    path.relative(sourceRoot, resolved),
+    metafilePath,
+    "Noncanonical file-input spelling",
+  );
+  if (resolved.startsWith(dependencyRoot + path.sep)) {
+    const relativeDependency = path.relative(dependencyRoot, resolved);
+    relative(relativeDependency);
+    return `node_modules/${relativeDependency}`;
+  }
+  within(sourceRoot, resolved);
+  const logical = path.relative(sourceRoot, resolved);
+  relative(logical);
+  return logical;
 }
 function relative(value: string) {
   assert.equal(typeof value, "string");
@@ -277,6 +329,44 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
     });
   assert.deepEqual([...moduleNames].sort(), executableModuleNames.sort());
   const pins = Object.entries(OPTIONAL_PG_SOURCE_PINS);
+  const actualInputs = new Map<string, string>();
+  for (const actual of inputNames) {
+    if (actual.startsWith("native-node-require:")) {
+      assert.match(actual, /^native-node-require:[A-Za-z0-9_/-]+$/);
+      assert.ok(isBuiltin(actual.slice("native-node-require:".length)));
+      continue;
+    }
+    const logical = ownerSourceIdentity(
+      evidence.sourceRoot,
+      evidence.dependencyRoot,
+      actual,
+    );
+    assert.ok(
+      !actualInputs.has(logical),
+      "Duplicate logical/canonical input alias",
+    );
+    actualInputs.set(logical, actual);
+  }
+  for (const info of Object.values(meta.inputs)) {
+    for (const item of info.imports) {
+      if (item.external === true) continue;
+      assert.ok(
+        Object.hasOwn(meta.inputs, item.path),
+        "Internal edge has no exact input key",
+      );
+      if (item.path.startsWith("native-node-require:")) continue;
+      const logical = ownerSourceIdentity(
+        evidence.sourceRoot,
+        evidence.dependencyRoot,
+        item.path,
+      );
+      assert.equal(
+        actualInputs.get(logical),
+        item.path,
+        "Internal edge uses an input identity alias",
+      );
+    }
+  }
   assert.deepEqual(
     Object.keys(evidence.sources).sort(),
     pins.map(([name]) => name).sort(),
@@ -289,21 +379,9 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
         bytes.length <= MAX_BYTES,
     );
     assert.equal(sha256(bytes), pin, "Pinned optional pg source changed");
-    assert.ok(Object.hasOwn(meta.inputs, name), "Exact pinned input absent");
-    assert.equal(meta.inputs[name]!.bytes, bytes.length);
-    // A second path alias to a reviewed input must not camouflage an importer.
-    const target = path.resolve(evidence.sourceRoot, name);
-    const dependencyTarget = path.resolve(
-      evidence.dependencyRoot,
-      name.slice("node_modules/".length),
-    );
-    assert.deepEqual(
-      inputNames.filter((input) => {
-        const absoluteInput = path.resolve(evidence.sourceRoot, input);
-        return absoluteInput === target || absoluteInput === dependencyTarget;
-      }),
-      [name],
-    );
+    const actual = actualInputs.get(name);
+    assert.ok(actual, "Unique pinned input identity absent");
+    assert.equal(meta.inputs[actual]!.bytes, bytes.length);
   }
   const edges = [
     [ESM, MAIN, "import-statement"],
@@ -312,9 +390,11 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
   ];
   for (const [from, to, kind] of edges) {
     assert.ok(
-      meta.inputs[from!]!.imports.some(
+      meta.inputs[actualInputs.get(from!)!]!.imports.some(
         (item) =>
-          item.path === to && item.kind === kind && item.external !== true,
+          item.path === actualInputs.get(to!) &&
+          item.kind === kind &&
+          item.external !== true,
       ),
       "Pinned native branch association absent",
     );
@@ -330,7 +410,7 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
         exactOptional(dependency);
         assert.equal(
           name,
-          CLIENT,
+          actualInputs.get(CLIENT),
           "Optional require originates from an unreviewed input",
         );
         optionalInputs.push({ name, index });
@@ -377,6 +457,27 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
       "Importing output is not registered",
     );
     const info = meta.outputs[output.metafilePath]!;
+    // Output contributions must use the same actual input keys as the complete
+    // input inventory. A second logical/canonical spelling is not a new source.
+    const contributionIdentities = new Set<string>();
+    for (const actual of Object.keys(info.inputs)) {
+      assert.ok(
+        Object.hasOwn(meta.inputs, actual),
+        "Output contribution has no exact input key",
+      );
+      if (actual.startsWith("native-node-require:")) continue;
+      const logical = ownerSourceIdentity(
+        evidence.sourceRoot,
+        evidence.dependencyRoot,
+        actual,
+      );
+      assert.equal(actualInputs.get(logical), actual);
+      assert.ok(
+        !contributionIdentities.has(logical),
+        "Duplicate contribution alias",
+      );
+      contributionIdentities.add(logical);
+    }
     assert.ok(
       output.bytes instanceof Uint8Array &&
         output.bytes.length > 0 &&
@@ -448,7 +549,8 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           : [],
       );
       assert.ok(matches.length <= 1, "Duplicate source-map alias");
-      const contribution = info.inputs[source]?.bytesInOutput ?? 0;
+      const contribution =
+        info.inputs[actualInputs.get(source)!]?.bytesInOutput ?? 0;
       assert.ok(Number.isSafeInteger(contribution) && contribution >= 0);
       if (matches.length) {
         assert.equal(typeof map.sourcesContent[matches[0]!], "string");

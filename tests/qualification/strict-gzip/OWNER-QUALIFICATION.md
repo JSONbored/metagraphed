@@ -166,6 +166,28 @@ only that the optional branch was non-fatal for that exact scenario. No launch,
 network, native addon or provider permission is added. Actual output and raw-owner
 acceptance remain dependent on the exact hosted rerun.
 
+## Canonical dependency input identity
+
+Run [39485269601](https://github.com/JSONbored/metagraphed/actions/runs/39485269601)
+again passed the real queue-owner case and all 490 baseline assertions, with zero
+guard denials. The raw case failed inside the optional-import proof adapter.
+Its bounded frames did not identify the exact checker line, so the path-spelling
+explanation remains a source-supported inference until a successful rerun.
+
+The pinned production builder uses esbuild's default symlink resolution. Its
+metadata may name dependency files by their canonical path relative to the
+candidate, because node_modules points to the separately installed locked base.
+One shared identity mapper now recognizes only exact normalized project paths
+or exact relative paths into that verified canonical dependency root. The real
+metadata key is retained for input edges and output contributions; no metadata
+or builder output is rewritten. Logical custody names remain node_modules/… .
+Duplicate aliases, foreign roots, dot/traversal spellings, and filesystem aliases
+are rejected. Both metadata and custody paths must resolve to the exact expected
+canonical file. Source bytes, mapped-call proof and hashes remain mandatory.
+The checker now has one additional fixed diagnostic file index, without raw
+messages or path disclosure. Hosted compatibility and combined acceptance are
+still pending.
+
 ## Third-party fixture notice
 
 The inert source strings in owner-pg-source-fixtures.json and

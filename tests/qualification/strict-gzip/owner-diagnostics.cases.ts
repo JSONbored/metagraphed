@@ -156,3 +156,17 @@ test("passed owner never publishes stale refused import labels", () => {
   s.assertionResults[0]!.failureMessages = ["[owner-import-refused:pg-native]"];
   assert.deepEqual(publicOwnerProgress(v, root)[0]!.refusedBuildImports, []);
 });
+
+test("optional import checker emits only its fixed index and numeric position", () => {
+  const v = fixture();
+  const fileIndex = OWNER_FRAME_PATHS.indexOf(
+    "tests/qualification/strict-gzip/optional-pg-import.ts",
+  );
+  assert.equal(fileIndex, 11);
+  v.testResults[0]!.assertionResults[0]!.failureMessages = [
+    `${secret} at ${root}/${OWNER_FRAME_PATHS[fileIndex]}:301:7`,
+  ];
+  const result = publicOwnerProgress(v, root);
+  assert.deepEqual(result[0]!.frames, [{ fileIndex, line: 301, column: 7 }]);
+  assert.ok(!JSON.stringify(result).includes(secret));
+});

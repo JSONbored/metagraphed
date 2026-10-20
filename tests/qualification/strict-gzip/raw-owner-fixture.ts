@@ -1,5 +1,6 @@
 import {
   optionalPgBuildAssociation,
+  ownerBuildInputIdentity,
   boundedBuildFile,
 } from "./owner-build-evidence.ts";
 import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
@@ -283,17 +284,12 @@ export async function buildRawOwner(root: string, output: string) {
   for (const name of Object.keys(meta.inputs)) {
     // The production builder alone generates these native-builtin adapters.
     if (name.startsWith("native-node-require:")) continue;
-    const relative = path.relative(root, path.resolve(root, name));
-    assert.ok(
-      relative && !relative.startsWith("..") && !path.isAbsolute(relative),
+    const relative = ownerBuildInputIdentity(
+      canonicalRoot,
+      dependencyRoot,
+      name,
     );
-    const canonical = await realpath(path.join(root, relative));
-    assert.ok(
-      canonical.startsWith(
-        `${relative.startsWith(`node_modules${path.sep}`) ? dependencyRoot : canonicalRoot}${path.sep}`,
-      ),
-      "Raw build input escaped the reviewed project or dependency root",
-    );
+    assert.ok(!sourcePaths.includes(relative), "Duplicate raw input identity");
     sourcePaths.push(relative);
   }
   const associations = await Promise.all(

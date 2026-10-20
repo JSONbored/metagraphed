@@ -1,5 +1,6 @@
 import {
   OPTIONAL_PG_SOURCE_PINS,
+  ownerSourceIdentity,
   validateOptionalPgNativeImport,
   type OptionalPgMetafile,
   type PreservedOptionalPgOutput,
@@ -36,6 +37,23 @@ function sourceFile(root: string, relative: string): string {
     : realpathSync(root);
   assert.ok(canonical.startsWith(allowed + path.sep));
   return file;
+}
+// Bind the lexical metadata identity to the exact canonical source file. Both
+// the genuine metadata spelling and the logical custody path must name it.
+export function ownerBuildInputIdentity(
+  root: string,
+  dependencyRoot: string,
+  name: string,
+): string {
+  assert.equal(realpathSync(root), root);
+  assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot);
+  const logical = ownerSourceIdentity(root, dependencyRoot, name);
+  const expected = logical.startsWith("node_modules/")
+    ? path.join(dependencyRoot, logical.slice("node_modules/".length))
+    : path.join(root, logical);
+  assert.equal(realpathSync(path.resolve(root, name)), expected);
+  assert.equal(realpathSync(path.join(root, logical)), expected);
+  return logical;
 }
 // Read-only adapter for the single source-proven unresolved optional require.
 // It never resolves/imports a package and never changes any environment value.
@@ -556,14 +574,20 @@ async function validateBuildAssociation(
   const inputs = Object.keys(meta.inputs);
   assert.ok(inputs.length > 0 && inputs.length <= 8192);
   const knownSources = new Set(manifest.sources.map((source) => source.path));
+  const inputIdentities = new Set<string>();
   for (const name of inputs) {
     if (name.startsWith("native-node-require:")) {
       assert.match(name, /^native-node-require:[A-Za-z0-9_/-]+$/);
       assert.ok(isBuiltin(name.slice("native-node-require:".length)));
       continue;
     }
-    const relative = path.relative(root, path.resolve(root, name));
-    relativeName(relative);
+    const relative = ownerBuildInputIdentity(
+      association.sourceRoot,
+      association.dependencyRoot,
+      name,
+    );
+    assert.ok(!inputIdentities.has(relative), "Duplicate input identity");
+    inputIdentities.add(relative);
     assert.ok(knownSources.has(relative));
     assert.equal(
       meta.inputs[name].bytes,

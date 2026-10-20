@@ -7,12 +7,16 @@ import {
   readFileSync,
   writeFileSync,
   rmSync,
+  symlinkSync,
+  realpathSync,
+  renameSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import {
   preserveOwnerBuild,
+  ownerBuildInputIdentity,
   validateOwnerBuild,
 } from "./owner-build-evidence.ts";
 const hash = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
@@ -25,7 +29,10 @@ const sources = [
   "src/raw-capture-d1.ts",
   "wrangler.jsonc",
 ];
-async function fixture(action: (v: any) => Promise<void>) {
+async function fixture(
+  action: (v: any) => Promise<void>,
+  canonicalDependency = false,
+) {
   const scratch = mkdtempSync(path.join(tmpdir(), "raw-build-pure-")),
     root = path.join(scratch, "candidate"),
     run = path.join(scratch, "run"),
@@ -37,9 +44,28 @@ async function fixture(action: (v: any) => Promise<void>) {
   const oldRoot = process.env.DECODER_QUALIFICATION_ROOT,
     oldResult = process.env.DECODER_QUALIFICATION_RESULT;
   try {
-    mkdirSync(path.join(root, "node_modules"), { recursive: true });
+    const dependencyRoot = canonicalDependency
+      ? path.join(scratch, "qualification-base/node_modules")
+      : path.join(root, "node_modules");
+    mkdirSync(dependencyRoot, { recursive: true });
+    mkdirSync(root, { recursive: true });
+    if (canonicalDependency)
+      symlinkSync(dependencyRoot, path.join(root, "node_modules"));
+    const fixtureSources = [
+      ...sources,
+      ...(canonicalDependency
+        ? ["node_modules/synthetic-package/index.js"]
+        : []),
+    ];
+    const actualInput = (name: string) =>
+      canonicalDependency && name.startsWith("node_modules/")
+        ? path.relative(
+            root,
+            path.join(dependencyRoot, name.slice("node_modules/".length)),
+          )
+        : name;
     mkdirSync(run);
-    for (const source of sources) {
+    for (const source of fixtureSources) {
       const f = path.join(root, source);
       mkdirSync(path.dirname(f), { recursive: true });
       writeFileSync(f, `// inert synthetic ${source}\n`);
@@ -64,12 +90,12 @@ async function fixture(action: (v: any) => Promise<void>) {
     const association: any = {
       kind: "esbuild-api",
       sourceRoot: root,
-      dependencyRoot: path.join(root, "node_modules"),
+      dependencyRoot,
       outputRoot,
       metafile: {
         inputs: Object.fromEntries(
-          sources.map((s) => [
-            s,
+          fixtureSources.map((s) => [
+            actualInput(s),
             { bytes: readFileSync(path.join(root, s)).length },
           ]),
         ),
@@ -85,7 +111,7 @@ async function fixture(action: (v: any) => Promise<void>) {
         contributing =
           module.name === "api.entry.js"
             ? ["workers/api.entry.ts"]
-            : sources.filter((s) => s !== "workers/api.entry.ts");
+            : fixtureSources.filter((s) => s !== "workers/api.entry.ts");
       const map = Buffer.from(
         JSON.stringify({
           version: 3,
@@ -103,7 +129,7 @@ async function fixture(action: (v: any) => Promise<void>) {
             ? [{ path: "./api-lazy.js", kind: "dynamic-import" }]
             : [],
         inputs: Object.fromEntries(
-          contributing.map((s) => [s, { bytesInOutput: 1 }]),
+          contributing.map((s) => [actualInput(s), { bytesInOutput: 1 }]),
         ),
         ...(module.name === "api.entry.js"
           ? {
@@ -145,7 +171,7 @@ async function fixture(action: (v: any) => Promise<void>) {
         base64: map.toString("base64"),
       });
     }
-    preserveOwnerBuild("raw", "api.entry.js", modules, sources, {
+    preserveOwnerBuild("raw", "api.entry.js", modules, fixtureSources, {
       kind: "api-builder",
       bytes: Buffer.from(JSON.stringify(association)),
     });
@@ -162,6 +188,8 @@ async function fixture(action: (v: any) => Promise<void>) {
     await action({
       root,
       directory,
+      dependencyRoot,
+      actualInput,
       association,
       save,
       entry:
@@ -298,3 +326,92 @@ test("refuses any host force-native value without mutating it", async () =>
       else process.env.NODE_PG_FORCE_NATIVE = previous;
     }
   }));
+
+test("accepts exact canonical dependency metadata without rewriting preserved bytes", async () =>
+  fixture(async ({ root, directory, association }) => {
+    const original = JSON.stringify(association);
+    assert.equal(
+      (await validateOwnerBuild(directory, "raw", root, "a".repeat(64))).modules
+        .length,
+      2,
+    );
+    assert.equal(JSON.stringify(association), original);
+  }, true));
+for (const mutation of ["duplicate", "foreign", "dot", "traversal"] as const)
+  test(`refuses canonical dependency metadata ${mutation}`, async () =>
+    fixture(async (v) => {
+      const logical = "node_modules/synthetic-package/index.js";
+      const actual = v.actualInput(logical);
+      const alternate =
+        mutation === "duplicate"
+          ? logical
+          : mutation === "foreign"
+            ? actual.replace("qualification-base", "foreign-base")
+            : mutation === "dot"
+              ? "./" + actual
+              : actual.replace(
+                  "/synthetic-package/",
+                  "/synthetic-package/../synthetic-package/",
+                );
+      v.association.metafile.inputs[alternate] =
+        v.association.metafile.inputs[actual];
+      if (mutation !== "duplicate")
+        delete v.association.metafile.inputs[actual];
+      v.save();
+      await assert.rejects(() =>
+        validateOwnerBuild(v.directory, "raw", v.root, "a".repeat(64)),
+      );
+    }, true));
+for (const target of ["dependency", "project"] as const)
+  test(`refuses ${target} leaf aliases before accepting file identity`, async () =>
+    fixture(async ({ root, dependencyRoot, actualInput }) => {
+      const logical =
+        target === "dependency"
+          ? "node_modules/synthetic-package/index.js"
+          : "workers/api.entry.ts";
+      const file = path.join(root, logical);
+      const original = readFileSync(file);
+      const alias = path.join(path.dirname(file), "alternate.js");
+      writeFileSync(alias, original);
+      rmSync(file);
+      symlinkSync(alias, file);
+      assert.throws(() =>
+        ownerBuildInputIdentity(
+          realpathSync(root),
+          dependencyRoot,
+          actualInput(logical),
+        ),
+      );
+    }, true));
+test("accepts both exact canonical and logical spellings singly for the same verified file", async () =>
+  fixture(async ({ root, dependencyRoot, actualInput }) => {
+    const logical = "node_modules/synthetic-package/index.js";
+    assert.equal(
+      ownerBuildInputIdentity(root, dependencyRoot, logical),
+      logical,
+    );
+    assert.equal(
+      ownerBuildInputIdentity(root, dependencyRoot, actualInput(logical)),
+      logical,
+    );
+  }, true));
+
+for (const target of ["dependency", "project"] as const)
+  test(`refuses ${target} parent aliases before accepting file identity`, async () =>
+    fixture(async ({ root, dependencyRoot, actualInput }) => {
+      const logical =
+        target === "dependency"
+          ? "node_modules/synthetic-package/index.js"
+          : "workers/api.entry.ts";
+      const parent = path.dirname(path.join(root, logical));
+      const alternate = parent + "-alternate";
+      renameSync(parent, alternate);
+      symlinkSync(alternate, parent);
+      assert.throws(() =>
+        ownerBuildInputIdentity(
+          realpathSync(root),
+          dependencyRoot,
+          actualInput(logical),
+        ),
+      );
+    }, true));

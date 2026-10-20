@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   OPTIONAL_PG_SOURCE_PINS,
+  ownerSourceIdentity,
   validateOptionalPgNativeImport,
   type OptionalPgEvidence,
 } from "./optional-pg-import.ts";
@@ -139,6 +140,311 @@ function editOutput(e: OptionalPgEvidence, value: string) {
   const bytes = Buffer.from(value);
   e.outputs[0]!.bytes = bytes;
   e.metafile.outputs[outputKey]!.bytes = bytes.length;
+}
+function canonicalSample(): OptionalPgEvidence {
+  const e = sample();
+  e.dependencyRoot = "/review/qualification-base/node_modules";
+  const actual = (name: string) =>
+    path.relative(
+      e.sourceRoot,
+      path.join(e.dependencyRoot, name.slice("node_modules/".length)),
+    );
+  e.metafile.inputs = Object.fromEntries(
+    Object.entries(e.metafile.inputs).map(([name, info]) => [
+      actual(name),
+      {
+        ...info,
+        imports: info.imports.map((item) => ({
+          ...item,
+          path: names.includes(item.path) ? actual(item.path) : item.path,
+        })),
+      },
+    ]),
+  );
+  e.metafile.outputs[outputKey]!.inputs = Object.fromEntries(
+    names.map((name) => [actual(name), { bytesInOutput: 8 }]),
+  );
+  editMap(e, (map) => {
+    map.sources = names.map((name) =>
+      path.relative(
+        "/tmp/raw-owner-qualification-Ab12/modules/chunks",
+        path.join(e.dependencyRoot, name.slice("node_modules/".length)),
+      ),
+    );
+  });
+  return e;
+}
+const canonicalKey = (logical: string) => "../qualification-base/" + logical;
+
+test("canonical dependency-root metadata inputs, branch edges and contributions pass unchanged", () => {
+  const e = canonicalSample();
+  const before = JSON.stringify(e.metafile);
+  const result = validateOptionalPgNativeImport(e);
+  assert.equal(result?.admitted.output, outputKey);
+  assert.equal(result?.admitted.importIndex, 0);
+  assert.equal(JSON.stringify(e.metafile), before);
+});
+test("logical custody bytes work with canonical metadata and logical map paths", () => {
+  const e = canonicalSample();
+  editMap(e, (map) => {
+    map.sources = names.map((name) =>
+      path.relative(
+        "/tmp/raw-owner-qualification-Ab12/modules/chunks",
+        path.resolve(e.sourceRoot, name),
+      ),
+    );
+  });
+  assert.ok(validateOptionalPgNativeImport(e));
+});
+test("source identity accepts only exact project and dependency descendants", () => {
+  assert.equal(
+    ownerSourceIdentity(
+      "/review/repo",
+      "/review/qualification-base/node_modules",
+      "workers/api.ts",
+    ),
+    "workers/api.ts",
+  );
+  assert.equal(
+    ownerSourceIdentity(
+      "/review/repo",
+      "/review/qualification-base/node_modules",
+      CLIENT,
+    ),
+    CLIENT,
+  );
+  assert.equal(
+    ownerSourceIdentity(
+      "/review/repo",
+      "/review/qualification-base/node_modules",
+      canonicalKey(CLIENT),
+    ),
+    CLIENT,
+  );
+  assert.equal(
+    ownerSourceIdentity("/review/repo", "/review/repo/node_modules", CLIENT),
+    CLIENT,
+  );
+});
+const badIdentities: [string, string, string][] = [
+  ["/review/repo/", "/review/qualification-base/node_modules", CLIENT],
+  ["/review/repo", "/review/qualification-base/node_modules/", CLIENT],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../unreviewed/node_modules/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../qualification-base/node_modules-evil/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../repo-evil/workers/api.ts",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../qualification-base/node_modules/pg/../pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../qualification-base//node_modules/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "./node_modules/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "/review/qualification-base/node_modules/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "node_modules/pg/lib/native/client.js/",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "../qualification-base/node_modules/../../outside.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "file:///review/repo/node_modules/pg/lib/native/client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "node_modules\\pg\\lib\\native\\client.js",
+  ],
+  [
+    "/review/repo",
+    "/review/qualification-base/node_modules",
+    "node_modules/pg/lib/native/client.js\u0000",
+  ],
+  ["/", "/review/qualification-base/node_modules", CLIENT],
+  ["/review/repo", "/", CLIENT],
+  ["review/repo", "/review/qualification-base/node_modules", CLIENT],
+  ["/review/repo/../repo", "/review/qualification-base/node_modules", CLIENT],
+  [
+    "/review/repo",
+    "/review/qualification-base/../qualification-base/node_modules",
+    CLIENT,
+  ],
+  ["/review/repo", "/review/repo", CLIENT],
+  ["/review/repo", "/review", CLIENT],
+];
+for (const [index, args] of badIdentities.entries()) {
+  test(`source identity rejects unreviewed path or root ${index + 1}`, () => {
+    assert.throws(() => ownerSourceIdentity(...args));
+  });
+}
+const badCanonicalGraphs: [string, (e: OptionalPgEvidence) => void][] = [
+  [
+    "extra logical edge alongside canonical edge",
+    (e) => {
+      e.metafile.inputs[canonicalKey(NATIVE)]!.imports.push({
+        path: CLIENT,
+        kind: "require-call",
+      });
+    },
+  ],
+  [
+    "extra dot-spelled edge alongside canonical edge",
+    (e) => {
+      e.metafile.inputs[canonicalKey(NATIVE)]!.imports.push({
+        path: "../qualification-base/./" + CLIENT,
+        kind: "require-call",
+      });
+    },
+  ],
+  [
+    "simultaneous logical and canonical inputs",
+    (e) => {
+      e.metafile.inputs[CLIENT] = e.metafile.inputs[canonicalKey(CLIENT)]!;
+    },
+  ],
+  [
+    "logical edge alias without matching input key",
+    (e) => {
+      e.metafile.inputs[canonicalKey(NATIVE)]!.imports[0]!.path = CLIENT;
+    },
+  ],
+  [
+    "wrong-root branch edge",
+    (e) => {
+      e.metafile.inputs[canonicalKey(NATIVE)]!.imports[0]!.path =
+        "../wrong-base/" + CLIENT;
+    },
+  ],
+  [
+    "dot-spelled branch edge",
+    (e) => {
+      e.metafile.inputs[canonicalKey(NATIVE)]!.imports[0]!.path =
+        "../qualification-base/./" + CLIENT;
+    },
+  ],
+  [
+    "logical contribution alias",
+    (e) => {
+      e.metafile.outputs[outputKey]!.inputs[CLIENT] = { bytesInOutput: 8 };
+    },
+  ],
+  [
+    "canonical contributor replaced with logical alias",
+    (e) => {
+      delete e.metafile.outputs[outputKey]!.inputs[canonicalKey(CLIENT)];
+      e.metafile.outputs[outputKey]!.inputs[CLIENT] = { bytesInOutput: 8 };
+    },
+  ],
+  [
+    "contribution outside exact dependency root",
+    (e) => {
+      e.metafile.outputs[outputKey]!.inputs["../other/" + CLIENT] = {
+        bytesInOutput: 8,
+      };
+    },
+  ],
+  [
+    "unrelated input outside both roots",
+    (e) => {
+      e.metafile.inputs["../unrelated/same.js"] = { bytes: 1, imports: [] };
+    },
+  ],
+  [
+    "source-root prefix collision input",
+    (e) => {
+      e.metafile.inputs["../repo-evil/same.js"] = { bytes: 1, imports: [] };
+    },
+  ],
+  [
+    "dependency-root prefix collision input",
+    (e) => {
+      e.metafile.inputs["../qualification-base/node_modules-evil/same.js"] = {
+        bytes: 1,
+        imports: [],
+      };
+    },
+  ],
+  [
+    "canonical key interior traversal",
+    (e) => {
+      e.metafile.inputs[
+        "../qualification-base/node_modules/pg/../pg/lib/native/client.js"
+      ] = e.metafile.inputs[canonicalKey(CLIENT)]!;
+      delete e.metafile.inputs[canonicalKey(CLIENT)];
+    },
+  ],
+  [
+    "canonical key double slash",
+    (e) => {
+      e.metafile.inputs["../qualification-base//" + CLIENT] =
+        e.metafile.inputs[canonicalKey(CLIENT)]!;
+      delete e.metafile.inputs[canonicalKey(CLIENT)];
+    },
+  ],
+  [
+    "wrong root supplied to reinterpret canonical keys",
+    (e) => {
+      e.dependencyRoot = "/review/different-base/node_modules";
+    },
+  ],
+  [
+    "duplicate logical and canonical map entries",
+    (e) =>
+      editMap(e, (map) => {
+        map.sources.push(
+          path.relative(
+            "/tmp/raw-owner-qualification-Ab12/modules/chunks",
+            path.join(e.sourceRoot, CLIENT),
+          ),
+        );
+        map.sourcesContent.push(fixtures[CLIENT]);
+      }),
+  ],
+  [
+    "invented native builtin namespace",
+    (e) => {
+      e.metafile.inputs["native-node-require:made-up"] = {
+        bytes: 1,
+        imports: [],
+      };
+    },
+  ],
+];
+for (const [label, mutate] of badCanonicalGraphs) {
+  test("canonical metadata fails closed: " + label, () => {
+    const e = canonicalSample();
+    mutate(e);
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
 }
 test("synthetic positive: pins, exact input/output and mapped optional call are associated", () => {
   const result = validateOptionalPgNativeImport(sample());

@@ -15,6 +15,7 @@ export const OWNER_FRAME_PATHS = [
   "tests/qualification/strict-gzip/owner-resource-policy.ts",
   "tests/qualification/strict-gzip/owner-pg-identity.ts",
   "tests/qualification/strict-gzip/owner-deadline.ts",
+  "tests/qualification/strict-gzip/optional-pg-import.ts",
 ] as const;
 function refusedBuildImports(value: unknown): string[] {
   if (!Array.isArray(value) || value.length > 20) return [];
