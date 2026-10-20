@@ -1,0 +1,131 @@
+{
+  "status": "artifact_verified_native_compatibility_pins",
+  "base": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "harness_reference": {
+    "run_id": 39352593125,
+    "head": "ab04594dfa632e417d6038a980738512f540533f",
+    "actual_formatted_driver_sha256": "e4743b90d6876b7c6732487262c799761954b17ad238e8a05a690b600091dd27",
+    "actual_formatted_controller_sha256": "d7a015a63f6c395dee9d2af828861d48cfa0b10193937a5655eed6975576c93a"
+  },
+  "files": [
+    "src/raw-capture-d1.ts",
+    "src/raw-chain-capture.ts",
+    "src/raw-capture-retry-intent.ts",
+    "src/raw-capture-retry-store.ts"
+  ],
+  "variants": {
+    "q8-number": {
+      "nativeQualification": {
+        "runId": 39365100831,
+        "runAttempt": 1,
+        "sourceCommit": "e1d738ef2c3965967c298b0acebce966599719be",
+        "artifactId": 12239400611,
+        "zipSha256": "95d36e5d81a13b2253a5d114f6d661f692e479825b5b829495e8b429f734c54c",
+        "comparisonProofSha256": "b4eaefa5a51d854c6bf2b8dcea664c67cb12654e16748e8add94b3dc4c652f9f"
+      },
+      "files": {
+        "src/raw-capture-d1.ts": {
+          "blob": "2758ccf8c95a78ab3c4a2068f6b65caf811bed2e",
+          "sha256": "b7c86da367120a81186e7cab46e218a255bfa195c1205fcacd187e97767cac55"
+        },
+        "src/raw-chain-capture.ts": {
+          "blob": "285ad4bae1ed8108260bb71ace4753df16428120",
+          "sha256": "a017f2075d25aa955ff0cfca2845cc278408c82726cf5e8fe29d028079dc15ad"
+        },
+        "src/raw-capture-retry-intent.ts": {
+          "blob": "3d8a1d223bb4360923fb6df5a21ac4935e3d53a4",
+          "sha256": "e11896b37bb66e86d5ca468723d3ccbfc751f2013c24b88e2ae5e98d7df009a1"
+        },
+        "src/raw-capture-retry-store.ts": {
+          "blob": "5dd19a4b3114d227d8cd1f0c2fe7fb3039926f53",
+          "sha256": "a19f5189eea2c2e09893961b9f606a23bcf7a927dedcb85fd51bbc99c99f794a"
+        }
+      }
+    },
+    "v3-number": {
+      "nativeQualification": {
+        "runId": 39365100831,
+        "runAttempt": 1,
+        "sourceCommit": "e1d738ef2c3965967c298b0acebce966599719be",
+        "artifactId": 12238293937,
+        "zipSha256": "dd1c55613f62d73955698dac5fd5bc5787e6b3e61627a7769978ba1f61dd9414",
+        "comparisonProofSha256": "b4eaefa5a51d854c6bf2b8dcea664c67cb12654e16748e8add94b3dc4c652f9f"
+      },
+      "files": {
+        "src/raw-capture-d1.ts": {
+          "blob": "2758ccf8c95a78ab3c4a2068f6b65caf811bed2e",
+          "sha256": "b7c86da367120a81186e7cab46e218a255bfa195c1205fcacd187e97767cac55"
+        },
+        "src/raw-chain-capture.ts": {
+          "blob": "285ad4bae1ed8108260bb71ace4753df16428120",
+          "sha256": "a017f2075d25aa955ff0cfca2845cc278408c82726cf5e8fe29d028079dc15ad"
+        },
+        "src/raw-capture-retry-intent.ts": {
+          "blob": "bd18e99396edaf2c3f9efb9d45b45aa660eb0d76",
+          "sha256": "ed17fffa2a2a405ff567a12161f9959e3dea5539b6c74f3d2986a52428962d98"
+        },
+        "src/raw-capture-retry-store.ts": {
+          "blob": "a1d1974fdc7038fbd891f046e83f8e3404c95835",
+          "sha256": "df3fd68118fa994e180a1abdf765bf653c25b731773f36895f6c2469b3869fcf"
+        }
+      }
+    }
+  },
+  "matrix": [
+    {
+      "scenario": "fresh-compressible",
+      "variant": "q8-number"
+    },
+    {
+      "scenario": "fresh-compressible",
+      "variant": "v3-number"
+    },
+    {
+      "scenario": "retry-high-entropy",
+      "variant": "q8-number"
+    },
+    {
+      "scenario": "retry-high-entropy",
+      "variant": "v3-number"
+    }
+  ],
+  "max_parallel": 2,
+  "published": false,
+  "executed": false,
+  "production_actions": false,
+  "memory_gate": "open;128 MB and whole-owner acceptance remain separate",
+  "final_pin_source": "Actual same-run/attempt compatibility qualify ZIP sources and exact four-layer proof from run 39365100831; no format-only or proposal source substituted",
+  "resource_gate": {
+    "status": "unexecuted_unpublishable_format_first_gate",
+    "format_phase": "format_only_no_capture_or_native_build",
+    "qualify_phase": "frozen_check_lint_types_workflow_then_fixed_four_cases",
+    "native_format_readback": null,
+    "native_checks_status": "not_run",
+    "helper_pins": [
+      {
+        "path": ".github/scripts/qualify-raw-capture-resources.ts",
+        "bytes": 61546,
+        "sha256": "b09a965df7a2fe91010931a0340091647287ca8672e300d397e546e6e2999e78",
+        "blob": "de81217a7e9128a18c0055470e7858b8633cc9b1"
+      },
+      {
+        "path": ".github/fixtures/raw-capture-resource-worker.ts",
+        "bytes": 4996,
+        "sha256": "d7a015a63f6c395dee9d2af828861d48cfa0b10193937a5655eed6975576c93a",
+        "blob": "cac14aec10a139a04a49225ca0ccb0e07d656ca9"
+      },
+      {
+        "path": ".github/scripts/gate-raw-capture-resources.ts",
+        "bytes": 25005,
+        "sha256": "5f62758261124bb00e3e654e3f959d7e708cb8c187a8f2b4d6a95e9872111ac3",
+        "blob": "5fe0a152bd1ba1cdff8d470ceb3c0a1ebc301f1c"
+      },
+      {
+        "path": ".github/tsconfig.raw-capture-resources.json",
+        "bytes": 248,
+        "sha256": "c701c101c879f5174cb6b1b102ce6d2127f44e18657b652dc4ab6feca3f84388",
+        "blob": "f5916780e231749bf8fca2a02d6f65a6d6e4e052"
+      }
+    ]
+  }
+}

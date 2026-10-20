@@ -1,0 +1,117 @@
+name: Isolated raw capture resource native gates and comparison
+
+on:
+  push:
+    branches: [ci/raw-capture-number-resource-20261020]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-number-resource-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RESOURCE_GATE_PHASE: format
+  RESOURCE_CANDIDATE_MANIFEST_SHA256: c04b410268bc5f99b29f61070511925b14b237f6115ddd9dc138a4e1765c7464
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_WRITE_LOGS: "false"
+  FORCE_COLOR: "0"
+
+jobs:
+  format:
+    # Format only; resource qualification requires a separate reviewed push.
+    if: github.ref == 'refs/heads/ci/raw-capture-number-resource-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        variant: [q8-number, v3-number]
+    steps:
+      - name: Checkout exact isolated carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Verify exact source pins before installing locked dependencies
+        run: node .github/scripts/gate-raw-capture-resources.ts check-source format-only "${{ matrix.variant }}"
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format and check native harness without resource execution
+        run: node .github/scripts/gate-raw-capture-resources.ts run format-only "${{ matrix.variant }}"
+      - name: Retain actual formatted harness and bounded native outcomes
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-resource-native-format-${{ github.run_attempt }}-${{ matrix.variant }}
+          path: tmp/raw-capture-resource-native/upload/
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  qualify:
+    # A later separately reviewed literal-qualify push is required after actual format readback.
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - scenario: fresh-compressible
+            variant: q8-number
+          - scenario: fresh-compressible
+            variant: v3-number
+          - scenario: retry-high-entropy
+            variant: q8-number
+          - scenario: retry-high-entropy
+            variant: v3-number
+    steps:
+      - name: Checkout exact frozen carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Verify exact source pins before installing locked dependencies
+        run: node .github/scripts/gate-raw-capture-resources.ts check-source "${{ matrix.scenario }}" "${{ matrix.variant }}"
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Require frozen native gates before one measured case
+        run: node .github/scripts/gate-raw-capture-resources.ts run "${{ matrix.scenario }}" "${{ matrix.variant }}"
+      - name: Retain native gates and actual frozen helper sources
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-resource-native-qualify-${{ github.run_attempt }}-${{ matrix.scenario }}-${{ matrix.variant }}
+          path: tmp/raw-capture-resource-native/upload/
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+      - name: Retain original bounded resource evidence separately
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workerd-raw-capture-${{ matrix.scenario }}-${{ matrix.variant }}
+          path: |
+            raw-capture-resource-reports/*.json
+            raw-capture-resource-reports/driver.ts
+            raw-capture-resource-reports/worker.ts
+          retention-days: 1
+          if-no-files-found: error
