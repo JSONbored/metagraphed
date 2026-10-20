@@ -1,0 +1,5 @@
+npm run build --workspace=packages/client
+if ! git diff --exit-code -- packages/client/dist; then
+  echo "::error::packages/client/dist is stale -- run 'npm run build --workspace=packages/client' and commit the result."
+  exit 1
+fi

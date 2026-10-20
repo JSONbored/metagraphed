@@ -1,0 +1,1 @@
+npx vitest run tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts tests/archive-policy.test.ts tests/d1-schema-snapshot.test.ts

@@ -1,0 +1,1 @@
+npm test --workspace=packages/ui-kit

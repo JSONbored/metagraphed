@@ -1,0 +1,3 @@
+npm run r2:manifest:dry-run
+npm run r2:download:dry-run
+npm run kv:publish:dry-run

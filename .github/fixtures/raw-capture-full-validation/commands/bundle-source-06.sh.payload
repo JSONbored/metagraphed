@@ -1,0 +1,1 @@
+npx eslint scripts/archive-policy-bundles.ts scripts/archive-policy-d1-source.ts scripts/validate-archive-policy.ts tests/archive-policy-bundles.test.ts tests/archive-policy-d1-source.test.ts

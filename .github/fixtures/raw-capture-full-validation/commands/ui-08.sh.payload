@@ -1,0 +1,5 @@
+node scripts/generate-limits-docs.ts
+if ! git diff --exit-code -- content/docs/limits.mdx; then
+  echo "::error::apps/ui/content/docs/limits.mdx is stale -- run 'node scripts/generate-limits-docs.ts' (from apps/ui) and commit the result."
+  exit 1
+fi

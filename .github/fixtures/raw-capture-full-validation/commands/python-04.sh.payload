@@ -1,0 +1,15 @@
+uv sync --locked --project scripts --python 3.12
+uv pip check --python scripts/.venv/bin/python
+uv run --locked --project scripts python - <<'PYTHON'
+import hashlib, json, sys
+from pathlib import Path
+from importlib.metadata import version
+from packaging.version import Version
+import bittensor as bt
+versions = {name: version(name) for name in ("bittensor", "urllib3", "multidict")}
+assert callable(bt.SubtensorApi)
+assert versions["bittensor"] == "10.5.0"
+assert Version(versions["urllib3"]) >= Version("2.8.0")
+assert Version(versions["multidict"]) >= Version("6.9.1")
+print(json.dumps({"python": sys.version, "installed": versions, "scripts_lock_sha256": hashlib.sha256(Path("scripts/uv.lock").read_bytes()).hexdigest()}))
+PYTHON

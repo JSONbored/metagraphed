@@ -1,0 +1,1122 @@
+name: Raw capture full native validation
+
+on:
+  push:
+    branches: [ci/native-base64-full-validation-20261020]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-full-native-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_FULL_QUALIFICATION: "true"
+  FULL_VALIDATION_PROFILE: native-base64-v1
+  FULL_VALIDATION_MANIFEST_SHA256: 3083acc73482b450934d45103c05badd42e21d2c1f4c6adf608a04944f8438b2
+  FULL_VALIDATION_COMMANDS_SHA256: cd12f004a197a02ef3801bda933c5fa41392908508a20a64966d3762e206f8e5
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_WRITE_LOGS: "false"
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10 # single inline git diff against the base ref, no build
+    outputs:
+      force_full: ${{ steps.force.outputs.force_full }}
+      docs_only: ${{ steps.force.outputs.docs_only }}
+      run_workflows_validation: ${{ steps.force.outputs.run_workflows_validation }}
+      run_migrations_validation: ${{ steps.force.outputs.run_migrations_validation }}
+      run_ui_validation: ${{ steps.force.outputs.run_ui_validation }}
+      run_ui_e2e: ${{ steps.force.outputs.run_ui_e2e }}
+      run_python_validation: ${{ steps.force.outputs.run_python_validation }}
+    env:
+      QUALIFICATION_JOB_ID: changes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Compute fast-lane eligibility
+        id: filter
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          QUALIFICATION_EXPR_0: ${{ github.event_name }}
+          QUALIFICATION_EXPR_1: ${{ github.event_name }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run changes-02
+      # Retain focused source evidence alongside the full gates for this draft.
+      - name: Force full qualification independently of committed diff
+        id: force
+        run: |
+          test "$FORCE_FULL_QUALIFICATION" = "true"
+          {
+            echo "force_full=true"
+            echo "docs_only=false"
+            echo "run_workflows_validation=true"
+            echo "run_migrations_validation=true"
+            echo "run_ui_validation=true"
+            echo "run_ui_e2e=true"
+            echo "run_python_validation=true"
+          } >> "$GITHUB_OUTPUT"
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  bundle-source:
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    needs: changes
+    name: bundle source qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      QUALIFICATION_JOB_ID: bundle-source
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install without lifecycle scripts
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-03
+      - name: Check source formatting
+        id: format
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-04
+      - name: Retain native formatting diff on failure
+        if: failure() && steps.format.outcome == 'failure'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-05
+      - name: Lint source support
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-06
+      - name: Typecheck source support and regression fixtures
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-07
+      - name: Test snapshot extraction and archive-policy wiring
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-08
+      - name: Audit committed snapshots and workflow rules
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run bundle-source-09
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  validate:
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    name: validate
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 45 # one npm ci + one build now serves BOTH the suite and the ~20 validators (see the merge note above jobs:)
+    # Skip draft PRs (anti-abuse, mirrors ui-preview.yml): a draft consumed the full heavy fan-out on
+    # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
+    # required status contexts on main (verified via branches/main/protection), and the review
+    # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
+    env:
+      QUALIFICATION_JOB_ID: validate
+      # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
+      # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
+      # the suite half of this job must run even on a docs-only diff.
+      DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+      RUN_WORKFLOWS_VALIDATION: ${{ needs.changes.outputs.run_workflows_validation }}
+      RUN_MIGRATIONS_VALIDATION: ${{ needs.changes.outputs.run_migrations_validation }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          # Without this, setup-node's cache key hashes EVERY package-lock.json
+          # in the tree, so a lockfile anywhere else would invalidate this job's
+          # cache even though `npm ci` here only ever reads the root one.
+          # packages/client is an npm
+          # workspace (#3066) with no lockfile of its own anymore — its version
+          # bumps land in the root lockfile, which this path already covers.
+          cache-dependency-path: package-lock.json
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Compute submitted files
+        env:
+          BASE_SHA: ${{ steps.overlay.outputs.canonical_base }}
+          HEAD_SHA: ${{ steps.overlay.outputs.candidate_commit }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-02
+      - name: Install
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
+
+      # Report-only SCA for the ROOT workspace — workers/** (the Worker API, MCP
+      # server, webhook dispatcher), src/**, and scripts/** — the repo's larger,
+      # more security-sensitive dependency surface, which until now had strictly
+      # less CI coverage than apps/ui (#5543). Same posture as the apps/ui CVE
+      # scan in the `ui` job below and the gate #1772 established: surface
+      # high/critical runtime advisories at PR time without failing the job
+      # (Renovate is async/non-blocking, so a feature PR can still merge a
+      # vulnerable transitive dep between Renovate runs). No `--workspace` flag,
+      # so this audits the whole lockfile — a superset that necessarily covers
+      # the root deps this gap is about; the minor overlap with the apps/ui-
+      # scoped scan is harmless since both are report-only. Never `--force`.
+      # Tighten to blocking once it stays clean.
+      - name: Qualify carrier helpers without changing tracked inputs
+        run: node .github/scripts/report-raw-capture-full-validation.ts run validate-carrier-helpers
+      - name: Dependency CVE scan (SCA, report-only)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-05
+      # Lint + format + the documentation/intake/safety/security scans below
+      # run UNCONDITIONALLY, docs fast lane or not — they're cheap (no build,
+      # no network), and directly relevant to a docs-only diff (a stray secret,
+      # private-boundary leak, broken doc-contract reference, or malformed
+      # intake template can land in a "docs-only" PR just as easily as in a
+      # code PR).
+      # CONCURRENTLY, not sequentially (#10424). eslint and prettier read the
+      # same tree and write nothing, so they share nothing but CPU: timed
+      # separately they are 38s and 29s, and in series that is the 80s that
+      # dominated this job.
+      #
+      # Both are waited on and the exit code is carried out explicitly, because
+      # a bare `cmd & cmd & wait` reports the SHELL's status, not the jobs' --
+      # it would turn a red lint into a green step, which is worse than a slow
+      # one. Verified against every combination: (0,0)->0, (1,0)->1, (0,1)->1,
+      # (3,5)->5. Both still run even when the first fails, so one push shows
+      # you both lists rather than making you fix them one at a time.
+      # Both tools skip a file whose CONTENT hash is unchanged (#10608).
+      # Measured on this tree: eslint 28.1s -> 2.6s warm, prettier 51.5s -> 2.7s
+      # warm, and the step is bounded by prettier because the two run
+      # concurrently. A cold or stale cache costs a full run, never a wrong
+      # pass -- both index by file hash, so a changed file is always re-read
+      # (verified: an unformatted file still exits 1 with the cache warm).
+      #
+      # Keyed on the lockfile AND both configs, because a rule change has to
+      # invalidate every file's entry; `restore-keys` falls back to the newest
+      # prior entry, and the run sha makes every run save a fresh one -- the
+      # same shape as the tsbuildinfo cache below.
+      - name: Cache lint + format indexes
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .eslintcache
+            .prettiercache
+          key: ${{ runner.os }}-lintcache-${{ hashFiles('package-lock.json', 'eslint.config.ts', '.prettierignore') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-lintcache-${{ hashFiles('package-lock.json', 'eslint.config.ts', '.prettierignore') }}-
+
+      - name: Lint + format
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-07
+      # Same class of check as Lint + format above: cheap, no build, no network
+      # — runs unconditionally rather than gating on DOCS_ONLY since a real
+      # docs-only diff can't touch a .ts file anyway (see typescript-migration
+      # epic metagraphed#7510). tsc reads tsconfig.json's own include/exclude,
+      # not the file list — this typechecks the whole in-scope tree every run,
+      # not just files this PR touched.
+      # Incremental typecheck (#8924): tsc reuses a .tsbuildinfo and revalidates
+      # only what changed -- measured 8.5s -> 1.8s warm. Keyed on the lockfile
+      # (a dependency change invalidates types) plus the run sha so every run
+      # saves a fresh entry; restore-keys falls back to the newest prior one.
+      # A cold or stale buildinfo costs a full check, never a wrong one: tsc
+      # verifies every input against the version recorded in it.
+      - name: Cache TypeScript buildinfo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tsconfig.tsbuildinfo
+          key: ${{ runner.os }}-tsbuildinfo-root-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-tsbuildinfo-root-${{ hashFiles('package-lock.json') }}-
+
+      - name: Typecheck
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-09
+
+      - name: Cold typecheck for native qualification
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-10
+
+      # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
+      # bundle, generated types + client) against what the schemas regenerate, so
+      # they MUST run before the build step below overwrites those committed files.
+      # This is the gate CONTRIBUTING.md references — without it a stale or
+      # hand-edited committed contract could land on main undetected.
+      #
+      # Skipped for a proven docs-only diff: **/*.md + .claude/skills/** cannot
+      # touch schemas/, openapi.json, or any generated contract file, so there
+      # is nothing for this to drift-check.
+      # Every validator below runs even when an earlier one fails, and the step
+      # fails at the end naming all of them (#10608).
+      #
+      # `bash -e` stopped at the FIRST failure, so one red validator hid every
+      # validator after it and each fix cost another ~5-minute round trip to
+      # discover the next one. Measured over one evening: #10577 reached this
+      # step, failed on validate:worker-types-parity, and skipped 39 of the
+      # job's 52 steps; #10572 skipped 20; #10563 skipped 14. Three PRs, three
+      # extra round trips, none of which learned anything a single run could
+      # not have said.
+      #
+      # `run_step` takes the command verbatim so every line below still spells
+      # the npm invocation in full. That is load-bearing:
+      # tests/pipeline-validator-parity.test.ts greps this file for those
+      # invocations to prove no declared validator has quietly stopped running
+      # in CI (#10251). Passing a list of bare script names to a runner script
+      # would blind that gate for every validator at once.
+      - name: Validate committed contract (drift)
+        if: env.DOCS_ONLY != 'true'
+        shell: bash
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-11
+      # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
+      # committed fallback (dist/metagraph-r2/metagraph/*), and every post-build validator below reads
+      # the fresh tree. Unconditional (no DOCS_ONLY skip): the suite runs on the docs fast lane too --
+      # coverage is a repo-wide delta gate, exactly as the pre-merge `test` job always built. MUST run
+      # AFTER the contract drift validators above (they compare the committed files this overwrites).
+      - name: Build artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-12
+
+      - name: Worker handler smoke
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-13
+
+      - name: Verify submitted public artifacts are reproducible
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-14
+
+      - name: Validate registry
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-15
+
+      - name: Generate R2 manifest
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-16
+
+      # #1025: committed derived artifacts under public/ must match a fresh
+      # build. The validators above run AFTER `npm run build`, so they only ever
+      # see freshly-rebuilt files — never the committed-stale ones — and
+      # ci-verify is diff-scoped, so a source-only PR never re-checks untouched
+      # derived files. This gate closes that silent-drift hole: a full rebuild
+      # has just run (build + r2:manifest), so any working-tree change here means
+      # a committed artifact was left stale. The deterministic derived artifacts
+      # use a fixed reproducible `generated_at` placeholder; the R2-only dist/
+      # tree is gitignored and excluded automatically.
+      #
+      # r2-manifest.json is excluded: its `*_artifact_size_bytes` totals sum the
+      # R2-only artifacts, whose byte sizes vary slightly build-to-build, so it
+      # is inherently non-deterministic. It is publish infrastructure regenerated
+      # on every publish (and by the r2:manifest step above), so its committed
+      # copy is a best-effort lockfile, not a served/contract surface.
+      #
+      # Skipped on the docs fast lane along with the "Build artifacts" step it
+      # depends on above -- there is no fresh build to diff against.
+      - name: Verify committed derived artifacts are fresh
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-17
+      # The contract surface: schemas, the Worker API, the MCP mirror of it, the
+      # query vocabulary, and the generated types. Every one reads the built
+      # tree and none of them writes, so they are independent and all of them
+      # run even when an earlier one fails -- see the drift step above for what
+      # stopping at the first cost. One step rather than eleven also drops
+      # eleven Actions step boundaries.
+      - name: Validate the API contract surface
+        if: env.DOCS_ONLY != 'true'
+        shell: bash
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-18
+      # Client-SDK drift gate: a contract-only PR (schemas → generated →
+      # openapi.json) is NOT under packages/client/**, so release-please never
+      # bumps the `client` component and the published @jsonbored/metagraphed
+      # silently lags the live contract. This fails the PR when a contract file
+      # changed versus the merge base but packages/client/package.json "version"
+      # was not bumped. Diff-scoped: non-contract PRs never fire.
+      - name: Validate client-SDK sync (contract ↔ published version)
+        env:
+          BASE_SHA: ${{ steps.overlay.outputs.canonical_base }}
+          HEAD_SHA: ${{ steps.overlay.outputs.candidate_commit }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-19
+
+      - name: Validate artifact size budgets
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-20
+
+      # Always runs, docs fast lane or not: cheap (reads README.md +
+      # docs/backend-artifact-contracts.md + src/contracts.ts, no build, no
+      # network) and this is exactly the gate a docs-only PR is most likely to
+      # need — the repo's own docs-only.md PR template lists it first.
+      - name: Validate documentation contracts
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-21
+
+      # Companion to the step above: validate:docs checks that every artifact and
+      # route is MENTIONED in docs/backend-artifact-contracts.md; this checks that
+      # a bullet did not silently outlive the behavior it describes. Fires only
+      # when a description's tier/liveness/provenance claims moved versus the
+      # merge base and the bullet stayed byte-identical (#9545 shipped exactly
+      # that). PR-only: it needs a merge base to diff against.
+      - name: Validate contract ↔ doc sync
+        env:
+          BASE_SHA: ${{ steps.overlay.outputs.canonical_base }}
+          HEAD_SHA: ${{ steps.overlay.outputs.candidate_commit }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-22
+
+      # NOTE: the README subnet catalog is intentionally NOT gated here. It is a
+      # DATA-derived listing (regenerated by `npm run readme:catalog` from
+      # registry/subnets/), so gating it red-lined build-less community surface
+      # PRs that legitimately change a subnet's catalog row. README freshness is
+      # owned out-of-band by .github/workflows/readme-catalog-refresh.yml, which
+      # accumulates drift into a single chore/readme-catalog PR on every
+      # registry/subnets push. (Same rationale as the gitignored llms.txt
+      # catalogs + public/datasets — DATA artifacts are not PR-gated.)
+
+      # Always runs (see docs/backend-artifact-contracts.md rationale above):
+      # cheap file-only scan of .github/ISSUE_TEMPLATE + the PR template, no
+      # build required, and listed in docs-only.md's own checklist.
+      - name: Validate intake templates
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-23
+
+      - name: Validate registry subnet files
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-24
+
+      # #10443/#10516: relationships the JSON Schema cannot see. A
+      # `probe-derived` revenue figure on a surface nothing probes did not come
+      # from a probe, and a revenue/treasury role on a PROTOCOL-DERIVED subnet
+      # account is the misattribution #10448 nearly made — that account
+      # receives large many-party inbound because that is what buying alpha
+      # looks like, so evidence requirements pass it while the conclusion stays
+      # wrong. File-only scan over registry/, no build needed.
+      - name: Validate revenue provenance
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-25
+
+      # #8658: the cron prober's input list and call_subnet_surface's resolution
+      # catalog must be exactly the published registry filtered to
+      # probe-enabled + public-safe + callable kinds. When they drift, surfaces
+      # advertised as probe-enabled are never probed AND agents get an error for
+      # ids that demonstrably exist. Runs after `npm run build` above so the
+      # staged surfaces.json exists to compare against; skips (rather than
+      # fails) if it does not, so ordering can never turn into a false alarm.
+      - name: Validate operational-surface parity
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-26
+
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.ts
+      # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
+      # that path cannot affect this validator's result. See the `changes` job
+      # comment for the full rationale.
+      - name: Validate workflows
+        if: env.RUN_WORKFLOWS_VALIDATION == 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-27
+
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-migrations.ts
+      # reads ONLY migrations/*.sql, so a PR with zero changes under that path
+      # cannot affect this validator's result. See the `changes` job comment for
+      # the full rationale.
+      - name: Validate migration sequence
+        if: env.RUN_MIGRATIONS_VALIDATION == 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-28
+
+      # Permanent lock on the TS migration (#7510/#7521): no hand-written
+      # .mjs/.js may reappear under src/, workers/, scripts/ or tests/.
+      # Runs unconditionally (no DOCS_ONLY skip) — it reads
+      # only `git ls-files` output, costs well under a second, and a skip
+      # predicate would itself be a hole (a "docs-only" PR can still add a
+      # tracked .mjs file).
+      # The permanent source-tree locks. Every one reads only the committed
+      # source and costs about a second, which is why they run on the docs fast
+      # lane too -- a "docs-only" PR can still re-add a hand-written component
+      # file. Grouped so one failure does not hide the other seven; each keeps
+      # the reason it exists.
+      #
+      #   no-hand-written-mjs      the .ts migration lock (#7510)
+      #   single-schema-source     every published OpenAPI component comes from
+      #                            schemas-src/ and nowhere else (#9830)
+      #   schema-opacity           an object published with no declared
+      #                            properties carries a written reason (#9797)
+      #   schema-vocabularies      a value set of three or more members lives in
+      #                            ONE schema file unless declared debt (#9799)
+      #   unreferenced-modules     files nothing imports (#10221)
+      #   unreferenced-exports     the export half, a ratchet rather than
+      #                            pass/fail -- most of the count is contract
+      #                            names the registry links by string, which no
+      #                            static tool can follow (#10292)
+      #   module-state-resets      module-level mutable state in src/ and
+      #                            workers/ registers a reset, or it leaks
+      #                            across test files once the coverage pass runs
+      #                            with `isolate: false` (#8922)
+      #   pg-json-binds            a bind whose static type is an array is
+      #                            REINTERPRETED by node-postgres into a
+      #                            Postgres array literal, which the column's
+      #                            own JSON.parse reader then degrades to null
+      #                            on every read -- how a `table_filter` scoped
+      #                            to one table came to fire on all of them
+      #                            (#10179). Type-directed because the bug is
+      #                            invisible in the source: `${v.tableFilter}`
+      #                            and `${v.name}` look identical.
+      - name: Validate the source-tree locks
+        shell: bash
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-29
+      - name: Validate Cloudflare config
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-30
+
+      - name: Validate R2 manifest
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-31
+      - name: Worker deploy dry-run
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-32
+
+      - name: Worker bundle-size budget
+        if: env.DOCS_ONLY != 'true'
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-33
+
+      # Always runs, docs fast lane or not: a plain regex scan over
+      # README/docs/registry/schemas/public/.github/workers/wrangler.jsonc for
+      # secrets, private paths, and localhost URLs (scripts/scan-public-
+      # safety.mjs) — no build, no network, and the exact gate a docs edit
+      # could most plausibly trip (a pasted local path or token in a doc).
+      - name: Public-safety scan
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-34
+
+      # Always runs, docs fast lane or not: this scans all tracked files,
+      # including Markdown, for private review internals and provider-private
+      # routes. It is a security boundary, not a build/contract gate.
+      - name: Validate private boundary
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-35
+
+      # The suite, split across runners (#10414). It shares nothing with `validate`
+      # above -- that job's ~45 gates and this job's vitest passes were sequential
+      # in one job purely because they were written that way, so a 486s test step
+      # waited on 266s of validators for no reason.
+      #
+      # The MATRIX is over what run-ci-tests.ts already partitions: the mocking
+      # pass keeps its own registry (#8922) and cannot merge into the shared one,
+      # and the shared pass is sliced by file. Codecov merges every leg's upload by
+      # commit SHA exactly as it already merged the two passes' separate reports,
+      # so the denominator is unchanged -- see `Verify coverage reports exist`,
+      # which still refuses an empty report rather than uploading a partial one.
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  test:
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    name: test (${{ matrix.name }})
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One red leg must not cancel the others: a shard-specific failure is
+      # exactly the thing you want the other shards' results for.
+      fail-fast: false
+      matrix:
+        include:
+          - name: shared 1/3
+            id: shared-1
+            args: --pass=shared --shard=1/3
+            cov: coverage
+            junit: ""
+          - name: shared 2/3
+            id: shared-2
+            args: --pass=shared --shard=2/3
+            cov: coverage
+            junit: ""
+          - name: shared 3/3
+            id: shared-3
+            args: --pass=shared --shard=3/3
+            cov: coverage
+            junit: ""
+          - name: mocked 1/2
+            id: mocked-1
+            args: --pass=mocked --shard=1/2
+            cov: coverage-mocked
+            junit: "-mocked"
+          - name: mocked 2/2
+            id: mocked-2
+            args: --pass=mocked --shard=2/2
+            cov: coverage-mocked
+            junit: "-mocked"
+    env:
+      QUALIFICATION_JOB_ID: test-${{ matrix.id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          # Without this, setup-node's cache key hashes EVERY package-lock.json
+          # in the tree, so a lockfile anywhere else would invalidate this job's
+          # cache even though `npm ci` here only ever reads the root one.
+          # packages/client is an npm
+          # workspace (#3066) with no lockfile of its own anymore — its version
+          # bumps land in the root lockfile, which this path already covers.
+          cache-dependency-path: package-lock.json
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
+
+      # Report-only SCA for the ROOT workspace — workers/** (the Worker API, MCP
+      # server, webhook dispatcher), src/**, and scripts/** — the repo's larger,
+      # more security-sensitive dependency surface, which until now had strictly
+      # less CI coverage than apps/ui (#5543). Same posture as the apps/ui CVE
+      # scan in the `ui` job below and the gate #1772 established: surface
+      # high/critical runtime advisories at PR time without failing the job
+      # (Renovate is async/non-blocking, so a feature PR can still merge a
+      # vulnerable transitive dep between Renovate runs). No `--workspace` flag,
+      # so this audits the whole lockfile — a superset that necessarily covers
+      # the root deps this gap is about; the minor overlap with the apps/ui-
+      # scoped scan is harmless since both are report-only. Never `--force`.
+      # Tighten to blocking once it stays clean.
+      - name: Build artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-04
+
+      - name: Prepare test reports dir
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-05
+
+      # `test:ci` (scripts/run-ci-tests.ts) runs the whole suite in two vitest
+      # passes: the ~17 files that use vi.mock/vi.doMock/vi.unmock/
+      # vi.resetModules keep per-file isolation because they rewrite the module
+      # registry itself, and every other file runs with `--isolate=false`,
+      # sharing one registry per worker (#8922). Each pass writes its own lcov +
+      # junit -- neither is a valid coverage denominator alone, so BOTH are
+      # uploaded and Codecov merges them.
+      #
+      # #8937 removed the former serial third pass: the filesystem-mutating
+      # tests now build into their own copy of the repo's data directories
+      # rather than the one shared artifact tree, so they parallelize with
+      # everything else.
+      #
+      # NOTE: the `test` job intentionally does NOT participate in the docs
+      # fast lane above. Coverage is a repo-wide delta gate (codecov.yml), not
+      # diff-scoped, so shortcutting it on a docs-only PR would let a docs PR
+      # merge without an accurate coverage report. It's also not the wall-clock
+      # long pole when it does run alongside a fast `checks` job.
+      - name: Test (split passes, with coverage gate)
+        env:
+          VITEST_JUNIT_PATH: reports/junit/vitest.xml
+          QUALIFICATION_EXPR_0: ${{ matrix.args }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-06
+
+      # Both passes must have produced a report -- an empty/missing one would
+      # otherwise upload a partial denominator and silently understate coverage.
+      - name: Verify coverage reports exist
+        env:
+          QUALIFICATION_EXPR_0: ${{ matrix.cov }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-07
+      # Coverage and results leave as ARTIFACTS; the `coverage` job below does
+      # the single Codecov upload (#10414).
+      #
+      # WHY NOT UPLOAD FROM EACH LEG: the Codecov CLI is downloaded and
+      # GPG-verified once per upload, and that verification races its own key
+      # propagation across edge nodes -- observed here as
+      # "gpg: Can't check signature: No public key" on the mocked leg, with the
+      # tests themselves green. Uploading per leg multiplies a known transient
+      # by the shard count. One upload also means Codecov computes the verdict
+      # ONCE over the whole merged set, so `after_n_builds` stops being coupled
+      # to how many shards happen to exist.
+      #
+      # Staged into a flat directory with per-leg names because the three shared
+      # shards all write `coverage/lcov.info` and `reports/junit/vitest.xml` --
+      # identical paths on different runners, which merge-multiple would
+      # collapse into whichever landed last.
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  python:
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    name: python
+    needs: changes
+    # Path-gated at the JOB level (safe: zero required status contexts on main, and the review
+    # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
+    # python/**, scripts/**.py and scripts lock/project manifests. Draft
+    # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # locked dependency qualification and hermetic suites
+    env:
+      QUALIFICATION_JOB_ID: python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Setup uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      # `--extra test` installs the httpx-backed test deps (declared in pyproject's
+      # [test] extra) so the async cases run instead of skipping. uv provisions a
+      # Python within `requires-python = ">=3.9"`. No new runtime dependency.
+      - name: Test Python SDK
+        working-directory: python
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run python-03
+
+      - name: Install and check the locked data-refresh environment
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run python-04
+      - name: Test scripts in their locked dependency environment
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run python-05
+
+      # Stdlib unittest with no third-party imports (each case loads its subject by path via
+      # importlib and asserts pure helpers), so this runs OUTSIDE the SDK's project environment
+      # -- `--no-project` keeps python/'s pyproject from being resolved for a suite that does not
+      # belong to it. Discovery is the point: a test whose subject has been deleted fails at
+      # import here instead of sitting unrun.
+      - name: Test data-refresh scripts
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run python-06
+
+      # apps/ui (TanStack Start/Vite frontend, #3062) — entirely independent of the backend job above:
+      # a backend-only PR never installs or builds this tree, and vice versa. Gated on run_ui_validation
+      # (see the `changes` job comment) at the JOB level since 2026-07-24 — the old per-step guard
+      # pattern still consumed a full runner on every backend PR just to boot, check out, and evaluate
+      # ~18 false guards. Job-level skip is safe for the same reason as `test`'s draft skip: this repo
+      # has ZERO required status contexts on main, and the review pipeline's fetchLiveCiAggregate
+      # buckets skipped identically to success. Draft PRs skip entirely, mirroring the other heavy jobs.
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  ui:
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    name: ui
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # workspace install, drift-check builds, typecheck/test, and the Playwright e2e pass
+    env:
+      QUALIFICATION_JOB_ID: ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Installs the whole workspace tree (root + apps/ui + packages/client)
+      # from the one root lockfile -- there is no way to `npm ci` a single
+      # workspace in isolation.
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
+
+      # apps/ui consumes packages/client as a live workspace link (#3066), not
+      # a published package. packages/client/dist/index.js + index.cjs (the
+      # RUNTIME bundle only, NOT the .d.ts type declarations -- see
+      # packages/client/.gitignore) ARE committed specifically so Cloudflare
+      # Workers Builds' live deploy never has to build them: that build
+      # depends on `tsup` resolving correctly via PATH inside a `cd`'d-into
+      # workspace directory, which real Workers Builds runs hit failing in
+      # ways this repo's own environment never reproduced (npm
+      # hoisting/caching differences between environments) -- eliminating
+      # the build-at-deploy-time step entirely removes that whole failure
+      # class. Deliberately NOT a package.json "prepare" script either: that
+      # would auto-run the build on every `npm install`/`ci` for anyone in
+      # the repo, which a security scan flagged as unnecessary install-time
+      # code execution (#3066 review). This step exists purely as a DRIFT
+      # CHECK: rebuild fresh and diff against the committed copy (`git diff`
+      # only considers tracked files, so the gitignored .d.ts is naturally
+      # excluded here without any extra scoping), so an edit to
+      # packages/client/src without a matching
+      # `npm run build --workspace=packages/client` + commit of the runtime
+      # bundle fails loudly here rather than shipping stale runtime code.
+      - name: Build packages/client (drift check)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-04
+      # Same drift-check shape as packages/client above, same reason:
+      # packages/ui-kit/dist/{index.js,index.cjs,index.css} are committed
+      # (see packages/ui-kit/.gitignore) so apps/ui's Cloudflare Workers
+      # Builds deploy never depends on rebuilding a sibling workspace
+      # package first (#4860).
+      - name: Build packages/ui-kit (drift check)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-05
+      # Same drift-check shape as packages/client/packages/ui-kit above, same
+      # reason: packages/chain-summaries/dist/{index.js,index.cjs} are
+      # committed (see packages/chain-summaries/.gitignore) so apps/ui's
+      # Cloudflare Workers Builds deploy never depends on rebuilding a sibling
+      # workspace package first (#8525).
+      - name: Build packages/chain-summaries (drift check)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-06
+      # Same drift-check shape as packages/client/packages/ui-kit above
+      # (#1652's docs-freshness acceptance line): content/docs/api-reference/
+      # is entirely generated from public/metagraph/openapi.json (except the
+      # one hand-written index.mdx the generator itself preserves) -- a
+      # contract-changing PR that forgets to re-run the generator ships
+      # stale/missing docs pages silently otherwise (caught live 2026-07-18:
+      # two newly-merged routes had zero corresponding doc pages).
+      - name: Build API reference docs (drift check)
+        working-directory: apps/ui
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-07
+      # Same drift-check shape as the API reference docs step just above
+      # (#6634, the #1652 acceptance line that was never actually built):
+      # content/docs/catalog.mdx's drift check moved to validate:readme-catalog
+      # (#11109): the drift is CAUSED by registry changes, and registry-only
+      # PRs skip this path-filtered job -- so the check here failed every PR
+      # except the one that introduced the drift. The always-running validate
+      # job now holds both catalog destinations against the shared renderer.
+
+      # Same drift-check shape again, and here it IS the acceptance criterion:
+      # #8610 asks that "every enforced limit on the page matches tier config as
+      # code". content/docs/limits.mdx is generated from the five live
+      # *_TIERED_RATE_LIMIT objects, and tests/api-tiers.test.ts already binds
+      # those to the Cloudflare bindings in wrangler.jsonc -- so this step
+      # closes the chain page -> config -> binding. A ceiling raised without
+      # regenerating would leave callers planning against a number we no longer
+      # enforce.
+      - name: Build limits docs (drift check)
+        working-directory: apps/ui
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-08
+      # #8705: content/news/** is generated from registry/generated/digests.json.
+      # The store is append-only, so a page written once regenerates
+      # byte-identical forever -- which is what makes this check a real signal
+      # rather than noise. A digest added to the store without regenerating
+      # would leave the archive index disagreeing with the pages it links to.
+      - name: Build digest pages (drift check)
+        working-directory: apps/ui
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-09
+      - name: Typecheck packages/ui-kit
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-10
+
+      - name: Test packages/ui-kit
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-11
+
+      # Enforces the #4867 epic's core invariant: packages/ui-kit stays a
+      # real, standalone library. no-restricted-imports (packages/ui-kit/
+      # eslint.config.ts) fails on @tanstack/react-router,
+      # @tanstack/react-query, or any import resolving into apps/ui/**.
+      - name: Lint packages/ui-kit (app-logic import guardrail)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-12
+
+      - name: Typecheck packages/chain-summaries
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-13
+
+      - name: Test packages/chain-summaries
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-14
+
+      # Enforces #8525's core invariant: this package stays a real,
+      # standalone, framework-free library both apps/ui and workers/ import
+      # identically. no-restricted-imports (packages/chain-summaries/
+      # eslint.config.ts) fails on react or any import resolving into
+      # apps/ui/**.
+      - name: Lint packages/chain-summaries (app-logic import guardrail)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-15
+
+      # Same content-hashed indexes as the validate job's lint step (#10608).
+      # apps/ui has its OWN eslint/prettier config, so the key hashes those
+      # rather than the root's -- a rule change here must not be masked by a
+      # cache keyed on a file this workspace does not read.
+      - name: Cache lint + format indexes (apps/ui)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/ui/.eslintcache
+            apps/ui/.prettiercache
+          key: ${{ runner.os }}-ui-lintcache-${{ hashFiles('package-lock.json', 'apps/ui/eslint.config.ts', 'apps/ui/.prettierrc', 'apps/ui/.prettierignore') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ui-lintcache-${{ hashFiles('package-lock.json', 'apps/ui/eslint.config.ts', 'apps/ui/.prettierrc', 'apps/ui/.prettierignore') }}-
+
+      - name: Lint (ESLint + Prettier)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-17
+
+      # Same incremental-typecheck cache as the test job (#8924); apps/ui is the
+      # bigger win at 28.9s -> 5.6s warm.
+      - name: Cache TypeScript buildinfo (apps/ui)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/ui/tsconfig.tsbuildinfo
+          key: ${{ runner.os }}-tsbuildinfo-ui-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-tsbuildinfo-ui-${{ hashFiles('package-lock.json') }}-
+
+      - name: Typecheck
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-19
+
+      - name: Test
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-20
+
+      # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
+      # Lovable's own environment (the preset otherwise emits a static-only
+      # client build with no Worker entry) -- matches the exact env Cloudflare
+      # Workers Builds sets in production (see apps/ui/DEPLOY.md).
+      - name: Build
+        # build:worker owns LOVABLE_SANDBOX + NITRO_PRESET: they decide whether
+        # Nitro emits a Worker entry at all, and WHERE (dist/, not .output/).
+        # Named so the e2e server below and this step cannot drift apart.
+        #
+        # `:e2e` additionally pins VITE_METAGRAPH_API_BASE at the local stub
+        # (apps/ui/tests/e2e/api-stub.ts). That value is baked in at build time,
+        # and it is the only lever that reaches the app's SSR fetches -- which
+        # `page.routeFromHAR` cannot intercept, because it sees the browser and
+        # not the server. Without it the overflow sweep reads live production on
+        # every run, and a production wobble fails a PR that touched nothing
+        # (#10938: main went red three times on a backend-only commit).
+        #
+        # This build is for TESTING ONLY. The bundle deployed to production is
+        # built by Cloudflare Workers Builds from the same `build:worker`
+        # without this env, so pinning the API base here cannot reach a user.
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-21
+
+      # Cache the downloaded browser binary across runs (#8910): the install
+      # step below measured 65s (11% of this job), and re-downloading the same
+      # Chromium build on every PR is the bulk of it. Keyed on the resolved
+      # @playwright/test version rather than the lockfile hash, since that is
+      # the only input that changes which binary is downloaded -- an unrelated
+      # dependency bump must not evict a still-correct browser.
+      - name: Resolve Playwright version
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
+        id: playwright-version
+        working-directory: apps/ui
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-22
+      - name: Cache Playwright browsers
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      # Uses the @playwright/test devDependency already installed by `npm ci`
+      # above (not a fresh npx fetch) -- installs just its matching browser
+      # binary, no separate version to keep in sync.
+      #
+      # The OS-level dependencies `--with-deps` installs live in system paths,
+      # NOT in the cached ~/.cache/ms-playwright, so they must be (re)installed
+      # on a cache hit too -- `install-deps` does exactly that without
+      # re-downloading the browser. Skipping it entirely on a hit would leave
+      # the cached binary unable to launch on a runner image whose preinstalled
+      # libraries have since drifted.
+      - name: Install Playwright Chromium
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
+        working-directory: apps/ui
+        env:
+          QUALIFICATION_EXPR_0: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-24
+      # Baseline-diff, not zero-tolerance -- see responsive-overflow.spec.ts.
+      # Fails only on a NEW element escaping the viewport that isn't already
+      # in the known baseline, so this doesn't block on the existing tracked
+      # overflow backlog (#3930, #3931, #3985, etc.).
+      - name: Responsive overflow check (e2e)
+        id: ui-e2e
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-25
+
+      # A flaky test can make this step green after its retry. Retain the first
+      # failure's native report and error-context too: #12741's successful retry
+      # otherwise discarded evidence of an interrupted asset request. This changes
+      # neither assertions nor retries. Raw Wrangler debug logs can include local
+      # proxy authentication data and must stay outside the uploaded artifact.
+      - name: SSR content isolation
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-28
+
+      - name: Bundle size budget (initial client JS, gzipped)
+        working-directory: apps/ui
+        env:
+          # Raised 360 -> 400 (#8745). Not because this PR needed it: main
+          # measured 352 KB and /chain/emissions took it to 353, since the page
+          # is a lazy route chunk and only its ~1 KB of shared query/type code
+          # lands in the initial load. Raised because 8 KB of headroom is not a
+          # budget, it is a tripwire on whichever PR happens to be next.
+          BUDGET_KB: 400
+          # The content shell is lazy, so the homepage budget above cannot see
+          # it. Keep each route family's complete preload closure small enough
+          # that docs/news cannot silently absorb the OpenAPI renderer again.
+          CONTENT_ROUTE_BUDGET_KB: 70
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-29
+      # Report-only SCA (same posture as the CVE scan the standalone repo's own
+      # CI ran) -- surfaces high/critical runtime-dependency advisories at PR
+      # time without failing the job. Tighten to blocking once it stays clean.
+      - name: Dependency CVE scan (SCA, report-only)
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run ui-30
+      - name: Curate bounded job evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded source and coverage evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
+          path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
+          retention-days: 1
+          if-no-files-found: error
+
+  unsharded:
+    name: full unsharded coverage backstops
+    needs: changes
+    if: ${{ needs.changes.outputs.force_full == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      QUALIFICATION_JOB_ID: unsharded
+      VITEST_JUNIT_PATH: reports/junit/vitest-full.xml
+      METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+    steps:
+      - name: Checkout exact carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Prepare native reports directory
+        run: mkdir -p reports/junit
+      - name: Build artifacts
+        run: node .github/scripts/report-raw-capture-full-validation.ts run unsharded-01
+      - name: Full unsharded coverage with unchanged native backstops
+        run: node .github/scripts/report-raw-capture-full-validation.ts run unsharded-02
+      - name: Curate bounded unsharded evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain bounded unsharded evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-source-${{ github.run_attempt }}-unsharded
+          path: tmp/raw-capture-full-validation/upload/unsharded/
+          retention-days: 1
+          if-no-files-found: error
+
+  coverage:
+    name: offline complete native evidence and patch obligations
+    needs: [changes, bundle-source, validate, test, python, ui, unsharded]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      QUALIFICATION_JOB_ID: coverage
+    steps:
+      - name: Checkout exact carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Download every bounded job artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: raw-capture-full-source-${{ github.run_attempt }}-*
+          merge-multiple: false
+          path: tmp/raw-capture-full-validation/downloaded/
+      - name: Verify all native outcomes and exact offline patch obligations
+        run: node .github/scripts/report-raw-capture-full-validation.ts merge
+      - name: Retain bounded full validation proof
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-proof-${{ github.run_attempt }}
+          path: |
+            tmp/raw-capture-full-validation/upload/proof/
+            tmp/raw-capture-full-validation/upload/coverage/failure-receipt.json
+          retention-days: 1
+          if-no-files-found: error

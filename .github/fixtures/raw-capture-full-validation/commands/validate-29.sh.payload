@@ -1,0 +1,13 @@
+source .github/scripts/run-step.sh
+run_step npm run validate:no-hand-written-mjs
+run_step npm run validate:single-schema-source
+run_step npm run validate:schema-opacity
+run_step npm run validate:schema-vocabularies
+run_step npm run validate:unreferenced-modules
+run_step npm run validate:unreferenced-exports
+run_step npm run validate:module-state-resets
+run_step npm run validate:pg-json-binds
+run_step npm run validate:retired-store-vocabulary
+run_step npm run validate:logo-thumbnails
+run_step npm run validate:subnet-slot-cap
+report_steps

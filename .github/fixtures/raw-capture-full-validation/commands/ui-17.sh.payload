@@ -1,0 +1,1 @@
+npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui

@@ -1,0 +1,5 @@
+if [ "${QUALIFICATION_EXPR_0}" = "true" ]; then
+  npx playwright install-deps chromium
+else
+  npx playwright install --with-deps chromium
+fi

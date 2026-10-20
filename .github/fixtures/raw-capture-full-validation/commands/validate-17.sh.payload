@@ -1,0 +1,42 @@
+# Only CONTRACT artifacts are gated here — openapi.json / types.d.ts /
+# contracts.json / api-index.json — because they change only with reviewed
+# schema/source PRs and MUST be regenerated + committed. DATA/CONTENT-derived
+# artifacts are NOT gated: they re-drift on every registry/data edit and would
+# red-line build-less community surface PRs (the single-file model makes adding
+# a surface a one-file data PR). Those are handled out-of-band: public/datasets/
+# + the llms.txt catalogs are gitignored (rebuilt + served via ASSETS on
+# deploy); r2-manifest.json is the publish lockfile; schemas/index.json is a
+# network-capture cache the build reconciles in place (a new openapi surface
+# legitimately adds a not-captured placeholder); and operational-surfaces.json
+# is CONTENT-derived — the prober's input list regenerates whenever a
+# probe-enabled, public-safe operational-kind surface (subnet-api / sse /
+# data-artifact / wss / rpc) is added or changed, which a one-file community
+# surface PR does NOT regenerate (there is no authority/review gate on that
+# list).
+#
+# #9096 changed WHO KEEPS THOSE TWO FRESH, not whether they are gated here.
+# Both were previously refreshed by hourly/daily bot-PR workflows
+# (sync-operational-surfaces, sync-schema-snapshots), both now retired: the
+# live copies are written directly by Worker crons into R2 stores
+# (generated/operational-surfaces.json, generated/schemas-index.json) that
+# every reader prefers. The committed files stayed behind as FALLBACK SEEDS —
+# operational-surfaces.json so the prober's ASSETS read succeeds on a cold
+# start, schemas/index.json so a credential-less build still has a drift
+# baseline — so a momentarily-stale git copy is a tolerated seed, not a
+# runtime fault, and gating a contributor's build on either would red-line
+# PRs over data no contributor produced.
+excludes=(
+  ':(exclude)public/metagraph/r2-manifest.json'
+  ':(exclude)public/metagraph/schemas/index.json'
+  ':(exclude)public/metagraph/operational-surfaces.json'
+  ':(exclude)public/datasets'
+)
+status=$(git status --porcelain --untracked-files=all -- public/ "${excludes[@]}")
+if [ -n "$status" ]; then
+  echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed, deleted, or recreated them). Run 'npm run build' and commit the result."
+  printf '%s\n' "$status"
+  git diff --name-only -- public/ "${excludes[@]}"
+  git diff --stat -- public/ "${excludes[@]}"
+  exit 1
+fi
+echo "All committed derived artifacts under public/ match a fresh build."

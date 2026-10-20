@@ -1,0 +1,2 @@
+npm audit --audit-level=high --omit=dev --workspace=apps/ui \
+  || echo "::warning::npm audit found high/critical advisories in apps/ui's runtime dependencies — review above (report-only; not failing CI yet)"

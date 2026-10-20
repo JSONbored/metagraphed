@@ -1,0 +1,5 @@
+node scripts/generate-digest-pages.ts
+if ! git diff --exit-code -- content/news; then
+  echo "::error::apps/ui/content/news is stale -- run 'node scripts/generate-digest-pages.ts' (from apps/ui) and commit the result."
+  exit 1
+fi

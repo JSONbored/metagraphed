@@ -1,0 +1,1 @@
+git diff --name-only --diff-filter=d "$BASE_SHA" "$HEAD_SHA" > submitted-artifact-files.txt

@@ -1,0 +1,104 @@
+if [ "${QUALIFICATION_EXPR_0}" != "pull_request" ]; then
+  {
+    echo "docs_only=false"
+    echo "run_workflows_validation=true"
+    echo "run_migrations_validation=true"
+    echo "run_ui_validation=true"
+    echo "run_ui_e2e=true"
+    echo "run_python_validation=true"
+  } >> "$GITHUB_OUTPUT"
+  echo "Not a pull_request event (${QUALIFICATION_EXPR_1}) -- full validation runs."
+  exit 0
+fi
+
+if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+  range="$BASE_SHA...$HEAD_SHA"
+else
+  git fetch origin "$BASE_REF"
+  range="origin/$BASE_REF...HEAD"
+fi
+git diff --name-only "$range" > changed-files.txt
+
+if [ ! -s changed-files.txt ]; then
+  {
+    echo "docs_only=false"
+    echo "run_workflows_validation=true"
+    echo "run_migrations_validation=true"
+    echo "run_ui_validation=true"
+    echo "run_ui_e2e=true"
+    echo "run_python_validation=true"
+  } >> "$GITHUB_OUTPUT"
+  echo "No changed files detected -- full validation runs."
+  exit 0
+fi
+
+echo "Changed files:"
+cat changed-files.txt
+
+# Narrow, independent skips -- see the job comment above for the
+# file:line evidence that these two validators' entire footprint is
+# their own directory.
+if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.ts$' changed-files.txt; then
+  echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
+else
+  echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
+fi
+if grep -qE '^migrations/|^scripts/validate-migrations\.ts$' changed-files.txt; then
+  echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
+else
+  echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
+fi
+if grep -qE '^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
+  echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
+else
+  echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
+fi
+# The Playwright overflow check renders pages in a browser, so only a
+# change that can alter RENDERED OUTPUT can alter its result (#8929).
+# packages/contract is types-only -- its whole published surface is
+# index.d.ts ("files": ["index.d.ts"], no "main"), and TypeScript types
+# are erased at runtime -- so a contract-only diff cannot move a pixel.
+# It still needs the rest of the ui job (typecheck, the committed-dist
+# drift checks), just not 240s of browser work. Same for
+# chain-summaries/ui-kit-only diffs, which have their own suites here.
+# packages/client IS included: its committed dist is real runtime code
+# apps/ui executes, so it can change what renders.
+if grep -qE '^apps/ui/|^packages/client/' changed-files.txt; then
+  echo "run_ui_e2e=true" >> "$GITHUB_OUTPUT"
+else
+  echo "run_ui_e2e=false" >> "$GITHUB_OUTPUT"
+fi
+# Same-shape flag for the python job, which runs two independent hermetic suites: the
+# Python SDK's (reads only python/**) and the data-refresh scripts' (reads only
+# scripts/**.py). scripts/ is overwhelmingly TypeScript since #7510, so this gates on the
+# .py extension plus the two dependency manifests rather than the whole directory.
+# A lock/project-only PR must install and check the scripts environment too;
+# an unrelated TypeScript-only script change does not change these suites.
+if grep -qE '^python/|^scripts/.*\.py$|^scripts/(uv\.lock|pyproject\.toml)$' changed-files.txt; then
+  echo "run_python_validation=true" >> "$GITHUB_OUTPUT"
+else
+  echo "run_python_validation=false" >> "$GITHUB_OUTPUT"
+fi
+
+# HARD GUARDRAIL: any registry/ path forces full validation,
+# unconditionally, regardless of every other path in the diff. See
+# the job comment above for why -- this is not a suggestion.
+if grep -qE '^registry/' changed-files.txt; then
+  echo "docs_only=false" >> "$GITHUB_OUTPUT"
+  echo "Diff touches registry/ -- forcing full validation (no exceptions)."
+  exit 0
+fi
+
+# docs_only requires EVERY changed path to match one of the two safe
+# patterns below. A single non-matching path anywhere disqualifies
+# the whole PR from the fast lane. Both patterns require a `.md`
+# suffix -- a hypothetical future non-.md file under
+# .claude/skills/** (e.g. a template or config) must NOT qualify,
+# since only prose content is proven safe to skip validation for.
+if grep -vE '(^|/)[^/]+\.md$|^\.claude/skills/.*\.md$' changed-files.txt > /dev/null; then
+  echo "docs_only=false" >> "$GITHUB_OUTPUT"
+  echo "Diff includes non-docs paths -- full validation runs."
+else
+  echo "docs_only=true" >> "$GITHUB_OUTPUT"
+  echo "Diff is 100% **/*.md + .claude/skills/** -- docs fast lane applies to the checks job."
+fi

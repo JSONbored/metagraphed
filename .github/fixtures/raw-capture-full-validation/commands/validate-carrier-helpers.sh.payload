@@ -1,0 +1,12 @@
+npx prettier --check .github/scripts/apply-raw-capture-full-validation.ts .github/scripts/report-raw-capture-full-validation.ts .github/scripts/format-raw-capture-full-validation.ts .github/workflows/raw-capture-full-validation.yml .github/workflows/raw-capture-full-format.yml .github/fixtures/raw-capture-full-validation/manifest.json .github/fixtures/raw-capture-full-validation/commands.json
+npx eslint --max-warnings=0 .github/scripts/apply-raw-capture-full-validation.ts .github/scripts/report-raw-capture-full-validation.ts .github/scripts/format-raw-capture-full-validation.ts
+node --input-type=module <<'NODE'
+import { writeFileSync } from "node:fs";
+writeFileSync("tmp/raw-capture-full-validation/helpers.tsconfig.json", JSON.stringify({
+  extends: "../../tsconfig.json",
+  compilerOptions: { incremental: false },
+  include: ["../../.github/scripts/apply-raw-capture-full-validation.ts", "../../.github/scripts/report-raw-capture-full-validation.ts", "../../.github/scripts/format-raw-capture-full-validation.ts"]
+}));
+NODE
+npx tsc --noEmit --project tmp/raw-capture-full-validation/helpers.tsconfig.json
+node .github/scripts/report-raw-capture-full-validation.ts selfcheck

@@ -1,0 +1,2 @@
+npm audit --audit-level=high --omit=dev \
+  || echo "::warning::npm audit found high/critical advisories in the root workspace's runtime dependencies — review above (report-only; not failing CI yet)"
