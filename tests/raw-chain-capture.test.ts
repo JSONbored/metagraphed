@@ -12,6 +12,7 @@ import {
   nextCaptureHeights,
   rawBatchKey,
   SYSTEM_EVENTS_STORAGE_KEY,
+  MAX_CAPTURE_CHUNK_BLOCKS,
   type RawCaptureStore,
   type WatermarkStore,
 } from "../src/raw-chain-capture.ts";
@@ -1238,6 +1239,64 @@ describe("captureTick — reading across several endpoints", () => {
     assert.deepEqual(sleeps, [2000]);
   });
 
+  test.each([false, true])(
+    "exhausted head endpoints retain the final cause and custody (pending=%s)",
+    async (hasPending) => {
+      const { store, puts } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      const original = hasPending
+        ? {
+            key: rawBatchKey(100, 100),
+            first: 100,
+            last: 100,
+            receipt: { original: true },
+          }
+        : null;
+      const pending = vi.fn(async () => original);
+      const acknowledgeWatermark = vi.fn(async () => undefined);
+      const rpcUrls = [
+        "https://primary.example.test",
+        "https://backup.example.test",
+      ];
+      const requests: string[] = [];
+      const sleeps: number[] = [];
+      await assert.rejects(
+        captureTick({
+          rpcUrls,
+          store: { ...store, pending, acknowledgeWatermark },
+          watermark,
+          genesisFloor: 0,
+          maxPerTick: 2,
+          sleepFn: async (ms) => {
+            sleeps.push(ms);
+          },
+          fetchImpl: (async (url, init) => {
+            assert.equal(
+              JSON.parse(String(init?.body)).method,
+              "chain_getHeader",
+              "head exhaustion must not read block bytes",
+            );
+            requests.push(String(url));
+            return new Response(null, {
+              status: String(url) === rpcUrls[0] ? 502 : 525,
+            });
+          }) as typeof fetch,
+        }),
+        {
+          name: "Error",
+          message:
+            "chain_getHeader: no endpoint answered (chain_getHeader: HTTP 525)",
+        },
+      );
+      assert.deepEqual(requests, [...rpcUrls, ...rpcUrls]);
+      assert.deepEqual(sleeps, [2000]);
+      assert.deepEqual(pending.mock.calls, [["mainnet"]]);
+      assert.equal(puts.size, 0);
+      assert.equal(get(), 99);
+      assert.equal(acknowledgeWatermark.mock.calls.length, 0);
+    },
+  );
+
   test.each([429, 400, 525])(
     "persistent HTTP %i leaves the watermark intact and bounds retries",
     async (status) => {
@@ -1400,4 +1459,347 @@ describe("captureTick — reading across several endpoints", () => {
       /rpcUrls is empty/,
     );
   });
+});
+
+describe("durable raw capture retry intent lifecycle", () => {
+  const pending = (first = 10, last = 10) => ({
+    key: rawBatchKey(first, last),
+    first,
+    last,
+    receipt: { original: true },
+  });
+  test("a pending short chunk keeps its original range before later full chunks", async () => {
+    const { watermark, get } = memoryWatermark(9);
+    const calls: string[] = [];
+    const keys: string[] = [];
+    const store: RawCaptureStore = {
+      pending: async (network) => {
+        assert.equal(network, "mainnet");
+        return pending();
+      },
+      put: async (key) => {
+        keys.push(key);
+        calls.push("put:" + key);
+        return { key };
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.deepEqual(receipt, { key });
+        assert.equal(get(), Number(key.slice(-19, -7)));
+        calls.push("ack:" + key);
+      },
+    };
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 26,
+      flushEvery: 25,
+      fetchImpl: rpcFetch({ head: 35 }),
+      now: () => 1000,
+    });
+    assert.equal(result.captured, 26);
+    assert.equal(result.watermark, 35);
+    assert.deepEqual(keys, [rawBatchKey(10, 10), rawBatchKey(11, 35)]);
+    assert.deepEqual(
+      calls,
+      keys.flatMap((key) => ["put:" + key, "ack:" + key]),
+    );
+  });
+
+  test("an already committed pending watermark is acknowledged before new capture", async () => {
+    const { watermark, get } = memoryWatermark(10);
+    const calls: string[] = [];
+    const old = pending();
+    const store: RawCaptureStore = {
+      pending: async () => old,
+      put: async (key) => {
+        calls.push("put");
+        return { key };
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        calls.push("ack");
+        if (key === old.key) assert.deepEqual(receipt, old.receipt);
+        assert(get()! >= Number(key.slice(-19, -7)));
+      },
+    };
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: rpcFetch({ head: 11 }),
+      now: () => 1000,
+    });
+    assert.equal(result.watermark, 11);
+    assert.deepEqual(calls, ["ack", "put", "ack"]);
+  });
+
+  test("a failed watermark write never releases the put receipt", async () => {
+    let acknowledgments = 0,
+      puts = 0;
+    const store: RawCaptureStore = {
+      pending: async () => pending(),
+      put: async () => {
+        puts++;
+        return { original: true };
+      },
+      acknowledgeWatermark: async () => {
+        acknowledgments++;
+      },
+    };
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store,
+        watermark: {
+          read: async () => 9,
+          write: async () => {
+            throw new Error("watermark failed");
+          },
+        },
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+        now: () => 1000,
+      }),
+      /watermark failed/,
+    );
+    assert.equal(puts, 1);
+    assert.equal(acknowledgments, 0);
+  });
+
+  test("a committed watermark with a lost reply reconciles before any refetch", async () => {
+    let position = 9,
+      puts = 0,
+      acknowledgments = 0;
+    const old = pending();
+    const store: RawCaptureStore = {
+      pending: async () => old,
+      put: async () => {
+        puts++;
+        return old.receipt;
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.equal(position, 10);
+        assert.equal(key, old.key);
+        assert.deepEqual(receipt, old.receipt);
+        acknowledgments++;
+      },
+    };
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store,
+        watermark: {
+          read: async () => position,
+          write: async (value) => {
+            position = value;
+            throw new Error("lost reply");
+          },
+        },
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+        now: () => 1000,
+      }),
+      /lost reply/,
+    );
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark: {
+        read: async () => position,
+        write: async () => {
+          throw new Error("unexpected write");
+        },
+      },
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: rpcFetch({ head: 10 }),
+      now: () => 2000,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(puts, 1);
+    assert.equal(acknowledgments, 1);
+  });
+
+  test.each([
+    { ...pending(), first: NaN },
+    { ...pending(), last: NaN },
+    pending(11, 11),
+    pending(10, 9),
+    pending(10, 35),
+    { ...pending(), key: "wrong" },
+  ])(
+    "an incompatible pending identity refuses before reading chain bytes: %s",
+    async (state) => {
+      let reads = 0;
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://archive.example.test"],
+          store: {
+            pending: async () => state,
+            put: async () => {
+              throw new Error("unexpected put");
+            },
+            acknowledgeWatermark: async () => {
+              throw new Error("unexpected acknowledgment");
+            },
+          },
+          watermark: memoryWatermark(9).watermark,
+          genesisFloor: 1,
+          maxPerTick: 25,
+          fetchImpl: async () => {
+            reads++;
+            throw new Error("unexpected read");
+          },
+        }),
+        /pending range/,
+      );
+      assert.equal(reads, 0);
+    },
+  );
+
+  test("a pending port without acknowledgment cannot silently forget its receipt", async () => {
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store: { pending: async () => pending(), put: async () => undefined },
+        watermark: memoryWatermark(9).watermark,
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+      }),
+      /pending range differs/,
+    );
+  });
+
+  test.each([
+    { head: 9, budget: 1 },
+    { head: 10, budget: 0 },
+  ])(
+    "unavailable pending height or request budget preserves the pending range: %s",
+    async ({ head, budget }) => {
+      let writes = 0;
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://archive.example.test"],
+          store: {
+            pending: async () => pending(),
+            put: async () => {
+              writes++;
+            },
+            acknowledgeWatermark: async () => {
+              writes++;
+            },
+          },
+          watermark: memoryWatermark(9).watermark,
+          genesisFloor: 1,
+          maxPerTick: budget,
+          fetchImpl: rpcFetch({ head }),
+          now: () => 1000,
+        }),
+        /available capture budget/,
+      );
+      assert.equal(writes, 0);
+    },
+  );
+
+  test("a partial pending RPC range cannot create a new shorter capture identity", async () => {
+    let writes = 0;
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store: {
+          pending: async () => pending(10, 11),
+          put: async () => {
+            writes++;
+          },
+          acknowledgeWatermark: async () => {
+            writes++;
+          },
+        },
+        watermark: memoryWatermark(9).watermark,
+        genesisFloor: 1,
+        maxPerTick: 2,
+        fetchImpl: rpcFetch({ head: 11, failAt: 11 }),
+        now: () => 1000,
+      }),
+      /pending range cannot be reconstructed/,
+    );
+    assert.equal(writes, 0);
+  });
+});
+
+test("a pending exact range rotates past a partial primary to a complete secondary", async () => {
+  const { watermark, get } = memoryWatermark(9);
+  const first = rpcFetch({ head: 11, failAt: 11 });
+  const second = rpcFetch({ head: 11 });
+  const reads: string[] = [];
+  let stored = "",
+    acknowledgments = 0;
+  const result = await captureTick({
+    rpcUrls: ["https://partial.example.test", "https://complete.example.test"],
+    store: {
+      pending: async () => ({
+        key: rawBatchKey(10, 11),
+        first: 10,
+        last: 11,
+        receipt: "original",
+      }),
+      put: async (key, value) => {
+        assert.equal(key, rawBatchKey(10, 11));
+        stored = value;
+        return "winner";
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.equal(key, rawBatchKey(10, 11));
+        assert.equal(receipt, "winner");
+        assert.equal(get(), 11);
+        acknowledgments++;
+      },
+    },
+    watermark,
+    genesisFloor: 1,
+    maxPerTick: 2,
+    now: () => 1000,
+    fetchImpl: (async (input, init) => {
+      reads.push(String(input));
+      return String(input).startsWith("https://partial")
+        ? first(input, init)
+        : second(input, init);
+    }) as typeof fetch,
+  });
+  assert.equal(result.captured, 2);
+  assert.equal(result.watermark, 11);
+  assert.equal(stored.trim().split("\n").length, 2);
+  assert.equal(acknowledgments, 1);
+  assert(reads.some((url) => url.startsWith("https://complete")));
+});
+
+test("the actual capture producer clamps every new intent to its RPC chunk contract", async () => {
+  const sizes: number[] = [];
+  const { watermark } = memoryWatermark(0);
+  const result = await captureTick({
+    rpcUrls: ["https://archive.example.test"],
+    store: {
+      pending: async () => null,
+      put: async (_key, raw) => {
+        sizes.push(raw.trim().split("\n").length);
+        return "receipt";
+      },
+      acknowledgeWatermark: async () => undefined,
+    },
+    watermark,
+    genesisFloor: 1,
+    maxPerTick: 51,
+    flushEvery: 4096,
+    fetchImpl: rpcFetch({ head: 51 }),
+    now: () => 1000,
+  });
+  assert.equal(MAX_CAPTURE_CHUNK_BLOCKS, 25);
+  assert.deepEqual(sizes, [25, 25, 1]);
+  assert.equal(result.captured, 51);
 });
