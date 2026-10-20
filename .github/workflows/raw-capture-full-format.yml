@@ -1,23 +1,34 @@
-name: Raw capture carrier native formatting
+name: Raw capture curation and native API diagnostic
 
 on:
   push:
-    branches: [ci/raw-capture-retry-full-format-20261020]
+    branches: [ci/raw-capture-retry-curation-diagnostic-20261020]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: raw-capture-full-format-${{ github.ref }}
+  group: raw-capture-curation-diagnostic-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  FORCE_FULL_QUALIFICATION: "true"
+  FULL_VALIDATION_MANIFEST_SHA256: f9a3097c39be037d4e50c1988d5850be1ac42f7f45f422d5ab7c8e155cae2fa4
+  FULL_VALIDATION_COMMANDS_SHA256: cd12f004a197a02ef3801bda933c5fa41392908508a20a64966d3762e206f8e5
+  CURATION_DIAGNOSTIC_REPORTER_SHA256: 7bedd3a8f9983db219e48ba8cc8ddfdf353b94e9f78c48b70cca222db4272257
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_WRITE_LOGS: "false"
+
 jobs:
-  format:
+  diagnostic:
+    if: github.ref == 'refs/heads/ci/raw-capture-retry-curation-diagnostic-20261020'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      QUALIFICATION_JOB_ID: test-mocked-1
     steps:
-      - name: Checkout exact canonical source carrier
+      - name: Checkout exact source-only diagnostic carrier
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -27,25 +38,102 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22.23.2
-      - name: Install locked formatter without lifecycle scripts
-        run: npm ci --ignore-scripts
-      - name: Obtain bounded native carrier formatting
-        id: format
-        run: node .github/scripts/format-raw-capture-full-validation.ts
-      - name: Retain exact formatted public carrier files
-        if: always() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure')
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install
+        uses: ./.github/actions/install-deps
+      - name: Build artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-04
+      - name: Prepare test reports dir
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-05
+      - name: Test exact native mocked 1/2 pass
+        env:
+          VITEST_JUNIT_PATH: reports/junit/vitest.xml
+          QUALIFICATION_EXPR_0: --pass=mocked --shard=1/2
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-06
+      - name: Verify coverage reports exist
+        env:
+          QUALIFICATION_EXPR_0: coverage-mocked
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run test-07
+      - name: Curate bounded job evidence with fixed diagnostics
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain public diagnostic sources and bounded JSON receipts only
+        if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-format-${{ steps.format.outcome }}
+          name: raw-capture-full-curation-diagnostic-${{ github.run_attempt }}-mocked-1
           path: |
-            .github/scripts/apply-raw-capture-full-validation.ts
             .github/scripts/report-raw-capture-full-validation.ts
-            .github/scripts/format-raw-capture-full-validation.ts
-            .github/workflows/raw-capture-full-validation.yml
             .github/workflows/raw-capture-full-format.yml
-            .github/fixtures/raw-capture-full-validation/manifest.json
-            .github/fixtures/raw-capture-full-validation/commands.json
-            tmp/raw-capture-full-format/format-receipt.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/failure-receipt.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/job-receipt.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/overlay-receipt.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/steps/test-04.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/steps/test-05.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/steps/test-06.json
+            tmp/raw-capture-full-validation/upload/test-mocked-1/steps/test-07.json
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  api-group:
+    if: github.ref == 'refs/heads/ci/raw-capture-retry-curation-diagnostic-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QUALIFICATION_JOB_ID: validate
+    steps:
+      - name: Checkout exact source-only diagnostic carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Verify fixed native validator marker controls
+        run: node .github/scripts/report-raw-capture-full-validation.ts validator-selfcheck
+      - name: Apply pinned runner-only candidate
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install
+        uses: ./.github/actions/install-deps
+      - name: Build actual native validation artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-12
+      - name: Replay unchanged nineteen-member native API group
+        run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-18
+      - name: Curate bounded diagnostic validation evidence
+        if: always() && steps.overlay.outcome == 'success'
+        env:
+          QUALIFICATION_JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/report-raw-capture-full-validation.ts finalize
+      - name: Retain exact public sources and fixed JSON observations only
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-full-curation-diagnostic-${{ github.run_attempt }}-api-group
+          path: |
+            .github/scripts/report-raw-capture-full-validation.ts
+            .github/workflows/raw-capture-full-format.yml
+            tmp/raw-capture-full-validation/upload/validate/failure-receipt.json
+            tmp/raw-capture-full-validation/upload/validate/job-receipt.json
+            tmp/raw-capture-full-validation/upload/validate/overlay-receipt.json
+            tmp/raw-capture-full-validation/upload/validate/steps/validate-12.json
+            tmp/raw-capture-full-validation/upload/validate/steps/validate-18.json
           include-hidden-files: true
           retention-days: 1
           if-no-files-found: error

@@ -16,6 +16,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 
 async function main() {
@@ -41,6 +42,10 @@ async function main() {
   }
   if (process.argv[2] === "receipt-selfcheck") {
     console.log(JSON.stringify(receiptControls()));
+    return;
+  }
+  if (process.argv[2] === "validator-selfcheck") {
+    validatorControls();
     return;
   }
   const ROOT = realpathSync(process.env.GITHUB_WORKSPACE ?? process.cwd());
@@ -117,6 +122,7 @@ async function main() {
     output_withheld: true;
     vitest_unhandled_errors: number;
     actual_unhandled_diagnostic: boolean;
+    api_validator_observation?: ReturnType<ReturnType<typeof validatorObserver>["finish"]>;
     observed_test_summaries: {
       kind: string;
       tests?: number;
@@ -313,6 +319,104 @@ async function main() {
     };
   }
 
+  function validatorObserver() {
+    const labels = [
+      "validate:schemas", "validate:api", "validate:mcp", "validate:startup-budget",
+      "validate:mcp-route-map", "validate:operations", "validate:type-duplicates",
+      "validate:nullable-overpromises", "validate:no-passthrough", "validate:boundary-casts",
+      "validate:double-assertions", "validate:schema-shape-duplicates", "validate:mcp-input-parity",
+      "validate:tool-route-divergence", "validate:query-vocabulary", "validate:route-query-parity",
+      "validate:ai", "validate:openapi", "validate:types",
+    ];
+    const allowed = new Set(labels);
+    const groups: string[] = [];
+    const failures: { validator: string; exit_code: number; status: "failed" }[] = [];
+    let reportedFailures: number | null = null, reportedPasses: number | null = null;
+    let invalidMarkers = 0, unfinished = "";
+    const invalid = () => { invalidMarkers = Math.min(invalidMarkers + 1, 1024); };
+    const observe = (value: string) => {
+      const line = stripVTControlCharacters(value);
+      const group = /^::group::npm run (validate:[a-z-]+)$/.exec(line);
+      if (group) {
+        if (allowed.has(group[1]) && groups.length < 19 && !groups.includes(group[1])) groups.push(group[1]);
+        else invalid();
+      }
+      const failure = /^::error::npm run (validate:[a-z-]+) failed \(exit ([0-9]{1,3})\)$/.exec(line);
+      if (failure) {
+        const exit = Number(failure[2]);
+        if (allowed.has(failure[1]) && exit > 0 && exit <= 255 && failures.length < 19 && !failures.some((item) => item.validator === failure[1]))
+          failures.push({ validator: failure[1], exit_code: exit, status: "failed" });
+        else invalid();
+      }
+      const failed = /^::error::([0-9]{1,3}) step\(s\) failed:$/.exec(line);
+      if (failed) {
+        const count = Number(failed[1]);
+        if (count > 0 && count <= 19 && reportedFailures === null) reportedFailures = count;
+        else invalid();
+      }
+      const passed = /^All ([0-9]{1,3}) step\(s\) passed\.$/.exec(line);
+      if (passed) {
+        const count = Number(passed[1]);
+        if (count === 19 && reportedPasses === null) reportedPasses = count;
+        else invalid();
+      }
+    };
+    return {
+      push(value: string) {
+        const complete = (unfinished + value).split("\n");
+        unfinished = complete.pop()!.slice(0, 8192);
+        for (const line of complete) observe(line);
+      },
+      finish() {
+        observe(unfinished); unfinished = "";
+        return { groups, failures, reported_failure_count: reportedFailures,
+          reported_all_passed_count: reportedPasses, invalid_marker_count: invalidMarkers,
+          member_success_inferred: false, raw_output_retained: false };
+      },
+    };
+  }
+  function validatorControls() {
+    let controls = 0;
+    const check = (operation: () => void) => { operation(); controls++; };
+    check(() => {
+      const observer = validatorObserver();
+      observer.push("::group::npm run validate:sch");
+      observer.push("emas\n::endgroup::\n::error::npm run validate:schemas failed (exit 7)\n::error::1 step(s) failed:");
+      const result = observer.finish();
+      assert.deepEqual(result.groups, ["validate:schemas"]);
+      assert.deepEqual(result.failures, [{ validator: "validate:schemas", exit_code: 7, status: "failed" }]);
+      assert.equal(result.reported_failure_count, 1);
+    });
+    check(() => {
+      const observer = validatorObserver(); observer.push("All 19 step(s) passed.");
+      assert.equal(observer.finish().reported_all_passed_count, 19);
+    });
+    check(() => {
+      const observer = validatorObserver();
+      observer.push("::group::npm run validate:unknown\n::error::npm run validate:unknown failed (exit 1)\n");
+      const result = observer.finish();
+      assert.equal(result.groups.length, 0); assert.equal(result.failures.length, 0); assert.equal(result.invalid_marker_count, 2);
+    });
+    for (const exit of [0, 256]) check(() => {
+      const observer = validatorObserver(); observer.push("::error::npm run validate:api failed (exit " + exit + ")\n");
+      const result = observer.finish(); assert.equal(result.failures.length, 0); assert.equal(result.invalid_marker_count, 1);
+    });
+    check(() => {
+      const observer = validatorObserver(); observer.push(' ✓ handles "::error::npm run validate:api failed (exit 1)"\n');
+      const result = observer.finish(); assert.equal(result.failures.length, 0); assert.equal(result.invalid_marker_count, 0);
+    });
+    check(() => {
+      const observer = validatorObserver(); observer.push("::error::npm run validate:api failed (exit 255)");
+      assert.equal(observer.finish().failures[0].exit_code, 255);
+    });
+    check(() => {
+      const observer = validatorObserver(); observer.push("::group::npm run validate:api\n".repeat(20));
+      const result = observer.finish(); assert.equal(result.groups.length, 1); assert.equal(result.invalid_marker_count, 19);
+    });
+    assert.equal(controls, 8);
+    console.log(JSON.stringify({ validator_observer_controls_passed: controls, raw_output_retained: false }));
+  }
+
   async function run(id: string) {
     const job = safeId(process.env.QUALIFICATION_JOB_ID);
     const command = commands.commands.find((item) => item.id === id);
@@ -331,6 +435,7 @@ async function main() {
       category = "none",
       exceeded = false;
     const diagnostics = diagnosticObserver();
+    const validators = id === "validate-18" ? validatorObserver() : undefined;
     const child = spawn(
       "/bin/bash",
       [
@@ -376,6 +481,7 @@ async function main() {
       }
       rolling = (rolling + data.toString("utf8")).slice(-8192);
       diagnostics.push(stream, data.toString("utf8"));
+      if (stream === "stdout") validators?.push(data.toString("utf8"));
       const projected = fixedClassification(rolling);
       if (projected !== "command_failure") category = projected;
     };
@@ -418,6 +524,7 @@ async function main() {
       vitest_unhandled_errors: diagnostic.vitestUnhandled,
       actual_unhandled_diagnostic: diagnostic.actualUnhandled,
       observed_test_summaries: diagnostic.testSummaries,
+      ...(validators ? { api_validator_observation: validators.finish() } : {}),
       output_withheld: true,
     };
     save(path.join(runDirectory(job), command.id + ".json"), receipt);
@@ -672,11 +779,50 @@ async function main() {
       raw_messages_or_attachments_retained: false,
     };
   }
+  type CurationSubstage = "not_started" | "job_contract" | "source_pins" |
+    "command_receipts" | "expected_commands" | "coverage_summary" | "lcov_parse" |
+    "lcov_normalize" | "lcov_write" | "junit_counts" | "e2e_counts" | "job_status" |
+    "job_receipt_write" | "overlay_receipt_write" | "complete";
+  let curationSubstage: CurationSubstage = "not_started";
+  function reporterLocation(error: unknown) {
+    try {
+      if (!(error instanceof Error) || typeof error.stack !== "string" || error.stack.length > 32_768)
+        return null;
+      const expectedHash = process.env.CURATION_DIAGNOSTIC_REPORTER_SHA256;
+      if (!/^[a-f0-9]{64}$/.test(expectedHash ?? "")) return null;
+      const file = path.join(ROOT, ".github/scripts/report-raw-capture-full-validation.ts");
+      const source = bytes(file, 131_072);
+      if (hash(source) !== expectedHash) return null;
+      const sourceLines = source.toString("utf8").split("\n");
+      for (const row of error.stack.split("\n").slice(1, 17)) {
+        for (const expected of [file, pathToFileURL(file).href]) {
+          const start = row.lastIndexOf(expected + ":");
+          if (start < 0) continue;
+          const prefix = row.slice(0, start);
+          const plain = /^\s+at $/.test(prefix);
+          const named = /^\s+at [^()\r\n]{1,256} \($/.test(prefix);
+          if (!plain && !named) continue;
+          const suffix = row.slice(start + expected.length + 1);
+          const match = (named ? /^([1-9]\d{0,3}):([1-9]\d{0,3})\)$/ : /^([1-9]\d{0,3}):([1-9]\d{0,3})$/).exec(suffix);
+          if (!match) continue;
+          const line = Number(match[1]), column = Number(match[2]);
+          if (line <= sourceLines.length && column <= sourceLines[line - 1].length + 1)
+            return { line, column };
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
   function finalize(job: string) {
+    curationSubstage = "job_contract";
     assert.ok(JOBS.includes(job));
     const directory = outputDirectory(job);
     mkdirSync(directory, { recursive: true });
+    curationSubstage = "source_pins";
     const pins = sourcePins();
+    curationSubstage = "command_receipts";
     const available = existsSync(runDirectory(job))
       ? readdirSync(runDirectory(job)).sort()
       : [];
@@ -693,6 +839,7 @@ async function main() {
       save(path.join(directory, "steps", name), item);
       return item;
     });
+    curationSubstage = "expected_commands";
     const expected = commands.commands
       .filter(
         (command) =>
@@ -714,20 +861,27 @@ async function main() {
       const coverageDirectory = job.startsWith("test-mocked-")
         ? "coverage-mocked"
         : "coverage";
+      curationSubstage = "coverage_summary";
       coverage = summaryCounts(coverageDirectory);
-      const normalized = normalizeLcov(
-        parseLcov(path.join(ROOT, coverageDirectory, "lcov.info")),
-      );
+      curationSubstage = "lcov_parse";
+      const parsed = parseLcov(path.join(ROOT, coverageDirectory, "lcov.info"));
+      curationSubstage = "lcov_normalize";
+      const normalized = normalizeLcov(parsed);
+      curationSubstage = "lcov_write";
       writeFileSync(path.join(directory, "lcov-" + leg + ".info"), normalized);
       const junit = job.startsWith("test-mocked-")
         ? "reports/junit/vitest-mocked.xml"
         : job === "unsharded"
           ? "reports/junit/vitest-full.xml"
           : "reports/junit/vitest.xml";
+      curationSubstage = "junit_counts";
       tests = junitCounts(path.join(ROOT, junit));
     }
-    if (job === "ui" && executed.some((item) => item.command_id === "ui-25"))
+    if (job === "ui" && executed.some((item) => item.command_id === "ui-25")) {
+      curationSubstage = "e2e_counts";
       e2e = e2eCounts();
+    }
+    curationSubstage = "job_status";
     const actualTests = tests as { failed: number; errors: number } | null;
     const actualE2e = e2e as {
       stats: { unexpected: number };
@@ -788,8 +942,11 @@ async function main() {
       raw_output_retained: false,
       production_actions: false,
     };
+    curationSubstage = "job_receipt_write";
     save(path.join(directory, "job-receipt.json"), receipt);
+    curationSubstage = "overlay_receipt_write";
     save(path.join(directory, "overlay-receipt.json"), overlay);
+    curationSubstage = "complete";
     console.log(
       JSON.stringify({
         job,
@@ -1237,7 +1394,7 @@ async function main() {
       finalize(safeId(process.env.QUALIFICATION_JOB_ID));
     else if (mode === "merge") merge();
     else throw new Error("unsupported mode");
-  } catch {
+  } catch (error) {
     const job = safeId(process.env.QUALIFICATION_JOB_ID);
     const failure = {
       status: "failed_or_incomplete",
@@ -1253,6 +1410,8 @@ async function main() {
       manifest_sha256: process.env.FULL_VALIDATION_MANIFEST_SHA256,
       commands_sha256: process.env.FULL_VALIDATION_COMMANDS_SHA256,
       error_class: "bounded_contract_failure",
+      curation_substage: mode === "finalize" ? curationSubstage : null,
+      reporter_location: mode === "finalize" ? reporterLocation(error) : null,
       raw_output_retained: false,
       production_actions: false,
     };
