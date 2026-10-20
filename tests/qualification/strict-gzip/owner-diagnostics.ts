@@ -1,3 +1,11 @@
+import {
+  OWNER_BUILD_STAGES,
+  ownerBuildDiagnosticMarkers,
+} from "./owner-build-stages.ts";
+import {
+  OPTIONAL_PROOF_STAGES,
+  OPTIONAL_IMPORT_CATEGORIES,
+} from "./optional-pg-import.ts";
 import { OWNER_REFUSED_IMPORTS } from "./owner-resource-policy.ts";
 // Optional bounded diagnostics only. Never participates in acceptance decisions.
 import assert from "node:assert/strict";
@@ -17,6 +25,88 @@ export const OWNER_FRAME_PATHS = [
   "tests/qualification/strict-gzip/owner-deadline.ts",
   "tests/qualification/strict-gzip/optional-pg-import.ts",
 ] as const;
+// Only the failed required assertion can supply these optional diagnostics.
+// A malformed, missing, duplicate or conflicting marker set supplies no report.
+export function publicBuildProofDiagnostics(value: unknown) {
+  if (!Array.isArray(value) || value.length > 19) return null;
+  const markers: string[] = [];
+  const prefix =
+    /\[owner-(?:optional-proof-failed|optional-import-counts|build-proof-failed):/g;
+  for (const message of value) {
+    if (typeof message !== "string" || message.length > 65536) return null;
+    const starts = [...message.matchAll(prefix)];
+    const matches = [
+      ...message.matchAll(
+        /\[owner-(?:optional-proof-failed|optional-import-counts|build-proof-failed):[^\]\r\n]{0,512}\]/g,
+      ),
+    ];
+    if (starts.length !== matches.length) return null;
+    markers.push(...matches.map((match) => match[0]));
+    if (markers.length > 3) return null;
+  }
+  if (markers.length === 1) {
+    const match = /^\[owner-build-proof-failed:([a-z-]+):([a-z-]+)\]$/.exec(
+      markers[0]!,
+    );
+    if (!match || !Object.hasOwn(OWNER_BUILD_STAGES, match[1]!)) return null;
+    const scope = match[1] as keyof typeof OWNER_BUILD_STAGES;
+    const stages = OWNER_BUILD_STAGES[scope] as readonly string[];
+    const index = stages.indexOf(match[2]!);
+    return index < 0 ? null : { scope, stage: stages[index]!, imports: [] };
+  }
+  if (markers.length !== 3) return null;
+  const stageMarkers = markers.filter((marker) =>
+    marker.startsWith("[owner-optional-proof-failed:"),
+  );
+  if (stageMarkers.length !== 1) return null;
+  const stageMatch = /^\[owner-optional-proof-failed:([a-z-]+)\]$/.exec(
+    stageMarkers[0]!,
+  );
+  if (!stageMatch) return null;
+  const stageIndex = (OPTIONAL_PROOF_STAGES as readonly string[]).indexOf(
+    stageMatch[1]!,
+  );
+  if (stageIndex < 0) return null;
+  const imports = [];
+  for (const scope of ["input", "output"] as const) {
+    const rows = markers.filter((marker) =>
+      marker.startsWith(`[owner-optional-import-counts:${scope}:`),
+    );
+    if (rows.length !== 1) return null;
+    const match =
+      /^\[owner-optional-import-counts:(input|output):([01]):(0|[1-9][0-9]{0,4}):(0|[1-9][0-9]{0,4}):(0|[1-9][0-9]{0,4}):(0|[1-9][0-9]{0,4}):(0|[1-9][0-9]{0,4}):(0|[1-9][0-9]{0,4})\]$/.exec(
+        rows[0]!,
+      );
+    if (!match) return null;
+    const counts = match.slice(3).map(Number);
+    const total = counts.reduce((sum, count) => sum + count, 0);
+    if (
+      counts.some((count) => !Number.isSafeInteger(count) || count > 65536) ||
+      total > 65536 ||
+      (match[2] === "0" && total !== 0)
+    )
+      return null;
+    imports.push({
+      scope,
+      complete: match[2] === "1",
+      counts: Object.fromEntries(
+        OPTIONAL_IMPORT_CATEGORIES.map((category, index) => [
+          category,
+          counts[index]!,
+        ]),
+      ),
+    });
+  }
+  return {
+    scope: "optional-pg",
+    stage: OPTIONAL_PROOF_STAGES[stageIndex]!,
+    imports,
+  };
+}
+export function publicBuildProofFailure(error: unknown) {
+  const markers = ownerBuildDiagnosticMarkers(error);
+  return markers ? publicBuildProofDiagnostics([markers]) : null;
+}
 function refusedBuildImports(value: unknown): string[] {
   if (!Array.isArray(value) || value.length > 20) return [];
   return OWNER_REFUSED_IMPORTS.filter((label) =>
@@ -98,6 +188,7 @@ export function publicOwnerProgress(input: unknown, root: string) {
         requiredCase: "missing",
         frames: [],
         refusedBuildImports: [],
+        buildProof: null,
       };
     assert.ok(
       ["passed", "failed", "pending", "skipped"].includes(suite.status),
@@ -156,6 +247,10 @@ export function publicOwnerProgress(input: unknown, root: string) {
       skipped,
       requiredCase,
       frames: status === "passed" ? [] : frames(diagnosticMessages, root),
+      buildProof:
+        status === "failed" && requiredCase === "failed"
+          ? publicBuildProofDiagnostics(messages)
+          : null,
       refusedBuildImports:
         status === "passed" ? [] : refusedBuildImports(diagnosticMessages),
     };

@@ -5,6 +5,13 @@ import test from "node:test";
 import {
   OPTIONAL_PG_SOURCE_PINS,
   ownerSourceIdentity,
+  collectOptionalPgExternalImportCounts,
+  optionalProofDiagnosticMarkers,
+  OPTIONAL_PROOF_STAGES,
+  OPTIONAL_IMPORT_CATEGORIES,
+  OPTIONAL_PG_DIAGNOSTIC_LIMITS,
+  optionalPgExternalRefusalMarker,
+  assertOptionalPgExternalImport,
   validateOptionalPgNativeImport,
   type OptionalPgEvidence,
 } from "./optional-pg-import.ts";
@@ -19,6 +26,568 @@ const [ESM, MAIN, NATIVE, CLIENT] = names as [string, string, string, string];
 const outputKey =
   "../../tmp/raw-owner-qualification-Ab12/modules/chunks/pg-test.js";
 const mapKey = outputKey + ".map";
+
+test("diagnostic stage and category vocabularies are frozen", () => {
+  assert.ok(Object.isFrozen(OPTIONAL_PROOF_STAGES));
+  assert.ok(Object.isFrozen(OPTIONAL_IMPORT_CATEGORIES));
+  assert.ok(Object.isFrozen(OPTIONAL_PG_DIAGNOSTIC_LIMITS));
+  assert.equal(
+    new Set(OPTIONAL_PROOF_STAGES).size,
+    OPTIONAL_PROOF_STAGES.length,
+  );
+  assert.deepEqual(OPTIONAL_IMPORT_CATEGORIES, [
+    "pg-native",
+    "bufferutil",
+    "utf-8-validate",
+    "node",
+    "cloudflare",
+    "other",
+  ]);
+});
+const diagnosticImport = (path: unknown, external: unknown = true) => ({
+  path,
+  external,
+  kind: "require-call",
+});
+const zeroCounts = {
+  "pg-native": 0,
+  bufferutil: 0,
+  "utf-8-validate": 0,
+  node: 0,
+  cloudflare: 0,
+  other: 0,
+};
+test("complete diagnostics scan all categories even after the first refused import", () => {
+  const e = sample();
+  e.metafile.inputs[CLIENT]!.imports.push(
+    ...[
+      "bufferutil",
+      "utf-8-validate",
+      "node:fs",
+      "cloudflare:workers",
+      "private-token/secret",
+      "private-later/secret",
+    ].map((value) => diagnosticImport(value) as any),
+  );
+  e.metafile.outputs[outputKey]!.imports.push(
+    ...[
+      "bufferutil",
+      "utf-8-validate",
+      "node:crypto",
+      "cloudflare:sockets",
+      "private-output-secret",
+    ].map((value) => diagnosticImport(value) as any),
+  );
+  const counts = collectOptionalPgExternalImportCounts(e.metafile);
+  assert.deepEqual(counts.input, {
+    complete: true,
+    counts: {
+      "pg-native": 1,
+      bufferutil: 1,
+      "utf-8-validate": 1,
+      node: 1,
+      cloudflare: 1,
+      other: 2,
+    },
+  });
+  assert.deepEqual(counts.output, {
+    complete: true,
+    counts: {
+      "pg-native": 1,
+      bufferutil: 1,
+      "utf-8-validate": 1,
+      node: 1,
+      cloudflare: 1,
+      other: 1,
+    },
+  });
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      const marker = optionalProofDiagnosticMarkers(error);
+      assert.ok(
+        marker.includes("[owner-optional-proof-failed:external-imports]"),
+      );
+      assert.ok(
+        marker.includes("[owner-optional-import-counts:input:1:1:1:1:1:1:2]"),
+      );
+      assert.ok(
+        marker.includes("[owner-optional-import-counts:output:1:1:1:1:1:1:1]"),
+      );
+      assert.ok(!marker.includes("secret"));
+      assert.ok(marker.length < 512);
+      return true;
+    },
+  );
+});
+test("unknown huge and marker-looking target strings only contribute to other", () => {
+  const counts = collectOptionalPgExternalImportCounts({
+    inputs: {
+      private: {
+        imports: [
+          diagnosticImport("secret/" + "x".repeat(1_000_000)),
+          diagnosticImport("[owner-optional-proof-failed:roots]\nsecret"),
+          diagnosticImport("node:private"),
+        ],
+      },
+    },
+    outputs: {},
+  });
+  assert.deepEqual(counts.input, {
+    complete: true,
+    counts: { ...zeroCounts, node: 1, other: 2 },
+  });
+  assert.deepEqual(counts.output, { complete: true, counts: zeroCounts });
+});
+const malformedDiagnostics: [string, unknown][] = [
+  ["non-object table", { inputs: [], outputs: {} }],
+  ["missing import array", { inputs: { x: {} }, outputs: {} }],
+  ["non-array imports", { inputs: { x: { imports: {} } }, outputs: {} }],
+  [
+    "null target",
+    {
+      inputs: {
+        x: { imports: [diagnosticImport("pg-native"), diagnosticImport(null)] },
+      },
+      outputs: {},
+    },
+  ],
+  [
+    "object target",
+    {
+      inputs: {
+        x: {
+          imports: [
+            diagnosticImport("pg-native"),
+            diagnosticImport({
+              toString() {
+                throw new Error("private");
+              },
+            }),
+          ],
+        },
+      },
+      outputs: {},
+    },
+  ],
+  [
+    "invalid external flag",
+    {
+      inputs: {
+        x: {
+          imports: [
+            diagnosticImport("pg-native"),
+            diagnosticImport("secret", "true"),
+          ],
+        },
+      },
+      outputs: {},
+    },
+  ],
+  ["sparse imports", { inputs: { x: { imports: new Array(2) } }, outputs: {} }],
+  [
+    "null import",
+    {
+      inputs: { x: { imports: [diagnosticImport("pg-native"), null] } },
+      outputs: {},
+    },
+  ],
+];
+for (const [label, meta] of malformedDiagnostics) {
+  test("diagnostics incomplete and zeroed: " + label, () => {
+    assert.deepEqual(collectOptionalPgExternalImportCounts(meta), {
+      input: { complete: false, counts: zeroCounts },
+      output: { complete: true, counts: zeroCounts },
+    });
+  });
+}
+test("diagnostics do not run accessors and zero counts from a partial scan", () => {
+  let called = 0;
+  const second = {
+    get path() {
+      called++;
+      throw new Error("private");
+    },
+    external: true,
+  };
+  const counts = collectOptionalPgExternalImportCounts({
+    inputs: { x: { imports: [diagnosticImport("pg-native"), second] } },
+    outputs: {},
+  });
+  assert.equal(called, 0);
+  assert.deepEqual(counts.input, { complete: false, counts: zeroCounts });
+});
+test("diagnostics reject proxies at every reflection boundary without running traps", () => {
+  let traps = 0;
+  const proxy = (target: object) =>
+    new Proxy(target, {
+      get() {
+        traps++;
+        throw new Error("private-get-trap");
+      },
+      ownKeys() {
+        traps++;
+        throw new Error("private-own-keys-trap");
+      },
+      getOwnPropertyDescriptor() {
+        traps++;
+        throw new Error("private-descriptor-trap");
+      },
+      getPrototypeOf() {
+        traps++;
+        throw new Error("private-prototype-trap");
+      },
+    });
+  const inputs = [
+    proxy({}),
+    { x: proxy({ imports: [] }) },
+    { x: { imports: proxy([]) } },
+    {
+      x: {
+        imports: [
+          diagnosticImport("pg-native"),
+          proxy({ path: "secret", external: true }),
+        ],
+      },
+    },
+  ];
+  for (const input of inputs) {
+    assert.deepEqual(
+      collectOptionalPgExternalImportCounts({ inputs: input, outputs: {} }),
+      {
+        input: { complete: false, counts: zeroCounts },
+        output: { complete: true, counts: zeroCounts },
+      },
+    );
+  }
+  assert.deepEqual(
+    collectOptionalPgExternalImportCounts(proxy({ inputs: {}, outputs: {} })),
+    {
+      input: { complete: false, counts: zeroCounts },
+      output: { complete: false, counts: zeroCounts },
+    },
+  );
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  assert.deepEqual(collectOptionalPgExternalImportCounts(revoked.proxy), {
+    input: { complete: false, counts: zeroCounts },
+    output: { complete: false, counts: zeroCounts },
+  });
+  assert.equal(traps, 0);
+});
+test("failure wrapper never reads or reflects on a thrown proxy cause", () => {
+  let traps = 0;
+  const cause = new Proxy(
+    {},
+    {
+      get() {
+        traps++;
+        throw new Error("private");
+      },
+      getOwnPropertyDescriptor() {
+        traps++;
+        throw new Error("private");
+      },
+      ownKeys() {
+        traps++;
+        throw new Error("private");
+      },
+    },
+  );
+  const e = sample();
+  Object.defineProperty(e, "sourceRoot", {
+    get() {
+      throw cause;
+    },
+  });
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.cause, cause);
+      assert.equal(optionalProofDiagnosticMarkers(error).split("\n").length, 3);
+      assert.equal(traps, 0);
+      return true;
+    },
+  );
+});
+test("per-scope cumulative import limit includes nonexternal imports", () => {
+  const batch = Array.from({ length: 32768 }, () =>
+    diagnosticImport("internal", false),
+  );
+  const counts = collectOptionalPgExternalImportCounts({
+    inputs: {
+      a: { imports: batch },
+      b: { imports: batch },
+      c: { imports: [diagnosticImport("pg-native")] },
+    },
+    outputs: { one: { imports: [diagnosticImport("utf-8-validate")] } },
+  });
+  assert.deepEqual(counts.input, { complete: false, counts: zeroCounts });
+  assert.deepEqual(counts.output, {
+    complete: true,
+    counts: { ...zeroCounts, "utf-8-validate": 1 },
+  });
+});
+test("exact import limit remains complete with a bounded category sum", () => {
+  const counts = collectOptionalPgExternalImportCounts({
+    inputs: {
+      x: {
+        imports: Array.from({ length: 65536 }, () =>
+          diagnosticImport("other-secret"),
+        ),
+      },
+    },
+    outputs: {},
+  });
+  assert.equal(counts.input.complete, true);
+  assert.equal(counts.input.counts.other, 65536);
+  assert.equal(
+    Object.values(counts.input.counts).reduce((a, b) => a + b, 0),
+    65536,
+  );
+});
+test("record budgets and oversized import arrays mark only that scope incomplete", () => {
+  const inputRecords = Object.fromEntries(
+    Array.from({ length: 8193 }, (_, index) => [
+      String(index),
+      { imports: [] },
+    ]),
+  );
+  const outputRecords = Object.fromEntries(
+    Array.from({ length: 1025 }, (_, index) => [
+      String(index),
+      { imports: [] },
+    ]),
+  );
+  assert.deepEqual(
+    collectOptionalPgExternalImportCounts({ inputs: inputRecords, outputs: {} })
+      .input,
+    { complete: false, counts: zeroCounts },
+  );
+  assert.deepEqual(
+    collectOptionalPgExternalImportCounts({
+      inputs: {},
+      outputs: outputRecords,
+    }).output,
+    { complete: false, counts: zeroCounts },
+  );
+  assert.deepEqual(
+    collectOptionalPgExternalImportCounts({
+      inputs: { x: { imports: new Array(65537) } },
+      outputs: {},
+    }).input,
+    { complete: false, counts: zeroCounts },
+  );
+});
+test("diagnostic failure never replaces the original proof cause", () => {
+  const e = sample();
+  const original = new Error("private-original-error");
+  Object.defineProperty(e, "sourceRoot", {
+    get() {
+      throw original;
+    },
+  });
+  Object.defineProperty(e, "metafile", {
+    get() {
+      throw new Error("diagnostics-must-not-run-this");
+    },
+  });
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.cause, original);
+      assert.equal(
+        error.message,
+        "[owner-optional-proof-failed:roots]\n[owner-optional-import-counts:input:0:0:0:0:0:0:0]\n[owner-optional-import-counts:output:0:0:0:0:0:0:0]",
+      );
+      return true;
+    },
+  );
+});
+test("trusted formatter accepts only exact validator-branded error identity", () => {
+  let branded: unknown;
+  const e = sample();
+  e.sourceRoot = "relative";
+  try {
+    validateOptionalPgNativeImport(e);
+  } catch (error) {
+    branded = error;
+  }
+  const marker = optionalProofDiagnosticMarkers(branded);
+  assert.ok(marker.startsWith("[owner-optional-proof-failed:roots]"));
+  let touched = 0;
+  const poison = new Proxy(
+    {},
+    {
+      get() {
+        touched++;
+        throw new Error("private");
+      },
+      getOwnPropertyDescriptor() {
+        touched++;
+        throw new Error("private");
+      },
+    },
+  );
+  for (const other of [
+    new Error(marker),
+    { message: marker },
+    poison,
+    null,
+    undefined,
+    "secret",
+    12,
+    Symbol("secret"),
+    () => undefined,
+  ])
+    assert.equal(optionalProofDiagnosticMarkers(other), "");
+  assert.equal(touched, 0);
+  assert.ok(branded instanceof Error);
+  branded.message = "private-mutation";
+  assert.equal(optionalProofDiagnosticMarkers(branded), marker);
+});
+
+const fixedMarker =
+  /^\[owner-optional-import-refused:(input|output|unknown):(bufferutil|utf-8-validate|other)\]$/;
+for (const scope of ["input", "output", "unknown"] as const) {
+  for (const label of ["bufferutil", "utf-8-validate", "other"] as const) {
+    test(`fixed external diagnostic classifies ${scope}/${label}`, () => {
+      const target = label === "other" ? "/private/unknown-package" : label;
+      const expected = `[owner-optional-import-refused:${scope}:${label}]`;
+      assert.equal(optionalPgExternalRefusalMarker(scope, target), expected);
+      assert.throws(
+        () => assertOptionalPgExternalImport(scope, target),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.message, expected);
+          assert.equal(Object.hasOwn(error, "actual"), false);
+          assert.equal(Object.hasOwn(error, "cause"), false);
+          return true;
+        },
+      );
+    });
+  }
+}
+test("fixed classifier never copies, normalizes or stringifies unknown targets", () => {
+  const poison = {
+    toString() {
+      throw new Error("must not stringify");
+    },
+    [Symbol.toPrimitive]() {
+      throw new Error("must not coerce");
+    },
+  };
+  const targets: unknown[] = [
+    undefined,
+    null,
+    true,
+    42,
+    Symbol("private-symbol"),
+    poison,
+    "pg-native",
+    "Bufferutil",
+    " bufferutil",
+    "bufferutil/extra",
+    "utf-8-validate\nprivate",
+    "\u0000secret",
+    "private/" + "x".repeat(1_000_000),
+  ];
+  for (const target of targets) {
+    assert.equal(
+      optionalPgExternalRefusalMarker("input", target),
+      "[owner-optional-import-refused:input:other]",
+    );
+    assert.throws(() => assertOptionalPgExternalImport("input", target), {
+      message: "[owner-optional-import-refused:input:other]",
+    });
+  }
+});
+test("unknown or oversized scopes always reduce to one fixed scope label", () => {
+  for (const scope of [
+    undefined,
+    null,
+    1,
+    {},
+    Symbol("secret"),
+    "INPUT",
+    "input:private",
+    "x".repeat(1_000_000),
+  ]) {
+    const marker = optionalPgExternalRefusalMarker(scope, "bufferutil");
+    assert.equal(marker, "[owner-optional-import-refused:unknown:bufferutil]");
+    assert.match(marker, fixedMarker);
+  }
+});
+test("diagnostic replacement preserves the exact existing builtin acceptance predicate", () => {
+  const values = [
+    "node:fs",
+    "node:",
+    "cloudflare:workers",
+    "cloudflare:",
+    "node:" + "x".repeat(1_000_000),
+    "cloudflare:\nprivate",
+    "xnode:fs",
+    "Node:fs",
+    "node",
+    "cloudflare",
+    "pg-native",
+    "bufferutil",
+    "utf-8-validate",
+    "",
+    "/private/path",
+  ];
+  for (const target of values) {
+    const expected = /^(?:node:|cloudflare:)/.test(target);
+    for (const scope of ["input", "output", "unknown"]) {
+      if (expected)
+        assert.doesNotThrow(() =>
+          assertOptionalPgExternalImport(scope, target),
+        );
+      else
+        assert.throws(
+          () => assertOptionalPgExternalImport(scope, target),
+          (error) => error instanceof Error && fixedMarker.test(error.message),
+        );
+    }
+  }
+});
+for (const scope of ["input", "output"] as const) {
+  for (const target of [
+    "bufferutil",
+    "utf-8-validate",
+    "/private/unrecognized-import",
+  ]) {
+    test(`validator emits bounded ${scope} metadata refusal for ${target === "/private/unrecognized-import" ? "other" : target}`, () => {
+      const e = sample();
+      const info =
+        scope === "input"
+          ? e.metafile.inputs[MAIN]!
+          : e.metafile.outputs[outputKey]!;
+      info.imports.push({ path: target, kind: "require-call", external: true });
+      assert.throws(
+        () => validateOptionalPgNativeImport(e),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.message.split("\n").length, 3);
+          assert.equal(
+            error.message.split("\n")[0],
+            "[owner-optional-proof-failed:external-imports]",
+          );
+          assert.ok(error.cause instanceof Error);
+          assert.equal(
+            error.cause.message,
+            optionalPgExternalRefusalMarker(scope, target),
+          );
+          assert.equal(optionalProofDiagnosticMarkers(error), error.message);
+          return true;
+        },
+      );
+    });
+  }
+}
 const vlq = (number: number) => {
   let value = number < 0 ? -number * 2 + 1 : number * 2;
   let encoded = "";
@@ -140,6 +709,205 @@ function editOutput(e: OptionalPgEvidence, value: string) {
   const bytes = Buffer.from(value);
   e.outputs[0]!.bytes = bytes;
   e.metafile.outputs[outputKey]!.bytes = bytes.length;
+}
+const stageMutations: [
+  (typeof OPTIONAL_PROOF_STAGES)[number],
+  (e: OptionalPgEvidence) => void,
+][] = [
+  [
+    "roots",
+    (e) => {
+      e.sourceRoot = "relative";
+    },
+  ],
+  [
+    "inventory",
+    (e) => {
+      e.metafile.inputs = {};
+    },
+  ],
+  [
+    "external-imports",
+    (e) => {
+      e.metafile.inputs[CLIENT]!.imports.push({
+        path: "bufferutil",
+        kind: "require-call",
+        external: true,
+      });
+    },
+  ],
+  [
+    "module-inventory",
+    (e) => {
+      e.registeredModuleNames.push(e.registeredModuleNames[0]!);
+    },
+  ],
+  [
+    "source-identities",
+    (e) => {
+      e.metafile.inputs["../unreviewed/file.js"] = { bytes: 1, imports: [] };
+    },
+  ],
+  [
+    "input-edges",
+    (e) => {
+      e.metafile.inputs[NATIVE]!.imports[0]!.path =
+        "node_modules/nonexistent.js";
+    },
+  ],
+  [
+    "source-pins",
+    (e) => {
+      e.sources[MAIN] = Buffer.from("altered");
+    },
+  ],
+  [
+    "pinned-edges",
+    (e) => {
+      e.metafile.inputs[ESM]!.imports[0]!.kind = "require-call";
+    },
+  ],
+  [
+    "optional-input",
+    (e) => {
+      e.metafile.inputs[CLIENT]!.imports.push({
+        path: "pg-native",
+        kind: "require-call",
+        external: true,
+      });
+    },
+  ],
+  [
+    "output-inventory",
+    (e) => {
+      e.outputs = [];
+    },
+  ],
+  [
+    "output-bytes",
+    (e) => {
+      e.metafile.outputs[outputKey]!.bytes++;
+    },
+  ],
+  [
+    "source-map",
+    (e) =>
+      editMap(e, (map) => {
+        map.mappings = "?";
+      }),
+  ],
+  [
+    "contributions",
+    (e) =>
+      editMap(e, (map) => {
+        map.sourcesContent[0] += "\n";
+      }),
+  ],
+  [
+    "optional-output",
+    (e) => {
+      e.metafile.outputs[outputKey]!.imports[0]!.kind = "dynamic-import";
+    },
+  ],
+  [
+    "completeness",
+    (e) => {
+      e.metafile.outputs[outputKey]!.imports.push({
+        path: "pg-native",
+        kind: "require-call",
+        external: true,
+      });
+    },
+  ],
+];
+test("every frozen proof stage has an explicit failing fixture", () => {
+  assert.deepEqual(
+    stageMutations.map(([stage]) => stage).sort(),
+    [...OPTIONAL_PROOF_STAGES].sort(),
+  );
+});
+for (const [stage, mutate] of stageMutations) {
+  test("fixed proof refusal stage: " + stage, () => {
+    const e = sample();
+    mutate(e);
+    assert.throws(
+      () => validateOptionalPgNativeImport(e),
+      (error) => {
+        assert.ok(error instanceof Error);
+        const markers = optionalProofDiagnosticMarkers(error).split("\n");
+        assert.equal(markers[0], `[owner-optional-proof-failed:${stage}]`);
+        assert.equal(
+          markers.filter((line) =>
+            line.startsWith("[owner-optional-proof-failed:"),
+          ).length,
+          1,
+        );
+        assert.equal(
+          markers.filter((line) =>
+            line.startsWith("[owner-optional-import-counts:input:"),
+          ).length,
+          1,
+        );
+        assert.equal(
+          markers.filter((line) =>
+            line.startsWith("[owner-optional-import-counts:output:"),
+          ).length,
+          1,
+        );
+        assert.ok(error.cause instanceof Error);
+        return true;
+      },
+    );
+  });
+}
+for (const stage of [
+  "output-bytes",
+  "source-map",
+  "contributions",
+  "optional-output",
+] as const) {
+  test("per-output proof stage resets on second output: " + stage, () => {
+    const e = sample();
+    const secondKey = outputKey.replace("pg-test.js", "second.js");
+    const secondMapKey = secondKey + ".map";
+    const secondInfo = structuredClone(e.metafile.outputs[outputKey]!);
+    secondInfo.imports = [];
+    e.metafile.outputs[secondKey] = secondInfo;
+    e.metafile.outputs[secondMapKey] = structuredClone(
+      e.metafile.outputs[mapKey]!,
+    );
+    const secondOutput = {
+      metafilePath: secondKey,
+      bytes: Buffer.from(e.outputs[0]!.bytes),
+      sourceMap: {
+        metafilePath: secondMapKey,
+        bytes: Buffer.from(e.outputs[0]!.sourceMap.bytes),
+      },
+    };
+    e.outputs.push(secondOutput);
+    e.registeredModuleNames.push("chunks/second.js");
+    if (stage === "output-bytes") secondInfo.bytes++;
+    if (stage === "source-map") {
+      secondOutput.sourceMap.bytes = Buffer.from("{");
+      e.metafile.outputs[secondMapKey]!.bytes = 1;
+    }
+    if (stage === "contributions")
+      secondInfo.inputs[CLIENT]!.bytesInOutput = -1;
+    if (stage === "optional-output")
+      secondInfo.imports = [
+        { path: "pg-native", kind: "dynamic-import", external: true },
+      ];
+    assert.throws(
+      () => validateOptionalPgNativeImport(e),
+      (error) => {
+        assert.equal(
+          optionalProofDiagnosticMarkers(error).split("\n")[0],
+          `[owner-optional-proof-failed:${stage}]`,
+        );
+        return true;
+      },
+    );
+  });
 }
 function canonicalSample(): OptionalPgEvidence {
   const e = sample();

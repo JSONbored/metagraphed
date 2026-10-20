@@ -1,4 +1,7 @@
-import { publicOwnerProgress } from "./owner-diagnostics.ts";
+import {
+  publicOwnerProgress,
+  publicBuildProofFailure,
+} from "./owner-diagnostics.ts";
 import assert from "node:assert/strict";
 import { validateServiceReceipt } from "./owner-service.ts";
 import { splitOwnerTests } from "./owner-test-evidence.ts";
@@ -179,7 +182,9 @@ export async function publish(
         summary.coverage = evidence.coverage;
         summary.evidenceValidated = true;
         publicLcov = evidence.lcov;
-      } catch {
+      } catch (cause) {
+        const buildFailure = publicBuildProofFailure(cause);
+        if (buildFailure) summary.buildProofFailure = buildFailure;
         if (receipt.status === "passed")
           throw new Error("Passed receipt lacks required evidence");
         // A failed test run may have incomplete evidence. Do not publish raw errors.

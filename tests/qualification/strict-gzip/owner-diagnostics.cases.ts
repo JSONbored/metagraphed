@@ -1,6 +1,19 @@
+import {
+  OWNER_BUILD_STAGES,
+  ownerBuildStageFailure,
+} from "./owner-build-stages.ts";
+import {
+  OPTIONAL_PROOF_STAGES,
+  OPTIONAL_IMPORT_CATEGORIES,
+} from "./optional-pg-import.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { publicOwnerProgress, OWNER_FRAME_PATHS } from "./owner-diagnostics.ts";
+import {
+  publicOwnerProgress,
+  OWNER_FRAME_PATHS,
+  publicBuildProofDiagnostics,
+  publicBuildProofFailure,
+} from "./owner-diagnostics.ts";
 import { OWNER_TESTS, OWNER_TITLES } from "./owner-test-evidence.ts";
 const root = "/synthetic-candidate",
   secret = "private-URL-token-data";
@@ -169,4 +182,158 @@ test("optional import checker emits only its fixed index and numeric position", 
   const result = publicOwnerProgress(v, root);
   assert.deepEqual(result[0]!.frames, [{ fileIndex, line: 301, column: 7 }]);
   assert.ok(!JSON.stringify(result).includes(secret));
+});
+
+function proofMarkers(stage = "external-imports") {
+  return `[owner-optional-proof-failed:${stage}]\n[owner-optional-import-counts:input:1:1:2:3:4:5:6]\n[owner-optional-import-counts:output:1:1:0:0:2:1:0]`;
+}
+
+for (const stage of OPTIONAL_PROOF_STAGES)
+  test(`fixed optional proof stage ${stage} is independently distinguishable`, () => {
+    const result = publicBuildProofDiagnostics([proofMarkers(stage)]);
+    assert.equal(result?.scope, "optional-pg");
+    assert.equal(result?.stage, stage);
+    assert.deepEqual(result?.imports, [
+      {
+        scope: "input",
+        complete: true,
+        counts: Object.fromEntries(
+          OPTIONAL_IMPORT_CATEGORIES.map((name, index) => [name, index + 1]),
+        ),
+      },
+      {
+        scope: "output",
+        complete: true,
+        counts: Object.fromEntries(
+          OPTIONAL_IMPORT_CATEGORIES.map((name, index) => [
+            name,
+            [1, 0, 0, 2, 1, 0][index],
+          ]),
+        ),
+      },
+    ]);
+  });
+for (const [scope, stages] of Object.entries(OWNER_BUILD_STAGES))
+  for (const stage of stages)
+    test(`fixed surrounding proof stage ${scope}/${stage} is distinguishable`, () =>
+      assert.deepEqual(
+        publicBuildProofDiagnostics([
+          `[owner-build-proof-failed:${scope}:${stage}]`,
+        ]),
+        { scope, stage, imports: [] },
+      ));
+test("incomplete scans remain explicit and cannot contain partial counts", () => {
+  const marker = proofMarkers().replace(
+    "input:1:1:2:3:4:5:6",
+    "input:0:0:0:0:0:0:0",
+  );
+  const result = publicBuildProofDiagnostics([marker]);
+  assert.equal(result?.imports[0]?.complete, false);
+  assert.ok(
+    Object.values(result!.imports[0]!.counts).every((count) => count === 0),
+  );
+});
+const invalidProofMarkers = {
+  "missing stage": proofMarkers().replace(
+    "[owner-optional-proof-failed:external-imports]",
+    "",
+  ),
+  "duplicate stage":
+    proofMarkers() + "[owner-optional-proof-failed:external-imports]",
+  "conflicting stage": proofMarkers() + "[owner-optional-proof-failed:roots]",
+  "missing input": proofMarkers().replace(
+    /\[owner-optional-import-counts:input:[^\]]+\]/,
+    "",
+  ),
+  "duplicate input":
+    proofMarkers() + "[owner-optional-import-counts:input:1:1:2:3:4:5:6]",
+  "duplicate output replacing input": proofMarkers().replace(
+    "counts:input:",
+    "counts:output:",
+  ),
+  "conflicting scope":
+    proofMarkers() + "[owner-build-proof-failed:raw-build:builder]",
+  "unknown stage": proofMarkers(secret),
+  "unknown scope": proofMarkers().replace("counts:input:", "counts:private:"),
+  "unknown general stage": "[owner-build-proof-failed:raw-build:private-token]",
+  "unknown general scope": "[owner-build-proof-failed:private:builder]",
+  "noncanonical integer": proofMarkers().replace("input:1:1:", "input:1:01:"),
+  "negative integer": proofMarkers().replace("input:1:1:", "input:1:-1:"),
+  "fractional integer": proofMarkers().replace("input:1:1:", "input:1:1.5:"),
+  "individual overflow": proofMarkers().replace("input:1:1:", "input:1:65537:"),
+  "total overflow": proofMarkers().replace("input:1:1:2:", "input:1:65536:1:"),
+  "partial counts": proofMarkers().replace("input:1:", "input:0:"),
+  "bad completeness": proofMarkers().replace("input:1:", "input:2:"),
+  "truncated marker": proofMarkers().slice(0, -1),
+  "multiline marker": proofMarkers().replace("input:1:", "input:\n1:"),
+  "oversized message": "x".repeat(65537) + proofMarkers(),
+};
+for (const [name, marker] of Object.entries(invalidProofMarkers))
+  test(`omits malformed proof diagnostics: ${name}`, () =>
+    assert.equal(publicBuildProofDiagnostics([marker]), null));
+test("non-string and oversized arrays cannot supply proof diagnostics", () => {
+  assert.equal(publicBuildProofDiagnostics([{}]), null);
+  assert.equal(
+    publicBuildProofDiagnostics(Array(20).fill(proofMarkers())),
+    null,
+  );
+});
+test("private text surrounding valid markers is never published", () => {
+  const result = publicBuildProofDiagnostics([`${secret} ${proofMarkers()}`]);
+  assert.ok(result);
+  assert.ok(!JSON.stringify(result).includes(secret));
+});
+test("only one failed required assertion can supply proof diagnostics", () => {
+  const v = fixture();
+  v.testResults[0]!.assertionResults[0]!.failureMessages = [proofMarkers()];
+  assert.equal(
+    publicOwnerProgress(v, root)[0]!.buildProof?.scope,
+    "optional-pg",
+  );
+  v.testResults[0]!.assertionResults[0]!.status = "passed";
+  assert.equal(publicOwnerProgress(v, root)[0]!.buildProof, null);
+  v.testResults[0]!.assertionResults[0]!.status = "failed";
+  v.testResults[0]!.assertionResults.push(
+    v.testResults[0]!.assertionResults[0]!,
+  );
+  assert.equal(publicOwnerProgress(v, root)[0]!.buildProof, null);
+});
+test("suite message alone cannot supply proof diagnostics", () => {
+  const v = fixture();
+  v.testResults[0]!.message = proofMarkers();
+  assert.equal(publicOwnerProgress(v, root)[0]!.buildProof, null);
+});
+
+test("publisher failure diagnostics use only private brands and never read arbitrary errors", () => {
+  const arbitrary = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error("private getter");
+      },
+      getOwnPropertyDescriptor() {
+        throw new Error("private descriptor");
+      },
+    },
+  );
+  assert.equal(publicBuildProofFailure(arbitrary), null);
+  assert.equal(
+    publicBuildProofFailure(
+      new Error("[owner-build-proof-failed:raw-build:builder]"),
+    ),
+    null,
+  );
+  const branded = ownerBuildStageFailure(
+    "association",
+    "raw-source-maps",
+    arbitrary,
+  );
+  assert.deepEqual(publicBuildProofFailure(branded), {
+    scope: "association",
+    stage: "raw-source-maps",
+    imports: [],
+  });
+  assert.ok(
+    !JSON.stringify(publicBuildProofFailure(branded)).includes("private"),
+  );
 });

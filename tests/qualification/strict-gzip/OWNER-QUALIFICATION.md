@@ -188,6 +188,34 @@ The checker now has one additional fixed diagnostic file index, without raw
 messages or path disclosure. Hosted compatibility and combined acceptance are
 still pending.
 
+## Complete bounded build-failure diagnostics
+
+Run [39487268538](https://github.com/JSONbored/metagraphed/actions/runs/39487268538)
+passed the real queue-owner case and all 490 baseline assertions again, with zero
+guard denials. The fixed checker frame identifies the earlier external-import
+assertion: an additional non-pg-native, non-builtin external was refused before
+canonical source identities were checked. Its exact package is still unknown,
+and the canonical-path compatibility hypothesis remains untested.
+
+Failure-only diagnostics now identify fixed stages across the raw build,
+preservation, private validation/association and optional-import proof. A failed
+optional proof performs separate bounded complete scans of input/output metadata
+and reports only six fixed external-import categories and integer counts. A
+malformed, proxy, accessor or over-budget scope is explicitly incomplete with
+zero counts. The scans never run before or instead of a proof check. They cannot
+grant an import exception or supply acceptance evidence.
+
+The public reducer accepts only one exact stage and, for optional-proof failures,
+one canonical bounded count marker per scope from the one failed required
+assertion. Duplicate, conflicting, malformed or excessive diagnostics are omitted.
+Publisher-only private association failures use the same reducer, accepting only
+closure-private branded markers. No raw target, source, path, error or cause text
+is copied. Private errors retain
+the original cause, and already branded errors are rethrown unchanged to avoid
+duplicated marker chains. All original proof checks, runtime/service/network
+rules and acceptance gates are retained. Hosted qualification remains failed
+until an exact run supplies every required owner and baseline proof.
+
 ## Third-party fixture notice
 
 The inert source strings in owner-pg-source-fixtures.json and

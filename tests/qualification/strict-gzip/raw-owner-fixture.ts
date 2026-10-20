@@ -1,3 +1,4 @@
+import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import {
   optionalPgBuildAssociation,
   ownerBuildInputIdentity,
@@ -119,244 +120,273 @@ export async function verifyRawSources(root: string) {
 
 /** Call the source-owned builder without overriding a single build option. */
 export async function buildRawOwner(root: string, output: string) {
-  assert.equal(process.env.METAGRAPH_REPO_ROOT, undefined);
-  const sources = await verifyRawSources(root);
-  const { buildApiWorker } = (await import(
-    pathToFileURL(path.join(root, "scripts/build-api-worker.ts")).href
-  )) as {
-    buildApiWorker(
-      outdir: string,
-    ): Promise<{ errors: unknown[]; metafile?: Metafile }>;
-  };
-  const esbuild = await import("esbuild");
-  let result: Awaited<ReturnType<typeof buildApiWorker>>;
+  let proofStage = "source-pins";
   try {
-    result = await buildApiWorker(output);
-  } finally {
-    // Close the reviewed service before the test worker exits, so its launch
-    // guard can observe termination rather than inheriting an unexplained child.
-    await esbuild.stop();
-  }
-  assert.deepEqual(result.errors, []);
-  assert.ok(result.metafile);
-  const meta = result.metafile;
-  const outputRoot = await realpath(output);
-  const files: string[] = [];
-  async function walk(directory: string, depth = 0): Promise<void> {
-    assert.ok(depth <= 8);
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const file = path.join(directory, entry.name);
-      assert.ok((await realpath(file)).startsWith(`${outputRoot}${path.sep}`));
-      if (entry.isDirectory()) await walk(file, depth + 1);
-      else {
-        assert.ok(entry.isFile(), "No output symlinks or special files");
-        files.push(file);
-      }
-      assert.ok(files.length <= 1024);
+    assert.equal(process.env.METAGRAPH_REPO_ROOT, undefined);
+    const sources = await verifyRawSources(root);
+    proofStage = "builder";
+    const { buildApiWorker } = (await import(
+      pathToFileURL(path.join(root, "scripts/build-api-worker.ts")).href
+    )) as {
+      buildApiWorker(
+        outdir: string,
+      ): Promise<{ errors: unknown[]; metafile?: Metafile }>;
+    };
+    const esbuild = await import("esbuild");
+    let result: Awaited<ReturnType<typeof buildApiWorker>>;
+    try {
+      result = await buildApiWorker(output);
+    } finally {
+      // Close the reviewed service before the test worker exits, so its launch
+      // guard can observe termination rather than inheriting an unexplained child.
+      await esbuild.stop();
     }
-  }
-  await walk(outputRoot);
-  files.sort();
-  const outputs = new Map(
-    Object.entries(meta.outputs).map(([name, value]) => [
-      path.resolve(root, name),
-      value,
-    ]),
-  );
-  assert.deepEqual([...outputs.keys()].sort(), files);
-  const modules: { type: "ESModule" | "CompiledWasm"; path: string }[] = [];
-  const sourceMaps: { name: string; bytes: Uint8Array }[] = [];
-  const records = [];
-  let totalBytes = 0;
-  for (const file of files) {
-    const bytes = await readFile(file);
-    totalBytes += bytes.length;
-    assert.ok(bytes.length <= 128 * 1024 ** 2 && totalBytes <= 256 * 1024 ** 2);
-    assert.equal(outputs.get(file)!.bytes, bytes.length);
-    const extension = path.extname(file);
-    assert.ok([".js", ".wasm", ".map"].includes(extension));
-    const type = extension === ".js" ? "ESModule" : "CompiledWasm";
-    if (extension !== ".map") modules.push({ type, path: file });
-    else sourceMaps.push({ name: path.relative(outputRoot, file), bytes });
-    if (extension === ".wasm")
-      assert.deepEqual(
-        [...bytes.subarray(0, 8)],
-        [0, 97, 115, 109, 1, 0, 0, 0],
-      );
-    records.push({
-      name: path.relative(outputRoot, file),
-      type: extension === ".map" ? "SourceMap" : type,
-      bytes: bytes.length,
-      sha256: rawDigest(bytes),
-    });
-  }
-  const optionalPg = optionalPgBuildAssociation(
-    root,
-    outputRoot,
-    meta,
-    Object.keys(meta.outputs)
-      .filter((key) => key.endsWith(".js"))
-      .map((key) => ({
-        metafilePath: key,
-        bytes: boundedBuildFile(path.resolve(root, key), 32 * 1024 * 1024),
-        sourceMap: {
-          metafilePath: key + ".map",
-          bytes: boundedBuildFile(
-            path.resolve(root, key + ".map"),
-            64 * 1024 * 1024,
-          ),
-        },
-      })),
-    modules.map((module) => path.relative(outputRoot, module.path)),
-  );
-  const entry = path.join(outputRoot, "api.entry.js");
-  assert.ok(outputs.has(entry));
-  assert.deepEqual([...outputs.get(entry)!.exports].sort(), DO_EXPORTS);
-  const edges: { from: number; to: number; dynamic: boolean }[] = [];
-  for (const [metafilePath, value] of Object.entries(meta.outputs)) {
-    const file = path.resolve(root, metafilePath);
-    for (const [importIndex, dependency] of value.imports.entries()) {
-      if (dependency.external) {
-        if (
-          optionalPg &&
-          optionalPg.admitted.output === metafilePath &&
-          optionalPg.admitted.importIndex === importIndex
-        )
-          continue;
-        assertOwnerExternalImport(dependency.path);
-        continue;
+    proofStage = "output-inventory";
+    assert.deepEqual(result.errors, []);
+    assert.ok(result.metafile);
+    const meta = result.metafile;
+    const outputRoot = await realpath(output);
+    const files: string[] = [];
+    async function walk(directory: string, depth = 0): Promise<void> {
+      assert.ok(depth <= 8);
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const file = path.join(directory, entry.name);
+        assert.ok(
+          (await realpath(file)).startsWith(`${outputRoot}${path.sep}`),
+        );
+        if (entry.isDirectory()) await walk(file, depth + 1);
+        else {
+          assert.ok(entry.isFile(), "No output symlinks or special files");
+          files.push(file);
+        }
+        assert.ok(files.length <= 1024);
       }
-      const candidates = [
-        ...new Set([
-          path.resolve(root, dependency.path),
-          path.resolve(path.dirname(file), dependency.path),
-        ]),
-      ].filter((candidate) => outputs.has(candidate));
-      assert.equal(candidates.length, 1);
-      edges.push({
-        from: files.indexOf(file),
-        to: files.indexOf(candidates[0]!),
-        dynamic: dependency.kind === "dynamic-import",
+    }
+    await walk(outputRoot);
+    files.sort();
+    const outputs = new Map(
+      Object.entries(meta.outputs).map(([name, value]) => [
+        path.resolve(root, name),
+        value,
+      ]),
+    );
+    assert.deepEqual([...outputs.keys()].sort(), files);
+    const modules: { type: "ESModule" | "CompiledWasm"; path: string }[] = [];
+    const sourceMaps: { name: string; bytes: Uint8Array }[] = [];
+    const records = [];
+    let totalBytes = 0;
+    proofStage = "output-bytes";
+    for (const file of files) {
+      const bytes = await readFile(file);
+      totalBytes += bytes.length;
+      assert.ok(
+        bytes.length <= 128 * 1024 ** 2 && totalBytes <= 256 * 1024 ** 2,
+      );
+      assert.equal(outputs.get(file)!.bytes, bytes.length);
+      const extension = path.extname(file);
+      assert.ok([".js", ".wasm", ".map"].includes(extension));
+      const type = extension === ".js" ? "ESModule" : "CompiledWasm";
+      if (extension !== ".map") modules.push({ type, path: file });
+      else sourceMaps.push({ name: path.relative(outputRoot, file), bytes });
+      if (extension === ".wasm")
+        assert.deepEqual(
+          [...bytes.subarray(0, 8)],
+          [0, 97, 115, 109, 1, 0, 0, 0],
+        );
+      records.push({
+        name: path.relative(outputRoot, file),
+        type: extension === ".map" ? "SourceMap" : type,
+        bytes: bytes.length,
+        sha256: rawDigest(bytes),
       });
     }
-  }
-  const entryIndex = files.indexOf(entry);
-  const closure = (dynamic: boolean) => {
-    const seen = new Set([entryIndex]);
-    for (let previous = -1; previous !== seen.size;) {
-      previous = seen.size;
-      for (const edge of edges)
-        if (seen.has(edge.from) && (dynamic || !edge.dynamic))
-          seen.add(edge.to);
-    }
-    return [...seen].sort((a, b) => a - b);
-  };
-  const executable = records.flatMap((record, index) =>
-    record.type === "SourceMap" ? [] : [index],
-  );
-  assert.deepEqual(closure(true), executable);
-  const eager = closure(false);
-  const contributions = OWNER_INPUTS.map((source) => {
-    const inputs = Object.keys(meta.inputs).filter(
-      (name) => path.resolve(root, name) === path.join(root, source),
-    );
-    assert.equal(inputs.length, 1, `Missing raw owner contribution: ${source}`);
-    const matching = [...outputs].flatMap(([file, value]) =>
-      Object.entries(value.inputs).flatMap(([name, input]) =>
-        inputs.includes(name) && input.bytesInOutput > 0
-          ? [{ outputIndex: files.indexOf(file), bytes: input.bytesInOutput }]
-          : [],
-      ),
-    );
-    assert.ok(matching.length > 0);
-    if (source === "workers/api.ts")
-      assert.ok(matching.every((item) => !eager.includes(item.outputIndex)));
-    return { source, outputs: matching };
-  });
-  modules.sort((a, b) =>
-    a.path === entry ? -1 : b.path === entry ? 1 : a.path.localeCompare(b.path),
-  );
-  // Read-only identity verification again catches an intervening source change.
-  assert.deepEqual(await verifyRawSources(root), sources);
-  const canonicalRoot = await realpath(root);
-  const dependencyRoot = await realpath(path.join(root, "node_modules"));
-  const sourcePaths: string[] = [];
-  for (const name of Object.keys(meta.inputs)) {
-    // The production builder alone generates these native-builtin adapters.
-    if (name.startsWith("native-node-require:")) continue;
-    const relative = ownerBuildInputIdentity(
-      canonicalRoot,
-      dependencyRoot,
-      name,
-    );
-    assert.ok(!sourcePaths.includes(relative), "Duplicate raw input identity");
-    sourcePaths.push(relative);
-  }
-  const associations = await Promise.all(
-    Object.keys(meta.outputs).map(async (metafilePath) => {
-      const file = path.resolve(root, metafilePath);
-      const name = path.relative(outputRoot, file);
-      const type = file.endsWith(".js")
-        ? ("ESModule" as const)
-        : file.endsWith(".wasm")
-          ? ("CompiledWasm" as const)
-          : ("SourceMap" as const);
-      const sourceMapName = type === "ESModule" ? `${name}.map` : null;
-      if (sourceMapName)
-        assert.ok(
-          sourceMaps.some((sourceMap) => sourceMap.name === sourceMapName),
-        );
-      return {
-        metafilePath,
-        name,
-        type,
-        sourceMapName,
-        sha256: rawDigest(await readFile(file)),
-      };
-    }),
-  );
-  const association = Buffer.from(
-    JSON.stringify({
-      kind: "esbuild-api",
-      metafile: meta,
-      sourceRoot: canonicalRoot,
-      dependencyRoot,
+    proofStage = "optional-proof";
+    const optionalPg = optionalPgBuildAssociation(
+      root,
       outputRoot,
-      sourceMaps: sourceMaps.map(({ name, bytes }) => ({
+      meta,
+      Object.keys(meta.outputs)
+        .filter((key) => key.endsWith(".js"))
+        .map((key) => ({
+          metafilePath: key,
+          bytes: boundedBuildFile(path.resolve(root, key), 32 * 1024 * 1024),
+          sourceMap: {
+            metafilePath: key + ".map",
+            bytes: boundedBuildFile(
+              path.resolve(root, key + ".map"),
+              64 * 1024 * 1024,
+            ),
+          },
+        })),
+      modules.map((module) => path.relative(outputRoot, module.path)),
+    );
+    proofStage = "entry-exports";
+    const entry = path.join(outputRoot, "api.entry.js");
+    assert.ok(outputs.has(entry));
+    assert.deepEqual([...outputs.get(entry)!.exports].sort(), DO_EXPORTS);
+    proofStage = "output-graph";
+    const edges: { from: number; to: number; dynamic: boolean }[] = [];
+    for (const [metafilePath, value] of Object.entries(meta.outputs)) {
+      const file = path.resolve(root, metafilePath);
+      for (const [importIndex, dependency] of value.imports.entries()) {
+        if (dependency.external) {
+          if (
+            optionalPg &&
+            optionalPg.admitted.output === metafilePath &&
+            optionalPg.admitted.importIndex === importIndex
+          )
+            continue;
+          assertOwnerExternalImport(dependency.path);
+          continue;
+        }
+        const candidates = [
+          ...new Set([
+            path.resolve(root, dependency.path),
+            path.resolve(path.dirname(file), dependency.path),
+          ]),
+        ].filter((candidate) => outputs.has(candidate));
+        assert.equal(candidates.length, 1);
+        edges.push({
+          from: files.indexOf(file),
+          to: files.indexOf(candidates[0]!),
+          dynamic: dependency.kind === "dynamic-import",
+        });
+      }
+    }
+    const entryIndex = files.indexOf(entry);
+    const closure = (dynamic: boolean) => {
+      const seen = new Set([entryIndex]);
+      for (let previous = -1; previous !== seen.size;) {
+        previous = seen.size;
+        for (const edge of edges)
+          if (seen.has(edge.from) && (dynamic || !edge.dynamic))
+            seen.add(edge.to);
+      }
+      return [...seen].sort((a, b) => a - b);
+    };
+    const executable = records.flatMap((record, index) =>
+      record.type === "SourceMap" ? [] : [index],
+    );
+    assert.deepEqual(closure(true), executable);
+    const eager = closure(false);
+    proofStage = "source-contributions";
+    const contributions = OWNER_INPUTS.map((source) => {
+      const inputs = Object.keys(meta.inputs).filter(
+        (name) => path.resolve(root, name) === path.join(root, source),
+      );
+      assert.equal(
+        inputs.length,
+        1,
+        `Missing raw owner contribution: ${source}`,
+      );
+      const matching = [...outputs].flatMap(([file, value]) =>
+        Object.entries(value.inputs).flatMap(([name, input]) =>
+          inputs.includes(name) && input.bytesInOutput > 0
+            ? [{ outputIndex: files.indexOf(file), bytes: input.bytesInOutput }]
+            : [],
+        ),
+      );
+      assert.ok(matching.length > 0);
+      if (source === "workers/api.ts")
+        assert.ok(matching.every((item) => !eager.includes(item.outputIndex)));
+      return { source, outputs: matching };
+    });
+    modules.sort((a, b) =>
+      a.path === entry
+        ? -1
+        : b.path === entry
+          ? 1
+          : a.path.localeCompare(b.path),
+    );
+    proofStage = "input-custody";
+    // Read-only identity verification again catches an intervening source change.
+    assert.deepEqual(await verifyRawSources(root), sources);
+    const canonicalRoot = await realpath(root);
+    const dependencyRoot = await realpath(path.join(root, "node_modules"));
+    const sourcePaths: string[] = [];
+    for (const name of Object.keys(meta.inputs)) {
+      // The production builder alone generates these native-builtin adapters.
+      if (name.startsWith("native-node-require:")) continue;
+      const relative = ownerBuildInputIdentity(
+        canonicalRoot,
+        dependencyRoot,
         name,
-        base64: Buffer.from(bytes).toString("base64"),
-      })),
-      outputs: associations,
-    }),
-  );
-  assert.ok(association.byteLength <= 64 * 1024 ** 2);
-  return {
-    modules,
-    sourcePaths: [
-      ...new Set([
-        ...sourcePaths,
-        ...Object.keys(RAW_SOURCE_BLOBS),
-        "scripts/lib.ts",
-      ]),
-    ],
-    association,
-    proof: {
-      sourceBase: RAW_SOURCE_BASE,
-      sources,
-      identityKind: "actual-buildApiWorker-output",
-      exactWranglerUpload: false,
-      entryUnmodified: true,
-      instrumentation: "none",
-      entryIndex,
-      modules: records,
-      edges,
-      contributions,
-      eagerModuleIndexes: eager,
-      reachableModuleIndexes: closure(true),
-      totalBytes,
-      metafileSha256: rawDigest(JSON.stringify(meta)),
-    },
-  };
+      );
+      assert.ok(
+        !sourcePaths.includes(relative),
+        "Duplicate raw input identity",
+      );
+      sourcePaths.push(relative);
+    }
+    proofStage = "association-serialization";
+    const associations = await Promise.all(
+      Object.keys(meta.outputs).map(async (metafilePath) => {
+        const file = path.resolve(root, metafilePath);
+        const name = path.relative(outputRoot, file);
+        const type = file.endsWith(".js")
+          ? ("ESModule" as const)
+          : file.endsWith(".wasm")
+            ? ("CompiledWasm" as const)
+            : ("SourceMap" as const);
+        const sourceMapName = type === "ESModule" ? `${name}.map` : null;
+        if (sourceMapName)
+          assert.ok(
+            sourceMaps.some((sourceMap) => sourceMap.name === sourceMapName),
+          );
+        return {
+          metafilePath,
+          name,
+          type,
+          sourceMapName,
+          sha256: rawDigest(await readFile(file)),
+        };
+      }),
+    );
+    const association = Buffer.from(
+      JSON.stringify({
+        kind: "esbuild-api",
+        metafile: meta,
+        sourceRoot: canonicalRoot,
+        dependencyRoot,
+        outputRoot,
+        sourceMaps: sourceMaps.map(({ name, bytes }) => ({
+          name,
+          base64: Buffer.from(bytes).toString("base64"),
+        })),
+        outputs: associations,
+      }),
+    );
+    assert.ok(association.byteLength <= 64 * 1024 ** 2);
+    return {
+      modules,
+      sourcePaths: [
+        ...new Set([
+          ...sourcePaths,
+          ...Object.keys(RAW_SOURCE_BLOBS),
+          "scripts/lib.ts",
+        ]),
+      ],
+      association,
+      proof: {
+        sourceBase: RAW_SOURCE_BASE,
+        sources,
+        identityKind: "actual-buildApiWorker-output",
+        exactWranglerUpload: false,
+        entryUnmodified: true,
+        instrumentation: "none",
+        entryIndex,
+        modules: records,
+        edges,
+        contributions,
+        eagerModuleIndexes: eager,
+        reachableModuleIndexes: closure(true),
+        totalBytes,
+        metafileSha256: rawDigest(JSON.stringify(meta)),
+      },
+    };
+  } catch (cause) {
+    throw ownerBuildStageFailure("raw-build", proofStage, cause);
+  }
 }
 
 export interface RawLane {
