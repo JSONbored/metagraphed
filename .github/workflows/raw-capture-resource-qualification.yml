@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RESOURCE_GATE_PHASE: format
-  RESOURCE_CANDIDATE_MANIFEST_SHA256: de5f9869bcc301c1f4b95497c7b7597dc001ecc00a60439d3bc49ac269c907ad
+  RESOURCE_GATE_PHASE: qualify
+  RESOURCE_CANDIDATE_MANIFEST_SHA256: aef0902462de3c438bbce22f670e7858bf861429b1bf1fa6c3905a9ee60a77c9
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"
   FORCE_COLOR: "0"
@@ -21,7 +21,7 @@ env:
 jobs:
   format:
     # Format only; resource qualification requires a separate reviewed push.
-    if: github.ref == 'refs/heads/ci/raw-capture-number-resource-20261020'
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -59,8 +59,8 @@ jobs:
           if-no-files-found: error
 
   qualify:
-    # A later separately reviewed literal-qualify push is required after actual format readback.
-    if: ${{ false }}
+    # Frozen native format readback; four fixed cases require this reviewed push.
+    if: github.ref == 'refs/heads/ci/raw-capture-number-resource-20261020'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:

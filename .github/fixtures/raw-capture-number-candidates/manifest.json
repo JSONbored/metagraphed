@@ -96,17 +96,53 @@
   "memory_gate": "open;128 MB and whole-owner acceptance remain separate",
   "final_pin_source": "Actual same-run/attempt compatibility qualify ZIP sources and exact four-layer proof from run 39365100831; no format-only or proposal source substituted",
   "resource_gate": {
-    "status": "unexecuted_unpublishable_format_first_gate",
+    "status": "actual_native_format_lint_types_workflow_verified_resource_not_run",
     "format_phase": "format_lint_canonical_workspace_pretypecheck_strict_helper_types_workflow_only_no_api_build_or_capture",
-    "qualify_phase": "frozen_check_lint_types_workflow_then_fixed_four_cases",
-    "native_format_readback": null,
-    "native_checks_status": "not_run",
+    "qualify_phase": "frozen_check_lint_canonical_workspace_pretypecheck_types_workflow_then_fixed_four_cases",
+    "native_format_readback": {
+      "runId": 39372283030,
+      "runAttempt": 1,
+      "sourceCommit": "3dfab9392c595ca86c31229c7a3cd20eee97deb2",
+      "artifactIds": [12241643611, 12241856495],
+      "zipSha256": [
+        "6b6f0199b0cf851154f89df9a0e153b55775b2e703d54a88fd457babf74a6fb4",
+        "27f34ea7c04dc9b9a45402e5cc48b800097464d8e0edc666cc4e1eb0bc8aee2c"
+      ],
+      "readbackProofSha256": "31ce20bdda49f2609de78df905f271fb761d1c0b2aa006de21c16b2a89a15e3e",
+      "formattedHelperPins": [
+        {
+          "path": ".github/scripts/qualify-raw-capture-resources.ts",
+          "bytes": 70063,
+          "sha256": "db9bf36005a0a9950edf9f4a7f4f4de1ef6ee616abf17926eb612bc76fb2646d",
+          "blob": "26d3e8d4b832964421889e9efbd436e3ce063afe"
+        },
+        {
+          "path": ".github/fixtures/raw-capture-resource-worker.ts",
+          "bytes": 4997,
+          "sha256": "ebbaa678a48f392d41a2db39b69d74c518d02faefcf563fa1452a7e1b03e8232",
+          "blob": "53509b73e15854c7f6b9e023fd55c96e4091e31f"
+        },
+        {
+          "path": ".github/scripts/gate-raw-capture-resources.ts",
+          "bytes": 46790,
+          "sha256": "856ff37de78e10a3dc18cce152b7f8446d958965c210424f91e51b9fbe33e181",
+          "blob": "562028b4bfbf064720f67d16200f3593c04a9fdb"
+        },
+        {
+          "path": ".github/tsconfig.raw-capture-resources.json",
+          "bytes": 421,
+          "sha256": "cfc14219aa59c87ff00f185bfb6a30d87e9973bb9f2afb467aff043b1b74c72b",
+          "blob": "6b2b50804cf3c1bf6fcc78eac6f0dc2b4dd0ffbd"
+        }
+      ]
+    },
+    "native_checks_status": "actual_six_phase_format_native_checks_passed_no_resource_run",
     "helper_pins": [
       {
         "path": ".github/scripts/qualify-raw-capture-resources.ts",
-        "bytes": 69943,
-        "sha256": "b884c81666d29717ffd3eb916292772b3c2522349d56e4e5d98c099b32082c21",
-        "blob": "d24762039be2dd6a769e298634f1efe6d856b5ea"
+        "bytes": 70063,
+        "sha256": "db9bf36005a0a9950edf9f4a7f4f4de1ef6ee616abf17926eb612bc76fb2646d",
+        "blob": "26d3e8d4b832964421889e9efbd436e3ce063afe"
       },
       {
         "path": ".github/fixtures/raw-capture-resource-worker.ts",
@@ -116,9 +152,9 @@
       },
       {
         "path": ".github/scripts/gate-raw-capture-resources.ts",
-        "bytes": 46179,
-        "sha256": "975b28e9a95da7d38ed6de9db6439f30aa6a1e8ac1336e197667d4f6ecd4b8fd",
-        "blob": "ede46ee90ed4de1fe4db02fd4d901bbd063d65dc"
+        "bytes": 46790,
+        "sha256": "856ff37de78e10a3dc18cce152b7f8446d958965c210424f91e51b9fbe33e181",
+        "blob": "562028b4bfbf064720f67d16200f3593c04a9fdb"
       },
       {
         "path": ".github/tsconfig.raw-capture-resources.json",
@@ -148,11 +184,7 @@
       }
     ],
     "workspace_pretypecheck": {
-      "command": [
-        "npm",
-        "run",
-        "pretypecheck"
-      ],
+      "command": ["npm", "run", "pretypecheck"],
       "root_script": "npm run build --workspace=packages/chain-summaries",
       "workspace_script": "tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake",
       "generated_type_entry": "packages/chain-summaries/dist/index.d.ts",
