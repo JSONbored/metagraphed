@@ -11,7 +11,7 @@ import {
 import path from "node:path";
 
 const base = "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c";
-const expectedParent = "29ffa6cf321ee20c2da5bd11a7783c722614aaff";
+const expectedParent = "a708ba09a2506e6c56101fac22a34ef9fd5c918d";
 const originalSha =
   "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410";
 const originalBlob = "166fa028808963551b3cb109591eb5deaa6ec16f";
@@ -188,8 +188,16 @@ interface FailureFrameSource {
   sha256: string;
   line_lengths: number[];
 }
-function projectFailureFrames(messages: string[], approved: FailureFrameSource) {
-  const frames: { source_id: number; source_sha256: string; line: number; column: number }[] = [];
+function projectFailureFrames(
+  messages: string[],
+  approved: FailureFrameSource,
+) {
+  const frames: {
+    source_id: number;
+    source_sha256: string;
+    line: number;
+    column: number;
+  }[] = [];
   let oversizedMessages = 0;
   let otherSourceFrames = 0;
   let refusedPositions = 0;
@@ -200,17 +208,28 @@ function projectFailureFrames(messages: string[], approved: FailureFrameSource) 
       continue;
     }
     for (const line of message.split(/\r?\n/)) {
-      const match = /^\s*at (?:[A-Za-z0-9_.$<> /-]{1,128} \()?(.+):(\d+):(\d+)\)?$/.exec(line);
+      const match =
+        /^\s*at (?:[A-Za-z0-9_.$<> /-]{1,128} \()?(.+):(\d+):(\d+)\)?$/.exec(
+          line,
+        );
       if (!match) continue;
-      const file = match[1].startsWith("file://") ? match[1].slice(7) : match[1];
+      const file = match[1].startsWith("file://")
+        ? match[1].slice(7)
+        : match[1];
       if (file !== approved.file && file !== approved.relative_file) {
         otherSourceFrames++;
         continue;
       }
       const row = Number(match[2]);
       const column = Number(match[3]);
-      if (!Number.isSafeInteger(row) || row < 1 || row > approved.line_lengths.length ||
-          !Number.isSafeInteger(column) || column < 1 || column > approved.line_lengths[row - 1] + 1) {
+      if (
+        !Number.isSafeInteger(row) ||
+        row < 1 ||
+        row > approved.line_lengths.length ||
+        !Number.isSafeInteger(column) ||
+        column < 1 ||
+        column > approved.line_lengths[row - 1] + 1
+      ) {
         refusedPositions++;
         continue;
       }
@@ -218,30 +237,87 @@ function projectFailureFrames(messages: string[], approved: FailureFrameSource) 
         overflowFrames++;
         continue;
       }
-      frames.push({ source_id: 2, source_sha256: approved.sha256, line: row, column });
+      frames.push({
+        source_id: 2,
+        source_sha256: approved.sha256,
+        line: row,
+        column,
+      });
     }
   }
-  return { frames, oversized_messages: oversizedMessages, other_source_frames: otherSourceFrames,
-    refused_positions: refusedPositions, overflow_frames: overflowFrames, raw_messages_retained: false };
+  return {
+    frames,
+    oversized_messages: oversizedMessages,
+    other_source_frames: otherSourceFrames,
+    refused_positions: refusedPositions,
+    overflow_frames: overflowFrames,
+    raw_messages_retained: false,
+  };
 }
 function failureFrameControls() {
-  const approved = { file: "/fixed/source.ts", relative_file: "source.ts", sha256: "a".repeat(64), line_lengths: [2, 10] };
+  const approved = {
+    file: "/fixed/source.ts",
+    relative_file: "source.ts",
+    sha256: "a".repeat(64),
+    line_lengths: [2, 10],
+  };
   let checked = 0;
-  const check = (condition: boolean) => { assert.equal(condition, true); checked++; };
+  const check = (condition: boolean) => {
+    assert.equal(condition, true);
+    checked++;
+  };
   const plain = projectFailureFrames(["    at /fixed/source.ts:1:3"], approved);
-  check(plain.frames.length === 1 && plain.frames[0].column === 3 && plain.frames[0].source_sha256 === approved.sha256);
-  check(projectFailureFrames([" at caseName (file:///fixed/source.ts:2:11)"], approved).frames.length === 1);
-  check(projectFailureFrames([" at source.ts:1:1"], approved).frames.length === 1);
-  check(projectFailureFrames([" at /other/source.ts:1:1"], approved).other_source_frames === 1);
-  check(projectFailureFrames([" at /fixed/source.ts:0:1"], approved).refused_positions === 1);
-  check(projectFailureFrames([" at /fixed/source.ts:3:1"], approved).refused_positions === 1);
-  check(projectFailureFrames([" at /fixed/source.ts:1:4"], approved).refused_positions === 1);
-  check(projectFailureFrames([" at /fixed/source.ts:1:9007199254740992"], approved).refused_positions === 1);
-  check(projectFailureFrames(["fake message /fixed/source.ts:1:1"], approved).frames.length === 0);
-  check(projectFailureFrames(["x".repeat(65_537)], approved).oversized_messages === 1);
-  const overflow = projectFailureFrames([Array(17).fill(" at /fixed/source.ts:1:1").join("\n")], approved);
+  check(
+    plain.frames.length === 1 &&
+      plain.frames[0].column === 3 &&
+      plain.frames[0].source_sha256 === approved.sha256,
+  );
+  check(
+    projectFailureFrames(
+      [" at caseName (file:///fixed/source.ts:2:11)"],
+      approved,
+    ).frames.length === 1,
+  );
+  check(
+    projectFailureFrames([" at source.ts:1:1"], approved).frames.length === 1,
+  );
+  check(
+    projectFailureFrames([" at /other/source.ts:1:1"], approved)
+      .other_source_frames === 1,
+  );
+  check(
+    projectFailureFrames([" at /fixed/source.ts:0:1"], approved)
+      .refused_positions === 1,
+  );
+  check(
+    projectFailureFrames([" at /fixed/source.ts:3:1"], approved)
+      .refused_positions === 1,
+  );
+  check(
+    projectFailureFrames([" at /fixed/source.ts:1:4"], approved)
+      .refused_positions === 1,
+  );
+  check(
+    projectFailureFrames([" at /fixed/source.ts:1:9007199254740992"], approved)
+      .refused_positions === 1,
+  );
+  check(
+    projectFailureFrames(["fake message /fixed/source.ts:1:1"], approved).frames
+      .length === 0,
+  );
+  check(
+    projectFailureFrames(["x".repeat(65_537)], approved).oversized_messages ===
+      1,
+  );
+  const overflow = projectFailureFrames(
+    [Array(17).fill(" at /fixed/source.ts:1:1").join("\n")],
+    approved,
+  );
   check(overflow.frames.length === 16 && overflow.overflow_frames === 1);
-  check(projectFailureFrames([" at /fixed/source.ts:1:no"], approved).frames.length === 0);
+  check(
+    projectFailureFrames([" at /fixed/source.ts:1:no"], approved).frames
+      .length === 0,
+  );
   check(projectFailureFrames([], approved).raw_messages_retained === false);
   return checked;
 }
@@ -279,7 +355,10 @@ function qualify() {
     line_lengths: number[];
   }[] = [];
   let cases: { case_id: number; status: string; failure_count: number }[] = [];
-  const failureFrames: { case_id: number; projection: ReturnType<typeof projectFailureFrames> }[] = [];
+  const failureFrames: {
+    case_id: number;
+    projection: ReturnType<typeof projectFailureFrames>;
+  }[] = [];
   let failureFrameControlsPassed = 0;
   let category = "native_format";
   let status = "failed";
@@ -398,12 +477,21 @@ function qualify() {
           Array.isArray(row.failureMessages) &&
             row.failureMessages.length <= 16,
         );
-        assert.ok(row.failureMessages.every((message) => typeof message === "string"));
+        assert.ok(
+          row.failureMessages.every((message) => typeof message === "string"),
+        );
         if (row.failureMessages.length) {
           const approved = lintSources[1];
           assert.equal(digest(readFileSync(paths[2])), approved.sha256);
-          failureFrames.push({ case_id: id + 1, projection: projectFailureFrames(row.failureMessages,
-            { file: path.resolve(paths[2]), relative_file: paths[2], sha256: approved.sha256, line_lengths: approved.line_lengths }) });
+          failureFrames.push({
+            case_id: id + 1,
+            projection: projectFailureFrames(row.failureMessages, {
+              file: path.resolve(paths[2]),
+              relative_file: paths[2],
+              sha256: approved.sha256,
+              line_lengths: approved.line_lengths,
+            }),
+          });
         }
         return {
           case_id: id + 1,

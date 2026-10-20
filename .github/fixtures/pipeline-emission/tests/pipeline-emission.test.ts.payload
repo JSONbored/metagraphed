@@ -104,6 +104,7 @@ async function runFixture(failAt?: string, original = false) {
   const callsFile = path.join(directory, "calls.ndjson");
   try {
     mkdirSync(bin);
+    writeFileSync(path.join(bin, "package.json"), '{"type":"commonjs"}\n');
     // Only this child receives synthetic npm children. The harness does not
     // execute project command gates or claim native project-command acceptance.
     writeFileSync(
