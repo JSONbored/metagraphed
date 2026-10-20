@@ -39,6 +39,8 @@ const EXPECTED_PATHS = [
   "tests/raw-chain-capture.test.ts",
 ];
 const ALLOWED_CARRIER_FILES = new Set([
+  ".github/scripts/check-raw-capture-node-causal.ts",
+  ".github/workflows/raw-capture-node-causal.yml",
   ".github/scripts/apply-raw-capture-full-validation.ts",
   ".github/scripts/report-raw-capture-full-validation.ts",
   ".github/scripts/format-raw-capture-full-validation.ts",

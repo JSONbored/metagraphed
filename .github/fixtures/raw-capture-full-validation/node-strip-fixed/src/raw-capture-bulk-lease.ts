@@ -1,0 +1,117 @@
+/** One raw payload owner per isolate. This controls live producer ownership;
+ * it is not a GC, process-memory or whole-Worker upper-bound assertion. */
+export type RawCaptureBulkNetwork = "mainnet" | "testnet";
+
+export class RawCaptureBulkLeaseError extends Error {
+  declare readonly code:
+    | "raw_capture_bulk_aborted"
+    | "raw_capture_bulk_busy"
+    | "raw_capture_bulk_waiter_exists";
+  constructor(code: RawCaptureBulkLeaseError["code"]) {
+    super(code);
+    this.code = code;
+    this.name = "RawCaptureBulkLeaseError";
+  }
+}
+
+export interface RawCaptureBulkHandle {
+  readonly network: RawCaptureBulkNetwork;
+  /** Release only after all owned bytes/readers are disposed and durable
+   * publication/watermark acknowledgement or failure cleanup has completed. */
+  release(): void;
+}
+
+export interface RawCaptureBulkLease {
+  /** Acquire before issuing/consuming a large RPC response. Only the other
+   * current lane can wait; duplicate same-lane invocations fail closed instead
+   * of retaining an unbounded queue of callbacks or response bodies. */
+  acquire(
+    network: RawCaptureBulkNetwork,
+    signal?: AbortSignal,
+  ): Promise<RawCaptureBulkHandle>;
+  snapshot(): Readonly<{
+    active: RawCaptureBulkNetwork | null;
+    waiting: RawCaptureBulkNetwork | null;
+  }>;
+}
+
+export function createRawCaptureBulkLease(): RawCaptureBulkLease {
+  let active: { network: RawCaptureBulkNetwork; token: symbol } | null = null;
+  let waiting: {
+    network: RawCaptureBulkNetwork;
+    resolve(handle: RawCaptureBulkHandle): void;
+    reject(error: RawCaptureBulkLeaseError): void;
+    signal: AbortSignal | undefined;
+    abort(): void;
+  } | null = null;
+
+  const grant = (network: RawCaptureBulkNetwork): RawCaptureBulkHandle => {
+    const token = Symbol("raw-capture-bulk-owner");
+    active = { network, token };
+    return Object.freeze({
+      network,
+      release() {
+        // A stale or repeated release must never release a later owner.
+        if (active?.token !== token) return;
+        active = null;
+        const next = waiting;
+        waiting = null;
+        if (!next) return;
+        next.signal?.removeEventListener("abort", next.abort);
+        if (next.signal?.aborted) {
+          next.reject(new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"));
+          return;
+        }
+        next.resolve(grant(next.network));
+      },
+    });
+  };
+
+  return Object.freeze({
+    acquire(network: RawCaptureBulkNetwork, signal?: AbortSignal) {
+      if (network !== "mainnet" && network !== "testnet")
+        return Promise.reject(new TypeError("Invalid raw capture bulk lane"));
+      if (signal?.aborted)
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"),
+        );
+      if (!active) return Promise.resolve(grant(network));
+      if (active.network === network)
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_busy"),
+        );
+      if (waiting)
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_waiter_exists"),
+        );
+      return new Promise<RawCaptureBulkHandle>((resolve, reject) => {
+        const waiter = {
+          network,
+          resolve,
+          reject,
+          signal,
+          abort() {
+            if (waiting !== waiter) return;
+            waiting = null;
+            signal?.removeEventListener("abort", waiter.abort);
+            reject(new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"));
+          },
+        };
+        waiting = waiter;
+        signal?.addEventListener("abort", waiter.abort, { once: true });
+        // Abort can occur while attaching to an implementation of AbortSignal.
+        if (signal?.aborted) waiter.abort();
+      });
+    },
+    snapshot() {
+      return Object.freeze({
+        active: active?.network ?? null,
+        waiting: waiting?.network ?? null,
+      });
+    },
+  });
+}
+
+/** All raw cron invocations in this API isolate share this owner. Separate
+ * isolates do not share a heap. The prepared production path must opt in. */
+export const rawCaptureBulkLease = createRawCaptureBulkLease();

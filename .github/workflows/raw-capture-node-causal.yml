@@ -1,0 +1,63 @@
+name: Raw capture native Node compatibility causal check
+
+on:
+  push:
+    branches: [ci/raw-capture-node-strip-causal-20261020]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-node-causal-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FULL_VALIDATION_MANIFEST_SHA256: 0ca2204b257c1ca05b732106fbfd1681fe1d2c55abf3cffbabccddbf900e0c93
+  NODE_CAUSAL_MANIFEST_SHA256: c9e935bab6ab87548f5b0ddfcde50904508b57a813820c364e7958ae4dfbbcd0
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_WRITE_LOGS: "false"
+
+jobs:
+  causal:
+    if: github.ref == 'refs/heads/ci/raw-capture-node-strip-causal-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact canonical source carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Apply exact original twenty-source runner overlay
+        run: node .github/scripts/apply-raw-capture-full-validation.ts
+      - name: Install existing locked workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain native helper format lint and strict types
+        id: preflight
+        run: node .github/scripts/check-raw-capture-node-causal.ts preflight
+      - name: Prove original refusal and fixed imports build contract and limits
+        if: steps.preflight.outcome == 'success'
+        run: node .github/scripts/check-raw-capture-node-causal.ts causal
+      - name: Retain exact public fixture sources and curated evidence
+        if: always() && (steps.preflight.outcome == 'success' || steps.preflight.outcome == 'failure')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-node-causal-${{ github.run_attempt }}-${{ job.status }}
+          path: |
+            .github/scripts/check-raw-capture-node-causal.ts
+            .github/workflows/raw-capture-node-causal.yml
+            .github/fixtures/raw-capture-full-validation/node-causal-manifest.json
+            .github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-bulk-lease.ts
+            .github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-rpc-policy.ts
+            .github/fixtures/raw-capture-full-validation/node-strip-parser/parser-original.ts.payload
+            .github/fixtures/raw-capture-full-validation/node-strip-parser/parser-fixed.ts.payload
+            tmp/raw-capture-node-causal/preflight-receipt.json
+            tmp/raw-capture-node-causal/causal-receipt.json
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error

@@ -1,0 +1,62 @@
+{
+  "sources": [
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-bulk-lease.ts.payload",
+      "bytes": 4080,
+      "sha256": "8e269085ef736747d78a535d7bdb32c80b035873e0980fb009e27081b3252d76"
+    },
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-bulk-lease.ts",
+      "bytes": 4137,
+      "sha256": "a8d4f53c38147caa29b592bf097cf7ad1e2bfa8ab0d0371a1e9fccc405300a87"
+    },
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-rpc-policy.ts.payload",
+      "bytes": 8858,
+      "sha256": "ea26025f62e6f3efa7634cbe72f534074f1d86af2549b48ee425c7d1a76a51ed"
+    },
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-rpc-policy.ts",
+      "bytes": 9017,
+      "sha256": "b9c394245ceda277c534b2885243733b302f9aa9eebe0d336f18ecb5b4b8286f"
+    },
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/node-strip-parser/parser-original.ts.payload",
+      "bytes": 30144,
+      "sha256": "872376805018e4a4385068726475e98041030885c945c8caa547574b20e88d4e"
+    },
+    {
+      "path": ".github/fixtures/raw-capture-full-validation/node-strip-parser/parser-fixed.ts.payload",
+      "bytes": 30482,
+      "sha256": "69f51916fcd8656df9de2a68561c36099e37959eeafd05e99d6c0c5ec54136d9"
+    }
+  ],
+  "raw_pairs": [
+    {
+      "original": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-bulk-lease.ts.payload",
+      "fixed": ".github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-bulk-lease.ts",
+      "destination": "src/raw-capture-bulk-lease.ts"
+    },
+    {
+      "original": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-rpc-policy.ts.payload",
+      "fixed": ".github/fixtures/raw-capture-full-validation/node-strip-fixed/src/raw-capture-rpc-policy.ts",
+      "destination": "src/raw-capture-rpc-policy.ts"
+    }
+  ],
+  "parser_pair": {
+    "original": ".github/fixtures/raw-capture-full-validation/node-strip-parser/parser-original.ts.payload",
+    "fixed": ".github/fixtures/raw-capture-full-validation/node-strip-parser/parser-fixed.ts.payload"
+  },
+  "full_manifest_sha256": "0ca2204b257c1ca05b732106fbfd1681fe1d2c55abf3cffbabccddbf900e0c93",
+  "tracked": {
+    "count": 5359,
+    "path_mode_sha256": "99f5464cf840ffe779fa2b10da8019c0d0cc48f1bc6b12917634b90bb77d599c",
+    "maximum_file_bytes": 33554432,
+    "maximum_total_bytes": 201326592,
+    "symlink": {
+      "path": "CLAUDE.md",
+      "target": "AGENTS.md",
+      "git_blob_sha": "47dc3e3d863cfb5727b87d785d09abf9743c0a72"
+    }
+  }
+}
