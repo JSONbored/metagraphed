@@ -1,0 +1,92 @@
+name: Raw capture isolated compatibility comparison
+
+on:
+  push:
+    branches: [ci/raw-capture-single-validation-20261020]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-capture-single-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  COMPARISON_MANIFEST_SHA256: 0b7e15ce27fee21cefacc57f775ea4dbda13cf5db8d72349617dda06ec3502e5
+  COMPARISON_PHASE: format
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_WRITE_LOGS: "false"
+  FORCE_COLOR: "0"
+  METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+
+jobs:
+  comparison:
+    if: github.ref == 'refs/heads/ci/raw-capture-single-validation-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [q8, q8-number, v3, v3-number]
+    steps:
+      - name: Checkout exact source-only carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Apply only the pinned runner variant
+        id: overlay
+        run: node .github/scripts/apply-raw-capture-single-validation.ts "${{ matrix.variant }}"
+      - name: Install existing locked dependencies
+        uses: ./.github/actions/install-deps
+      - name: Obtain bounded formatting or frozen native comparison
+        id: native
+        run: node .github/scripts/qualify-raw-capture-single-validation.ts run "${{ matrix.variant }}"
+      - name: Retain actual public helper and source bytes plus bounded evidence
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-single-${{ env.COMPARISON_PHASE }}-${{ github.run_attempt }}-${{ matrix.variant }}
+          path: tmp/raw-capture-single-validation/upload/${{ matrix.variant }}/
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  compare:
+    if: ${{ false }}
+    needs: comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source-only comparison helper
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Download only this attempt's four comparison artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: raw-capture-single-qualify-${{ github.run_attempt }}-*
+          merge-multiple: false
+          path: tmp/raw-capture-single-validation/downloaded/
+      - name: Verify identities and exact small synthetic gzip oracles
+        run: node .github/scripts/qualify-raw-capture-single-validation.ts compare
+      - name: Retain bounded comparison proof only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raw-capture-single-proof-${{ github.run_attempt }}
+          path: tmp/raw-capture-single-validation/upload/proof/comparison-proof.json
+          retention-days: 1
+          if-no-files-found: error

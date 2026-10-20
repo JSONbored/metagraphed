@@ -1,0 +1,205 @@
+{
+  "status": "unexecuted_source_only_proposal",
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "base_trees": {
+    "src": "c678538f168e63696113dc1f8d599c4ca3e1547e",
+    "tests": "8c19c8235ae71b0f596825104c62bd44eb44787d",
+    "workers": "a46dd43fac421449d16afbe520f1aaf6ab32f872"
+  },
+  "qualified_q8": {
+    "run": 39348983680,
+    "artifact": 12232566849,
+    "source_commit": "8afe1572c224dcfe0b4b41b4e2ca5058716a4352",
+    "zip_sha256": "d21753e26968c424aa6af1dac14b8a3ae2254bc14b33709e02167010c68485d5"
+  },
+  "q8_files": [
+    {
+      "path": "src/raw-capture-d1.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-d1.ts.payload",
+      "sha256": "b7c86da367120a81186e7cab46e218a255bfa195c1205fcacd187e97767cac55",
+      "bytes": 9272,
+      "expected_base_blob_sha": "a2117ac28687f6e83b1c0c9f63d3c7996702cde1"
+    },
+    {
+      "path": "src/raw-chain-capture.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/src/raw-chain-capture.ts.payload",
+      "sha256": "a017f2075d25aa955ff0cfca2845cc278408c82726cf5e8fe29d028079dc15ad",
+      "bytes": 28826,
+      "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948"
+    },
+    {
+      "path": "src/raw-capture-retry-intent.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-retry-intent.ts.payload",
+      "sha256": "59431bc97dc13d8b0ea4395e103b55fb4afba88f10789f8d1a21f385cb20b860",
+      "bytes": 10425,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/raw-capture-retry-store.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-retry-store.ts.payload",
+      "sha256": "a19f5189eea2c2e09893961b9f606a23bcf7a927dedcb85fd51bbc99c99f794a",
+      "bytes": 12097,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-d1.test.ts.payload",
+      "sha256": "967453df5403e00988fdbecd93986c04328668bda26638177b2aa3e3199a8c85",
+      "bytes": 44422,
+      "expected_base_blob_sha": "4792776d1bc7bd0eff1d54452b94eac37b52c3b9"
+    },
+    {
+      "path": "tests/raw-chain-capture.test.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/tests/raw-chain-capture.test.ts.payload",
+      "sha256": "4cb9cc1fee477160b069b3e69c18de091c7ff41cafbbafd6e9bfe0b4b492bbb3",
+      "bytes": 60442,
+      "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510"
+    },
+    {
+      "path": "tests/raw-capture-retry-intent.test.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-retry-intent.test.ts.payload",
+      "sha256": "ed45d9010b7503d5947b636395905cf4c43e72198522075cbe658f0c9d86160f",
+      "bytes": 18027,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-retry-d1.test.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-retry-d1.test.ts.payload",
+      "sha256": "ff16bb920270693f0a686fa9f79bc10a6a5b495640cf50ffe436ecb3cd75f906",
+      "bytes": 16864,
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/raw-capture-cron-wiring.test.ts",
+      "payload": ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-cron-wiring.test.ts.payload",
+      "sha256": "2be3d4c415f712c6adad4e09c61450525770197183da69221a169d574f69e3cd",
+      "bytes": 1702,
+      "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d"
+    }
+  ],
+  "variants": [
+    {
+      "id": "q8",
+      "single_validation": false,
+      "number_layer": false,
+      "strict_boundary_status_required": "nonzero_unattributed_unqualified_control",
+      "overrides": {}
+    },
+    {
+      "id": "q8-number",
+      "single_validation": false,
+      "number_layer": true,
+      "strict_boundary_status_required": "zero",
+      "overrides": {
+        "src/raw-capture-retry-intent.ts": {
+          "payload": ".github/fixtures/raw-capture-single-validation/layers/q8-number-intent.ts.payload",
+          "bytes": 10397,
+          "sha256": "1df43f4e5278a86e903152714dd3453005fdc4e0a0c891b71b934fe472b8e411"
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "single_validation": true,
+      "number_layer": false,
+      "strict_boundary_status_required": "nonzero_unattributed_unqualified_control",
+      "overrides": {
+        "src/raw-capture-retry-intent.ts": {
+          "payload": ".github/fixtures/raw-capture-single-validation/layers/v3-intent.ts.payload",
+          "bytes": 11251,
+          "sha256": "313ab30f2af00886feaa8b350df43bbf2352d4e8f4f37cd3232e0a2ecbb17e9c"
+        },
+        "src/raw-capture-retry-store.ts": {
+          "payload": ".github/fixtures/raw-capture-single-validation/layers/v3-store.ts.payload",
+          "bytes": 12044,
+          "sha256": "df3fd68118fa994e180a1abdf765bf653c25b731773f36895f6c2469b3869fcf"
+        }
+      }
+    },
+    {
+      "id": "v3-number",
+      "single_validation": true,
+      "number_layer": true,
+      "strict_boundary_status_required": "zero",
+      "overrides": {
+        "src/raw-capture-retry-intent.ts": {
+          "payload": ".github/fixtures/raw-capture-single-validation/layers/v3-number-intent.ts.payload",
+          "bytes": 11223,
+          "sha256": "d5fac228f493dc46925c67739af7ad6f87ac4b1526a112682d1f70e9ed9c3ef2"
+        },
+        "src/raw-capture-retry-store.ts": {
+          "payload": ".github/fixtures/raw-capture-single-validation/layers/v3-store.ts.payload",
+          "bytes": 12044,
+          "sha256": "df3fd68118fa994e180a1abdf765bf653c25b731773f36895f6c2469b3869fcf"
+        }
+      }
+    }
+  ],
+  "v3_alias_tests": {
+    "path": "tests/raw-capture-single-validation.test.ts",
+    "payload": ".github/fixtures/raw-capture-single-validation/tests/raw-capture-single-validation.test.ts.payload",
+    "sha256": "e00599024507f441f696dfe1f4327dcb1137653567f6ab5f94774c429dedfa7f",
+    "bytes": 3335
+  },
+  "frozen_focused_tests": [
+    "tests/raw-capture-cron-wiring.test.ts",
+    "tests/raw-capture-d1.test.ts",
+    "tests/raw-capture-endpoints.test.ts",
+    "tests/raw-capture-frontier-ack.test.ts",
+    "tests/raw-capture-retry-d1.test.ts",
+    "tests/raw-capture-retry-intent.test.ts",
+    "tests/raw-capture-sync.test.ts",
+    "tests/raw-capture-watermark-store.test.ts",
+    "tests/raw-chain-capture.test.ts",
+    "tests/d1-capture-governance.test.ts",
+    "tests/data-api-bundle-boundary.test.ts"
+  ],
+  "frozen_focused_case_count": 338,
+  "resource_runner_included": false,
+  "numeric_tests": {
+    "path": "tests/raw-capture-number-equivalence.test.ts",
+    "payload": ".github/fixtures/raw-capture-single-validation/tests/raw-capture-number-equivalence.test.ts.payload",
+    "sha256": "264fedf30388854864e8bd350af3e796b9c9edb1725863a43bc7ba93cb9a3f65",
+    "bytes": 2828
+  },
+  "coverage_config_sha256": "633fa1d1133804030e44e6c5a9b0d8b1575d85315b7a9a232cd257a059045667",
+  "carrier_files": [
+    ".github/fixtures/raw-capture-single-validation/layers/q8-number-intent.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/layers/v3-intent.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/layers/v3-number-intent.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/layers/v3-store.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/manifest.json",
+    ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-d1.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-retry-intent.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/src/raw-capture-retry-store.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/src/raw-chain-capture.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-cron-wiring.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-retry-d1.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/tests/raw-capture-retry-intent.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/q8/tests/raw-chain-capture.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/tests/raw-capture-number-equivalence.test.ts.payload",
+    ".github/fixtures/raw-capture-single-validation/tests/raw-capture-single-validation.test.ts.payload",
+    ".github/scripts/apply-raw-capture-single-validation.ts",
+    ".github/scripts/qualify-raw-capture-single-validation.ts",
+    ".github/vitest.raw-single-validation.config.ts",
+    ".github/workflows/raw-capture-single-validation.yml"
+  ],
+  "helper_pins": [
+    {
+      "path": ".github/scripts/apply-raw-capture-single-validation.ts",
+      "bytes": 6556,
+      "sha256": "4131fb7e6ba61e51e1af72cbc8bf84c62b0d699d1a1f39826d9b208661eb846d"
+    },
+    {
+      "path": ".github/scripts/qualify-raw-capture-single-validation.ts",
+      "bytes": 24133,
+      "sha256": "a19bb6d165968bd8fab27957b9a51a0fe85b0a560bd947fa54804dac13615834"
+    },
+    {
+      "path": ".github/vitest.raw-single-validation.config.ts",
+      "bytes": 358,
+      "sha256": "633fa1d1133804030e44e6c5a9b0d8b1575d85315b7a9a232cd257a059045667"
+    }
+  ]
+}

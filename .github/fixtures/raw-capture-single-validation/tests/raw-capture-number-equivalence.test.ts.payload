@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import { test } from "vitest";
+import {
+  decodeRawCaptureIntent,
+  encodeRawCaptureIntent,
+  prepareRawCapture,
+  rawCaptureIdentity,
+  resumeRawCapture,
+} from "../src/raw-capture-retry-intent.ts";
+
+const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
+const tokens = ["1", "1e0", "1.0", "1.00000000000000000001", "1.700000000000e12",
+  "1700000000001.0000000000000000000", "9007199254740991.0000000000000000",
+  "9007199254740990.4999999999999999999999999", "9007199254740990.500000000000000000000001"];
+
+test("all layers preserve numeric spelling, original gzip bytes and rejection guards", () => {
+  const cases = [];
+  for (const testnet of [false, true]) for (const token of tokens) {
+    const object = `chain/raw/${testnet ? "testnet/" : ""}blocks/000000000042-000000000042.ndjson`;
+    const raw = `{"block_number":42,"captured_\\u0061t":${token},"nested":{"captured_at":0},"note":"λ🚀 é","balance":900719925474099312345678901234567890}\n`;
+    const parsed: unknown = JSON.parse(token);
+    assert.ok(typeof parsed === "number" && Number.isSafeInteger(parsed) && parsed > 0);
+    assert.equal(Number(token), parsed);
+    const fresh = raw.replace(`:${token},`, ":1800000000000,");
+    const original = prepareRawCapture(object, raw);
+    assert.equal(original.descriptor.captured_at, parsed);
+    assert.equal(original.descriptor.sha256, digest(raw));
+    assert.deepEqual(original.provenance, [token]);
+    const intent = decodeRawCaptureIntent(encodeRawCaptureIntent(original));
+    const resumed = resumeRawCapture(intent, object, fresh);
+    assert.deepEqual(resumed, original);
+    assert.equal(gunzipSync(resumed.compressed).toString("utf8"), raw);
+    assert.equal(resumed.descriptor.compressed_sha256, digest(resumed.compressed));
+    assert.equal(rawCaptureIdentity(object, raw).sha256, digest(raw));
+    cases.push({ index: cases.length, descriptor: original.descriptor,
+      provenance: original.provenance, compressed_hex: original.compressed.toString("hex") });
+    for (const invalid of ["", " ", " 1", "1 ", "+1", "01", "0x1", "NaN", "Infinity",
+      "0", "-0", "-1", "1.5", "1e309", "1e-400", "9007199254740992"]) {
+      assert.throws(() => decodeRawCaptureIntent(JSON.stringify({ ...intent, provenance: [invalid] })));
+    }
+  }
+  assert.equal(cases.length, 18);
+  const encoded = JSON.stringify({ version: 1, cases }) + "\n";
+  assert.ok(Buffer.byteLength(encoded) <= 65_536);
+  mkdirSync("tmp/raw-capture-single-validation", { recursive: true });
+  writeFileSync("tmp/raw-capture-single-validation/numeric-oracle.json", encoded);
+});

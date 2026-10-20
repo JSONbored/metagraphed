@@ -1,0 +1,65 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
+import { test } from "vitest";
+import {
+  decodeRawCaptureIntent,
+  encodeRawCaptureIntent,
+  prepareRawCapture,
+  rawCaptureIdentity,
+  rawCaptureInput,
+  resumeRawCapture,
+  type RawCaptureIntent,
+} from "../src/raw-capture-retry-intent.ts";
+
+const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
+const key = (testnet = false, first = 41) =>
+  `chain/raw/${testnet ? "testnet/" : ""}blocks/${String(first).padStart(12, "0")}-${String(first + 1).padStart(12, "0")}.ndjson`;
+const original =
+  '{"block_number":41,"captured_\\u0061t":1.700000000000e12,"nested":{"captured_at":0},"note":"λ🚀","balance":90071992547409931234567890}\n' +
+  '{"block_number":42,"captured_at":1700000000001.0000000000000000000,"note":"é"}\n';
+const fresh = original
+  .replace("1.700000000000e12", "1800000000000")
+  .replace("1700000000001.0000000000000000000", "1800000000001");
+
+test("one private input supports identity, fresh preparation and exact resume without mutable output aliases", () => {
+  for (const testnet of [false, true]) {
+    const object = key(testnet);
+    const expected = prepareRawCapture(object, original);
+    const intent = decodeRawCaptureIntent(encodeRawCaptureIntent(expected));
+    const input = rawCaptureInput(object, fresh);
+    const identity = input.identity();
+    assert.deepEqual(identity, rawCaptureIdentity(object, fresh));
+    identity.first = -1;
+    identity.sha256 = "0".repeat(64);
+    const newest = input.prepare();
+    assert.deepEqual(newest, prepareRawCapture(object, fresh));
+    newest.descriptor.first_block = -1;
+    newest.provenance[0] = "invalid";
+    newest.compressed[0] = newest.compressed[0]! ^ 1;
+    const resumed = input.resume(intent);
+    assert.deepEqual(resumed, expected);
+    assert.equal(gunzipSync(resumed.compressed).toString("utf8"), original);
+    assert.equal(resumed.descriptor.sha256, digest(original));
+    assert.equal(resumed.descriptor.compressed_sha256, digest(resumed.compressed));
+    assert.deepEqual(resumed.provenance, ["1.700000000000e12", "1700000000001.0000000000000000000"]);
+    assert.deepEqual(resumed, resumeRawCapture(intent, object, fresh));
+    resumed.provenance[0] = "invalid";
+    assert.deepEqual(input.resume(intent), expected);
+  }
+});
+
+test("lazy factory preserves direct resume metadata and key refusal before parsing invalid raw input", () => {
+  const object = key();
+  const retained = decodeRawCaptureIntent(encodeRawCaptureIntent(prepareRawCapture(object, original)));
+  const malformed = "not-json\n";
+  const invalidIntent = { ...retained, version: 2 } as unknown as RawCaptureIntent;
+  const input = rawCaptureInput(object, malformed);
+  assert.throws(() => input.resume(invalidIntent), /retry intent identity differs/);
+  assert.throws(() => resumeRawCapture(invalidIntent, object, malformed), /retry intent identity differs/);
+  assert.throws(() => rawCaptureInput(key(false, 43), malformed).resume(retained), /retry range differs/);
+  assert.throws(() => resumeRawCapture(retained, key(false, 43), malformed), /retry range differs/);
+  assert.throws(() => input.identity());
+  assert.throws(() => input.prepare());
+  assert.throws(() => input.resume(retained));
+});
