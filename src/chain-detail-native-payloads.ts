@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 // Exact compressed bytes live with the hot D1 data. Common calls compress into
 // their own row; exceptional values use immutable chunks below D1's 2 MB limit.
 import type { D1StoreBinding } from "./d1-store.ts";
@@ -13,10 +14,10 @@ function database(env: unknown): D1StoreBinding {
   return db;
 }
 function encode(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 8192)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  return btoa(binary);
+  if (bytes.byteLength === 0) return "";
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString(
+    "base64",
+  );
 }
 function decode(encoded: string, size: number): Uint8Array {
   if (encoded.length !== 4 * Math.ceil(size / 3))
