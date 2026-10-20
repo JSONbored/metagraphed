@@ -41,8 +41,8 @@
     {
       "path": "tests/raw-chain-capture.test.ts",
       "payload": ".github/fixtures/raw-capture-retry/tests/raw-chain-capture.test.ts.payload",
-      "sha256": "97e31b343944c83728f88676065326e437d709411e282640a1693f6dfd16dd19",
-      "bytes": 72052,
+      "sha256": "6cea6b4ea163a24a9e46e613eb16a281cb36e83e73f42fe591b1871843685d16",
+      "bytes": 72062,
       "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510"
     },
     {

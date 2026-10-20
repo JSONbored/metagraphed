@@ -1863,7 +1863,7 @@ describe("captureTick consumes only its private chunk rows", () => {
   }
 
   test("delayed durability preserves full and partial counts, exact bytes and RPC aliases", async () => {
-    const expected = [];
+    const expected: string[] = [];
     for (const heights of [[1, 2], [3, 4]]) {
       const chunk = await fetchRawBlockChunk(
         "https://archive.example.test",
