@@ -28,9 +28,7 @@ const prepared = () => prepareRawCapture(key(42), row(42));
 const intent = () => decodeRawCaptureIntent(encodeRawCaptureIntent(prepared()));
 const encoded = (value: unknown) => JSON.stringify(value);
 
-function changed(
-  mutate: (value: RawCaptureIntent) => void,
-): RawCaptureIntent {
+function changed(mutate: (value: RawCaptureIntent) => void): RawCaptureIntent {
   const value = intent();
   mutate(value);
   return value;
@@ -85,14 +83,18 @@ test("resuming replaces only top-level provenance tokens and preserves every oth
   const original =
     row(41, "1.700000000000e12", detail) +
     row(42, "1700000000001.0000000000000000000", detail);
-  const newest = row(41, "1800000000000", detail) + row(42, "1800000000001", detail);
+  const newest =
+    row(41, "1800000000000", detail) + row(42, "1800000000001", detail);
   const capture = prepareRawCapture(key(41, 42), original);
   const retained = decodeRawCaptureIntent(encodeRawCaptureIntent(capture));
   assert.deepEqual(retained.provenance, [
     "1.700000000000e12",
     "1700000000001.0000000000000000000",
   ]);
-  assert.notEqual(rawCaptureIdentity(key(41, 42), newest).sha256, capture.descriptor.sha256);
+  assert.notEqual(
+    rawCaptureIdentity(key(41, 42), newest).sha256,
+    capture.descriptor.sha256,
+  );
   const resumed = resumeRawCapture(retained, key(41, 42), newest);
   assert.deepEqual(resumed.descriptor, capture.descriptor);
   assert.deepEqual(resumed.compressed, capture.compressed);
@@ -106,13 +108,21 @@ test("escaped identity keys, quotes, Unicode and long numeric spellings retain t
     '"nested":[{"captured_at":2}],"value":"captured_at",' +
     '"escaped":' +
     JSON.stringify('é e\u0301 \\ \\" quote " captured_at') +
-    '}\n';
+    "}\n";
   const capture = prepareRawCapture(object, raw);
   assert.equal(capture.descriptor.captured_at, Number.MAX_SAFE_INTEGER);
   assert.deepEqual(capture.provenance, ["9007199254740991.0000000000000000"]);
   const retained = decodeRawCaptureIntent(encodeRawCaptureIntent(capture));
-  const retry = raw.replace("9007199254740991.0000000000000000", "1700000000000");
-  assert.equal(gunzipSync(resumeRawCapture(retained, object, retry).compressed).toString("utf8"), raw);
+  const retry = raw.replace(
+    "9007199254740991.0000000000000000",
+    "1700000000000",
+  );
+  assert.equal(
+    gunzipSync(resumeRawCapture(retained, object, retry).compressed).toString(
+      "utf8",
+    ),
+    raw,
+  );
 });
 
 test("raw capture refuses malformed identities, ranges, records and unsafe timestamps", () => {
@@ -141,7 +151,16 @@ test("raw capture refuses malformed identities, ranges, records and unsafe times
     [key(1, 2), row(1) + "\uFEFF" + row(2)],
     [key(1), row(1) + "not-json\n"],
   ];
-  for (const token of ["0", "-1", "1.5", "9007199254740992", "1e999", '"1"', "true", "null"])
+  for (const token of [
+    "0",
+    "-1",
+    "1.5",
+    "9007199254740992",
+    "1e999",
+    '"1"',
+    "true",
+    "null",
+  ])
     invalid.push([key(1), row(1, token)]);
   for (const [object, value] of invalid) {
     assert.throws(() => rawCaptureIdentity(object, value));
@@ -218,7 +237,8 @@ test("intent envelope, descriptor, numeric limits and provenance are strict", ()
   ];
   for (const [field, value] of descriptors) {
     const candidate = changed((candidate) => {
-      (candidate.descriptor as unknown as Record<string, unknown>)[field] = value;
+      (candidate.descriptor as unknown as Record<string, unknown>)[field] =
+        value;
     });
     assert.throws(() => decodeRawCaptureIntent(encoded(candidate)));
   }
@@ -241,23 +261,58 @@ test("intent envelope, descriptor, numeric limits and provenance are strict", ()
   for (const field of Object.keys(valid.descriptor)) {
     const descriptor = { ...valid.descriptor } as Record<string, unknown>;
     delete descriptor[field];
-    assert.throws(() => decodeRawCaptureIntent(encoded({ ...valid, descriptor })));
+    assert.throws(() =>
+      decodeRawCaptureIntent(encoded({ ...valid, descriptor })),
+    );
   }
-  for (const token of [null, 1, [], "", "0", "-1", "1.5", "1e999", "9007199254740992", "+1", "01", "0x1", "Infinity", "NaN", "1700000000000\n", "1700000000000\r\n", "1700000000000\u2028", "1700000000000\u2029"])
-    assert.throws(() => decodeRawCaptureIntent(encoded({ ...valid, provenance: [token] })));
+  for (const token of [
+    null,
+    1,
+    [],
+    "",
+    "0",
+    "-1",
+    "1.5",
+    "1e999",
+    "9007199254740992",
+    "+1",
+    "01",
+    "0x1",
+    "Infinity",
+    "NaN",
+    "1700000000000\n",
+    "1700000000000\r\n",
+    "1700000000000\u2028",
+    "1700000000000\u2029",
+  ])
+    assert.throws(() =>
+      decodeRawCaptureIntent(encoded({ ...valid, provenance: [token] })),
+    );
 });
 
 test("range and raw byte budgets accept their exact boundary and refuse the next record or byte", () => {
-  const records = Array.from({ length: 4096 }, (_, block) => row(block, "1")).join("");
+  const records = Array.from({ length: 4096 }, (_, block) =>
+    row(block, "1"),
+  ).join("");
   const capture = prepareRawCapture(key(0, 4095), records);
   assert.equal(capture.provenance.length, 4096);
-  assert.equal(decodeRawCaptureIntent(encodeRawCaptureIntent(capture)).descriptor.last_block, 4095);
-  assert.throws(() => prepareRawCapture(key(0, 4096), records + row(4096, "1")));
+  assert.equal(
+    decodeRawCaptureIntent(encodeRawCaptureIntent(capture)).descriptor
+      .last_block,
+    4095,
+  );
+  assert.throws(() =>
+    prepareRawCapture(key(0, 4096), records + row(4096, "1")),
+  );
 
   const prefix = '{"block_number":1,"captured_at":1,"payload":"';
   const suffix = '"}\n';
   const remaining = RAW_CAPTURE_MAX_BYTES - Buffer.byteLength(prefix + suffix);
-  const raw = prefix + "λ".repeat(Math.floor(remaining / 2)) + "x".repeat(remaining % 2) + suffix;
+  const raw =
+    prefix +
+    "λ".repeat(Math.floor(remaining / 2)) +
+    "x".repeat(remaining % 2) +
+    suffix;
   assert.equal(Buffer.byteLength(raw), RAW_CAPTURE_MAX_BYTES);
   assert.ok(raw.length < RAW_CAPTURE_MAX_BYTES);
   const maximum = prepareRawCapture(key(1), raw);
@@ -273,12 +328,14 @@ function metadataAtSize(target: number): RawCapturePrepared {
   let zeros = target - 1024;
   for (let attempt = 0; attempt < 8; attempt++) {
     const capture = prepareRawCapture(key(1), row(1, "1." + "0".repeat(zeros)));
-    const bytes = Buffer.byteLength(encoded({
-      version: 1,
-      schema,
-      descriptor: capture.descriptor,
-      provenance: capture.provenance,
-    }));
+    const bytes = Buffer.byteLength(
+      encoded({
+        version: 1,
+        schema,
+        descriptor: capture.descriptor,
+        provenance: capture.provenance,
+      }),
+    );
     if (bytes === target) return capture;
     zeros += target - bytes;
   }
@@ -292,7 +349,12 @@ test("the intent metadata budget accepts exactly 96 KiB of valid provenance and 
   const decoded = decodeRawCaptureIntent(payload);
   assert.equal(decoded.descriptor.captured_at, 1);
   assert.deepEqual(decoded.provenance, capture.provenance);
-  assert.equal(gunzipSync(resumeRawCapture(decoded, key(1), row(1, "2")).compressed).toString("utf8"), gunzipSync(capture.compressed).toString("utf8"));
+  assert.equal(
+    gunzipSync(
+      resumeRawCapture(decoded, key(1), row(1, "2")).compressed,
+    ).toString("utf8"),
+    gunzipSync(capture.compressed).toString("utf8"),
+  );
   const oversized = metadataAtSize(RAW_CAPTURE_INTENT_MAX_BYTES + 1);
   assert.throws(() => encodeRawCaptureIntent(oversized));
   assert.throws(() => decodeRawCaptureIntent(payload + " "));
@@ -300,10 +362,17 @@ test("the intent metadata budget accepts exactly 96 KiB of valid provenance and 
 
 test("a retry refuses a changed range, raw bytes, raw digest or compressed descriptor", () => {
   const object = key(42);
-  const raw = row(42, "1700000000000", ',"value":"é","balance":9007199254740993123');
+  const raw = row(
+    42,
+    "1700000000000",
+    ',"value":"é","balance":9007199254740993123',
+  );
   const capture = prepareRawCapture(object, raw);
   const retained = decodeRawCaptureIntent(encodeRawCaptureIntent(capture));
-  assert.deepEqual(resumeRawCapture(retained, object, raw).compressed, capture.compressed);
+  assert.deepEqual(
+    resumeRawCapture(retained, object, raw).compressed,
+    capture.compressed,
+  );
   assert.throws(() => resumeRawCapture(retained, key(42, 42, true), raw));
   for (const conflict of [
     raw.replace("9007199254740993123", "9007199254740993124"),
@@ -321,4 +390,70 @@ test("a retry refuses a changed range, raw bytes, raw digest or compressed descr
   const wrongSize = decodeRawCaptureIntent(encodeRawCaptureIntent(capture));
   wrongSize.descriptor.compressed_bytes++;
   assert.throws(() => resumeRawCapture(wrongSize, object, raw));
+});
+
+const ownedRow = (block: number, token: string, text = "") =>
+  `{"note":"${text}","captured_\\u0061t":${token},"block_number":${block},"tail":"界🚀"}\r\n`;
+const ownedRetained = (object: string, raw: string) =>
+  decodeRawCaptureIntent(encodeRawCaptureIntent(prepareRawCapture(object, raw)));
+
+test("owned-buffer retry preserves UTF-8 bytes around differently sized timestamp tokens", () => {
+  const object = key(41, 42);
+  const text = "\uFEFFé e\u0301 🚀 \ud800 lone-high \udc00 lone-low";
+  const original =
+    ownedRow(41, "1e3", text) +
+    ownedRow(42, "1700000000000.000000000000000000", text) +
+    " \t\uFEFF\n";
+  const fresh = ownedRow(41, "1800000000000", text) + ownedRow(42, "2", text) + " \t\uFEFF\n";
+  const expected = prepareRawCapture(object, original);
+  const intent = ownedRetained(object, original);
+  const resumed = resumeRawCapture(intent, object, fresh);
+  assert.deepEqual(resumed.descriptor, expected.descriptor);
+  assert.deepEqual(resumed.compressed, expected.compressed);
+  assert.deepEqual(gunzipSync(resumed.compressed), Buffer.from(original));
+  assert.deepEqual(resumed.provenance, expected.provenance);
+  assert.notEqual(resumed.provenance, intent.provenance);
+  resumed.provenance[0] = "9";
+  assert.equal(intent.provenance[0], "1e3");
+});
+
+test("owned-buffer retry accepts exact 32 MiB original bytes after a shorter fresh token", () => {
+  const object = key(1);
+  const prefix = '{"block_number":1,"captured_at":1700000000000,"events":"';
+  const suffix = '"}\n';
+  const original = prefix + "x".repeat(RAW_CAPTURE_MAX_BYTES - Buffer.byteLength(prefix + suffix)) + suffix;
+  const expected = prepareRawCapture(object, original);
+  const intent = decodeRawCaptureIntent(encodeRawCaptureIntent(expected));
+  const fresh = original.replace('"captured_at":1700000000000', '"captured_at":1');
+  assert.equal(Buffer.byteLength(original), RAW_CAPTURE_MAX_BYTES);
+  assert.equal(Buffer.byteLength(fresh), RAW_CAPTURE_MAX_BYTES - 12);
+  const resumed = resumeRawCapture(intent, object, fresh);
+  assert.deepEqual(resumed.descriptor, expected.descriptor);
+  assert.deepEqual(resumed.compressed, expected.compressed);
+});
+
+test("owned-buffer retry refuses invalid size and token metadata before trusting it", () => {
+  const object = key(1);
+  const raw = ownedRow(1, "1000", "safe");
+  const valid = ownedRetained(object, raw);
+  const mutations: ((intent: RawCaptureIntent) => void)[] = [
+    (intent) => { intent.descriptor.raw_bytes = 0; },
+    (intent) => { intent.descriptor.raw_bytes = 1.5; },
+    (intent) => { intent.descriptor.raw_bytes = RAW_CAPTURE_MAX_BYTES + 1; },
+    (intent) => { intent.descriptor.raw_bytes--; },
+    (intent) => { intent.descriptor.raw_bytes++; },
+    (intent) => { intent.provenance = []; },
+    (intent) => { intent.provenance.push("1"); },
+    (intent) => { intent.provenance[0] = '1,"injected":true'; },
+    (intent) => { intent.provenance[0] = "1\n"; },
+  ];
+  for (const mutate of mutations) {
+    const invalid = structuredClone(valid);
+    mutate(invalid);
+    assert.throws(() => resumeRawCapture(invalid, object, raw));
+  }
+  assert.throws(() => resumeRawCapture(valid, object, "\uFEFF" + raw));
+  assert.throws(() => resumeRawCapture(valid, object, raw.replace("safe", "changed")));
+  assert.throws(() => resumeRawCapture(valid, object, raw.replace("safe", "else")));
+  assert.throws(() => resumeRawCapture(valid, object, raw.replace('"captured_\\u0061t":1000', '"captured_at":1000,"captured_at":1000')));
 });
