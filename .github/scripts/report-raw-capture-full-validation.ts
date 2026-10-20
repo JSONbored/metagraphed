@@ -21,6 +21,8 @@ import { stripVTControlCharacters } from "node:util";
 
 async function main() {
   const MAX_REPORT_BYTES = 32 * 1024 * 1024;
+  type LcovNumericField = "da_line" | "da_hits" | "brda_line" | "brda_block" | "brda_branch" | "brda_hits";
+  let lcovNumericObservation: { field: LcovNumericField; characters: number; length_exceeds_bound: boolean; shape: string } | null = null;
   const JOBS = [
     "changes",
     "bundle-source",
@@ -46,6 +48,10 @@ async function main() {
   }
   if (process.argv[2] === "validator-selfcheck") {
     validatorControls();
+    return;
+  }
+  if (process.argv[2] === "lcov-numeric-selfcheck") {
+    lcovNumericControls();
     return;
   }
   const ROOT = realpathSync(process.env.GITHUB_WORKSPACE ?? process.cwd());
@@ -541,6 +547,36 @@ async function main() {
     assert.ok(Number.isSafeInteger(result));
     return result;
   }
+  function lcovInteger(value: string, field: LcovNumericField): number {
+    const shape = value === "" ? "empty"
+      : /^\d+$/.test(value) ? "unsigned_integer"
+      : /^-\d+$/.test(value) ? "negative_integer"
+      : /^\d+\.\d+$/.test(value) ? "unsigned_fraction"
+      : /^-?(?:0|[1-9]\d*)(?:\.\d+)?[eE][+-]?\d+$/.test(value) ? "json_exponent"
+      : value === "-" ? "missing_count"
+      : /^\d+\r$/.test(value) ? "unsigned_integer_cr"
+      : "other";
+    lcovNumericObservation = { field, characters: Math.min(value.length, MAX_REPORT_BYTES),
+      length_exceeds_bound: value.length > MAX_REPORT_BYTES, shape };
+    return integer(value);
+  }
+  function lcovNumericControls() {
+    const accepted = ["0", "1", "9007199254740991"];
+    for (const value of accepted) assert.equal(lcovInteger(value, "da_line"), Number(value));
+    const refused = [
+      ["-1", "negative_integer"], ["0.5", "unsigned_fraction"], ["1e2", "json_exponent"],
+      ["-", "missing_count"], ["", "empty"], ["1\r", "unsigned_integer_cr"], ["invalid", "other"],
+      ["9007199254740992", "unsigned_integer"],
+    ];
+    for (const [value, shape] of refused) {
+      assert.throws(() => lcovInteger(value, "brda_hits"));
+      assert.deepEqual(lcovNumericObservation, { field: "brda_hits", characters: value.length,
+        length_exceeds_bound: false, shape });
+    }
+    lcovNumericObservation = null;
+    console.log(JSON.stringify({ lcov_numeric_controls_passed: accepted.length + refused.length,
+      raw_tokens_retained: false }));
+  }
   function sourcePath(value: string) {
     assert.ok(value.length < 512 && !/[\0\r\n]/.test(value));
     const relative = path.isAbsolute(value)
@@ -575,20 +611,20 @@ async function main() {
         if (row.startsWith("DA:")) {
           const fields = row.slice(3).split(",");
           assert.ok(fields.length === 2 || fields.length === 3);
-          const line = integer(fields[0]),
-            hits = integer(fields[1]);
+          const line = lcovInteger(fields[0], "da_line"),
+            hits = lcovInteger(fields[1], "da_hits");
           assert.ok(line > 0 && !current.lines.has(line));
           current.lines.set(line, hits);
         } else if (row.startsWith("BRDA:")) {
           const fields = row.slice(5).split(",");
           assert.equal(fields.length, 4);
-          const line = integer(fields[0]),
-            block = integer(fields[1]),
-            branch = integer(fields[2]);
+          const line = lcovInteger(fields[0], "brda_line"),
+            block = lcovInteger(fields[1], "brda_block"),
+            branch = lcovInteger(fields[2], "brda_branch");
           assert.ok(line > 0);
           const key = [line, block, branch].join(",");
           assert.ok(!current.branches.has(key));
-          current.branches.set(key, fields[3] === "-" ? 0 : integer(fields[3]));
+          current.branches.set(key, fields[3] === "-" ? 0 : lcovInteger(fields[3], "brda_hits"));
         } else {
           assert.match(row, /^(?:FN|FNDA|FNF|FNH|LF|LH|BRF|BRH):/);
         }
@@ -1412,6 +1448,7 @@ async function main() {
       error_class: "bounded_contract_failure",
       curation_substage: mode === "finalize" ? curationSubstage : null,
       reporter_location: mode === "finalize" ? reporterLocation(error) : null,
+      last_lcov_numeric_observation: mode === "finalize" && curationSubstage === "lcov_parse" ? lcovNumericObservation : null,
       raw_output_retained: false,
       production_actions: false,
     };
