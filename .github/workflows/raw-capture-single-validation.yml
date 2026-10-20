@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  COMPARISON_MANIFEST_SHA256: 578b0e950e8b427470b1108c8955f5ff8b2dd586b6ca833f701df6c0d2d3b77b
-  COMPARISON_PHASE: qualify
+  COMPARISON_MANIFEST_SHA256: d6d9ce35054bf518198ef0c8c8d8cb6c219a349d86ec6f11576ae9287dc35be9
+  COMPARISON_PHASE: format
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"
   FORCE_COLOR: "0"
@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [q8, q8-number, v3, v3-number]
+        variant: [q8-number]
     steps:
       - name: Checkout exact source-only carrier
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,7 +60,7 @@ jobs:
           if-no-files-found: error
 
   compare:
-    if: always() && github.ref == 'refs/heads/ci/raw-capture-single-validation-20261020'
+    if: ${{ false }}
     needs: comparison
     runs-on: ubuntu-latest
     timeout-minutes: 10

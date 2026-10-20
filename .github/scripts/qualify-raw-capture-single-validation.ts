@@ -3,8 +3,13 @@ import { Buffer } from "node:buffer";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  closeSync,
+  constants as fsConstants,
   copyFileSync,
+  fstatSync,
   mkdirSync,
+  openSync,
+  readSync,
   readFileSync,
   readdirSync,
   statSync,
@@ -27,6 +32,22 @@ async function main() {
     console.log(JSON.stringify(diagnosticControls()));
     return;
   }
+  function focusedFailureClasses(material: string): string[] {
+    const lines = material.split(/\r?\n/).map((line) => stripVTControlCharacters(line));
+    const errors = lines.filter((line) => /^\s*(?:Error|TypeError|ReferenceError|RangeError|SyntaxError|CACError|MiniflareCoreError)(?:\s+\[[A-Z0-9_]+\])?:/.test(line));
+    const rules: [string, RegExp][] = [
+      ["file_missing", /\bENOENT\b/],
+      ["module_missing", /\b(?:ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND)\b|cannot find (?:module|package)/i],
+      ["cli_unknown_option", /^\s*CACError:\s*Unknown option\b/],
+      ["type_error", /^\s*TypeError:/],
+      ["syntax_error", /^\s*SyntaxError:/],
+      ["runtime_startup", /\bERR_RUNTIME_FAILURE\b/],
+    ];
+    const classes = rules.filter(([, pattern]) => errors.some((line) => pattern.test(line))).map(([name]) => name);
+    if (lines.some((line) => /^\s*failed to load config from\b/i.test(line))) classes.push("config_load");
+    return classes;
+  }
+
   function actualUnhandledLine(clean: string) {
     return (
       /^\s*(?:\((?:node|bun):\d+\)\s*)?(?:UnhandledPromiseRejection(?:Warning)?|Unhandled Rejection|Uncaught Exception)(?::|\s+(?:at|in)\b|\s*$)/i.test(
@@ -143,8 +164,23 @@ async function main() {
     sticky.push("stderr", positives[0]);
     sticky.push("stdout", "Tests 99 passed (99)\nall later output is benign\n");
     assert.equal(sticky.finish().actualUnhandled, true);
+    const focusedControls: [string, string[]][] = [
+      ["Error: ENOENT: synthetic secret", ["file_missing"]],
+      ["Error [ERR_MODULE_NOT_FOUND]: synthetic secret", ["module_missing"]],
+      ["CACError: Unknown option synthetic-secret", ["cli_unknown_option"]],
+      ["failed to load config from synthetic-secret", ["config_load"]],
+      ['"Error: ENOENT quoted fixture"', []],
+      [' ✓ handles "Error: ENOENT" fixture', []],
+      ["stdout | case > TypeError: fixture", []],
+    ];
+    for (const [input, expected] of focusedControls) {
+      const projected = focusedFailureClasses(input);
+      assert.deepEqual(projected, expected);
+      assert.equal(JSON.stringify(projected).includes("synthetic"), false);
+    }
     return {
       diagnostic_controls_passed: positives.length * 4 + negatives.length + 2,
+      focused_failure_controls_passed: focusedControls.length,
       raw_output_retained: false,
     };
   }
@@ -225,6 +261,80 @@ async function main() {
       const data = read(file, 256 * 1024);
       return { path: file, bytes: data.length, sha256: digest(data) };
     });
+  function readFocusedReport(file: string): unknown {
+    const maximum = 1024 * 1024;
+    const descriptor = openSync(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    try {
+      const info = fstatSync(descriptor);
+      assert.ok(info.isFile() && info.size > 0 && info.size <= maximum);
+      const bytes = Buffer.alloc(maximum + 1);
+      let length = 0;
+      while (length < bytes.length) {
+        const count = readSync(descriptor, bytes, length, bytes.length - length, length);
+        if (count === 0) break;
+        length += count;
+      }
+      assert.ok(length > 0 && length <= maximum);
+      return JSON.parse(bytes.subarray(0, length).toString("utf8")) as unknown;
+    } finally {
+      closeSync(descriptor);
+    }
+  }
+  let focusedFailure: unknown = null;
+  function focusedFailureReceipt(stdout: string, stderr: string) {
+    let material = (stdout.slice(0, 8192) + "\n" + stderr.slice(0, 8192)).slice(0, 16384);
+    let reportState = "absent_or_unreadable";
+    const counts: Record<string, number> = {};
+    try {
+      const file = path.join(scratch, "vitest.json");
+      const size = statSync(file);
+      if (!size.isFile() || size.size <= 0 || size.size > 1024 * 1024) {
+        reportState = "refused_size_or_type";
+      } else {
+        const value: unknown = readFocusedReport(file);
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          reportState = "refused_shape";
+        } else {
+          const report = value as Record<string, unknown>;
+          reportState = "parsed";
+          for (const name of ["numFailedTests", "numPassedTests", "numPendingTests", "numTodoTests", "numTotalTests"]) {
+            const count = report[name];
+            if (typeof count === "number" && Number.isSafeInteger(count) && count >= 0 && count <= 1000000) counts[name] = count;
+          }
+          if (Array.isArray(report.testResults) && report.testResults.length <= 13) {
+            for (const item of report.testResults) {
+              if (item && typeof item === "object" && "message" in item && typeof item.message === "string") material += ("\n" + item.message).slice(0, 16384 - material.length);
+            }
+          }
+        }
+      }
+    } catch {
+      reportState = "absent_unreadable_or_malformed";
+    }
+    const lines = material.split(/\r?\n/).map((line) => stripVTControlCharacters(line));
+    const classes = focusedFailureClasses(material);
+    const frameFile = "tests/raw-capture-retry-d1.test.ts";
+    const frameSha = "ff16bb920270693f0a686fa9f79bc10a6a5b495640cf50ffe436ecb3cd75f906";
+    const frames: { file: string; sha256: string; line: number; column: number }[] = [];
+    let sourceHashVerified = false;
+    try {
+      const source = read(frameFile, 256 * 1024);
+      sourceHashVerified = digest(source) === frameSha;
+      if (sourceHashVerified) {
+        const sourceLines = source.toString("utf8").split("\n");
+        for (const match of lines.join("\n").matchAll(/(?:file:\/\/)?[^\s()]*tests\/raw-capture-retry-d1\.test\.ts:(\d+):(\d+)/g)) {
+          const location = match[0].slice(0, -(":" + match[1] + ":" + match[2]).length).replace(/^file:\/\//, "");
+          const line = Number(match[1]), column = Number(match[2]);
+          if (![frameFile, path.resolve(frameFile)].includes(location) || !Number.isSafeInteger(line) || line <= 0 || line > sourceLines.length || !Number.isSafeInteger(column) || column <= 0 || column > sourceLines[line - 1].length + 1) continue;
+          if (!frames.some((item) => item.line === line && item.column === column)) frames.push({ file: frameFile, sha256: frameSha, line, column });
+          if (frames.length === 8) break;
+        }
+      }
+    } catch {
+      sourceHashVerified = false;
+    }
+    return { report_state: reportState, counts, classes, frames, source_hash_verified: sourceHashVerified, raw_output_retained: false };
+  }
   const nativeReceipts: {
     step: string;
     exit_code: number | null;
@@ -256,6 +366,7 @@ async function main() {
     observer.push("stdout", result.stdout ?? "");
     observer.push("stderr", result.stderr ?? "");
     const observed = observer.finish();
+    if (step === "focused_tests" && result.status !== 0) focusedFailure = focusedFailureReceipt(result.stdout ?? "", result.stderr ?? "");
     nativeReceipts.push({
       step,
       exit_code: result.status,
@@ -563,8 +674,9 @@ async function main() {
         helperFiles[1],
         "selfcheck",
       ]).stdout.trim(),
-    ) as { diagnostic_controls_passed: number };
+    ) as { diagnostic_controls_passed: number; focused_failure_controls_passed: number };
     assert.equal(controls.diagnostic_controls_passed, 38);
+    assert.equal(controls.focused_failure_controls_passed, 7);
     observerControlsPassed = controls.diagnostic_controls_passed;
     stage = "workflow_policy";
     native("workflow_policy", "npm", ["run", "validate:workflows"]);
@@ -584,6 +696,7 @@ async function main() {
       stage = "build";
       native("build", "npm", ["run", "build"]);
       stage = "focused_tests";
+      mkdirSync("raw-capture-retry-reports", { recursive: true });
       const reportPath = path.join(scratch, "vitest.json");
       const tests = [
         ...manifest.frozen_focused_tests,
@@ -730,6 +843,7 @@ async function main() {
       passed_cases: passedCases,
       test_files: testFiles,
       coverage,
+      focused_failure_summary: focusedFailure,
       native_steps: nativeReceipts,
       retained_public_bytes: retainedBytes,
       full_gates: "pending",
