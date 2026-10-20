@@ -194,3 +194,30 @@ test("hydration refuses absent, truncated, corrupt, non-UTF-8, and over-expandin
     /encoded data/,
   );
 });
+
+test("compression streams owned UTF-8 bytes while preserving exact values", async () => {
+  const value =
+    "\uFEFF" + JSON.stringify({ text: "界😀\u0000".repeat(60_000) });
+  const rows = [{ call_args: value }, { args: value }, { args: "[]" }];
+  const original = structuredClone(rows);
+  vi.stubGlobal(
+    "Blob",
+    class {
+      constructor() {
+        throw new Error("Unexpected payload byte snapshot");
+      }
+    },
+  );
+  try {
+    const stored = await storeChainDetailPayloads(undefined, rows);
+    assert.deepEqual(rows, original);
+    assert.equal(stored[0].call_args, stored[1].args);
+    assert.match(String(stored[0].call_args), /:gzip:inline:/);
+    assert.deepEqual(
+      await restoreChainDetailPayloads(undefined, stored),
+      original,
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
