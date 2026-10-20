@@ -29,24 +29,42 @@ assert.ok(["fresh-compressible", "retry-high-entropy"].includes(scenario));
 const variants = ["q8-number", "v3-number"] as const;
 assert.ok(variants.includes(variant as (typeof variants)[number]));
 const base = "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c";
-const pinManifestPath = ".github/fixtures/raw-capture-number-candidates/manifest.json";
+const pinManifestPath =
+  ".github/fixtures/raw-capture-number-candidates/manifest.json";
 const pinManifestBytes = readFileSync(pinManifestPath);
 assert.ok(pinManifestBytes.length <= 65536);
-const pinManifestSha256 = createHash("sha256").update(pinManifestBytes).digest("hex");
+const pinManifestSha256 = createHash("sha256")
+  .update(pinManifestBytes)
+  .digest("hex");
 assert.equal(pinManifestSha256, process.env.RESOURCE_CANDIDATE_MANIFEST_SHA256);
 const pinManifest = JSON.parse(pinManifestBytes.toString("utf8")) as {
   status: string;
   base: string;
   files: string[];
-  variants: Record<string, {
-    nativeQualification: { runId: number | null; runAttempt: number | null; sourceCommit: string | null; artifactId: number | null; zipSha256: string | null; comparisonProofSha256: string | null };
-    files: Record<string, { blob: string | null; sha256: string | null }>;
-  }>;
+  variants: Record<
+    string,
+    {
+      nativeQualification: {
+        runId: number | null;
+        runAttempt: number | null;
+        sourceCommit: string | null;
+        artifactId: number | null;
+        zipSha256: string | null;
+        comparisonProofSha256: string | null;
+      };
+      files: Record<string, { blob: string | null; sha256: string | null }>;
+    }
+  >;
 };
 assert.equal(pinManifest.status, "artifact_verified_native_compatibility_pins");
 assert.equal(pinManifest.base, base);
 assert.deepEqual(Object.keys(pinManifest.variants), variants);
-const candidateFiles = ["src/raw-capture-d1.ts", "src/raw-chain-capture.ts", "src/raw-capture-retry-intent.ts", "src/raw-capture-retry-store.ts"];
+const candidateFiles = [
+  "src/raw-capture-d1.ts",
+  "src/raw-chain-capture.ts",
+  "src/raw-capture-retry-intent.ts",
+  "src/raw-capture-retry-store.ts",
+];
 assert.deepEqual(pinManifest.files, candidateFiles);
 for (const id of variants) {
   const candidate = pinManifest.variants[id];
@@ -54,28 +72,62 @@ for (const id of variants) {
   for (const file of candidateFiles) {
     const pin = candidate.files[file];
     assert.ok(typeof pin.blob === "string" && /^[a-f0-9]{40}$/.test(pin.blob));
-    assert.ok(typeof pin.sha256 === "string" && /^[a-f0-9]{64}$/.test(pin.sha256));
+    assert.ok(
+      typeof pin.sha256 === "string" && /^[a-f0-9]{64}$/.test(pin.sha256),
+    );
   }
   const qualification = candidate.nativeQualification;
-  for (const key of ["runId", "runAttempt", "artifactId"] as const) assert.ok(Number.isSafeInteger(qualification[key]) && Number(qualification[key]) > 0);
-  assert.ok(typeof qualification.sourceCommit === "string" && /^[a-f0-9]{40}$/.test(qualification.sourceCommit));
-  for (const key of ["zipSha256", "comparisonProofSha256"] as const) assert.ok(typeof qualification[key] === "string" && /^[a-f0-9]{64}$/.test(qualification[key]));
+  for (const key of ["runId", "runAttempt", "artifactId"] as const)
+    assert.ok(
+      Number.isSafeInteger(qualification[key]) &&
+        Number(qualification[key]) > 0,
+    );
+  assert.ok(
+    typeof qualification.sourceCommit === "string" &&
+      /^[a-f0-9]{40}$/.test(qualification.sourceCommit),
+  );
+  for (const key of ["zipSha256", "comparisonProofSha256"] as const)
+    assert.ok(
+      typeof qualification[key] === "string" &&
+        /^[a-f0-9]{64}$/.test(qualification[key]),
+    );
 }
-const a = pinManifest.variants[variants[0]], b = pinManifest.variants[variants[1]];
-for (const key of ["runId", "runAttempt", "sourceCommit", "comparisonProofSha256"] as const) assert.equal(a.nativeQualification[key], b.nativeQualification[key]);
-assert.notEqual(a.nativeQualification.artifactId, b.nativeQualification.artifactId);
-for (const file of candidateFiles.slice(0, 2)) assert.deepEqual(a.files[file], b.files[file]);
+const a = pinManifest.variants[variants[0]],
+  b = pinManifest.variants[variants[1]];
+for (const key of [
+  "runId",
+  "runAttempt",
+  "sourceCommit",
+  "comparisonProofSha256",
+] as const)
+  assert.equal(a.nativeQualification[key], b.nativeQualification[key]);
+assert.notEqual(
+  a.nativeQualification.artifactId,
+  b.nativeQualification.artifactId,
+);
+for (const file of candidateFiles.slice(0, 2))
+  assert.deepEqual(a.files[file], b.files[file]);
 const preflightPath = "tmp/raw-capture-resource-native/preflight.json";
 const preflightBytes = readFileSync(preflightPath);
 assert.ok(preflightBytes.length > 0 && preflightBytes.length <= 65536);
-const preflightSha256 = createHash("sha256").update(preflightBytes).digest("hex");
+const preflightSha256 = createHash("sha256")
+  .update(preflightBytes)
+  .digest("hex");
 assert.equal(preflightSha256, process.env.RESOURCE_NATIVE_PREFLIGHT_SHA256);
 assert.equal(process.env.RESOURCE_GATE_PHASE, "qualify");
 const preflight = JSON.parse(preflightBytes.toString("utf8")) as {
-  status: string; phase: string; scenario: string; variant: string;
-  source_head: string; run_id: string; run_attempt: string; manifest_sha256: string;
-  native_qualification: unknown; canonical_runtime_restored: boolean;
-  observer_controls_passed: number; type_inputs_confirmed: number;
+  status: string;
+  phase: string;
+  scenario: string;
+  variant: string;
+  source_head: string;
+  run_id: string;
+  run_attempt: string;
+  manifest_sha256: string;
+  native_qualification: unknown;
+  canonical_runtime_restored: boolean;
+  observer_controls_passed: number;
+  type_inputs_confirmed: number;
   helper_pins: { path: string; bytes: number; sha256: string }[];
 };
 assert.equal(preflight.status, "native_checks_passed_resource_not_run");
@@ -86,16 +138,22 @@ assert.equal(preflight.source_head, process.env.GITHUB_SHA);
 assert.equal(preflight.run_id, process.env.GITHUB_RUN_ID);
 assert.equal(preflight.run_attempt, process.env.GITHUB_RUN_ATTEMPT);
 assert.equal(preflight.manifest_sha256, pinManifestSha256);
-assert.deepEqual(preflight.native_qualification, pinManifest.variants[variant].nativeQualification);
+assert.deepEqual(
+  preflight.native_qualification,
+  pinManifest.variants[variant].nativeQualification,
+);
 assert.equal(preflight.canonical_runtime_restored, true);
 assert.equal(preflight.observer_controls_passed, 38);
 assert.equal(preflight.type_inputs_confirmed, 3);
-assert.deepEqual(preflight.helper_pins.map((pin) => pin.path), [
-  ".github/scripts/qualify-raw-capture-resources.ts",
-  ".github/fixtures/raw-capture-resource-worker.ts",
-  ".github/scripts/gate-raw-capture-resources.ts",
-  ".github/tsconfig.raw-capture-resources.json",
-]);
+assert.deepEqual(
+  preflight.helper_pins.map((pin) => pin.path),
+  [
+    ".github/scripts/qualify-raw-capture-resources.ts",
+    ".github/fixtures/raw-capture-resource-worker.ts",
+    ".github/scripts/gate-raw-capture-resources.ts",
+    ".github/tsconfig.raw-capture-resources.json",
+  ],
+);
 for (const pin of preflight.helper_pins) {
   const bytes = readFileSync(pin.path);
   assert.equal(bytes.length, pin.bytes);
@@ -103,14 +161,16 @@ for (const pin of preflight.helper_pins) {
 }
 const selectedCandidate = pinManifest.variants[variant];
 const nativeQualification = selectedCandidate.nativeQualification;
-const candidateBlobs: Record<string, string> = {}, candidateHashes: Record<string, string> = {};
+const candidateBlobs: Record<string, string> = {},
+  candidateHashes: Record<string, string> = {};
 for (const file of candidateFiles) {
   const pin = selectedCandidate.files[file];
   assert.ok(typeof pin.blob === "string" && typeof pin.sha256 === "string");
   candidateBlobs[file] = pin.blob;
   candidateHashes[file] = pin.sha256;
 }
-const fixturePath = (file: string, id = variant) => ".github/fixtures/raw-capture-number-candidates/" + id + "/" + file;
+const fixturePath = (file: string, id = variant) =>
+  ".github/fixtures/raw-capture-number-candidates/" + id + "/" + file;
 const carrierPaths = [
   ".github/scripts/qualify-raw-capture-resources.ts",
   ".github/fixtures/raw-capture-resource-worker.ts",
@@ -118,7 +178,9 @@ const carrierPaths = [
   ".github/scripts/gate-raw-capture-resources.ts",
   ".github/tsconfig.raw-capture-resources.json",
   pinManifestPath,
-  ...variants.flatMap((id) => candidateFiles.map((file) => fixturePath(file, id))),
+  ...variants.flatMap((id) =>
+    candidateFiles.map((file) => fixturePath(file, id)),
+  ),
 ];
 const schemaPaths = [
   "migrations/d1/0027_generated_artifacts.sql",

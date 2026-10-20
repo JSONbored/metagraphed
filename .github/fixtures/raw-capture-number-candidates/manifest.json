@@ -104,9 +104,9 @@
     "helper_pins": [
       {
         "path": ".github/scripts/qualify-raw-capture-resources.ts",
-        "bytes": 61546,
-        "sha256": "b09a965df7a2fe91010931a0340091647287ca8672e300d397e546e6e2999e78",
-        "blob": "de81217a7e9128a18c0055470e7858b8633cc9b1"
+        "bytes": 61798,
+        "sha256": "b8e712976ba99dbae42b7559f250e3adcefd5f8658d0b0d1b6f26caf9611dd91",
+        "blob": "ab7d23a87746eddf1190a0df7188ee772b56c252"
       },
       {
         "path": ".github/fixtures/raw-capture-resource-worker.ts",
@@ -116,9 +116,9 @@
       },
       {
         "path": ".github/scripts/gate-raw-capture-resources.ts",
-        "bytes": 25005,
-        "sha256": "5f62758261124bb00e3e654e3f959d7e708cb8c187a8f2b4d6a95e9872111ac3",
-        "blob": "5fe0a152bd1ba1cdff8d470ceb3c0a1ebc301f1c"
+        "bytes": 28998,
+        "sha256": "5d5144d131189d8154b08551297240139f3d9a91f1680174a9b55e47c9616537",
+        "blob": "57c5a359f3836aff3f89c2da7be3a447be5774e6"
       },
       {
         "path": ".github/tsconfig.raw-capture-resources.json",
