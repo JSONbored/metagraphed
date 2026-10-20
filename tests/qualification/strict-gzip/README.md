@@ -1,6 +1,6 @@
 # Validation-only strict gzip queue qualification
 
-Prepared, unrun proposal. Production `src/**`, `workers/**`, Wrangler config,
+Draft validation proposal. Production `src/**`, `workers/**`, Wrangler config,
 package manifests, and existing workflows/gates are unchanged in the proposed
 repository diff. The integration exists only as `integration.patch`; the job
 applies it to a disposable archive of base
@@ -10,7 +10,11 @@ applies it to a disposable archive of base
 source/test files. The primitive remains byte-identical to commit
 `1c4518f8b4b6837f8978222bcab83c7a41ec9f7d`, SHA-256
 `5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec`.
-No passing run, provider result, publication, or production activation is claimed.
+No passing qualification, provider result, or production activation is claimed.
+The [first hosted attempt](https://github.com/JSONbored/metagraphed/actions/runs/39457875085)
+passed setup and synthetic regressions, then failed closed on a runtime policy
+refusal before focused test evidence. Fixed-enum diagnostics identify refusals
+without publishing raw logs or relaxing the policy.
 
 ## Invocation
 
@@ -96,7 +100,10 @@ uploaded.
 
 Only a fresh validated directory containing `qualification-summary.json`
 (maximum 128 KiB) and optional `candidate-coverage.lcov` (maximum 1 MiB) may be
-uploaded. The summary contains fixed identities, booleans and numeric results;
+uploaded. The summary contains fixed identities, booleans, numeric results and up to 128
+fixed-enum refusal-count groups. Unknown labels and excess distinct groups become
+`other`; counts must sum exactly to the reported refusal total. No raw labels are
+echoed.
 coverage contains only the two allowlisted relative source paths and metrics.
 LCOV test/function names and arbitrary source paths are removed or refused.
 The upload step runs only after successful publication validation.

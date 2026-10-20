@@ -1,5 +1,6 @@
 import path from "node:path";
 import { FOCUSED_TESTS } from "./verify-candidate.ts";
+import { sanitizeDenial } from "./launch-policy.ts";
 
 export const COVERED_SOURCES = [
   "src/strict-gzip-reader.ts",
@@ -199,6 +200,60 @@ export function redactLcov(input: string, root: string): string {
   return output.join("\n") + "\n";
 }
 
+// Reserve one aggregate bucket for excess distinct fixed-code pairs. This
+// bounds diagnostic output while preserving the exact total refusal count.
+export const MAX_DENIAL_GROUPS = 128;
+export function aggregateDenials(events: readonly unknown[]) {
+  requireValue(events.length <= 100_000);
+  const counts = new Map<
+    string,
+    ReturnType<typeof sanitizeDenial> & { count: number }
+  >();
+  for (const raw of events) {
+    const event = object(raw);
+    let diagnostic = sanitizeDenial(event.operation, event.policyCode);
+    let key = `${diagnostic.operation}:${diagnostic.policyCode}`;
+    if (!counts.has(key) && counts.size >= MAX_DENIAL_GROUPS - 1) {
+      diagnostic = sanitizeDenial(undefined, undefined);
+      key = "other:other";
+    }
+    const existing = counts.get(key);
+    if (existing) existing.count++;
+    else counts.set(key, { ...diagnostic, count: 1 });
+  }
+  return [...counts.values()].sort((a, b) =>
+    `${a.operation}:${a.policyCode}`.localeCompare(
+      `${b.operation}:${b.policyCode}`,
+    ),
+  );
+}
+function publicDenialCounts(value: unknown, total: number) {
+  requireValue(Array.isArray(value) && value.length <= MAX_DENIAL_GROUPS);
+  const counts = new Map<
+    string,
+    ReturnType<typeof sanitizeDenial> & { count: number }
+  >();
+  let observed = 0;
+  for (const raw of value) {
+    const row = object(raw);
+    const diagnostic = sanitizeDenial(row.operation, row.policyCode);
+    const count = integer(row.count, 100_000);
+    requireValue(count > 0);
+    observed += count;
+    requireValue(observed <= 100_000);
+    const key = `${diagnostic.operation}:${diagnostic.policyCode}`;
+    const existing = counts.get(key);
+    if (existing) existing.count += count;
+    else counts.set(key, { ...diagnostic, count });
+  }
+  requireValue(observed === total);
+  return [...counts.values()].sort((a, b) =>
+    `${a.operation}:${a.policyCode}`.localeCompare(
+      `${b.operation}:${b.policyCode}`,
+    ),
+  );
+}
+
 const CHECK_NAMES = [
   "coordinatorGuard",
   "workerGuard",
@@ -221,6 +276,7 @@ export function publicRunSummary(value: unknown) {
   }
   const code = input.code === null ? null : integer(input.code, 255);
   const deniedAttempts = integer(input.deniedAttempts, 100_000);
+  const denialCounts = publicDenialCounts(input.denialCounts, deniedAttempts);
   const interceptedWrangler = integer(input.interceptedWrangler, 100);
   const unobservedNativeExits = integer(input.unobservedNativeExits, 10_000);
   requireValue(typeof input.outputLimitExceeded === "boolean");
@@ -245,6 +301,7 @@ export function publicRunSummary(value: unknown) {
     signalled: input.signal !== null,
     launchFailed: input.launchError !== null,
     deniedAttempts,
+    denialCounts,
     interceptedWrangler,
     unobservedNativeExits,
     outputLimitExceeded,

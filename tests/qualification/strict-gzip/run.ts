@@ -23,7 +23,11 @@ import {
   WRANGLER_BIN_SOURCE,
 } from "./verify-candidate.ts";
 import { appendBudget, boundedFile } from "./receipt-files.ts";
-import { RAW_LIMITS, validateCompletionEvidence } from "./receipt-policy.ts";
+import {
+  RAW_LIMITS,
+  aggregateDenials,
+  validateCompletionEvidence,
+} from "./receipt-policy.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 assert.equal(
@@ -360,6 +364,7 @@ writeFileSync(
       signal,
       launchError,
       deniedAttempts: denied.length,
+      denialCounts: aggregateDenials(denied),
       coordinatorGuard,
       workerGuard,
       wranglerGuard,

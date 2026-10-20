@@ -1,4 +1,115 @@
 // Pure decision layer. No process launch, socket, filesystem, or network APIs.
+// Publication-safe fixed diagnostics. Do not add caller data to either list.
+export const DENIAL_OPERATIONS = Object.freeze([
+  "socket-policy",
+  "TLS",
+  "DNS lookup",
+  "DNS query",
+  "DNS resolver",
+  "UDP socket",
+  "UDP connect",
+  "UDP send",
+  "process-spawn",
+  "process-spawnSync",
+  "process-fork",
+  "process-exec",
+  "process-execSync",
+  "process-execFile",
+  "process-execFileSync",
+  "direct-child-spawn",
+  "worker-thread",
+  "missing-child-lifecycle",
+] as const);
+export const POLICY_CODES = Object.freeze([
+  "absolute-executable-required",
+  "accessor-option",
+  "argument-shape",
+  "base-environment-value",
+  "base-path",
+  "call-shape",
+  "changed-base-environment",
+  "cyclic-socket-shape",
+  "esbuild-api",
+  "esbuild-options",
+  "esbuild-service-arguments",
+  "esbuild-stdio",
+  "esbuild-sync-arguments",
+  "esbuild-sync-options",
+  "esbuild-version",
+  "external-socket-host",
+  "fork-arguments",
+  "fork-entry",
+  "inherited-option",
+  "launch-policy-internal-error",
+  "missing-option",
+  "native-identity",
+  "node-api",
+  "node-entry",
+  "options-shape",
+  "result-path",
+  "runtime-environment-id",
+  "shell-api",
+  "shell-option",
+  "socket-fd",
+  "socket-shape",
+  "unexpected-environment",
+  "unexpected-option",
+  "unresolved-executable",
+  "vitest-exec-arguments",
+  "vitest-fork-options",
+  "workerd-api",
+  "workerd-argument-count",
+  "workerd-entry-address",
+  "workerd-identity",
+  "workerd-input",
+  "workerd-loopback-address",
+  "workerd-options",
+  "workerd-serve",
+  "workerd-stdio",
+  "working-directory",
+  "wrangler-argument-count",
+  "wrangler-bin-launch",
+  "wrangler-bin-options",
+  "wrangler-cli-launch",
+  "wrangler-cli-stdio",
+  "wrangler-dryrun-shape",
+  "wrangler-env-file-not-empty",
+  "wrangler-environment-value",
+  "wrangler-node-prefix",
+  "wrangler-original-arguments",
+  "wrangler-output-path",
+  "wrangler-output-root",
+  "socket-policy-internal-error",
+  "tls-denied",
+  "dns-name",
+  "dns-query",
+  "udp-denied",
+  "direct-child-spawn",
+  "worker-thread",
+  "missing-child-lifecycle",
+] as const);
+export type PolicyCode = (typeof POLICY_CODES)[number];
+export type DenialOperation = (typeof DENIAL_OPERATIONS)[number];
+export function sanitizeDenial(
+  operation: unknown,
+  policyCode: unknown,
+): Readonly<{
+  operation: DenialOperation | "other";
+  policyCode: PolicyCode | "other";
+}> {
+  return Object.freeze({
+    operation:
+      typeof operation === "string" &&
+      (DENIAL_OPERATIONS as readonly string[]).includes(operation)
+        ? (operation as DenialOperation)
+        : "other",
+    policyCode:
+      typeof policyCode === "string" &&
+      (POLICY_CODES as readonly string[]).includes(policyCode)
+        ? (policyCode as PolicyCode)
+        : "other",
+  });
+}
 export type LaunchApi =
   | "spawn"
   | "spawnSync"
@@ -42,10 +153,11 @@ export interface AuthorizedLaunch {
   amended: boolean;
 }
 export class PolicyViolation extends Error {
-  readonly code: string;
-  constructor(code: string) {
-    super(code);
-    this.code = code;
+  readonly code: PolicyCode | "other";
+  constructor(code: unknown) {
+    const sanitized = sanitizeDenial(undefined, code).policyCode;
+    super(sanitized);
+    this.code = sanitized;
     this.name = "PolicyViolation";
   }
 }
@@ -100,7 +212,7 @@ export function observeChildLifecycle(
   child.once("exit", exited);
   child.once("close", closed);
 }
-function need(value: unknown, code: string): asserts value {
+function need(value: unknown, code: PolicyCode): asserts value {
   if (!value) throw new PolicyViolation(code);
 }
 function object(value: unknown): Record<string, unknown> {
@@ -126,7 +238,7 @@ function strings(value: unknown): string[] {
   );
   return result as string[];
 }
-function equal(actual: unknown, expected: unknown, code: string): void {
+function equal(actual: unknown, expected: unknown, code: PolicyCode): void {
   need(JSON.stringify(actual) === JSON.stringify(expected), code);
 }
 function keys(

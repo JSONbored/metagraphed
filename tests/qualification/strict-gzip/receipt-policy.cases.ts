@@ -15,6 +15,8 @@ import path from "node:path";
 import { FOCUSED_TESTS } from "./verify-candidate.ts";
 import {
   COVERED_SOURCES,
+  MAX_DENIAL_GROUPS,
+  aggregateDenials,
   PUBLIC_LIMITS,
   RAW_LIMITS,
   REQUIRED_ASSERTIONS,
@@ -31,6 +33,7 @@ import {
   validateReceiptDirectory,
 } from "./receipt-files.ts";
 import { publish } from "./public-receipts.ts";
+import { DENIAL_OPERATIONS, POLICY_CODES } from "./launch-policy.ts";
 
 const candidate = "/synthetic-candidate";
 const secret =
@@ -100,6 +103,7 @@ function receipt() {
     signal: null,
     launchError: null,
     deniedAttempts: 0,
+    denialCounts: [] as unknown[],
     interceptedWrangler: 1,
     outputLimitExceeded: false,
     guardRecordingFailed: false,
@@ -415,3 +419,148 @@ test("unobserved native exits are reported honestly rather than invented as clos
     publicRunSummary({ ...value, unobservedNativeExits: -1 }),
   );
 });
+
+test("refusal diagnostics preserve only fixed enums and exact aggregate counts", () => {
+  const rows = aggregateDenials([
+    {
+      operation: "process-fork",
+      policyCode: "unexpected-environment",
+      target: secret,
+    },
+    {
+      operation: "process-fork",
+      policyCode: "unexpected-environment",
+      argument: secret,
+    },
+    { operation: secret, policyCode: secret },
+  ]);
+  const result = publicRunSummary({
+    ...receipt(),
+    status: "failed",
+    deniedAttempts: 3,
+    denialCounts: rows,
+  });
+  assert.deepEqual(result.denialCounts, [
+    { operation: "other", policyCode: "other", count: 1 },
+    {
+      operation: "process-fork",
+      policyCode: "unexpected-environment",
+      count: 2,
+    },
+  ]);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+});
+test("public diagnostics re-sanitize raw aggregate labels without stringification", () => {
+  const dangerous = {
+    toString() {
+      throw new Error("must not stringify");
+    },
+  };
+  const result = publicRunSummary({
+    ...receipt(),
+    status: "failed",
+    deniedAttempts: 3,
+    denialCounts: [
+      { operation: secret, policyCode: secret, count: 1 },
+      { operation: dangerous, policyCode: dangerous, count: 2 },
+    ],
+  });
+  assert.deepEqual(result.denialCounts, [
+    { operation: "other", policyCode: "other", count: 3 },
+  ]);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+});
+for (const [label, rows, total] of [
+  ["missing", undefined, 0],
+  ["negative", [{ operation: "TLS", policyCode: "tls-denied", count: -1 }], 0],
+  ["zero", [{ operation: "TLS", policyCode: "tls-denied", count: 0 }], 0],
+  [
+    "fractional",
+    [{ operation: "TLS", policyCode: "tls-denied", count: 0.5 }],
+    1,
+  ],
+  [
+    "too large",
+    [{ operation: "TLS", policyCode: "tls-denied", count: 100001 }],
+    1,
+  ],
+  [
+    "inconsistent",
+    [{ operation: "TLS", policyCode: "tls-denied", count: 2 }],
+    1,
+  ],
+  [
+    "too many groups",
+    Array.from({ length: MAX_DENIAL_GROUPS + 1 }, () => ({ count: 1 })),
+    MAX_DENIAL_GROUPS + 1,
+  ],
+] as const)
+  test(`refusal diagnostics reject ${label} counts`, () => {
+    assert.throws(() =>
+      publicRunSummary({
+        ...receipt(),
+        status: "failed",
+        deniedAttempts: total,
+        denialCounts: rows,
+      }),
+    );
+  });
+test("diagnostic aggregation is bounded and never loses refusals", () => {
+  const events = DENIAL_OPERATIONS.flatMap((operation) =>
+    POLICY_CODES.map((policyCode) => ({ operation, policyCode })),
+  );
+  const rows = aggregateDenials(events);
+  assert.ok(rows.length <= MAX_DENIAL_GROUPS);
+  assert.equal(
+    rows.reduce((sum, row) => sum + row.count, 0),
+    events.length,
+  );
+  assert.ok(
+    rows.find((row) => row.operation === "other" && row.policyCode === "other")!
+      .count > 0,
+  );
+  assert.equal(
+    publicRunSummary({
+      ...receipt(),
+      status: "failed",
+      deniedAttempts: events.length,
+      denialCounts: rows,
+    }).denialCounts.length,
+    rows.length,
+  );
+  assert.throws(() => aggregateDenials(Array(100001)));
+});
+test("publisher exposes bounded refusal codes without raw logs or arguments", () =>
+  temporary((root) => {
+    const { raw, run, output } = rawRun(root);
+    writeFileSync(
+      path.join(run, "receipt.json"),
+      JSON.stringify({
+        ...receipt(),
+        status: "failed",
+        code: 1,
+        deniedAttempts: 1,
+        denialCounts: [
+          {
+            operation: "process-fork",
+            policyCode: "unexpected-environment",
+            count: 1,
+            target: secret,
+          },
+        ],
+      }),
+    );
+    publish(raw, output, candidate);
+    const text = readFileSync(
+      path.join(output, "qualification-summary.json"),
+      "utf8",
+    );
+    assert.equal(text.includes(secret), false);
+    assert.deepEqual(JSON.parse(text).run.denialCounts, [
+      {
+        operation: "process-fork",
+        policyCode: "unexpected-environment",
+        count: 1,
+      },
+    ]);
+  }));

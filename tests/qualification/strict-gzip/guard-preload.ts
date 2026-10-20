@@ -27,7 +27,9 @@ import {
   createLaunchGate,
   invokeAuthorized,
   observeChildLifecycle,
+  PolicyViolation,
   refusalTargetCategory,
+  sanitizeDenial,
   validateBaseEnvironment,
   type AuthorizedLaunch,
   type ChildLifecycle,
@@ -111,16 +113,23 @@ function record(kind: string, detail: Record<string, unknown> = {}): void {
     }
   }
 }
-function refuse(operation: string, target: unknown): never {
+function refuse(
+  operation: unknown,
+  target: unknown,
+  policyCode?: unknown,
+): never {
   state.denied += 1;
   const category = refusalTargetCategory(target);
-  record("denied", { operation, target: category });
+  const diagnostic = sanitizeDenial(operation, policyCode);
+  record("denied", { ...diagnostic, target: category });
   process.exitCode = 1;
-  throw new Error(`Qualification forbids ${operation}: ${category}`);
+  throw new Error(
+    `Qualification forbids ${diagnostic.operation}: ${diagnostic.policyCode} (${category})`,
+  );
 }
 function requireLoopback(host: unknown, operation: string): void {
   if (host !== "127.0.0.1" && host !== "::1")
-    refuse(operation, host ?? "<missing>");
+    refuse(operation, host, "dns-name");
 }
 
 // The same pure decision function is regression-tested with fake connections.
@@ -128,13 +137,19 @@ const originalConnect = net.Socket.prototype.connect;
 net.Socket.prototype.connect = function (this: net.Socket, ...args: unknown[]) {
   try {
     authorizeSocketConnect(args);
-  } catch {
-    return refuse("socket-policy", "refused");
+  } catch (error) {
+    return refuse(
+      "socket-policy",
+      undefined,
+      error instanceof PolicyViolation
+        ? error.code
+        : "socket-policy-internal-error",
+    );
   }
   return Reflect.apply(originalConnect, this, args) as net.Socket;
 } as typeof originalConnect;
 tls.connect = function () {
-  return refuse("TLS", "<all>");
+  return refuse("TLS", undefined, "tls-denied");
 };
 
 // Numeric loopback lookup is a local libc shortcut. Names, including
@@ -154,7 +169,7 @@ for (const originalApi of [dns, dnsPromises]) {
     ) {
       if (typeof api[name] === "function")
         api[name] = (...args: unknown[]) =>
-          refuse(`DNS ${name}`, args[0] ?? "<missing>");
+          refuse("DNS query", args[0], "dns-query");
     }
   }
   if (typeof api.Resolver === "function") {
@@ -171,16 +186,17 @@ for (const originalApi of [dns, dnsPromises]) {
           typeof methods[name] === "function"
         ) {
           methods[name] = (...args: unknown[]) =>
-            refuse(`DNS Resolver.${name}`, args[0] ?? "<missing>");
+            refuse("DNS resolver", args[0], "dns-query");
         }
       }
     }
   }
 }
 // No fixture needs UDP, including local UDP.
-dgram.createSocket = () => refuse("UDP socket", "<all>");
-dgram.Socket.prototype.connect = () => refuse("UDP connect", "<all>");
-dgram.Socket.prototype.send = () => refuse("UDP send", "<all>");
+dgram.createSocket = () => refuse("UDP socket", undefined, "udp-denied");
+dgram.Socket.prototype.connect = () =>
+  refuse("UDP connect", undefined, "udp-denied");
+dgram.Socket.prototype.send = () => refuse("UDP send", undefined, "udp-denied");
 
 const vitestRoot = realpathSync(path.join(config.root, "node_modules/vitest"));
 assert.equal(
@@ -239,7 +255,7 @@ const context: PolicyContext = {
 validateBaseEnvironment(context);
 let launchSequence = 0;
 const launchGate = createLaunchGate(() =>
-  refuse("direct-child-spawn", undefined),
+  refuse("direct-child-spawn", undefined, "direct-child-spawn"),
 );
 const childPrototype = childProcess.ChildProcess.prototype as unknown as {
   spawn: (...args: unknown[]) => unknown;
@@ -255,7 +271,7 @@ childPrototype.spawn = function (...args: unknown[]) {
 Object.defineProperty(workerThreads, "Worker", {
   value: class RefusedWorker {
     constructor() {
-      refuse("worker-thread", undefined);
+      refuse("worker-thread", undefined, "worker-thread");
     }
   },
 });
@@ -304,7 +320,12 @@ function childRecord(
           observation: "close-event",
         });
       },
-      () => refuse("missing-child-lifecycle", decision.role),
+      () =>
+        refuse(
+          "missing-child-lifecycle",
+          decision.role,
+          "missing-child-lifecycle",
+        ),
     );
   }
 }
@@ -329,7 +350,7 @@ function protect(
         );
         return result;
       },
-      (code) => refuse(`process-${api}`, code),
+      (code) => refuse(`process-${api}`, undefined, code),
     );
   };
 }
@@ -363,7 +384,7 @@ for (const api of [
             childRecord(decision, result.child);
             return result;
           },
-          (code) => refuse(`process-${api}`, code),
+          (code) => refuse(`process-${api}`, undefined, code),
         );
       },
     });

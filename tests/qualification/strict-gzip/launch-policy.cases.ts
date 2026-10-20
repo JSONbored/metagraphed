@@ -4,10 +4,13 @@ import {
   authorizeLaunch,
   authorizeSocketConnect,
   createLaunchGate,
+  DENIAL_OPERATIONS,
   invokeAuthorized,
   observeChildLifecycle,
+  POLICY_CODES,
   PolicyViolation,
   refusalTargetCategory,
+  sanitizeDenial,
   type HostRole,
   type LaunchApi,
   type PolicyContext,
@@ -191,6 +194,7 @@ function rejects(ctx: PolicyContext, api: LaunchApi, call: unknown[]): void {
         },
         (code) => {
           denied += 1;
+          assert.ok((POLICY_CODES as readonly string[]).includes(code));
           throw new PolicyViolation(code);
         },
       ),
@@ -573,4 +577,94 @@ test("prototype launch gate clears permission even when original launch throws",
   );
   assert.throws(() => gate.consume(), PolicyViolation);
   assert.doesNotThrow(() => gate.run(() => gate.consume()));
+});
+test("diagnostic allowlists are immutable, unique and preserve every approved value", () => {
+  assert.ok(Object.isFrozen(DENIAL_OPERATIONS));
+  assert.ok(Object.isFrozen(POLICY_CODES));
+  assert.equal(new Set(DENIAL_OPERATIONS).size, DENIAL_OPERATIONS.length);
+  assert.equal(new Set(POLICY_CODES).size, POLICY_CODES.length);
+  assert.equal(Reflect.set(DENIAL_OPERATIONS, "0", "synthetic-secret"), false);
+  assert.equal(Reflect.set(POLICY_CODES, "0", "synthetic-secret"), false);
+  for (const operation of DENIAL_OPERATIONS)
+    assert.deepEqual(sanitizeDenial(operation, "shell-api"), {
+      operation,
+      policyCode: "shell-api",
+    });
+  for (const policyCode of POLICY_CODES) {
+    assert.deepEqual(sanitizeDenial("process-spawn", policyCode), {
+      operation: "process-spawn",
+      policyCode,
+    });
+    assert.equal(new PolicyViolation(policyCode).code, policyCode);
+  }
+});
+test("unknown diagnostics never echo secrets, URLs, string wrappers or caller conversion", () => {
+  let touched = 0;
+  const hostile = {
+    toString() {
+      touched += 1;
+      throw Error("synthetic-secret");
+    },
+  };
+  for (const unknown of [
+    "synthetic-secret",
+    "https://example.invalid/private?token=synthetic-secret",
+    new String("shell-api"),
+    hostile,
+    null,
+    undefined,
+    3,
+    Symbol("synthetic-secret"),
+    () => "synthetic-secret",
+  ]) {
+    assert.deepEqual(sanitizeDenial(unknown, unknown), {
+      operation: "other",
+      policyCode: "other",
+    });
+    const error = new PolicyViolation(unknown);
+    assert.equal(error.code, "other");
+    assert.equal(error.message, "other");
+  }
+  assert.equal(touched, 0);
+});
+test("launch and socket failures preserve approved diagnostic codes only", () => {
+  const ctx = context();
+  let diagnostic: ReturnType<typeof sanitizeDenial> | undefined;
+  assert.throws(
+    () =>
+      invokeAuthorized(
+        ctx,
+        "exec",
+        ["/arbitrary", [], {}],
+        () => {
+          throw Error("must not launch");
+        },
+        (code) => {
+          diagnostic = sanitizeDenial("process-exec", code);
+          throw new PolicyViolation(code);
+        },
+      ),
+    PolicyViolation,
+  );
+  assert.deepEqual(diagnostic, {
+    operation: "process-exec",
+    policyCode: "shell-api",
+  });
+  for (const args of [
+    ["80", "example.invalid"],
+    [{ path: "", host: "example.invalid", port: 80 }],
+  ]) {
+    assert.throws(
+      () => authorizeSocketConnect(args),
+      (error: unknown) => {
+        assert.ok(error instanceof PolicyViolation);
+        assert.ok((POLICY_CODES as readonly string[]).includes(error.code));
+        assert.deepEqual(sanitizeDenial("socket-policy", error.code), {
+          operation: "socket-policy",
+          policyCode: "external-socket-host",
+        });
+        return true;
+      },
+    );
+  }
 });
