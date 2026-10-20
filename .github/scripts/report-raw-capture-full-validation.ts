@@ -121,6 +121,13 @@ async function main() {
     stderr_bytes: number;
     output_withheld: true;
     presubmit_pipeline_failure?: ReturnType<typeof presubmitFailureProjection>;
+    presubmit_pipeline_observation?: {
+      outcome: ReturnType<typeof presubmitFailureObservation>["outcome"];
+      tail_bytes: number;
+      tail_budget_bytes: 65536;
+      stream_prefix_truncated: boolean;
+      raw_output_retained: false;
+    } | null;
     vitest_unhandled_errors: number;
     actual_unhandled_diagnostic: boolean;
     observed_test_summaries: {
@@ -414,33 +421,46 @@ async function main() {
       incoming.subarray(-65_536),
     ]).subarray(-65_536);
   }
-  function presubmitFailureProjection(stderr: string) {
-    if (Buffer.byteLength(stderr) > 65_536) return null;
-    const clean = stripVTControlCharacters(stderr).trimEnd();
+  function presubmitFailureObservation(stderr: Buffer) {
+    const refuse = (
+      outcome:
+        | "tail_byte_budget_exceeded"
+        | "terminal_prefix_absent"
+        | "terminal_incomplete_or_nonterminal"
+        | "terminal_json_invalid"
+        | "terminal_schema_invalid",
+    ) => ({ outcome, failure: null });
+    if (stderr.byteLength > 65_536) return refuse("tail_byte_budget_exceeded");
+    const clean = stripVTControlCharacters(stderr.toString("utf8")).trimEnd();
     const boundary = clean.lastIndexOf("\n{");
     const terminal = boundary >= 0 ? clean.slice(boundary + 1) : clean;
-    if (!terminal.startsWith('{\n  "failed_script": ')) return null;
+    if (!terminal.startsWith('{\n  "failed_script": '))
+      return refuse("terminal_prefix_absent");
+    if (!terminal.endsWith("}"))
+      return refuse("terminal_incomplete_or_nonterminal");
     let value: unknown;
     try {
       value = JSON.parse(terminal);
     } catch {
-      return null;
+      return refuse("terminal_json_invalid");
     }
     if (!value || typeof value !== "object" || Array.isArray(value))
-      return null;
+      return refuse("terminal_schema_invalid");
     const report = value as Record<string, unknown>;
     if (
       Object.keys(report).sort().join(",") !== "failed_script,mode,results" ||
       report.mode !== "check" ||
       !Array.isArray(report.results)
     )
-      return null;
+      return refuse("terminal_schema_invalid");
     const scripts = pipelineCheckScripts();
     const results = report.results;
-    if (results.length < 1 || results.length > scripts.length) return null;
+    if (results.length < 1 || results.length > scripts.length)
+      return refuse("terminal_schema_invalid");
     let elapsed = 0;
     for (const [index, item] of results.entries()) {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      if (!item || typeof item !== "object" || Array.isArray(item))
+        return refuse("terminal_schema_invalid");
       const row = item as Record<string, unknown>;
       if (
         Object.keys(row).sort().join(",") !== "elapsed_ms,script,status" ||
@@ -451,24 +471,30 @@ async function main() {
         row.elapsed_ms < 0 ||
         row.elapsed_ms > 35 * 60 * 1000
       )
-        return null;
+        return refuse("terminal_schema_invalid");
       elapsed += row.elapsed_ms;
     }
     if (
       elapsed > 35 * 60 * 1000 ||
       report.failed_script !== scripts[results.length - 1]
     )
-      return null;
+      return refuse("terminal_schema_invalid");
     return {
-      kind: "reported_pinned_pipeline_failure" as const,
-      failed_script: scripts[results.length - 1],
-      failed_ordinal: results.length,
-      passed_steps: results.length - 1,
-      observed_steps: results.length,
-      total_steps: scripts.length,
-      elapsed_ms: elapsed,
-      raw_output_retained: false as const,
+      outcome: "valid_pipeline_failure" as const,
+      failure: {
+        kind: "reported_pinned_pipeline_failure" as const,
+        failed_script: scripts[results.length - 1],
+        failed_ordinal: results.length,
+        passed_steps: results.length - 1,
+        observed_steps: results.length,
+        total_steps: scripts.length,
+        elapsed_ms: elapsed,
+        raw_output_retained: false as const,
+      },
     };
+  }
+  function presubmitFailureProjection(stderr: Buffer) {
+    return presubmitFailureObservation(stderr).failure;
   }
   function presubmitFailureControls() {
     const scripts = pipelineCheckScripts();
@@ -483,9 +509,11 @@ async function main() {
       })),
     });
     const encode = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
+    const project = (value: string) =>
+      presubmitFailureProjection(Buffer.from(value));
     let checked = 0;
     for (const length of [1, 4, 85]) {
-      const projected = presubmitFailureProjection(encode(report(length)));
+      const projected = project(encode(report(length)));
       assert.deepEqual(projected, {
         kind: "reported_pinned_pipeline_failure",
         failed_script: scripts[length - 1],
@@ -499,15 +527,12 @@ async function main() {
       checked++;
     }
     const valid = report(4);
-    const expected = presubmitFailureProjection(encode(valid));
+    const expected = project(encode(valid));
     for (const prefix of [
       "previous command output\n",
       "\u001b[31mprevious\u001b[0m\n",
     ]) {
-      assert.deepEqual(
-        presubmitFailureProjection(prefix + encode(valid)),
-        expected,
-      );
+      assert.deepEqual(project(prefix + encode(valid)), expected);
       checked++;
     }
     const badRows = (index: number, changes: Record<string, unknown>) =>
@@ -553,7 +578,7 @@ async function main() {
     ];
     assert.equal(refusals.length, 26);
     for (const value of refusals) {
-      assert.equal(presubmitFailureProjection(value), null);
+      assert.equal(project(value), null);
       checked++;
     }
     const first = Buffer.from("earlier-prefix");
@@ -567,14 +592,51 @@ async function main() {
       Buffer.from("\n" + encode(valid)),
     );
     assert.equal(large.length, 65_536);
-    assert.deepEqual(presubmitFailureProjection(large.toString()), expected);
+    assert.deepEqual(presubmitFailureProjection(large), expected);
     checked++;
     assert.equal(
       presubmitStderrTail(Buffer.alloc(0), Buffer.alloc(80_000, 121)).length,
       65_536,
     );
     checked++;
-    assert.equal(checked, 34);
+    const terminal = Buffer.from("\n" + encode(valid));
+    const splitUtf8 = presubmitStderrTail(
+      Buffer.alloc(0),
+      Buffer.concat([
+        Buffer.from("€"),
+        Buffer.alloc(65_536 - 1 - terminal.byteLength, 120),
+        terminal,
+      ]),
+    );
+    assert.equal(splitUtf8.byteLength, 65_536);
+    assert.equal(splitUtf8[0], 0xac);
+    assert.ok(Buffer.byteLength(splitUtf8.toString("utf8")) > 65_536);
+    assert.deepEqual(presubmitFailureProjection(splitUtf8), expected);
+    checked++;
+    assert.equal(
+      presubmitFailureProjection(splitUtf8.subarray(0, splitUtf8.length - 3)),
+      null,
+    );
+    checked++;
+    const observations = [
+      [Buffer.alloc(65_537, 120), "tail_byte_budget_exceeded"],
+      [Buffer.from("unrelated bounded output"), "terminal_prefix_absent"],
+      [
+        Buffer.from(encode(valid).slice(0, -3)),
+        "terminal_incomplete_or_nonterminal",
+      ],
+      [Buffer.from('{\n  "failed_script": nope\n}'), "terminal_json_invalid"],
+      [
+        Buffer.from(encode({ ...valid, mode: "refresh" })),
+        "terminal_schema_invalid",
+      ],
+      [Buffer.from(encode(valid)), "valid_pipeline_failure"],
+    ] as const;
+    for (const [input, outcome] of observations) {
+      assert.equal(presubmitFailureObservation(input).outcome, outcome);
+      checked++;
+    }
+    assert.equal(checked, 42);
     return {
       presubmit_failure_controls_passed: checked,
       presubmit_pipeline_steps: scripts.length,
@@ -596,7 +658,7 @@ async function main() {
     if (presubmit)
       assert.equal(
         hash(bytes(path.join(ROOT, "scripts/pipeline.ts"), 65_536)),
-        "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410",
+        "6f0ef0966ff840dcba3f8d9672e4c95bbb03c838147f36cf42adf191e66c9d3f",
       );
     let presubmitStderr: Buffer = Buffer.alloc(0);
     const started = Date.now();
@@ -670,6 +732,10 @@ async function main() {
     });
     clearTimeout(timer);
     const diagnostic = diagnostics.finish();
+    const pipelineObservation =
+      presubmit && result.code !== 0
+        ? presubmitFailureObservation(presubmitStderr)
+        : null;
     rolling = "";
     const successful =
       result.code === 0 &&
@@ -698,10 +764,17 @@ async function main() {
       output_withheld: true,
       ...(presubmit
         ? {
-            presubmit_pipeline_failure:
-              result.code !== 0
-                ? presubmitFailureProjection(presubmitStderr.toString("utf8"))
-                : null,
+            presubmit_pipeline_failure: pipelineObservation?.failure ?? null,
+            presubmit_pipeline_observation: pipelineObservation
+              ? {
+                  outcome: pipelineObservation.outcome,
+                  tail_bytes: presubmitStderr.byteLength,
+                  tail_budget_bytes: 65536 as const,
+                  stream_prefix_truncated:
+                    stderrBytes > presubmitStderr.byteLength,
+                  raw_output_retained: false as const,
+                }
+              : null,
           }
         : {}),
     };

@@ -196,7 +196,7 @@ try {
   assert.equal(control.diagnostic_controls_passed, 38);
   assert.equal(control.receipt_controls_passed, 32);
   assert.equal(control.lcov_branch_controls_passed, 20);
-  assert.equal(control.presubmit_failure_controls_passed, 34);
+  assert.equal(control.presubmit_failure_controls_passed, 42);
   assert.equal(control.presubmit_pipeline_steps, 85);
   assert.equal(control.reader_writer_maximum, 32 * 1024 * 1024);
   assert.equal(control.source_artifacts_required, 11);
