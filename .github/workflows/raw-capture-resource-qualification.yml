@@ -22,6 +22,14 @@ jobs:
       matrix:
         include:
           - scenario: fresh-compressible
+            variant: legacy
+          - scenario: fresh-compressible
+            variant: candidate
+          - scenario: fresh-high-entropy
+            variant: legacy
+          - scenario: fresh-high-entropy
+            variant: candidate
+          - scenario: retry-high-entropy
             variant: candidate
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
