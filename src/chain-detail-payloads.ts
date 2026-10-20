@@ -1,6 +1,5 @@
 import { historySha256 as digest } from "./history-sha256.ts";
-// Large decoded calls retain exact logical bytes in compressed inline values
-// or immutable D1 chunks. R2 references remain readable during retirement.
+// Exact native payloads; legacy R2 references remain readable.
 import {
   NATIVE_PAYLOAD_PREFIX,
   readNativePayload,
@@ -24,7 +23,7 @@ function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;
 }
 
-/** Prepare exact payloads before committing their chain-detail references. */
+/** Exact payloads precede their references. */
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
@@ -53,7 +52,12 @@ export async function storeChainDetailPayloads(
       }
       const zipped = new Uint8Array(
         await new Response(
-          new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip")),
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(raw);
+              controller.close();
+            },
+          }).pipeThrough(new CompressionStream("gzip")),
         ).arrayBuffer(),
       );
       const compressed = zipped.byteLength < raw.byteLength;
