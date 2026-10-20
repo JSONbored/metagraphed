@@ -1,0 +1,423 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { createGzip } from "node:zlib";
+import type { RawBlockCapture } from "./raw-chain-capture.ts";
+import {
+  decodeRawCaptureIntent,
+  encodeRawCaptureIntent,
+  RAW_CAPTURE_CHUNK_BYTES,
+  RAW_CAPTURE_MAX_BYTES,
+  type RawCaptureDescriptor,
+  type RawCaptureIntent,
+} from "./raw-capture-retry-intent.ts";
+
+declare const ownedBrand: unique symbol;
+/** Only this module can associate an artifact with owned, verified bytes. */
+export interface OwnedRawCapturePrepared {
+  readonly [ownedBrand]: true;
+}
+export interface RawCapturePreparedReader {
+  readonly descriptor: Readonly<RawCaptureDescriptor>;
+  readonly provenance: readonly string[];
+  /** A fresh copy, never an alias into retained preparation storage. */
+  readPart(index: number): Buffer;
+  dispose(): void;
+}
+interface State {
+  descriptor: Readonly<RawCaptureDescriptor>;
+  provenance: readonly string[];
+  parts: Buffer[];
+  disposed: boolean;
+}
+const owned = new WeakMap<OwnedRawCapturePrepared, State>();
+const MAX_COMPRESSED_BYTES = 33_619_968;
+const KEY =
+  /^chain\/raw\/(testnet\/)?blocks\/(\d{12})-(\d{12})\.ndjson(?![\s\S])/;
+
+function live(state: State) {
+  if (state.disposed)
+    throw new Error("Raw capture prepared bytes were disposed");
+}
+function dispose(state: State) {
+  state.disposed = true;
+  state.parts.length = 0;
+}
+function take(artifact: OwnedRawCapturePrepared): State {
+  const state = owned.get(artifact);
+  if (!state)
+    throw new Error(
+      "Raw capture preparation is not owned or was already claimed",
+    );
+  owned.delete(artifact);
+  live(state);
+  return state;
+}
+/** Transfer custody once. A retained artifact cannot dispose its active reader. */
+export function claimRawCapturePrepared(
+  artifact: OwnedRawCapturePrepared,
+): RawCapturePreparedReader {
+  const state = take(artifact);
+  return Object.freeze({
+    descriptor: state.descriptor,
+    provenance: state.provenance,
+    readPart(index: number) {
+      live(state);
+      if (
+        !Number.isSafeInteger(index) ||
+        index < 0 ||
+        index >= state.parts.length
+      )
+        throw new RangeError(
+          "Raw capture prepared part is outside its descriptor",
+        );
+      return Buffer.from(state.parts[index]!);
+    },
+    dispose() {
+      dispose(state);
+    },
+  });
+}
+/** Discard an unclaimed result; claimed storage belongs exclusively to its reader. */
+export function disposeRawCapturePrepared(
+  artifact: OwnedRawCapturePrepared,
+): void {
+  dispose(take(artifact));
+}
+
+function range(key: string) {
+  const match = KEY.exec(key);
+  if (!match) throw new Error("Invalid raw capture object");
+  const first = Number(match[2]),
+    last = Number(match[3]);
+  if (last < first || last - first >= 4096)
+    throw new Error("Raw capture exceeds its storage budget");
+  return {
+    first,
+    last,
+    network: match[1] ? ("testnet" as const) : ("mainnet" as const),
+  };
+}
+function positiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+/** JSON.stringify string bytes, with no window dividing a valid surrogate pair. */
+function* quoted(value: string): Generator<string> {
+  yield '"';
+  for (let start = 0; start < value.length;) {
+    let end = Math.min(value.length, start + 8192);
+    const before = value.charCodeAt(end - 1),
+      after = value.charCodeAt(end);
+    if (
+      before >= 0xd800 &&
+      before <= 0xdbff &&
+      after >= 0xdc00 &&
+      after <= 0xdfff
+    )
+      end++;
+    yield JSON.stringify(value.slice(start, end)).slice(1, -1);
+    start = end;
+  }
+  yield '"';
+}
+interface Frame {
+  value: object;
+  keys: string[] | null;
+  length: number;
+  index: number;
+  emitted: boolean;
+}
+/**
+ * Production values are JSON-parsed RPC data plus the producer's plain row.
+ * Follow JSON.stringify ordering/scalar/array semantics without a whole row
+ * string. No recursive call stack or raw-token copying is used.
+ */
+function* canonicalRow(row: object, capturedAt: string): Generator<string> {
+  const stack: Frame[] = [];
+  const ancestors = new Set<object>();
+  let value: unknown = row;
+  let pending = true;
+  for (;;) {
+    if (pending) {
+      pending = false;
+      if (value === null) yield "null";
+      else if (typeof value === "string") yield* quoted(value);
+      else if (typeof value === "number" || typeof value === "boolean")
+        yield JSON.stringify(value);
+      else if (typeof value === "bigint")
+        throw new TypeError("Do not know how to serialize a BigInt");
+      else if (typeof value !== "object") yield "null";
+      else {
+        if (ancestors.has(value))
+          throw new TypeError("Converting circular structure to JSON");
+        ancestors.add(value);
+        const array = Array.isArray(value) ? value : null;
+        const keys = array ? null : Object.keys(value);
+        stack.push({
+          value,
+          keys,
+          length: array ? array.length : keys!.length,
+          index: 0,
+          emitted: false,
+        });
+        yield array ? "[" : "{";
+      }
+    }
+    const frame = stack.at(-1);
+    if (!frame) return;
+    if (frame.index === frame.length) {
+      yield frame.keys === null ? "]" : "}";
+      ancestors.delete(frame.value);
+      stack.pop();
+      continue;
+    }
+    const index = frame.index++;
+    const name = frame.keys === null ? String(index) : frame.keys[index]!;
+    value = Reflect.get(frame.value, name);
+    if (
+      frame.keys !== null &&
+      (value === undefined ||
+        typeof value === "function" ||
+        typeof value === "symbol")
+    )
+      continue;
+    // Object omissions require counting emitted members rather than key indexes.
+    if (frame.keys === null ? index > 0 : frame.emitted) yield ",";
+    if (frame.keys !== null) {
+      frame.emitted = true;
+      yield* quoted(name);
+      yield ":";
+      if (stack.length === 1 && name === "captured_at") {
+        yield capturedAt;
+        continue;
+      }
+    }
+    pending = true;
+  }
+}
+
+/**
+ * Incremental canonical NDJSON, raw SHA and one no-flush level-6 gzip member.
+ * The only complete payload retained is owned compressed 64 KiB segments.
+ * This opt-in producer seam owns stable plain JSON-domain rows: the caller
+ * must not mutate them or supply side-effectful accessors/proxies. Its source
+ * iterator must cancel/drain its pending next() when return() or signal
+ * cancellation is requested. Completing return() alone does not transfer
+ * ownership of an outstanding read: preparation waits for that read to settle.
+ * The legacy string preparation/resume API remains unchanged.
+ * Native gzip byte equivalence remains a required hosted differential gate.
+ */
+export async function prepareRawCaptureStream(
+  key: string,
+  rows: AsyncIterable<RawBlockCapture> | Iterable<RawBlockCapture>,
+  options: { intent?: RawCaptureIntent; signal?: AbortSignal } = {},
+): Promise<OwnedRawCapturePrepared> {
+  const identity = range(key);
+  const pinned =
+    options.intent === undefined
+      ? undefined
+      : decodeRawCaptureIntent(JSON.stringify(options.intent));
+  if (pinned && pinned.descriptor.key !== key)
+    throw new Error("Raw capture retry range differs");
+  const signal = options.signal;
+  signal?.throwIfAborted();
+  const rawHash = createHash("sha256"),
+    compressedHash = createHash("sha256");
+  const gzip = createGzip({ level: 6, chunkSize: RAW_CAPTURE_CHUNK_BYTES });
+  const parts: Buffer[] = [];
+  const provenance: string[] = [];
+  let rawBytes = 0,
+    compressedBytes = 0,
+    inputUsed = 0,
+    outputUsed = 0;
+  let input = Buffer.alloc(RAW_CAPTURE_CHUNK_BYTES),
+    output = Buffer.alloc(RAW_CAPTURE_CHUNK_BYTES);
+  let maximumCapturedAt = 0;
+  let rejectAbort: ((error: unknown) => void) | undefined;
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    rejectAbort = reject;
+  });
+  void cancelled.catch(() => {});
+  const abort = () => {
+    // AbortSignal reasons can be null or non-Error values; preserve identity.
+    const error: unknown = signal?.reason;
+    gzip.destroy(
+      error instanceof Error
+        ? error
+        : new Error("Raw capture preparation aborted"),
+    );
+    rejectAbort!(error);
+  };
+  signal?.addEventListener("abort", abort, { once: true });
+  const collected = (async () => {
+    for await (const value of gzip) {
+      if (!Buffer.isBuffer(value))
+        throw new Error("Raw capture gzip did not return binary bytes");
+      compressedBytes += value.length;
+      if (compressedBytes > MAX_COMPRESSED_BYTES)
+        throw new Error("Raw capture exceeds its storage budget");
+      compressedHash.update(value);
+      for (let offset = 0; offset < value.length;) {
+        const count = Math.min(
+          RAW_CAPTURE_CHUNK_BYTES - outputUsed,
+          value.length - offset,
+        );
+        value.copy(output, outputUsed, offset, offset + count);
+        outputUsed += count;
+        offset += count;
+        if (outputUsed === RAW_CAPTURE_CHUNK_BYTES) {
+          parts.push(output);
+          output = Buffer.alloc(RAW_CAPTURE_CHUNK_BYTES);
+          outputUsed = 0;
+        }
+      }
+    }
+  })();
+  // A stream failure may arrive while the source iterator is between rows.
+  void collected.catch(() => {});
+  const streamFailed = new Promise<never>((_resolve, reject) => {
+    void collected.catch(reject);
+  });
+  void streamFailed.catch(() => {});
+  let iterator:
+    AsyncIterator<RawBlockCapture> | Iterator<RawBlockCapture> | undefined;
+  let pendingNext: Promise<IteratorResult<RawBlockCapture>> | undefined;
+  let finished = false;
+  const flush = async () => {
+    if (!inputUsed) return;
+    signal?.throwIfAborted();
+    rawHash.update(input.subarray(0, inputUsed));
+    const bytes = input.subarray(0, inputUsed);
+    await Promise.race([
+      new Promise<void>((resolve, reject) =>
+        gzip.write(bytes, (error) => (error ? reject(error) : resolve())),
+      ),
+      cancelled,
+      streamFailed,
+    ]);
+    inputUsed = 0;
+  };
+  const append = async (text: string) => {
+    // quoted() yields <=8193 UTF16 units, hence <=49158 escaped UTF8 bytes,
+    // without dividing a valid pair. Only96KiB-bounded ASCII provenance tokens
+    // can reach the64KiB slicing boundary here. Raw byte copies may split UTF8
+    // sequences between gzip writes; no decoder or per-write flush is used.
+    for (let start = 0; start < text.length; start += RAW_CAPTURE_CHUNK_BYTES) {
+      const bytes = Buffer.from(
+        text.slice(start, start + RAW_CAPTURE_CHUNK_BYTES),
+      );
+      rawBytes += bytes.length;
+      if (rawBytes > RAW_CAPTURE_MAX_BYTES)
+        throw new Error("Raw capture exceeds its storage budget");
+      for (let offset = 0; offset < bytes.length;) {
+        const count = Math.min(
+          RAW_CAPTURE_CHUNK_BYTES - inputUsed,
+          bytes.length - offset,
+        );
+        bytes.copy(input, inputUsed, offset, offset + count);
+        inputUsed += count;
+        offset += count;
+        if (inputUsed === RAW_CAPTURE_CHUNK_BYTES) await flush();
+      }
+    }
+  };
+  try {
+    iterator =
+      Symbol.asyncIterator in rows
+        ? rows[Symbol.asyncIterator]()
+        : rows[Symbol.iterator]();
+    for (;;) {
+      pendingNext = Promise.resolve(iterator.next());
+      const item = await Promise.race([pendingNext, cancelled, streamFailed]);
+      pendingNext = undefined;
+      if (item.done) {
+        finished = true;
+        break;
+      }
+      const row = item.value;
+      signal?.throwIfAborted();
+      const index = provenance.length;
+      if (
+        !row ||
+        typeof row !== "object" ||
+        Array.isArray(row) ||
+        !Object.prototype.propertyIsEnumerable.call(row, "block_number") ||
+        !Object.prototype.propertyIsEnumerable.call(row, "captured_at") ||
+        Reflect.get(row, "block_number") !== identity.first + index ||
+        index > identity.last - identity.first ||
+        !positiveInteger(Reflect.get(row, "captured_at"))
+      )
+        throw new Error("Raw capture identity differs");
+      const token =
+        pinned?.provenance[index] ?? String(Reflect.get(row, "captured_at"));
+      provenance.push(token);
+      maximumCapturedAt = Math.max(maximumCapturedAt, Number(token));
+      for (const text of canonicalRow(row, token)) await append(text);
+      await append("\n");
+    }
+    if (provenance.length !== identity.last - identity.first + 1)
+      throw new Error("Raw capture range differs from its records");
+    await flush();
+    await Promise.race([
+      new Promise<void>((resolve, reject) =>
+        gzip.end((error?: Error | null) => (error ? reject(error) : resolve())),
+      ),
+      cancelled,
+      streamFailed,
+    ]);
+    await collected;
+    if (outputUsed) parts.push(Buffer.from(output.subarray(0, outputUsed)));
+    const descriptor = Object.freeze({
+      key,
+      sha256: rawHash.digest("hex"),
+      network: identity.network,
+      first_block: identity.first,
+      last_block: identity.last,
+      raw_bytes: rawBytes,
+      compressed_bytes: compressedBytes,
+      compressed_sha256: compressedHash.digest("hex"),
+      parts: parts.length,
+      captured_at: maximumCapturedAt,
+    } satisfies RawCaptureDescriptor);
+    if (
+      pinned &&
+      Object.entries(pinned.descriptor).some(
+        ([name, expected]) =>
+          descriptor[name as keyof RawCaptureDescriptor] !== expected,
+      )
+    )
+      throw new Error("Raw capture retry original bytes differ");
+    const tokens = Object.freeze(provenance);
+    // Apply the existing intent admission before bytes may enter the store.
+    encodeRawCaptureIntent({ descriptor, provenance: tokens });
+    const artifact = Object.freeze({}) as OwnedRawCapturePrepared;
+    owned.set(artifact, {
+      descriptor,
+      provenance: tokens,
+      parts,
+      disposed: false,
+    });
+    return artifact;
+  } catch (error) {
+    gzip.destroy(
+      error instanceof Error
+        ? error
+        : new Error("Raw capture preparation failed"),
+    );
+    // return() initiates source cancellation. Keep the original next() owned
+    // until it settles too; it may still own a response reader or selected row.
+    await Promise.allSettled([
+      collected,
+      pendingNext,
+      Promise.resolve().then(() =>
+        !finished ? iterator?.return?.() : undefined,
+      ),
+    ]);
+    parts.length = 0;
+    throw error;
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    input = Buffer.alloc(0);
+    output = Buffer.alloc(0);
+  }
+}

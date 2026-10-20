@@ -17,15 +17,26 @@ const BASE_COMMIT = "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c";
 const FIXTURES = ".github/fixtures/raw-capture-full-validation/";
 const MANIFEST = FIXTURES + "manifest.json";
 const EXPECTED_PATHS = [
+  "src/raw-capture-bulk-lease.ts",
   "src/raw-capture-d1.ts",
-  "src/raw-chain-capture.ts",
   "src/raw-capture-retry-intent.ts",
   "src/raw-capture-retry-store.ts",
-  "tests/raw-capture-d1.test.ts",
-  "tests/raw-chain-capture.test.ts",
-  "tests/raw-capture-retry-intent.test.ts",
-  "tests/raw-capture-retry-d1.test.ts",
+  "src/raw-capture-rpc-policy.ts",
+  "src/raw-capture-stream-prepare.ts",
+  "src/raw-capture-sync.ts",
+  "src/raw-chain-capture.ts",
+  "tests/raw-capture-bulk-lease.test.ts",
   "tests/raw-capture-cron-wiring.test.ts",
+  "tests/raw-capture-d1.test.ts",
+  "tests/raw-capture-number-equivalence.test.ts",
+  "tests/raw-capture-prepared-producer.test.ts",
+  "tests/raw-capture-retry-d1.test.ts",
+  "tests/raw-capture-retry-intent.test.ts",
+  "tests/raw-capture-rpc-policy.test.ts",
+  "tests/raw-capture-single-validation.test.ts",
+  "tests/raw-capture-stream-native.test.ts",
+  "tests/raw-capture-stream-prepare.test.ts",
+  "tests/raw-chain-capture.test.ts",
 ];
 const ALLOWED_CARRIER_FILES = new Set([
   ".github/scripts/apply-raw-capture-full-validation.ts",
@@ -104,7 +115,7 @@ assert.deepEqual(
   manifest.files.map((entry) => entry.path).sort(),
   [...EXPECTED_PATHS].sort(),
 );
-assert.equal(new Set(manifest.files.map((entry) => entry.path)).size, 9);
+assert.equal(new Set(manifest.files.map((entry) => entry.path)).size, 20);
 const pending = manifest.files.map((entry) => {
   assert.match(entry.sha256, /^[a-f0-9]{64}$/);
   assert.match(entry.git_blob_sha, /^[a-f0-9]{40}$/);
@@ -157,7 +168,7 @@ const staged = git(["diff", "--cached", "--name-only"]);
 assert.deepEqual(staged.split("\n").sort(), [...EXPECTED_PATHS].sort());
 // Git-ref validators need a candidate object, rather than the canonical HEAD.
 // Build that unpublished object from a separate base-seeded index, so the
-// virtual candidate contains the nine source edits and no carrier files.
+// virtual candidate contains the twenty source edits and no carrier files.
 mkdirSync("tmp/raw-capture-full-validation", { recursive: true });
 const candidateIndex = path.join(
   root,

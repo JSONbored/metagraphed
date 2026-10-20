@@ -29,6 +29,7 @@ test("the deployed cron wires the D1 raw writer only for explicit D1 selection",
     const calls = capture.mock.calls as unknown as [
       unknown,
       {
+        preparedCapture?: boolean;
         d1CaptureStore?: {
           put: unknown;
           pending: unknown;
@@ -38,6 +39,7 @@ test("the deployed cron wires the D1 raw writer only for explicit D1 selection",
     ][];
     const [received, deps] = calls.at(-1)!;
     assert.equal(received, env);
+    assert.equal(deps.preparedCapture, undefined);
     assert.equal(
       typeof deps.d1CaptureStore?.put,
       storage === "d1" ? "function" : "undefined",

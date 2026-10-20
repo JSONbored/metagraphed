@@ -3,11 +3,9 @@ import { createHash } from "node:crypto";
 import {
   decodeRawCaptureIntent,
   encodeRawCaptureIntent,
-  prepareRawCapture,
-  rawCaptureIdentity,
+  rawCaptureInput,
   RAW_CAPTURE_CHUNK_BYTES,
   rawCaptureIntentKey,
-  resumeRawCapture,
   RAW_CAPTURE_INTENT_MAX_BYTES,
   type RawCaptureDescriptor,
 } from "./raw-capture-retry-intent.ts";
@@ -16,6 +14,24 @@ import {
   TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
 } from "./raw-capture-floors.ts";
 import type { RawCapturePending } from "./raw-chain-capture.ts";
+
+export interface RawCaptureMetadata {
+  readonly descriptor: RawCaptureDescriptor;
+  readonly provenance: readonly string[];
+}
+interface RawCaptureRetryInput<T extends RawCaptureMetadata> {
+  identity(): {
+    key: string;
+    network: "mainnet" | "testnet";
+    first: number;
+    last: number;
+    sha256: string;
+  };
+  prepare(): T | Promise<T>;
+  resume(
+    intent: import("./raw-capture-retry-intent.ts").RawCaptureIntent,
+  ): T | Promise<T>;
+}
 
 type Db = Pick<D1Database, "prepare" | "batch">;
 type Retry = <T>(operation: () => Promise<T>) => Promise<T>;
@@ -178,7 +194,100 @@ export function rawCaptureRetryStore(db: Db) {
     )
       throw new Error("Raw capture retry compressed source differs");
   };
+  const prepareInput = async <T extends RawCaptureMetadata>(
+    key: string,
+    input: RawCaptureRetryInput<T>,
+    retry: Retry,
+  ) => {
+    const identity = input.identity();
+    const network = identity.network;
+    const watermark = await retry(() =>
+      db
+        .prepare(
+          "SELECT last_contiguous_block FROM raw_capture_state WHERE network=?",
+        )
+        .bind(network)
+        .first<{ last_contiguous_block: number }>(),
+    );
+    if (
+      watermark &&
+      Number.isSafeInteger(watermark.last_contiguous_block) &&
+      watermark.last_contiguous_block >= identity.last
+    ) {
+      const exact = await retry(() =>
+        db
+          .prepare(
+            "SELECT key FROM raw_capture_batches WHERE key=? AND sha256=? AND complete=1 UNION ALL SELECT key FROM raw_capture_archives WHERE key=? AND sha256=? AND complete=1 LIMIT 1",
+          )
+          .bind(key, identity.sha256, key, identity.sha256)
+          .first<{ key: string }>(),
+      );
+      if (!exact)
+        throw new Error(
+          "Raw capture range is already acknowledged by another identity",
+        );
+      const prepared = await input.prepare();
+      await verifySource(prepared.descriptor, retry);
+      return {
+        prepared,
+        receipt: {
+          intentKey: rawCaptureIntentKey(network),
+          payload: encodeRawCaptureIntent(prepared),
+        },
+      };
+    }
+    const intentKey = rawCaptureIntentKey(network);
+    let found = await read(intentKey, retry);
+    if (!found) {
+      const prepared = await input.prepare();
+      const d = prepared.descriptor;
+      const payload = encodeRawCaptureIntent(prepared);
+      const floor =
+        network === "mainnet"
+          ? RAW_CAPTURE_GENESIS_FLOOR
+          : TESTNET_RAW_CAPTURE_GENESIS_FLOOR;
+      await retry(() =>
+        db
+          .prepare(
+            "WITH staging AS (SELECT key,network,first_block,last_block,complete FROM raw_capture_batches LIMIT 16385) " +
+              "INSERT INTO generated_artifacts(key,payload) SELECT ?,? WHERE (SELECT count(*) FROM staging)<=16384 AND " +
+              "(EXISTS(SELECT 1 FROM raw_capture_state WHERE network=? AND typeof(last_contiguous_block)='integer' AND last_contiguous_block=?) " +
+              "OR (?=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_state WHERE network=?))) " +
+              "AND NOT EXISTS(SELECT 1 FROM raw_capture_batches WHERE key=?) " +
+              "AND NOT EXISTS(SELECT 1 FROM staging WHERE network=? AND complete=0 AND first_block<=? AND last_block>=?) " +
+              "AND NOT EXISTS(SELECT 1 FROM raw_capture_archives WHERE key=?) " +
+              "ON CONFLICT(key) DO NOTHING",
+          )
+          .bind(
+            intentKey,
+            payload,
+            network,
+            d.first_block - 1,
+            d.first_block === floor ? 1 : 0,
+            network,
+            key,
+            network,
+            d.last_block,
+            d.first_block,
+            key,
+          )
+          .run(),
+      );
+      found = await read(intentKey, retry);
+      if (!found) throw new Error("Raw capture retry intent was not acquired");
+      if (found.receipt.payload === payload)
+        return { prepared, receipt: found.receipt };
+    }
+    return {
+      prepared: await input.resume(found.intent),
+      receipt: found.receipt,
+    };
+  };
   return {
+    async pendingIntent(network: "mainnet" | "testnet", retry: Retry = once) {
+      const found = await read(rawCaptureIntentKey(network), retry);
+      return found?.intent ?? null;
+    },
     async pending(
       network: "mainnet" | "testnet",
     ): Promise<RawCapturePending | null> {
@@ -193,90 +302,40 @@ export function rawCaptureRetryStore(db: Db) {
       };
     },
     async prepare(key: string, value: string, retry: Retry) {
-      const identity = rawCaptureIdentity(key, value);
-      const network = identity.network;
-      const watermark = await retry(() =>
-        db
-          .prepare(
-            "SELECT last_contiguous_block FROM raw_capture_state WHERE network=?",
-          )
-          .bind(network)
-          .first<{ last_contiguous_block: number }>(),
-      );
-      if (
-        watermark &&
-        Number.isSafeInteger(watermark.last_contiguous_block) &&
-        watermark.last_contiguous_block >= identity.last
-      ) {
-        const exact = await retry(() =>
-          db
-            .prepare(
-              "SELECT key FROM raw_capture_batches WHERE key=? AND sha256=? AND complete=1 UNION ALL SELECT key FROM raw_capture_archives WHERE key=? AND sha256=? AND complete=1 LIMIT 1",
-            )
-            .bind(key, identity.sha256, key, identity.sha256)
-            .first<{ key: string }>(),
-        );
-        if (!exact)
-          throw new Error(
-            "Raw capture range is already acknowledged by another identity",
-          );
-        const prepared = prepareRawCapture(key, value);
-        await verifySource(prepared.descriptor, retry);
-        return {
-          prepared,
-          receipt: {
-            intentKey: rawCaptureIntentKey(network),
-            payload: encodeRawCaptureIntent(prepared),
+      return prepareInput(key, rawCaptureInput(key, value), retry);
+    },
+    /** An owned prepared source already contains its final byte identity. It
+     * can replay only that exact pending intent; a competing identity is left
+     * intact for the next producer invocation to reconstruct deliberately. */
+    async prepareOwned<T extends RawCaptureMetadata>(
+      prepared: T,
+      retry: Retry,
+    ) {
+      const d = prepared.descriptor;
+      const payload = encodeRawCaptureIntent(prepared);
+      // Validate the metadata through the same canonical intent decoder before
+      // any database call. Ownership/byte derivation is checked by the factory
+      // claim in rawCaptureD1, not by trusting a caller-supplied descriptor.
+      decodeRawCaptureIntent(payload);
+      return prepareInput(
+        d.key,
+        {
+          identity: () => ({
+            key: d.key,
+            network: d.network,
+            first: d.first_block,
+            last: d.last_block,
+            sha256: d.sha256,
+          }),
+          prepare: () => prepared,
+          resume: (intent) => {
+            if (encodeRawCaptureIntent(intent) !== payload)
+              throw new Error("Raw capture owned retry identity differs");
+            return prepared;
           },
-        };
-      }
-      const intentKey = rawCaptureIntentKey(network);
-      let found = await read(intentKey, retry);
-      if (!found) {
-        const prepared = prepareRawCapture(key, value);
-        const d = prepared.descriptor;
-        const payload = encodeRawCaptureIntent(prepared);
-        const floor =
-          network === "mainnet"
-            ? RAW_CAPTURE_GENESIS_FLOOR
-            : TESTNET_RAW_CAPTURE_GENESIS_FLOOR;
-        await retry(() =>
-          db
-            .prepare(
-              "WITH staging AS (SELECT key,network,first_block,last_block,complete FROM raw_capture_batches LIMIT 16385) " +
-                "INSERT INTO generated_artifacts(key,payload) SELECT ?,? WHERE (SELECT count(*) FROM staging)<=16384 AND " +
-                "(EXISTS(SELECT 1 FROM raw_capture_state WHERE network=? AND typeof(last_contiguous_block)='integer' AND last_contiguous_block=?) " +
-                "OR (?=1 AND NOT EXISTS(SELECT 1 FROM raw_capture_state WHERE network=?))) " +
-                "AND NOT EXISTS(SELECT 1 FROM raw_capture_batches WHERE key=?) " +
-                "AND NOT EXISTS(SELECT 1 FROM staging WHERE network=? AND complete=0 AND first_block<=? AND last_block>=?) " +
-                "AND NOT EXISTS(SELECT 1 FROM raw_capture_archives WHERE key=?) " +
-                "ON CONFLICT(key) DO NOTHING",
-            )
-            .bind(
-              intentKey,
-              payload,
-              network,
-              d.first_block - 1,
-              d.first_block === floor ? 1 : 0,
-              network,
-              key,
-              network,
-              d.last_block,
-              d.first_block,
-              key,
-            )
-            .run(),
-        );
-        found = await read(intentKey, retry);
-        if (!found)
-          throw new Error("Raw capture retry intent was not acquired");
-        if (found.receipt.payload === payload)
-          return { prepared, receipt: found.receipt };
-      }
-      return {
-        prepared: resumeRawCapture(found.intent, key, value),
-        receipt: found.receipt,
-      };
+        },
+        retry,
+      );
     },
     async acknowledgeWatermark(key: string, opaque: unknown) {
       const pinned = receipt(opaque, key);

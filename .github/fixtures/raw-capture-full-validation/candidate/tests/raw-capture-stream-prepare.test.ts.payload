@@ -1,0 +1,594 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
+import { describe, expect, it, vi } from "vitest";
+import type { RawBlockCapture } from "../src/raw-chain-capture.ts";
+import {
+  decodeRawCaptureIntent,
+  encodeRawCaptureIntent,
+  prepareRawCapture,
+  RAW_CAPTURE_CHUNK_BYTES,
+  RAW_CAPTURE_MAX_BYTES,
+  type RawCaptureIntent,
+} from "../src/raw-capture-retry-intent.ts";
+import {
+  claimRawCapturePrepared,
+  disposeRawCapturePrepared,
+  prepareRawCaptureStream,
+  type OwnedRawCapturePrepared,
+  type RawCapturePreparedReader,
+} from "../src/raw-capture-stream-prepare.ts";
+
+const key = (first: number, last = first, testnet = false) =>
+  "chain/raw/" +
+  (testnet ? "testnet/" : "") +
+  "blocks/" +
+  String(first).padStart(12, "0") +
+  "-" +
+  String(last).padStart(12, "0") +
+  ".ndjson";
+const row = (block_number = 1, captured_at = 1000): RawBlockCapture => ({
+  block_number,
+  block_hash: "0x" + block_number,
+  parent_hash: "0xparent",
+  header: { parentHash: "0xparent", number: "0x1" },
+  extrinsics: ["0x0011", "0x0022"],
+  events: "0xevents",
+  captured_at,
+});
+const ndjson = (rows: RawBlockCapture[]) =>
+  rows.map((value) => JSON.stringify(value)).join("\n") + "\n";
+const digest = (value: Uint8Array) =>
+  createHash("sha256").update(value).digest("hex");
+function compressed(reader: RawCapturePreparedReader) {
+  const parts = Array.from({ length: reader.descriptor.parts }, (_, index) =>
+    reader.readPart(index),
+  );
+  for (const [index, part] of parts.entries()) {
+    expect(part.length).toBe(
+      Math.min(
+        RAW_CAPTURE_CHUNK_BYTES,
+        reader.descriptor.compressed_bytes - index * RAW_CAPTURE_CHUNK_BYTES,
+      ),
+    );
+  }
+  return Buffer.concat(parts);
+}
+async function compare(rows: RawBlockCapture[], testnet = false) {
+  const objectKey = key(
+    rows[0]!.block_number,
+    rows.at(-1)!.block_number,
+    testnet,
+  );
+  const expected = prepareRawCapture(objectKey, ndjson(rows));
+  const artifact = await prepareRawCaptureStream(objectKey, rows);
+  const reader = claimRawCapturePrepared(artifact);
+  try {
+    expect(reader.descriptor).toEqual(expected.descriptor);
+    expect(reader.provenance).toEqual(expected.provenance);
+    const actual = compressed(reader);
+    expect(actual.equals(expected.compressed)).toBe(true);
+    expect(gunzipSync(actual).toString()).toBe(ndjson(rows));
+  } finally {
+    reader.dispose();
+  }
+}
+function deterministicText(bytes: number) {
+  const data = Buffer.alloc(bytes);
+  let state = 0x76fa19d3;
+  for (let index = 0; index < data.length; index++) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    data[index] = state & 255;
+  }
+  return data.toString("base64");
+}
+const intent = (
+  rows: RawBlockCapture[],
+  tokens?: string[],
+): RawCaptureIntent => {
+  const text =
+    rows
+      .map((value, index) => {
+        const line = JSON.stringify(value);
+        return tokens
+          ? line.replace(
+              /"captured_at":\d+}$/,
+              '"captured_at":' + tokens[index]! + "}",
+            )
+          : line;
+      })
+      .join("\n") + "\n";
+  return decodeRawCaptureIntent(
+    encodeRawCaptureIntent(
+      prepareRawCapture(
+        key(rows[0]!.block_number, rows.at(-1)!.block_number),
+        text,
+      ),
+    ),
+  );
+};
+
+describe("owned incremental raw capture preparation", () => {
+  it.each([false, true])(
+    "matches canonical bytes and metadata on testnet=%s",
+    async (testnet) => {
+      await compare(
+        [
+          row(1),
+          row(2, 1001),
+          { ...row(3, 1002), events: null, extrinsics: [] },
+        ],
+        testnet,
+      );
+    },
+  );
+
+  it("retains duplicate resolution, integer property enumeration and full nested headers", async () => {
+    const header: unknown = JSON.parse(
+      '{"10":"ten","2":"two","01":"one","duplicate":1,"\\u0064uplicate":2,"4294967295":"ordinary","4294967294":"index","__proto__":{"preserved":true},"toJSON":{"plain":"data"},"nested":{"3":3,"1":1,"captured_at":1e3},"escaped\\u005fkey":{"z":[null,true,false,{},[]]}}',
+    );
+    const value = row();
+    value.header = header;
+    await compare([value]);
+    expect(JSON.stringify(header)).toContain(
+      '"2":"two","10":"ten","4294967294":"index","01":"one","duplicate":2',
+    );
+  });
+
+  it("matches parsed number serialization including negative zero, exponent overflow and subnormals", async () => {
+    const value = row();
+    value.header = JSON.parse(
+      '{"negative":-0,"overflow":1e999,"underflow":1e-999,"smallest":5e-324,"largest":1.7976931348623157e308,"round":9007199254740993,"exp":1.234e-7}',
+    );
+    await compare([value]);
+  });
+
+  it.each([0, 8191, 8192, 8193, 16383])(
+    "retains every escape and paired/lone surrogate across a window at %i",
+    async (prefix) => {
+      const value = row();
+      value.events =
+        "a".repeat(prefix) +
+        '😀\ud800\ud800\udc00\udfff\\"/\n\r\t' +
+        Array.from({ length: 32 }, (_, code) => String.fromCharCode(code)).join(
+          "",
+        ) +
+        "\u2028\u2029";
+      value.header = {
+        ["k".repeat(prefix) + "😀\ud800"]: value.events,
+        deep: [value.events],
+      };
+      await compare([value]);
+    },
+  );
+
+  it.each([65535, 65536, 65537, 131071, 131072, 131073])(
+    "keeps exact single-stream gzip bytes across raw input length %i",
+    async (length) => {
+      const value = row();
+      value.events = "x".repeat(length);
+      await compare([value]);
+    },
+  );
+
+  it("retains a pair crossing the raw64KiB write boundary without a per-write UTF8 decoder", async () => {
+    const value = row();
+    value.events = "";
+    const line = JSON.stringify(value);
+    const start = line.indexOf('"events":"') + '"events":"'.length;
+    const prefix = Buffer.byteLength(line.slice(0, start));
+    value.events =
+      "x".repeat(RAW_CAPTURE_CHUNK_BYTES - 1 - prefix) + "😀\ud800";
+    await compare([value]);
+  });
+
+  it("matches the legacy gzip byte-for-byte for incompressible multipart output", async () => {
+    const value = row();
+    value.events = deterministicText(400_000);
+    const expected = prepareRawCapture(key(1), ndjson([value]));
+    const reader = claimRawCapturePrepared(
+      await prepareRawCaptureStream(key(1), [value]),
+    );
+    try {
+      expect(reader.descriptor.parts).toBeGreaterThan(4);
+      expect(reader.descriptor).toEqual(expected.descriptor);
+      expect(compressed(reader).equals(expected.compressed)).toBe(true);
+    } finally {
+      reader.dispose();
+    }
+  });
+
+  it("serializes deep stable JSON without adding a recursive JavaScript stack", async () => {
+    const value = row();
+    let nested: unknown = "end";
+    for (let depth = 0; depth < 500; depth++) nested = { child: [nested] };
+    value.header = nested;
+    await compare([value]);
+    await compare([row(0, 1)]);
+  });
+
+  it("accepts the existing exact32MiB raw bound and refuses the next byte", async () => {
+    const value = row();
+    value.events = "";
+    const base = Buffer.byteLength(ndjson([value]));
+    value.events = "x".repeat(RAW_CAPTURE_MAX_BYTES - base);
+    const reader = claimRawCapturePrepared(
+      await prepareRawCaptureStream(key(1), [value]),
+    );
+    try {
+      const expected = prepareRawCapture(key(1), ndjson([value]));
+      expect(reader.descriptor.raw_bytes).toBe(RAW_CAPTURE_MAX_BYTES);
+      expect(reader.descriptor).toEqual(expected.descriptor);
+      expect(compressed(reader).equals(expected.compressed)).toBe(true);
+    } finally {
+      reader.dispose();
+    }
+    value.events += "x";
+    await expect(prepareRawCaptureStream(key(1), [value])).rejects.toThrow(
+      "storage budget",
+    );
+    expect(() => prepareRawCapture(key(1), ndjson([value]))).toThrow(
+      "storage budget",
+    );
+  }, 120_000);
+
+  it("accepts4096 records and refuses4097 before reading the supplied source", async () => {
+    await compare(
+      Array.from({ length: 4096 }, (_, index) => row(index + 1, index + 1)),
+    );
+    const next = vi.fn(() => ({ done: true as const, value: undefined }));
+    const rows = { [Symbol.iterator]: () => ({ next }) };
+    await expect(prepareRawCaptureStream(key(1, 4097), rows)).rejects.toThrow(
+      "storage budget",
+    );
+    expect(next).not.toHaveBeenCalled();
+  }, 120_000);
+
+  it("preserves original pending numeric provenance lexemes and both digests", async () => {
+    const original = [row(1), row(2), row(3)];
+    const pending = intent(original, ["1e3", "1000.00", "0.1e4"]);
+    const reader = claimRawCapturePrepared(
+      await prepareRawCaptureStream(
+        key(1, 3),
+        original.map((value) => ({ ...value, captured_at: 9000 })),
+        { intent: pending },
+      ),
+    );
+    try {
+      expect(reader.descriptor).toEqual(pending.descriptor);
+      expect(reader.provenance).toEqual(["1e3", "1000.00", "0.1e4"]);
+      const actual = compressed(reader);
+      expect(digest(actual)).toBe(pending.descriptor.compressed_sha256);
+      expect(digest(gunzipSync(actual))).toBe(pending.descriptor.sha256);
+      expect(gunzipSync(actual).toString()).toContain('"captured_at":1000.00}');
+    } finally {
+      reader.dispose();
+    }
+  });
+
+  it("streams an admitted long ASCII provenance token across64KiB unchanged", async () => {
+    const token = "1000." + "0".repeat(70_000);
+    const pending = intent([row()], [token]);
+    const reader = claimRawCapturePrepared(
+      await prepareRawCaptureStream(key(1), [{ ...row(), captured_at: 2000 }], {
+        intent: pending,
+      }),
+    );
+    try {
+      expect(reader.descriptor).toEqual(pending.descriptor);
+      expect(reader.provenance).toEqual([token]);
+      const actual = compressed(reader);
+      expect(digest(actual)).toBe(pending.descriptor.compressed_sha256);
+      expect(gunzipSync(actual).toString()).toContain(
+        '"captured_at":' + token + "}",
+      );
+    } finally {
+      reader.dispose();
+    }
+  });
+
+  it("takes a private validated pending-intent snapshot before consuming rows", async () => {
+    const original = [row()];
+    const pending = intent(original);
+    const expected = JSON.parse(JSON.stringify(pending)) as RawCaptureIntent;
+    async function* rows() {
+      pending.provenance[0] = "2000";
+      pending.descriptor.sha256 = "0".repeat(64);
+      yield { ...row(), captured_at: 9000 };
+    }
+    const reader = claimRawCapturePrepared(
+      await prepareRawCaptureStream(key(1), rows(), { intent: pending }),
+    );
+    try {
+      expect(reader.descriptor).toEqual(expected.descriptor);
+      expect(reader.provenance).toEqual(expected.provenance);
+    } finally {
+      reader.dispose();
+    }
+  });
+
+  it.each([
+    "sha256",
+    "compressed_sha256",
+    "raw_bytes",
+    "compressed_bytes",
+    "captured_at",
+  ] as const)(
+    "refuses a validly shaped but mismatched pending %s",
+    async (field) => {
+      const pending = intent([row()]);
+      if (field === "sha256" || field === "compressed_sha256")
+        pending.descriptor[field] = "0".repeat(64);
+      else if (field === "captured_at") {
+        pending.descriptor.captured_at = 2000;
+        pending.provenance[0] = "2000";
+      } else pending.descriptor[field]++;
+      await expect(
+        prepareRawCaptureStream(key(1), [row()], { intent: pending }),
+      ).rejects.toThrow("original bytes differ");
+    },
+  );
+
+  it("refuses malformed metadata/range before consuming the source", async () => {
+    const next = vi.fn(() => ({ done: true as const, value: undefined }));
+    const source = { [Symbol.iterator]: () => ({ next }) };
+    const pending = intent([row()]);
+    pending.descriptor.parts = 0;
+    await expect(
+      prepareRawCaptureStream(key(1), source, { intent: pending }),
+    ).rejects.toThrow("descriptor");
+    await expect(
+      prepareRawCaptureStream(key(2), source, { intent: intent([row()]) }),
+    ).rejects.toThrow("range differs");
+    await expect(prepareRawCaptureStream("arbitrary", source)).rejects.toThrow(
+      "Invalid raw",
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    [
+      [],
+      [row(2)],
+      [row(1), row(1)],
+      [row(1), row(3)],
+      [{ ...row(), captured_at: 0 }],
+      [{ ...row(), captured_at: NaN }],
+      [{ ...row(), captured_at: 1.5 }],
+      [{ ...row(), captured_at: Number.MAX_SAFE_INTEGER + 1 }],
+    ].map((rows) => [rows]),
+  )(
+    "refuses missing, extra, out-of-order or invalid provenance rows",
+    async (rows) => {
+      await expect(prepareRawCaptureStream(key(1), rows)).rejects.toThrow();
+    },
+  );
+
+  it("refuses missing and noncontiguous prefixes for an otherwise valid longer key", async () => {
+    await expect(prepareRawCaptureStream(key(1, 2), [row(1)])).rejects.toThrow(
+      "range differs",
+    );
+    await expect(
+      prepareRawCaptureStream(key(1, 3), [row(1), row(3)]),
+    ).rejects.toThrow("identity differs");
+  });
+
+  it.each(["resolve", "reject"] as const)(
+    "retains aborted source custody until the pending next can %s after return",
+    async (outcome) => {
+      const controller = new AbortController();
+      const stopped = new Error("stop preparation");
+      let announce!: () => void, announceReturn!: () => void;
+      let resolveNext!: (value: IteratorResult<RawBlockCapture>) => void;
+      let rejectNext!: (reason: unknown) => void;
+      const started = new Promise<void>((resolve) => {
+        announce = resolve;
+      });
+      const returning = new Promise<void>((resolve) => {
+        announceReturn = resolve;
+      });
+      const waiting = new Promise<IteratorResult<RawBlockCapture>>(
+        (resolve, reject) => {
+          resolveNext = resolve;
+          rejectNext = reject;
+        },
+      );
+      const close = vi.fn(async () => {
+        // Cancellation has started, but the original read still owns its source.
+        announceReturn();
+        return { done: true as const, value: undefined };
+      });
+      let index = 0;
+      const source: AsyncIterable<RawBlockCapture> = {
+        [Symbol.asyncIterator]: () => ({
+          next: async () => {
+            if (index++ === 0) return { done: false as const, value: row(1) };
+            announce();
+            return waiting;
+          },
+          return: close,
+        }),
+      };
+      const prepared = prepareRawCaptureStream(key(1, 2), source, {
+        signal: controller.signal,
+      });
+      let settled = false;
+      void prepared.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        },
+      );
+      await started;
+      controller.abort(stopped);
+      await returning;
+      // Give native close and return() a complete event-loop turn. Neither can
+      // authorize completion while the separately gated source read remains.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(settled).toBe(false);
+      if (outcome === "resolve") resolveNext({ done: true, value: undefined });
+      else rejectNext(new Error("source cancellation settled"));
+      await expect(prepared).rejects.toBe(stopped);
+      expect(settled).toBe(true);
+      expect(close).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not consume an already-aborted source and closes on iteration/serialization failure", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const next = vi.fn(() => ({ done: true as const, value: undefined }));
+    await expect(
+      prepareRawCaptureStream(
+        key(1),
+        { [Symbol.iterator]: () => ({ next }) },
+        { signal: controller.signal },
+      ),
+    ).rejects.toThrow();
+    expect(next).not.toHaveBeenCalled();
+    let closed = 0;
+    const cyclic = row();
+    cyclic.header = { self: cyclic };
+    for (const invalid of [cyclic, { ...row(), header: 1n }]) {
+      async function* rows() {
+        try {
+          yield invalid;
+        } finally {
+          closed++;
+        }
+      }
+      await expect(prepareRawCaptureStream(key(1), rows())).rejects.toThrow(
+        TypeError,
+      );
+    }
+    expect(closed).toBe(2);
+  });
+
+  it.each([null, 0, "caller stop"])(
+    "preserves the exact non-Error abort reason %s",
+    async (reason) => {
+      const controller = new AbortController();
+      let announce!: () => void,
+        finish!: (value: IteratorResult<RawBlockCapture>) => void;
+      const started = new Promise<void>((resolve) => {
+        announce = resolve;
+      });
+      const waiting = new Promise<IteratorResult<RawBlockCapture>>(
+        (resolve) => {
+          finish = resolve;
+        },
+      );
+      const source: AsyncIterable<RawBlockCapture> = {
+        [Symbol.asyncIterator]: () => ({
+          next: () => {
+            announce();
+            return waiting;
+          },
+          return: async () => {
+            finish({ done: true, value: undefined });
+            return { done: true, value: undefined };
+          },
+        }),
+      };
+      const prepared = prepareRawCaptureStream(key(1), source, {
+        signal: controller.signal,
+      });
+      await started;
+      controller.abort(reason);
+      await expect(prepared).rejects.toBe(reason);
+    },
+  );
+
+  it("preserves the source failure when cooperative return also rejects", async () => {
+    const failure = new Error("source failed"),
+      closeFailure = new Error("close failed");
+    const close = vi.fn(async () => {
+      throw closeFailure;
+    });
+    const source: AsyncIterable<RawBlockCapture> = {
+      [Symbol.asyncIterator]: () => ({
+        next: async () => {
+          throw failure;
+        },
+        return: close,
+      }),
+    };
+    await expect(prepareRawCaptureStream(key(1), source)).rejects.toBe(failure);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("drains native setup when the source iterator factory itself throws", async () => {
+    const failure = new Error("iterator factory failed");
+    const source = {
+      [Symbol.iterator]: (): Iterator<RawBlockCapture> => {
+        throw failure;
+      },
+    };
+    await expect(prepareRawCaptureStream(key(1), source)).rejects.toBe(failure);
+    await compare([row()]);
+  });
+
+  it("keeps returned metadata frozen, copies bounded parts and transfers custody exactly once", async () => {
+    const artifact = await prepareRawCaptureStream(key(1), [row()]);
+    const reader = claimRawCapturePrepared(artifact);
+    expect(Object.isFrozen(artifact)).toBe(true);
+    expect(Object.keys(artifact)).toEqual([]);
+    expect(Object.isFrozen(reader)).toBe(true);
+    expect(Object.isFrozen(reader.descriptor)).toBe(true);
+    expect(Object.isFrozen(reader.provenance)).toBe(true);
+    const expected = reader.readPart(0);
+    const changed = reader.readPart(0);
+    changed.fill(0);
+    expect(reader.readPart(0).equals(expected)).toBe(true);
+    expect(() => claimRawCapturePrepared(artifact)).toThrow("already claimed");
+    expect(() => disposeRawCapturePrepared(artifact)).toThrow(
+      "already claimed",
+    );
+    expect(reader.readPart(0).equals(expected)).toBe(true);
+    for (const index of [-1, 0.5, NaN, reader.descriptor.parts])
+      expect(() => reader.readPart(index)).toThrow(RangeError);
+    reader.dispose();
+    reader.dispose();
+    expect(() => reader.readPart(0)).toThrow("disposed");
+  });
+
+  it("can discard an unclaimed artifact and refuses forged custody", async () => {
+    const artifact = await prepareRawCaptureStream(key(1), [row()]);
+    disposeRawCapturePrepared(artifact);
+    expect(() => claimRawCapturePrepared(artifact)).toThrow("already claimed");
+    expect(() =>
+      disposeRawCapturePrepared({} as OwnedRawCapturePrepared),
+    ).toThrow("not owned");
+  });
+
+  it("never passes a full large scalar to JSON.stringify and does not alter source rows", async () => {
+    const value = row();
+    value.events = "\0".repeat(100_000);
+    const before = JSON.stringify(value);
+    const stringify = JSON.stringify;
+    let longest = 0;
+    const observed = vi
+      .spyOn(JSON, "stringify")
+      .mockImplementation((input: unknown, ...args: unknown[]) => {
+        if (typeof input === "string")
+          longest = Math.max(longest, input.length);
+        return Reflect.apply(stringify, JSON, [input, ...args]) as string;
+      });
+    let reader: RawCapturePreparedReader | undefined;
+    try {
+      reader = claimRawCapturePrepared(
+        await prepareRawCaptureStream(key(1), [value]),
+      );
+      expect(longest).toBeLessThanOrEqual(8193);
+      expect(gunzipSync(compressed(reader)).toString()).toBe(before + "\n");
+    } finally {
+      reader?.dispose();
+      observed.mockRestore();
+    }
+    expect(JSON.stringify(value)).toBe(before);
+  });
+});

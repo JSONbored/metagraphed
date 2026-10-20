@@ -2,8 +2,7 @@ name: Raw capture full native validation
 
 on:
   push:
-    branches: [ci/raw-capture-producer-retention-full-20261020]
-  workflow_dispatch:
+    branches: [ci/raw-capture-streaming-full-20261020]
 
 permissions:
   contents: read
@@ -14,7 +13,7 @@ concurrency:
 
 env:
   FORCE_FULL_QUALIFICATION: "true"
-  FULL_VALIDATION_MANIFEST_SHA256: b46ef6f8ab2025dd95c6393bd04a6d16ec8bb14861f4c4a5dfb80973c718530f
+  FULL_VALIDATION_MANIFEST_SHA256: 0ca2204b257c1ca05b732106fbfd1681fe1d2c55abf3cffbabccddbf900e0c93
   FULL_VALIDATION_COMMANDS_SHA256: cd12f004a197a02ef3801bda933c5fa41392908508a20a64966d3762e206f8e5
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"

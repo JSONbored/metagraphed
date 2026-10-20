@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "status": "Actual producer-retention focused native source freeze; fresh full-native/offline patch qualification pending",
-  "payload_version": "v3-producer-retention-native-39368257463",
+  "status": "Actual initial streaming focused source freeze plus exact qualified retention regressions; new full-native/offline patch qualification pending",
+  "payload_version": "streaming-prepared-native-39378789297-with-retention",
   "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
   "base_tree": "9aea5cbaf18389b490ca92a946186767086dea5d",
   "canonical_subtrees": {
@@ -10,97 +10,196 @@
     "workers": "a46dd43fac421449d16afbe520f1aaf6ab32f872"
   },
   "qualified_predecessor": {
-    "commit": "ba879bb58d0f92ed47e03b53fb5cdedd049e5865",
-    "run": 39368257463,
-    "artifact": 12240238558,
-    "artifact_zip_sha256": "a22b60e6d49357ecbf55308c4964ea5cde6b6d87b17e5875840eeda7cbfc34b5",
-    "passed_cases": 345,
-    "runtime_coverage": "all four modules 100% all four metrics in actual producer focused source qualification",
-    "scope": "Focused producer-retention source/native D1, cold types and policies only; new full-native/offline patch, normal PR/security review, actual Codecov, resources and production acceptance remain separate"
+    "commit": "38c69cb7d89e7f5ac02654020575981022d85a22",
+    "run": 39378789297,
+    "run_attempt": 1,
+    "artifact": 12243604887,
+    "artifact_zip_sha256": "1686ca77de15e0b49ec5e30345530d12dba0404b6f1c27abbdc7263d8ef202f3",
+    "passed_cases": 432,
+    "controls_passed": 50,
+    "runtime_coverage": "Not measured in this focused run",
+    "scope": "Initial source/native D1/codec/lease/RPC port, cold types and policy qualification only; full-native/offline patch, Codecov, resources and production remain separate"
+  },
+  "preserved_retention_regressions": {
+    "run": 39369937682,
+    "run_attempt": 1,
+    "commit": "d3665d63c00b9eee83271a841f602f284d97f0fa",
+    "artifact": 12241901987,
+    "artifact_zip_sha256": "8a1c80f5f0afb695f979fbf007ecb15682fcf89802170f1e56fa07cbad211735",
+    "path": "tests/raw-chain-capture.test.ts",
+    "original_prefix_bytes": 60442,
+    "exact_appended_bytes": 12270,
+    "cases": 7,
+    "full_test_sha256": "b7d30e6f06e3f8165f8b45b44e706d8413a2b22accf6cbab9aae0b2be360dab5",
+    "combined_candidate_has_not_run": true
   },
   "maximum_total_payload_bytes": 524288,
   "files": [
     {
+      "path": "src/raw-capture-bulk-lease.ts",
+      "bytes": 4080,
+      "sha256": "8e269085ef736747d78a535d7bdb32c80b035873e0980fb009e27081b3252d76",
+      "git_blob_sha": "02435275082f2217be262c89f837e27e696943b7",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-bulk-lease.ts.payload"
+    },
+    {
       "path": "src/raw-capture-d1.ts",
-      "sha256": "b7c86da367120a81186e7cab46e218a255bfa195c1205fcacd187e97767cac55",
-      "git_blob_sha": "2758ccf8c95a78ab3c4a2068f6b65caf811bed2e",
-      "bytes": 9272,
+      "bytes": 11785,
+      "sha256": "a74bbdecc66b3a37970aa8430dd566d3ef46f18666aec861d34bc0838dd18635",
+      "git_blob_sha": "89d01bc1cd3757bafbe121b9a417b0a52dff7d5b",
       "expected_base_blob_sha": "a2117ac28687f6e83b1c0c9f63d3c7996702cde1",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-d1.ts.payload"
     },
     {
-      "path": "src/raw-chain-capture.ts",
-      "sha256": "2e6088a15ace39313d3d2491c9600ac9f91fd67c8aadc76f60079d9b217223cd",
-      "git_blob_sha": "522b3be453929b4961d53ee3947910b81b1f5895",
-      "bytes": 29001,
-      "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948",
-      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-chain-capture.ts.payload"
-    },
-    {
       "path": "src/raw-capture-retry-intent.ts",
-      "sha256": "e11896b37bb66e86d5ca468723d3ccbfc751f2013c24b88e2ae5e98d7df009a1",
-      "git_blob_sha": "3d8a1d223bb4360923fb6df5a21ac4935e3d53a4",
-      "bytes": 10377,
+      "bytes": 11280,
+      "sha256": "001041d69e3e2c55c40ca9268f33cd5ff3690cf0baf5e4b6dd60b12d8419e59d",
+      "git_blob_sha": "83e0c7ddfd5dd028fb7c1d89f56ed87a8e1d3cf6",
       "expected_base_blob_sha": null,
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-retry-intent.ts.payload"
     },
     {
       "path": "src/raw-capture-retry-store.ts",
-      "sha256": "a19f5189eea2c2e09893961b9f606a23bcf7a927dedcb85fd51bbc99c99f794a",
-      "git_blob_sha": "5dd19a4b3114d227d8cd1f0c2fe7fb3039926f53",
-      "bytes": 12097,
+      "bytes": 13936,
+      "sha256": "d0e538e408d347626481e4ebe5f42d27b778209969457812cf5bb74c2743021a",
+      "git_blob_sha": "d3f446a51f177d4bb91c99447d1fcf7d266fba58",
       "expected_base_blob_sha": null,
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-retry-store.ts.payload"
     },
     {
+      "path": "src/raw-capture-rpc-policy.ts",
+      "bytes": 8858,
+      "sha256": "ea26025f62e6f3efa7634cbe72f534074f1d86af2549b48ee425c7d1a76a51ed",
+      "git_blob_sha": "6e334b54760dd8617782f98462de6229626a4627",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-rpc-policy.ts.payload"
+    },
+    {
+      "path": "src/raw-capture-stream-prepare.ts",
+      "bytes": 14489,
+      "sha256": "3cf64b18401a9621d62891957a760095101b8f8911cc5ad8bb7bd41980805b70",
+      "git_blob_sha": "4e75bea6b8001a7541bb64ce2d19cf3583505a62",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-stream-prepare.ts.payload"
+    },
+    {
+      "path": "src/raw-capture-sync.ts",
+      "bytes": 30143,
+      "sha256": "5334f65d83c95a7a43901478a49e3bb187faeae1702ce29c3293d0e1851acf09",
+      "git_blob_sha": "b98c880d27a9cb26b4c891ac17ef0abd247ff11d",
+      "expected_base_blob_sha": "2b7919e346e991d130ec91d3c1c76f3fae8f26c5",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-sync.ts.payload"
+    },
+    {
+      "path": "src/raw-chain-capture.ts",
+      "bytes": 31210,
+      "sha256": "33e5ea162d66edcb468ab5c11dc1fce91badbd40df34b5aa9954f8d659823eb1",
+      "git_blob_sha": "cf0c5691edc89dcc911ad61cf6be3e92f916de88",
+      "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-chain-capture.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-bulk-lease.test.ts",
+      "bytes": 4101,
+      "sha256": "e4add7a77e2840b9ea585c664dad33fb233257aebd0ed00594c0b7cbb4d2ab43",
+      "git_blob_sha": "8f45d041bf25238ea71d53cc3339076de47ee763",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-bulk-lease.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-cron-wiring.test.ts",
+      "bytes": 1788,
+      "sha256": "57512dbfa770ee8ab58446417e8abb35e74f22fd06870f6fb05fdee5f700f4a1",
+      "git_blob_sha": "f0944548db5c1f0f2d32a97cb89ae48e85ca20db",
+      "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-cron-wiring.test.ts.payload"
+    },
+    {
       "path": "tests/raw-capture-d1.test.ts",
+      "bytes": 44422,
       "sha256": "967453df5403e00988fdbecd93986c04328668bda26638177b2aa3e3199a8c85",
       "git_blob_sha": "d855e4c08148e15a1ffd9926953b3865276bef40",
-      "bytes": 44422,
       "expected_base_blob_sha": "4792776d1bc7bd0eff1d54452b94eac37b52c3b9",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-d1.test.ts.payload"
     },
     {
-      "path": "tests/raw-chain-capture.test.ts",
-      "sha256": "b7d30e6f06e3f8165f8b45b44e706d8413a2b22accf6cbab9aae0b2be360dab5",
-      "git_blob_sha": "ec64ebca6d3c02bf91562ba472ae12c7c5057e59",
-      "bytes": 72712,
-      "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510",
-      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-chain-capture.test.ts.payload"
+      "path": "tests/raw-capture-number-equivalence.test.ts",
+      "bytes": 3177,
+      "sha256": "41b0f95a3dbce9f3ddaa29670fe52904066f87f92b1787088197ff87908a78c4",
+      "git_blob_sha": "246f445fc5ebcd82f66af56d7ded5c7296d781b3",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-number-equivalence.test.ts.payload"
     },
     {
-      "path": "tests/raw-capture-retry-intent.test.ts",
-      "sha256": "ed45d9010b7503d5947b636395905cf4c43e72198522075cbe658f0c9d86160f",
-      "git_blob_sha": "0e2868360f2c0424c6b4798cec36ee655ccd0021",
-      "bytes": 18027,
+      "path": "tests/raw-capture-prepared-producer.test.ts",
+      "bytes": 11221,
+      "sha256": "69b774eb09eee6955cce327926cacde29480f5be713deb2bdd785e6c82bad92a",
+      "git_blob_sha": "1e76e336fd73e9aca47daab7d4960222d5250cde",
       "expected_base_blob_sha": null,
-      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-retry-intent.test.ts.payload"
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-prepared-producer.test.ts.payload"
     },
     {
       "path": "tests/raw-capture-retry-d1.test.ts",
-      "sha256": "ff16bb920270693f0a686fa9f79bc10a6a5b495640cf50ffe436ecb3cd75f906",
-      "git_blob_sha": "6710c8b2653af78bccd78a21a35a24ea9d89dc60",
-      "bytes": 16864,
+      "bytes": 25909,
+      "sha256": "cc360cec67b898db2e6e8bc057787af179e00297ba72298a1bc637bd275cf1aa",
+      "git_blob_sha": "6075e1f34844a90b9fa52b5f42430bd96d62e699",
       "expected_base_blob_sha": null,
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-retry-d1.test.ts.payload"
     },
     {
-      "path": "tests/raw-capture-cron-wiring.test.ts",
-      "sha256": "2be3d4c415f712c6adad4e09c61450525770197183da69221a169d574f69e3cd",
-      "git_blob_sha": "74a99eb253a623f4dfaa880234d292bdccb65b65",
-      "bytes": 1702,
-      "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d",
-      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-cron-wiring.test.ts.payload"
+      "path": "tests/raw-capture-retry-intent.test.ts",
+      "bytes": 18027,
+      "sha256": "ed45d9010b7503d5947b636395905cf4c43e72198522075cbe658f0c9d86160f",
+      "git_blob_sha": "0e2868360f2c0424c6b4798cec36ee655ccd0021",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-retry-intent.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-rpc-policy.test.ts",
+      "bytes": 13585,
+      "sha256": "82cf43687b679893b9f74f13221720934e7f53beac890a5dab3d784a86cb67aa",
+      "git_blob_sha": "1fa825c7232be040b06ec9ab57995440ecfc8dee",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-rpc-policy.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-single-validation.test.ts",
+      "bytes": 3447,
+      "sha256": "56961d12768056db0d16c961d29ea278fe48476c738e59eb64e9dd7b7ba291c3",
+      "git_blob_sha": "3367ebb9fb7811d58bf31c4d1fb1d0fdcfcee06c",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-single-validation.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-stream-native.test.ts",
+      "bytes": 6387,
+      "sha256": "9b14702578ab3e7ad9641d7da818604333487a76c96cc9b4b27a99ccce3b913b",
+      "git_blob_sha": "c50ce9d72e0b73d41e6db606a1616f3010b72657",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-stream-native.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-capture-stream-prepare.test.ts",
+      "bytes": 20629,
+      "sha256": "333641189bdfb89d105401997afc24c7ba89321cad0c5958924c2ad87da5b368",
+      "git_blob_sha": "920c2f1443fc8c279f73ab7f4238dacb33519f16",
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-stream-prepare.test.ts.payload"
+    },
+    {
+      "path": "tests/raw-chain-capture.test.ts",
+      "bytes": 72712,
+      "sha256": "b7d30e6f06e3f8165f8b45b44e706d8413a2b22accf6cbab9aae0b2be360dab5",
+      "git_blob_sha": "ec64ebca6d3c02bf91562ba472ae12c7c5057e59",
+      "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-chain-capture.test.ts.payload"
     }
   ],
-  "previous_q8_qualification": {
-    "commit": "8afe1572c224dcfe0b4b41b4e2ca5058716a4352",
-    "run": 39348983680,
-    "artifact": 12232566849,
-    "artifact_zip_sha256": "d21753e26968c424aa6af1dac14b8a3ae2254bc14b33709e02167010c68485d5",
-    "passed_cases": 338,
-    "runtime_coverage": "all four modules100% all metrics in focused run",
-    "scope": "focused source/native D1 only; full validation, resource acceptance and actual Codecov PR/project verdict pending"
+  "full_recipe_predecessor": {
+    "commit": "d3665d63c00b9eee83271a841f602f284d97f0fa",
+    "run": 39369937682,
+    "scope": "Successful prior full recipe; new source results and coverage obligations do not transfer"
   },
   "reporter_qualification": {
     "formatted_run": 39355439711,

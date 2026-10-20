@@ -1,0 +1,481 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+import {
+  RAW_CAPTURE_RPC_POLICY_PROPOSAL,
+  RawCaptureRpcCleanupError,
+  readRawCaptureRpcBody,
+  reorderRawCaptureRpc,
+  type RawCaptureProjectedReply,
+  type RawCaptureRpcInputPolicy,
+} from "../src/raw-capture-rpc-policy.ts";
+
+const policy: RawCaptureRpcInputPolicy = {
+  enabled: true,
+  maxBodyBytes: 8,
+  readBytes: 3,
+  maxReplies: 50,
+};
+function byteResponse(data: Uint8Array, onCancel = () => undefined) {
+  let offset = 0;
+  return new Response(
+    new ReadableStream({
+      type: "bytes",
+      pull(controller) {
+        const request = controller.byobRequest;
+        assert(request?.view);
+        const target = new Uint8Array(
+          request.view.buffer,
+          request.view.byteOffset,
+          request.view.byteLength,
+        );
+        const length = Math.min(target.length, data.length - offset);
+        target.set(data.subarray(offset, offset + length));
+        offset += length;
+        request.respond(length);
+        if (offset === data.length) controller.close();
+      },
+      cancel: onCancel,
+    }),
+  );
+}
+async function collect(
+  response: Response,
+  input = policy,
+  signal?: AbortSignal,
+) {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of readRawCaptureRpcBody(response, input, signal))
+    chunks.push(chunk);
+  return chunks;
+}
+async function* replies<T>(values: RawCaptureProjectedReply<T>[]) {
+  yield* values;
+}
+
+test("the new RPC policy is explicitly disabled and pins existing maxima", async () => {
+  assert.equal(RAW_CAPTURE_RPC_POLICY_PROPOSAL.enabled, false);
+  assert.equal(RAW_CAPTURE_RPC_POLICY_PROPOSAL.maxBodyBytes, 32 * 1024 * 1024);
+  assert.equal(RAW_CAPTURE_RPC_POLICY_PROPOSAL.readBytes, 65536);
+  assert.equal(RAW_CAPTURE_RPC_POLICY_PROPOSAL.maxReplies, 50);
+  const response = byteResponse(Uint8Array.of(1));
+  await assert.rejects(
+    collect(response, RAW_CAPTURE_RPC_POLICY_PROPOSAL),
+    /policy_disabled/,
+  );
+  assert.equal(response.body!.locked, false);
+  await response.body!.cancel();
+});
+
+test("BYOB consumer reads preserve exact bytes at the inclusive policy boundary", async () => {
+  const source = Uint8Array.from({ length: 8 }, (_, index) => index);
+  const chunks = await collect(byteResponse(source));
+  assert.deepEqual(
+    chunks.map((chunk) => chunk.length),
+    [3, 3, 2],
+  );
+  assert.deepEqual(Buffer.concat(chunks), Buffer.from(source));
+  chunks[0]![0] = 99;
+  assert.equal(chunks[1]![0], 3);
+});
+
+test("an asynchronous caller cannot widen the captured read or body policy", async () => {
+  const mutable = { ...policy };
+  const input = readRawCaptureRpcBody(byteResponse(new Uint8Array(8)), mutable);
+  assert.equal((await input.next()).value!.byteLength, 3);
+  mutable.readBytes = 1024 * 1024;
+  mutable.maxBodyBytes = 0;
+  const remaining: number[] = [];
+  for await (const chunk of input) remaining.push(chunk.byteLength);
+  assert.deepEqual(remaining, [3, 2]);
+});
+
+test.each([9, 10])(
+  "extra actual body bytes refuse without trusting Content-Length (bytes=%s)",
+  async (length) => {
+    let cancelled = 0;
+    const response = byteResponse(new Uint8Array(length), () => {
+      cancelled++;
+    });
+    response.headers.set("content-length", "1");
+    await assert.rejects(collect(response), /body_budget/);
+    // A source already closed after its ninth byte has no remaining sink to
+    // cancel. Ten bytes leave unread input, proving actual cancellation too.
+    assert.equal(cancelled, length === 9 ? 0 : 1);
+    assert.equal(response.body!.locked, false);
+  },
+);
+
+test("early consumer return cancels and releases the byte reader", async () => {
+  let cancelled = 0;
+  const response = byteResponse(new Uint8Array(8), () => {
+    cancelled++;
+  });
+  for await (const chunk of readRawCaptureRpcBody(response, policy)) {
+    assert.equal(chunk.length, 3);
+    break;
+  }
+  assert.equal(cancelled, 1);
+  assert.equal(response.body!.locked, false);
+});
+
+test("pending reads are cancelled on abort without retaining the untrusted reason", async () => {
+  let reading: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  let cancelled = 0;
+  const response = new Response(
+    new ReadableStream({
+      type: "bytes",
+      pull() {
+        reading!();
+      },
+      cancel() {
+        cancelled++;
+      },
+    }),
+  );
+  const signal = new AbortController();
+  const result = collect(response, policy, signal.signal);
+  await started;
+  signal.abort({ largeUntrustedReason: "never passed to reader.cancel" });
+  await assert.rejects(result, /rpc_aborted/);
+  assert.equal(cancelled, 1);
+  assert.equal(response.body!.locked, false);
+});
+
+test("unsupported default-reader streams are refused without an unbounded fallback", async () => {
+  let cancelled = 0;
+  const response = new Response(
+    new ReadableStream({
+      cancel() {
+        cancelled++;
+      },
+    }),
+  );
+  await assert.rejects(collect(response), /byob_unavailable/);
+  assert.equal(cancelled, 1);
+  await assert.rejects(collect(new Response(null)), /body_missing/);
+  const signal = new AbortController();
+  signal.abort();
+  await assert.rejects(
+    collect(byteResponse(new Uint8Array(1)), policy, signal.signal),
+    /rpc_aborted/,
+  );
+});
+
+test("policy bounds fail before acquiring body ownership", async () => {
+  for (const change of [
+    { maxBodyBytes: 0 },
+    { maxBodyBytes: 32 * 1024 * 1024 + 1 },
+    { maxBodyBytes: 1.5 },
+    { readBytes: 0 },
+    { readBytes: 65537 },
+    { readBytes: NaN },
+    { maxReplies: 0 },
+    { maxReplies: 51 },
+    { maxReplies: 1.5 },
+  ]) {
+    const response = byteResponse(new Uint8Array(1));
+    await assert.rejects(
+      collect(response, { ...policy, ...change }),
+      /policy_bounds/,
+    );
+    assert.equal(response.body!.locked, false);
+    await response.body!.cancel();
+  }
+});
+
+test("fifty reverse replies keep caller order, full spool handles and exact error precedence", async () => {
+  const handles = Array.from({ length: 50 }, (_, id) => ({ id }));
+  const error = { id: 100 };
+  const released: object[] = [];
+  const batch = await reorderRawCaptureRpc(
+    replies(
+      handles
+        .map((result, id) => ({ id, result, ...(id === 7 ? { error } : {}) }))
+        .reverse(),
+    ),
+    50,
+    async (value) => {
+      released.push(value);
+    },
+    { ...policy, maxBodyBytes: 32 * 1024 * 1024 },
+  );
+  for (let id = 0; id < 50; id++)
+    assert.deepEqual(batch.at(id), {
+      id,
+      kind: id === 7 ? "error" : "result",
+      value: id === 7 ? error : handles[id],
+    });
+  await batch.dispose();
+  assert.equal(new Set(released).size, 51);
+  await batch.dispose();
+  assert.equal(released.length, 51);
+  assert.throws(() => batch.at(0), /reorder_disposed/);
+});
+
+test("missing IDs and a present undefined result retain the old per-call distinction", async () => {
+  const ignored = { opaque: "unknown-id" };
+  const released: object[] = [];
+  const batch = await reorderRawCaptureRpc(
+    replies([{ id: 0 }, { id: -0.5, result: ignored }]),
+    2,
+    async (handle) => {
+      released.push(handle);
+    },
+    policy,
+  );
+  assert.deepEqual(batch.at(0), { id: 0, kind: "result", value: undefined });
+  assert.deepEqual(batch.at(1), { id: 1, kind: "missing" });
+  assert.throws(() => batch.at(2), /call_index/);
+  await batch.dispose();
+  assert.deepEqual(released, [ignored]);
+});
+
+test.each([0, 70])(
+  "duplicate requested or ignored id %s refuses and releases every created value",
+  async (id) => {
+    const one = {},
+      two = {};
+    const released: object[] = [];
+    await assert.rejects(
+      reorderRawCaptureRpc(
+        replies([
+          { id, result: one },
+          { id, result: two },
+        ]),
+        1,
+        async (handle) => {
+          released.push(handle);
+        },
+        policy,
+      ),
+      /duplicate_id/,
+    );
+    assert.deepEqual(released, [one, two]);
+  },
+);
+
+test("the fifty-first reply is refused and its incoming spool ownership is released", async () => {
+  const values = Array.from({ length: 51 }, (_, id) => ({
+    id,
+    result: { id },
+  }));
+  const released = new Set<object>();
+  await assert.rejects(
+    reorderRawCaptureRpc(
+      replies(values),
+      50,
+      async (handle) => {
+        released.add(handle);
+      },
+      policy,
+    ),
+    /reply_budget/,
+  );
+  assert.equal(released.size, 51);
+});
+
+test("transport errors retain their cause and retryable custody if spool cleanup fails", async () => {
+  const fault = new Error("synthetic projector failed");
+  const value = {};
+  let closed = false,
+    released = false;
+  async function* input() {
+    try {
+      yield { id: 0, result: value };
+      throw fault;
+    } finally {
+      closed = true;
+    }
+  }
+  let retry: RawCaptureRpcCleanupError | undefined;
+  await assert.rejects(
+    reorderRawCaptureRpc(
+      input(),
+      1,
+      async () => {
+        if (!released) {
+          released = true;
+          throw new Error("synthetic cleanup failure");
+        }
+      },
+      policy,
+    ),
+    (error: unknown) => {
+      assert(error instanceof RawCaptureRpcCleanupError);
+      assert.equal(error.cause, fault);
+      retry = error;
+      return true;
+    },
+  );
+  assert(closed);
+  assert(released);
+  assert.equal(retry!.pendingCount(), 1);
+  await retry!.retryCleanup();
+  assert.equal(retry!.pendingCount(), 0);
+});
+
+test("abort, invalid IDs and final disposal failures cannot pass as a valid batch", async () => {
+  const signal = new AbortController();
+  signal.abort();
+  let started = false;
+  async function* input() {
+    started = true;
+    yield { id: 0 };
+  }
+  await assert.rejects(
+    reorderRawCaptureRpc(
+      input(),
+      1,
+      async () => undefined,
+      policy,
+      signal.signal,
+    ),
+    /rpc_aborted/,
+  );
+  assert.equal(started, false);
+  await assert.rejects(
+    reorderRawCaptureRpc(
+      replies([{ id: Infinity, result: {} }]),
+      1,
+      async () => undefined,
+      policy,
+    ),
+    /rpc_id/,
+  );
+  for (const count of [-1, 51, 0.5])
+    await assert.rejects(
+      reorderRawCaptureRpc(replies([]), count, async () => undefined, policy),
+      /call_budget/,
+    );
+  const batch = await reorderRawCaptureRpc(
+    replies([{ id: 0, result: {} }]),
+    1,
+    async () => {
+      throw new Error("synthetic release failure");
+    },
+    policy,
+  );
+  await assert.rejects(batch.dispose(), RawCaptureRpcCleanupError);
+  assert.throws(() => batch.at(0), /reorder_disposed/);
+});
+
+test("a synchronous release failure cannot skip later handles or erase failed custody", async () => {
+  const first = {},
+    second = {};
+  const calls: object[] = [];
+  let fail = true;
+  const batch = await reorderRawCaptureRpc(
+    replies([
+      { id: 0, result: first },
+      { id: 1, result: second },
+    ]),
+    2,
+    (handle) => {
+      calls.push(handle);
+      if (handle === first && fail)
+        throw new Error("synthetic synchronous release");
+      return Promise.resolve();
+    },
+    policy,
+  );
+  let custody: RawCaptureRpcCleanupError | undefined;
+  await assert.rejects(batch.dispose(), (error: unknown) => {
+    assert(error instanceof RawCaptureRpcCleanupError);
+    custody = error;
+    return true;
+  });
+  assert.deepEqual(calls, [first, second]);
+  assert.equal(custody!.pendingCount(), 1);
+  fail = false;
+  await custody!.retryCleanup();
+  assert.deepEqual(calls, [first, second, first]);
+  assert.equal(custody!.pendingCount(), 0);
+  await batch.dispose();
+  assert.equal(calls.length, 3);
+});
+
+test("concurrent disposal awaits the same complete spool release", async () => {
+  let finish: (() => void) | undefined;
+  const closed = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const batch = await reorderRawCaptureRpc(
+    replies([{ id: 0, result: {} }]),
+    1,
+    async () => closed,
+    policy,
+  );
+  const first = batch.dispose(),
+    second = batch.dispose();
+  assert.equal(first, second);
+  let settled = false;
+  void second.then(() => {
+    settled = true;
+  });
+  await Promise.resolve();
+  assert.equal(settled, false);
+  finish!();
+  await Promise.all([first, second]);
+  assert(settled);
+});
+
+test("abort does not abandon an in-flight projected reply or its incoming ownership", async () => {
+  const signal = new AbortController();
+  let start: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    start = resolve;
+  });
+  let finish:
+    | ((value: IteratorResult<RawCaptureProjectedReply<object>>) => void)
+    | undefined;
+  const next = new Promise<IteratorResult<RawCaptureProjectedReply<object>>>(
+    (resolve) => {
+      finish = resolve;
+    },
+  );
+  const value = {};
+  let returned = false,
+    released = false,
+    settled = false;
+  const source: AsyncIterable<RawCaptureProjectedReply<object>> = {
+    [Symbol.asyncIterator]: () => ({
+      next: () => {
+        start!();
+        return next;
+      },
+      return: async () => {
+        returned = true;
+        return { done: true, value: undefined };
+      },
+    }),
+  };
+  const result = reorderRawCaptureRpc(
+    source,
+    1,
+    async (handle) => {
+      assert.equal(handle, value);
+      released = true;
+    },
+    policy,
+    signal.signal,
+  );
+  void result.then(
+    () => {
+      settled = true;
+    },
+    () => {
+      settled = true;
+    },
+  );
+  await started;
+  signal.abort();
+  await Promise.resolve();
+  assert.equal(settled, false);
+  finish!({ done: false, value: { id: 0, result: value } });
+  await assert.rejects(result, /rpc_aborted/);
+  assert(returned);
+  assert(released);
+});

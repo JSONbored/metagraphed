@@ -134,15 +134,38 @@ function validatedInput(key: string, value: string) {
   return { ...identity, bytes, spans };
 }
 
-export function rawCaptureIdentity(key: string, value: string) {
-  const input = validatedInput(key, value);
+/** Cache only private validation metadata; hashing and byte preparation stay lazy. */
+export function rawCaptureInput(key: string, value: string) {
+  let retained: ReturnType<typeof validatedInput> | undefined;
+  const validated = () => (retained ??= validatedInput(key, value));
   return {
-    key,
-    network: input.network,
-    first: input.first,
-    last: input.last,
-    sha256: createHash("sha256").update(value).digest("hex"),
+    identity() {
+      const input = validated();
+      return {
+        key,
+        network: input.network,
+        first: input.first,
+        last: input.last,
+        sha256: createHash("sha256").update(value).digest("hex"),
+      };
+    },
+    prepare(): RawCapturePrepared {
+      const input = validated();
+      return prepareBytes(
+        key,
+        input,
+        Buffer.from(value),
+        input.spans.map((span) => span.token),
+      );
+    },
+    resume(intent: RawCaptureIntent): RawCapturePrepared {
+      return resumeWithInput(intent, key, value, validated);
+    },
   };
+}
+
+export function rawCaptureIdentity(key: string, value: string) {
+  return rawCaptureInput(key, value).identity();
 }
 
 function prepareBytes(
@@ -176,21 +199,18 @@ export function prepareRawCapture(
   key: string,
   value: string,
 ): RawCapturePrepared {
-  const input = validatedInput(key, value);
-  return prepareBytes(
-    key,
-    input,
-    Buffer.from(value),
-    input.spans.map((span) => span.token),
-  );
+  return rawCaptureInput(key, value).prepare();
 }
 
-export function encodeRawCaptureIntent(prepared: RawCapturePrepared): string {
+export function encodeRawCaptureIntent(prepared: {
+  readonly descriptor: RawCaptureDescriptor;
+  readonly provenance: readonly string[];
+}): string {
   const payload = JSON.stringify({
     version: 1,
     schema: FORMAT,
     descriptor: prepared.descriptor,
-    provenance: prepared.provenance,
+    provenance: [...prepared.provenance],
   } satisfies RawCaptureIntent);
   if (Buffer.byteLength(payload) > RAW_CAPTURE_INTENT_MAX_BYTES)
     throw new Error("Raw capture retry intent exceeds its metadata budget");
@@ -257,16 +277,17 @@ export function decodeRawCaptureIntent(payload: string): RawCaptureIntent {
   return candidate as RawCaptureIntent;
 }
 
-export function resumeRawCapture(
+function resumeWithInput(
   intent: RawCaptureIntent,
   key: string,
   value: string,
+  validated: () => ReturnType<typeof validatedInput>,
 ): RawCapturePrepared {
   // Revalidate metadata before trusting its allocation size or replacement tokens.
   const pinned = decodeRawCaptureIntent(JSON.stringify(intent));
   if (key !== pinned.descriptor.key)
     throw new Error("Raw capture retry range differs");
-  const input = validatedInput(key, value);
+  const input = validated();
   const expectedBytes = input.spans.reduce(
     (bytes, span, index) =>
       bytes + pinned.provenance[index]!.length - span.token.length,
@@ -307,6 +328,14 @@ export function resumeRawCapture(
   )
     throw new Error("Raw capture retry original bytes differ");
   return original;
+}
+
+export function resumeRawCapture(
+  intent: RawCaptureIntent,
+  key: string,
+  value: string,
+): RawCapturePrepared {
+  return rawCaptureInput(key, value).resume(intent);
 }
 
 export function rawCaptureIntentKey(network: "mainnet" | "testnet"): string {

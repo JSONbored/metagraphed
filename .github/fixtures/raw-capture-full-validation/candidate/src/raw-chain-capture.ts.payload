@@ -36,6 +36,7 @@ import {
   chainRpcBatch,
   type ChainRpcBatchCall,
 } from "./chain-rpc.ts";
+import type { RawCaptureBulkLease } from "./raw-capture-bulk-lease.ts";
 import type { ChainRpcAdmission } from "./chain-rpc-admission.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
@@ -370,6 +371,12 @@ export interface RawCapturePending {
 }
 export interface RawCaptureStore {
   put(key: string, value: string): Promise<unknown>;
+  /** Experimental prepared producer contract. Ordinary callers keep put(). */
+  putRows?(
+    key: string,
+    rows: Iterable<RawBlockCapture> | AsyncIterable<RawBlockCapture>,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
   pending?(network: ChainNetworkId): Promise<RawCapturePending | null>;
   acknowledgeWatermark?(key: string, receipt: unknown): Promise<void>;
 }
@@ -427,6 +434,10 @@ export async function captureTick(deps: {
    * null cannot advance its durable capture watermark. */
   requireEvents?: boolean;
   store: RawCaptureStore;
+  /** Default disabled. The raw sync owner must explicitly supply the shared
+   * isolate lease. This seam bounds producer ownership, not the legacy RPC
+   * res.json() body or aggregate Worker memory. */
+  preparedCapture?: { bulkLease: RawCaptureBulkLease; signal?: AbortSignal };
   watermark: WatermarkStore;
   genesisFloor: number;
   maxPerTick: number;
@@ -469,6 +480,10 @@ export async function captureTick(deps: {
   sleepFn?: (ms: number) => Promise<void>;
 }): Promise<CaptureResult> {
   const fetchImpl = deps.fetchImpl ?? fetch;
+  const preparedCapture = deps.preparedCapture;
+  if (preparedCapture && !deps.store.putRows)
+    throw new Error("Raw capture prepared store is unavailable");
+  const network = deps.network ?? DEFAULT_CHAIN_NETWORK;
   const now = deps.now ?? Date.now;
   const minGapMs = deps.minGapMs ?? 0;
   // CLAMPED to what the node will actually answer, whatever the caller asks.
@@ -514,7 +529,15 @@ export async function captureTick(deps: {
     )
       throw new Error("Raw capture pending range differs");
     if (pending.last <= lastContiguous) {
-      await deps.store.acknowledgeWatermark(pending.key, pending.receipt);
+      const ackOwner = await preparedCapture?.bulkLease.acquire(
+        network,
+        preparedCapture.signal,
+      );
+      try {
+        await deps.store.acknowledgeWatermark(pending.key, pending.receipt);
+      } finally {
+        ackOwner?.release();
+      }
       pending = null;
     } else if (pending.first !== lastContiguous + 1)
       throw new Error("Raw capture pending range conflicts with its watermark");
@@ -528,44 +551,52 @@ export async function captureTick(deps: {
   let candidates = endpoints;
   // Fail over first, then retry transient upstream failures once. Testnet can
   // have only one archive endpoint; one TLS/proxy blip must not lose a tick.
-  for (let round = 0; round < 2 && head === null; round += 1) {
-    const retry: string[] = [];
-    for (const url of candidates) {
-      try {
-        const value = (await rpc(
-          url,
-          "chain_getHeader",
-          [],
-          fetchImpl,
-          deps.admission,
-        )) as {
-          number?: unknown;
-        } | null;
-        const hex = value?.number;
-        const number =
-          typeof hex === "string" && /^0x[0-9a-fA-F]+$/.test(hex)
-            ? Number.parseInt(hex, 16)
-            : NaN;
-        if (!Number.isSafeInteger(number)) {
-          throw new Error("chain_getHeader: unusable head number");
+  const headOwner = await preparedCapture?.bulkLease.acquire(
+    network,
+    preparedCapture.signal,
+  );
+  try {
+    for (let round = 0; round < 2 && head === null; round += 1) {
+      const retry: string[] = [];
+      for (const url of candidates) {
+        try {
+          const value = (await rpc(
+            url,
+            "chain_getHeader",
+            [],
+            fetchImpl,
+            deps.admission,
+          )) as {
+            number?: unknown;
+          } | null;
+          const hex = value?.number;
+          const number =
+            typeof hex === "string" && /^0x[0-9a-fA-F]+$/.test(hex)
+              ? Number.parseInt(hex, 16)
+              : NaN;
+          if (!Number.isSafeInteger(number)) {
+            throw new Error("chain_getHeader: unusable head number");
+          }
+          head = number;
+          break;
+        } catch (error) {
+          headError = error;
+          if (
+            error instanceof Error &&
+            (error.name === "TimeoutError" ||
+              /^chain_getHeader: HTTP (502|503|504|520|522|523|524|525)$/.test(
+                error.message,
+              ))
+          )
+            retry.push(url);
         }
-        head = number;
-        break;
-      } catch (error) {
-        headError = error;
-        if (
-          error instanceof Error &&
-          (error.name === "TimeoutError" ||
-            /^chain_getHeader: HTTP (502|503|504|520|522|523|524|525)$/.test(
-              error.message,
-            ))
-        )
-          retry.push(url);
       }
+      if (head !== null || round === 1 || retry.length === 0) break;
+      await sleepFn(2_000);
+      candidates = retry;
     }
-    if (head !== null || round === 1 || retry.length === 0) break;
-    await sleepFn(2_000);
-    candidates = retry;
+  } finally {
+    headOwner?.release();
   }
   if (head === null) {
     const detail = String((headError as Error)?.message ?? headError);
@@ -610,13 +641,31 @@ export async function captureTick(deps: {
   const flush = async (batch: RawBlockCapture[]) => {
     const first = batch[0]!.block_number;
     const last = batch[batch.length - 1]!.block_number;
-    const put = deps.store.put(
-      rawBatchKey(first, last, deps.network),
-      batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
-    );
-    // Only this private outer array is consumed; RPC-owned row fields survive.
-    batch.length = 0;
-    const receipt = await put;
+    const key = rawBatchKey(first, last, deps.network);
+    let receipt: unknown;
+    if (preparedCapture) {
+      // The factory consumes one row at a time. Removing the outer-array entry
+      // releases its producer ownership without mutating RPC-owned fields.
+      function* consumeRows() {
+        while (batch.length) yield batch.shift()!;
+      }
+      try {
+        receipt = await deps.store.putRows!(
+          key,
+          consumeRows(),
+          preparedCapture.signal,
+        );
+      } finally {
+        batch.length = 0;
+      }
+    } else {
+      const put = deps.store.put(
+        key,
+        batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
+      );
+      batch.length = 0;
+      receipt = await put;
+    }
     // Only now -- the bytes are durable, so the watermark may claim them.
     await deps.watermark.write(last);
     await deps.store.acknowledgeWatermark?.(
@@ -645,77 +694,87 @@ export async function captureTick(deps: {
       const remaining = chunkGapMs - (now() - previousChunkStartedAt);
       if (remaining > 0) await sleepFn(remaining);
     }
+    const chunkOwner = await preparedCapture?.bulkLease.acquire(
+      network,
+      preparedCapture.signal,
+    );
+    // Ownership can wait for the other network. Pace from the actual read
+    // start after that wait, so it cannot shorten the next request cycle.
     previousChunkStartedAt = now();
-
     let chunk: RawBlockChunk | null = null;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
-      const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
-      try {
-        const got = await fetchRawBlockChunk(
-          url,
-          chunkHeights,
-          fetchImpl,
-          now,
-          deps.requireEvents,
-          deps.admission,
-        );
-        if (
-          pending &&
-          captured === 0 &&
-          got.blocks.length !== pending.last - pending.first + 1
-        ) {
-          lastError = new Error(
-            "Raw capture pending range cannot be reconstructed",
+    try {
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < endpoints.length; attempt += 1) {
+        const url = endpoints[(chunkIndex + attempt) % endpoints.length]!;
+        try {
+          const got = await fetchRawBlockChunk(
+            url,
+            chunkHeights,
+            fetchImpl,
+            now,
+            deps.requireEvents,
+            deps.admission,
           );
-          continue;
+          if (
+            pending &&
+            captured === 0 &&
+            got.blocks.length !== pending.last - pending.first + 1
+          ) {
+            lastError = new Error(
+              "Raw capture pending range cannot be reconstructed",
+            );
+            continue;
+          }
+          chunk = got;
+          if (got.blocks.length > 0) break;
+          // Captured NOTHING: this host cannot serve the very next height, which
+          // is the case rotation exists for. A PARTIAL chunk is not retried --
+          // its prefix is already good, and the height it stopped at leads the
+          // next tick's first chunk, where a zero-length read rotates then.
+          //
+          // `stopped` is non-null here by construction: `chunkHeights` is a
+          // non-empty slice, and the only way to come back with no blocks from a
+          // non-empty ask is to have stopped somewhere and said why.
+          lastError = new Error(got.stopped!.reason);
+        } catch (error) {
+          // NOT a gap yet: another endpoint may hold these heights. Only a chunk
+          // NO endpoint can start stops the tick.
+          lastError = error;
         }
-        chunk = got;
-        if (got.blocks.length > 0) break;
-        // Captured NOTHING: this host cannot serve the very next height, which
-        // is the case rotation exists for. A PARTIAL chunk is not retried --
-        // its prefix is already good, and the height it stopped at leads the
-        // next tick's first chunk, where a zero-length read rotates then.
-        //
-        // `stopped` is non-null here by construction: `chunkHeights` is a
-        // non-empty slice, and the only way to come back with no blocks from a
-        // non-empty ask is to have stopped somewhere and said why.
-        lastError = new Error(got.stopped!.reason);
-      } catch (error) {
-        // NOT a gap yet: another endpoint may hold these heights. Only a chunk
-        // NO endpoint can start stops the tick.
-        lastError = error;
       }
-    }
-    chunkIndex += 1;
-    if (
-      pending &&
-      captured === 0 &&
-      chunk?.blocks.length !== pending.last - pending.first + 1
-    )
-      throw new Error("Raw capture pending range cannot be reconstructed");
+      chunkIndex += 1;
+      if (
+        pending &&
+        captured === 0 &&
+        chunk?.blocks.length !== pending.last - pending.first + 1
+      )
+        throw new Error("Raw capture pending range cannot be reconstructed");
 
-    if (chunk === null || chunk.blocks.length === 0) {
-      // Stop at the FIRST failure and keep what earlier chunks wrote.
-      // Continuing past it would create exactly the hole this module exists to
-      // prevent.
-      stoppedAt = chunkHeights[0];
-      reason = String((lastError as Error)?.message ?? lastError);
-      break;
-    }
+      if (chunk === null || chunk.blocks.length === 0) {
+        // Stop at the FIRST failure and keep what earlier chunks wrote.
+        // Continuing past it would create exactly the hole this module exists to
+        // prevent.
+        stoppedAt = chunkHeights[0];
+        reason = String((lastError as Error)?.message ?? lastError);
+        break;
+      }
 
-    const blockCount = chunk.blocks.length;
-    const stopped = chunk.stopped;
-    // Durable FIRST, watermark after -- the ordering the guarantee rests on.
-    watermark = await flush(chunk.blocks);
-    captured += blockCount;
+      const blockCount = chunk.blocks.length;
+      const stopped = chunk.stopped;
+      // Durable FIRST, watermark after -- the ordering the guarantee rests on.
+      watermark = await flush(chunk.blocks);
+      captured += blockCount;
 
-    // A short chunk means the run ended inside it. Its prefix is written; the
-    // height it stopped at is where the next tick resumes.
-    if (stopped !== null) {
-      stoppedAt = stopped.at;
-      reason = stopped.reason;
-      break;
+      // A short chunk means the run ended inside it. Its prefix is written; the
+      // height it stopped at is where the next tick resumes.
+      if (stopped !== null) {
+        stoppedAt = stopped.at;
+        reason = stopped.reason;
+        break;
+      }
+    } finally {
+      if (preparedCapture && chunk) chunk.blocks.length = 0;
+      chunkOwner?.release();
     }
   }
 
