@@ -6,9 +6,10 @@ import {
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import {
   optionalPgBuildAssociation,
-  ownerBuildInputIdentity,
+  ownerRawBuildInputIdentity,
   boundedBuildFile,
 } from "./owner-build-evidence.ts";
+import { readChainSummaryWorkspaceCustody } from "./chain-summary-workspace-custody.ts";
 import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
 // Synthetic inputs and host-side verification for the unwrapped API owner.
 // Nothing here runs captureTick, changes production source, or forwards D1.
@@ -427,13 +428,20 @@ export async function buildRawOwner(root: string, output: string) {
       "raw-032",
       async () => await realpath(path.join(root, "node_modules")),
     );
+    const workspaceCustody = readChainSummaryWorkspaceCustody(
+      canonicalRoot,
+      dependencyRoot,
+      meta,
+    );
     const sourcePaths: string[] = [];
     for (const name of Object.keys(meta.inputs)) {
       // The production builder alone generates these native-builtin adapters.
       if (name.startsWith("native-node-require:")) continue;
-      const relative = ownerBuildInputIdentity(
+      const relative = ownerRawBuildInputIdentity(
         canonicalRoot,
         dependencyRoot,
+        meta,
+        workspaceCustody,
         name,
       );
       try {

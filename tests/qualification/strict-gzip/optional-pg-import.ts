@@ -1,4 +1,13 @@
 import {
+  CHAIN_SUMMARY_WORKSPACE_PINS,
+  CHAIN_SUMMARY_WORKSPACE_EDGES,
+  chainSummaryWorkspaceInputIdentity,
+  chainSummaryWorkspaceSource,
+  hasChainSummaryWorkspaceInput,
+  type ChainSummaryWorkspaceCustody,
+} from "./chain-summary-workspace-custody.ts";
+import type { OwnerProofReasonCode } from "./owner-proof-reason-codes.ts";
+import {
   withOwnerProofReason,
   ownerProofFailure,
   ownerProofReasonMarker,
@@ -19,6 +28,14 @@ import {
   type ErasureConfigSources,
   type PendingDiscardedInput,
 } from "./discarded-input-proof.ts";
+
+function workspaceCheck(
+  code: OwnerProofReasonCode,
+  value: unknown,
+  description: string,
+): asserts value {
+  if (!value) throw ownerProofFailure(new Error(description), code);
+}
 
 export const OPTIONAL_PG_SOURCE_COMMIT =
   "b617619f9fb6fbd231731823e2732a2927ded4be";
@@ -93,6 +110,9 @@ export const OPTIONAL_PROOF_STAGES = Object.freeze([
   "contributions",
   "optional-output",
   "completeness",
+  "workspace-identity",
+  "workspace-map",
+  "workspace-completeness",
 ] as const);
 export const OPTIONAL_IMPORT_CATEGORIES = Object.freeze([
   "pg-native",
@@ -470,6 +490,8 @@ export interface OptionalPgEvidence {
   // Separate exact source/config custody for the fixed reviewed discarded batch.
   discardedInputSources?: Readonly<Record<string, Uint8Array>>;
   erasureConfigSources?: ErasureConfigSources;
+  // Opaque pending custody for one exact canonical workspace file only.
+  workspaceCustody?: ChainSummaryWorkspaceCustody;
   // All executable JS outputs, not a hand-selected pg-containing subset.
   outputs: PreservedOptionalPgOutput[];
   // Complete actual registered-module inventory, checked by the caller.
@@ -824,6 +846,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
       absolute(root);
     stage = "inventory";
     const { metafile: meta } = evidence;
+    let workspace: ReturnType<typeof chainSummaryWorkspaceSource> | null = null;
+    // A minted graph may have changed at any nested data layer. Authenticate it
+    // before even the original generic table assertion or Object.keys reads.
+    if (evidence.workspaceCustody !== undefined) {
+      stage = "workspace-identity";
+      workspace = chainSummaryWorkspaceSource(
+        evidence.workspaceCustody,
+        evidence.sourceRoot,
+        evidence.dependencyRoot,
+        meta,
+      );
+      stage = "inventory";
+    }
     try {
       assert.ok(meta && meta.inputs && meta.outputs);
     } catch (cause) {
@@ -855,6 +890,26 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
       } catch (cause) {
         throw ownerProofFailure(cause, "opg-034");
       }
+    }
+    const workspacePending = hasChainSummaryWorkspaceInput(
+      evidence.sourceRoot,
+      evidence.dependencyRoot,
+      meta,
+    );
+    if (workspacePending || evidence.workspaceCustody !== undefined) {
+      stage = "workspace-identity";
+      workspaceCheck(
+        "wsp-002",
+        workspacePending && evidence.workspaceCustody !== undefined,
+        "Missing or orphan workspace custody",
+      );
+      if (!workspace)
+        workspace = chainSummaryWorkspaceSource(
+          evidence.workspaceCustody,
+          evidence.sourceRoot,
+          evidence.dependencyRoot,
+          meta,
+        );
     }
     stage = "external-imports";
     let mentionsOptional = false;
@@ -964,6 +1019,11 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
     // No exception is needed. The caller retains its ordinary closed-graph and
     // builtin checks; absent optional-source provenance cannot grant an exception.
     if (!mentionsOptional) {
+      workspaceCheck(
+        "wsp-001",
+        !workspacePending && evidence.workspaceCustody === undefined,
+        "Workspace custody requires the complete optional pg proof",
+      );
       try {
         assert.equal(
           pendingDiscarded.length,
@@ -1003,6 +1063,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
     } catch (cause) {
       throw ownerProofFailure(cause, "opg-046");
     }
+    const workspaceSources = workspace
+      ? [
+          workspace,
+          ...CHAIN_SUMMARY_WORKSPACE_EDGES.map(({ source }) => ({
+            logical: source,
+            actual: source,
+            canonicalFile: path.join(evidence.sourceRoot, source),
+            bytes: CHAIN_SUMMARY_WORKSPACE_PINS[source].bytes,
+            sha256: CHAIN_SUMMARY_WORKSPACE_PINS[source].sha256,
+          })),
+        ]
+      : [];
+    let workspaceContributed = false;
     stage = "source-file-identity";
     const pins = Object.entries(OPTIONAL_PG_SOURCE_PINS);
     const actualInputs = new Map<string, string>();
@@ -1023,11 +1096,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
         continue;
       }
       stage = "source-file-identity";
-      const logical = ownerSourceIdentity(
-        evidence.sourceRoot,
-        evidence.dependencyRoot,
-        actual,
-      );
+      const logical =
+        chainSummaryWorkspaceInputIdentity(
+          evidence.workspaceCustody,
+          evidence.sourceRoot,
+          evidence.dependencyRoot,
+          meta,
+          actual,
+        ) ??
+        ownerSourceIdentity(
+          evidence.sourceRoot,
+          evidence.dependencyRoot,
+          actual,
+        );
       stage = "source-duplicate-identity";
       try {
         assert.ok(
@@ -1052,11 +1133,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           throw ownerProofFailure(cause, "opg-050");
         }
         if (item.path.startsWith("native-node-require:")) continue;
-        const logical = ownerSourceIdentity(
-          evidence.sourceRoot,
-          evidence.dependencyRoot,
-          item.path,
-        );
+        const logical =
+          chainSummaryWorkspaceInputIdentity(
+            evidence.workspaceCustody,
+            evidence.sourceRoot,
+            evidence.dependencyRoot,
+            meta,
+            item.path,
+          ) ??
+          ownerSourceIdentity(
+            evidence.sourceRoot,
+            evidence.dependencyRoot,
+            item.path,
+          );
         try {
           assert.equal(
             actualInputs.get(logical),
@@ -1242,11 +1331,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           throw ownerProofFailure(cause, "opg-065");
         }
         if (actual.startsWith("native-node-require:")) continue;
-        const logical = ownerSourceIdentity(
-          evidence.sourceRoot,
-          evidence.dependencyRoot,
-          actual,
-        );
+        const logical =
+          chainSummaryWorkspaceInputIdentity(
+            evidence.workspaceCustody,
+            evidence.sourceRoot,
+            evidence.dependencyRoot,
+            meta,
+            actual,
+          ) ??
+          ownerSourceIdentity(
+            evidence.sourceRoot,
+            evidence.dependencyRoot,
+            actual,
+          );
         try {
           assert.equal(actualInputs.get(logical), actual);
         } catch (cause) {
@@ -1519,6 +1616,84 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           throw ownerProofFailure(cause, "opg-096");
         }
       }
+      stage = "workspace-map";
+      for (const source of workspaceSources) {
+        const canonicalSpelling = path.relative(
+          path.dirname(absoluteOutput),
+          source.canonicalFile,
+        );
+        const candidate = path.join(evidence.sourceRoot, source.logical);
+        const matches: number[] = [];
+        for (const [index, name] of map.sources.entries()) {
+          const resolved = path.resolve(path.dirname(absoluteOutput), name);
+          if (resolved === source.canonicalFile) {
+            workspaceCheck(
+              "wsp-003",
+              name === canonicalSpelling,
+              "Workspace map source uses a noncanonical spelling",
+            );
+            matches.push(index);
+          } else if (workspace && source.logical === workspace.logical) {
+            workspaceCheck(
+              "wsp-004",
+              resolved !== candidate &&
+                resolved !==
+                  path.join(
+                    evidence.sourceRoot,
+                    "node_modules/@jsonbored/chain-summaries/dist/index.js",
+                  ) &&
+                resolved !==
+                  path.join(
+                    evidence.dependencyRoot,
+                    "@jsonbored/chain-summaries/dist/index.js",
+                  ),
+              "Workspace map source uses an identity alias",
+            );
+          }
+        }
+        workspaceCheck(
+          "wsp-005",
+          matches.length <= 1,
+          "Duplicate workspace map source",
+        );
+        const contribution = info.inputs[source.actual]?.bytesInOutput ?? 0;
+        workspaceCheck(
+          "wsp-006",
+          Number.isSafeInteger(contribution) && contribution >= 0,
+          "Workspace map contribution malformed",
+        );
+        if (matches.length) {
+          const content = map.sourcesContent[matches[0]!];
+          workspaceCheck(
+            "wsp-007",
+            typeof content === "string",
+            "Workspace map lacks complete source content",
+          );
+          workspaceCheck(
+            "wsp-008",
+            Buffer.byteLength(content) === source.bytes,
+            "Workspace map source byte count changed",
+          );
+          workspaceCheck(
+            "wsp-009",
+            sha256(content) === source.sha256,
+            "Workspace map source hash changed",
+          );
+        }
+        if (contribution === 0) continue;
+        workspaceCheck(
+          "wsp-010",
+          matches.length === 1,
+          "Contributing workspace source absent from map",
+        );
+        workspaceCheck(
+          "wsp-011",
+          mappings.some((mapping) => mapping.source === matches[0]),
+          "Workspace source has no genuine generated mapping",
+        );
+        if (workspace && source.logical === workspace.logical)
+          workspaceContributed = true;
+      }
       stage = "optional-output";
       try {
         assert.ok(Array.isArray(info.imports));
@@ -1604,6 +1779,20 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           outputSha256: sha256(output.bytes),
         });
       }
+    }
+    stage = "workspace-completeness";
+    if (workspace) {
+      chainSummaryWorkspaceSource(
+        evidence.workspaceCustody,
+        evidence.sourceRoot,
+        evidence.dependencyRoot,
+        meta,
+      );
+      workspaceCheck(
+        "wsp-012",
+        workspaceContributed,
+        "Workspace input has no positive output contribution",
+      );
     }
     stage = "completeness";
     try {

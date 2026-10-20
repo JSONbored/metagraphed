@@ -356,7 +356,8 @@ Artifact 12300725713 has ZIP SHA-256
 Normal Validate 39501225699 passed its changes job and skipped six heavy gates
 under the unchanged draft policy.
 
-Source review identifies a candidate mechanism, not the actual escaped key:
+At that run, source review identified a candidate mechanism rather than the
+actual escaped key:
 the pinned npm workspace link for `@jsonbored/chain-summaries` resolves its
 checked-in `dist/index.js` into the separate base checkout. The production
 builder canonicalizes that path, which is outside both the isolated candidate
@@ -365,14 +366,49 @@ the fixture creates no replacement source entry. The tracked dist file is
 31,640 bytes, Git blob `75dda6fbb5ab18adaea081c4fe2a44a08dd1095d`, SHA-256
 `196d83987a00f8d68c3888b6f3bef917c13c9300c22dbbc2a0a22a4c55011131`.
 
-The next diagnostic probes only that exact canonical workspace key after the
-original proof has already failed. It verifies the fixed link, candidate/base
+The subsequent diagnostic probes only that exact canonical workspace key after
+the original proof has already failed. It verifies the fixed link, candidate/base
 source counterparts, pinned package/lock/importer bytes and two source-owned
 import edges. It emits only a fixed identity/status and bounded counts. Unknown
 keys, source bytes, filenames, paths and errors are not copied into the report.
 The probe does not map or admit an input, and root containment plus every
-existing build/custody gate remain unchanged. An actual hosted identity match
-and a separately reviewed correction are required before any acceptance change.
+existing build/custody gate remain unchanged. That diagnostic requires an actual hosted identity match and a separately
+reviewed correction before any acceptance change.
+
+## Observed workspace identity and pending exact-file correction
+
+Run [39506185729](https://github.com/JSONbored/metagraphed/actions/runs/39506185729)
+at head `acd0a7880fcfb78c7f6db274e4424b004c4d596f` identified the fixed
+chain-summaries dist file: one exact escaped key, no other escaped key and both
+source-owned import edges matched. The complete input census has no invalid
+namespace, invalid path or duplicate identity. The unchanged raw containment
+check still failed with `opg-011`. All 490 baseline assertions and the real queue
+owner assertion passed; zero denials and two complete guarded threads were
+observed. Combined completion and coverage remain unavailable. Four generic
+native exits remain unobserved. Artifact 12303536689 has ZIP SHA-256
+`90c133bfbbed33b93916a3177e29a01deeeef59efa03d872b7d86d72904355ae`.
+Normal Validate 39506185898 passed its changes job and skipped six heavy gates
+under the unchanged draft policy.
+
+The proposed correction admits only the observed file as pending raw-build
+identity. It keeps the original metafile key and stores the portable public
+source name. Fresh bounded reads independently authenticate both candidate and
+base counterparts, the exact two symlinks, package/lock bytes and both importer
+edges at the builder, private preservation and publisher boundaries. An opaque
+in-memory token is privately branded and bound to the original graph fingerprint;
+public diagnostic values cannot supply authority. Generic containment is unchanged.
+
+Pending identity cannot satisfy the no-pg early return. Complete existing pg,
+discarded-input, output, map and registered-module proofs remain mandatory.
+The workspace needs a positive JavaScript contribution, exact canonical map
+source/full content and a real decoded mapping for every contributing output.
+Aliases, orphan evidence and any workspace contribution in a map, Wasm or other
+non-JavaScript output are refused. The publisher repeats source/link custody
+immediately before success, while queue publication keeps its existing policy.
+
+This local implementation requires frozen independent review and an exact hosted
+rerun. The observed key alone does not establish output/map custody or raw-owner
+success. Production memory and CPU acceptance remains inconclusive.
 
 ## Third-party fixture notice
 

@@ -29,43 +29,9 @@ export const CHAIN_SUMMARY_WORKSPACE_LIMITS = Object.freeze({
   allFileBytes: 2 * 1024 * 1024,
   markerCharacters: 65536,
 });
-const rawPins = {
-  "package.json": {
-    bytes: 16154,
-    sha256: "4fb747252be82015272e8fbbb7393a691eea17b21fa01e753d1b9c1b48ecb8bd",
-    gitBlob: "343585bc503509c335f39baa74cb60b33352ad10",
-  },
-  "package-lock.json": {
-    bytes: 633552,
-    sha256: "8082ef81ed8d765c977314cf17bb77946043a0d8a8ec2668a660b3c4d756f7eb",
-    gitBlob: "5b0282bb9e45bab1fd38e28725d7f87ea6bb6ad8",
-  },
-  "packages/chain-summaries/package.json": {
-    bytes: 1258,
-    sha256: "866595a6350b7519820d06a75b8a868b2944775deabba077559ae82390ad4c82",
-    gitBlob: "75810384d47e30481746b97910e6943357aa96f4",
-  },
-  "packages/chain-summaries/dist/index.js": {
-    bytes: 31640,
-    sha256: "196d83987a00f8d68c3888b6f3bef917c13c9300c22dbbc2a0a22a4c55011131",
-    gitBlob: "75dda6fbb5ab18adaea081c4fe2a44a08dd1095d",
-  },
-  "src/extrinsics.ts": {
-    bytes: 21641,
-    sha256: "82a3d1d66303c70e1ca5c99eceeeb046dea48c4ff25fe5b0ead8fb3c6041af50",
-    gitBlob: "579db43b78c61abdfe83665d7d59f19c0b999712",
-  },
-  "src/chain-detail-hot-tier.ts": {
-    bytes: 37552,
-    sha256: "7292a1a9a5bd192c96a931e08f0b65857978e1d09f25c06232776db45037da8d",
-    gitBlob: "eda90193e3f247be0aea7e866a1944e891f8a727",
-  },
-} as const;
-export const CHAIN_SUMMARY_WORKSPACE_PINS = Object.freeze(
-  Object.fromEntries(
-    Object.entries(rawPins).map(([name, pin]) => [name, Object.freeze(pin)]),
-  ),
-) as Readonly<typeof rawPins>;
+import { CHAIN_SUMMARY_WORKSPACE_PINS } from "./chain-summary-workspace-custody.ts";
+export { CHAIN_SUMMARY_WORKSPACE_PINS } from "./chain-summary-workspace-custody.ts";
+const rawPins = CHAIN_SUMMARY_WORKSPACE_PINS;
 const DIST = "packages/chain-summaries/dist/index.js";
 const PACKAGE = "@jsonbored/chain-summaries";
 const EDGES = Object.freeze([

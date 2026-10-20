@@ -6,6 +6,12 @@ import {
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import { withPublicInputDiagnostics } from "./owner-input-diagnostics.ts";
 import {
+  readChainSummaryWorkspaceCustody,
+  chainSummaryWorkspaceInputIdentity,
+  chainSummaryWorkspaceSource,
+  type ChainSummaryWorkspaceCustody,
+} from "./chain-summary-workspace-custody.ts";
+import {
   DISCARDED_INPUT_SOURCE_PINS,
   ERASURE_CONFIG_SOURCE_PINS,
   planDiscardedInputReads,
@@ -91,6 +97,110 @@ export function ownerBuildInputIdentity(
     throw ownerProofFailure(cause, "evidence-008");
   }
   return logical;
+}
+// Raw-only companion: ordinary identities retain the original containment rule.
+export function ownerRawBuildInputIdentity(
+  root: string,
+  dependencyRoot: string,
+  metafile: unknown,
+  custody: ChainSummaryWorkspaceCustody | null,
+  name: string,
+): string {
+  const logical = custody
+    ? chainSummaryWorkspaceInputIdentity(
+        custody,
+        root,
+        dependencyRoot,
+        metafile,
+        name,
+      )
+    : null;
+  if (logical === null)
+    return ownerBuildInputIdentity(root, dependencyRoot, name);
+  const source = chainSummaryWorkspaceSource(
+    custody!,
+    root,
+    dependencyRoot,
+    metafile,
+  );
+  withOwnerProofReason("evidence-workspace-route-root", () =>
+    assert.equal(realpathSync(root), root),
+  );
+  withOwnerProofReason("evidence-workspace-route-dependency", () =>
+    assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot),
+  );
+  withOwnerProofReason("evidence-workspace-route-actual", () =>
+    assert.equal(realpathSync(path.resolve(root, name)), source.canonicalFile),
+  );
+  withOwnerProofReason("evidence-workspace-route-counterpart", () =>
+    assert.equal(
+      realpathSync(path.join(root, logical)),
+      path.join(root, logical),
+    ),
+  );
+  return logical;
+}
+
+function rawAssociationWorkspace(root: string, bytes: Uint8Array) {
+  withOwnerProofReason("evidence-workspace-association-size", () =>
+    assert.ok(
+      bytes.byteLength > 0 &&
+        bytes.byteLength <= OWNER_BUILD_LIMITS.associationBytes,
+    ),
+  );
+  const association = withOwnerProofReason(
+    "evidence-workspace-association-parse",
+    () => JSON.parse(Buffer.from(bytes).toString()),
+  );
+  withOwnerProofReason("evidence-workspace-association-kind", () =>
+    assert.equal(association.kind, "esbuild-api"),
+  );
+  withOwnerProofReason("evidence-workspace-association-root", () =>
+    assert.equal(association.sourceRoot, realpathSync(root)),
+  );
+  const dependencyRoot = withOwnerProofReason(
+    "evidence-workspace-association-dependency-root",
+    () => realpathSync(path.join(root, "node_modules")),
+  );
+  withOwnerProofReason("evidence-workspace-association-dependency", () =>
+    assert.equal(association.dependencyRoot, dependencyRoot),
+  );
+  const metafile: unknown = association.metafile;
+  return {
+    dependencyRoot,
+    metafile,
+    custody: readChainSummaryWorkspaceCustody(root, dependencyRoot, metafile),
+  };
+}
+
+function recheckRawWorkspace(
+  root: string,
+  dependencyRoot: string,
+  metafile: unknown,
+  custody: ChainSummaryWorkspaceCustody | null,
+): void {
+  const original = custody
+    ? chainSummaryWorkspaceSource(custody, root, dependencyRoot, metafile)
+    : null;
+  const fresh = readChainSummaryWorkspaceCustody(
+    root,
+    dependencyRoot,
+    metafile,
+  );
+  withOwnerProofReason("evidence-workspace-fresh-presence", () =>
+    assert.equal(fresh !== null, custody !== null),
+  );
+  if (fresh) {
+    const current = chainSummaryWorkspaceSource(
+      fresh,
+      root,
+      dependencyRoot,
+      metafile,
+    );
+    withOwnerProofReason("evidence-workspace-fresh-identity", () =>
+      assert.deepEqual(current, original),
+    );
+  }
 }
 // Read only the fixed public source/config inventory for an exact reviewed
 // batch. This read plan never grants admission; the full proof hashes it again.
@@ -196,6 +306,12 @@ export function optionalPgBuildAssociation(
     const dependencyRoot = withOwnerProofReason("evidence-016", () =>
       realpathSync(path.join(root, "node_modules")),
     );
+    proofStage = "workspace-custody";
+    const workspaceCustody = readChainSummaryWorkspaceCustody(
+      root,
+      dependencyRoot,
+      metafile,
+    );
     proofStage = "native-absence";
     for (const relative of [
       "pg-native",
@@ -245,6 +361,7 @@ export function optionalPgBuildAssociation(
       metafile,
       sources,
       ...discarded,
+      ...(workspaceCustody ? { workspaceCustody } : {}),
       outputs,
       registeredModuleNames,
     });
@@ -490,6 +607,20 @@ export function preserveOwnerBuild(
     } catch (cause) {
       throw ownerProofFailure(cause, "evidence-044");
     }
+    proofStage = "workspace-custody";
+    const workspace =
+      owner === "raw" ? rawAssociationWorkspace(root, association.bytes) : null;
+    if (workspace?.custody) {
+      const source = chainSummaryWorkspaceSource(
+        workspace.custody,
+        root,
+        workspace.dependencyRoot,
+        workspace.metafile,
+      );
+      withOwnerProofReason("evidence-workspace-preserve-source", () =>
+        assert.ok(sourcePaths.includes(source.logical)),
+      );
+    }
     proofStage = "sources";
     const sources = [...new Set([...sourcePaths, ...requiredSources[owner]])]
       .sort()
@@ -532,6 +663,15 @@ export function preserveOwnerBuild(
         },
       ),
     );
+    if (workspace) {
+      proofStage = "workspace-custody";
+      recheckRawWorkspace(
+        root,
+        workspace.dependencyRoot,
+        workspace.metafile,
+        workspace.custody,
+      );
+    }
     proofStage = "manifest";
     const manifest: OwnerBuildManifest = {
       version: 1,
@@ -1158,6 +1298,11 @@ async function validateBuildAssociation(
       throw ownerProofFailure(cause, "evidence-122");
     }
     proofStage = "raw-inputs";
+    const workspaceCustody = readChainSummaryWorkspaceCustody(
+      association.sourceRoot,
+      association.dependencyRoot,
+      meta,
+    );
     const knownSources = new Set(manifest.sources.map((source) => source.path));
     const inputIdentities = new Set<string>();
     for (const name of inputs) {
@@ -1174,9 +1319,11 @@ async function validateBuildAssociation(
         }
         continue;
       }
-      const relative = ownerBuildInputIdentity(
+      const relative = ownerRawBuildInputIdentity(
         association.sourceRoot,
         association.dependencyRoot,
+        meta,
+        workspaceCustody,
         name,
       );
       try {
@@ -1573,6 +1720,13 @@ async function validateBuildAssociation(
           throw ownerProofFailure(cause, "evidence-166");
         }
     }
+    proofStage = "workspace-custody";
+    recheckRawWorkspace(
+      association.sourceRoot,
+      association.dependencyRoot,
+      meta,
+      workspaceCustody,
+    );
   } catch (cause) {
     throw ownerBuildStageFailure("association", proofStage, cause);
   }

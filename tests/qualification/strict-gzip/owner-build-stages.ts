@@ -20,6 +20,7 @@ export const OWNER_BUILD_STAGES = Object.freeze({
   ]),
   "optional-adapter": Object.freeze([
     "environment",
+    "workspace-custody",
     "native-absence",
     "source-bytes",
     "discarded-input-sources",
@@ -28,6 +29,7 @@ export const OWNER_BUILD_STAGES = Object.freeze({
   ]),
   preserve: Object.freeze([
     "directory",
+    "workspace-custody",
     "modules",
     "entry",
     "sources",
@@ -45,6 +47,7 @@ export const OWNER_BUILD_STAGES = Object.freeze({
   ]),
   association: Object.freeze([
     "setup",
+    "workspace-custody",
     "queue-envelope",
     "queue-modules",
     "queue-source-maps",

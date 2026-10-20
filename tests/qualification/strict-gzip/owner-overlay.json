@@ -3,14 +3,29 @@
   "qualificationHead": "88b3cededcf01ddf82c86c10ca80c4e5284bb3b3",
   "files": [
     {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-custody.cases.ts",
+      "sha256": "c1ed0be7f56861b480c1cb80c2533ba75961a6f5f24f65fb97b7b23cac94aca9",
+      "bytes": 21926
+    },
+    {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-custody.ts",
+      "sha256": "7fbc57f3d08ce2159fcb07b17ebe3527081f5ea435ec7f5811e34d3449b651a3",
+      "bytes": 24281
+    },
+    {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-fixture.ts",
+      "sha256": "4d36ec3e5a86e873b92b439709e34b0b64d910af50c79e34bd528fae48d5090c",
+      "bytes": 54582
+    },
+    {
       "path": "tests/qualification/strict-gzip/chain-summary-workspace-probe.cases.ts",
-      "sha256": "ca235b6e6d7f4333b23b2a80dd6114c472599034a9cdfb87e976812482674b26",
-      "bytes": 69351
+      "sha256": "c3bbd244edb91fa619cb330676c81a94cf3c8a8b11bfd17d7fced48f01c95a50",
+      "bytes": 25732
     },
     {
       "path": "tests/qualification/strict-gzip/chain-summary-workspace-probe.ts",
-      "sha256": "7c158675c0786ca6423877170abaf8376b3d44121bdd0fc95bf7c843724f40b4",
-      "bytes": 17663
+      "sha256": "7726e0023fd54dc6ad92862d8f15b50da1f363b56f767f4b06e211149cde65a1",
+      "bytes": 16497
     },
     {
       "path": "tests/qualification/strict-gzip/discarded-input-pins.ts",
@@ -59,13 +74,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/optional-pg-import.cases.ts",
-      "sha256": "3a09a7646d2abd74673d5b725f1933eb44a4fda2b8ac7101c3eafc1fbc3a799f",
-      "bytes": 79731
+      "sha256": "dcd8cef31fb45cf497da0de511df4b591d82a840bf3b5a2f3127160cf33db969",
+      "bytes": 83330
     },
     {
       "path": "tests/qualification/strict-gzip/optional-pg-import.ts",
-      "sha256": "cad1cee99783c02962b1004469a739e7dbe5b4d65550b63cb95c7922daad5f05",
-      "bytes": 54457
+      "sha256": "8b335247053c6f0bfdc229bc0d8cc3a01187890d6677bd65f4e8c381fe943d49",
+      "bytes": 60832
     },
     {
       "path": "tests/qualification/strict-gzip/optional-pg-source-fixtures.json",
@@ -79,8 +94,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
-      "sha256": "0c37a7e1d468a5d0744c4a3eb14b5747899762434c0f6eccd30e119c2f7764b5",
-      "bytes": 47892
+      "sha256": "e9c895933fc43d0373edee7924a9c24ea76fd5b054b0bdb2d774d1a43bd419e7",
+      "bytes": 52488
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-stages.cases.ts",
@@ -89,8 +104,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-stages.ts",
-      "sha256": "9dfc17db2330f284dffb060a1f58a602cf7734bcb3d8f61564e58e8dadc5362e",
-      "bytes": 2688
+      "sha256": "2e745035ee8b95fabaee9171a800adc6c4b2940cbb6ba4ecca9f002d91dbe6ed",
+      "bytes": 2763
     },
     {
       "path": "tests/qualification/strict-gzip/owner-deadline.ts",
@@ -164,8 +179,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-proof-reason-codes.ts",
-      "sha256": "93e5cce54f449c6f00ed5fd860b462f5ec6b05f17ba3873ae04815ad4de3e274",
-      "bytes": 151599
+      "sha256": "ef1d4513a9d9e6bab102cf24f664b5755e65c2c756be218677ee9c858f375c8c",
+      "bytes": 167857
     },
     {
       "path": "tests/qualification/strict-gzip/owner-proof-reasons.cases.ts",
@@ -189,8 +204,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-raw-build.cases.ts",
-      "sha256": "56eac87a8d74432cd3a8a80ad98660739f9ca597b7ce888fae7f5006cee059fb",
-      "bytes": 14552
+      "sha256": "17e11fa2006c85b894066165c0faf7bc151adb7958bfce6d5a9f5c47ad3bd62a",
+      "bytes": 26951
     },
     {
       "path": "tests/qualification/strict-gzip/owner-resource-fixture.ts",
@@ -259,8 +274,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-fixture.ts",
-      "sha256": "1e620e7fc1706a15605d0b68d73ff8da10fbc4e3547bbdc46dbaf41c9959236b",
-      "bytes": 31380
+      "sha256": "f170a1925723047c255e1a967639c3624a6067c656c8fe45e25620860c7b86b1",
+      "bytes": 31640
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-resource.test.ts",

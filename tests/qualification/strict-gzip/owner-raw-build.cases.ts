@@ -1,6 +1,8 @@
 // Inert synthetic esbuild metadata, source-map JSON and module bytes only.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import {
   mkdtempSync,
   mkdirSync,
@@ -17,8 +19,19 @@ import { test } from "node:test";
 import {
   preserveOwnerBuild,
   ownerBuildInputIdentity,
+  ownerRawBuildInputIdentity,
+  optionalPgBuildAssociation,
   validateOwnerBuild,
 } from "./owner-build-evidence.ts";
+import { ownerSourceIdentity } from "./optional-pg-import.ts";
+import {
+  workspaceSample,
+  fixtures as pgFixtures,
+  discardedFixtures,
+  configFixtures,
+  DIST,
+  outputKey,
+} from "./chain-summary-workspace-fixture.ts";
 const hash = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const sources = [
   "workers/api.entry.ts",
@@ -415,3 +428,351 @@ for (const target of ["dependency", "project"] as const)
         ),
       );
     }, true));
+
+// Full raw association around the shared inert pg/discarded/workspace fixture.
+// Files are read as bytes only; no source, builder or native service is executed.
+async function workspaceRaw(action: (v: any) => Promise<void>) {
+  const sample = workspaceSample(),
+    { e, f, actual } = sample,
+    directory = path.join(f.home, "run/owner-builds/raw"),
+    previous = [
+      process.env.DECODER_QUALIFICATION_ROOT,
+      process.env.DECODER_QUALIFICATION_RESULT,
+    ];
+  try {
+    for (const [name, text] of Object.entries({
+      ...pgFixtures,
+      ...discardedFixtures,
+      ...configFixtures,
+    })) {
+      const file = path.join(f.root, name);
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, text);
+    }
+    for (const name of sources) {
+      const file = path.join(f.root, name);
+      mkdirSync(path.dirname(file), { recursive: true });
+      if (!Object.hasOwn(configFixtures, name))
+        writeFileSync(file, `// inert raw owner ${name}\n`);
+      e.metafile.inputs[name] = {
+        bytes: readFileSync(file).length,
+        imports: [],
+      };
+    }
+    for (const name of ["api.entry.js", "api-lazy.js"]) {
+      const entry = name === "api.entry.js",
+        key = path.relative(f.root, path.join(e.outputRoot, name)),
+        contributors = entry
+          ? ["workers/api.entry.ts"]
+          : sources.filter((source) => source !== "workers/api.entry.ts"),
+        bytes = Buffer.from("export const inert=1;\n"),
+        map = Buffer.from(
+          JSON.stringify({
+            version: 3,
+            names: [],
+            sources: contributors.map((source) =>
+              path.relative(
+                path.dirname(path.resolve(f.root, key)),
+                path.join(f.root, source),
+              ),
+            ),
+            sourcesContent: contributors.map((source) =>
+              readFileSync(path.join(f.root, source), "utf8"),
+            ),
+            mappings: "",
+          }),
+        );
+      e.metafile.outputs[key] = {
+        bytes: bytes.length,
+        imports: [
+          {
+            path: entry ? "./api-lazy.js" : "./chunks/pg-test.js",
+            kind: entry ? "dynamic-import" : "import-statement",
+          },
+        ],
+        inputs: Object.fromEntries(
+          contributors.map((source) => [source, { bytesInOutput: 1 }]),
+        ),
+        ...(entry
+          ? {
+              entryPoint: "workers/api.entry.ts",
+              exports: [
+                "AlerterHub",
+                "ChainFirehoseHub",
+                "McpSessionHub",
+                "NeonWriteBufferHub",
+                "SubnetStatusHub",
+                "default",
+              ],
+            }
+          : {}),
+      };
+      e.metafile.outputs[key + ".map"] = {
+        bytes: map.length,
+        imports: [],
+        inputs: {},
+      };
+      e.outputs.push({
+        metafilePath: key,
+        bytes,
+        sourceMap: { metafilePath: key + ".map", bytes: map },
+      });
+    }
+    const moduleName = (key: string) =>
+      path.relative(e.outputRoot, path.resolve(f.root, key));
+    const modules = e.outputs.map((output) => ({
+      name: moduleName(output.metafilePath),
+      type: "ESModule" as const,
+      bytes: output.bytes,
+    }));
+    e.registeredModuleNames = modules.map((module) => module.name);
+    sample.mint();
+    const sourcePaths = Object.keys(e.metafile.inputs).map((name) =>
+      ownerRawBuildInputIdentity(
+        f.root,
+        f.dep,
+        e.metafile,
+        e.workspaceCustody!,
+        name,
+      ),
+    );
+    const association: any = {
+      kind: "esbuild-api",
+      sourceRoot: f.root,
+      dependencyRoot: f.dep,
+      outputRoot: e.outputRoot,
+      metafile: e.metafile,
+      outputs: e.outputs.flatMap((output) => [
+        {
+          metafilePath: output.metafilePath,
+          name: moduleName(output.metafilePath),
+          type: "ESModule",
+          sourceMapName: moduleName(output.sourceMap.metafilePath),
+          sha256: hash(output.bytes),
+        },
+        {
+          metafilePath: output.sourceMap.metafilePath,
+          name: moduleName(output.sourceMap.metafilePath),
+          type: "SourceMap",
+          sourceMapName: null,
+          sha256: hash(output.sourceMap.bytes),
+        },
+      ]),
+      sourceMaps: e.outputs.map((output) => ({
+        name: moduleName(output.sourceMap.metafilePath),
+        base64: Buffer.from(output.sourceMap.bytes).toString("base64"),
+      })),
+    };
+    const manifestFile = path.join(directory, "manifest.json");
+    const editManifest = (change: (manifest: any) => void) => {
+      const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
+      change(manifest);
+      writeFileSync(manifestFile, JSON.stringify(manifest));
+    };
+    const serialize = () => Buffer.from(JSON.stringify(association));
+    process.env.DECODER_QUALIFICATION_ROOT = f.root;
+    process.env.DECODER_QUALIFICATION_RESULT = path.join(
+      f.home,
+      "run/result.json",
+    );
+    await action({
+      ...sample,
+      directory,
+      association,
+      sourcePaths,
+      editManifest,
+      prove: () =>
+        optionalPgBuildAssociation(
+          f.root,
+          e.outputRoot,
+          e.metafile,
+          e.outputs,
+          e.registeredModuleNames,
+        ),
+      preserve: (paths = sourcePaths) =>
+        preserveOwnerBuild("raw", "api.entry.js", modules, paths, {
+          kind: "api-builder",
+          bytes: serialize(),
+        }),
+      validate: () =>
+        validateOwnerBuild(directory, "raw", f.root, "a".repeat(64)),
+      save: () => {
+        const bytes = serialize();
+        writeFileSync(path.join(directory, "association.bin"), bytes);
+        editManifest((manifest) => {
+          manifest.association.bytes = bytes.length;
+          manifest.association.sha256 = hash(bytes);
+        });
+      },
+      editMap: (change: (map: any) => void) => {
+        const map = JSON.parse(
+          Buffer.from(association.sourceMaps[0].base64, "base64").toString(),
+        );
+        change(map);
+        const bytes = Buffer.from(JSON.stringify(map));
+        association.sourceMaps[0].base64 = bytes.toString("base64");
+        association.metafile.outputs[outputKey + ".map"].bytes = bytes.length;
+        association.outputs[1].sha256 = hash(bytes);
+      },
+    });
+  } finally {
+    for (const [index, key] of [
+      "DECODER_QUALIFICATION_ROOT",
+      "DECODER_QUALIFICATION_RESULT",
+    ].entries()) {
+      if (previous[index] === undefined) delete process.env[key];
+      else process.env[key] = previous[index];
+    }
+    sample.clean();
+  }
+}
+
+test("preserves and independently publishes exact raw workspace custody", async () =>
+  workspaceRaw(async (v) => {
+    const original = JSON.stringify(v.association);
+    assert.ok(v.prove());
+    assert.ok(v.sourcePaths.includes(DIST));
+    assert.ok(!v.sourcePaths.includes(v.actual));
+    for (const identity of [ownerSourceIdentity, ownerBuildInputIdentity])
+      assert.throws(() => identity(v.f.root, v.f.dep, v.actual));
+    v.preserve();
+    assert.equal((await v.validate()).modules.length, 3);
+    assert.equal(
+      readFileSync(path.join(v.directory, "association.bin"), "utf8"),
+      original,
+    );
+    assert.equal(JSON.stringify(v.association), original);
+  }));
+
+const workspaceMutations: Record<string, (v: any) => void> = {
+  "base source": (v) => {
+    const file = path.join(v.f.base, DIST),
+      bytes = readFileSync(file);
+    bytes[0] ^= 1;
+    writeFileSync(file, bytes);
+  },
+  "candidate dependency link": (v) => {
+    const file = path.join(v.f.root, "node_modules");
+    rmSync(file);
+    symlinkSync(path.relative(v.f.root, v.f.dep), file);
+  },
+  "base workspace link": (v) => {
+    const file = path.join(v.f.dep, "@jsonbored/chain-summaries");
+    rmSync(file);
+    symlinkSync(path.join(v.f.base, "packages/chain-summaries"), file);
+  },
+};
+for (const [name, mutate] of Object.entries(workspaceMutations)) {
+  test(`preservation rechecks ${name} after builder proof`, async () =>
+    workspaceRaw(async (v) => {
+      assert.ok(v.prove());
+      const counterpart = readFileSync(path.join(v.f.root, DIST));
+      mutate(v);
+      assert.deepEqual(readFileSync(path.join(v.f.root, DIST)), counterpart);
+      assert.throws(
+        v.preserve,
+        /owner-build-proof-failed:preserve:workspace-custody/,
+      );
+    }));
+  test(`publisher rechecks ${name} after preservation`, async () =>
+    workspaceRaw(async (v) => {
+      v.preserve();
+      mutate(v);
+      await assert.rejects(
+        v.validate,
+        /owner-build-proof-failed:association:raw-inputs/,
+      );
+    }));
+  test(`publisher final boundary rechecks late ${name}`, async (t) =>
+    workspaceRaw(async (v) => {
+      v.preserve();
+      const file = path.join(v.directory, "module-000.bin"),
+        open = fs.openSync;
+      let reads = 0;
+      // Third module read follows the full optional proof and precedes final custody.
+      t.mock.method(fs, "openSync", (target: any, ...args: any[]) => {
+        if (target === file && ++reads === 3) mutate(v);
+        return (open as any)(target, ...args);
+      });
+      syncBuiltinESMExports();
+      try {
+        await assert.rejects(
+          v.validate,
+          /owner-build-proof-failed:association:workspace-custody/,
+        );
+        assert.equal(reads, 3);
+      } finally {
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+      }
+    }));
+}
+test("preservation requires the fixed logical workspace source", async () =>
+  workspaceRaw(async (v) => {
+    assert.throws(
+      () => v.preserve(v.sourcePaths.filter((name: string) => name !== DIST)),
+      /owner-build-proof-failed:preserve:workspace-custody/,
+    );
+  }));
+test("publisher requires logical workspace source membership independently", async () =>
+  workspaceRaw(async (v) => {
+    v.preserve();
+    v.editManifest((manifest: any) => {
+      manifest.sources = manifest.sources.filter(
+        (source: any) => source.path !== DIST,
+      );
+    });
+    await assert.rejects(v.validate);
+  }));
+test("workspace association cannot bypass complete optional proof by removing pg", async () =>
+  workspaceRaw(async (v) => {
+    for (const table of [v.e.metafile.inputs, v.e.metafile.outputs])
+      for (const record of Object.values(table) as any[])
+        record.imports = record.imports.filter(
+          (item: any) =>
+            item.path !== "pg-native" && item.original !== "pg-native",
+        );
+    assert.throws(v.prove, /owner-proof-reason:wsp-001/);
+    v.preserve();
+    await assert.rejects(v.validate);
+  }));
+for (const alias of [
+  DIST,
+  "node_modules/@jsonbored/chain-summaries/dist/index.js",
+])
+  test(`publisher refuses workspace input alias ${alias}`, async () =>
+    workspaceRaw(async (v) => {
+      v.preserve();
+      v.e.metafile.inputs[alias] = v.e.metafile.inputs[v.actual];
+      v.save();
+      await assert.rejects(v.validate);
+    }));
+for (const mutation of ["candidate source", "content", "mapping", "duplicate"])
+  test(`publisher refuses self-consistent changed workspace map ${mutation}`, async () =>
+    workspaceRaw(async (v) => {
+      v.preserve();
+      v.editMap((map: any) => {
+        const index = map.sources.findIndex(
+          (name: string) =>
+            path.resolve(
+              path.dirname(path.resolve(v.f.root, outputKey)),
+              name,
+            ) === path.join(v.f.base, DIST),
+        );
+        assert.ok(index >= 0);
+        if (mutation === "candidate source")
+          map.sources[index] = path.relative(
+            path.dirname(path.resolve(v.f.root, outputKey)),
+            path.join(v.f.root, DIST),
+          );
+        else if (mutation === "content") map.sourcesContent[index] += " ";
+        else if (mutation === "mapping")
+          map.mappings = map.mappings.split(";").slice(0, -2).join(";");
+        else {
+          map.sources.push(map.sources[index]);
+          map.sourcesContent.push(map.sourcesContent[index]);
+        }
+      });
+      v.save();
+      await assert.rejects(v.validate);
+    }));

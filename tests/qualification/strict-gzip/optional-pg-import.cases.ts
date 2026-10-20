@@ -1,3 +1,32 @@
+import {
+  fixtures,
+  decodeInertFixture,
+  sourceFixtureEnvelope,
+  configFixtureEnvelope,
+  discardedFixtures,
+  configFixtures,
+  names,
+  ESM,
+  MAIN,
+  NATIVE,
+  CLIENT,
+  outputKey,
+  mapKey,
+  vlq,
+  sample,
+  editMap,
+  editOutput,
+  discardedSample,
+  workspaceSample,
+} from "./chain-summary-workspace-fixture.ts";
+import {
+  fixture as workspaceFixture,
+  sourceBytes as workspaceSourceBytes,
+  DIST as WORKSPACE_DIST,
+  SOURCE_A as WORKSPACE_IMPORTER_A,
+  SOURCE_B as WORKSPACE_IMPORTER_B,
+} from "./chain-summary-workspace-fixture.ts";
+import { readChainSummaryWorkspaceCustody } from "./chain-summary-workspace-custody.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -32,83 +61,6 @@ import {
   validateOptionalPgNativeImport,
   type OptionalPgEvidence,
 } from "./optional-pg-import.ts";
-const fixtures = JSON.parse(
-  readFileSync(
-    new URL("./optional-pg-source-fixtures.json", import.meta.url),
-    "utf8",
-  ),
-) as Record<string, string>;
-function decodeInertFixture(
-  value: any,
-  pins: Record<string, { bytes: number; sha256: string; gitBlob: string }>,
-): Record<string, string> {
-  assert.deepEqual(
-    Object.keys(value).sort(),
-    ["version", "encoding", "decodedBytes", "decodedSha256", "contents"].sort(),
-  );
-  assert.equal(value.version, 1);
-  assert.equal(value.encoding, "gzip-base64");
-  assert.ok(
-    typeof value.contents === "string" &&
-      value.contents.length < 512 * 1024 &&
-      /^[A-Za-z0-9+/]*={0,2}$/.test(value.contents),
-  );
-  assert.ok(
-    Number.isSafeInteger(value.decodedBytes) &&
-      value.decodedBytes > 0 &&
-      value.decodedBytes <= 2 * 1024 * 1024,
-  );
-  assert.match(value.decodedSha256, /^[a-f0-9]{64}$/);
-  const bytes = gunzipSync(Buffer.from(value.contents, "base64"), {
-    maxOutputLength: 2 * 1024 * 1024,
-  });
-  assert.equal(bytes.length, value.decodedBytes);
-  assert.equal(
-    createHash("sha256").update(bytes).digest("hex"),
-    value.decodedSha256,
-  );
-  const data = JSON.parse(bytes.toString("utf8")) as Record<string, string>;
-  assert.deepEqual(Object.keys(data).sort(), Object.keys(pins).sort());
-  for (const [name, pin] of Object.entries(pins)) {
-    assert.equal(typeof data[name], "string");
-    const source = Buffer.from(data[name]!);
-    assert.equal(source.length, pin.bytes);
-    assert.equal(createHash("sha256").update(source).digest("hex"), pin.sha256);
-    assert.equal(
-      createHash("sha1")
-        .update(`blob ${source.length}\0`)
-        .update(source)
-        .digest("hex"),
-      pin.gitBlob,
-    );
-  }
-  return data;
-}
-const sourceFixtureEnvelope = JSON.parse(
-  readFileSync(
-    new URL("./discarded-input-source-fixtures.json", import.meta.url),
-    "utf8",
-  ),
-);
-const configFixtureEnvelope = JSON.parse(
-  readFileSync(
-    new URL("./erasure-config-source-fixtures.json", import.meta.url),
-    "utf8",
-  ),
-);
-const discardedFixtures = decodeInertFixture(
-  sourceFixtureEnvelope,
-  DISCARDED_INPUT_SOURCE_PINS,
-);
-const configFixtures = decodeInertFixture(
-  configFixtureEnvelope,
-  ERASURE_CONFIG_SOURCE_PINS,
-);
-const names = Object.keys(OPTIONAL_PG_SOURCE_PINS);
-const [ESM, MAIN, NATIVE, CLIENT] = names as [string, string, string, string];
-const outputKey =
-  "../../tmp/raw-owner-qualification-Ab12/modules/chunks/pg-test.js";
-const mapKey = outputKey + ".map";
 
 test("diagnostic stage and category vocabularies are frozen", () => {
   assert.ok(Object.isFrozen(OPTIONAL_PROOF_STAGES));
@@ -671,193 +623,7 @@ for (const scope of ["input", "output"] as const) {
     });
   }
 }
-const vlq = (number: number) => {
-  let value = number < 0 ? -number * 2 + 1 : number * 2;
-  let encoded = "";
-  do {
-    let digit = value % 32;
-    value = Math.floor(value / 32);
-    if (value) digit |= 32;
-    encoded +=
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[digit];
-  } while (value);
-  return encoded;
-};
-function sample(): OptionalPgEvidence {
-  const sourceRoot = "/review/repo";
-  const outputRoot = "/tmp/raw-owner-qualification-Ab12/modules";
-  const output = Buffer.from(
-    'let a=1;\nlet b=2;\nlet c=3;\nlet d=q("pg-native");\n',
-  );
-  const sourceMap = Buffer.from(
-    JSON.stringify({
-      version: 3,
-      sources: names.map((name) =>
-        path.relative(
-          path.dirname(path.resolve(sourceRoot, outputKey)),
-          path.resolve(sourceRoot, name),
-        ),
-      ),
-      sourcesContent: names.map((name) => fixtures[name]),
-      names: [],
-      mappings: [
-        [0, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 1, 0, 0],
-        [6, 1, 6, 11],
-      ]
-        .map((fields) => fields.map(vlq).join(""))
-        .join(";"),
-    }),
-  );
-  return {
-    sourceRoot,
-    dependencyRoot: "/review/repo/node_modules",
-    outputRoot,
-    metafile: {
-      inputs: Object.fromEntries(
-        names.map((name) => [
-          name,
-          {
-            bytes: Buffer.byteLength(fixtures[name]!),
-            imports:
-              name === ESM
-                ? [
-                    {
-                      path: MAIN,
-                      kind: "import-statement",
-                      original: "../lib/index.js",
-                    },
-                  ]
-                : name === MAIN
-                  ? [
-                      {
-                        path: NATIVE,
-                        kind: "require-call",
-                        original: "./native",
-                      },
-                    ]
-                  : name === NATIVE
-                    ? [
-                        {
-                          path: CLIENT,
-                          kind: "require-call",
-                          original: "./client",
-                        },
-                      ]
-                    : [
-                        {
-                          path: "pg-native",
-                          kind: "require-call",
-                          external: true,
-                        },
-                      ],
-          },
-        ]),
-      ),
-      outputs: {
-        [outputKey]: {
-          bytes: output.length,
-          imports: [
-            { path: "pg-native", kind: "require-call", external: true },
-          ],
-          inputs: Object.fromEntries(
-            names.map((name) => [name, { bytesInOutput: 8 }]),
-          ),
-        },
-        [mapKey]: { bytes: sourceMap.length, imports: [], inputs: {} },
-      },
-    },
-    sources: Object.fromEntries(
-      names.map((name) => [name, Buffer.from(fixtures[name]!)]),
-    ),
-    outputs: [
-      {
-        metafilePath: outputKey,
-        bytes: output,
-        sourceMap: { metafilePath: mapKey, bytes: sourceMap },
-      },
-    ],
-    registeredModuleNames: ["chunks/pg-test.js"],
-  };
-}
-function editMap(e: OptionalPgEvidence, change: (map: any) => void) {
-  const map = JSON.parse(Buffer.from(e.outputs[0]!.sourceMap.bytes).toString());
-  change(map);
-  const bytes = Buffer.from(JSON.stringify(map));
-  e.outputs[0]!.sourceMap.bytes = bytes;
-  e.metafile.outputs[mapKey]!.bytes = bytes.length;
-}
-function editOutput(e: OptionalPgEvidence, value: string) {
-  const bytes = Buffer.from(value);
-  e.outputs[0]!.bytes = bytes;
-  e.metafile.outputs[outputKey]!.bytes = bytes.length;
-}
-function discardedSample(contributing = true): OptionalPgEvidence {
-  const e = sample();
-  e.discardedInputSources = Object.fromEntries(
-    Object.entries(discardedFixtures).map(([name, text]) => [
-      name,
-      Buffer.from(text),
-    ]),
-  );
-  e.erasureConfigSources = Object.fromEntries(
-    Object.entries(configFixtures).map(([name, text]) => [
-      name,
-      Buffer.from(text),
-    ]),
-  ) as unknown as ErasureConfigSources;
-  const sourceNames = Object.keys(DISCARDED_INPUT_SOURCE_PINS);
-  for (const name of sourceNames) {
-    const rows = DISCARDED_INPUT_RECORD_PINS.filter(
-      (pin) => pin.sourcePath === name,
-    );
-    const length = Math.max(...rows.map((pin) => pin.importIndex)) + 1;
-    const imports = Array.from({ length }, () => ({
-      path: "node:assert",
-      kind: "import-statement",
-      external: true,
-    }));
-    for (const pin of rows)
-      imports[pin.importIndex] = {
-        path: pin.target,
-        kind: pin.kind,
-        external: true,
-      };
-    e.metafile.inputs[name] = {
-      bytes: Buffer.byteLength(discardedFixtures[name]!),
-      imports,
-    };
-    if (contributing)
-      e.metafile.outputs[outputKey]!.inputs[name] = { bytesInOutput: 8 };
-  }
-  if (contributing) {
-    editOutput(
-      e,
-      Buffer.from(e.outputs[0]!.bytes).toString() +
-        sourceNames.map((_, index) => `let source${index}=0;\n`).join(""),
-    );
-    editMap(e, (map) => {
-      for (const source of sourceNames) {
-        map.sources.push(
-          path.relative(
-            path.dirname(path.resolve(e.sourceRoot, outputKey)),
-            path.resolve(e.sourceRoot, source),
-          ),
-        );
-        map.sourcesContent.push(discardedFixtures[source]);
-      }
-      map.mappings +=
-        ";" +
-        sourceNames
-          .map((_, index) =>
-            (index === 0 ? [0, 1, -6, -11] : [0, 1, 0, 0]).map(vlq).join(""),
-          )
-          .join(";");
-    });
-  }
-  return e;
-}
+
 const stageMutations: [
   (typeof OPTIONAL_PROOF_STAGES)[number],
   (e: OptionalPgEvidence) => void,
@@ -1012,7 +778,12 @@ const stageMutations: [
 ];
 test("every frozen proof stage has an explicit failing fixture", () => {
   assert.deepEqual(
-    stageMutations.map(([stage]) => stage).sort(),
+    [
+      ...stageMutations.map(([stage]) => stage),
+      "workspace-identity",
+      "workspace-map",
+      "workspace-completeness",
+    ].sort(),
     [...OPTIONAL_PROOF_STAGES].sort(),
   );
 });
@@ -2817,3 +2588,425 @@ test("malformed source-map JSON retains a specific parse-operation reason", () =
     },
   );
 });
+
+// The workspace source strings are inert. These fixtures only create files for
+// the exact read-only custody adapter; no source/runtime module is evaluated.
+
+test("full pg, fixed discarded batch and exact workspace custody complete together", () => {
+  const f = workspaceSample();
+  try {
+    const result = validateOptionalPgNativeImport(f.e);
+    assert.equal(result?.admitted.output, outputKey);
+    assert.equal(result?.universallyClosedGraph, false);
+    assert.equal(result?.branchInactivityProven, false);
+  } finally {
+    f.clean();
+  }
+});
+for (const [stage, mutate] of [
+  [
+    "workspace-identity",
+    (f: ReturnType<typeof workspaceSample>) => {
+      delete f.e.workspaceCustody;
+    },
+  ],
+  [
+    "workspace-map",
+    (f: ReturnType<typeof workspaceSample>) => {
+      editMap(f.e, (map) => {
+        map.sourcesContent[map.sourcesContent.length - 2] += "x";
+      });
+    },
+  ],
+  [
+    "workspace-completeness",
+    (f: ReturnType<typeof workspaceSample>) => {
+      delete f.e.metafile.outputs[outputKey]!.inputs[f.actual];
+      f.mint();
+    },
+  ],
+] as const)
+  test(`fixed proof refusal stage: ${stage}`, () => {
+    const f = workspaceSample();
+    try {
+      mutate(f);
+      assert.throws(
+        () => validateOptionalPgNativeImport(f.e),
+        (error) => {
+          const marker = optionalProofDiagnosticMarkers(error);
+          assert.ok(marker.includes(`[owner-optional-proof-failed:${stage}]`));
+          assert.ok(/\[owner-proof-reason:wsp-[0-9]+\]/.test(marker));
+          return true;
+        },
+      );
+    } finally {
+      f.clean();
+    }
+  });
+const workspaceFailures: [
+  string,
+  (f: ReturnType<typeof workspaceSample>) => void,
+][] = [
+  [
+    "no pg early branch",
+    (f) => {
+      for (const record of Object.values(f.e.metafile.inputs))
+        record.imports = record.imports.filter(
+          (row) => row.path !== "pg-native",
+        );
+      for (const record of Object.values(f.e.metafile.outputs))
+        record.imports = [];
+    },
+  ],
+  [
+    "forged token",
+    (f) => {
+      f.e.workspaceCustody = {
+        kind: "pending-chain-summary-workspace-custody",
+      };
+    },
+  ],
+  [
+    "orphan token",
+    (f) => {
+      delete f.e.metafile.inputs[f.actual];
+    },
+  ],
+  [
+    "source pin drift",
+    (f) => {
+      f.e.sources[CLIENT]![0] ^= 1;
+    },
+  ],
+  [
+    "discarded source drift",
+    (f) => {
+      f.e.discardedInputSources![WORKSPACE_IMPORTER_B]![0] ^= 1;
+    },
+  ],
+  [
+    "config pin drift",
+    (f) => {
+      f.e.erasureConfigSources!["tsconfig.json"]![0] ^= 1;
+    },
+  ],
+  [
+    "module inventory drift",
+    (f) => {
+      f.e.registeredModuleNames.push("extra.js");
+    },
+  ],
+  [
+    "output byte drift",
+    (f) => {
+      f.e.outputs[0]!.bytes = new Uint8Array(0);
+    },
+  ],
+  [
+    "source map byte drift",
+    (f) => {
+      f.e.outputs[0]!.sourceMap.bytes = new Uint8Array(0);
+    },
+  ],
+  [
+    "new unresolved output",
+    (f) => {
+      f.e.metafile.outputs[outputKey]!.imports.push({
+        path: "unknown",
+        kind: "require-call",
+        external: true,
+      });
+    },
+  ],
+  [
+    "old pg mapping removed",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.mappings = map.mappings
+          .split(";")
+          .map((v: string, i: number) => (i === 3 ? "" : v))
+          .join(";");
+      });
+    },
+  ],
+  [
+    "workspace contribution zero",
+    (f) => {
+      f.e.metafile.outputs[outputKey]!.inputs[f.actual]!.bytesInOutput = 0;
+      f.mint();
+    },
+  ],
+  [
+    "workspace contribution removed after mint",
+    (f) => {
+      delete f.e.metafile.outputs[outputKey]!.inputs[f.actual];
+    },
+  ],
+  [
+    "map candidate counterpart alias",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sources[map.sources.length - 2] = path.relative(
+          path.dirname(path.resolve(f.e.sourceRoot, outputKey)),
+          path.join(f.e.sourceRoot, WORKSPACE_DIST),
+        );
+      });
+    },
+  ],
+  [
+    "map logical package alias",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sources[map.sources.length - 2] = path.relative(
+          path.dirname(path.resolve(f.e.sourceRoot, outputKey)),
+          path.join(
+            f.e.sourceRoot,
+            "node_modules/@jsonbored/chain-summaries/dist/index.js",
+          ),
+        );
+      });
+    },
+  ],
+  [
+    "map same suffix wrong root",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sources[map.sources.length - 2] = "/private/" + WORKSPACE_DIST;
+      });
+    },
+  ],
+  [
+    "map noncanonical spelling",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sources[map.sources.length - 2] =
+          "./" + map.sources[map.sources.length - 2];
+      });
+    },
+  ],
+  [
+    "duplicate map source",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sources.push(map.sources.at(-2));
+        map.sourcesContent.push(map.sourcesContent.at(-2));
+      });
+    },
+  ],
+  [
+    "null map content",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sourcesContent[map.sourcesContent.length - 2] = null;
+      });
+    },
+  ],
+  [
+    "same length changed map source",
+    (f) => {
+      editMap(f.e, (map) => {
+        const i = map.sourcesContent.length - 2;
+        map.sourcesContent[i] = "x" + map.sourcesContent[i].slice(1);
+      });
+    },
+  ],
+  [
+    "absent workspace generated mapping",
+    (f) => {
+      editMap(f.e, (map) => {
+        const rows = map.mappings.split(";");
+        rows[rows.length - 2] = "";
+        map.mappings = rows.join(";");
+      });
+    },
+  ],
+  [
+    "changed importer map bytes",
+    (f) => {
+      editMap(f.e, (map) => {
+        map.sourcesContent[map.sourcesContent.length - 1] += "x";
+      });
+    },
+  ],
+  [
+    "absent importer generated mapping",
+    (f) => {
+      editMap(f.e, (map) => {
+        const rows = map.mappings.split(";");
+        rows[rows.length - 1] = "";
+        map.mappings = rows.join(";");
+      });
+    },
+  ],
+  [
+    "non-JS map contribution",
+    (f) => {
+      f.e.metafile.outputs[mapKey]!.inputs[f.actual] = { bytesInOutput: 0 };
+    },
+  ],
+  [
+    "input alias added after mint",
+    (f) => {
+      f.e.metafile.inputs[WORKSPACE_DIST] = { bytes: 31640, imports: [] };
+    },
+  ],
+];
+for (const [name, mutate] of workspaceFailures)
+  test(`complete workspace graph refuses: ${name}`, () => {
+    const f = workspaceSample();
+    try {
+      mutate(f);
+      assert.throws(() => validateOptionalPgNativeImport(f.e));
+    } finally {
+      f.clean();
+    }
+  });
+for (const [stage, mutate] of stageMutations.filter(
+  ([stage]) => stage !== "discarded-inputs" && stage !== "erasure-config",
+))
+  test(`valid workspace never bypasses existing refusal stage ${stage}`, () => {
+    const f = workspaceSample();
+    try {
+      mutate(f.e);
+      assert.throws(() => validateOptionalPgNativeImport(f.e));
+    } finally {
+      f.clean();
+    }
+  });
+for (const scope of ["input", "output"] as const)
+  for (const property of ["entries", "iterator"] as const)
+    test(`pending workspace refresh precedes ${scope} ${property} getter consumption`, () => {
+      const f = workspaceSample();
+      let calls = 0;
+      try {
+        const array =
+          scope === "input"
+            ? f.e.metafile.inputs[WORKSPACE_IMPORTER_A]!.imports
+            : f.e.metafile.outputs[outputKey]!.imports;
+        Object.defineProperty(
+          array,
+          property === "iterator" ? Symbol.iterator : "entries",
+          {
+            get() {
+              calls++;
+              throw new Error("private");
+            },
+          },
+        );
+        assert.throws(
+          () => validateOptionalPgNativeImport(f.e),
+          (error) => {
+            assert.equal(
+              parseOwnerProofReasonMarker(
+                optionalProofDiagnosticMarkers(error),
+              ),
+              "wsc-057",
+            );
+            return true;
+          },
+        );
+        assert.equal(calls, 0);
+      } finally {
+        f.clean();
+      }
+    });
+for (const scope of ["input", "output"] as const)
+  for (const attack of ["path-getter", "proxy-row"] as const)
+    test(`early workspace refresh refuses ${scope} ${attack} without callbacks`, () => {
+      const f = workspaceSample();
+      let calls = 0;
+      try {
+        const array =
+          scope === "input"
+            ? f.e.metafile.inputs[WORKSPACE_IMPORTER_A]!.imports
+            : f.e.metafile.outputs[outputKey]!.imports;
+        if (attack === "path-getter")
+          Object.defineProperty(array[0], "path", {
+            enumerable: true,
+            get() {
+              calls++;
+              throw new Error("private");
+            },
+          });
+        else
+          array[0] = new Proxy(array[0]!, {
+            get() {
+              calls++;
+              throw new Error("private");
+            },
+            ownKeys() {
+              calls++;
+              throw new Error("private");
+            },
+            getOwnPropertyDescriptor() {
+              calls++;
+              throw new Error("private");
+            },
+            getPrototypeOf() {
+              calls++;
+              throw new Error("private");
+            },
+          });
+        assert.throws(() => validateOptionalPgNativeImport(f.e));
+        assert.equal(calls, 0);
+      } finally {
+        f.clean();
+      }
+    });
+test("adding even an allowed output builtin after mint refuses stale workspace custody", () => {
+  const f = workspaceSample();
+  try {
+    f.e.metafile.outputs[outputKey]!.imports.push({
+      path: "node:fs",
+      kind: "require-call",
+      external: true,
+    });
+    assert.throws(
+      () => validateOptionalPgNativeImport(f.e),
+      (error) => {
+        assert.equal(
+          parseOwnerProofReasonMarker(optionalProofDiagnosticMarkers(error)),
+          "wsc-048",
+        );
+        return true;
+      },
+    );
+  } finally {
+    f.clean();
+  }
+});
+for (const table of ["inputs", "outputs"] as const)
+  for (const attack of ["table-getter", "table-proxy"] as const)
+    test(`workspace token refresh precedes generic ${table} ${attack} access`, () => {
+      const f = workspaceSample();
+      let calls = 0;
+      try {
+        if (attack === "table-getter")
+          Object.defineProperty(f.e.metafile, table, {
+            get() {
+              calls++;
+              throw new Error("private");
+            },
+            enumerable: true,
+          });
+        else
+          f.e.metafile[table] = new Proxy(f.e.metafile[table], {
+            get() {
+              calls++;
+              throw new Error("private");
+            },
+            ownKeys() {
+              calls++;
+              throw new Error("private");
+            },
+            getOwnPropertyDescriptor() {
+              calls++;
+              throw new Error("private");
+            },
+          }) as any;
+        assert.throws(() => validateOptionalPgNativeImport(f.e));
+        assert.equal(calls, 0);
+      } finally {
+        f.clean();
+      }
+    });
