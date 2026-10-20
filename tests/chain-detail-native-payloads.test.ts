@@ -396,3 +396,114 @@ test("extra stored parts abort planned publication without modifying original ch
     f.sql.close();
   }
 });
+
+test("native encoding preserves golden base64 padding and view offsets", async () => {
+  const cases: [number[], string][] = [
+    [[], ""],
+    [[0], "AA=="],
+    [[0, 255], "AP8="],
+    [[0, 255, 128], "AP+A"],
+    [[0, 255, 128, 127], "AP+Afw=="],
+    [[0, 255, 128, 127, 1], "AP+AfwE="],
+  ];
+  for (const [values, encoded] of cases) {
+    const parent = Uint8Array.from([19, 23, ...values, 29, 31]);
+    const original = parent.slice();
+    const bytes = new Uint8Array(parent.buffer, 2, values.length);
+    const h = hash(bytes);
+    const reference = await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      bytes,
+      "raw",
+    );
+    assert.equal(
+      reference,
+      `${prefix}${h}:${bytes.length}:${bytes.length}:raw:inline:${encoded}`,
+    );
+    assert.deepEqual(
+      await readNativePayload(null, h, bytes.length, "inline:" + encoded),
+      bytes,
+    );
+    assert.deepEqual(parent, original);
+  }
+});
+
+test("native inline encoding preserves every octet in a nested byte view", async () => {
+  const parent = new Uint8Array(300).fill(239);
+  const view = parent.subarray(17, 290).subarray(9, 265);
+  view.set(Uint8Array.from({ length: 256 }, (_, index) => index));
+  const original = parent.slice();
+  const expected = btoa(
+    Array.from(view, (byte) => String.fromCharCode(byte)).join(""),
+  );
+  const reference = await writeNativePayload(
+    null,
+    hash(view),
+    view.length,
+    view,
+    "raw",
+  );
+  assert.equal(reference.slice(reference.indexOf("inline:") + 7), expected);
+  assert.deepEqual(
+    await readNativePayload(
+      null,
+      hash(view),
+      view.length,
+      "inline:" + expected,
+    ),
+    view,
+  );
+  assert.deepEqual(parent, original);
+});
+
+test("planned chunk encoding preserves sliced bytes across the fixed boundary", async () => {
+  const f = fixture();
+  const size = 1_490_002;
+  const parent = new Uint8Array(size + 37).fill(239);
+  const bytes = new Uint8Array(parent.buffer, 17, size);
+  for (let index = 0; index < size; index++) bytes[index] = index % 256;
+  const original = parent.slice();
+  const h = hash(bytes);
+  try {
+    const plan: ProducerStatement[] = [];
+    assert.equal(
+      await writeNativePayload(null, h, size, bytes, "raw", plan),
+      `${prefix}${h}:${size}:${size}:raw:d1`,
+    );
+    assert.equal(
+      plan.length,
+      3,
+      "two immutable parts and the existing extra-part guard",
+    );
+    assert.deepEqual(
+      plan.slice(0, 2).map((statement) => statement.values!.slice(0, 2)),
+      [
+        [h, 0],
+        [h, 1],
+      ],
+    );
+    assert.equal((plan[0].values![2] as string).length, 1_986_668);
+    assert.equal(
+      plan[1].values![2],
+      btoa(String.fromCharCode(...bytes.subarray(1_490_000))),
+    );
+    await createD1Store(f.db as unknown as D1StoreBinding).transaction(plan);
+    assert.deepEqual(await readNativePayload(f.env, h, size, "d1"), bytes);
+    assert.deepEqual(parent, original);
+  } finally {
+    f.sql.close();
+  }
+});
+
+test("native encoding retains the empty encoding of an already detached view", async () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  structuredClone(bytes.buffer, { transfer: [bytes.buffer] });
+  assert.equal(bytes.byteLength, 0);
+  const h = hash(new Uint8Array());
+  assert.equal(
+    await writeNativePayload(null, h, 0, bytes, "raw"),
+    `${prefix}${h}:0:0:raw:inline:`,
+  );
+});
