@@ -1,0 +1,591 @@
+import assert from "node:assert/strict";
+import { createHash, randomUUID } from "node:crypto";
+import { afterAll, beforeAll, test } from "vitest";
+import { Miniflare } from "miniflare";
+import { ReadableStream } from "node:stream/web";
+import { nodeByteStreamR2 } from "./helpers/node-r2-byte-stream.ts";
+import {
+  createChainDetailPayloadSpool,
+  type ChainDetailSpoolJournal,
+} from "../src/chain-detail-payload-spool.ts";
+
+const runtime = new Miniflare({
+  modules: true,
+  script: "export default {fetch(){return new Response('test')}}",
+  compatibilityDate: "2026-06-06",
+  r2Buckets: ["BUCKET"],
+});
+let bucket: R2Bucket;
+let nativeBucket: R2Bucket;
+beforeAll(async () => {
+  nativeBucket = (await runtime.getR2Bucket("BUCKET")) as unknown as R2Bucket;
+  bucket = nodeByteStreamR2(nativeBucket).bucket;
+});
+afterAll(async () => runtime.dispose());
+const emptyJournal: ChainDetailSpoolJournal = {
+  async opened() {},
+  async completed() {},
+};
+async function append(
+  spool: ReturnType<typeof createChainDetailPayloadSpool>,
+  id: string,
+  bytes: Uint8Array,
+) {
+  let part = 0;
+  for (let at = 0; at < bytes.length; at += 384 * 1024)
+    await spool.append(id, "gzip", part++, bytes.subarray(at, at + 384 * 1024));
+}
+
+test("one multipart object multiplexes exact candidate frames across the 5-MiB boundary", async () => {
+  const token = randomUUID();
+  const calls: string[] = [];
+  const spool = createChainDetailPayloadSpool(bucket, token, {
+    async opened(key, uploadId) {
+      assert.equal(key, `metagraph/ingest-stage/v1/${token}/gzip`);
+      assert.ok(uploadId);
+      calls.push("open");
+    },
+    async completed(size, etag) {
+      assert.equal(size, 7 * 1024 * 1024);
+      assert.ok(etag);
+      calls.push("complete");
+    },
+  });
+  const first = Uint8Array.from({ length: 6 * 1024 * 1024 }, (_, i) => i % 251);
+  const second = new Uint8Array(1024 * 1024).fill(127);
+  const expected = [first, second].map((bytes) =>
+    createHash("sha256").update(bytes).digest("hex"),
+  );
+  await append(spool, "extrinsics:0", first);
+  first.fill(0); // append consumes its bytes; the caller may reuse them now.
+  await append(spool, "events:0", second);
+  second.fill(0);
+  await spool.finish();
+  assert.deepEqual(calls, ["open", "complete"]);
+  const observed: string[] = [];
+  const ids: string[] = [];
+  for await (const frame of spool.scan("gzip")) {
+    ids.push(frame.valueId);
+    const digest = createHash("sha256");
+    for await (const bytes of frame.parts) {
+      assert.ok(bytes.length <= 384 * 1024);
+      digest.update(bytes);
+    }
+    observed.push(digest.digest("hex"));
+  }
+  assert.deepEqual(ids, ["extrinsics:0", "events:0"]);
+  assert.deepEqual(observed, expected);
+  await spool.discard();
+  assert.equal(
+    await bucket.head(`metagraph/ingest-stage/v1/${token}/gzip`),
+    null,
+  );
+});
+
+test("unused spool performs no upload and raw scan contains no records", async () => {
+  const calls: string[] = [];
+  const spool = createChainDetailPayloadSpool(bucket, randomUUID(), {
+    async opened() {
+      calls.push("open");
+    },
+    async completed() {
+      calls.push("complete");
+    },
+  });
+  await spool.finish();
+  for await (const frame of spool.scan("raw")) assert.fail(frame.valueId);
+  for await (const frame of spool.scan("gzip")) assert.fail(frame.valueId);
+  assert.deepEqual(calls, []);
+  await spool.discard();
+});
+
+test("part order failures fail closed without changing another attempt", async () => {
+  const good = createChainDetailPayloadSpool(
+    bucket,
+    randomUUID(),
+    emptyJournal,
+  );
+  const bad = createChainDetailPayloadSpool(bucket, randomUUID(), emptyJournal);
+  await assert.rejects(
+    bad.append("events:0", "gzip", 1, new Uint8Array([1])),
+    /ordering/,
+  );
+  await assert.rejects(bad.finish(), /lifecycle/);
+  await append(good, "events:0", new Uint8Array([1, 2, 3]));
+  await good.finish();
+  const result: number[] = [];
+  for await (const frame of good.scan("gzip"))
+    for await (const bytes of frame.parts) result.push(...bytes);
+  assert.deepEqual(result, [1, 2, 3]);
+  await Promise.all([good.discard(), bad.discard()]);
+});
+
+test("failed durable upload journal aborts before any part is uploaded", async () => {
+  let key = "",
+    uploadId = "";
+  const spool = createChainDetailPayloadSpool(bucket, randomUUID(), {
+    async opened(k, id) {
+      key = k;
+      uploadId = id;
+      throw new Error("journal unavailable");
+    },
+    async completed() {
+      assert.fail("completion after failed journal");
+    },
+  });
+  await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+  await assert.rejects(spool.finish(), /journal unavailable/);
+  await spool.discard();
+  assert.equal(await bucket.head(key), null);
+  await assert.rejects(
+    bucket
+      .resumeMultipartUpload(key, uploadId)
+      .uploadPart(1, new Uint8Array([1])),
+  );
+});
+
+test("complete lost response resolves native absent-upload cleanup and deletes the committed object", async () => {
+  const token = randomUUID();
+  const port = new Proxy(bucket, {
+    get(target, key) {
+      if (key === "createMultipartUpload")
+        return async (name: string) => {
+          const upload = await target.createMultipartUpload(name);
+          return new Proxy(upload, {
+            get(value, member) {
+              if (member === "complete")
+                return async (parts: R2UploadedPart[]) => {
+                  await value.complete(parts);
+                  throw new Error("lost completion response");
+                };
+              const property: unknown = Reflect.get(value, member, value);
+              return typeof property === "function"
+                ? property.bind(value)
+                : property;
+            },
+          });
+        };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const spool = createChainDetailPayloadSpool(port, token, emptyJournal);
+  await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+  await assert.rejects(spool.finish(), /lost completion/);
+  assert.ok(await bucket.head(`metagraph/ingest-stage/v1/${token}/gzip`));
+  await spool.discard();
+  assert.equal(
+    await bucket.head(`metagraph/ingest-stage/v1/${token}/gzip`),
+    null,
+  );
+});
+
+test("an unknown abort failure remains a cleanup failure even if deleting the object succeeds", async () => {
+  let failAbort = true;
+  const port = new Proxy(bucket, {
+    get(target, key) {
+      if (key === "createMultipartUpload")
+        return async (name: string) => {
+          const upload = await target.createMultipartUpload(name);
+          return new Proxy(upload, {
+            get(value, member) {
+              if (member === "abort")
+                return async () => {
+                  if (failAbort) {
+                    failAbort = false;
+                    throw new Error("abort transport unavailable");
+                  }
+                  await value.abort();
+                };
+              const property: unknown = Reflect.get(value, member, value);
+              return typeof property === "function"
+                ? property.bind(value)
+                : property;
+            },
+          });
+        };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const spool = createChainDetailPayloadSpool(port, randomUUID(), {
+    async opened() {
+      throw new Error("journal unavailable");
+    },
+    async completed() {},
+  });
+  await append(spool, "events:0", new Uint8Array([1]));
+  await assert.rejects(spool.finish(), /journal unavailable/);
+  await assert.rejects(spool.discard(), /abort transport unavailable/);
+  await spool.discard();
+});
+
+test("replacement or deletion before scan cannot produce accepted bytes", async () => {
+  for (const replace of [true, false]) {
+    const token = randomUUID();
+    const spool = createChainDetailPayloadSpool(bucket, token, emptyJournal);
+    await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+    await spool.finish();
+    const key = `metagraph/ingest-stage/v1/${token}/gzip`;
+    if (replace) await bucket.put(key, new Uint8Array([9, 8, 7]));
+    else await bucket.delete(key);
+    await assert.rejects(async () => {
+      for await (const frame of spool.scan("gzip"))
+        for await (const bytes of frame.parts)
+          assert.fail(String(bytes.length));
+    }, /Missing or replaced/);
+    await spool.discard();
+  }
+});
+
+test("advancing past an undrained record refuses and releases scan ownership", async () => {
+  const spool = createChainDetailPayloadSpool(
+    bucket,
+    randomUUID(),
+    emptyJournal,
+  );
+  await append(spool, "events:0", new Uint8Array([1]));
+  await append(spool, "events:1", new Uint8Array([2]));
+  await spool.finish();
+  const iterator = spool.scan("gzip")[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).done, false);
+  await assert.rejects(iterator.next(), /fully consumed/);
+  await spool.discard();
+});
+
+test("early read, repeated scans and raw append are explicit internal protocol errors", async () => {
+  const spool = createChainDetailPayloadSpool(
+    bucket,
+    randomUUID(),
+    emptyJournal,
+  );
+  await assert.rejects(async () => {
+    for await (const frame of spool.scan("gzip")) assert.fail(frame.valueId);
+  }, /lifecycle/);
+  await append(spool, "events:0", new Uint8Array([1]));
+  await spool.finish();
+  for await (const frame of spool.scan("gzip"))
+    for await (const bytes of frame.parts) assert.equal(bytes.length, 1);
+  await assert.rejects(async () => {
+    for await (const frame of spool.scan("gzip")) assert.fail(frame.valueId);
+  }, /lifecycle/);
+  await spool.discard();
+  const raw = createChainDetailPayloadSpool(bucket, randomUUID(), emptyJournal);
+  await assert.rejects(
+    raw.append("events:0", "raw", 0, new Uint8Array([1])),
+    /gzip candidate/,
+  );
+  await raw.discard();
+});
+
+// These extra cases exercise failure/cancellation/ownership contracts through
+// an explicit Node-only byte representation seam. Native9 remains the runtime
+// proof; this file supplies ordinary Node V8 branch ownership for the module.
+async function prepareSmall(port: R2Bucket = bucket, journal = emptyJournal) {
+  const token = randomUUID();
+  const spool = createChainDetailPayloadSpool(port, token, journal);
+  await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+  await spool.finish();
+  return { token, spool, key: `metagraph/ingest-stage/v1/${token}/gzip` };
+}
+async function consume(spool: ReturnType<typeof createChainDetailPayloadSpool>) {
+  const records: string[] = [];
+  let bytes = 0;
+  for await (const frame of spool.scan("gzip")) {
+    records.push(frame.valueId);
+    for await (const part of frame.parts) bytes += part.byteLength;
+  }
+  return { records, bytes };
+}
+function faultBody(bytes: number[]) {
+  return new ReadableStream({
+    type: "bytes",
+    start(controller) {
+      controller.enqueue(new Uint8Array(bytes));
+      controller.close();
+    },
+  });
+}
+function multipartPort(
+  port: R2Bucket,
+  hooks: {
+    beforePart?: () => Promise<void>;
+    complete?: (upload: R2MultipartUpload, parts: R2UploadedPart[]) => Promise<R2Object>;
+    abort?: (upload: R2MultipartUpload) => Promise<void>;
+  },
+) {
+  return new Proxy(port, {
+    get(target, key) {
+      if (key === "createMultipartUpload")
+        return async (name: string) => {
+          const upload = await target.createMultipartUpload(name);
+          return new Proxy(upload, {
+            get(value, member) {
+              if (member === "uploadPart")
+                return async (...args: Parameters<R2MultipartUpload["uploadPart"]>) => {
+                  await hooks.beforePart?.();
+                  return value.uploadPart(...args);
+                };
+              const complete = hooks.complete;
+              const abort = hooks.abort;
+              if (member === "complete" && complete)
+                return (parts: R2UploadedPart[]) => complete(value, parts);
+              if (member === "abort" && abort)
+                return () => abort(value);
+              const property: unknown = Reflect.get(value, member, value);
+              return typeof property === "function" ? property.bind(value) : property;
+            },
+          });
+        };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+function latch() {
+  let release!: () => void;
+  const promise = new Promise<void>((done) => { release = done; });
+  return { promise, release };
+}
+
+test("constructor and private part admission reject before any R2 operation", async () => {
+  const constructorPort = nodeByteStreamR2(nativeBucket);
+  assert.throws(() => createChainDetailPayloadSpool(constructorPort.bucket, "invalid", emptyJournal), /token/);
+  assert.equal(constructorPort.stats.bucketOperations, 0);
+  for (const [id, part, bytes] of [
+    ["not-namespaced", 0, new Uint8Array([1])],
+    ["events:0", -1, new Uint8Array([1])],
+    ["events:0", 0.5, new Uint8Array([1])],
+    ["events:0", Number.MAX_SAFE_INTEGER + 1, new Uint8Array([1])],
+    ["events:0", 0, new Uint8Array(384 * 1024 + 1)],
+  ] as const) {
+    const counted = nodeByteStreamR2(nativeBucket);
+    const spool = createChainDetailPayloadSpool(counted.bucket, randomUUID(), emptyJournal);
+    await assert.rejects(spool.append(id, "gzip", part, bytes), /part/);
+    await assert.rejects(spool.append("events:0", "gzip", 0, new Uint8Array([1])), /lifecycle/);
+    await assert.rejects(spool.finish(), /lifecycle/);
+    await spool.discard();
+    assert.equal(counted.stats.bucketOperations, 0);
+  }
+});
+
+test("same-value part sequence and returning to a closed value cannot be reordered", async () => {
+  for (const closed of [false, true]) {
+    const spool = createChainDetailPayloadSpool(bucket, randomUUID(), emptyJournal);
+    await append(spool, "events:0", new Uint8Array([1]));
+    if (closed) await append(spool, "events:1", new Uint8Array([2]));
+    await assert.rejects(spool.append("events:0", "gzip", closed ? 0 : 2, new Uint8Array([3])), /ordering/);
+    await spool.discard();
+  }
+});
+
+test("empty finished spool preserves a raw scan and permits idempotent cleanup", async () => {
+  const spool = createChainDetailPayloadSpool(bucket, randomUUID(), emptyJournal);
+  await spool.finish();
+  for await (const frame of spool.scan("raw")) assert.fail(frame.valueId);
+  assert.deepEqual(await consume(spool), { records: [], bytes: 0 });
+  await spool.discard();
+  await spool.discard();
+  await assert.rejects(spool.finish(), /lifecycle/);
+});
+
+test("actual requested read views stay bounded and successful terminal EOF releases the bridge", async () => {
+  const port = nodeByteStreamR2(nativeBucket);
+  const { spool } = await prepareSmall(port.bucket);
+  assert.deepEqual(await consume(spool), { records: ["events:0"], bytes: 3 });
+  assert.equal(port.stats.getCalls, 1);
+  assert.ok(port.stats.byobReads >= 2);
+  assert.ok(port.stats.maxRequested > 0 && port.stats.maxRequested <= 384 * 1024);
+  assert.equal(port.stats.releasedReaders, 1);
+  await spool.discard();
+});
+
+test("truncated, corrupted and trailing body faults never complete an accepted scan", async () => {
+  for (const [bytes, expected] of [
+    [[1, 2], /Truncated/],
+    [[9, 2, 3], /Corrupt/],
+    [[1, 2, 3, 4], /trailing/],
+  ] as const) {
+    const port = nodeByteStreamR2(nativeBucket, { replaceBody: () => faultBody([...bytes]) });
+    const { spool, key } = await prepareSmall(port.bucket);
+    await assert.rejects(consume(spool), expected);
+    await spool.discard();
+    assert.equal(await nativeBucket.head(key), null);
+    assert.ok(port.stats.cancelCalls + port.stats.releasedReaders > 0);
+  }
+});
+
+test("a read failure propagates its original error and releases scan ownership", async () => {
+  const original = new Error("unit read unavailable");
+  const port = nodeByteStreamR2(nativeBucket, {
+    replaceBody: () => new ReadableStream({ type: "bytes", pull(controller) { controller.error(original); } }),
+  });
+  const { spool, key } = await prepareSmall(port.bucket);
+  await assert.rejects(consume(spool), (error) => error === original);
+  assert.equal(port.stats.releasedReaders, 1);
+  await spool.discard();
+  assert.equal(await nativeBucket.head(key), null);
+});
+
+test("failed GET and a genuine generic Node body both release the production scan state", async () => {
+  const unavailable = new Error("unit get unavailable");
+  const failedGet = new Proxy(bucket, {
+    get(target, key) {
+      if (key === "get") return async () => { throw unavailable; };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const first = await prepareSmall(failedGet);
+  await assert.rejects(consume(first.spool), (error) => error === unavailable);
+  await first.spool.discard();
+  assert.equal(await nativeBucket.head(first.key), null);
+  // This deliberately uses the unadapted transfer boundary and requires
+  // production to refuse it, rather than installing a default-reader fallback.
+  const second = await prepareSmall(nativeBucket);
+  await assert.rejects(consume(second.spool), TypeError);
+  await second.spool.discard();
+  assert.equal(await nativeBucket.head(second.key), null);
+});
+
+test("discard refuses an active reader, and breaking iteration cancels without waiting for cancellation acknowledgement", async () => {
+  for (const cancellation of ["reject", "pending"] as const) {
+    const port = nodeByteStreamR2(nativeBucket, { cancel: cancellation });
+    const { spool, key } = await prepareSmall(port.bucket);
+    const iterator = spool.scan("gzip")[Symbol.asyncIterator]();
+    assert.equal((await iterator.next()).done, false);
+    await assert.rejects(spool.discard(), /active/);
+    await assert.rejects(consume(spool), /lifecycle/);
+    assert.ok(iterator.return);
+    await iterator.return();
+    assert.equal(port.stats.cancelCalls, 1);
+    await spool.discard();
+    assert.equal(await nativeBucket.head(key), null);
+  }
+});
+
+test("a pending native part retains exclusive ownership until its response arrives", async () => {
+  const entered = latch(), resume = latch();
+  const port = multipartPort(bucket, { async beforePart() { entered.release(); await resume.promise; } });
+  const spool = createChainDetailPayloadSpool(port, randomUUID(), emptyJournal);
+  const bytes = new Uint8Array(384 * 1024).fill(7);
+  let pending: Promise<void> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let failed = false;
+  let failure: unknown;
+  const drain = async (operation: Promise<void>) => {
+    try { await operation; }
+    catch (error) { if (!failed) { failed = true; failure = error; } }
+  };
+  try {
+    for (let part = 0; part < 13; part++) await spool.append("events:0", "gzip", part, bytes);
+    pending = spool.append("events:0", "gzip", 13, bytes);
+    await Promise.race([
+      entered.promise,
+      pending.then(() => { throw new Error("Native part completed before the delay seam"); }),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("Native part delay seam was not reached")), 10_000);
+      }),
+    ]);
+    await assert.rejects(spool.append("events:0", "gzip", 14, bytes), /lifecycle/);
+    await assert.rejects(spool.finish(), /lifecycle/);
+    await assert.rejects(spool.discard(), /active/);
+    resume.release();
+    await pending;
+    await spool.finish();
+    assert.deepEqual(await consume(spool), { records: ["events:0"], bytes: 14 * bytes.length });
+  } catch (error) { failed = true; failure = error; }
+  finally {
+    clearTimeout(timer);
+    resume.release();
+    if (pending) await drain(pending);
+    await drain(spool.discard());
+  }
+  if (failed) throw failure;
+}, 30_000);
+
+test("native part failure poisons preparation but still aborts and cleans only its attempt", async () => {
+  const failure = new Error("unit upload part unavailable");
+  const port = multipartPort(bucket, { async beforePart() { throw failure; } });
+  const token = randomUUID();
+  const spool = createChainDetailPayloadSpool(port, token, emptyJournal);
+  await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+  await assert.rejects(spool.finish(), (error) => error === failure);
+  await assert.rejects(spool.finish(), /lifecycle/);
+  await spool.discard();
+  assert.equal(await nativeBucket.head(`metagraph/ingest-stage/v1/${token}/gzip`), null);
+});
+
+test("size mismatch after real completion refuses the result and deletes the committed object", async () => {
+  const port = multipartPort(bucket, {
+    async complete(upload, parts) {
+      const object = await upload.complete(parts);
+      return new Proxy(object, { get(target, key) { return key === "size" ? target.size + 1 : Reflect.get(target, key, target); } });
+    },
+  });
+  const token = randomUUID();
+  const spool = createChainDetailPayloadSpool(port, token, emptyJournal);
+  await append(spool, "events:0", new Uint8Array([1, 2, 3]));
+  await assert.rejects(spool.finish(), /size mismatch/);
+  assert.ok(await nativeBucket.head(`metagraph/ingest-stage/v1/${token}/gzip`));
+  await spool.discard();
+  assert.equal(await nativeBucket.head(`metagraph/ingest-stage/v1/${token}/gzip`), null);
+});
+
+test("completion-journal failure retains known object ownership until exact-key cleanup", async () => {
+  const token = randomUUID();
+  const failure = new Error("unit completion journal unavailable");
+  let aborted = 0;
+  const port = multipartPort(bucket, { async abort(upload) { aborted++; await upload.abort(); } });
+  const spool = createChainDetailPayloadSpool(port, token, { async opened() {}, async completed() { throw failure; } });
+  await append(spool, "events:0", new Uint8Array([1]));
+  await assert.rejects(spool.finish(), (error) => error === failure);
+  assert.ok(await nativeBucket.head(`metagraph/ingest-stage/v1/${token}/gzip`));
+  await spool.discard();
+  assert.equal(aborted, 0);
+  assert.equal(await nativeBucket.head(`metagraph/ingest-stage/v1/${token}/gzip`), null);
+});
+
+test("only documented NoSuchUpload under the abort action resolves absence", async () => {
+  let aborted = 0;
+  const knownAbsent = multipartPort(bucket, {
+    async abort(upload) {
+      await upload.abort();
+      aborted++;
+      throw new Error("abortMultipartUpload: absent (10024)");
+    },
+  });
+  const journal: ChainDetailSpoolJournal = { async opened() { throw new Error("unit journal unavailable"); }, async completed() {} };
+  const accepted = createChainDetailPayloadSpool(knownAbsent, randomUUID(), journal);
+  await append(accepted, "events:0", new Uint8Array([1]));
+  await assert.rejects(accepted.finish(), /journal/);
+  await accepted.discard();
+  assert.equal(aborted, 1);
+  for (const failure of [new Error("put: absent (10024)"), new Error("abortMultipartUpload: other (10025)"), "abort refused"]) {
+    let once = true;
+    const port = multipartPort(bucket, { async abort(upload) { if (once) { once = false; throw failure; } await upload.abort(); } });
+    const spool = createChainDetailPayloadSpool(port, randomUUID(), journal);
+    await append(spool, "events:0", new Uint8Array([1]));
+    await assert.rejects(spool.finish(), /journal/);
+    await assert.rejects(spool.discard(), (error) => error === failure);
+    await spool.discard();
+  }
+});
+
+test("delete failure is retained after completed upload and can be retried idempotently", async () => {
+  let failed = false;
+  const failure = new Error("unit delete unavailable");
+  const port = new Proxy(bucket, {
+    get(target, key) {
+      if (key === "delete") return async (name: string) => { if (!failed) { failed = true; throw failure; } await target.delete(name); };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const { spool, key } = await prepareSmall(port);
+  await assert.rejects(spool.discard(), (error) => error === failure);
+  assert.ok(await nativeBucket.head(key));
+  await spool.discard();
+  await spool.discard();
+  assert.equal(await nativeBucket.head(key), null);
+});

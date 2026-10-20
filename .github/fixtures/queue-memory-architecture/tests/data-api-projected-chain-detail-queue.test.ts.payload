@@ -1,0 +1,452 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { Miniflare } from "miniflare";
+import { afterAll, beforeAll, beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { nodeByteStreamR2 } from "./helpers/node-r2-byte-stream.ts";
+import { resetNeonWriteVerdictMemo } from "../src/neon-write.ts";
+import { discardChainDetailD1Stage } from "../src/chain-detail-d1-staging.ts";
+import type { D1StoreBinding } from "../src/d1-store.ts";
+import type { ChainDetailMirrorInput } from "../src/chain-detail-neon-write.ts";
+
+// Postgres is only the existing non-D1 routing seam. D1 and R2 storage,
+// metadata, multipart and cleanup use actual isolated Miniflare bindings.
+// Only R2 body representation crosses the explicit Node-only BYOB adapter;
+// the independent native workerd suite owns native stream correctness.
+// This suite makes no provider charging or whole-handler resource claim.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+const { default: worker } = await import("../workers/data-api.ts");
+
+const runtime = new Miniflare({
+  modules: true,
+  script: "export default {fetch(){return new Response('test')}}",
+  compatibilityDate: "2026-06-06",
+  d1Databases: ["DB"],
+  r2Buckets: ["R2"],
+});
+let db: D1Database;
+let bucket: R2Bucket;
+const business = [
+  "chain_detail_extrinsics",
+  "chain_detail_chain_events",
+  "chain_detail_account_events",
+  "chain_detail_blocks",
+] as const;
+const privateTables = [
+  "chain_detail_ingest_stage_apply",
+  "chain_detail_ingest_stage_fragments",
+  "chain_detail_ingest_stage_checks",
+  "chain_detail_ingest_stage_sessions",
+] as const;
+const ownedTables = [...business, "lane_health"].join(",");
+const stamp = 1_790_000_000_000;
+
+function input(value: string | null = "ordinary", block = 6_100_001): ChainDetailMirrorInput {
+  return {
+    blockRows: [{ block_number: block, block_hash: "0x" + "ab".repeat(32), spec_version: 441, extrinsic_count: 1, chain_event_count: 1, account_event_count: 1, observed_at: stamp, synced_at: stamp, native_transfer_tao: "0", stake_flow_tao: "0", economic_activity_tao: "0", fee_tao: "0", tip_tao: "0", issuance_tao: "0", subnet_ids: "[]", economics_complete: 1 }],
+    extrinsicRows: [{ block_number: block, extrinsic_index: 0, extrinsic_hash: "0x" + "cd".repeat(32), signer: null, call_module: "System", call_function: "remark", success: null, fee_tao: null, tip_tao: null, call_args: value, observed_at: stamp }],
+    chainEventRows: [{ block_number: block, event_index: 0, pallet: "System", method: "Remarked", args: null, phase: "ApplyExtrinsic", extrinsic_index: 0, observed_at: stamp }],
+    accountEventRows: [{ block_number: block, event_index: 0, extrinsic_index: 0, event_kind: "Transfer", hotkey: "h", coldkey: "c", netuid: null, uid: null, amount_tao: "1", alpha_amount: null, observed_at: stamp }],
+  };
+}
+function body(families = input()) {
+  return {
+    lane: "chain-detail",
+    captured_at: stamp,
+    pass_total: Object.values(families).reduce((sum, rows) => sum + rows.length, 0),
+    // Coverage deliberately appears first on the wire, while the write must
+    // still apply it last in the same business transaction.
+    families: {
+      blockRows: families.blockRows,
+      accountEventRows: families.accountEventRows,
+      chainEventRows: families.chainEventRows,
+      extrinsicRows: families.extrinsicRows,
+    },
+  };
+}
+function compressed(families = input()) { return gzipSync(JSON.stringify(body(families))); }
+function spoolValue() {
+  let value = "";
+  for (let index = 0; value.length < 150_000; index++)
+    value += createHash("sha256").update(String(index)).digest("base64");
+  return value.slice(0, 150_000);
+}
+function spooledMessage() {
+  const value = spoolValue();
+  assert.ok(gzipSync(value).byteLength > 98_304, "the private gzip candidate must exceed inline storage");
+  const bytes = compressed(input(value));
+  // This is a genuine provider-admissible compressed delivery whose one field
+  // exceeds the existing 128-KiB base64-inline threshold after gzip. It does
+  // not stand in for the producer's narrower ordinary packing acceptance.
+  assert.ok(bytes.byteLength <= 128 * 1024);
+  return bytes;
+}
+function message(original: unknown, afterAck?: () => void) {
+  const calls: string[] = [];
+  return {
+    body: original,
+    calls,
+    ack() { afterAck?.(); calls.push("ack"); },
+    retry() { calls.push("retry"); },
+  };
+}
+async function consume(messages: ReturnType<typeof message>[], overrides: Record<string, unknown> = {}) {
+  const scheduled: Promise<unknown>[] = [];
+  await worker.queue!(
+    { messages } as never,
+    {
+      ...pgMockEnv(),
+      D1_STATE: db,
+      D1_STATE_TABLES: ownedTables,
+      D1_EXPORT_REVISIONS: "enabled",
+      METAGRAPH_ARCHIVE: bucket,
+      SYNC_CHAIN_DETAIL_STREAMING: "enabled",
+      ...overrides,
+    } as never,
+    { waitUntil(promise: Promise<unknown>) { scheduled.push(promise); } } as never,
+  );
+  await Promise.allSettled(scheduled);
+}
+async function count(table: string) {
+  return db.prepare(`SELECT COUNT(*) n FROM ${table}`).first<number>("n");
+}
+async function emptyPreparation() {
+  for (const table of privateTables) assert.equal(await count(table), 0, table);
+}
+async function noBusiness() {
+  for (const table of [...business, "chain_detail_payload_chunks", "archive_export_revisions"])
+    assert.equal(await count(table), 0, table);
+}
+async function unchangedRevisionCoverage() {
+  // Canonical selectedD1Store filters through D1_EXPORT_TABLES, which currently
+  // registers none of these four tables. Do not manufacture export coverage in
+  // a handler fixture; direct-store revision behavior has separate tests.
+  assert.equal(await count("archive_export_revisions"), 0);
+}
+async function businessSnapshot() {
+  const order = {
+    chain_detail_extrinsics: "block_number,extrinsic_index",
+    chain_detail_chain_events: "block_number,event_index",
+    chain_detail_account_events: "block_number,event_index",
+    chain_detail_blocks: "block_number",
+    chain_detail_payload_chunks: "sha256,part",
+    archive_export_revisions: "table_name",
+  };
+  return Object.fromEntries(await Promise.all(Object.entries(order).map(async ([table, keys]) => [
+    table, (await db.prepare(`SELECT * FROM ${table} ORDER BY ${keys}`).all()).results,
+  ])));
+}
+function nativePort(hooks: {
+  runMatch?: (sql: string) => boolean;
+  beforeRun?: () => Promise<void>;
+  afterBatch?: () => Promise<void>;
+} = {}): D1StoreBinding {
+  const wrap = (statement: D1PreparedStatement): D1PreparedStatement => new Proxy(statement, {
+    get(target, key) {
+      if (key === "bind") return (...values: unknown[]) => wrap(target.bind(...values));
+      if (key === "run") return async () => { await hooks.beforeRun?.(); return target.run(); };
+      const property: unknown = Reflect.get(target, key, target);
+      return typeof property === "function" ? property.bind(target) : property;
+    },
+  });
+  return {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      return hooks.runMatch?.(sql) ? wrap(statement) : statement;
+    },
+    async batch<T>(statements: D1PreparedStatement[]) {
+      const result = await db.batch<T>(statements);
+      await hooks.afterBatch?.();
+      return result;
+    },
+  };
+}
+function nativeBucket(hooks: { beforeDelete?: () => Promise<void>; events?: string[] } = {}) {
+  const keys: string[] = [];
+  const port = new Proxy(bucket, {
+    get(target, key) {
+      if (key === "createMultipartUpload") return async (name: string, options?: R2MultipartOptions) => {
+        keys.push(name);
+        hooks.events?.push("multipart-open");
+        return target.createMultipartUpload(name, options);
+      };
+      if (key === "get") return async (name: string, options?: R2GetOptions) => {
+        hooks.events?.push("spool-read");
+        return target.get(name, options);
+      };
+      if (key === "delete") return async (name: string | string[]) => {
+        hooks.events?.push("cleanup-start");
+        await hooks.beforeDelete?.();
+        await target.delete(name);
+        hooks.events?.push("cleanup-finished");
+      };
+      const property: unknown = Reflect.get(target, key, target);
+      return typeof property === "function" ? property.bind(target) : property;
+    },
+  }) as R2Bucket;
+  return { port, keys };
+}
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+async function within<T>(pending: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("Native fixture seam was not reached")), 10_000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
+beforeAll(async () => {
+  db = await runtime.getD1Database("DB");
+  bucket = nodeByteStreamR2((await runtime.getR2Bucket("R2")) as unknown as R2Bucket).bucket;
+  for (const file of ["./fixtures/chain-detail-d1-canonical.sql", "./fixtures/chain-detail-d1-staging.sql"])
+    for (const sql of readFileSync(new URL(file, import.meta.url), "utf8").split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+  // Exact canonical lane_health table closure. Retention triggers are absent,
+  // so the real readiness query must decline the optional cleanup path.
+  await db.prepare("CREATE TABLE lane_health (lane TEXT NOT NULL, verdict TEXT NOT NULL, age_ms INTEGER, detail TEXT, checked_at INTEGER NOT NULL, _source_tid TEXT UNIQUE)").run();
+});
+afterAll(async () => runtime.dispose());
+beforeEach(async () => {
+  resetNeonWriteVerdictMemo();
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  pg.control.rows = null;
+  pg.control.db = null;
+  pg.control.postgres = null;
+  pg.control.answers.length = 0;
+  pg.control.onQuery = null;
+  for (const table of [...privateTables, ...business, "chain_detail_payload_chunks", "archive_export_revisions", "lane_health"])
+    await db.prepare(`DELETE FROM ${table}`).run();
+  const objects = await bucket.list();
+  if (objects.objects.length) await bucket.delete(objects.objects.map((object) => object.key));
+});
+
+describe("the projected chain-detail queue consumer", () => {
+  test.each([
+    { name: "flag absent with compressed bytes", flag: undefined, compressed: true },
+    { name: "ordinary object while flag enabled", flag: "enabled", compressed: false },
+  ])("preserves the legacy path for $name without multipart R2", async (entry) => {
+    const readOnly = { get: bucket.get.bind(bucket), head: bucket.head.bind(bucket) };
+    const delivery = message(entry.compressed ? compressed() : body());
+    await consume([delivery], { SYNC_CHAIN_DETAIL_STREAMING: entry.flag, METAGRAPH_ARCHIVE: readOnly });
+    assert.deepEqual(delivery.calls, ["ack"]);
+    for (const table of business) assert.equal(await count(table), 1);
+    await unchangedRevisionCoverage();
+    await emptyPreparation();
+    assert.equal((await bucket.list()).objects.length, 0);
+  });
+
+  test("ACK follows real business commit and completed private cleanup", async () => {
+    const entered = deferred(), release = deferred();
+    const events: string[] = [];
+    const archive = nativeBucket({ events, async beforeDelete() { entered.resolve(); await release.promise; } });
+    const original = spooledMessage();
+    const delivery = message(original, () => events.push("ack"));
+    const pending = consume([delivery], { METAGRAPH_ARCHIVE: archive.port });
+    try {
+      await within(entered.promise);
+      assert.deepEqual(delivery.calls, [], "business durability alone must not ACK pending cleanup");
+      for (const table of business) assert.equal(await count(table), 1);
+      await unchangedRevisionCoverage();
+      assert.equal(await count("chain_detail_ingest_stage_sessions"), 1);
+      assert.equal(await db.prepare("SELECT state FROM chain_detail_ingest_stage_sessions").first("state"), "applied");
+      assert.equal(archive.keys.length, 1);
+      assert.ok(await bucket.head(archive.keys[0]!));
+    } finally { release.resolve(); await pending; }
+    assert.equal(delivery.body, original);
+    assert.deepEqual(delivery.calls, ["ack"]);
+    assert.deepEqual(events, ["multipart-open", "spool-read", "cleanup-start", "cleanup-finished", "ack"]);
+    await emptyPreparation();
+    assert.equal(await bucket.head(archive.keys[0]!), null);
+    assert.deepEqual(await db.prepare("SELECT lane,verdict,detail FROM lane_health").all().then((result) => result.results), [
+      { lane: "neon:chain-detail", verdict: "ok", detail: "4 row(s) in 4 statement(s)" },
+    ]);
+  }, 30_000);
+
+  test("a staged-write failure retries original bytes while its projected neighbour commits", async () => {
+    let fail = true;
+    const port = nativePort({
+      runMatch: (sql) => sql.startsWith("INSERT INTO chain_detail_ingest_stage_fragments"),
+      async beforeRun() { if (fail) { fail = false; throw new Error("private stage storage unavailable"); } },
+    });
+    const original = spooledMessage();
+    const refused = message(original);
+    const neighbour = message(compressed(input("next", 6_100_002)));
+    await consume([refused, neighbour], { D1_STATE: port });
+    assert.equal(refused.body, original);
+    assert.deepEqual(refused.calls, ["retry"]);
+    assert.deepEqual(neighbour.calls, ["ack"]);
+    assert.equal(await count("chain_detail_blocks"), 1);
+    assert.equal(await db.prepare("SELECT block_number FROM chain_detail_blocks").first("block_number"), 6_100_002);
+    await unchangedRevisionCoverage();
+    await emptyPreparation();
+    assert.equal((await bucket.list()).objects.length, 0);
+    assert.equal(pg.control.queries.filter((query) => /INSERT INTO chain_detail_/.test(query.text)).length, 0);
+  }, 30_000);
+
+  test("R2 cleanup failure retries and retains its applied journal across another attempt", async () => {
+    let fail = true;
+    const archive = nativeBucket({ async beforeDelete() { if (fail) { fail = false; throw new Error("private cleanup unavailable"); } } });
+    const original = spooledMessage();
+    const refused = message(original);
+    await consume([refused], { METAGRAPH_ARCHIVE: archive.port });
+    assert.equal(refused.body, original);
+    assert.deepEqual(refused.calls, ["retry"]);
+    for (const table of business) assert.equal(await count(table), 1);
+    await unchangedRevisionCoverage();
+    const retained = await db.prepare("SELECT token,state,spool_key,spool_complete FROM chain_detail_ingest_stage_sessions").first<{ token: string; state: string; spool_key: string; spool_complete: number }>();
+    assert.ok(retained);
+    assert.equal(retained.state, "applied");
+    assert.equal(retained.spool_complete, 1);
+    assert.equal(retained.spool_key, archive.keys[0]);
+    assert.ok(await bucket.head(retained.spool_key));
+    const committed = await businessSnapshot();
+    const replay = message(original);
+    await consume([replay], { METAGRAPH_ARCHIVE: archive.port });
+    assert.deepEqual(replay.calls, ["ack"]);
+    assert.deepEqual(await businessSnapshot(), committed, "replay must preserve all committed rows and chunks");
+    await unchangedRevisionCoverage();
+    assert.equal(await count("chain_detail_ingest_stage_sessions"), 1, "a successful new attempt must not erase old custody");
+    assert.equal(await db.prepare("SELECT token FROM chain_detail_ingest_stage_sessions").first("token"), retained.token);
+    assert.equal(await bucket.head(archive.keys[1]!), null);
+    assert.ok(await bucket.head(retained.spool_key));
+    // Explicit recovery of this known fixture-owned attempt, after its object
+    // deletion succeeds. No shared-prefix or production cleanup is performed.
+    await bucket.delete(retained.spool_key);
+    await discardChainDetailD1Stage(db, retained.token);
+    await emptyPreparation();
+  }, 30_000);
+
+  test("a lost final native batch reply retries, then replays original upserts and unchanged revision coverage", async () => {
+    let lose = true;
+    const port = nativePort({ async afterBatch() { if (lose) { lose = false; throw new Error("lost final committed reply"); } } });
+    const archive = nativeBucket();
+    const original = spooledMessage();
+    const refused = message(original);
+    await consume([refused], { D1_STATE: port, METAGRAPH_ARCHIVE: archive.port });
+    assert.equal(refused.body, original);
+    assert.deepEqual(refused.calls, ["retry"]);
+    for (const table of business) assert.equal(await count(table), 1);
+    await unchangedRevisionCoverage();
+    await emptyPreparation();
+    assert.equal((await bucket.list()).objects.length, 0);
+    const committed = await businessSnapshot();
+    const replay = message(original);
+    await consume([replay], { D1_STATE: port, METAGRAPH_ARCHIVE: archive.port });
+    assert.deepEqual(replay.calls, ["ack"]);
+    for (const table of business) assert.equal(await count(table), 1);
+    await unchangedRevisionCoverage();
+    assert.deepEqual(await businessSnapshot(), committed, "lost-reply replay must preserve all committed rows and chunks");
+    await emptyPreparation();
+    assert.equal((await bucket.list()).objects.length, 0);
+    assert.equal(archive.keys.length, 2, "both deliveries used private projected preparation");
+    assert.deepEqual((await db.prepare("SELECT verdict FROM lane_health ORDER BY rowid").all<{ verdict: string }>()).results.map((row) => row.verdict), ["stale", "ok"]);
+  }, 30_000);
+
+  test.each([
+    { container: "{}", duplicate: false },
+    { container: "[]", duplicate: false },
+    { container: "{}", duplicate: true },
+    { container: "[]", duplicate: true },
+  ])("ACKs invalid pass_total $container duplicate=$duplicate without preparing rows", async (entry) => {
+    const raw = JSON.stringify(body()).replace('"pass_total":4', entry.duplicate ? `"pass_total":4,"pass_total":${entry.container}` : `"pass_total":${entry.container}`);
+    assert.ok(raw.includes(`"pass_total":${entry.container}`));
+    const original = gzipSync(raw);
+    const delivery = message(original);
+    let stageAttempts = 0;
+    const port = nativePort({
+      runMatch: (sql) => sql.startsWith("INSERT INTO chain_detail_ingest_stage_sessions"),
+      async beforeRun() { stageAttempts++; throw new Error("Invalid delivery attempted private preparation"); },
+    });
+    await consume([delivery], { D1_STATE: port });
+    assert.equal(stageAttempts, 0);
+    assert.equal(delivery.body, original);
+    assert.deepEqual(delivery.calls, ["ack"]);
+    await noBusiness();
+    await emptyPreparation();
+    assert.equal((await bucket.list()).objects.length, 0);
+    assert.deepEqual((await db.prepare("SELECT lane,verdict FROM lane_health").all()).results, [{ lane: "sync-batches", verdict: "stale" }]);
+  });
+
+  test.each(["mixed", "unbound"] as const)("retries strict %s D1 ownership without a hidden Neon write", async (selection) => {
+    const original = compressed();
+    const delivery = message(original);
+    await consume([delivery], selection === "mixed"
+      ? { D1_STATE_TABLES: "chain_detail_extrinsics,lane_health" }
+      : { D1_STATE: undefined });
+    assert.equal(delivery.body, original);
+    assert.deepEqual(delivery.calls, ["retry"]);
+    await noBusiness();
+    await emptyPreparation();
+    assert.equal(pg.control.queries.filter((query) => /INSERT INTO chain_detail_/.test(query.text)).length, 0);
+  });
+
+  test.each([undefined, "read-only"] as const)("enabled preparation refuses unavailable native R2 (%s)", async (selection) => {
+    const original = compressed();
+    const delivery = message(original);
+    await consume([delivery], { METAGRAPH_ARCHIVE: selection === undefined ? undefined : { get: bucket.get.bind(bucket), head: bucket.head.bind(bucket) } });
+    assert.equal(delivery.body, original);
+    assert.deepEqual(delivery.calls, ["retry"]);
+    await noBusiness();
+    await emptyPreparation();
+  });
+
+  test("another compressed lane keeps its original writer while projection is enabled", async () => {
+    const original = gzipSync(JSON.stringify({
+      lane: "hotkey-alpha",
+      captured_at: stamp,
+      key_complete: true,
+      rows: [{ hotkey: "h", netuid: 18, total_alpha: 12.5, captured_at: stamp }],
+    }));
+    const delivery = message(original);
+    await consume([delivery], { METAGRAPH_ARCHIVE: undefined });
+    assert.equal(delivery.body, original);
+    assert.deepEqual(delivery.calls, ["ack"]);
+    assert.equal(pg.control.queries.filter((query) => /INSERT INTO hotkey_alpha\b/.test(query.text)).length, 1);
+    assert.equal(pg.control.queries.filter((query) => /INSERT INTO chain_detail_/.test(query.text)).length, 0);
+    await noBusiness();
+    await emptyPreparation();
+  });
+
+  test("non-D1 selection preserves the original writer and counts a projected delivery once", async () => {
+    const capture = vi.spyOn(console, "log");
+    try {
+      const delivery = message(compressed(input("legacy-payload")));
+      await consume([delivery], { D1_STATE_TABLES: "lane_health", METAGRAPH_ARCHIVE: undefined });
+      assert.deepEqual(delivery.calls, ["ack"]);
+      await noBusiness();
+      await emptyPreparation();
+      const writes = pg.control.queries.filter((query) => /INSERT INTO chain_detail_/.test(query.text));
+      assert.equal(writes.length, 4);
+      assert.ok(writes[0]!.text.includes("chain_detail_extrinsics"));
+      assert.ok(writes[0]!.values.includes("legacy-payload"));
+      assert.ok(writes[3]!.text.includes("chain_detail_blocks"));
+      assert.ok(writes[3]!.values.includes("0x" + "ab".repeat(32)));
+      assert.ok(capture.mock.calls.some((args) => args[0] === "sync-batches: 1 message(s), 1 valid (4 row(s), lanes=chain-detail), 0 unparseable"));
+      assert.deepEqual((await db.prepare("SELECT lane,verdict,detail FROM lane_health").all()).results, [{ lane: "neon:chain-detail", verdict: "ok", detail: "4 row(s) in 4 statement(s)" }]);
+    } finally { capture.mockRestore(); }
+  });
+
+  test.each(["native", "native-read-legacy"] as const)("keeps the original multipart R2 binding before the %s read wrapper", async (mode) => {
+    const archive = nativeBucket();
+    const delivery = message(spooledMessage());
+    await consume([delivery], { ARCHIVE_OBJECT_STORAGE: mode, METAGRAPH_ARCHIVE: archive.port });
+    assert.deepEqual(delivery.calls, ["ack"]);
+    assert.equal(archive.keys.length, 1);
+    assert.ok(archive.keys[0]!.startsWith("metagraph/ingest-stage/v1/"));
+    assert.equal(await bucket.head(archive.keys[0]!), null);
+    for (const table of business) assert.equal(await count(table), 1);
+    await emptyPreparation();
+  }, 30_000);
+});
