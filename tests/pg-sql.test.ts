@@ -228,6 +228,77 @@ describe("createPgSql", () => {
     assert.deepEqual(life, ["connect", "end"]);
   });
 
+  for (const kind of ["tagged", "unsafe", "question-mark"] as const) {
+    test(`${kind} closes a failed connection without waiting for teardown`, async () => {
+      const failure = new Error("handshake failed");
+      const { client, calls, life } = fakeClient();
+      client.connect = async () => {
+        life.push("connect");
+        throw failure;
+      };
+      let release!: () => void;
+      let settled = false;
+      const ended = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      client.end = async () => {
+        life.push("end");
+        await ended;
+        settled = true;
+        return undefined;
+      };
+      const { ctx, pending } = ctxSpy();
+      const hyperdrive = { connectionString: "postgres://x" };
+      const factory = () => client as never;
+      const sql = createPgSql(hyperdrive, ctx, factory);
+      const invoke = () =>
+        kind === "tagged"
+          ? sql`SELECT 1`
+          : kind === "unsafe"
+            ? sql.unsafe("INSERT INTO t VALUES (?)", [1])
+            : createPgQuestionMarkRunner(
+                hyperdrive,
+                ctx,
+                factory,
+              )("SELECT ?", [1]);
+      try {
+        await assert.rejects(invoke, (error) => error === failure);
+        assert.deepEqual(calls, [], "no statement runs after failed connect");
+        assert.deepEqual(life, ["connect", "end"]);
+        assert.equal(pending.length, 1);
+        assert.equal(settled, false, "connection failure must not wait on end");
+      } finally {
+        release();
+        await Promise.all(pending);
+      }
+      assert.equal(settled, true);
+    });
+  }
+
+  test("a failed teardown preserves the original connection error", async () => {
+    const failure = new Error("handshake failed");
+    const { client, calls } = fakeClient();
+    client.connect = async () => {
+      throw failure;
+    };
+    client.end = async () => {
+      throw new Error("teardown failed");
+    };
+    const { ctx, pending } = ctxSpy();
+    const sql = createPgSql(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    await assert.rejects(
+      () => sql.unsafe("INSERT INTO t VALUES (?)", [1]),
+      (error) => error === failure,
+    );
+    assert.deepEqual(calls, []);
+    assert.equal(pending.length, 1);
+    await Promise.all(pending);
+  });
+
   test("unsafe() takes prebuilt text -- the escape hatch kept from the D1 runner", async () => {
     const { client, calls } = fakeClient();
     const { ctx } = ctxSpy();

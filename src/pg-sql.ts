@@ -163,8 +163,8 @@ export function createPgSql(
     values: unknown[],
   ): Promise<PgSqlRows<Record<string, unknown>>> => {
     const client = clientFactory(hyperdrive.connectionString);
-    await client.connect();
     try {
+      await client.connect();
       const result = await client.query(text, values);
       return (result.rows ?? []) as PgSqlRows<Record<string, unknown>>;
     } finally {

@@ -74,6 +74,128 @@ describe("laneHealthStore", () => {
 });
 
 describe("pgLaneHealthDb", () => {
+  for (const method of ["query", "run"] as const) {
+    test(`${method} closes a failed connection before rejecting`, async () => {
+      const failure = new Error("handshake failed");
+      const f = fakeClient();
+      const life: string[] = [];
+      f.client.connect = async () => {
+        life.push("connect");
+        throw failure;
+      };
+      let release!: () => void;
+      const ended = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      f.client.end = async () => {
+        life.push("end");
+        await ended;
+      };
+      const db = pgLaneHealthDb("postgresql://example/db", {
+        clientFactory: () => f.client,
+      });
+      let settled = false;
+      const operation = db[method]!("SELECT 1").finally(() => {
+        settled = true;
+      });
+      const rejected = assert.rejects(operation, (error) => error === failure);
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.deepEqual(life, ["connect", "end"]);
+        assert.deepEqual(f.log, [], "no SQL follows the failed connect");
+        assert.equal(settled, false, "ctx-less operations await teardown");
+      } finally {
+        release();
+        await rejected;
+      }
+      assert.equal(settled, true);
+    });
+  }
+
+  for (const stage of ["connect", "query"] as const) {
+    test(`failed teardown preserves the original ${stage} error`, async () => {
+      const failure = new Error(`${stage} failed`);
+      const f = fakeClient();
+      let ends = 0;
+      f.client[stage] = async () => {
+        throw failure;
+      };
+      f.client.end = async () => {
+        ends += 1;
+        throw new Error("teardown failed");
+      };
+      const db = pgLaneHealthDb("postgresql://example/db", {
+        clientFactory: () => f.client,
+      });
+      await assert.rejects(db.run!("SELECT 1"), (error) => error === failure);
+      assert.equal(ends, 1);
+    });
+  }
+
+  test("failed teardown does not replace a successful write", async () => {
+    const f = fakeClient();
+    f.client.end = async () => {
+      throw new Error("teardown failed");
+    };
+    const db = pgLaneHealthDb("postgresql://example/db", {
+      clientFactory: () => f.client,
+    });
+    assert.deepEqual(await db.run!("INSERT INTO t VALUES (?)", [1]), {
+      changes: 0,
+    });
+    assert.deepEqual(f.log, [
+      { text: "INSERT INTO t VALUES ($1)", values: [1] },
+    ]);
+  });
+
+  for (const confirm of [false, true]) {
+    test(`a refused verdict closes both failed connections (confirm=${confirm})`, async () => {
+      const clients: { life: string[]; queries: number }[] = [];
+      const db = laneHealthStore({ HYPERDRIVE }, undefined, {
+        clientFactory: () => {
+          const state = { life: [] as string[], queries: 0 };
+          clients.push(state);
+          return {
+            async connect() {
+              state.life.push("connect");
+              throw new Error("handshake failed");
+            },
+            async end() {
+              state.life.push("end");
+            },
+            async query() {
+              state.queries += 1;
+              return { rows: [] };
+            },
+          };
+        },
+      });
+      assert.equal(
+        await recordLaneVerdict(
+          db,
+          {
+            lane: "l",
+            verdict: "ok",
+            age_ms: null,
+            detail: "",
+            checked_at: 1,
+          },
+          { confirm },
+        ),
+        false,
+      );
+      assert.equal(
+        clients.length,
+        2,
+        "insert and independent retention attempt",
+      );
+      for (const client of clients) {
+        assert.deepEqual(client.life, ["connect", "end"]);
+        assert.equal(client.queries, 0);
+      }
+    });
+  }
+
   test("a verdict INSERT reaches Postgres with $n placeholders", async () => {
     const f = fakeClient();
     const db = pgLaneHealthDb("postgresql://example/db", {
