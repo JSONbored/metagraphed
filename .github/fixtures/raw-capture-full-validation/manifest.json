@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "status": "final v2 focused native source freeze; full validation and release acceptance pending",
-  "payload_version": "v2-native-39348983680",
+  "status": "boundary-corrected focused native source freeze; full validation and release acceptance pending",
+  "payload_version": "v2-boundary-native-39354806646",
   "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
   "base_tree": "9aea5cbaf18389b490ca92a946186767086dea5d",
   "canonical_subtrees": {
@@ -10,13 +10,13 @@
     "workers": "a46dd43fac421449d16afbe520f1aaf6ab32f872"
   },
   "qualified_predecessor": {
-    "commit": "8afe1572c224dcfe0b4b41b4e2ca5058716a4352",
-    "run": 39348983680,
-    "artifact": 12232566849,
-    "artifact_zip_sha256": "d21753e26968c424aa6af1dac14b8a3ae2254bc14b33709e02167010c68485d5",
+    "commit": "6f113e53c39b9ff413ed8b92fdb770105002321a",
+    "run": 39354806646,
+    "artifact": 12235085006,
+    "artifact_zip_sha256": "5047161546e224f3b1dde4df30c46bc73f9656586e5c2d4f70c536190eadae57",
     "passed_cases": 338,
-    "runtime_coverage": "all four modules100% all metrics in focused run",
-    "scope": "focused source/native D1 only; full validation, resource acceptance and actual Codecov PR/project verdict pending"
+    "runtime_coverage": "all four modules 100% all metrics in focused boundary-corrected run",
+    "scope": "focused source/native D1 and actual canonical boundary policy only; full validation, resource acceptance and actual Codecov PR/project verdict pending"
   },
   "maximum_total_payload_bytes": 524288,
   "files": [
@@ -38,9 +38,9 @@
     },
     {
       "path": "src/raw-capture-retry-intent.ts",
-      "sha256": "59431bc97dc13d8b0ea4395e103b55fb4afba88f10789f8d1a21f385cb20b860",
-      "git_blob_sha": "97a46b700a2078e1cf262ed80190beec4d79e376",
-      "bytes": 10425,
+      "sha256": "e11896b37bb66e86d5ca468723d3ccbfc751f2013c24b88e2ae5e98d7df009a1",
+      "git_blob_sha": "3d8a1d223bb4360923fb6df5a21ac4935e3d53a4",
+      "bytes": 10377,
       "expected_base_blob_sha": null,
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-capture-retry-intent.ts.payload"
     },
@@ -92,5 +92,24 @@
       "expected_base_blob_sha": "a81bf7b44943970406cc2f1be9e83e1eb0bf381d",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-capture-cron-wiring.test.ts.payload"
     }
-  ]
+  ],
+  "previous_q8_qualification": {
+    "commit": "8afe1572c224dcfe0b4b41b4e2ca5058716a4352",
+    "run": 39348983680,
+    "artifact": 12232566849,
+    "artifact_zip_sha256": "d21753e26968c424aa6af1dac14b8a3ae2254bc14b33709e02167010c68485d5",
+    "passed_cases": 338,
+    "runtime_coverage": "all four modules100% all metrics in focused run",
+    "scope": "focused source/native D1 only; full validation, resource acceptance and actual Codecov PR/project verdict pending"
+  },
+  "reporter_qualification": {
+    "formatted_run": 39355439711,
+    "formatted_artifact": 12235055803,
+    "formatted_artifact_zip_sha256": "192378ab1d58624e3211e68f414e8606b3d80e2709df74c055546b2062c878f5",
+    "reporter_sha256": "8c901000050722fb5572f19656a88db7300cad4ec8bf62ef9958160a78b95604",
+    "native_mocked_curation_run": 39355845490,
+    "native_mocked_curation_artifact": 12235476475,
+    "native_mocked_curation_zip_sha256": "bb22e77fd136f804a55f73e8e15d971aaaef17571c6a248e86ccc7e6ab84614c",
+    "scope": "only observed signed-safe BRDA hits; unchanged unsigned metadata, positive coverage and all full gates; one native mocked shard is not full qualification"
+  }
 }
