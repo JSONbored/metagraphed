@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createCipheriv, createHash } from "node:crypto";
-import { closeSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import { DatabaseSync } from "node:sqlite";
@@ -56,7 +56,7 @@ const result: Record<string, any> = {
   formattedDriverSha256: digest(readFileSync(process.argv[1])),
   workerFixtureSha256: digest(readFileSync(".github/fixtures/raw-capture-resource-worker.ts")),
   productionActions: false,
-  startupGraph: "Full workers/api.ts retained; actual captureTick/rawCaptureD1/neonWatermark invoked directly, not production cron/runRawCaptureSync scheduling",
+  startupGraph: "Actual split/minified native api.entry.ts builder/options with reserved lazy probe; API loaded explicitly before capture baseline; direct captureTick, not production cron/runRawCaptureSync scheduling",
   fixtureScope: "Source-accepted synthetic RPC strings; not real SCALE or a finite maximum for currently unbounded RPC inputs",
   compatibilityDate: compatibleDate,
   compatibilityFlags,
@@ -66,8 +66,6 @@ const result: Record<string, any> = {
 // Native error messages may contain ephemeral headers and are never retained.
 const diagnosticCodes = new Set(["ERR_ADDRESS_IN_USE", "ERR_DISPOSED", "ERR_MODULE_PARSE", "ERR_MODULE_STRING_SCRIPT", "ERR_MODULE_DYNAMIC_SPEC", "ERR_MODULE_RULE", "ERR_PERSIST_UNSUPPORTED", "ERR_FUTURE_COMPATIBILITY_DATE", "ERR_NO_WORKERS", "ERR_VALIDATION", "ERR_DUPLICATE_NAME", "ERR_DIFFERENT_STORAGE_BACKEND", "ERR_DIFFERENT_UNIQUE_KEYS", "ERR_DIFFERENT_PREVENT_EVICTION", "ERR_DIFFERENT_S3_CREDENTIALS", "ERR_MISSING_INSPECTOR_PROXY_PORT", "ERR_MISSING_EXPLORER_UI", "ERR_RUNTIME_FAILURE", "ERR_PLUGIN_LOADING_FAILED"]);
 const diagnosticClasses = ["TypeError", "ReferenceError", "SyntaxError", "RangeError", "EvalError", "URIError"];
-let diagnosticModules: string[] = [];
-let diagnosticImportSpecifiers: string[] = [];
 const startupDiagnostic = { codes: [] as string[], exceptions: [] as string[], builtinModules: [] as string[], bundleLines: [] as number[], importIndexes: [] as number[] };
 function diagnose(error: unknown) {
   const push = <T,>(values: T[], value: T, limit: number) => { if (!values.includes(value) && values.length < limit) values.push(value); };
@@ -77,8 +75,6 @@ function diagnose(error: unknown) {
     if (typeof code === "string" && diagnosticCodes.has(code)) push(startupDiagnostic.codes, code, 8);
     const text = current.message.slice(0, 65536);
     for (const name of diagnosticClasses) if (text.includes(name + ":")) push(startupDiagnostic.exceptions, name, 6);
-    for (let index = 0; index < diagnosticImportSpecifiers.length; index++) if (text.includes('"' + diagnosticImportSpecifiers[index] + '"')) push(startupDiagnostic.importIndexes, index, 16);
-    for (const name of diagnosticModules) if (text.includes(name)) push(startupDiagnostic.builtinModules, name, 16);
     for (const match of text.matchAll(/\.js:([0-9]{1,7}):[0-9]{1,7}/g)) push(startupDiagnostic.bundleLines, Number(match[1]), 16);
     current = (current as Error & { cause?: unknown }).cause;
   }
@@ -459,7 +455,7 @@ async function verifyStored(db: D1Database, state: Awaited<ReturnType<typeof sna
 }
 
 try {
-  const runtimeInputs = ["src", "workers", "schemas-src", "schemas", "generated", "db", "migrations", "package.json", "package-lock.json", "wrangler.jsonc", "wrangler.data.jsonc"];
+  const runtimeInputs = ["src", "workers", "schemas-src", "schemas", "generated", "db", "migrations", "package.json", "package-lock.json", "wrangler.jsonc", "wrangler.data.jsonc", "scripts/build-api-worker.ts", "scripts/lib.ts"];
   const changed = execFileSync("git", ["diff", "--name-only", base, "HEAD"], { encoding: "utf8", maxBuffer: 65536 }).trim().split("\n").filter(Boolean).sort();
   assert.deepEqual(changed, [...carrierPaths].sort(), "only seven isolated .github carrier files differ");
   execFileSync("git", ["diff", "--exit-code", base, "HEAD", "--", ...runtimeInputs], { stdio: ["ignore", "pipe", "pipe"], maxBuffer: 65536 });
@@ -502,66 +498,162 @@ try {
   const { SYSTEM_EVENTS_STORAGE_KEY } = await import(path.join(root, "src/twox-storage-key.ts"));
   result.fixture.eventsStorageKey = SYSTEM_EVENTS_STORAGE_KEY;
   const rpcUrl = await ownedRpc(data, SYSTEM_EVENTS_STORAGE_KEY);
-  stage = "bundle"; checkpoint();
-  const scratch = path.resolve(".raw-capture-resource"); const bundled = path.join(scratch, "bundle"); mkdirSync(bundled, { recursive: true });
-  const configPath = path.join(scratch, "wrangler.json");
-  writeFileSync(configPath, JSON.stringify({ name: "resource-capture", main: path.resolve(".github/fixtures/raw-capture-resource-worker.ts"), compatibility_date: compatibleDate, compatibility_flags: compatibilityFlags }));
-  const bundle = spawnSync(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "deploy", "--dry-run", "--config", configPath, "--outdir", bundled], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 90000, maxBuffer: 256 * 1024, env: { ...process.env, WRANGLER_SEND_METRICS: "false", WRANGLER_WRITE_LOGS: "false", CI: "true", BROWSER: "false" } });
-  assert.equal(bundle.error, undefined); assert.equal(bundle.status, 0);
-  const entries = readdirSync(bundled).filter(file => file.endsWith(".js")); assert.equal(entries.length, 1);
-  const scriptPath = path.join(bundled, entries[0]); result.bundleSha256 = digest(readFileSync(scriptPath));
-  diagnosticModules = [...new Set([...readFileSync(scriptPath, "utf8").matchAll(/["']((?:node|cloudflare):[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*)["']/g)].map(match => match[1]))].sort();
-  assert.ok(diagnosticModules.length <= 128); result.diagnosticModuleAllowlistSha256 = digest(JSON.stringify(diagnosticModules));
-  const classifyExtension = (value: string) => { const extension = path.extname(value).toLowerCase(); return [".js", ".mjs", ".cjs", ".wasm", ".txt", ".html", ".bin", ".json", ".map", ".sql"].includes(extension) ? extension : "other"; };
-  stage = "bundle-asset-count";
-  const assetNames = readdirSync(bundled).sort();
-  result.bundleModuleDiagnostic = { assetCount: assetNames.length, assets: [], imports: [] };
-  assert.ok(assetNames.length <= 128);
-  const nativeTypes = ["ESModule", "CommonJS", "CompiledWasm", "Text", "Data", "esm", "commonjs", "compiled-wasm", "text", "buffer"];
-  const nativeOutput = (bundle.stdout ?? "") + (bundle.stderr ?? "");
-  const assetRecords = result.bundleModuleDiagnostic.assets as Record<string, unknown>[];
-  let assetBytes = 0;
-  for (let index = 0; index < assetNames.length; index++) {
-    const name = assetNames[index], file = path.join(bundled, name);
-    stage = "bundle-asset-ownership"; assert.ok(realpathSync(file).startsWith(realpathSync(bundled) + path.sep));
-    const info = statSync(file);
-    const record: Record<string, unknown> = { index, extension: classifyExtension(name), bytes: info.size, sha256: null, nativeOutputType: null };
-    assetRecords.push(record); result.bundleModuleDiagnostic.totalAssetBytes = assetBytes += info.size;
-    stage = "bundle-asset-byte-bound"; assert.ok(info.isFile() && info.size <= 128 * 1024 * 1024 && assetBytes <= 256 * 1024 * 1024);
-    const fd = openSync(file, "r"); const hash = createHash("sha256"); const buffer = Buffer.allocUnsafe(128 * 1024);
-    try { let bytes = 0; for (;;) { stage = "bundle-asset-digest"; assert.ok(Date.now() < deadline); const size = readSync(fd, buffer); if (!size) break; bytes += size; hash.update(buffer.subarray(0, size)); } assert.equal(bytes, info.size); record.sha256 = hash.digest("hex"); }
-    finally { closeSync(fd); }
-    const types = [...new Set(nativeOutput.split("\n").filter(line => line.includes(name)).flatMap(line => nativeTypes.filter(type => new RegExp("\\b" + type + "\\b").test(line))))];
-    record.nativeOutputType = types.length === 1 ? types[0] : null;
+  stage = "native-build-source"; checkpoint();
+  const buildPins = {
+    "workers/api.entry.ts": { sha256: "d322d676b640fecd7ad66d719e1f3bc26eca502192d74cfabc3992ec81059979", blob: "5cd1f4e15dd23a5c2beca221af5c9f202245898a" },
+    "scripts/build-api-worker.ts": { sha256: "2c8d80adfa15f45211c7f8cdd8c19e4a19629fe4d6efcf87b710be26f7251893", blob: "48face14c44fae096bb9be84034716ae7084479b" },
+  };
+  for (const [file, pin] of Object.entries(buildPins)) {
+    assert.equal(execFileSync("git", ["rev-parse", `HEAD:${file}`], { encoding: "utf8" }).trim(), pin.blob);
+    assert.equal(digest(readFileSync(file)), pin.sha256);
   }
-  stage = "bundle-import-count";
-  const code = readFileSync(scriptPath, "utf8");
-  diagnosticImportSpecifiers = [...new Set([...code.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"'\n]{1,512})["']/g)].map(match => match[1]))].sort();
-  result.bundleModuleDiagnostic.importCount = diagnosticImportSpecifiers.length; assert.ok(diagnosticImportSpecifiers.length <= 128);
-  const importRecords = diagnosticImportSpecifiers.map((specifier, index) => {
-    const resolved = path.resolve(path.dirname(scriptPath), specifier);
-    const assetIndex = assetNames.findIndex(name => path.join(bundled, name) === resolved);
-    return { index, specifierSha256: digest(specifier), extension: classifyExtension(specifier), assetIndex: assetIndex >= 0 ? assetIndex : null, kind: /^(node|cloudflare|workerd):/.test(specifier) ? "builtin" : specifier.startsWith(".") ? "relative" : "bare" };
-  });
-  result.bundleModuleDiagnostic.imports = importRecords; result.bundleModuleDiagnostic.metadataBytes = Buffer.byteLength(JSON.stringify({ assetRecords, importRecords }));
-  stage = "bundle-metadata-byte-bound";
-  assert.ok(result.bundleModuleDiagnostic.metadataBytes <= 32768);
-  result.bundler = { nativeWranglerDryRun: true, stdoutRetained: false, stderrRetained: false };
-  stage = "bundle-wasm-identity";
+  assert.equal(process.env.METAGRAPH_REPO_ROOT, undefined);
+  const originalEntry = readFileSync("workers/api.entry.ts", "utf8");
+  assert.equal(originalEntry.split("export default {").length, 2);
+  assert.ok(!originalEntry.includes("resourceOriginalApiEntry"));
+  const entryWrapper = `
+export default {
+  ...resourceOriginalApiEntry,
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/__resource/warm" || pathname === "/__resource/capture") {
+      return (await import("../.github/fixtures/raw-capture-resource-worker.ts")).default.fetch(request, env as never, ctx);
+    }
+    return resourceOriginalApiEntry.fetch(request, env, ctx);
+  },
+};
+`;
+  const transformedEntry = originalEntry.replace("export default {", "const resourceOriginalApiEntry = {") + entryWrapper;
+  assert.equal(digest(transformedEntry), "99ad3aaa206f8de472334be7c82db241a857b0704df9061762eb0d81a6cb6cb7");
+  writeFileSync("workers/api.entry.ts", transformedEntry);
+  result.nativeBuild = {
+    sourcePins: buildPins, transformedEntrySha256: digest(transformedEntry), entryWrapperSha256: digest(entryWrapper),
+    entryTransform: "Exactly one default declaration renamed; original methods and five DO exports retained verbatim; reserved paths lazily import controller",
+    options: "Unchanged exported buildApiWorker(outdir), including splitting, esm, minify, conditions, node-require plugin, defines and wasm copy loader",
+    instrumentationScope: "Entry fetch wrapper and lazy synthetic controller add code/module edges; direct warmed captureTick excludes scheduler, endpoint selection and two-network concurrency; not exact deployed bytes or a production upper bound",
+  };
+  // The native helper removes outdir recursively. Create its parent ourselves,
+  // then prove both parent and assigned child are real, owned, non-symlink dirs.
+  const realRoot = realpathSync(root);
+  assert.equal(realpathSync(execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim()), realRoot);
+  const scratch = mkdtempSync(path.join(realRoot, ".raw-capture-native-"));
+  const scratchInfo = lstatSync(scratch);
+  assert.ok(scratchInfo.isDirectory() && !scratchInfo.isSymbolicLink());
+  assert.equal(scratchInfo.uid, process.getuid!()); assert.equal(scratchInfo.mode & 0o077, 0);
+  assert.equal(path.dirname(realpathSync(scratch)), realRoot);
+  const bundled = path.join(scratch, "bundle"); mkdirSync(bundled);
+  const outputInfo = lstatSync(bundled);
+  assert.ok(outputInfo.isDirectory() && !outputInfo.isSymbolicLink());
+  assert.equal(outputInfo.uid, process.getuid!());
+  assert.equal(realpathSync(bundled), path.join(realpathSync(scratch), "bundle"));
+  assert.ok(realpathSync(bundled).startsWith(realpathSync(scratch) + path.sep));
+  result.nativeBuild.ownedOutput = { freshPrivateParent: true, parentAndOutputNonSymlink: true, realCheckoutContainment: true, ephemeralPathRetained: false };
+  stage = "native-build"; checkpoint();
+  const { buildApiWorker } = await import(path.join(root, "scripts/build-api-worker.ts"));
+  const esbuild = await import("esbuild");
+  let buildTimer: ReturnType<typeof setTimeout> | undefined;
+  let built: Awaited<ReturnType<typeof buildApiWorker>>;
+  try {
+    built = await Promise.race([buildApiWorker(bundled), new Promise<never>((_, reject) => { buildTimer = setTimeout(() => reject(new Error("fixture_native_build_deadline")), 90000); })]);
+  } finally { clearTimeout(buildTimer); await esbuild.stop(); }
+  assert.equal(built.errors.length, 0); assert.ok(built.metafile);
+  const metafile = built.metafile;
+  assert.ok(Object.keys(metafile.inputs).length <= 20000 && Object.keys(metafile.outputs).length <= 1024);
+  const buildPackage = JSON.parse(readFileSync("node_modules/esbuild/package.json", "utf8"));
+  assert.equal(buildPackage.name, "esbuild"); assert.match(buildPackage.version, /^[0-9][0-9A-Za-z.+-]{0,63}$/);
+  result.nativeBuild.esbuildVersion = buildPackage.version;
+  const walk = (directory: string, depth = 0): string[] => {
+    assert.ok(depth <= 8);
+    const files: string[] = [];
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      assert.ok(realpathSync(file).startsWith(realpathSync(bundled) + path.sep));
+      if (entry.isDirectory()) files.push(...walk(file, depth + 1));
+      else { assert.ok(entry.isFile()); files.push(file); }
+      assert.ok(files.length <= 1024);
+    }
+    return files;
+  };
+  stage = "native-output-inventory"; checkpoint();
+  const scriptPath = path.join(bundled, "api.entry.js");
+  const files = walk(bundled).sort();
+  assert.equal(files.filter(file => path.dirname(file) === bundled && file.endsWith(".js")).length, 1);
+  assert.ok(files.includes(scriptPath));
+  const fileIndex = new Map(files.map((file, index) => [file, index]));
+  const records: Array<{ index: number; outputPathSha256: string; role: string; bytes: number; sha256: string }> = [];
+  let totalBytes = 0;
+  for (const file of files) {
+    const info = statSync(file); totalBytes += info.size;
+    assert.ok(info.size <= 128 * 1024 * 1024 && totalBytes <= 256 * 1024 * 1024);
+    const extension = path.extname(file);
+    const role = extension === ".js" ? "ESModule" : extension === ".wasm" ? "CompiledWasm" : extension === ".map" ? "SourceMap" : "unexpected";
+    assert.notEqual(role, "unexpected");
+    const fd = openSync(file, "r"), hash = createHash("sha256"), buffer = Buffer.allocUnsafe(128 * 1024);
+    try { let count = 0; for (;;) { assert.ok(Date.now() < deadline); const size = readSync(fd, buffer); if (!size) break; count += size; hash.update(buffer.subarray(0, size)); } assert.equal(count, info.size); }
+    finally { closeSync(fd); }
+    records.push({ index: fileIndex.get(file)!, outputPathSha256: digest(path.relative(bundled, file)), role, bytes: info.size, sha256: hash.digest("hex") });
+    const meta = Object.entries(metafile.outputs).find(([key]) => path.resolve(root, key) === file)?.[1];
+    assert.ok(meta); assert.equal(meta.bytes, info.size);
+  }
+  stage = "native-output-edges";
+  const outputs = new Map(Object.entries(metafile.outputs).map(([key, value]) => [path.resolve(root, key), value]));
+  const edges: Array<{ from: number; to: number; dynamic: boolean }> = [];
+  for (const [file, output] of outputs) for (const dependency of output.imports) {
+    if (dependency.external) continue;
+    const candidates = [...new Set([path.resolve(root, dependency.path), path.resolve(path.dirname(file), dependency.path)])].filter(item => outputs.has(item));
+    assert.equal(candidates.length, 1);
+    assert.ok(fileIndex.has(file) && fileIndex.has(candidates[0]));
+    edges.push({ from: fileIndex.get(file)!, to: fileIndex.get(candidates[0])!, dynamic: dependency.kind === "dynamic-import" });
+  }
+  const entryIndex = fileIndex.get(scriptPath)!;
+  const closure = (includeDynamic: boolean) => {
+    const visited = new Set([entryIndex]);
+    for (let size = -1; size !== visited.size;) { size = visited.size; for (const edge of edges) if (visited.has(edge.from) && (includeDynamic || !edge.dynamic)) visited.add(edge.to); }
+    return [...visited].sort((a, b) => a - b);
+  };
+  const eager = closure(false), reachable = closure(true);
+  const executable = records.filter(record => record.role !== "SourceMap").map(record => record.index).sort((a, b) => a - b);
+  stage = "native-output-closure"; assert.deepEqual(reachable, executable);
+  const ownership: Record<string, { sourceInputs: number; outputIndexes: number[] }> = {};
+  const sourceFiles = ["workers/api.entry.ts", "workers/api.ts", "src/raw-capture-sync.ts", ...Object.keys(candidateBlobs)];
+  stage = "native-raw-module-ownership"; result.nativeBuild.rawModuleOwnership = ownership;
+  for (const file of sourceFiles) {
+    const matchingInputs = Object.keys(metafile.inputs).filter(input => path.resolve(root, input) === path.join(root, file));
+    const absentLegacyHelper = variant === "legacy" && file.includes("raw-capture-retry-");
+    ownership[file] = { sourceInputs: matchingInputs.length, outputIndexes: [] };
+    assert.equal(matchingInputs.length, absentLegacyHelper ? 0 : 1);
+    const owners = [...outputs].filter(([, value]) => Object.entries(value.inputs).some(([input, contribution]) => matchingInputs.includes(input) && contribution.bytesInOutput > 0)).map(([output]) => fileIndex.get(output)!);
+    ownership[file].outputIndexes = owners; assert.equal(owners.length, absentLegacyHelper ? 0 : 1);
+    ownership[file] = { sourceInputs: matchingInputs.length, outputIndexes: owners };
+  }
+  stage = "native-api-lazy-closure"; assert.ok(ownership["workers/api.ts"].outputIndexes.every(index => !eager.includes(index)));
+  stage = "native-wasm-identity";
   const expectedWasm = [
     { bytes: 1373887, sha256: "375e38603c5f5128a9a0e6e2ac90ac14f1b79a0f8b667eb434c2c1b18a031733" },
     { bytes: 88658, sha256: "47fb4f81d274932184cd19c75ed34f902d13f0519301590789a37f7077977e27" },
   ];
-  const actualWasm = assetRecords.filter(record => record.extension === ".wasm").map(record => ({ bytes: record.bytes, sha256: record.sha256 })).sort((a, b) => String(a.sha256).localeCompare(String(b.sha256)));
+  const actualWasm = records.filter(record => record.role === "CompiledWasm").map(({ bytes, sha256 }) => ({ bytes, sha256 })).sort((a, b) => a.sha256.localeCompare(b.sha256));
   assert.deepEqual(actualWasm, expectedWasm);
-  for (const name of assetNames.filter(name => name.endsWith(".wasm"))) {
-    const fd = openSync(path.join(bundled, name), "r"); const magic = Buffer.alloc(8);
+  for (const file of files.filter(file => file.endsWith(".wasm"))) {
+    const fd = openSync(file, "r"), magic = Buffer.alloc(8);
     try { assert.equal(readSync(fd, magic), 8); assert.deepEqual([...magic], [0, 97, 115, 109, 1, 0, 0, 0]); } finally { closeSync(fd); }
   }
-  result.moduleLoader = { rule: "CompiledWasm", verifiedWasm: expectedWasm, nativeWranglerRuleSource: { tag: "wrangler@4.129.1", commit: "87fd28ce586693e50aa17d410f121394c5fef24c", blob: "b37cb933db438a3448c72eaeacf85fc493c91595", sha256: "ba2de1b7fa21209c12e8eb9ca4e5840cc234333d56712994d3a7b117c0e7bb9b" }, miniflareDefaultRuleSource: { tag: "miniflare@5.20260730.0-alpha", commit: "fcb5402346b2424008c7a0d0612ee8ba2f65bf3e", blob: "c1ff9c53ecf891f745eee9cde722cab95f5b12b9", sha256: "d5c330681362a9fd18873121aac7791f8ad2ce84ad9716389e0cd42a9ca342de" }, scope: "Only the two identity-verified native emitted wasm modules; full bundled JavaScript unchanged" };
+  stage = "native-module-manifest";
+  const manifest = { status: "complete", files: records, edges, entryIndex, eagerModuleIndexes: eager, reachableModuleIndexes: reachable, ownership };
+  const manifestBytes = JSON.stringify(manifest, null, 2) + "\n";
+  assert.ok(Buffer.byteLength(manifestBytes) <= 131072);
+  writeFileSync(path.join(reportDirectory, "module-manifest.json"), manifestBytes);
+  result.nativeBuild.moduleManifestSha256 = digest(manifestBytes);
+  result.nativeBuild.metafileSha256 = digest(JSON.stringify(metafile));
+  result.nativeBuild.outputSummary = { modules: executable.length, js: records.filter(record => record.role === "ESModule").length, wasm: actualWasm.length, sourceMaps: records.filter(record => record.role === "SourceMap").length, totalBytes };
+  result.nativeBuild.apiAbsentFromEntryEagerClosure = true;
+  result.nativeBuild.rawModuleOwnership = ownership;
+  result.bundleSha256 = records[entryIndex].sha256;
+  result.bundler = { actualBuildApiWorker: true, unchangedNativeOptionsAndPlugin: true, split: true, minified: true, format: "esm", sourceMapsExecutable: false };
+  result.moduleLoader = { rules: [{ type: "ESModule", include: ["**/*.js"] }, { type: "CompiledWasm", include: ["**/*.wasm"] }], verifiedWasm: expectedWasm, scope: "Complete identity-inventoried native module closure; source maps excluded from executable matching" };
   stage = "runtime-constructor"; checkpoint();
   mf = new Miniflare({
-    modules: true, modulesRules: [{ type: "CompiledWasm", include: ["**/*.wasm"] }], name: "resource-capture", scriptPath, host: "127.0.0.1", compatibilityDate: compatibleDate, compatibilityFlags, inspectorPort: 0,
+    modules: true, modulesRoot: bundled, modulesRules: [{ type: "ESModule", include: ["**/*.js"] }, { type: "CompiledWasm", include: ["**/*.wasm"] }], name: "resource-capture", scriptPath, host: "127.0.0.1", compatibilityDate: compatibleDate, compatibilityFlags, inspectorPort: 0,
     log: new NoOpLog(), handleStructuredLogs: event => { structuredLogs[["info", "warn", "error", "debug"].includes(event.level) ? event.level : "other"]++; },
     unsafeHandleRuntimeRestart: () => { runtimeRestarts++; }, bindings: { RESOURCE_RPC_URL: LOGICAL_RPC_URL }, d1Databases: ["D1_STATE"],
     outboundService: async request => {
@@ -773,7 +865,7 @@ try {
   result.runtimeRestarts = runtimeRestarts; result.structuredLogCounts = structuredLogs; result.inspectorProtocolErrors = inspectorProtocolErrors;
   if (result.cleanupFailure) { result.status = "failed"; result.failureStage ??= "cleanup"; result.failureClass ??= "cleanup_failed"; }
   result.elapsedMs = Date.now() - started;
-  result.measurementScope = { heap: "Explicit marked full API user isolate; baseline included; each maximum is a sparse lower bound; external/embedder fields are separate and not added", process: "Actual workerd PID includes system and D1 isolates; Node driver is separate; HWM is cumulative across phases", excludes: "Independent stored-gzip verification after ingestion sampling; production scheduler and any upper-bound/isolate-limit acceptance" };
+  result.measurementScope = { heap: "Explicit marked full API user isolate; baseline included; each maximum is a sparse lower bound; external/embedder fields are separate and not added", process: "Actual workerd PID includes system and D1 isolates; Node driver is separate; HWM is cumulative across phases", excludes: "Independent stored-gzip verification after ingestion sampling; production scheduler, exact deployed bytes, uninstrumented topology and any upper-bound/isolate-limit acceptance" };
   const body = JSON.stringify(result, null, 2) + "\n"; assert.ok(Buffer.byteLength(body) <= 65536);
   writeFileSync(path.join(reportDirectory, "driver.ts"), readFileSync(process.argv[1]));
   writeFileSync(path.join(reportDirectory, "worker.ts"), readFileSync(".github/fixtures/raw-capture-resource-worker.ts"));

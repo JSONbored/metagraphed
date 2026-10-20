@@ -1,4 +1,3 @@
-import api from "../../workers/api.ts";
 import { captureTick } from "../../src/raw-chain-capture.ts";
 import { rawCaptureD1 } from "../../src/raw-capture-d1.ts";
 import { neonWatermark } from "../../src/raw-capture-sync.ts";
@@ -54,11 +53,17 @@ function faultableDatabase(db: D1Database, fault: Error | null) {
 }
 
 export default {
-  ...api,
   async fetch(request: Request, env: Env, ctx: unknown) {
     const pathname = new URL(request.url).pathname;
-    if (pathname === "/__resource/warm") return Response.json({ ready: true });
-    if (pathname !== "/__resource/capture") return api.fetch(request, env as never, ctx as never);
+    if (pathname === "/__resource/warm") {
+      // Load the same lazy API module as the production scheduled entry before
+      // the capture baseline; never import it eagerly from this controller.
+      const api = (await import("../../workers/api.ts")).default;
+      if (typeof api.fetch !== "function" || typeof api.scheduled !== "function" || typeof api.queue !== "function") throw new Error("fixture_api_shape");
+      (globalThis as Record<string, unknown>).__metagraphed_resource_api_warmed = true;
+      return Response.json({ ready: true });
+    }
+    if (pathname !== "/__resource/capture" || (globalThis as Record<string, unknown>).__metagraphed_resource_api_warmed !== true) return Response.json({ failureClass: "fixture_route_or_warmup" }, { status: 400 });
     const body = await request.json() as { at?: unknown; failSecondWindow?: unknown };
     if (request.method !== "POST" ||
         Object.keys(body).sort().join(",") !== "at,failSecondWindow" ||
