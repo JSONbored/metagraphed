@@ -1,0 +1,1288 @@
+import type {
+  Row,
+  SqlRunner,
+  NeuronSelection,
+  ImmunityWindow,
+  ValidatorAccumEntry,
+  BuildGlobalValidatorsOptions,
+  BuildValidatorDetailOptions,
+} from "./metagraph-neurons-types.ts";
+export type {
+  NeuronSelection,
+  BuildGlobalValidatorsOptions,
+  BuildValidatorDetailOptions,
+} from "./metagraph-neurons-types.ts";
+// Shape `neurons` rows (migration 0007; also the Postgres mirror written by
+// workers/data-api.ts's handleNeuronsSync, #4771) into the per-UID metagraph
+// API responses for #1304/#1305 (epic #1302). Populated by the refresh-metagraph
+// cron first-party via the Bittensor SDK (#1348) -- no Taostats, no API key.
+// Pure + exported for tests; the Worker handlers run the store query
+// and call these builders.
+
+import {
+  buildAccountIdentity,
+  IDENTITY_FIELDS,
+  loadIdentityByColdkeyMap,
+} from "./account-identity.ts";
+import { NeuronSchema } from "../schemas-src/routes/subnet-metagraph.ts";
+import { isRoutableAxon } from "./axon-routable.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
+import {
+  parseFieldsParam,
+  projectRow,
+  projectRows,
+  unknownAgainstSchema,
+  type FieldProjectionResult,
+} from "./field-projection.ts";
+import type { Neurons } from "../generated/db/types.ts";
+import {
+  round9NonNegative,
+  finiteCellOrNull,
+  nonNegativeCellOrNull,
+  round9OrNull,
+  nonNegativeOrZero,
+  raoBigToTao,
+  toRaoBig,
+} from "./lib/rao.ts";
+
+// Page-size ceiling, single-sourced in route-limits.ts so the contract's
+// published `maximum` and this route's enforcement cannot drift (#9127).
+import {
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+} from "./route-limits.ts";
+export { GLOBAL_VALIDATOR_LIMIT_DEFAULT, GLOBAL_VALIDATOR_LIMIT_MAX };
+
+
+// --- `fields=` projection (#9082) ------------------------------------------
+//
+// Three routes serve this row shape -- /metagraph, /validators, and
+// /neurons/{uid} -- so the projection lives here, once, rather than at the six
+// REST and MCP call sites that would otherwise each grow their own copy.
+//
+// Resolved against NeuronSchema's own shape, NOT against the keys the rows in
+// hand happen to carry. That distinction is the whole reason this route uses
+// the schema resolver: `immunity_expires_at_block` and `immunity_expires_at`
+// are emitted only while a neuron is inside its immunity window (formatNeuron,
+// below), so on a subnet where nobody currently is, a row-union check would
+// reject `fields=immunity_expires_at_block` as unsupported when it is a
+// declared field of the contract. Deriving from the schema also means a field
+// added to NeuronSchema is projectable the same day, with no list to update.
+
+/** Every field of the published Neuron contract, and nothing else. */
+const unknownNeuronFields = unknownAgainstSchema(NeuronSchema);
+
+/**
+ * Parse `fields` for any of the three neuron routes.
+ *
+ * `collection` names the rows in the unsupported-field message, so a caller
+ * who asked /validators for a field it does not have is told about
+ * "validators" rather than about some other route's collection.
+ */
+export function parseNeuronFields(
+  params: URLSearchParams,
+  collection: string,
+): FieldProjectionResult {
+  return parseFieldsParam(params, unknownNeuronFields, collection);
+}
+
+/**
+ * Apply a parsed projection to whichever neuron payload this is.
+ *
+ * Deliberately shape-driven rather than route-driven: the three artifacts
+ * differ only in where the rows live (`neurons`, `validators`, or a single
+ * `neuron`), and a caller of this function should not have to say which route
+ * it is. Returns the payload untouched when no projection was requested, so
+ * the default response stays byte-identical.
+ */
+export function projectNeuronPayload<T extends Row>(
+  data: T,
+  fields: string[] | null | undefined,
+): T {
+  if (!fields || !data) return data;
+  const projected: Row = { ...data };
+  for (const key of ["neurons", "validators"]) {
+    if (Array.isArray(projected[key])) {
+      projected[key] = projectRows(projected[key] as Row[], fields);
+    }
+  }
+  // Null is a real answer here (the UID is absent from the latest snapshot),
+  // and projectRow passes it through rather than turning it into {}.
+  if (Object.hasOwn(projected, "neuron")) {
+    projected.neuron = projectRow(projected.neuron as Row | null, fields);
+  }
+  return projected as T;
+}
+
+// --- row selection over a metagraph payload (#9872) -------------------------
+//
+// Lives here for the same reason the `fields=` projection above does: the row
+// shape is shared, so the logic that narrows it should be too rather than
+// growing a copy at each call site.
+//
+// Applied AFTER the snapshot is fetched, not pushed into the tier query. That
+// is not a shortcut -- the cost this closes is the RESPONSE, not the read. An
+// agent asking "what incentive does hotkey X have" was paying ~24k tokens to
+// receive 256 rows it then filtered itself; the fetch was never the part it
+// could see. `list_subnet_validators`'s `limit`/`min_stake_tao` already work
+// this way, with the same trade-off written down at its handler.
+
+
+/** True when a selection would do anything at all. */
+function selectsAnything(selection: NeuronSelection): boolean {
+  return (
+    (selection.hotkeys?.length ?? 0) > 0 ||
+    selection.active != null ||
+    selection.minIncentive != null ||
+    selection.limit != null
+  );
+}
+
+// A null/absent sort value orders LAST in both directions -- see
+// NEURON_SORT_NULLS_LAST_NOTE for why "unranked" must not read as "rank
+// worst". Non-numeric values (a numeric string that escaped coercion)
+// take the same branch: unorderable is unorderable.
+function sortValue(row: Row, field: string): number | null {
+  const raw = row[field];
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+function compareNeurons(a: Row, b: Row, field: string, desc: boolean): number {
+  const left = sortValue(a, field);
+  const right = sortValue(b, field);
+  if (left === null || right === null) {
+    if (left === right) return uidTiebreak(a, b);
+    return left === null ? 1 : -1;
+  }
+  if (left !== right) return desc ? right - left : left - right;
+  return uidTiebreak(a, b);
+}
+
+// Stable, and stable on the field a caller can actually see: relying on
+// Array#sort's stability would tie the published order to the snapshot's
+// arrival order, which is not a promise this tool makes.
+function uidTiebreak(a: Row, b: Row): number {
+  const left = typeof a.uid === "number" ? a.uid : Number.MAX_SAFE_INTEGER;
+  const right = typeof b.uid === "number" ? b.uid : Number.MAX_SAFE_INTEGER;
+  return left - right;
+}
+
+/**
+ * Filter, sort and cap a metagraph payload's `neurons`.
+ *
+ * Returns the payload untouched when the selection is empty, so an unfiltered
+ * call stays byte-identical -- including the absence of `total_neuron_count`,
+ * whose whole job is to mark a response that is NOT the whole snapshot.
+ */
+export function selectNeuronRows<T extends Row>(
+  data: T,
+  selection: NeuronSelection,
+): T {
+  const rows = Array.isArray(data?.neurons) ? (data.neurons as Row[]) : null;
+  if (!rows) return data;
+  const sortBy = selection.sortBy ?? null;
+  if (!selectsAnything(selection) && !sortBy) return data;
+
+  const wanted = selection.hotkeys?.length ? new Set(selection.hotkeys) : null;
+  let selected = rows.filter((row) => {
+    if (wanted && !(typeof row.hotkey === "string" && wanted.has(row.hotkey))) {
+      return false;
+    }
+    if (selection.active != null && row.active !== selection.active) {
+      return false;
+    }
+    if (selection.minIncentive != null) {
+      // A null incentive never clears a floor -- "no value" is not "below
+      // the bar", and admitting it would make min_incentive:0 a no-op that
+      // silently kept rows the caller was filtering for.
+      if (typeof row.incentive !== "number") return false;
+      if (row.incentive < selection.minIncentive) return false;
+    }
+    return true;
+  });
+
+  if (sortBy) {
+    const desc = (selection.order ?? "desc") === "desc";
+    selected = [...selected].sort((a, b) => compareNeurons(a, b, sortBy, desc));
+  }
+  if (selection.limit != null) selected = selected.slice(0, selection.limit);
+
+  const narrowed = selected.length !== rows.length;
+  return {
+    ...data,
+    neuron_count: selected.length,
+    // Only when rows were actually removed: on an unnarrowed response the
+    // field would be a duplicate of neuron_count, and its presence is the
+    // signal that neuron_count is not the subnet's size.
+    ...(narrowed ? { total_neuron_count: rows.length } : {}),
+    neurons: selected,
+  } as T;
+}
+
+// The columns the handlers SELECT for a neuron row.
+export const NEURON_COLUMNS =
+  "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
+  "consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, " +
+  "is_immunity_period, axon, block_number, captured_at, take";
+
+/**
+ * The row `NEURON_COLUMNS` selects, typed from the live schema.
+ *
+ * Declared HERE, beside the column list, because the two are one fact said
+ * twice: add a column to the string and this `Pick` fails to compile until it
+ * is added here too. Typed through the generated `Neurons` interface rather
+ * than by hand, so a column whose Postgres type changes changes here without
+ * anyone noticing it needed to.
+ */
+export type NeuronColumnsRow = Pick<
+  Neurons,
+  | "uid"
+  | "hotkey"
+  | "coldkey"
+  | "active"
+  | "validator_permit"
+  | "rank"
+  | "trust"
+  | "validator_trust"
+  | "consensus"
+  | "incentive"
+  | "dividends"
+  | "emission_tao"
+  | "stake_tao"
+  | "registered_at_block"
+  | "is_immunity_period"
+  | "axon"
+  | "block_number"
+  | "captured_at"
+  | "take"
+>;
+
+// The full column set written to the neurons table (matches migration 0007 and
+// the normalizeNeuron row shape). Used by the cron's parameterized bulk load
+// (loadStagedNeurons) — values are always bound, never interpolated into SQL.
+export const NEURON_INSERT_COLUMNS = [
+  "netuid",
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+  "block_number",
+  "captured_at",
+  "take",
+];
+
+export const GLOBAL_VALIDATOR_SORTS = [
+  "avg_validator_trust",
+  "max_validator_trust",
+  "stake_dominance",
+  "subnet_count",
+  "total_emission",
+  "total_stake",
+  "uid_count",
+];
+export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
+const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
+// Bittensor's network-wide block time is a long-stable EXTERNAL protocol
+// parameter (~12s) that this repo does not measure per-request -- distinct
+// from any live-computed block-time distribution elsewhere in this repo
+// (e.g. blocks-summary.ts's blockTimeDistribution), which would make the
+// immunity estimate vary on every request purely from block-production jitter.
+// If the protocol block time changes, immunity estimates need the same update.
+const ASSUMED_SECONDS_PER_BLOCK = 12;
+
+function toIso(ms: unknown): string | null {
+  // the store can return the INTEGER captured_at as a numeric string; a bare
+  // Number.isFinite(ms) is false for a string, so the old form dropped a real
+  // snapshot timestamp to null. Coerce first and require n > 0 so null/blank/
+  // invalid cells stay null (never epoch 1970). Mirrors the blocks/extrinsics
+  // toIso fixes (#2708/#2714) and the captured_at coercion in #2725.
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const d = new Date(n);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+}
+
+function nonNegativeInt(value: unknown): number | null {
+  // Guard null first: Number(null) === 0, so a null column (block_number is a
+  // nullable INTEGER) would masquerade as the real chain height / netuid / uid 0
+  // instead of "absent". A numeric string like "10" from the store must still pass.
+  if (value == null) return null;
+  // Blank cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+// Sums run in rao-integer BigInt space, not float space -- see src/lib/rao.ts
+// for why, and for the overflow guard that lived in only one of the nine copies
+// this used to be.
+
+function round(value: unknown, dp = 6): number | null {
+  if (value == null || !Number.isFinite(value as number)) return null;
+  const factor = 10 ** dp;
+  return Math.round((value as number) * factor) / factor;
+}
+
+/**
+ * Any store's spelling of a flag column, as a real boolean.
+ *
+ * IT IS NOT A D1 COERCION ANY MORE, which is what the name and the old comment
+ * said. Measured against production Neon 2026-08-10: these columns are BOOLEAN
+ * there and the driver hands back real `true`/`false` --
+ *
+ *     validator_permit=true  (boolean)   validator_permit=false (boolean)
+ *
+ * -- so `Number(value) === 1` is doing nothing for the tier that actually
+ * serves. It is KEPT rather than simplified because this formatter is shared:
+ * the same builder renders the projection and cold tiers, whose rows arrive as
+ * decoded JSON rather than from the driver, and a 0/1 there would become `true`
+ * either way under a looser test.
+ *
+ * NOT `Boolean(value)`. A numeric string "0" is truthy, so the looser spelling
+ * inverts the flag rather than widening it -- the same class as #10088's typing
+ * trap, in the opposite direction.
+ */
+function toBooleanFlag(value: unknown): boolean {
+  return Number(value) === 1;
+}
+
+
+// coerce the flag columns back to real booleans for the API (toBooleanFlag
+// handles the INTEGER 0/1 cells; nonNegativeInt/nullableNumber coerce
+// string-typed uid/registered_at_block into real integers, and roundTao
+// rounds stake_tao / emission_tao to rao precision). The explicit null
+// guards preserve the previous null-on-missing contract: Number(null) is
+// 0 (not NaN), so nonNegativeInt(null) / finiteCellOrNull(null) / round9NonNegative(null)
+// would otherwise serialize as 0 instead of null. roundTao itself falls
+// back to nonNegativeOrZero(0) for null/non-finite, so the wrapping guards here
+// are what keep "missing cell" cells flowing through as null. Mirrors the
+// proven toBlockNumber / toTaoOrNull null-guards in account-events.ts
+// (#2487).
+// featuredHotkeys (optional) is a Set of hotkeys from the featured_validators
+// side table (#5166 recorded why that's a separate
+// hotkey-keyed table rather than a `neurons` column). Only passed by the
+// validator-list builders below -- buildSubnetMetagraph/buildNeuronDetail/
+// buildValidatorDetail never pass one, so `featured` is simply omitted from
+// their Neuron output, leaving those artifacts' shape unchanged.
+// #6640 (TaoSwap finding, #5968 survey): a neuron still inside its immunity
+// window can't be pruned for low incentive yet -- a deregistration-risk
+// signal. immunity_period is a governance-adjustable per-subnet hyperparameter
+// (never hardcoded -- mirrors the MaxDelegateTake/TxDelegateTakeRateLimit
+// convention, #5229; see also docs/conviction-lock-mechanism.md's UnlockRate
+// caveat), so the caller live-reads it (subnet_hyperparams) and passes it in
+// -- this does no I/O of its own. Anchors the wall-clock ETA off the row's OWN
+// block_number/captured_at, not "now": every response is itself a
+// point-in-time snapshot, so the estimate is reproducible from that snapshot
+// alone rather than drifting with whenever the API happens to be called.
+// Uses the documented ~12s/block consensus assumption above. Exported for
+// direct unit testing, mirroring
+// src/concentration.ts's pure-statistics convention; formatNeuron is its only
+// real caller.
+export function computeImmunityWindow(
+  row: Row,
+  neuron: Row,
+  immunityPeriod: number,
+): ImmunityWindow {
+  if (!neuron.is_immunity_period || neuron.registered_at_block == null) {
+    return {};
+  }
+  const expiresAtBlock =
+    (neuron.registered_at_block as number) + immunityPeriod;
+  const snapshotBlock = nonNegativeInt(row.block_number);
+  const capturedAtMs = row.captured_at == null ? null : Number(row.captured_at);
+  let expiresAt: string | null = null;
+  if (
+    snapshotBlock != null &&
+    Number.isFinite(capturedAtMs as number) &&
+    (capturedAtMs as number) > 0
+  ) {
+    const blocksRemaining = expiresAtBlock - snapshotBlock;
+    if (blocksRemaining > 0) {
+      expiresAt = toIso(
+        (capturedAtMs as number) +
+          blocksRemaining * ASSUMED_SECONDS_PER_BLOCK * 1000,
+      );
+    }
+  }
+  return {
+    immunity_expires_at_block: expiresAtBlock,
+    immunity_expires_at: expiresAt,
+  };
+}
+
+// immunityPeriod (optional) is the subnet's live immunity_period hyperparameter
+// (#6640) -- only buildSubnetMetagraph/buildNeuronDetail pass one; every other
+// caller (buildSubnetValidators/buildGlobalValidators/buildValidatorDetail)
+// omits it, so their rows get no immunity_expires_at* keys at all (not
+// null-valued ones), keeping their own additionalProperties:false schemas
+// untouched by this change.
+export function formatNeuron(
+  row: Row | null | undefined,
+  featuredHotkeys?: ReadonlySet<string>,
+  immunityPeriod?: number | null,
+  burnHotkey?: string | null,
+): Row | null {
+  if (!row || typeof row !== "object") return null;
+  const hotkey = row.hotkey ?? null;
+  const neuron: Row = {
+    uid: row.uid == null ? null : nonNegativeInt(row.uid),
+    hotkey,
+    coldkey: row.coldkey ?? null,
+    active: toBooleanFlag(row.active),
+    validator_permit: toBooleanFlag(row.validator_permit),
+    rank: row.rank == null ? null : round(finiteCellOrNull(row.rank)),
+    trust: row.trust == null ? null : round(finiteCellOrNull(row.trust)),
+    validator_trust:
+      row.validator_trust == null
+        ? null
+        : round(finiteCellOrNull(row.validator_trust)),
+    consensus:
+      row.consensus == null ? null : round(finiteCellOrNull(row.consensus)),
+    incentive:
+      row.incentive == null ? null : round(finiteCellOrNull(row.incentive)),
+    dividends:
+      row.dividends == null ? null : round(finiteCellOrNull(row.dividends)),
+    emission_tao:
+      row.emission_tao == null ? null : round9NonNegative(row.emission_tao),
+    stake_tao: row.stake_tao == null ? null : round9NonNegative(row.stake_tao),
+    registered_at_block:
+      row.registered_at_block == null
+        ? null
+        : nonNegativeInt(row.registered_at_block),
+    is_immunity_period: toBooleanFlag(row.is_immunity_period),
+    axon: row.axon ?? null,
+    // DERIVED, not stored: routability is a property of the value, so computing
+    // it beside the axon it describes keeps the two consistent and needs no
+    // column. Null when there is no axon -- "not announcing" has no
+    // routability to report, and false would claim it announced something
+    // unreachable (#11373).
+    axon_routable: row.axon == null ? null : isRoutableAxon(row.axon),
+    // Global per-hotkey (SubtensorModule::Delegates), not per (netuid, uid) --
+    // null means no Delegates entry at capture time (#2548).
+    take: row.take == null ? null : round(finiteCellOrNull(row.take)),
+  };
+  if (featuredHotkeys) {
+    neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey as string));
+  }
+  // #11094: the burn sink, identified from chain state rather than inferred.
+  // A subnet with SubtensorModule.MinerBurned > 0 routes that fraction of
+  // miner incentive to the UID holding SubtensorModule.SubnetOwnerHotkey --
+  // verified against SN13 (uid 162 incentive 0.715557 vs MinerBurned
+  // 0.7155707) and the zero cases (SN53/SN75 owner UIDs at incentive 0).
+  // Emitted only when the caller resolved a burn hotkey (undefined otherwise,
+  // like `featured`), so builders without the join stay shape-stable.
+  if (burnHotkey !== undefined) {
+    neuron.is_burn_uid = Boolean(
+      burnHotkey !== null && hotkey && hotkey === burnHotkey,
+    );
+  }
+  if (Number.isSafeInteger(immunityPeriod) && (immunityPeriod as number) >= 0) {
+    Object.assign(
+      neuron,
+      computeImmunityWindow(row, neuron, immunityPeriod as number),
+    );
+  }
+  return neuron;
+}
+
+// All rows of one subnet's snapshot share the same captured_at/block_number.
+function snapshotStamp(rows: Row[]): {
+  captured_at: string | null;
+  block_number: number | null;
+} {
+  const first = rows[0] || {};
+  return {
+    captured_at: toIso(first.captured_at),
+    // Coerce like buildGlobalValidators (#2611): block_number is a nullable store
+    // INTEGER that can come back as a numeric string, so a bare `?? null` would
+    // leak "8454388" into the ["integer","null"] contract field. nonNegativeInt
+    // maps null→null and numeric strings→real integers.
+    block_number: nonNegativeInt(first.block_number),
+  };
+}
+
+/**
+ * Does serving correlate with earning on this subnet? (#11371)
+ *
+ * On roughly half the subnets that pay miners at all, NOT ONE miner earning
+ * incentive publishes a routable endpoint. Measured against `neuron_daily`
+ * 2026-08-16: of 65 subnets with >=3 earning miners, 31 had zero announcing
+ * earners; of the 48 with >=10, 22 did. That is a standing property of the
+ * network, and until now every axon-shaped surface here implied otherwise by
+ * publishing an `axon` column with no context.
+ *
+ * ## Routable, not merely announced
+ *
+ * `axon_routable` and not `axon != null`: #11376 measured 347 of 6,532
+ * announced axons (5.3%) sitting in ranges nobody can route to, 246 of them
+ * earning incentive. "Announces something" and "can be reached" are different
+ * claims, and this registry exists to make the stronger one.
+ *
+ * ## Burn is stated, never silently folded in
+ *
+ * Burn UIDs earn incentive and are not miners, so counting them would dilute
+ * exactly the share this exists to report. `is_burn_uid` is emitted only when
+ * the caller resolved a burn hotkey from chain state, so it is not always
+ * knowable -- and the answer differs depending on whether it was. Rather than
+ * publish two different meanings under one name, `burn_excluded` says which
+ * one this is.
+ */
+export function axonEarningSummary(neurons: readonly Row[]): Row | null {
+  // NO ROWS, NO CLAIM. An empty set is not "this subnet pays nobody" -- it is
+  // also what a DECLINED cold tier looks like, because graphql's
+  // subnet_metagraph falls back to `buildSubnetMetagraph([], netuid)` when the
+  // tier says no. Publishing `earning_miners: 0` there would be a measurement
+  // of a subnet nothing was read for: the confident-zero failure the sibling
+  // `total_neuron_count` comment is also about. Absent says "not answered";
+  // zero would say "answered, and the answer is none".
+  if (neurons.length === 0) return null;
+  // Present only when the caller resolved a burn hotkey; `undefined` on every
+  // row otherwise. Checking one row is enough -- formatNeuron emits it for all
+  // of them or none.
+  const burnKnown = neurons.some((n) => n.is_burn_uid !== undefined);
+  const earners = neurons.filter(
+    (n) =>
+      typeof n.incentive === "number" &&
+      n.incentive > 0 &&
+      !(burnKnown && n.is_burn_uid === true),
+  );
+  const announcing = earners.filter((n) => n.axon_routable === true);
+  const total = earners.reduce((sum, n) => sum + Number(n.incentive), 0);
+  const announced = announcing.reduce((sum, n) => sum + Number(n.incentive), 0);
+  return {
+    earning_miners: earners.length,
+    announcing_earners: announcing.length,
+    // Null, not 0, when nothing earns: a subnet paying no miners has no share
+    // to report, and 0 would read as "pays miners, none reachable" -- the
+    // opposite of an empty set and the exact confusion this surface exists to
+    // remove.
+    incentive_share_to_announcers: total > 0 ? announced / total : null,
+    burn_excluded: burnKnown,
+  };
+}
+
+export function buildSubnetMetagraph(
+  rows: Row[],
+  netuid: unknown,
+  {
+    immunityPeriod,
+    burnHotkey,
+  }: { immunityPeriod?: number | null; burnHotkey?: string | null } = {},
+): Row {
+  const { captured_at, block_number } = snapshotStamp(rows);
+  // Drop any malformed row (formatNeuron → null) so the array only holds real
+  // Neuron objects, mirroring the blocks/extrinsics feed builders; the count
+  // tracks the array, so callers can rely on neuron_count === neurons.length.
+  // Wrapped (not a bare `rows.map(formatNeuron)`) so Array#map's index arg
+  // never lands in formatNeuron's featuredHotkeys parameter.
+  const neurons = rows
+    .map((row) => formatNeuron(row, undefined, immunityPeriod, burnHotkey))
+    .filter((n): n is Row => Boolean(n));
+  const axonEarning = axonEarningSummary(neurons);
+  return {
+    schema_version: 1,
+    netuid,
+    neuron_count: neurons.length,
+    captured_at,
+    block_number,
+    // Computed HERE, over every row, and deliberately not in selectNeuronRows.
+    // It describes the subnet, not the response: a `?limit=10` on a 256-neuron
+    // subnet must not report ten earning miners. selectNeuronRows spreads the
+    // payload it narrows, so this rides through unchanged -- which is the
+    // behaviour wanted, and is pinned by a test that narrows and re-reads it.
+    ...(axonEarning ? { axon_earning: axonEarning } : {}),
+    neurons,
+  };
+}
+
+export function buildSubnetValidators(
+  rows: Row[],
+  netuid: unknown,
+  {
+    featuredHotkeys = new Set<string>(),
+  }: { featuredHotkeys?: ReadonlySet<string> } = {},
+): Row {
+  const { captured_at, block_number } = snapshotStamp(rows);
+  // A real (if possibly empty) Set is always passed to formatNeuron here, so
+  // `featured` is always present on a validator row -- unlike the metagraph/
+  // neuron-detail builders above, the frontend badge needs the field even
+  // when nothing is currently featured.
+  const validators = rows
+    .map((row) => formatNeuron(row, featuredHotkeys))
+    .filter((n): n is Row => Boolean(n));
+  return {
+    schema_version: 1,
+    netuid,
+    validator_count: validators.length,
+    captured_at,
+    block_number,
+    validators,
+  };
+}
+
+export function buildNeuronDetail(
+  row: Row | null | undefined,
+  netuid: unknown,
+  { immunityPeriod }: { immunityPeriod?: number | null } = {},
+): Row {
+  return {
+    schema_version: 1,
+    netuid,
+    captured_at: toIso(row?.captured_at),
+    // Same numeric-string coercion as snapshotStamp / buildGlobalValidators
+    // (#2611): keep the top-level block_number an integer or null, never a string.
+    block_number: nonNegativeInt(row?.block_number),
+    neuron: formatNeuron(row, undefined, immunityPeriod),
+  };
+}
+
+function primaryColdkey(coldkeys: Map<string, number>): string | null {
+  const ranked = [...coldkeys.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  );
+  return ranked[0]?.[0] ?? null;
+}
+
+// The coldkey's own self-declared identity (#5234), joined by `coldkey` --
+// NOT the hotkey's. `identityByColdkey` is a coldkey -> account_identity row
+// Map built by the caller (empty by default, so every existing call site
+// below that never passes one gets a stable "no identity" shape rather than
+// an omitted field). Reuses buildAccountIdentity's own has_identity/sanitize
+// logic and IDENTITY_FIELDS's field list (single source of truth with the
+// /accounts/{ss58}/identity artifact) rather than re-deriving it, dropping
+// only that artifact's own schema_version/account (redundant here -- the
+// caller already knows which coldkey this is).
+function coldkeyIdentity(
+  coldkey: string | null,
+  identityByColdkey: Map<string, Row>,
+): Row | null {
+  if (!coldkey) return null;
+  const full = buildAccountIdentity(
+    identityByColdkey.get(coldkey) ?? null,
+    coldkey,
+  );
+  const identity: Row = { has_identity: full.has_identity };
+  for (const field of IDENTITY_FIELDS) identity[field] = full[field];
+  identity.captured_at = full.captured_at;
+  return identity;
+}
+
+// Per-netuid pricing for emission only. Root retains its existing 1:1
+// treatment; missing non-root prices retain the existing exclusion behavior.
+// This map cannot turn metagraph voting weight into independent capital.
+function priceForNetuid(
+  netuid: number,
+  priceByNetuid: Map<number, number | null>,
+): number | null {
+  if (netuid === 0) return 1;
+  const price = priceByNetuid.get(netuid);
+  return typeof price === "number" && Number.isFinite(price) && price >= 0
+    ? price
+    : null;
+}
+
+// The metagraph's stake_tao is permit voting weight, not delegated principal:
+// alpha + tao_weight * root, with the same root balance repeated across subnet
+// memberships (see validator-economics.ts). A price or tempo cannot recover the
+// independent capital legs. Preserve the published keys as unavailable rather
+// than pricing voting weight or dividing rewards by it. Empty snapshots do not
+// establish zero principal either. Mirrors unavailableRealizedReturns below.
+export function unavailableValidatorCapital(): Row {
+  return {
+    total_stake_tao: null,
+    root_stake_tao: null,
+    alpha_stake_tao: null,
+    apy_estimate: null,
+    apy_estimate_eligible_subnet_count: 0,
+  };
+}
+
+// Retained response keys for existing REST/MCP/SDK consumers (#12015).
+// A change in total delegated stake mixes deposits, withdrawals, rewards and
+// price moves. Two balance snapshots cannot isolate investment performance,
+// even when their units and dates are correct. Keep these fields unavailable
+// until a flow-neutral source exists; zero would claim measured performance.
+export function unavailableRealizedReturns(): Row {
+  return {
+    realized_return_1d: null,
+    realized_return_1d_as_of: null,
+    realized_return_1w: null,
+    realized_return_1w_as_of: null,
+    realized_return_1m: null,
+    realized_return_1m_as_of: null,
+  };
+}
+
+
+function buildGlobalValidatorEntry(
+  entry: ValidatorAccumEntry,
+  identityByColdkey: Map<string, Row>,
+  nominatorCounts: Map<string, number> = new Map(),
+): Row {
+  const avgTrust =
+    entry.validatorTrustCount > 0
+      ? entry.validatorTrustTotal / entry.validatorTrustCount
+      : null;
+  const subnets = entry.subnets
+    .sort(
+      (a, b) =>
+        (a.netuid as number) - (b.netuid as number) ||
+        (a.uid as number) - (b.uid as number),
+    )
+    .slice(0, GLOBAL_VALIDATOR_SUBNET_LIMIT);
+  const coldkey = primaryColdkey(entry.coldkeys);
+  return {
+    hotkey: entry.hotkey,
+    featured: entry.featured === true,
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
+    coldkey_count: entry.coldkeys.size,
+    subnet_count: entry.netuids.size,
+    uid_count: entry.uidCount,
+    take: round(entry.take),
+    ...unavailableValidatorCapital(),
+    stake_dominance: null,
+    total_emission_tao: round9NonNegative(raoBigToTao(entry.emissionTotalRao)),
+    // #2549: from the separate validator_nominator_counts side table, joined
+    // by hotkey. Null when that table has no row for this hotkey yet (cold
+    // table, or a hotkey the last low-frequency scan hasn't covered) --
+    // never fabricated as 0, which would misreport "confirmed zero
+    // nominators" as opposed to "unknown."
+    nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
+    ...unavailableRealizedReturns(),
+    avg_validator_trust: round(avgTrust),
+    max_validator_trust: round(entry.maxValidatorTrust),
+    latest_captured_at: toIso(entry.latestCapturedAt),
+    latest_block_number: entry.latestBlockNumber,
+    subnets,
+  };
+}
+
+/** The explicit "there is nothing to price" map, for the cold/absent-tier
+ * fallbacks that build a schema-stable empty card from zero rows. Named rather
+ * than a bare `new Map()` at each call site so the intent is greppable and a
+ * real caller can never reach for it by accident (#9051). */
+export const NO_ALPHA_PRICES: Map<number, number | null> = new Map();
+
+
+export function buildGlobalValidators(
+  rows: Row[],
+  {
+    sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
+    limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    includeAll = false,
+    featuredHotkeys = new Set<string>(),
+    priceByNetuid,
+    identityByColdkey = new Map<string, Row>(),
+    // hotkey -> nominator_count (#2549), sourced from the separate
+    // validator_nominator_counts side table -- see that migration's own
+    // comment for why this can't be a neurons-tier column. A cold/absent
+    // map (e.g. the D1-retired fallback below, which never has one) leaves
+    // every entry's nominator_count null, never throws.
+    nominatorCounts = new Map<string, number>(),
+  }: BuildGlobalValidatorsOptions,
+): Row {
+  const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
+    ? sort
+    : DEFAULT_GLOBAL_VALIDATOR_SORT;
+  // Floor at 0, not 1: an explicit limit=0 returns an empty leaderboard
+  // rather than one row nobody asked for. clampRowLimit is that rule.
+  const normalizedLimit = clampRowLimit(
+    limit,
+    GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    GLOBAL_VALIDATOR_LIMIT_MAX,
+  );
+  const validatorsByHotkey = new Map<string, ValidatorAccumEntry>();
+  let latestCapturedAt: number | null = null;
+  let latestBlockNumber: number | null = null;
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const hotkey =
+      typeof row?.hotkey === "string" && row.hotkey.length > 0
+        ? row.hotkey
+        : null;
+    const netuid = nonNegativeInt(row?.netuid);
+    const uid = nonNegativeInt(row?.uid);
+    if (!hotkey || netuid == null || uid == null) continue;
+
+    const stake = nonNegativeCellOrNull(row?.stake_tao);
+    const emission = nonNegativeOrZero(row?.emission_tao);
+    const trust = finiteCellOrNull(row?.validator_trust);
+    const capturedAt = finiteCellOrNull(row?.captured_at);
+    const blockNumber = nonNegativeInt(row?.block_number);
+    let entry = validatorsByHotkey.get(hotkey);
+    if (!entry) {
+      entry = {
+        hotkey,
+        featured: featuredHotkeys.has(hotkey),
+        coldkeys: new Map(),
+        netuids: new Set(),
+        uidCount: 0,
+        emissionTotalRao: 0n,
+        validatorTrustTotal: 0,
+        validatorTrustCount: 0,
+        maxValidatorTrust: null,
+        latestCapturedAt: null,
+        latestBlockNumber: null,
+        take: null,
+        subnets: [],
+      };
+      validatorsByHotkey.set(hotkey, entry);
+    }
+    // Global per-hotkey, identical across every row for this hotkey -- take
+    // the first non-null value seen rather than re-deriving/overwriting.
+    if (entry.take == null) {
+      const take = finiteCellOrNull(row?.take);
+      if (take != null) entry.take = take;
+    }
+    if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
+      entry.coldkeys.set(
+        row.coldkey,
+        (entry.coldkeys.get(row.coldkey) ?? 0) + 1,
+      );
+    }
+    entry.netuids.add(netuid);
+    entry.uidCount += 1;
+    // Emission pricing is independent of principal availability. Preserve its
+    // existing contract; voting weight never enters this priced accumulation.
+    const price = priceForNetuid(netuid, priceByNetuid);
+    if (price != null) {
+      entry.emissionTotalRao += toRaoBig(emission * price);
+    }
+    if (trust != null) {
+      entry.validatorTrustTotal += trust;
+      entry.validatorTrustCount += 1;
+      entry.maxValidatorTrust =
+        entry.maxValidatorTrust == null
+          ? trust
+          : Math.max(entry.maxValidatorTrust, trust);
+    }
+    if (capturedAt != null) {
+      if (
+        entry.latestCapturedAt == null ||
+        capturedAt > entry.latestCapturedAt ||
+        (capturedAt === entry.latestCapturedAt &&
+          blockNumber != null &&
+          (entry.latestBlockNumber == null ||
+            blockNumber > entry.latestBlockNumber))
+      ) {
+        entry.latestCapturedAt = capturedAt;
+        entry.latestBlockNumber = blockNumber;
+      }
+      if (
+        latestCapturedAt == null ||
+        capturedAt > latestCapturedAt ||
+        (capturedAt === latestCapturedAt &&
+          blockNumber != null &&
+          (latestBlockNumber == null || blockNumber > latestBlockNumber))
+      ) {
+        latestCapturedAt = capturedAt;
+        latestBlockNumber = blockNumber;
+      }
+    }
+    entry.subnets.push({
+      netuid,
+      uid,
+      // Legacy field name: this is the observed subnet voting weight, not
+      // independent native-alpha principal and never an investment denominator.
+      stake_alpha: round9OrNull(stake),
+      emission_alpha: round9NonNegative(emission),
+      validator_trust: round(trust),
+    });
+  }
+
+  // Wrapped (not a bare `.map(buildGlobalValidatorEntry)`) so Array#map's
+  // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
+  // parameter -- same landmine formatNeuron's own header comment documents.
+  const validators = [...validatorsByHotkey.values()]
+    .map((entry) =>
+      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
+    )
+    .sort(
+      (a, b) =>
+        validatorSortValue(b, normalizedSort) -
+          validatorSortValue(a, normalizedSort) ||
+        (a.hotkey as string).localeCompare(b.hotkey as string),
+    );
+
+  return {
+    schema_version: 1,
+    sort: normalizedSort,
+    limit: includeAll ? validators.length : normalizedLimit,
+    captured_at: toIso(latestCapturedAt),
+    block_number: latestBlockNumber,
+    validator_count: validators.length,
+    validators: includeAll ? validators : validators.slice(0, normalizedLimit),
+  };
+}
+
+const GLOBAL_VALIDATOR_SORT_FIELDS: Record<string, string> = {
+  total_stake: "total_stake_tao",
+  total_emission: "total_emission_tao",
+};
+
+function validatorSortValue(row: Row, key: string): number {
+  const field = GLOBAL_VALIDATOR_SORT_FIELDS[key] ?? key;
+  const value = row?.[field];
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : Number.NEGATIVE_INFINITY;
+}
+
+// Stable partition, not a re-sort: featured rows keep their relative order
+// among themselves, and everyone else keeps theirs, so the pin only ever
+// bubbles rows up -- it never re-ranks within either group.
+function moveFeaturedToFront(rows: Row[]): Row[] {
+  if (!Array.isArray(rows) || rows.length === 0) return rows;
+  const featured: Row[] = [];
+  const rest: Row[] = [];
+  for (const row of rows) {
+    (row?.featured === true ? featured : rest).push(row);
+  }
+  return featured.length === 0 ? rows : [...featured, ...rest];
+}
+
+// Featured-validator pin overlay (#5166): moves any row with featured=true to
+// the front of GlobalValidatorsArtifact.validators / SubnetValidatorsArtifact.
+// validators, applied ONCE at the point where the store tiers already
+// converge (mirrors overlayPreviouslyKnownAs in src/subnet-identity-history.ts
+// -- a small pure post-processing function, not duplicated per tier). Must
+// never run on an explicit, non-default sort: GlobalValidatorsArtifact carries
+// `sort`, so a caller who chose e.g. total_stake keeps that exact order; the
+// per-subnet artifact has no `sort` field at all (its ranking is always the
+// stake-DESC default), so it always gets the pin. The `featured` flag itself
+// is untouched either way -- this function only ever reorders.
+export function overlayFeaturedValidators(
+  data: Row | null | undefined,
+): Row | null | undefined {
+  if (!data || typeof data !== "object" || !Array.isArray(data.validators)) {
+    return data;
+  }
+  if (
+    Object.hasOwn(data, "sort") &&
+    data.sort !== DEFAULT_GLOBAL_VALIDATOR_SORT
+  ) {
+    return data;
+  }
+  return {
+    ...data,
+    validators: moveFeaturedToFront(data.validators as Row[]),
+  };
+}
+
+// store read paths shared by the REST handlers and the MCP tools (one source of
+// truth). `runner` is a (sql, params) => Promise<rows[]> runner; a cold/unbound store
+// returns [] → a schema-stable empty payload.
+export async function loadSubnetMetagraph(
+  runner: SqlRunner,
+  netuid: unknown,
+  { validatorsOnly = false }: { validatorsOnly?: boolean } = {},
+): Promise<Row> {
+  const rows = await runner(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
+      validatorsOnly ? " AND validator_permit = TRUE" : ""
+    } ORDER BY uid`,
+    [netuid],
+  );
+  return buildSubnetMetagraph(rows, netuid);
+}
+
+export async function loadSubnetValidators(
+  runner: SqlRunner,
+  netuid: unknown,
+): Promise<Row> {
+  // Tie-break equal stake by the unique uid so the ranking is deterministic
+  // across snapshot-replaced captures (without it, SQLite returns tied rows in
+  // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
+  const rows = await runner(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY stake_tao DESC, uid ASC`,
+    [netuid],
+  );
+  return buildSubnetValidators(rows, netuid);
+}
+
+// netuid -> latest alpha_price_tao from the subnet_snapshots table
+// (#9051), for the shared store fallback loaders below -- the store twin of
+// workers/data-api.ts's loadAlphaPricesByNetuid. Group-wise MAX join rather
+// than DISTINCT ON (SQLite has neither). A cold/absent table yields an empty
+// map, which prices nothing: every non-root row is excluded from the totals
+// rather than being silently counted 1:1.
+export async function loadStoreAlphaPricesByNetuid(
+  runner: SqlRunner,
+): Promise<Map<number, number | null>> {
+  try {
+    const rows = await runner(
+      "SELECT s.netuid, s.alpha_price_tao FROM subnet_snapshots s " +
+        "JOIN (SELECT netuid, MAX(snapshot_date) AS snapshot_date " +
+        "FROM subnet_snapshots GROUP BY netuid) latest " +
+        "ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date",
+      [],
+    );
+    const map = new Map<number, number | null>();
+    for (const row of rows) {
+      const netuid = nonNegativeInt(row?.netuid);
+      if (netuid == null) continue;
+      map.set(netuid, finiteCellOrNull(row?.alpha_price_tao));
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+// The identity join reads the store's account_identity directly. The old #5234
+// posture ("D1 write path is retired -- the Postgres-backed route is what
+// actually joins") stopped being true when Postgres was removed: D1 became
+// the only path and every operator name silently vanished from /validators.
+// account_identity is actively written in the store (the account-identity-sync
+// path), so it is joined here like any other side table.
+export async function loadGlobalValidators(
+  runner: SqlRunner,
+  {
+    sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
+    limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  }: { sort?: string; limit?: unknown } = {},
+): Promise<Row> {
+  const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
+    runner(
+      "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
+        "stake_tao, block_number, captured_at FROM neurons " +
+        "WHERE validator_permit = TRUE AND hotkey IS NOT NULL " +
+        "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
+      [],
+    ),
+    loadStoreAlphaPricesByNetuid(runner),
+    loadIdentityByColdkeyMap(runner),
+  ]);
+  return buildGlobalValidators(rows, {
+    sort,
+    limit,
+    priceByNetuid,
+    identityByColdkey,
+  });
+}
+
+export async function loadNeuron(
+  runner: SqlRunner,
+  netuid: unknown,
+  uid: unknown,
+): Promise<Row> {
+  const rows = await runner(
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
+    [netuid, uid],
+  );
+  return buildNeuronDetail(rows[0] ?? null, netuid);
+}
+
+
+// Cross-subnet validator detail (#4334/7.1): one hotkey's validator_permit=1
+// rows joined across every subnet it operates in — the single-entity
+// drill-in of the /api/v1/validators leaderboard above. Same aggregate shape
+// as buildGlobalValidatorEntry (emission sums, unavailable capital, avg/max
+// trust), but for one hotkey instead of a many-hotkey leaderboard, and with
+// full per-subnet Neuron detail (not the leaderboard's 5-field/top-10-capped
+// GlobalValidatorSubnet slice) since a detail page's whole point is the full
+// per-subnet performance table.
+export function buildValidatorDetail(
+  rows: Row[],
+  hotkey: unknown,
+  {
+    identityByColdkey = new Map<string, Row>(),
+    priceByNetuid,
+    // #2549: from the separate validator_nominator_counts side table (looked
+    // up by the caller, since this function has no DB access of its own).
+    // Null when that table has no row for this hotkey yet -- never fabricated
+    // as 0.
+    nominatorCount = null,
+  }: BuildValidatorDetailOptions,
+): Row {
+  const coldkeys = new Map<string, number>();
+  let emissionTotalRao = 0n;
+  let validatorTrustTotal = 0;
+  let validatorTrustCount = 0;
+  let maxValidatorTrust: number | null = null;
+  let latestCapturedAt: number | null = null;
+  let latestBlockNumber: number | null = null;
+  let take: number | null = null;
+  const subnets: Row[] = [];
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    // formatNeuron only nulls on a non-object row, and a non-object row's
+    // optional-chained ?.netuid is always undefined too — so netuid == null
+    // already subsumes the malformed-row case; a separate !neuron guard
+    // would be unreachable dead code (mirrors #2197's removal of two
+    // similarly-unreachable defensive branches).
+    const netuid = nonNegativeInt(row?.netuid);
+    if (netuid == null) continue;
+    const neuron = formatNeuron(row);
+
+    if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
+      coldkeys.set(row.coldkey, (coldkeys.get(row.coldkey) ?? 0) + 1);
+    }
+    // Global per-hotkey, identical across every row here -- first non-null wins.
+    if (take == null) {
+      const rowTake = finiteCellOrNull(row?.take);
+      if (rowTake != null) take = rowTake;
+    }
+    const emission = nonNegativeOrZero(row?.emission_tao);
+    // Preserve emission pricing without interpreting voting weight as capital.
+    const price = priceForNetuid(netuid, priceByNetuid);
+    if (price != null) {
+      emissionTotalRao += toRaoBig(emission * price);
+    }
+    const trust = finiteCellOrNull(row?.validator_trust);
+    if (trust != null) {
+      validatorTrustTotal += trust;
+      validatorTrustCount += 1;
+      maxValidatorTrust =
+        maxValidatorTrust == null ? trust : Math.max(maxValidatorTrust, trust);
+    }
+    const capturedAt = finiteCellOrNull(row?.captured_at);
+    const blockNumber = nonNegativeInt(row?.block_number);
+    if (
+      capturedAt != null &&
+      (latestCapturedAt == null ||
+        capturedAt > latestCapturedAt ||
+        (capturedAt === latestCapturedAt &&
+          blockNumber != null &&
+          (latestBlockNumber == null || blockNumber > latestBlockNumber)))
+    ) {
+      latestCapturedAt = capturedAt;
+      latestBlockNumber = blockNumber;
+    }
+    // Keep the legacy membership field names. stake_alpha contains the
+    // metagraph's voting weight, not an independently measured alpha position.
+    const {
+      stake_tao: _rowStake,
+      emission_tao: rowEmission,
+      ...rest
+    } = neuron as Record<string, unknown>;
+    subnets.push({
+      netuid,
+      ...rest,
+      stake_alpha: round9OrNull(nonNegativeCellOrNull(row?.stake_tao)),
+      emission_alpha: rowEmission ?? null,
+    });
+  }
+
+  const avgTrust =
+    validatorTrustCount > 0 ? validatorTrustTotal / validatorTrustCount : null;
+  subnets.sort(
+    (a, b) =>
+      (a.netuid as number) - (b.netuid as number) ||
+      (a.uid as number) - (b.uid as number),
+  );
+  const coldkey = primaryColdkey(coldkeys);
+
+  return {
+    schema_version: 1,
+    hotkey,
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
+    coldkey_count: coldkeys.size,
+    subnet_count: subnets.length,
+    take: round(take),
+    ...unavailableValidatorCapital(),
+    total_emission_tao: round9NonNegative(raoBigToTao(emissionTotalRao)),
+    nominator_count: nominatorCount,
+    ...unavailableRealizedReturns(),
+    avg_validator_trust: round(avgTrust),
+    max_validator_trust: round(maxValidatorTrust),
+    captured_at: toIso(latestCapturedAt),
+    block_number: latestBlockNumber,
+    subnets,
+  };
+}
+
+// Identity joined here too -- see loadGlobalValidators' comment.
+export async function loadValidatorDetail(
+  runner: SqlRunner,
+  hotkey: unknown,
+): Promise<Row> {
+  const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
+    runner(
+      `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
+      [hotkey],
+    ),
+    loadStoreAlphaPricesByNetuid(runner),
+    loadIdentityByColdkeyMap(runner),
+  ]);
+  return buildValidatorDetail(rows, hotkey, {
+    priceByNetuid,
+    identityByColdkey,
+  });
+}
+
+// The buildValidatorDetail fields a stake-decision comparison actually reads
+// (#6035): the take rate, estimated APY, nominator count, and on-chain identity
+// the delegate-selection UI (#5245) surfaces, plus the cross-subnet stake/
+// emission/trust aggregates that give those numbers context. Every field is
+// copied verbatim from the already-loaded detail -- nothing is recomputed here.
+const VALIDATOR_COMPARISON_FIELDS = [
+  "hotkey",
+  "coldkey",
+  "coldkey_identity",
+  "take",
+  "apy_estimate",
+  "apy_estimate_eligible_subnet_count",
+  "nominator_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "avg_validator_trust",
+  "max_validator_trust",
+  "subnet_count",
+];
+
+// Place several validators side by side for a stake/delegate decision (#6035):
+// project each buildValidatorDetail-shaped `detail` down to the decision-
+// relevant fields above (take rate, estimated APY, nominator count, on-chain
+// identity, plus supporting aggregates), preserving the caller's order. This is
+// a pure READ-ONLY projection of already-loaded detail objects -- it constructs
+// no transaction, references no key material, and derives nothing new from
+// chain state. When `netuid` is provided (the subnet context), each row also
+// carries that validator's membership row in that subnet (`subnet_context`), or
+// null when the validator holds no permit there -- letting a caller weigh the
+// global picture against one subnet at a time. `details` that isn't an array is
+// treated as an empty comparison, mirroring the cold-safe builders above.
+export function composeValidatorComparison(
+  details: unknown,
+  { netuid = null }: { netuid?: unknown } = {},
+): Row {
+  const list = Array.isArray(details) ? (details as Row[]) : [];
+  const validators = list.map((detail) => {
+    const projected: Row = {};
+    for (const field of VALIDATOR_COMPARISON_FIELDS) {
+      projected[field] = detail?.[field] ?? null;
+    }
+    // Cached detail payloads may still contain voting-weight-derived numbers.
+    projected.total_stake_tao = null;
+    projected.apy_estimate = null;
+    projected.apy_estimate_eligible_subnet_count = 0;
+    projected.subnet_context =
+      netuid == null
+        ? null
+        : ((detail?.subnets as Row[] | undefined)?.find(
+            (subnet) => subnet.netuid === netuid,
+          ) ?? null);
+    return projected;
+  });
+  return {
+    schema_version: 1,
+    netuid,
+    validator_count: validators.length,
+    validators,
+  };
+}

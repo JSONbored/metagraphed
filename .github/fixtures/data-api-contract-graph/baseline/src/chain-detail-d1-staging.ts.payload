@@ -1,0 +1,346 @@
+import { randomUUID } from "node:crypto";
+import { captureUpsertStatements } from "./capture-family-d1.ts";
+import { CHAIN_DETAIL_MIRROR_PLANS } from "./chain-detail-neon-write.ts";
+import { historySha256 } from "./history-sha256.ts";
+import type { D1StoreBinding } from "./d1-store.ts";
+import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
+import type { ChainDetailSpoolJournal } from "./chain-detail-payload-spool.ts";
+
+// This is a preparation buffer, not an admission limit. Every existing capture
+// binding is <=512 KiB; a native 1,490,000-byte chunk encodes below 1,987,000 B.
+// The 4-MiB window fits any two existing fragments. Each body remains below
+// the 2,000,000-byte row/string limit. Puts use <=10 rows * 10 bindings.
+const FRAGMENT_BYTES = 1_999_000;
+const BUFFER_BYTES = 4 * 1024 * 1024;
+const PUT_ROWS = 10;
+const COMMANDS = 900;
+const CHUNK_SQL =
+  "INSERT INTO chain_detail_payload_chunks (sha256,part,data) VALUES (?,?,?) ON CONFLICT (sha256,part) DO UPDATE SET data=CASE WHEN chain_detail_payload_chunks.data=excluded.data THEN chain_detail_payload_chunks.data ELSE NULL END";
+const EXTRA_SQL =
+  "INSERT INTO chain_detail_payload_chunks (sha256,part,data) SELECT ?,-1,'' WHERE EXISTS (SELECT 1 FROM chain_detail_payload_chunks WHERE sha256=? AND part>=?)";
+type Kind = "capture" | "chunk" | "extra";
+export interface ChainDetailStageOrder {
+  row: number;
+  field: 0 | 1;
+  part: number;
+}
+interface Descriptor extends ChainDetailStageOrder {
+  ordinal: number;
+  family: number;
+  kind: Kind;
+  bytes: number;
+  digest: string;
+}
+interface Buffered extends Descriptor {
+  body: string;
+}
+export interface ChainDetailD1Stage {
+  readonly token: string;
+  readonly spoolJournal: ChainDetailSpoolJournal;
+  /** Family index in CHAIN_DETAIL_MIRROR_PLANS. Preserve order within a family.
+   * append may retain a bounded pending put; seal establishes durable closure. */
+  append(
+    family: number,
+    statement: ProducerStatement,
+    order?: ChainDetailStageOrder,
+  ): Promise<void>;
+  seal(): Promise<void>;
+  /** One atomic business application. No completed-token replay shortcut. */
+  commit(): Promise<void>;
+  /** Only this attempt's private preparation; never deletes business rows. */
+  discard(): Promise<void>;
+}
+
+function bodyFor(
+  family: number,
+  statement: ProducerStatement,
+): { kind: Kind; body: string } {
+  if (
+    !Number.isInteger(family) ||
+    family < 0 ||
+    family >= CHAIN_DETAIL_MIRROR_PLANS.length
+  )
+    throw new TypeError("Unknown chain detail staging family");
+  const values = statement.values ?? [];
+  if (statement.text === CHUNK_SQL || statement.text === EXTRA_SQL) {
+    if (
+      values.length !== 3 ||
+      typeof values[0] !== "string" ||
+      (statement.text === CHUNK_SQL
+        ? !Number.isInteger(values[1]) || typeof values[2] !== "string"
+        : typeof values[1] !== "string" || !Number.isInteger(values[2]))
+    )
+      throw new TypeError("Invalid native payload staging command");
+    return {
+      kind: statement.text === CHUNK_SQL ? "chunk" : "extra",
+      body: JSON.stringify(values),
+    };
+  }
+  const plan = CHAIN_DETAIL_MIRROR_PLANS[family]!;
+  const expected = captureUpsertStatements(plan, [{}])[0]!.text;
+  if (
+    statement.text !== expected ||
+    values.length !== 1 ||
+    typeof values[0] !== "string"
+  )
+    throw new TypeError(
+      "Staging accepts only the exact chain detail capture commands",
+    );
+  // The trusted serializer already validates cells/row sizes. This bounded
+  // parse checks the executor shape without changing its scalar conversion.
+  const rows: unknown = JSON.parse(values[0]);
+  if (
+    !Array.isArray(rows) ||
+    rows.length === 0 ||
+    rows.length > 100 ||
+    !rows.every(
+      (row) => Array.isArray(row) && row.length === plan.columns.length,
+    )
+  )
+    throw new TypeError("Invalid chain detail capture staging shape");
+  return { kind: "capture", body: values[0] };
+}
+
+/** Strict D1 ownership selection belongs to the caller, before any stage I/O.
+ * Use a bare binding for preparation, and the selected producer store for the
+ * final batch so export revisions remain in the same business transaction. */
+export async function createChainDetailD1Stage(
+  db: D1StoreBinding,
+  store: ProducerStore,
+  nowMs = Date.now(),
+  token = randomUUID(),
+): Promise<ChainDetailD1Stage> {
+  // A caller-provided attempt token remains available if session creation
+  // commits but its response is lost before this factory can return a handle.
+  if (!/^[a-f0-9-]{36}$/.test(token))
+    throw new TypeError("Invalid chain detail stage token");
+  await db
+    .prepare(
+      "INSERT INTO chain_detail_ingest_stage_sessions(token,state,created_at,statement_count,body_bytes) VALUES (?,'open',?,0,0)",
+    )
+    .bind(token, nowMs)
+    .run();
+  const descriptors: Descriptor[] = [];
+  let pending: Buffered[] = [];
+  let pendingBytes = 0;
+  let totalBytes = 0;
+  let state: "open" | "sealed" | "committing" | "failed" | "closed" = "open";
+  let busy = false;
+  let manifest = "";
+  const exclusive = async (
+    expected: typeof state,
+    action: () => Promise<void>,
+  ) => {
+    if (busy || state !== expected)
+      throw new Error("Invalid chain detail stage lifecycle");
+    busy = true;
+    try {
+      await action();
+    } catch (error) {
+      state = "failed";
+      throw error;
+    } finally {
+      busy = false;
+    }
+  };
+  const flush = async () => {
+    if (!pending.length) return;
+    const values = pending.flatMap((row) => [
+      token,
+      row.ordinal,
+      row.family,
+      row.row,
+      row.field,
+      row.part,
+      row.kind,
+      row.body,
+      row.bytes,
+      row.digest,
+    ]);
+    const sql =
+      "INSERT INTO chain_detail_ingest_stage_fragments(token,ordinal,family,row_ordinal,field_rank,part_ordinal,kind,body,body_bytes,digest) VALUES " +
+      pending.map(() => "(?,?,?,?,?,?,?,?,?,?)").join(",");
+    await db
+      .prepare(sql)
+      .bind(...values)
+      .run();
+    pending = [];
+    pendingBytes = 0;
+  };
+  const discard = async () => {
+    if (busy || state === "committing")
+      throw new Error("Cannot discard an active stage operation");
+    state = "closed";
+    pending = [];
+    pendingBytes = 0;
+    await discardChainDetailD1Stage(db, token);
+  };
+  return {
+    token,
+    spoolJournal: {
+      async opened(key, uploadId) {
+        if (
+          busy ||
+          state !== "open" ||
+          key !== `metagraph/ingest-stage/v1/${token}/gzip`
+        )
+          throw new Error("Invalid private spool journal lifecycle");
+        const result = await db
+          .prepare(
+            "UPDATE chain_detail_ingest_stage_sessions SET spool_key=?,spool_upload=? WHERE token=? AND state='open' AND spool_upload IS NULL",
+          )
+          .bind(key, uploadId, token)
+          .run();
+        if (result.meta.changes !== 1)
+          throw new Error("Private spool upload journal mismatch");
+      },
+      async completed(size, etag) {
+        if (busy || state !== "open")
+          throw new Error("Invalid private spool journal lifecycle");
+        const result = await db
+          .prepare(
+            "UPDATE chain_detail_ingest_stage_sessions SET spool_size=?,spool_etag=?,spool_complete=1 WHERE token=? AND state='open' AND spool_upload IS NOT NULL AND spool_complete=0",
+          )
+          .bind(size, etag, token)
+          .run();
+        if (result.meta.changes !== 1)
+          throw new Error("Private spool completion journal mismatch");
+      },
+    },
+    async append(family, statement, order) {
+      await exclusive("open", async () => {
+        if (descriptors.length === COMMANDS)
+          throw new RangeError("Chain detail exceeds atomic statement budget");
+        const { kind, body } = bodyFor(family, statement);
+        const bytes = new TextEncoder().encode(body).byteLength;
+        // Existing serializer/chunk limits imply this; a new oversized producer
+        // command is an interface mismatch, never silently split or published.
+        if (bytes > FRAGMENT_BYTES)
+          throw new RangeError("Unexpected staged command representation");
+        if (pending.length === PUT_ROWS || pendingBytes + bytes > BUFFER_BYTES)
+          await flush();
+        const position = order ?? {
+          row: descriptors.length,
+          field: 0 as const,
+          part: 0,
+        };
+        if (
+          !Number.isSafeInteger(position.row) ||
+          position.row < 0 ||
+          ![0, 1].includes(position.field) ||
+          !Number.isSafeInteger(position.part) ||
+          position.part < 0
+        )
+          throw new TypeError("Invalid canonical chain detail stage order");
+        const descriptor = {
+          ordinal: descriptors.length,
+          family,
+          kind,
+          bytes,
+          digest: historySha256(body),
+          ...position,
+        };
+        descriptors.push(descriptor);
+        pending.push({ ...descriptor, body });
+        pendingBytes += bytes;
+        totalBytes += bytes;
+      });
+    },
+    async seal() {
+      await exclusive("open", async () => {
+        await flush();
+        manifest = historySha256(JSON.stringify(descriptors));
+        const result = await db
+          .prepare(
+            "UPDATE chain_detail_ingest_stage_sessions SET state='sealed',manifest=? WHERE token=? AND state='open' AND statement_count=? AND body_bytes=?",
+          )
+          .bind(manifest, token, descriptors.length, totalBytes)
+          .run();
+        if (result.meta.changes !== 1)
+          throw new Error("Chain detail stage seal mismatch");
+        state = "sealed";
+      });
+    },
+    async commit() {
+      await exclusive("sealed", async () => {
+        state = "committing";
+        const expected = JSON.stringify(
+          descriptors.map((row) => [
+            row.ordinal,
+            row.family,
+            row.row,
+            row.field,
+            row.part,
+            row.kind,
+            row.bytes,
+            row.digest,
+          ]),
+        );
+        const guard: ProducerStatement = {
+          text: `INSERT INTO chain_detail_ingest_stage_checks(token,okay) VALUES (?,CASE WHEN
+            EXISTS (SELECT 1 FROM chain_detail_ingest_stage_sessions WHERE token=? AND state='sealed' AND version=1 AND manifest=? AND statement_count=? AND body_bytes=?)
+            AND (SELECT COUNT(*) FROM chain_detail_ingest_stage_fragments WHERE token=?)=?
+            AND NOT EXISTS (SELECT 1 FROM json_each(?) e LEFT JOIN chain_detail_ingest_stage_fragments f ON f.token=? AND f.ordinal=json_extract(e.value,'$[0]')
+              WHERE f.ordinal IS NULL OR f.family<>json_extract(e.value,'$[1]') OR f.row_ordinal<>json_extract(e.value,'$[2]') OR f.field_rank<>json_extract(e.value,'$[3]') OR f.part_ordinal<>json_extract(e.value,'$[4]') OR f.kind<>json_extract(e.value,'$[5]') OR f.body_bytes<>json_extract(e.value,'$[6]') OR f.digest<>json_extract(e.value,'$[7]'))
+            THEN 1 ELSE NULL END)`,
+          values: [
+            token,
+            token,
+            manifest,
+            descriptors.length,
+            totalBytes,
+            token,
+            descriptors.length,
+            expected,
+            token,
+          ],
+        };
+        // The fixed schema trigger executes each original command occurrence.
+        // One ordered apply statement replaces up to 900 binding API calls;
+        // body strings never return to the Worker or its final binding array.
+        await store.transaction([
+          guard,
+          {
+            text: `INSERT INTO chain_detail_ingest_stage_apply(token,ordinal)
+            SELECT token,ordinal FROM chain_detail_ingest_stage_fragments WHERE token=?
+            ORDER BY CASE WHEN kind='capture' THEN 1 ELSE 0 END,family,row_ordinal,field_rank,part_ordinal,ordinal`,
+            values: [token],
+          },
+          {
+            text: "DELETE FROM chain_detail_ingest_stage_apply WHERE token=?",
+            values: [token],
+          },
+          {
+            text: "DELETE FROM chain_detail_ingest_stage_fragments WHERE token=?",
+            values: [token],
+          },
+          {
+            text: "UPDATE chain_detail_ingest_stage_sessions SET state='applied' WHERE token=?",
+            values: [token],
+          },
+          {
+            text: "DELETE FROM chain_detail_ingest_stage_checks WHERE token=?",
+            values: [token],
+          },
+        ]);
+        state = "closed";
+      });
+    },
+    discard,
+  };
+}
+
+/** An explicit owned-attempt cleanup primitive, not an unreviewed expiry policy.
+ * Final commit checks the complete sealed set inside the same atomic batch, so
+ * deletion before commit causes failure rather than a successful empty write. */
+export async function discardChainDetailD1Stage(
+  db: D1StoreBinding,
+  token: string,
+): Promise<void> {
+  if (!/^[a-f0-9-]{36}$/.test(token))
+    throw new TypeError("Invalid chain detail stage token");
+  await db
+    .prepare("DELETE FROM chain_detail_ingest_stage_sessions WHERE token=?")
+    .bind(token)
+    .run();
+}

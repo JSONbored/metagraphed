@@ -1,0 +1,48 @@
+// Copied documentation references to nearby runtime code and tests refer to src/nominator-positions-neon-write.ts.
+import type { PassTallyInput } from "./pass-completeness.ts";
+import type { NeonWriteResult } from "./neon-write.ts";
+import type { LaneHealthDb } from "./lane-health.ts";
+
+export type Row = Record<string, unknown>;
+
+export interface NominatorPositionsMirrorOutcome {
+  attempted: boolean;
+  write?: NeonWriteResult;
+  prune?: NeonWriteResult;
+  /** Full-scan receipts must land before acknowledging a delivered chunk. */
+  coverage?: NeonWriteResult;
+  /** The pass tally, SURFACED so an inverted caller can require it (#10109).
+   * It was written but not reported, so once this lane is Neon's the request
+   * could answer ok while nominator_positions_passes -- a table with no other
+   * writer -- took nothing. A completeness ledger nobody can tell is empty is
+   * worse than no ledger. */
+  pass?: NeonWriteResult;
+}
+
+export interface NominatorPositionsMirrorDeps {
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+}
+
+export type NominatorPositionsInput = {
+  rows: Row[];
+  coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
+  /** This chunk's completeness tally (#10056). Written last, and only when
+   * both the upsert and the prune succeeded -- see below. */
+  pass?: PassTallyInput | null;
+  /**
+   * Which producer wrote these rows, and therefore which rows the prune may
+   * delete (#10845). Defaults to the Alpha scan, so every existing caller is
+   * unchanged and every existing row -- all 123,057 of them, defaulted by
+   * 0027 -- keeps matching.
+   */
+  source?: string;
+  /**
+   * The lane these rows report under. `self-stake` is a DIFFERENT lane from
+   * `nominator-positions` even though both write this table: they run on
+   * different cadences (weekly vs daily) and a shared verdict would let one
+   * lane's silence hide behind the other's success.
+   */
+  lane?: string;
+};

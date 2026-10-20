@@ -1,0 +1,37 @@
+export interface CaptureStamp {
+  ms: number;
+  value: string;
+}
+
+export type Row = Record<string, unknown>;
+
+export interface AccountPortfolioPosition {
+  netuid: number;
+  uid: number | null;
+  role: "validator" | "miner";
+  active: boolean;
+  /** Unavailable: the metagraph records voting weight, not alpha principal. */
+  stake_alpha: number | null;
+  emission_alpha: number;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  yield: number | null;
+}
+
+export interface AccountPortfolioResult {
+  schema_version: 1;
+  ss58: string;
+  captured_at: string | null;
+  subnet_count: number;
+  position_count: number;
+  validator_count: number;
+  miner_count: number;
+  /** Unavailable without independently measured principal. */
+  total_stake_tao: number | null;
+  total_emission_tao: number;
+  overall_yield: number | null;
+  stake_concentration: unknown;
+  positions: AccountPortfolioPosition[];
+}

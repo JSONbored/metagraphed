@@ -1,0 +1,143 @@
+import type { CONCENTRATION_LENSES, CONCENTRATION_RANKING_SORTS } from "./concentration.ts";
+
+export interface TopShares {
+  [key: `top_${number}pct_share`]: number | null;
+}
+
+export interface Entropy {
+  bits: number;
+  normalized: number;
+}
+
+export interface ConcentrationScorecard extends TopShares {
+  holders: number;
+  total: number | null;
+  gini: number | null;
+  hhi: number | null;
+  hhi_normalized: number | null;
+  nakamoto_coefficient: number;
+  entropy: number | null;
+  entropy_normalized: number | null;
+}
+
+export interface EntityGroups {
+  stake: number[];
+  emission: number[];
+  count: number;
+}
+
+export interface ConcentrationResult {
+  schema_version: 1;
+  netuid: number;
+  neuron_count: number;
+  entity_count: number;
+  uids_per_entity: number | null;
+  captured_at: string | null;
+  stake: ConcentrationScorecard | null;
+  emission: ConcentrationScorecard | null;
+  entity_stake: ConcentrationScorecard | null;
+  entity_emission: ConcentrationScorecard | null;
+  validator_stake: ConcentrationScorecard | null;
+}
+
+export interface ChainConcentrationResult {
+  schema_version: 1;
+  subnet_count: number;
+  neuron_count: number;
+  entity_count: number;
+  uids_per_entity: number | null;
+  captured_at: string | null;
+  stake: ConcentrationScorecard | null;
+  emission: ConcentrationScorecard | null;
+  entity_stake: ConcentrationScorecard | null;
+  entity_emission: ConcentrationScorecard | null;
+  validator_stake: ConcentrationScorecard | null;
+}
+
+export type ConcentrationLens = (typeof CONCENTRATION_LENSES)[number];
+
+export type ConcentrationRankingSort =
+  (typeof CONCENTRATION_RANKING_SORTS)[number];
+
+export interface ConcentrationRankingQuery {
+  lens: ConcentrationLens;
+  sort: ConcentrationRankingSort;
+  order: "asc" | "desc" | null;
+  limit: number;
+}
+
+export interface SubnetConcentrationRow extends TopShares {
+  netuid: number;
+  neuron_count: number;
+  entity_count: number;
+  uids_per_entity: number | null;
+  holders: number | null;
+  total: number | null;
+  gini: number | null;
+  hhi: number | null;
+  hhi_normalized: number | null;
+  nakamoto_coefficient: number | null;
+  entropy: number | null;
+  entropy_normalized: number | null;
+  /**
+   * True when the chosen lens had no positive distribution on this subnet, so
+   * every metric above is null. Published rather than left to be inferred from
+   * the nulls: "nobody earned anything measurable here" and "we did not measure"
+   * are different facts, and a caller ranking subnets must be able to tell them
+   * apart without guessing.
+   */
+  unmeasured: boolean;
+}
+
+export interface SubnetConcentrationRankingResult {
+  schema_version: 1;
+  lens: ConcentrationLens;
+  sort: ConcentrationRankingSort;
+  order: "asc" | "desc";
+  subnet_count: number;
+  measured_subnet_count: number;
+  returned: number;
+  limit: number;
+  neuron_count: number;
+  captured_at: string | null;
+  /**
+   * Dimension-free network facts only. A median of a ratio is comparable across
+   * subnets; a SUM of per-subnet alpha is not, because each subnet's alpha is a
+   * different token -- the same rule /chain/holders states for total_alpha.
+   */
+  network: {
+    median_gini: number | null;
+    median_nakamoto_coefficient: number | null;
+    median_top_1pct_share: number | null;
+    single_holder_subnet_count: number;
+  };
+  subnets: SubnetConcentrationRow[];
+}
+
+export type ConcentrationHistoryWindowResult =
+  | { label: string; days: number }
+  | { error: { parameter: string; message: string } };
+
+export interface ConcentrationHistoryPoint {
+  snapshot_date: string;
+  neuron_count: number;
+  stake_gini: number | null;
+  stake_nakamoto_coefficient: number | null;
+  stake_top_10pct_share: number | null;
+  emission_gini: number | null;
+  emission_nakamoto_coefficient: number | null;
+  emission_top_10pct_share: number | null;
+}
+
+export interface ConcentrationHistoryResult {
+  schema_version: 1;
+  netuid: number;
+  window: string | null;
+  point_count: number;
+  points: ConcentrationHistoryPoint[];
+}
+
+export type SqlRunner = (
+  sql: string,
+  params: unknown[],
+) => Promise<Array<Record<string, unknown>>>;

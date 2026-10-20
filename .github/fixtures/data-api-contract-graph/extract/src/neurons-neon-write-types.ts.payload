@@ -1,0 +1,75 @@
+// Copied documentation references to nearby runtime code and tests refer to src/neurons-neon-write.ts.
+import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteResult } from "./neon-write.ts";
+import type { PassTallyInput } from "./pass-completeness.ts";
+
+/** Everything a snapshot write needs, derived from the rows alone -- so the
+ * sync handler and the queue consumer build it the same way. */
+export interface NeuronSnapshotWrite {
+  rows: Row[];
+  dailyRows: Row[];
+  positionRows: Row[];
+  /** Per-netuid max captured_at -- NOT one batch-wide value. */
+  netuidMaxCapturedAt: Map<number, number>;
+}
+
+export type Row = Record<string, unknown>;
+
+/**
+ * One table's mirror plan: where the rows go, in what column order, and on
+ * what key they collide.
+ *
+ * The conflict keys match Neon's own primary keys, read off the live database
+ * rather than assumed -- `neurons_pkey (netuid, uid)` and
+ * `account_position_daily_pkey (account, netuid, snapshot_date)`. An ON CONFLICT
+ * naming columns without a matching unique index is a runtime error, not a
+ * slower query.
+ */
+export interface MirrorPlan {
+  table: string;
+  columns: readonly string[];
+  conflict: readonly string[];
+  guard?: string;
+}
+
+export interface NeuronMirrorInput {
+  rows: Row[];
+  dailyRows: Row[];
+  positionRows: Row[];
+  /** This chunk's completeness tally, when the producer declared a pass.
+   *
+   * Carried here rather than written by the caller because of the invariant
+   * src/neurons-d1-write.ts states for the D1 side: the tally must not be able
+   * to report a pass complete whose rows never landed. D1 gets that from one
+   * atomic batch. Postgres cannot, because writeRowsToNeon chunks -- so it is
+   * enforced below instead, by writing the tally ONLY after every table
+   * succeeded. */
+  pass?: PassTallyInput | null;
+  /**
+   * Per-netuid max `captured_at`, which the prune below deletes beneath.
+   *
+   * Optional because the backfill route legitimately has none: it walks PAST
+   * snapshot_dates and must never touch `neurons`, so it passes `rows: []` and
+   * omits this. Absent means "do not prune", never "prune everything".
+   */
+  netuidMaxCapturedAt?: Map<number, number> | null;
+}
+
+export interface NeuronMirrorOutcome {
+  /** False when the lane is not enabled, or Hyperdrive is unbound. Distinct
+   * from a failed attempt: "we did not try" is not "we tried and it broke". */
+  attempted: boolean;
+  writePath: "d1" | "postgres-direct" | "postgres-buffered" | "unbound";
+  results: Record<string, NeonWriteResult>;
+  /** The deregistration prune, kept OUT of `results` on purpose -- see the
+   * write path. Absent when there were no cutoffs to prune on, or when a table
+   * failed and the prune was withheld. */
+  prune?: NeonWriteResult;
+}
+
+export interface NeuronMirrorDeps {
+  /** Injectable runner, so a test asserts the statements without a database. */
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+}

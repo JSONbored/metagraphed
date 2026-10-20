@@ -1,0 +1,30 @@
+export interface AccountNominatorPosition {
+  hotkey: string;
+  netuid: number;
+  share_fraction: number | null;
+  stake_tao: number;
+}
+
+export interface AccountPositionsDegraded {
+  reason: string;
+  /** The LEDGER's own capture stamp, not this account's -- present even when
+   * the account has no rows in it, which is the case this exists for. */
+  snapshot_captured_at: string | null;
+  /** The newest StakeAdded/StakeRemoved this coldkey has on chain, when that
+   * is what contradicts the zero. */
+  latest_stake_event_at: string | null;
+}
+
+export interface AccountPositionsResult {
+  schema_version: 1;
+  ss58: string;
+  captured_at: string | null;
+  position_count: number;
+  total_stake_alpha: number;
+  positions: AccountNominatorPosition[];
+  /**
+   * Read/coverage degradation evidence. Absence does not establish complete
+   * wallet coverage or an authoritative asset basis for legacy numeric fields.
+   */
+  degraded?: AccountPositionsDegraded;
+}

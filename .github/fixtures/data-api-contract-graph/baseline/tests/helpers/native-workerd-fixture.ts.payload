@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
+import { Miniflare, NoOpLog } from "miniflare";
+
+/** Correctness-only native module fixture. The driver receives fetch responses,
+ * never native storage objects or streams. Full API/resource acceptance uses
+ * the unchanged buildApiWorker driver in the separate resource proposal. */
+export async function createNativeWorkerdFixture(
+  entryPoint: URL,
+  options: {
+    name: string;
+    r2Buckets?: string[];
+    d1Databases?: string[];
+    bindings?: Record<string, string | number | boolean>;
+  },
+) {
+  const bundled = await build({
+    entryPoints: [fileURLToPath(entryPoint)],
+    bundle: true,
+    format: "esm",
+    platform: "neutral",
+    target: "es2022",
+    conditions: ["workerd", "worker", "browser"],
+    external: ["node:*"],
+    write: false,
+    logLevel: "silent",
+  });
+  assert.equal(bundled.errors.length, 0);
+  assert.equal(bundled.outputFiles.length, 1);
+  let outbound = 0;
+  const runtime = new Miniflare({
+    modules: true,
+    script: bundled.outputFiles[0]!.text,
+    name: options.name,
+    compatibilityDate: "2026-06-06",
+    compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
+    r2Buckets: options.r2Buckets,
+    d1Databases: options.d1Databases,
+    bindings: options.bindings,
+    log: new NoOpLog(),
+    outboundService: () => {
+      outbound++;
+      return new Response(null, { status: 503 });
+    },
+  });
+  try {
+    await runtime.ready;
+  } catch (error) {
+    await runtime.dispose();
+    throw error;
+  }
+  return { runtime, outboundRefusals: () => outbound };
+}

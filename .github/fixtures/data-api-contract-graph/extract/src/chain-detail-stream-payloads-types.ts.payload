@@ -1,0 +1,46 @@
+export type Representation = "raw" | "gzip";
+
+/** Attempt-scoped, private preparation. append consumes bytes before returning;
+ * scan provides ordered owned parts, and each record must be fully drained. */
+export interface ChainDetailPayloadSpool {
+  append(
+    valueId: string,
+    representation: Representation,
+    part: number,
+    bytes: Uint8Array,
+  ): Promise<void>;
+  finish(): Promise<void>;
+  scan(
+    representation: Representation,
+  ): AsyncIterable<{ valueId: string; parts: AsyncIterable<Uint8Array> }>;
+}
+
+export interface PayloadPosition {
+  row: number;
+  field: "call_args" | "args";
+}
+
+export interface PreparedPayload {
+  valueId: string;
+  hash: string;
+  rawBytes: number;
+  storedBytes: number;
+  zippedBytes: number;
+  zippedSha256: string;
+  representation: Representation;
+  reference: string;
+  position: PayloadPosition;
+}
+
+export interface StreamedPayloadString {
+  write(value: string): Promise<void>;
+  finish(): Promise<string>;
+  cancel(reason: unknown): void;
+}
+
+export interface StreamedPayloadFamily {
+  start(position: PayloadPosition): StreamedPayloadString;
+  nativePayloads(): Iterable<PreparedPayload>;
+  assertFinished(): void;
+  cancel(reason: unknown): void;
+}

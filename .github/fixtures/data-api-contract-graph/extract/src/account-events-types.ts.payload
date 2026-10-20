@@ -1,0 +1,181 @@
+import type { PriceBasis } from "./price-at-tx.ts";
+
+export interface AccountEvent {
+  block_number: number | null;
+  event_index: number | null;
+  event_kind: string | null;
+  hotkey: string | null;
+  coldkey: string | null;
+  netuid: number | null;
+  uid: number | null;
+  amount_tao: number | null;
+  alpha_amount: number | null;
+  observed_at: string | null;
+  extrinsic_index: number | null;
+  /** #8369: TAO per alpha for this specific trade, null when not derivable
+   * (non-swap events, root, malformed legs). See src/price-at-tx.ts. */
+  price_at_tx: number | null;
+  price_basis: PriceBasis | null;
+}
+
+export interface AccountRegistrationEntry {
+  netuid: number | null;
+  uid: number | null;
+  stake_tao: number | null;
+  validator_permit: boolean;
+  active: boolean;
+}
+
+export interface AccountActivityModuleCount {
+  call_module: string;
+  count: number;
+}
+
+export interface AccountActivity {
+  tx_count: number;
+  last_tx_block: number | null;
+  last_tx_at: string | null;
+  total_fee_tao: number | null;
+  modules_called: AccountActivityModuleCount[];
+  // True when modules_called covers only the newest ACCOUNT_ACTIVITY_MODULES_WINDOW
+  // extrinsics — i.e. the account has signed more than that window all-time.
+  modules_called_capped: boolean;
+}
+
+export interface AccountSummaryEventKind {
+  kind: string;
+  count: number;
+}
+
+export interface AccountSummaryResult {
+  schema_version: 1;
+  ss58: string;
+  event_count: number;
+  subnet_count: number;
+  event_scan_capped: boolean;
+  first_block: number | null;
+  last_block: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  event_kinds: AccountSummaryEventKind[];
+  registrations: AccountRegistrationEntry[];
+  recent_events: AccountEvent[];
+  activity: AccountActivity;
+}
+
+export interface AccountEventsResult {
+  schema_version: 1;
+  ss58: string;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  events: AccountEvent[];
+}
+
+export interface SubnetEventsResult {
+  schema_version: 1;
+  netuid: number;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  events: AccountEvent[];
+}
+
+export interface CategorySummary {
+  category: string;
+  event_count: number;
+  kind_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+export interface SubnetEventSummaryEventKind {
+  event_kind: string;
+  category: string;
+  event_count: number;
+  hotkey_count: number;
+  coldkey_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+export interface SubnetEventSummaryResult {
+  schema_version: 1;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  total_events: number;
+  kind_count: number;
+  category_count: number;
+  recent_event_count: number;
+  limit: number | null;
+  categories: CategorySummary[];
+  event_kinds: SubnetEventSummaryEventKind[];
+  recent_events: AccountEvent[];
+}
+
+export interface BlockEventsResult {
+  schema_version: 1;
+  ref: unknown;
+  block_number: number | null;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  events: AccountEvent[];
+}
+
+export interface AccountDay {
+  day: unknown;
+  netuid: number | null;
+  event_count: number | null;
+  event_kinds: string[];
+  first_block: number | null;
+  last_block: number | null;
+}
+
+export interface AccountHistoryResult {
+  schema_version: 1;
+  ss58: string;
+  day_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  days: AccountDay[];
+}
+
+export interface AccountSubnetsResult {
+  schema_version: 1;
+  ss58: string;
+  subnet_count: number;
+  subnets: AccountRegistrationEntry[];
+}
+
+export interface AccountTransferEntry {
+  block_number: number | null;
+  event_index: number | null;
+  from: string | null;
+  to: string | null;
+  amount_tao: number | null;
+  direction: "sent" | "received" | null;
+  observed_at: string | null;
+}
+
+export interface AccountTransfersResult {
+  schema_version: 1;
+  ss58: string;
+  transfer_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  transfers: AccountTransferEntry[];
+}

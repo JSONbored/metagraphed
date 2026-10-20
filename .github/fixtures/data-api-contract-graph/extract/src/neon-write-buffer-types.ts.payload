@@ -1,0 +1,43 @@
+import type { StoreEnv } from "./read-store.ts";
+import type { TelemetryEnv } from "./usage-telemetry.ts";
+
+// In the two original blocks below, "this file" and "further down this file"
+// refer to src/neon-write-buffer.ts.
+/**
+ * What this module reads from its environment, and nothing else.
+ *
+ * Named rather than left as `Record<string, unknown>` (#11339): a Record
+ * READS as loose but is not, because `Env` is an interface and TypeScript
+ * never gives interfaces implicit index signatures -- so every caller
+ * holding a real `Env` wrote `env as unknown as Record<string, unknown>`
+ * to get past it. Listing the keys costs nothing and states the contract.
+ */
+/**
+ * What a Neon WRITE lane needs from its environment.
+ *
+ * Exported, because the lanes that route through this buffer need the same
+ * three vars and were each declaring `Record<string, unknown>` -- which is not
+ * loose enough for an `Env` and so put `env as unknown as Record<…>` on every
+ * one of their call sites (#11339).
+ *
+ * `unknown` per var rather than `string`: every read here goes through a
+ * coercion that takes unknown, and nothing in this module assumes otherwise.
+ *
+ * NEON_DUAL_WRITE_LANES is deliberately NOT here. It is retired -- see the note
+ * further down this file and src/lane-health.ts -- and it only looked live
+ * because test fixtures still set it, which nothing checked while they were
+ * built with `as unknown as Env` (#11339).
+ */
+export type NeonWriteEnv = StoreEnv &
+  TelemetryEnv & {
+    NEON_WRITE_BUFFER?: unknown;
+    NEON_WRITE_BUFFER_LANES?: unknown;
+  };
+
+export type NeonWriteBufferEnv = NeonWriteEnv;
+
+/** The DO namespace binding this hub is reached through. */
+export interface NeonWriteBufferNamespace {
+  idFromName(name: string): unknown;
+  get(id: unknown): { fetch(request: Request): Promise<Response> };
+}

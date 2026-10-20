@@ -1,0 +1,27 @@
+import type { LaneHealthDb } from "./lane-health.ts";
+
+export interface LedgerPlan {
+  table: string;
+  columns: readonly string[];
+  conflict: readonly string[];
+  /** A SQL predicate rows must satisfy to be inserted, over the `src` alias
+   * buildPgUpsert gives the VALUES list. Present only where the store writer
+   * filters too -- a mirror that stores MORE than its source is a mirror in
+   * name only (#9832). */
+  filter?: string;
+  /**
+   * Target types for the columns the FILTERED form selects (#10121).
+   *
+   * Only the filtered form needs them: `FROM (VALUES ...) AS src (...)` is a
+   * standalone relation whose columns have no declared types, so every untyped
+   * parameter falls back to TEXT and the insert fails against any non-text
+   * column. The unfiltered form takes its types from the target columns.
+   */
+  columnTypes?: Readonly<Record<string, string>>;
+}
+
+export interface LedgerMirrorDeps {
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+}

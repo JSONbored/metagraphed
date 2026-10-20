@@ -1,0 +1,42 @@
+import type { BLOCK_REASON_CODES } from "./api-key-abuse.ts";
+import type { AccountKind } from "./account-kind.ts";
+
+export type BlockReasonCode = keyof typeof BLOCK_REASON_CODES;
+
+/** One account-day of usage, as stored in api_key_usage_daily. */
+export interface UsageDay {
+  day: string;
+  /** Requests per route label ("chain-events", "mcp", "ask", ...). */
+  routes: Record<string, number>;
+}
+
+export interface AnomalySignal {
+  code: "sustained_ceiling" | "route_spread" | "single_route_concentration";
+  /** 0..1. Not a probability -- a normalized severity for ranking a queue. */
+  score: number;
+  detail: string;
+}
+
+/** An active block, as held in the cached snapshot the edge reads. */
+export interface BlockEntry {
+  accountId: number;
+  /**
+   * WHICH identity system `accountId` belongs to (#11573).
+   *
+   * Optional for one reason only: a snapshot written before the discriminator
+   * existed carries no kind, and those entries are all `rpc` accounts. Absent
+   * is therefore read as `rpc` rather than as "matches anything" -- see
+   * evaluateBlock.
+   */
+  accountKind?: AccountKind | null;
+  reasonCode: BlockReasonCode;
+  note?: string | null;
+  blockedAt?: number | null;
+}
+
+export interface BlockVerdict {
+  blocked: boolean;
+  reasonCode: BlockReasonCode | null;
+  /** Caller-facing sentence. Never the internal note, which may name a human. */
+  message: string | null;
+}

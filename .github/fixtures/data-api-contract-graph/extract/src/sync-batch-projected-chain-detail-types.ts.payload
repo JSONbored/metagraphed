@@ -1,0 +1,99 @@
+/** These coordinates belong to the immutable compressed snapshot, not to a
+ * caller-owned message object. Row indices are local to their named family. */
+export interface ProjectedChainDetailRow {
+  readonly family: string;
+  readonly index: number;
+  readonly array: boolean;
+}
+
+export interface ProjectedChainDetailField extends ProjectedChainDetailRow {
+  readonly field: string;
+  readonly fieldIndex: number;
+}
+
+export type ProjectedChainDetailValue =
+  | { readonly kind: "null"; readonly value: null }
+  | { readonly kind: "boolean"; readonly value: boolean }
+  | { readonly kind: "number"; readonly value: number }
+  | { readonly kind: "object" }
+  | { readonly kind: "array" };
+
+export type Completion = void | Promise<void>;
+
+export interface ProjectedChainDetailVisitor {
+  rowStart(row: ProjectedChainDetailRow): Completion;
+  value(
+    field: ProjectedChainDetailField,
+    value: ProjectedChainDetailValue,
+  ): Completion;
+  stringStart(field: ProjectedChainDetailField): Completion;
+  /** Decoded UTF-16; a valid surrogate pair never crosses a chunk boundary. */
+  stringChunk(field: ProjectedChainDetailField, chunk: string): Completion;
+  stringEnd(field: ProjectedChainDetailField): Completion;
+  rowEnd(row: ProjectedChainDetailRow): Completion;
+}
+
+export interface ProjectedChainDetailPlan {
+  readonly capturedAt: number;
+  readonly passTotal: number | undefined;
+  readonly rowCount: number;
+  readonly families: readonly {
+    readonly name: string;
+    readonly count: number;
+    readonly fields: readonly string[];
+  }[];
+  /** Callbacks follow wire order. The staged writer must restore canonical
+   * chunk/family/row/field order before the one business commit. */
+  visit(visitor: ProjectedChainDetailVisitor): Promise<void>;
+}
+
+export type ProjectedChainDetailInspection =
+  | { readonly kind: "invalid" }
+  | { readonly kind: "fallback" }
+  | { readonly kind: "projected"; readonly plan: ProjectedChainDetailPlan };
+
+export type Kind = "object" | "array" | "string" | "number" | "boolean" | "null";
+
+export type Scalar = string | number | boolean | null;
+
+export interface Observer {
+  start(kind: Kind, at: number, depth: number): void;
+  key(value: string | null, depth: number): void;
+  end(
+    kind: Kind,
+    from: number,
+    to: number,
+    depth: number,
+    value?: Scalar,
+  ): void;
+  stringStart?(at: number, depth: number): boolean;
+  stringChunk?(value: string): void;
+  flush?(): Promise<void>;
+}
+
+export interface FamilyRange {
+  start: number;
+  end: number;
+  count: number;
+  valid: boolean;
+}
+
+export interface FamilyMetadata {
+  name: string;
+  range: FamilyRange;
+  fields: readonly string[];
+  base: number;
+  rowBase: number;
+}
+
+export type Event =
+  | { type: "rowStart"; row: ProjectedChainDetailRow }
+  | { type: "rowEnd"; row: ProjectedChainDetailRow }
+  | {
+      type: "value";
+      field: ProjectedChainDetailField;
+      value: ProjectedChainDetailValue;
+    }
+  | { type: "stringStart"; field: ProjectedChainDetailField }
+  | { type: "stringEnd"; field: ProjectedChainDetailField }
+  | { type: "stringChunk"; field: ProjectedChainDetailField; chunk: string };

@@ -1,0 +1,23 @@
+import type { ComputeDeclarations } from "../generated/db/types.ts";
+
+export type Row = Record<string, unknown>;
+
+/**
+ * One `compute_declarations` row as the store returns it.
+ *
+ * Was a hand-written interface in #11041, because the migration had not been
+ * applied yet and the generated types are introspected from the LIVE schema --
+ * they cannot know about a table its own PR is creating. That is now done, so
+ * this is the generated type and the shape can no longer drift from the column
+ * set. Same swap `TreasuryReadingRow` took one migration earlier.
+ */
+export type ComputeDeclarationRow = ComputeDeclarations;
+
+export interface CostToParticipateInputs {
+  /** The `/validator-economics` payload, whole. Three fields are projected out
+   * of it and nothing is recomputed — see entryCostFrom. */
+  economics?: Row | null;
+  /** The #10931 miner-fairness card, whole. Five fields are projected out of
+   * it; nothing is recomputed. */
+  minerFairness?: Row | null;
+}

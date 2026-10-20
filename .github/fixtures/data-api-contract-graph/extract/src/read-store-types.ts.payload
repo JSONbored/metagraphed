@@ -1,0 +1,89 @@
+import type { D1StoreBinding } from "./d1-store.ts";
+
+/** The minimal pg client this needs, so a test can hand it a fake. */
+export interface ReadStoreClient {
+  connect(): Promise<void>;
+  end(): Promise<void>;
+  query(
+    text: string,
+    values?: unknown[],
+  ): Promise<{ rows?: unknown[]; rowCount?: number } | undefined>;
+}
+
+/** A row with no claimed shape.
+ *
+ * The DEFAULT for `all`/`first`, rather than `unknown`, because that is what
+ * the store's own typing gave these call sites: several read a named column straight
+ * off an untyped `first()`, and `unknown` would break them for no benefit --
+ * neither store validates the shape, so the default is about what the caller is
+ * allowed to write, not about safety. */
+export type Row = Record<string, unknown>;
+
+/** A store that can read MANY rows. */
+export interface RowQuerier {
+  query<T = Row>(text: string, values?: unknown[]): Promise<T[]>;
+}
+
+/**
+ * A store whose rows carry NO claimed shape.
+ *
+ * The minimum for a reader that only ever reads columns off an untyped row and
+ * never names a row type -- the watchdogs, which read `count(*)` and a verdict
+ * string out of a `GROUP BY`. `RowQuerier`'s generic `query<T>` is NOT this: a
+ * generic signature can only be satisfied by a generic implementation, so a
+ * hand-rolled double returning `Record<string, unknown>[]` does not fit it and
+ * has to be cast into place, which is the cast this exists to remove.
+ *
+ * The arrow points one way, as it does for `RowReader`: a `RowQuerier` (and so
+ * a `ReadStoreDb`) satisfies this by instantiating `T` at the default, so the
+ * real store can be handed to a reader that asks only for this.
+ */
+export interface UntypedRowQuerier {
+  query(text: string, values?: unknown[]): Promise<Row[]>;
+}
+
+/** A store that can read ONE row.
+ *
+ * NON-GENERIC, and returning `unknown` rather than `T | null`, because this is
+ * the MINIMUM a caller can require rather than what the real store offers. A
+ * generic signature is not satisfied by a double that returns one concrete row
+ * type -- `T` could be instantiated with anything -- so widening this to match
+ * `ReadStoreDb` would break every fake in the completeness tests, which is the
+ * precise failure that made #11207 "looks like cleanup, is a regression". */
+export interface RowReader {
+  first(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+/** ...where the binding may be absent, so the reader degrades rather than throws. */
+export type OptionalRowQuerier = Partial<RowQuerier>;
+
+export type OptionalRowReader = Partial<RowReader>;
+
+/** Both capabilities, required -- what `pgReadStore` actually returns.
+ *
+ * COMPOSED for the `query` half, which is identical, and stating the stronger
+ * `first` once: the store really does return `T | null`, and ~45 call sites
+ * read named columns off it. That is assignable to `RowReader`'s `unknown`, so
+ * a `ReadStoreDb` still satisfies every minimal contract above -- the arrow
+ * only points one way, which is what makes the minimal ones safe to require. */
+export type ReadStoreDb = RowQuerier & {
+  first<T = Row>(text: string, values?: unknown[]): Promise<T | null>;
+};
+
+export interface ReadStoreDeps {
+  clientFactory?: (connectionString: string) => ReadStoreClient;
+}
+
+/**
+ * The one binding `readStore` looks for.
+ *
+ * `readStore` itself keeps taking `unknown` -- see its own note -- because its
+ * callers hand in an `Env`, a bag, or nothing. This names the same shape for
+ * COMPOSERS, which forward one env to both legs (the Neon store and the
+ * lakehouse) and therefore need a type that admits either (#11339).
+ */
+export interface StoreEnv {
+  HYPERDRIVE?: { connectionString?: string };
+  D1_STATE?: D1StoreBinding;
+  D1_STATE_TABLES?: string;
+}

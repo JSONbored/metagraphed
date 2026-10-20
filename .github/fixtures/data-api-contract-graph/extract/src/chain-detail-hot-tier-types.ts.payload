@@ -1,0 +1,32 @@
+export type Row = Record<string, unknown>;
+
+export interface ChainDetailCoverage {
+  /** Oldest block still resident after the prune. */
+  floor: number;
+  /** Newest block the lane has written. */
+  head: number;
+  /** `observed_at` of that newest block, epoch ms. */
+  headObservedAt: number | null;
+}
+
+export interface ChainEventApi {
+  block_number: number | null;
+  event_index: number | null;
+  pallet: unknown;
+  method: unknown;
+  args: unknown;
+  phase: unknown;
+  extrinsic_index: number | null;
+  observed_at: number | null;
+  summary: string | null;
+}
+
+export type ChainDetailAnswer<T> =
+  | { kind: "answer"; data: T; tier: "hot" | "cold" }
+  | {
+      kind: "gap";
+      block: number;
+      seam: number;
+      coverage: ChainDetailCoverage | null;
+    }
+  | { kind: "miss" };

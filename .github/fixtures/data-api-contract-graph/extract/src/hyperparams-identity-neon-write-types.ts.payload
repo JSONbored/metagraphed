@@ -1,0 +1,80 @@
+import type { LaneHealthDb } from "./lane-health.ts";
+import type { NeonWriteResult } from "./neon-write.ts";
+
+export type Row = Record<string, unknown>;
+
+/**
+ * One family's two tables: the latest-only card and its append-only history.
+ *
+ * THE TWO GUARDS POINT IN OPPOSITE DIRECTIONS, and that is the point. The card
+ * keeps the NEWEST observation (`captured_at < EXCLUDED.captured_at`); a
+ * history row records when a revision was FIRST seen, so it keeps the OLDEST.
+ *
+ * A history whose conflict key CONTAINS its timestamp -- `(netuid,
+ * observed_at)`, `(account, observed_at)` -- needs no guard at all: a conflict
+ * there is the identical row arriving twice, and the update is a no-op. Those
+ * plans leave `guard` unset and nothing changes for them.
+ *
+ * A history keyed on CONTENT instead -- `(netuid, identity_hash)` -- does need
+ * one, and its absence was a live bug (#10836). The producer re-reads the whole
+ * set every pass, so the same revision arrives hourly at a new timestamp;
+ * `buildPgUpsert` emits `DO UPDATE SET ... observed_at = EXCLUDED.observed_at`
+ * whenever a non-key column exists, so every unchanged identity had its
+ * first-seen rewritten to last-seen on every pass. Measured on production
+ * before the fix: 125 rows across 7 landed passes, and 124 of them sat at the
+ * single newest pass -- an append-on-change table reporting a mass identity
+ * change every hour, which is what /chain/identity-history was serving.
+ *
+ * The guard is `>` rather than DO NOTHING deliberately: an EARLIER observation
+ * (a backfill) still moves the row back, because that is a better first-seen.
+ * Only a later one is refused.
+ */
+export interface FamilyPlan {
+  lane: string;
+  latest: { table: string; columns: readonly string[]; conflict: string[] };
+  history: {
+    table: string;
+    columns: readonly string[];
+    conflict: string[];
+    /** Appended to the history's `DO UPDATE`. Omit when the conflict key
+     * already contains the timestamp -- see above. */
+    guard?: string;
+  };
+  /**
+   * Delete card rows whose key this pass did not carry.
+   *
+   * ONLY VALID when the producer posts the entire population in ONE request,
+   * which is why it is opt-in per family rather than the default. Set for
+   * `subnet-ownership` (129 rows, one POST, a deregistered subnet must leave
+   * the card) and unset for the rest -- `account-identity` posts in chunks,
+   * and pruning against one chunk would delete the accounts in the others.
+   */
+  prune?: { keyColumn: string };
+}
+
+export interface FamilyMirrorInput {
+  /** The latest-only rows, already coerced -- booleans are real booleans by
+   * the time they reach here, which is what Neon's BOOLEAN columns need. */
+  rows: Row[];
+  /** Rows this pass appends, in the history table's own column shape. */
+  historyRows: Row[];
+  /**
+   * The COMPLETE set of card keys this pass observed, for a plan that prunes.
+   *
+   * Distinct from `rows` on purpose: it is the caller's assertion that the set
+   * is exhaustive, which `rows` alone cannot express -- a chunked producer
+   * also has rows. Omitted, nothing is pruned.
+   */
+  pruneKeys?: readonly number[];
+}
+
+export interface FamilyMirrorDeps {
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+}
+
+export interface FamilyMirrorOutcome {
+  attempted: boolean;
+  results: Record<string, NeonWriteResult>;
+}

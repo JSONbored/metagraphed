@@ -1,0 +1,74 @@
+// Copied documentation references to nearby runtime code and tests refer to src/self-health.ts.
+import type { SelfHealthChecks, SelfHealthDaily } from "../generated/db/types.ts";
+import type { SelfHealthComponent as PublishedSelfHealthComponent, SelfHealthDay as PublishedSelfHealthDay, SelfHealthLane as PublishedSelfHealthLane } from "../schemas-src/routes/self-health.ts";
+
+/** One row of the 90-day rollup.
+ *
+ * `day` is DATE in Postgres (generated as `Date` by Kanel), but the route
+ * selects it as `day::text` so it arrives as a plain YYYY-MM-DD string -- a
+ * Date object here would serialize with a spurious time component and a
+ * timezone the column never carried.
+ */
+export type SelfHealthDailyRow = SelfHealthDaily;
+
+/** Latest raw tick per component, for current state.
+ *
+ * `checked_at_ms` is BIGINT in Postgres, and postgres.js hands BIGINT back as
+ * a STRING (this Worker runs with `fetch_types: false`) -- hence the union and
+ * the coercion below. Typing it as a bare number and comparing directly would
+ * do a lexicographic compare on the newest-tick pick and silently null out
+ * every timestamp in `toIso`, since Number.isFinite("1785...") is false.
+ * Confirmed against the existing BIGINT fixtures in
+ * tests/data-api.test.ts (`block_number: "123"`).
+ */
+export type SelfHealthLatestRow = SelfHealthChecks;
+
+/**
+ * One day of the rollup as the ROUTE publishes it -- the schema's own inferred
+ * type, not a copy of its shape (#10784).
+ */
+export type SelfHealthDay = PublishedSelfHealthDay;
+
+/**
+ * One component's current state, as the ROUTE publishes it (#10784).
+ *
+ * The schema carries the same rationale this interface used to restate --
+ * `current_ok` is null rather than false when a component has never been
+ * probed, because "not measured" and "down" are different claims -- so the
+ * prose lives with the declaration that is published, not beside a copy of it.
+ */
+export type SelfHealthComponentView = PublishedSelfHealthComponent;
+
+export type SelfHealthVerdict = "operational" | "degraded" | "outage";
+
+/**
+ * One lane's most recent watchdog verdict (#9330/#9340), as the ROUTE
+ * publishes it -- the schema's own inferred type rather than a copy (#10784).
+ */
+export type SelfHealthLaneView = PublishedSelfHealthLane;
+
+export interface SelfHealth {
+  schema_version: number;
+  verdict: SelfHealthVerdict;
+  components: SelfHealthComponentView[];
+  /** Components with data. Zero means the poller hasn't written anything yet. */
+  measured_component_count: number;
+  /**
+   * Runtime data lanes, each with its newest watchdog verdict.
+   *
+   * #9330 asked where a quota-independent verdict should live and concluded self-health
+   * was "the cheapest and most honest" home, because "is metagraphed itself healthy" is
+   * already the question this surface answers. A stalled lane is exactly that, and it
+   * was previously answerable only through PostHog — which drops `$exception` on quota,
+   * so three lanes went stale with the alarm working and nobody hearing it.
+   *
+   * Empty when the lane_health table has no rows yet, which is also its state before the
+   * migration is applied by hand. It does NOT affect `verdict`: the component verdict
+   * describes whether the API and site are answering, and folding lane staleness into it
+   * would change the meaning of a field other things already depend on.
+   */
+  lanes: SelfHealthLaneView[];
+  /** Lanes whose newest verdict is `stale`. The number to alert on. */
+  stale_lane_count: number;
+  observed_at: string | null;
+}

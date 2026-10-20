@@ -1,0 +1,43 @@
+/**
+ * Rows a statement returns.
+ *
+ * GENERIC OVER THE ROW, defaulting to the untyped shape every existing caller
+ * already has (#10261). `generated/db/types.ts` now has one interface per Neon
+ * table, so a caller that knows what it selected can say so --
+ * `sql<Pick<Neurons, "netuid" | "hotkey">>\`SELECT netuid, hotkey ...\`` -- and
+ * get a compile error when a column is renamed or retyped, instead of the
+ * hand-written coercion that stands between Postgres and the first typed value
+ * everywhere else.
+ *
+ * NO DEFAULT, as of #10311. It defaulted to `Record<string, unknown>` so the
+ * ~150 existing call sites would not change meaning, and five of them ever
+ * opted in -- a migration that asks each site to volunteer decays, because the
+ * next read is written untyped and nothing says so. Without the default a read
+ * cannot compile without naming its row, and one that genuinely cannot has to
+ * write `sql<Record<string, unknown>>`: a DECLARED escape hatch, counted by
+ * `validate:untyped-db-reads` and driven down, rather than a silent default
+ * that cannot be counted at all.
+ */
+export type PgSqlRows<Row> = Row[];
+
+export interface PgSql {
+  <Row>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<PgSqlRows<Row>>;
+  /** For the rare statement whose TEXT is built dynamically -- the escape
+   * hatch every runner shape here has carried since the D1 era. */
+  unsafe<Row>(text: string, values?: unknown[]): Promise<PgSqlRows<Row>>;
+}
+
+/** The Hyperdrive binding's shape, structurally, so tests can hand a plain
+ * object instead of standing up a real binding. */
+export interface HyperdriveLike {
+  connectionString: string;
+}
+
+/** Somewhere to park the connection teardown. `ExecutionContext` in a Worker;
+ * anything with waitUntil in a test. */
+export interface WaitUntilLike {
+  waitUntil(promise: Promise<unknown>): void;
+}

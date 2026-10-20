@@ -1,0 +1,137 @@
+import type { SYNC_BATCH_LANES } from "./sync-batch-queue.ts";
+
+/** One chunk of a lane's pass, as producers enqueue it. */
+export interface SyncBatchMessage {
+  /** Which lane produced it -- `hotkey-alpha`, `account-balances`, … */
+  lane: string;
+  /** The pass this chunk belongs to, stamped once by the producer at scan
+   * start and repeated across every chunk. The completeness contract keys on
+   * it, exactly as the HTTP path's `captured_at` does. */
+  captured_at: number;
+  /** How many rows the WHOLE pass will deliver. Optional for the same reason
+   * it is optional on the sync routes: a producer may post without declaring,
+   * and inventing a total would mark an unproven load complete. */
+  pass_total?: number;
+  /**
+   * The chunk's rows, for a lane that carries one array.
+   *
+   * OPTIONAL, because a multi-family message carries `families` INSTEAD and
+   * `packMultiFamilyMessage` deletes this key outright. It was declared
+   * required when every lane had rows, and stayed required after `families`
+   * arrived -- so `message.rows.length` typechecked on a message that has no
+   * `rows` at all, which is exactly the read that crashed the consumer's batch
+   * log. The two shapes are mutually exclusive (`validSyncBatchMessage`
+   * enforces it), so the honest type is "one or the other" and every read goes
+   * through `syncBatchRows` / `syncBatchRowCount`.
+   */
+  rows?: Record<string, unknown>[];
+  /**
+   * Several row families that must land in ONE write (metagraphed-infra#359).
+   *
+   * `chain-detail` posts blocks, extrinsics, chain events and account events
+   * together because a block and its extrinsics landing separately is a
+   * readable-but-wrong state -- the drill-down shows a block with no calls. One
+   * `rows` array cannot express that, and splitting the lane into four messages
+   * would let the four retry independently, which is exactly the property the
+   * single POST exists to prevent.
+   *
+   * OPTIONAL, AND MUTUALLY EXCLUSIVE WITH `rows`. Every existing lane carries
+   * one array and is untouched by this; only a lane that declares `families`
+   * uses it, so widening the wire format costs the other lanes nothing.
+   */
+  families?: Record<string, Record<string, unknown>[]>;
+  /**
+   * "Every row for each KEY named in this message is IN this message."
+   *
+   * Only a pruning lane needs it, and only because its write DELETES: the
+   * writer removes rows for a key older than the newest `captured_at` it just
+   * saw for that key. Computed from a partial chunk, that would delete rows the
+   * chunk simply did not carry -- silent data loss, not a slowdown.
+   *
+   * WHICH key is the lane's own business -- `nominator-positions` prunes per
+   * `coldkey`, `neurons` per netuid -- so the flag is deliberately named for
+   * the property rather than for the column. A per-column field would have to
+   * be renamed the moment the second pruning lane moved, and renaming a wire
+   * field after cutover is not free.
+   *
+   * The producer's `pack_coldkey_chunks` already guarantees it, and has a test
+   * that a flat slice would fail. But once the write moves to a consumer, that
+   * guarantee is load-bearing across a repo boundary, and an assumption that
+   * crosses a boundary should be an assertion. Absent, the consumer refuses to
+   * prune rather than pruning on trust.
+   */
+  key_complete?: boolean;
+  /**
+   * The prune key HOISTED off every row, for a message holding exactly one key.
+   *
+   * WHY THIS EXISTS (metagraphed-infra#355). `nominator-positions`' largest
+   * coldkey holds 722 positions. A real row measures 200 bytes, so that group is
+   * **141 KB** -- over the 128 KB transport cap -- and it cannot be split,
+   * because splitting a coldkey deletes rows the message never carried.
+   *
+   * The coldkey is IDENTICAL on all 722 rows by construction: it is what groups
+   * them. Carrying it once instead of 722 times removes ~62 bytes a row and
+   * brings the message to ~97 KB. The consumer re-injects it before writing, so
+   * the WRITER is untouched -- this is a wire encoding, not a schema change.
+   *
+   * Present only when a message holds a single key AND needed the room. Every
+   * other message carries whole rows, so the common path is unchanged.
+   */
+  key_column?: string;
+  key_value?: string;
+}
+
+/**
+ * A message that definitely carries rows, which is what the packer emits.
+ *
+ * `rows` is optional on the wire type because the multi-family shape omits it,
+ * but `packSyncBatchMessages` builds every message from a row array and can
+ * never produce one without. Narrowing here keeps that guarantee in the type
+ * system rather than in the reader's memory.
+ */
+export type SyncBatchRowsMessage = SyncBatchMessage & {
+  rows: Record<string, unknown>[];
+};
+
+export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
+
+/** The structural slice of a Queue binding the enqueue path uses, so a test can
+ * hand it a plain object rather than stand up a binding. */
+export interface SyncBatchQueue {
+  /** Returns `unknown` rather than `void` so the real `Queue<T>` binding, whose
+   * `send` resolves a `QueueSendResponse`, satisfies this structurally. */
+  send(body: SyncBatchMessage): Promise<unknown>;
+}
+
+/** The store surface the consumer writes through -- structural, so a test can hand
+ * a plain object instead of standing up a binding. */
+export type SyncBatchWriter = (
+  rows: Record<string, unknown>[],
+  pass: PassTally | null,
+) => Promise<unknown>;
+
+/** A multi-family lane's writer. Separate from SyncBatchWriter rather than a
+ * union, so a lane cannot be wired to the wrong one by accident: the type says
+ * which shape it consumes. */
+export type SyncBatchFamilyWriter = (
+  families: Record<string, Record<string, unknown>[]>,
+  pass: PassTally | null,
+) => Promise<unknown>;
+
+/** Lane -> its store writer. PARTIAL on purpose: a lane may be accepted by the
+ * validator before its writer is wired, and writeSyncBatch throws rather than
+ * silently skipping so a half-migrated lane fails loudly instead of leaving a
+ * pass that never completes. */
+export type SyncBatchWriters = Partial<Record<SyncBatchLane, SyncBatchWriter>>;
+
+export type SyncBatchFamilyWriters = Partial<
+  Record<SyncBatchLane, SyncBatchFamilyWriter>
+>;
+
+/** The completeness tally a chunk carries, when its producer declared one. */
+export interface PassTally {
+  capturedAt: number;
+  expectedRows: number;
+  receivedRows: number;
+  nowMs: number;
+}

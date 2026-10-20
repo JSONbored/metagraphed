@@ -1,0 +1,51 @@
+export interface AccountsListSubnetEntry {
+  netuid: number;
+  uid: number;
+  /** Unavailable: metagraph voting weight does not establish alpha principal. */
+  stake_alpha: number | null;
+  emission_alpha: number;
+}
+
+export interface AccountAccumulator {
+  hotkey: string;
+  coldkeys: Map<string, number>;
+  netuids: Set<number>;
+  uidCount: number;
+  validatorCount: number;
+  emissionTotalRao: bigint;
+  latestCapturedAt: number | null;
+  latestBlockNumber: number | null;
+  subnets: AccountsListSubnetEntry[];
+}
+
+export interface AccountsListEntry {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_count: number;
+  subnet_count: number;
+  uid_count: number;
+  validator_count: number;
+  miner_count: number;
+  total_stake_tao: number | null;
+  total_emission_tao: number;
+  latest_captured_at: string | null;
+  latest_block_number: number | null;
+  subnets: AccountsListSubnetEntry[];
+  stake_dominance: number | null;
+}
+
+export interface AccountsListResult {
+  schema_version: 1;
+  sort: string;
+  limit: number;
+  captured_at: string | null;
+  block_number: number | null;
+  account_count: number;
+  accounts: AccountsListEntry[];
+}
+
+export interface AccountsSnapshot {
+  captured_at: string | null;
+  block_number: number | null;
+  accounts: AccountsListEntry[];
+}

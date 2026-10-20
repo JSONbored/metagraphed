@@ -1,0 +1,35 @@
+import type { SelfHealthLane } from "../schemas-src/routes/self-health.ts";
+
+/** The verdict store's surface, with OUR verbs (#10909) -- rows and change
+ * counts, no D1 envelope. Structural so every watchdog test keeps handing in
+ * a plain object. */
+export interface LaneHealthDb {
+  /** Native identity used only inside one bounded retention statement. */
+  historyRowId?: "rowid" | "ctid";
+  /** D1 requires the repaired physical triggers before housekeeping can run. */
+  retentionReady?(): Promise<boolean>;
+  /** A materialized latest-per-lane read, maintained atomically by the store. */
+  latest?(): Promise<unknown[]>;
+  /** Indexed equivalents of the history queries, when the store maintains them. */
+  maxGaps?(sinceMs: number, minimumSamples: number): Promise<unknown[]>;
+  verdictRuns?(verdict: string): Promise<unknown[]>;
+  query(text: string, values?: unknown[]): Promise<unknown[]>;
+  run(text: string, values?: unknown[]): Promise<{ changes: number }>;
+}
+
+/** A tick's outcome. `unknown` is for a watchdog that could not evaluate at all —
+ * distinct from `ok`, because "we did not look" is not "we looked and it was fine".
+ *
+ * Derived from the published schema rather than restated, so the set of verdicts this
+ * module can persist and the set the API documents cannot drift apart. */
+export type LaneVerdict = SelfHealthLane["verdict"];
+
+export interface LaneHealthRecord {
+  lane: string;
+  verdict: LaneVerdict;
+  /** How far behind the lane was, when the watchdog could measure it. */
+  age_ms: number | null;
+  /** The watchdog's own reason string, kept verbatim for triage. */
+  detail: string | null;
+  checked_at: number;
+}

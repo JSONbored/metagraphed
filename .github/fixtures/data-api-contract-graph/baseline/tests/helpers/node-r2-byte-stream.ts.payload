@@ -1,0 +1,128 @@
+import { ReadableStream } from "node:stream/web";
+
+interface Options {
+  /** Explicit fault stream over real R2 metadata, never provider evidence. */
+  replaceBody?: () => ReadableStream<Uint8Array>;
+  cancel?: "reject" | "pending";
+}
+
+/** Node-only unit seam for Miniflare's transferred default-controller body.
+ * Storage/metadata/multipart remain real Miniflare R2. This representation
+ * adapter retains at most one bridge chunk and serves the caller's BYOB view;
+ * it never accumulates or materializes the whole object. It is not used by
+ * production or the independent native-workerd correctness suite. */
+export function nodeByteStreamR2(bucket: R2Bucket, options: Options = {}) {
+  const stats = {
+    bucketOperations: 0,
+    getCalls: 0,
+    bridgeReads: 0,
+    byobReads: 0,
+    cancelCalls: 0,
+    releasedReaders: 0,
+    maxRequested: 0,
+    maxPendingBridgeChunk: 0,
+  };
+  const adapted = new Proxy(bucket, {
+    get(target, property) {
+      if (property === "get")
+        return async (...args: Parameters<R2Bucket["get"]>) => {
+          stats.getCalls++;
+          stats.bucketOperations++;
+          const object = await target.get(...args);
+          if (!object || !("body" in object)) return object;
+          if (options.replaceBody) await object.body.cancel();
+          const source = options.replaceBody?.() ?? object.body;
+          const input = source.getReader();
+          let pending: Uint8Array | undefined;
+          let offset = 0;
+          let released = false;
+          const release = () => {
+            if (!released) {
+              released = true;
+              input.releaseLock();
+              stats.releasedReaders++;
+            }
+          };
+          const body = new ReadableStream({
+            type: "bytes",
+            async pull(controller) {
+              const request = controller.byobRequest;
+              if (!request?.view)
+                throw new Error("Unit R2 adapter requires a BYOB request");
+              stats.byobReads++;
+              stats.maxRequested = Math.max(
+                stats.maxRequested,
+                request.view.byteLength,
+              );
+              while (!pending || offset === pending.byteLength) {
+                stats.bridgeReads++;
+                const next = await input.read().catch((error: unknown) => {
+                  release();
+                  throw error;
+                });
+                if (next.done) {
+                  release();
+                  controller.close();
+                  request.respond(0);
+                  return;
+                }
+                const value: unknown = next.value;
+                if (!(value instanceof Uint8Array)) {
+                  release();
+                  throw new Error("Unit R2 bridge returned non-byte data");
+                }
+                pending = value;
+                offset = 0;
+                stats.maxPendingBridgeChunk = Math.max(
+                  stats.maxPendingBridgeChunk,
+                  value.byteLength,
+                );
+              }
+              const output = new Uint8Array(
+                request.view.buffer,
+                request.view.byteOffset,
+                request.view.byteLength,
+              );
+              const take = Math.min(
+                output.byteLength,
+                pending.byteLength - offset,
+              );
+              output.set(pending.subarray(offset, offset + take));
+              offset += take;
+              if (offset === pending.byteLength) pending = undefined;
+              request.respond(take);
+            },
+            cancel(reason) {
+              stats.cancelCalls++;
+              pending = undefined;
+              const cancelled = input.cancel(reason).finally(release);
+              if (options.cancel === "reject") {
+                void cancelled.catch(() => undefined);
+                return Promise.reject(new Error("Unit cancellation rejection"));
+              }
+              if (options.cancel === "pending") {
+                void cancelled.catch(() => undefined);
+                return new Promise<void>(() => {});
+              }
+              return cancelled;
+            },
+          });
+          return new Proxy(object, {
+            get(value, member) {
+              if (member === "body") return body;
+              const result: unknown = Reflect.get(value, member, value);
+              return typeof result === "function" ? result.bind(value) : result;
+            },
+          });
+        };
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === "function"
+        ? (...args: unknown[]): unknown => {
+            stats.bucketOperations++;
+            return Reflect.apply(value, target, args);
+          }
+        : value;
+    },
+  });
+  return { bucket: adapted, stats };
+}

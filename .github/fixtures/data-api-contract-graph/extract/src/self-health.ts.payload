@@ -1,0 +1,333 @@
+import type {
+  SelfHealthDailyRow,
+  SelfHealthLatestRow,
+  SelfHealthDay,
+  SelfHealthComponentView,
+  SelfHealthVerdict,
+  SelfHealthLaneView,
+  SelfHealth,
+} from "./self-health-types.ts";
+export type {
+  SelfHealthDailyRow,
+  SelfHealthLatestRow,
+  SelfHealthDay,
+  SelfHealthComponentView,
+  SelfHealthVerdict,
+  SelfHealthLaneView,
+  SelfHealth,
+} from "./self-health-types.ts";
+// GET /api/v1/self-health (metagraphed#8318) -- metagraphed's OWN uptime.
+//
+// Every other health surface this API serves is about someone else:
+// /api/v1/health rolls up probed SUBNET surfaces, /api/v1/incidents covers
+// public RPC endpoints. So /status could only ever answer "are the things we
+// watch up", never "are WE up" -- which is the question a visitor on a status
+// page is actually asking, and the one it looked like it was answering.
+//
+// Fed by the poller's self-health job (metagraphed#8317), which probes from
+// the indexer box rather than from a Worker: a Worker checking
+// Cloudflare-hosted routes shares a failure domain with what it's checking,
+// and would report green through exactly the outage a reader cares about.
+//
+// THE VERDICT IS SCOPED TO OUR OWN COMPONENTS, deliberately. It never mixes in
+// third-party subnet-surface health -- a subnet's API being down says nothing
+// about whether metagraphed is up, and conflating the two is precisely what
+// made the old /status verdict unreadable (metagraphed#8250).
+
+/** The components the poller writes. Order is display order. */
+import type { LaneHealthRecord } from "./lane-health.ts";
+import {
+  LANE_ALARM_MAX_VERDICT_AGE_MS,
+  LANE_SILENCE_EXEMPT,
+  laneSilenceThresholdMs,
+} from "./lane-alarm.ts";
+import { DEAD_LETTER_LANES } from "./dead-letter.ts";
+import { laneSilenceCadenceMs } from "./producer-cadence.ts";
+
+export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
+
+
+
+/** BIGINT-as-string tolerant numeric coercion. NaN for anything unusable, so
+ * the callers' own Number.isFinite guards stay meaningful. */
+function toMs(value: number | string | null | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") return Number(value);
+  return NaN;
+}
+
+
+
+
+
+
+/**
+ * `api` is the load-bearing component: if it's down the site has nothing to
+ * render and every client is broken, so it alone decides an outage. `site`
+ * failing is a real problem that doesn't stop the API answering, so it
+ * degrades rather than outages.
+ *
+ * `publish` is scored DIFFERENTLY (metagraphed#8352). It measures the DATA
+ * pipeline's cadence, not an HTTP surface -- a stale publish means the api
+ * and site are both fully up and answering correctly, just with whatever
+ * data they last published. That is not a systems outage the way api/site
+ * failing is, so `publish` failing ALONE does not move the verdict off
+ * "operational". It still surfaces honestly on its own component row (see
+ * `componentNote` below) -- this only keeps a data-freshness signal from
+ * painting the public banner the same red as an actual outage, which is
+ * exactly what happened before this fix: a 12h threshold against a pipeline
+ * redesigned to a 24h floor meant this component read "down" for up to half
+ * of every quiet day, and dragged the whole site to "degraded" with it.
+ *
+ * A component with no data at all is NOT counted as failing -- "we haven't
+ * measured this yet" and "this is down" are different claims, and only one of
+ * them is ours to make.
+ */
+export function selfHealthVerdict(
+  components: SelfHealthComponentView[],
+): SelfHealthVerdict {
+  const measured = components.filter((c) => c.current_ok !== null);
+  // Nothing measured yet: not an outage, and not a claim of health either.
+  // "degraded" is the honest floor -- we can't assert we're operational
+  // without evidence.
+  if (measured.length === 0) return "degraded";
+  const api = measured.find((c) => c.component === "api");
+  if (api && !api.current_ok) return "outage";
+  const nonPublishFailing = measured.some(
+    (c) => c.component !== "publish" && !c.current_ok,
+  );
+  if (nonPublishFailing) return "degraded";
+  return "operational";
+}
+
+/**
+ * `note` text for a component's current reading. Only `publish` gets one
+ * today -- its bare "down" would otherwise read exactly like an HTTP-level
+ * outage (api/site's failure mode), when it actually means "past its
+ * expected cadence". Every other component's plain up/down already says
+ * everything there is to say.
+ */
+function componentNote(
+  component: string,
+  currentOk: boolean | null,
+): string | null {
+  if (component === "publish" && currentOk === false) {
+    return "publish is past its expected cadence";
+  }
+  return null;
+}
+
+function toIso(ms: number | null | undefined): string | null {
+  if (ms == null || !Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Mean of the daily ratios we have. Unweighted by check count on purpose: a
+ * day the poller only ran twice shouldn't count 30x less than a full day, and
+ * check-count weighting would quietly hide a short outage on a sparse day. */
+function meanRatio(days: SelfHealthDay[]): number | null {
+  if (days.length === 0) return null;
+  const sum = days.reduce((acc, d) => acc + d.uptime_ratio, 0);
+  return sum / days.length;
+}
+
+/**
+ * Assembles the response from the two tables' rows.
+ *
+ * Both inputs are taken as already-filtered lists (the SQL does the 90-day
+ * window and the per-component latest-tick pick) so this stays a pure
+ * transform that a test can drive without a database.
+ */
+export function buildSelfHealth(
+  dailyRows: SelfHealthDailyRow[],
+  latestRows: SelfHealthLatestRow[],
+  laneRows: Record<string, LaneHealthRecord> = {},
+): SelfHealth {
+  const byComponent = new Map<string, SelfHealthDailyRow[]>();
+  for (const row of dailyRows) {
+    const list = byComponent.get(row.component);
+    if (list) list.push(row);
+    else byComponent.set(row.component, [row]);
+  }
+
+  const latestByComponent = new Map<string, SelfHealthLatestRow>();
+  for (const row of latestRows) {
+    const existing = latestByComponent.get(row.component);
+    if (!existing || toMs(row.checked_at_ms) > toMs(existing.checked_at_ms)) {
+      latestByComponent.set(row.component, row);
+    }
+  }
+
+  const components: SelfHealthComponentView[] = SELF_HEALTH_COMPONENTS.map(
+    (component) => {
+      const days: SelfHealthDay[] = (byComponent.get(component) ?? [])
+        .filter((r) => r.checks > 0)
+        .map((r) => ({
+          day: r.day,
+          checks: r.checks,
+          ok_count: r.ok_count,
+          uptime_ratio: r.ok_count / r.checks,
+        }))
+        .sort((a, b) => a.day.localeCompare(b.day));
+      const latest = latestByComponent.get(component);
+      const currentOk = latest ? latest.ok : null;
+      return {
+        component,
+        current_ok: currentOk,
+        http_status: latest?.http_status ?? null,
+        latency_ms: latest?.latency_ms ?? null,
+        checked_at: latest ? toIso(toMs(latest.checked_at_ms)) : null,
+        note: componentNote(component, currentOk),
+        days,
+        uptime_90d: meanRatio(days),
+      };
+    },
+  );
+
+  const observedMs = latestRows.reduce<number | null>((max, r) => {
+    const ms = toMs(r.checked_at_ms);
+    if (!Number.isFinite(ms)) return max;
+    return max == null || ms > max ? ms : max;
+  }, null);
+
+  // Lane shaping lives in withLaneHealth alone — the REST handler has to apply it to
+  // whichever of three tiers answered, so a second copy here would be one to keep in
+  // step by hand.
+  return withLaneHealth(
+    {
+      schema_version: 1,
+      verdict: selfHealthVerdict(components),
+      components,
+      measured_component_count: components.filter((c) => c.current_ok !== null)
+        .length,
+      lanes: [],
+      stale_lane_count: 0,
+      observed_at: toIso(observedMs),
+    },
+    laneRows,
+  );
+}
+
+/**
+ * Attach lane verdicts to an already-built self-health card.
+ *
+ * Separate from `buildSelfHealth` because the card is produced by three different tiers
+ * (Postgres, the lakehouse cold tier, and the empty fallback) and the lanes come from
+ * D1 regardless of which one answered. Merging here means a degraded serving tier still
+ * reports lane health — which is the situation the caller most wants it in.
+ */
+/** The lane names `handleDeadLetterBatch` can write, from the map it dispatches
+ * on rather than from a `-dlq` suffix guess -- a lane missing from that map
+ * produces no verdict at all, which is the #10894 defect in the other
+ * direction. */
+const DEAD_LETTER_LANE_NAMES = new Set(Object.values(DEAD_LETTER_LANES));
+
+export function withLaneHealth(
+  card: SelfHealth,
+  laneRows: Record<string, LaneHealthRecord>,
+  /**
+   * A SILENT lane's last verdict is not a current one (#10232).
+   *
+   * `loadLatestLaneHealth` takes the newest row per lane with no liveness
+   * bound, so a lane that stopped reporting keeps serving whatever it last
+   * said -- forever, and in both directions. A lane whose last word was `ok`
+   * and then died reads healthy while nothing runs; one whose last word was
+   * `stale` reads as an alarm nobody can clear.
+   *
+   * A single cutoff cannot work: cadences here differ by more than 100x
+   * (`chain-detail` every ~30s, `hotkey-alpha` every 24h). One tight enough to
+   * catch a dead 30-second lane marks every 24-hour lane absent between ticks.
+   * So the bound is the lane's own observed MAXIMUM gap, floored by the
+   * producer's declared cadence -- `laneSilenceCadenceMs` -- and then widened by
+   * `laneSilenceThresholdMs` (3 intervals, floored at 90 min). The alarm path
+   * reads the same pair since #10723; it used to compute a MEAN gap of its own,
+   * which is what this comment described.
+   *
+   * OMITTING `cadences` LEAVES EVERY VERDICT ALONE, deliberately. Without a
+   * sample there is no bound that is not a guess, and a guess here invents
+   * alarms on lanes that are working -- the #9301 failure. A caller that has
+   * not paid for the cadence query gets exactly today's behaviour.
+   */
+  options: {
+    cadences?: Record<string, number | null>;
+    nowMs?: number;
+  } = {},
+): SelfHealth {
+  const { cadences, nowMs = Date.now() } = options;
+  const lanes: SelfHealthLaneView[] = Object.values(laneRows)
+    // A DEAD-LETTER VERDICT IS AN EVENT, NOT A STATE (#11297).
+    //
+    // Every other lane here reports a continuous condition and can say `ok`
+    // again. A `*-dlq` lane cannot: `handleDeadLetterBatch` is its only writer
+    // and it writes only when a message is lost, because nothing un-loses one.
+    // So the last loss is served as the current state forever, and
+    // `stale_lane_count` can never return to zero -- measured 2026-08-15, one
+    // stale lane on a fleet whose every cause was fixed and verified hours
+    // earlier.
+    //
+    // THE SILENCE PATH BELOW CANNOT REACH IT, which is why this is separate.
+    // That bound is a multiple of the lane's own cadence, and a dlq has none --
+    // nothing writes it on a schedule -- so `laneSilenceCadenceMs` returns null
+    // and the verdict is left alone by design.
+    //
+    // DROPPED RATHER THAN MARKED, because absence is already this family's
+    // healthy representation: a dlq that has never lost a message has no row at
+    // all. One that lost a message a fortnight ago should look the same, and
+    // `unknown` would claim we cannot tell when we can.
+    //
+    // NOT SUPPRESSION. A fresh loss writes a fresh row and the count goes back
+    // up on the same tick. The row also stays in `lane_health` for triage --
+    // what changes is only whether it counts as NOW. Sharing the alarm's own
+    // residue constant rather than picking a second number: it already argues
+    // that a lane silent for a week is residue rather than an outage, and it
+    // already applies that to whether an issue gets filed.
+    .filter(
+      (row) =>
+        !DEAD_LETTER_LANE_NAMES.has(row.lane) ||
+        nowMs - row.checked_at <= LANE_ALARM_MAX_VERDICT_AGE_MS,
+    )
+    .map((row) => {
+      // Periodic lanes use their observed maximum gap and declared cadence.
+      // Dead letters report losses, and startup announcements report values;
+      // neither has a heartbeat. Preserve their actual verdicts and use the
+      // alarm planner's exemption map so both health surfaces agree.
+      const cadence =
+        DEAD_LETTER_LANE_NAMES.has(row.lane) || LANE_SILENCE_EXEMPT[row.lane]
+          ? null
+          : laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
+      const quietFor = nowMs - row.checked_at;
+      const silent =
+        typeof cadence === "number" &&
+        cadence > 0 &&
+        row.checked_at > 0 &&
+        quietFor > laneSilenceThresholdMs(cadence);
+      return {
+        lane: row.lane,
+        // `unknown` rather than a new verdict: the union already publishes it
+        // for "a verdict this build cannot interpret", and a lane that has
+        // stopped speaking is the same claim -- we cannot say. It also drops
+        // out of `stale_lane_count` below, which is right: we do not know that
+        // it is BEHIND, only that it is quiet.
+        verdict: silent ? ("unknown" as const) : row.verdict,
+        // The AGE OF THE SILENCE, not the age the dead verdict carried. That
+        // number described whatever the lane was measuring when it last ran
+        // and says nothing about now.
+        age_ms: silent ? quietFor : row.age_ms,
+        detail: silent
+          ? `no verdict for ${Math.round(quietFor / 60_000)}m (cadence ~${Math.round(cadence / 60_000)}m)`
+          : row.detail,
+        checked_at: toIso(row.checked_at),
+      };
+    })
+    .sort(
+      (a, b) =>
+        Number(b.verdict === "stale") - Number(a.verdict === "stale") ||
+        String(a.lane).localeCompare(String(b.lane)),
+    );
+  return {
+    ...card,
+    lanes,
+    stale_lane_count: lanes.filter((l) => l.verdict === "stale").length,
+  };
+}

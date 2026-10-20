@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": [
+    "scripts/check-queue-memory-architecture.ts",
+    "scripts/check-data-api-contract-graph.ts",
+    "scripts/check-data-api-contract-graph.test.ts",
+    "scripts/apply-data-api-type-contract-graph.ts",
+    "vitest.queue-memory-architecture.config.ts"
+  ],
+  "exclude": []
+}

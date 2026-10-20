@@ -1,0 +1,43 @@
+import assert from "node:assert/strict";
+import { afterAll, beforeAll, test } from "vitest";
+import { createNativeWorkerdFixture } from "./helpers/native-workerd-fixture.ts";
+
+let fixture: Awaited<ReturnType<typeof createNativeWorkerdFixture>> | undefined;
+beforeAll(async () => {
+  fixture = await createNativeWorkerdFixture(
+    new URL("./fixtures/chain-detail-payload-spool-native.ts", import.meta.url),
+    { name: "queue-spool-native-correctness", r2Buckets: ["BUCKET"] },
+  );
+});
+afterAll(async () => {
+  if (!fixture) return;
+  try {
+    assert.equal(fixture.outboundRefusals(), 0);
+  } finally {
+    await fixture.runtime.dispose();
+  }
+});
+
+const CASES = [
+  "one multipart object multiplexes exact candidate frames across the 5-MiB boundary",
+  "unused spool performs no upload and raw scan contains no records",
+  "part order failures fail closed without changing another attempt",
+  "failed durable upload journal aborts before any part is uploaded",
+  "complete lost response resolves native absent-upload cleanup and deletes the committed object",
+  "an unknown abort failure remains a cleanup failure even if deleting the object succeeds",
+  "replacement or deletion before scan cannot produce accepted bytes",
+  "advancing past an undrained record refuses and releases scan ownership",
+  "early read, repeated scans and raw append are explicit internal protocol errors",
+] as const;
+for (const [index, name] of CASES.entries()) {
+  test(name, async () => {
+    assert.ok(fixture);
+    const native = await fixture.runtime.getWorker();
+    const response = await native.fetch(`http://fixture/case/${index}`, {
+      method: "POST",
+    });
+    const result: unknown = await response.json();
+    assert.equal(response.status, 200);
+    assert.deepEqual(result, { okay: true, index });
+  });
+}

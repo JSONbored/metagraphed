@@ -1,0 +1,48 @@
+import type {
+  TelemetryEnv,
+  admitExceptionCaptureShared,
+} from "./usage-telemetry.ts";
+
+/**
+ * What the tracing path needs from its environment, and nothing else.
+ *
+ * Extends `TelemetryEnv` because it sends through the same PostHog capture --
+ * host, token and deployment stamping all come from there -- and adds the two
+ * trace-sampling vars this module owns. Named rather than taking the ambient
+ * `Env` so the Workers that are NOT the main API Worker can call it without
+ * asserting bindings they do not have (#11339, #10186).
+ *
+ * `unknown` per var: both are read through `readRate`, which parses whatever it
+ * finds, and `POSTHOG_TRACES_SAMPLE_RATE` is a different literal in each
+ * wrangler config -- so a `string` here would be a claim about a value the
+ * merged `Env` had already widened away.
+ */
+export interface TracingEnv extends TelemetryEnv {
+  POSTHOG_TRACES_SAMPLE_RATE?: unknown;
+  POSTHOG_TRACES_SAMPLE_RATE_MCP?: unknown;
+}
+
+export type SpanAttributeValue = string | number | boolean;
+
+export interface TraceSpanInput {
+  traceId: string;
+  spanId: string;
+  /** Human-readable operation name (mirrors Sentry's span `name`, e.g.
+   * "mcp.tool/get_subnet" or "GET /api/v1/subnets"). */
+  name: string;
+  startTimeMs: number;
+  endTimeMs: number;
+  ok: boolean;
+  /** OTLP resource attribute identifying which Worker emitted this span. */
+  serviceName: string;
+  attributes?: Record<string, SpanAttributeValue | undefined>;
+}
+
+export interface RecordTraceSpanDeps {
+  /** Injectable fetch (tests). */
+  fetch?: typeof fetch;
+  /** Injectable cross-isolate storm gate, mirroring RecordUsageEventDeps --
+   * "was it held by the FLEET-wide gate" is otherwise indistinguishable from
+   * "was it held locally", and that distinction is the whole point. */
+  admitShared?: typeof admitExceptionCaptureShared;
+}

@@ -1,0 +1,70 @@
+export interface StabilityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+export interface ValidatorIndex {
+  perNetuid: Map<number, Set<string>>;
+  network: Set<string>;
+}
+
+export interface ChainTurnoverNetwork {
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  stability_score: number | null;
+}
+
+export interface SetChurn {
+  entered: number;
+  exited: number;
+  retention: number;
+  stability: number;
+}
+
+export interface ChainTurnoverSubnet {
+  netuid: number;
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number;
+  stability_score: number;
+}
+
+export interface ChainTurnoverResult {
+  schema_version: 1;
+  window: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  /**
+   * Days actually spanned, and the days asked for (#10798, #11360).
+   *
+   * `neuron_daily` is ~36 days deep, so `?window=90d` was answered with 36 days
+   * and labelled `"90d"` -- measured on production 2026-08-15, start_date came
+   * back as the store floor 2026-07-10 rather than 90 days before the end,
+   * beside `comparable: true` and a network `stability_score` computed over a
+   * third of the claimed span.
+   *
+   * It matters in ONE direction, which is why silence was the wrong default:
+   * turnover compares the window's ENDPOINTS, so a shortened span reports LOWER
+   * churn and HIGHER stability. A network that replaced its whole validator set
+   * over a quarter reads as a calm month.
+   */
+  covered_days: number | null;
+  requested_days: number | null;
+  window_truncated: boolean | null;
+  comparable: boolean;
+  subnet_count: number;
+  network: ChainTurnoverNetwork;
+  stability_distribution: StabilityDistribution | null;
+  subnets: ChainTurnoverSubnet[];
+}

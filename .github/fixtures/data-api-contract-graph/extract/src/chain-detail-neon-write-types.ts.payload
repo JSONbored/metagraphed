@@ -1,0 +1,34 @@
+import type { NeonWriteResult } from "./neon-write.ts";
+import type { LaneHealthDb } from "./lane-health.ts";
+
+export type Row = Record<string, unknown>;
+
+export interface DetailPlan {
+  table: string;
+  columns: readonly string[];
+  conflict: readonly string[];
+  /** Columns that are 0/1 INTEGER in the store and BOOLEAN in Neon.
+   *
+   * `success` is the only one, and it is NULLABLE unlike every other boolean in
+   * the schema -- an extrinsic whose outcome was not decoded is genuinely
+   * unknown, which is a third state that must not collapse to false. */
+  booleans?: readonly string[];
+}
+
+export interface ChainDetailMirrorInput {
+  blockRows: Row[];
+  extrinsicRows: Row[];
+  chainEventRows: Row[];
+  accountEventRows: Row[];
+}
+
+export interface ChainDetailMirrorOutcome {
+  attempted: boolean;
+  results: Record<string, NeonWriteResult>;
+}
+
+export interface ChainDetailMirrorDeps {
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+}

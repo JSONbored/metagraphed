@@ -1,0 +1,46 @@
+/** How a `usd_per_tao` was arrived at, or why there isn't one. */
+export type FiatPriceBasis = "wrapped_onchain_median" | "insufficient_pools";
+
+/** One wTAO/WETH pool reading. `tao_per_eth` is the pool's own ratio. */
+export interface PoolReading {
+  /** Pool contract address — published in `pools_excluded`, so it must be real. */
+  address: string;
+  /** wTAO priced in ETH. */
+  eth_per_tao: number;
+  /** Pool TVL in USD, the weight. ADR 0025 weights by liquidity, not volume. */
+  liquidity_usd: number;
+}
+
+/** Why a pool that was read did not end up contributing. */
+export type ExclusionReason =
+  /** Price or liquidity was zero, negative, or non-finite. */
+  | "unusable_reading"
+  /** Further than OUTLIER_THRESHOLD from the unweighted median. */
+  | "outlier"
+  /** Survived rejection, but too few others did for anything to publish. */
+  | "below_quorum"
+  /** The anchor leg was missing, so no pool could be used at all. */
+  | "anchor_unavailable";
+
+export interface PoolExclusion {
+  address: string;
+  reason: ExclusionReason;
+}
+
+export interface TaoUsdIndex {
+  usd_per_tao: number | null;
+  price_basis: FiatPriceBasis;
+  pool_count: number;
+  /** ADR 0025 decision 7's published shape: addresses that did not contribute. */
+  pools_excluded: string[];
+  /**
+   * The same set, each with its reason. Kept alongside rather than replacing
+   * `pools_excluded`: the ADR fixes that field's shape as the published
+   * contract, while the stored provenance row (#8600 requirement 3) has to be
+   * able to say WHY a pool dropped out, and deriving that downstream would
+   * mean re-implementing the rejection rules to guess at them.
+   */
+  exclusions: PoolExclusion[];
+  /** The anchor leg, published so a consumer can check the composition. */
+  eth_usd: number | null;
+}

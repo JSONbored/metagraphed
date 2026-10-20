@@ -1,0 +1,230 @@
+name: Data API type-contract graph and focused qualification
+
+on:
+  push:
+    branches:
+      - ci/data-api-type-contract-graph-20261020
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-api-type-contract-graph-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/ci/data-api-type-contract-graph-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout exact source carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup pinned existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing locked workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Prove complete canonical tree and overlay exact actual21 baseline
+        id: baseline
+        run: node .github/scripts/apply-data-api-type-contract-graph.ts baseline
+      - name: Measure exact pinned pre-extraction graph and compiler output hash
+        id: graph_before
+        if: always() && steps.baseline.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts before
+      - name: Apply exact39 type-contract pairs and stage final94 public sources
+        id: extract
+        if: always() && steps.baseline.outcome == 'success' && steps.graph_before.outcome == 'success'
+        run: node .github/scripts/apply-data-api-type-contract-graph.ts extract
+      - name: Measure immutable unformatted extraction frame
+        id: graph_after
+        if: always() && steps.extract.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts after
+      - name: Require exact extraction compiler equivalence and unchanged graph gates
+        if: always() && steps.graph_before.outcome == 'success' && steps.graph_after.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts compare
+      - name: Verify exact final overlay without changing Git HEAD or product source
+        id: overlay
+        if: always() && steps.extract.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts apply
+      - name: Verify inherited bounded diagnostic projection controls
+        id: controls
+        if: always() && steps.overlay.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts controls
+      - name: Obtain native formatted source with separate input and output pins
+        id: format
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts format
+      - name: Run actual native Node decoder controls
+        if: always() && steps.format.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts controls
+      - name: Measure separate actual formatted frame and unchanged graph gates
+        if: always() && steps.format.outcome == 'success' && steps.graph_after.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts formatted
+      - name: Lint actual formatted source and all TypeScript carrier helpers
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts lint
+      - name: Cold canonical workspace typecheck
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts types
+      - name: Cold helper typecheck with inherited strict options
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts helper_types
+      - name: Validate unchanged canonical boundary-cast policy
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts boundary
+      - name: Validate unchanged canonical workflow policy
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts workflow
+      - name: Run unchanged nine-file focused suite including exact canonical19
+        if: always() && steps.format.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts tests
+      - name: Require every native focused qualification phase
+        if: always() && steps.overlay.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts summary
+      - name: Require both exact extraction and actual formatted graph receipts
+        if: always() && steps.format.outcome == 'success'
+        run: node .github/scripts/check-data-api-contract-graph.ts summary
+      - name: Retain exact finite public source and bounded curated receipts
+        if: always() && steps.baseline.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: data-api-type-contract-graph-${{ github.run_attempt }}-${{ job.status }}-source
+          path: |
+            .github/fixtures/data-api-contract-graph/overlay-manifest.json
+            .github/fixtures/data-api-contract-graph/plan.json
+            .github/fixtures/queue-memory-architecture/manifest.json
+            .github/scripts/apply-data-api-type-contract-graph.ts
+            .github/scripts/check-data-api-contract-graph.test.ts
+            .github/scripts/check-data-api-contract-graph.ts
+            .github/scripts/check-queue-memory-architecture.ts
+            .github/tsconfig.data-api-contract-graph.json
+            .github/tsconfig.queue-memory-architecture.json
+            .github/vitest.queue-memory-architecture.config.ts
+            .github/workflows/queue-memory-architecture-initial.yml
+            src/account-events-types.ts
+            src/account-events.ts
+            src/account-nominator-positions-types.ts
+            src/account-nominator-positions.ts
+            src/account-portfolio-types.ts
+            src/account-portfolio.ts
+            src/accounts-list-types.ts
+            src/accounts-list.ts
+            src/api-key-abuse-types.ts
+            src/api-key-abuse.ts
+            src/capture-family-d1.ts
+            src/chain-analytics-types.ts
+            src/chain-analytics.ts
+            src/chain-detail-d1-staging-types.ts
+            src/chain-detail-d1-staging.ts
+            src/chain-detail-hot-tier-types.ts
+            src/chain-detail-hot-tier.ts
+            src/chain-detail-neon-write-types.ts
+            src/chain-detail-neon-write.ts
+            src/chain-detail-payload-spool-types.ts
+            src/chain-detail-payload-spool.ts
+            src/chain-detail-projected-write.ts
+            src/chain-detail-stream-payloads-types.ts
+            src/chain-detail-stream-payloads.ts
+            src/chain-detail-sync-payload-types.ts
+            src/chain-detail-sync-payload.ts
+            src/chain-serving-types.ts
+            src/chain-serving.ts
+            src/chain-turnover-types.ts
+            src/chain-turnover.ts
+            src/chain-weights-types.ts
+            src/chain-weights.ts
+            src/concentration-types.ts
+            src/concentration.ts
+            src/cost-to-participate-types.ts
+            src/cost-to-participate.ts
+            src/field-projection-types.ts
+            src/field-projection.ts
+            src/hyperparams-identity-neon-write-types.ts
+            src/hyperparams-identity-neon-write.ts
+            src/lane-health-types.ts
+            src/lane-health.ts
+            src/ledger-neon-write-types.ts
+            src/ledger-neon-write.ts
+            src/metagraph-neurons-types.ts
+            src/metagraph-neurons.ts
+            src/neon-write-buffer-types.ts
+            src/neon-write-buffer.ts
+            src/neon-write-types.ts
+            src/neon-write.ts
+            src/neuron-snapshot-read-types.ts
+            src/neuron-snapshot-read.ts
+            src/neurons-neon-write-types.ts
+            src/neurons-neon-write.ts
+            src/nominator-positions-neon-write-types.ts
+            src/nominator-positions-neon-write.ts
+            src/pass-completeness-types.ts
+            src/pass-completeness.ts
+            src/pg-sql-types.ts
+            src/pg-sql.ts
+            src/read-store-types.ts
+            src/read-store.ts
+            src/self-health-types.ts
+            src/self-health.ts
+            src/sync-batch-projected-chain-detail-types.ts
+            src/sync-batch-projected-chain-detail.ts
+            src/sync-batch-queue-types.ts
+            src/sync-batch-queue.ts
+            src/table-freshness-watchdog-types.ts
+            src/table-freshness-watchdog.ts
+            src/tao-usd-index-types.ts
+            src/tao-usd-index.ts
+            src/tracing-types.ts
+            src/tracing.ts
+            src/usage-telemetry-types.ts
+            src/usage-telemetry.ts
+            src/validator-operator-directory-types.ts
+            src/validator-operator-directory.ts
+            tests/capture-upsert-streaming.test.ts
+            tests/chain-detail-d1-staging.test.ts
+            tests/chain-detail-payload-spool-unit.test.ts
+            tests/chain-detail-payload-spool.test.ts
+            tests/chain-detail-projected-write.test.ts
+            tests/chain-detail-stream-payloads.test.ts
+            tests/data-api-bundle-boundary.test.ts
+            tests/data-api-projected-chain-detail-queue.test.ts
+            tests/fixtures/capture-upsert-canonical0a65.ts
+            tests/fixtures/chain-detail-d1-canonical.sql
+            tests/fixtures/chain-detail-d1-staging.sql
+            tests/fixtures/chain-detail-payload-spool-native.ts
+            tests/helpers/native-workerd-fixture.ts
+            tests/helpers/node-r2-byte-stream.ts
+            tests/sync-batch-projected-chain-detail.test.ts
+            workers/data-api-types.ts
+            workers/data-api.ts
+            queue-contract-graph-reports/overlay-baseline-receipt.json
+            queue-contract-graph-reports/overlay-extract-receipt.json
+            queue-contract-graph-reports/before-receipt.json
+            queue-contract-graph-reports/after-receipt.json
+            queue-contract-graph-reports/compare-receipt.json
+            queue-contract-graph-reports/controls-receipt.json
+            queue-contract-graph-reports/formatted-receipt.json
+            queue-contract-graph-reports/summary-receipt.json
+            queue-architecture-reports/apply-receipt.json
+            queue-architecture-reports/controls-receipt.json
+            queue-architecture-reports/format-receipt.json
+            queue-architecture-reports/lint-receipt.json
+            queue-architecture-reports/types-receipt.json
+            queue-architecture-reports/helper_types-receipt.json
+            queue-architecture-reports/boundary-receipt.json
+            queue-architecture-reports/workflow-receipt.json
+            queue-architecture-reports/tests-receipt.json
+            queue-architecture-reports/summary-receipt.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3

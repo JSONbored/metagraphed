@@ -1,0 +1,16 @@
+/** The one method this needs from `PgSql`, so a test can hand a plain
+ * function and a caller can hand the real runner. */
+export interface PgUnsafe {
+  unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+export interface NeonWriteResult {
+  ok: boolean;
+  /** Rows this call attempted. Reported even on failure, because "how much did
+   * not land" is the triage question. */
+  rows: number;
+  statements: number;
+  reason?: string;
+  /** A failed acknowledgement may follow commit; attempted rows are not proof. */
+  confirmation?: "unknown";
+}

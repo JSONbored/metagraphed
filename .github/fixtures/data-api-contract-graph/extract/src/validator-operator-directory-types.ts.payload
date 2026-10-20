@@ -1,0 +1,41 @@
+export type Row = Record<string, unknown>;
+
+export interface ValidatorOperatorKey {
+  hotkey: string;
+  total_stake_tao: number | null;
+  take: number | null;
+}
+
+export interface ValidatorOperatorEntry {
+  /** Stable within the response network; independent of name or primary hotkey. */
+  operator_id?: string;
+  /** Observed ownership agreement, never verification of a brand or organization. */
+  ownership_basis?: "single_coldkey" | "ambiguous" | "unknown";
+  /** Declared on-chain identity name; null means the primary hotkey is the label. */
+  identity_name: string | null;
+  /** Present only for a multi-key operator; a singleton's primary key is enough. */
+  hotkeys: ValidatorOperatorKey[];
+  hotkey_count: number;
+  primary_hotkey: string;
+  coldkey: string | null;
+  total_stake_tao: number | null;
+  total_emission_tao: number;
+  nominator_count: number | null;
+  /** Sum of subnet memberships across the operator's validator hotkeys. */
+  membership_count: number;
+  uid_count: number;
+  take_min: number | null;
+  take_max: number | null;
+  /** Unavailable: the source does not establish investment principal. */
+  apy_estimate: number | null;
+  stake_dominance: number | null;
+}
+
+export interface ValidatorOperatorDirectory {
+  schema_version: 1;
+  captured_at: string | null;
+  block_number: number | null;
+  validator_count: number;
+  operator_count: number;
+  operators: ValidatorOperatorEntry[];
+}

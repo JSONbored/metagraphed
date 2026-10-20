@@ -1,0 +1,526 @@
+// Copied documentation references to nearby runtime code and tests refer to src/usage-telemetry.ts.
+import type { TimingMark } from "./request-timing.ts";
+
+/** PostHog property carrying which deployment emitted an event. */
+export type DeploymentEnvironment = "production" | "development";
+
+/** REST/GraphQL route path (no query string / bodies) or MCP tool name (no
+ * arguments / response content); ok/durationMs describe the outcome. */
+export interface UsageEvent {
+  route?: string;
+  mcpTool?: string;
+  ok: boolean;
+  durationMs: number;
+  // #8963: the dimensions that make 6M events/month queryable. Before these,
+  // usage_event carried route + ok + duration_ms and nothing else -- most of a
+  // free tier spent on three columns, with no way to ask "which method", "was
+  // that a client error or ours", or "who is generating this".
+  /** HTTP method, uppercased. Absent for non-HTTP emitters (cron jobs, MCP). */
+  method?: string;
+  /** Response status class: "2xx" | "3xx" | "4xx" | "5xx". Distinguishes a
+   * route correctly rejecting a bad request from a route that broke -- `ok`
+   * alone folds every 4xx in with the 2xxs. */
+  statusClass?: string;
+  /** Coarse caller bucket from the User-Agent (name only, no version), so
+   * traffic is attributable without the high-cardinality raw header. */
+  client?: string;
+  /**
+   * #8993: "anonymous", or the tier of a verified mg_ key, on the MCP protocol
+   * paths (ADR 0027). Declared HERE and not only on McpToolCallEvent because
+   * scheduleToolUsageEvent takes a loose Row -- an undeclared field typechecks
+   * at every call site and is then silently dropped by the property assembly
+   * below, which is the exact class of miss the repo has hit before.
+   */
+  authTier?: string;
+  // metagraphed#7726: one of the fixed literal codes a `toolError`-style
+  // helper produces (e.g. "invalid_params", "auth_required",
+  // "credential_not_supported", "upstream_unavailable", "internal_error") --
+  // NEVER a caller-derived value or free-form error message. Only meaningful
+  // when `ok` is false; omitted (not just falsy) for a successful call.
+  errorCode?: string;
+  /**
+   * #9900: marks a failure this system EXPECTS and already handles -- an R2
+   * SQL 429 or timeout, a projection lane declining to compute. Set only by
+   * `recordExceptionEvent`'s expected-condition path; it is what lets a query
+   * separate "we are being rate-limited" from "a route broke", both of which
+   * are `ok: false`.
+   */
+  expected?: boolean;
+  /**
+   * #9900: query attribution carried over from `ExceptionEvent` when an
+   * expected query-engine failure is recorded here instead of as an
+   * exception. Same meaning as the fields of the same name on
+   * `ExceptionEvent` -- without them, moving r2-sql's 429s and timeouts off
+   * the error product would have silently discarded the per-query
+   * attribution #9459 added.
+   */
+  queryKind?: string;
+  queryShape?: string;
+}
+
+/**
+ * What the telemetry path needs from its environment, and nothing else.
+ *
+ * NAMED MINIMAL CONTRACT, following `SurfaceCredentialEnv`'s precedent rather
+ * than taking the whole ambient `Env` (metagraphed#11339). The difference is
+ * not stylistic: `Env` is an INTERFACE, so it has no implicit index signature
+ * and cannot be satisfied by a caller holding a structural bag -- which is why
+ * `neon-write-buffer-hub.ts` was passing `BufferEnv` through five
+ * `as unknown as Parameters<…>` casts to reach this function. A cast at a
+ * boundary that is only about five optional strings.
+ *
+ * Every field is optional and every read below type-guards what it finds
+ * (`typeof token === "string"`), because an unset runtime var reads as
+ * `undefined` rather than absent. So this describes the KEYS this module looks
+ * up, and the guards remain the thing that decides whether a value is usable.
+ *
+ * NOT A ZOD SCHEMA, deliberately: these are platform-injected bindings read
+ * once per invocation, not a payload crossing a wire. The repo's parsed
+ * boundaries are the wire ones -- `schemas-src/lakehouse.ts` for rows,
+ * `foreign-wire.ts` for third-party bodies -- and this is neither.
+ */
+export interface TelemetryEnv {
+  POSTHOG_PROJECT_TOKEN?: string;
+  POSTHOG_HOST?: string;
+  POSTHOG_USAGE_SAMPLE_RATE?: string;
+  POSTHOG_USAGE_SAMPLE_RATES?: string;
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS?: string;
+  /** Stamped onto every event by `assignDeployment`. */
+  CF_VERSION_METADATA?: Partial<WorkerVersionMetadata>;
+  /** The shared storm gate's window store -- see `admitExceptionCaptureShared`. */
+  METAGRAPH_CONTROL?: ExceptionStormKv;
+}
+
+/** PostHog's fixed $mcp_error_type vocabulary. */
+export type McpErrorType =
+  | "validation"
+  | "permission"
+  | "api_4xx"
+  | "missing_context"
+  | "rate_limited"
+  | "api_5xx"
+  | "timeout"
+  | "internal";
+
+export interface McpPayloadBudget {
+  characters: number;
+  nodes: number;
+  truncated: boolean;
+}
+
+/** Server identity stamped on every $mcp_* event (#8963), so a regression can
+ * be pinned to the deploy that introduced it. Set by the MCP server from the
+ * same constants that feed serverInfo / server.json. */
+export interface McpServerIdentity {
+  serverName?: string;
+  serverVersion?: string;
+  profile?: "core" | "full" | "discovery";
+  protocolVersion?: string | null;
+  clientUserAgent?: string | null;
+  vendorClient?: string | null;
+  /**
+   * A FIRST-PARTY probe that proved itself with the probe token (#11565).
+   *
+   * Declared on the base every `$mcp_*` event extends, because it rides the
+   * shared attribution: a breakdown that excludes our own sweeps has to behave
+   * identically whichever event it starts from, which is the reason
+   * assignMcpAttribution exists at all. Undefined for every real caller.
+   */
+  probe?: string;
+}
+
+/** Where a client name came from (#8963). `client_info` is the MCP handshake's
+ * self-reported clientInfo.name; `user_agent` is derived from the
+ * HTTP User-Agent because this server is stateless and ~80% of production
+ * tool calls arrive with no Mcp-Session-Id to link them back to an
+ * initialize. Recorded alongside the name so a dashboard can tell an
+ * MCP-declared identity from a transport-level guess. */
+export type McpClientNameSource = "client_info" | "user_agent";
+
+/** Inputs for a single MCP tool-call analytics event. */
+export interface McpToolCallEvent extends McpServerIdentity {
+  /**
+   * Operation-local D1 measurements on the existing native event. Durations
+   * sum boundary calls, which may overlap; SQL time is a subset of D1 time.
+   */
+  backendTimings?: ReadonlyMap<string, TimingMark> | null;
+  /** Transport refusals are operational events, never tools/call events. */
+  requestStage?: "refused";
+  toolName?: string;
+  llmModel?: string;
+  llmModelSource?: "client_metadata" | "self_reported";
+  /**
+   * The tool's description AT THE MOMENT OF THE CALL, emitted as
+   * `$mcp_tool_description` — a documented member of this event's property set
+   * that this server had never sent.
+   *
+   * Worth carrying because it is the input the agent actually chose from: when
+   * a tool's failure rate moves, the question is almost always whether the
+   * description changed, and an event that records only the name cannot
+   * answer it. Reads from the registered definition rather than the request,
+   * so it is never caller-supplied text.
+   */
+  toolDescription?: string;
+  isError: boolean;
+  /**
+   * Elapsed wall-clock ms. Cloudflare Workers freeze Date.now() between I/O
+   * operations, so a call that rejects before performing any I/O measures
+   * exactly 0 — indistinguishable from a genuinely instant call. Pass the
+   * measured value; recordMcpToolCallEvent OMITS the property when it is 0
+   * rather than reporting a fabricated zero (see JSONbored/loopover#10279).
+   */
+  durationMs: number;
+  /**
+   * The internal tool-error code from structuredContent.error.code. Projected
+   * onto $mcp_error_type by classifyMcpErrorType; also emitted verbatim as
+   * $mcp_error_code so the coarse bucket can be drilled into. Only meaningful
+   * when isError is true.
+   */
+  errorCode?: string;
+  errorMessage?: string;
+  /**
+   * The HTTP status behind the failure, emitted as `$mcp_error_status` — the
+   * documented member of this event's property set that PostHog's own
+   * failure-breakdown tooling groups by alongside $mcp_error_type. Passed only
+   * where a status genuinely exists: today that is the refusal path, whose
+   * Response carries it directly. A handler-thrown toolError has no status of
+   * its own, and inventing one from the error code would put fabricated
+   * numbers in a property dashboards treat as ground truth. Only meaningful
+   * when isError is true.
+   */
+  errorStatus?: number;
+  /**
+   * The agent's own statement of WHY it made this call, taken from the
+   * `context` argument (#9642). Emitted as $mcp_intent, which is what
+   * PostHog's MCP Analytics intent view and clustering read.
+   *
+   * Free-form model output, so it is trimmed and hard-capped by the recorder
+   * rather than trusted: this rides on an event that is never sampled, and an
+   * agent that pastes a whole prompt into it would otherwise ship that
+   * verbatim on every call.
+   */
+  intent?: string;
+  /**
+   * Where `intent` came from, per PostHog's own vocabulary:
+   * "context_parameter" is the agent's stated reason, "inferred" is the
+   * server's intentFallback filling a call that stated none. The label is the
+   * entire protection — it is what stops server-derived text from being read
+   * as agent speech in the intent views. Defaults to context_parameter, the
+   * only value this field carried before the fallback existed.
+   */
+  intentSource?: "context_parameter" | "inferred";
+  /**
+   * The agent-supplied `conversation_id` argument, emitted as
+   * `$mcp_conversation_id` — PostHog's opt-in property for stitching calls
+   * into one logical conversation across reconnects, which a stateless
+   * transport's rotating $session_id cannot do. Caller-controlled, so the
+   * recorder caps it like every other identifier; it is a grouping label,
+   * never a security boundary.
+   */
+  conversationId?: string;
+  /** Only echoed UUIDv7 handles anchor the analytics session. */
+  conversationIdAccepted?: boolean;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  /**
+   * #8967 / ADR 0027: which side of the MCP access model this call fell on --
+   * "anonymous", or the tier of a verified mg_ key ("free" / "community" /
+   * "paid"). Resolved by the rate-limit gate, which had to verify the bearer
+   * token anyway, so labelling costs no extra verification.
+   */
+  authTier?: string;
+  /** Mcp-Session-Id header value; omitted from the payload when absent. */
+  sessionId?: string | null;
+  /**
+   * The HTTP method and masked path a PRE-DISPATCH REFUSAL arrived on
+   * (#10810).
+   *
+   * Only refusals set these, and only refusals need them: a dispatched call
+   * names its tool, so the request that produced it is never in question. A
+   * refusal has no tool by construction -- the gate runs in front of the
+   * dispatcher -- so `$mcp_tool_name` is null and the error code is all there
+   * is. That was not enough to triage the largest refusal class on the surface:
+   * 36 `method_not_allowed` in two days, with no way to tell a spec-compliant
+   * client hitting a verb the transport does not implement from a scanner
+   * probing paths. One is a compatibility bug worth fixing and the other is
+   * noise worth ignoring, and the event could not distinguish them.
+   *
+   * The path is MASKED with the same maskRouteParams every other route label
+   * uses, so a session id or an ss58 in the URL cannot turn one recurring
+   * refusal into thousands of distinct property values.
+   */
+  requestMethod?: string;
+  requestPath?: string;
+  /**
+   * The tool call's raw arguments / result. Redacted (redactMcpSensitiveFields)
+   * and size-capped (boundedMcpPayload) before ever being included in the
+   * posted event — this module owns that, callers pass the raw value through.
+   */
+  parameters?: unknown;
+  response?: unknown;
+}
+
+/** Native context shared by a dispatched call and its existing exception capture. */
+export type McpCallContext = McpServerIdentity & {
+  resourceName?: string;
+  resourceIsUri?: boolean;
+} & Pick<
+    McpToolCallEvent,
+    | "toolName"
+    | "toolDescription"
+    | "llmModel"
+    | "llmModelSource"
+    | "intent"
+    | "intentSource"
+    | "sessionId"
+    | "conversationId"
+    | "conversationIdAccepted"
+    | "clientName"
+    | "clientVersion"
+    | "clientNameSource"
+    | "authTier"
+  >;
+
+/** Inputs for an MCP initialize-handshake analytics event. */
+export interface McpInitializeEvent extends McpServerIdentity {
+  clientName?: string;
+  clientVersion?: string;
+  /**
+   * #8994: where clientName came from. Optional and usually omitted -- the
+   * handshake's own clientInfo is the normal case and the recorder defaults to
+   * `client_info`. Supplied explicitly when initialize falls back to the
+   * User-Agent for a client that sent no clientInfo, so a transport-level
+   * guess is never recorded as an MCP-declared identity.
+   */
+  clientNameSource?: McpClientNameSource;
+  /**
+   * The session id this initialize is CREATING (#8994), not the one it arrived
+   * with -- a canonical initialize arrives with none, which is why this was
+   * null on every one of them before.
+   */
+  sessionId?: string | null;
+}
+
+export interface McpProtocolOutcome {
+  durationMs?: number;
+  isError?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  parameters?: unknown;
+}
+
+/** Discovery metadata, without copying the catalogue's large schemas. */
+export interface McpToolsListEvent
+  extends McpServerIdentity, McpProtocolOutcome {
+  /** The sent discovery envelope, redacted and bounded before capture. */
+  response?: unknown;
+  /** How many tools the response advertised. */
+  toolCount?: number;
+  /**
+   * The advertised tool names, emitted as `$mcp_listed_tool_names` — the
+   * documented member of this event's property set. What it buys over the
+   * count alone: joined against $mcp_tool_call via $session_id, it answers
+   * "which tools are advertised but never called", which the count cannot.
+   */
+  listedToolNames?: string[];
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  sessionId?: string | null;
+}
+
+/** Inputs for the resource/prompt MCP analytics events. */
+export interface McpResourceEvent
+  extends McpServerIdentity, McpProtocolOutcome {
+  /**
+   * The resource URI, or the prompt name. Emitted as `$mcp_resource_name`.
+   * Caller-supplied, so it is sanitized to a label like every other dimension
+   * on this family. Absent on the two list events, which name nothing.
+   */
+  resourceName?: string;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  authTier?: string;
+  sessionId?: string | null;
+  /**
+   * Listing envelopes. Resource-read bodies are never
+   * captured, including when a caller accidentally supplies a response here.
+   */
+  response?: unknown;
+}
+
+/** Inputs for `$mcp_missing_capability`. */
+export interface McpMissingCapabilityEvent extends McpServerIdentity {
+  /**
+   * What the agent said it needed and could not find. Emitted as
+   * `$mcp_intent` -- the same property a tool call's `context` lands in,
+   * deliberately, because PostHog's missing-capability views read that field.
+   */
+  intent?: string;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  authTier?: string;
+  sessionId?: string | null;
+  conversationId?: string;
+  conversationIdAccepted?: boolean;
+}
+
+/** Inputs for a captured exception. `error` is the raw caught value -- this
+ * module extracts type/message/stack itself, callers never format it.
+ * `route`/`mcpTool` mirror UsageEvent's own fields (same vocabulary, so
+ * insights can filter consistently across usage_event/$mcp_tool_call/
+ * $exception) and double as the fingerprint's grouping key. */
+export interface ExceptionEvent {
+  error: unknown;
+  /** Existing MCP faults retain native context without changing their fingerprint. */
+  nativeMcp?: McpCallContext;
+  route?: string;
+  mcpTool?: string;
+  errorCode?: string;
+  /**
+   * Which query a query-engine capture site was running when it failed.
+   *
+   * `queryKind` is the coarse, bounded bucket you filter an inbox by (a
+   * lakehouse table, e.g. `chain.account_events`); `queryShape` is the
+   * statement itself with its literals collapsed, which names the exact call
+   * site. Both are OPTIONAL and omitted-not-defaulted, so no existing capture
+   * site's payload changes.
+   *
+   * Both are deliberately kept OUT of the fingerprint — see the note in
+   * recordExceptionEvent for why that is a cost decision, not a style one.
+   */
+  queryKind?: string;
+  queryShape?: string;
+  /**
+   * An extra grouping key, appended to the fingerprint between `route` and the
+   * error type. Use it ONLY where one route legitimately reports N independent
+   * subjects, and set it to the thing that makes them independent.
+   *
+   * WHY THIS EXISTS. The fingerprint is also the storm guard's throttle key, so
+   * two different findings that share a route share a window — and the second
+   * one is dropped as if it were a repeat of the first. `watchdog:lane-alarm`
+   * was doing exactly that: it emits once per alarming lane in a single tick,
+   * every emit fingerprinted `watchdog:lane-alarm:Error`, and the 5-minute
+   * window meant only the first lane in each tick was ever recorded. Measured
+   * before the fix: exactly 1 event per tick for 6 consecutive hours while the
+   * lane-alarm verdict itself read "4 alarming".
+   *
+   * KEEP THE VALUE A CLOSED SET. It multiplies both the number of PostHog
+   * issues and the number of throttle windows, so a request-derived value
+   * (an id, a path, a message) belongs in `queryShape`, not here. A declared
+   * lane name is fine; anything a caller could supply unbounded is not.
+   * `sanitizeLabel` bounds the length but cannot bound the cardinality.
+   *
+   * Omitted means the fingerprint is unchanged, so no existing capture site
+   * moves issues.
+   */
+  fingerprintDetail?: string;
+  /**
+   * This failure is an EXPECTED operational condition, not a code defect.
+   *
+   * Set it and the occurrence is recorded as a `usage_event` (`ok: false`,
+   * carrying the identical `route` / `error_code` / `query_kind` /
+   * `query_shape` attribution) instead of an `$exception`. It stays just as
+   * queryable -- it simply stops being billed against error tracking.
+   *
+   * WHY THIS DISTINCTION EARNS ITS KEEP. Error tracking's free tier is 100K
+   * events/month, the tightest budget in this project; product analytics is
+   * 1M and currently runs at ~40% of it. Three sources measured over
+   * 2026-08-03..04 accounted for ~82K/month of the 100K, and not one of them
+   * was a bug: R2 SQL answering HTTP 429 (an ACCOUNT-level rate limit),
+   * an R2 SQL query hitting its timeout ceiling, and a projection lane
+   * declining to compute (an outcome `runProjectionLane` already returns as
+   * `reason: "compute_declined"` and handles by leaving the previous artifact
+   * in place). Capturing those as exceptions crowded real faults out of the
+   * inbox and spent the budget that exists to report them.
+   *
+   * This is NOT a mute. The condition must remain visible -- a projection
+   * lane that goes permanently dark, or an r2-sql rate-limit storm, are real
+   * operational facts and a watchdog is entitled to see them. Moving product,
+   * not dropping signal, is the whole point.
+   */
+  expected?: boolean;
+}
+
+export interface ExceptionThrottleState {
+  windowStartedAtMs: number;
+  suppressed: number;
+}
+
+/** The slice of the KV binding this guard uses. Structural, so a test can
+ * supply the two methods without standing up a whole KVNamespace. */
+export interface ExceptionStormKv {
+  get(key: string): Promise<string | null>;
+  put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<void>;
+}
+
+/** Inputs for one AI generation call. `error` mirrors ExceptionEvent's own
+ * `error` (raw caught value, this module extracts type/message itself) --
+ * never a caller-preformatted string. */
+export interface AiGenerationEvent {
+  provider: string;
+  model: string;
+  /** Groups an event to its call; PostHog requires one per generation even
+   * outside a multi-step chain, so a fresh UUID is minted when omitted --
+   * mirrors posthog-ai's own `uuidv4()` fallback. */
+  traceId?: string;
+  /** Display label for the trace on PostHog's Traces page (e.g. "ask"). */
+  traceName?: string;
+  latencyMs: number;
+  isError: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  /** Only included when BOTH are finite -- see costUsd() in ai-search.ts,
+   * which returns undefined for missing/invalid token counts. */
+  inputCostUsd?: number;
+  outputCostUsd?: number;
+  /** Generation config (e.g. `{ max_tokens }`), never prompt/completion text. */
+  modelParameters?: Record<string, string | number | boolean>;
+  /** The prompt sent to the model, PostHog's `{role, content}[]` shape. See
+   * the module comment above for why this caller includes it. */
+  input?: Array<{ role: string; content: string }>;
+  /** The model's response, in PostHog's completion-choice shape. Same
+   * inclusion reasoning as `input` above. */
+  outputChoices?: Array<{ role: string; content: string }>;
+  error?: unknown;
+}
+
+/** A degraded AI path (#8965): work the caller asked for that never reached a
+ * model. Deliberately NOT a $ai_generation with isError — a rate-limited call
+ * made no model request, so counting it as a failed generation would corrupt
+ * both the error rate and the cost figures. Mirrors loopover's
+ * `selfhost_ai_degraded` precedent. */
+export interface AiDegradedEvent {
+  /** Why the path degraded, from a fixed set this codebase defines. */
+  reason: "rate_limited" | "ai_disabled" | "ai_unconfigured";
+  /** Which entry point was refused (`ask`, `semantic_search`). */
+  surface?: string;
+}
+
+/** One embedding call (#8965). PostHog's `$ai_embedding` shares the
+ * generation contract's shape minus the completion half — no output tokens, no
+ * output choices, no completion cost. */
+export interface AiEmbeddingEvent {
+  provider: string;
+  model: string;
+  /** Ties the query-time embedding to the retrieval and completion it feeds,
+   * so one `ask` reads as a single trace rather than three unrelated events.
+   * The cron sync mints one trace per run. */
+  traceId?: string;
+  traceName?: string;
+  latencyMs: number;
+  isError: boolean;
+  inputTokens?: number;
+  /** How many texts were embedded in this call — 1 for a query, a batch size
+   * for the cron sync. Workers AI bills per call, so a 200-document batch and a
+   * single query are not comparable without it. */
+  inputCount?: number;
+  error?: unknown;
+}

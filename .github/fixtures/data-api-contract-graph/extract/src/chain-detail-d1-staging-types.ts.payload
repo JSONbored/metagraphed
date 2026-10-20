@@ -1,0 +1,39 @@
+import type { ProducerStatement } from "./producer-store.ts";
+import type { ChainDetailSpoolJournal } from "./chain-detail-payload-spool.ts";
+
+export type Kind = "capture" | "chunk" | "extra";
+
+export interface ChainDetailStageOrder {
+  row: number;
+  field: 0 | 1;
+  part: number;
+}
+
+export interface Descriptor extends ChainDetailStageOrder {
+  ordinal: number;
+  family: number;
+  kind: Kind;
+  bytes: number;
+  digest: string;
+}
+
+export interface Buffered extends Descriptor {
+  body: string;
+}
+
+export interface ChainDetailD1Stage {
+  readonly token: string;
+  readonly spoolJournal: ChainDetailSpoolJournal;
+  /** Family index in CHAIN_DETAIL_MIRROR_PLANS. Preserve order within a family.
+   * append may retain a bounded pending put; seal establishes durable closure. */
+  append(
+    family: number,
+    statement: ProducerStatement,
+    order?: ChainDetailStageOrder,
+  ): Promise<void>;
+  seal(): Promise<void>;
+  /** One atomic business application. No completed-token replay shortcut. */
+  commit(): Promise<void>;
+  /** Only this attempt's private preparation; never deletes business rows. */
+  discard(): Promise<void>;
+}

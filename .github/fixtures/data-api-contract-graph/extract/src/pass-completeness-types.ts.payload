@@ -1,0 +1,29 @@
+export interface PassCompleteness {
+  /** captured_at of the newest pass that fully landed, or null if none has. */
+  capturedAt: number | null;
+  /** What that pass declared it would deliver. Null when capturedAt is null. */
+  expectedRows: number | null;
+  /** What actually landed under that stamp. */
+  receivedRows: number | null;
+  /** Why a caller may not read yet, or null when it may. */
+  reason: "no_complete_pass" | "unavailable" | null;
+}
+
+/** One chunk's contribution to a pass tally, as the producer declared it. */
+export interface PassTallyInput {
+  capturedAt: number;
+  expectedRows: number;
+  receivedRows: number;
+  nowMs: number;
+}
+
+/** The runner shape `createPgSql` hands out. Structural, so a test can assert
+ * the emitted text and values without a database. */
+export interface PassTallySql {
+  unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+export interface PassTallyWrite {
+  ok: boolean;
+  reason?: string;
+}

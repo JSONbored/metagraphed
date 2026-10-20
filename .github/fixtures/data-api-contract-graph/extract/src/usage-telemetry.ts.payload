@@ -1,0 +1,2433 @@
+import type {
+  DeploymentEnvironment,
+  UsageEvent,
+  TelemetryEnv,
+  McpErrorType,
+  McpPayloadBudget,
+  McpServerIdentity,
+  McpClientNameSource,
+  McpToolCallEvent,
+  McpCallContext,
+  McpInitializeEvent,
+  McpProtocolOutcome,
+  McpToolsListEvent,
+  McpResourceEvent,
+  McpMissingCapabilityEvent,
+  ExceptionEvent,
+  ExceptionThrottleState,
+  AiGenerationEvent,
+  AiDegradedEvent,
+  AiEmbeddingEvent,
+} from "./usage-telemetry-types.ts";
+export type {
+  DeploymentEnvironment,
+  UsageEvent,
+  TelemetryEnv,
+  McpErrorType,
+  McpServerIdentity,
+  McpClientNameSource,
+  McpToolCallEvent,
+  McpCallContext,
+  McpInitializeEvent,
+  McpToolsListEvent,
+  McpResourceEvent,
+  McpMissingCapabilityEvent,
+  ExceptionEvent,
+  AiGenerationEvent,
+  AiDegradedEvent,
+  AiEmbeddingEvent,
+} from "./usage-telemetry-types.ts";
+import { sha256Hex } from "./sha256-hex.ts";
+import { acceptedMcpConversationId } from "./mcp-conversation.ts";
+// Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
+//
+// Single chokepoint for product-usage capture: callers pass an allowlisted
+// UsageEvent; this module owns the PostHog event name/properties and posts
+// them straight to PostHog's public capture API with fetch.
+// Nothing outside this file should construct a raw PostHog event.
+//
+// This module does not import `posthog-node`, and the reason is NARROWER than
+// it used to claim. The old rationale was that the SDK's ~40 KiB "pushes the
+// deployable bundle past the limit outright", because the Worker entry was
+// "already within a few KiB of Cloudflare's 1 MiB script limit". Both halves
+// were wrong (#9059): Cloudflare's gzipped limit is 10 MB on Workers Paid,
+// not 1 MiB, and this entry measures ~531 KiB — about 5% of budget. The SDK
+// was always affordable, and that false constraint is what justified hand-
+// writing a PostHog client here for as long as it stood.
+//
+// What remains true is only the runtime-shape argument: posthog-node is built
+// for a long-lived Node process (background batching, flush intervals,
+// shutdown draining), none of which survives a Workers isolate that may be
+// evicted between requests — a batched event is a dropped event here. The
+// usage/AI-event capture below is therefore one fetch per event to the
+// documented capture endpoint, which is the platform-native transport.
+//
+// That argument does NOT extend to EXCEPTION capture, where the SDK's value
+// is the frame/stack shaping rather than its transport (see #9048: months of
+// unsymbolicated stacks from a hand-maintained wire shape). Bundle size is no
+// longer a reason to hand-roll anything.
+//
+// Safe no-op when POSTHOG_PROJECT_TOKEN is unset — self-hosters / local / CI
+// see zero behavior change. Never throws.
+
+import { asJsonObject } from "../schemas-src/json-request.ts";
+
+import { ErrorTracking } from "@posthog/core";
+import { z } from "zod";
+
+import { registerModuleStateReset } from "./module-state-registry.ts";
+
+/** Env var holding the PostHog project API token (wrangler secret). */
+export const POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN";
+
+/** Optional PostHog host override (defaults to PostHog US cloud). */
+export const POSTHOG_HOST_ENV = "POSTHOG_HOST";
+
+const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
+
+/**
+ * Fallback distinct_id for a Worker-side product event with no resolved caller.
+ *
+ * ONE ID FOR EVERY CALLER, which is what it was for two surfaces and is now
+ * only a fallback. Measured 2026-08-12: 3,962 REST events across 142 routes in
+ * six hours, all on this string -- so `uniq(distinct_id)` answered 1 no matter
+ * how many clients were behind it, and every person-level REST question
+ * ("how many callers", "is this one client looping or a hundred") was
+ * unanswerable by construction. It surfaced while diagnosing #10606, where
+ * 1,044 /chain/stream refusals could not be attributed to one browser or a
+ * farm, and the geoip fallback (37.751/-97.822, MaxMind's US centroid) could
+ * not separate them either.
+ *
+ * The MCP surface has always resolved a real caller (`github:` / `mcp-session:`);
+ * REST never did. See resolveUsageDistinctId in workers/api.ts.
+ */
+export const USAGE_EVENT_DISTINCT_ID = "metagraphed-worker";
+
+/**
+ * The namespace an API-key-authenticated REST caller is counted under.
+ *
+ * A real, already-known identity -- the account the key belongs to -- so this
+ * is the one REST namespace that mints a person profile, the same way
+ * `github:` does on the MCP side.
+ */
+export const USAGE_ACCOUNT_NAMESPACE = "account:";
+
+/**
+ * The namespace an anonymous REST caller is counted under.
+ *
+ * A SALTED HASH OF THE CLIENT IP, never the IP. Unsalted would not be
+ * pseudonymous at all: the IPv4 space is 2^32, so a rainbow table over it is
+ * minutes of work and the "hash" would be a reversible encoding of an address.
+ * The salt lives in a Worker secret (USAGE_DISTINCT_ID_SALT_ENV) and never
+ * leaves the edge.
+ *
+ * Counts CALLERS, not people: everyone behind one NAT counts once, and one
+ * caller that changes address counts twice. That is the honest resolution of
+ * an IP and the reason this namespace is named for the address rather than
+ * for a user.
+ */
+export const USAGE_ANONYMOUS_NAMESPACE = "ip:";
+
+/**
+ * The namespace a calling Worker is counted under.
+ *
+ * A Worker-to-Worker subrequest carries no client address and is still a
+ * caller. `cf-worker` is set by Cloudflare rather than by the sender, so it is
+ * trustworthy and low-cardinality (one value per calling Worker) -- the same
+ * reason `resolveUsageClient` already trusts it for the `client` dimension.
+ *
+ * Never a person: it is a piece of software, and #9004 found one such caller
+ * (`zeronode.workers.dev`) accounting for 82% of `block-detail` -- so this
+ * namespace can be high-VOLUME while staying tiny in cardinality, which is
+ * exactly the shape that must not mint profiles.
+ */
+export const USAGE_WORKER_NAMESPACE = "worker:";
+
+/**
+ * Worker secret holding the salt for the anonymous-caller hash.
+ *
+ * UNSET IS A SUPPORTED STATE, and it degrades to the pre-#10606 behaviour:
+ * every anonymous caller collapses back onto USAGE_EVENT_DISTINCT_ID. A
+ * missing secret must never be allowed to emit an UNSALTED hash, which is the
+ * one outcome worse than the status quo -- so the absence is checked, not
+ * defaulted.
+ */
+export const USAGE_DISTINCT_ID_SALT_ENV = "USAGE_DISTINCT_ID_SALT";
+
+/**
+ * How many hex characters of the salted digest ride in the distinct_id.
+ *
+ * 16 hex chars = 64 bits. At even a million distinct callers the birthday
+ * bound puts a single collision at ~3e-8, so two callers sharing an id is not
+ * a rate that can move a count -- and a shorter id keeps the property small on
+ * an event this project emits ~1.1M times a day.
+ */
+export const USAGE_ANONYMOUS_ID_HEX_LENGTH = 16;
+
+/**
+ * The `ip:` distinct_id for one client address.
+ *
+ * ONE IMPLEMENTATION for every surface. REST and MCP both need to answer "how
+ * many callers", and two hashes of the same address that disagreed would make
+ * the same client count as two -- which is the failure this whole namespace
+ * exists to remove. Callers resolve the address (through `resolveClientIp`, so
+ * the answer agrees with the rate limiters) and decide whether it is
+ * attributable; this only turns one into an id.
+ *
+ * Returns undefined for a missing salt or a blank address, so the single place
+ * that can emit an UNSALTED hash is nowhere.
+ */
+export async function anonymousUsageDistinctId(
+  salt: string | undefined,
+  clientIp: string | undefined,
+): Promise<string | undefined> {
+  if (!salt || !clientIp) return undefined;
+  const hex = (await sha256Hex(`${salt}:${clientIp}`)).slice(
+    0,
+    USAGE_ANONYMOUS_ID_HEX_LENGTH,
+  );
+  return `${USAGE_ANONYMOUS_NAMESPACE}${hex}`;
+}
+
+/** PostHog event name owned by this wrapper — do not emit it elsewhere. */
+export const USAGE_EVENT_NAME = "usage_event";
+
+// --- usage_event sampling (free-tier budget) ---------------------------------
+//
+// WHY SAMPLE AT ALL. `usage_event` is one capture per request and ~99.7% of
+// this project's PostHog volume: measured 2026-08-02, ~545K/day (16.4M/month)
+// against a 1M/MONTH free tier. Exceeding the tier does not bill -- it DROPS
+// events, and it drops them indiscriminately, which means an unsampled
+// usage_event firehose would silently take `$exception` down with it. Sampling
+// the firehose is what protects the error inbox.
+//
+// WHY NOT ONE FLAT RATE. The traffic shape is extreme: `block-detail` alone is
+// 85.5% of all usage events (116,362 of 136,088 in a 6-hour window). A single
+// rate low enough to fit the budget would leave the entire long tail
+// statistically empty while that one route still dominated the sample. So the
+// default rate governs the tail and a per-route map governs the head.
+//
+// WHY A MAP RATHER THAN A NAMED VAR PER ROUTE (the shape tracing.ts uses for
+// its two surfaces): the hot route MOVES. It was
+// /api/v1/internal/chain-firehose-ingest (#9005 excluded it), then
+// `block-detail` (#9004). A JSON map keeps re-tuning a config change instead
+// of a code change.
+//
+// WHAT IS NEVER SAMPLED, on purpose:
+//   - FAILURES (`ok: false`). They are a rounding error by volume and the
+//     entire point of the dataset when something breaks; dropping 80% of a
+//     rare failure is how an incident becomes invisible.
+//   - MCP tool calls (`mcpTool` set). Low-volume (~2K/day across every MCP
+//     event) and the product's core signal -- ADR 0027's "does anyone actually
+//     authenticate/call tools?" question cannot be answered from a sample.
+//
+// HOW TO COUNT SAMPLED DATA. Every capture that was subject to a rate below 1
+// carries `sample_rate`, so the honest aggregate is a WEIGHTED one:
+//     SELECT sum(1 / coalesce(toFloat(properties.sample_rate), 1)) ...
+// rather than count(). Unsampled captures omit the property entirely (so the
+// coalesce is what makes one query correct across both), which also keeps the
+// payload and every pre-existing dashboard query unchanged when sampling is
+// off.
+
+/** Fallback sample rate for usage_event, as a wrangler var (e.g. "0.2"). */
+export const POSTHOG_USAGE_SAMPLE_RATE_ENV = "POSTHOG_USAGE_SAMPLE_RATE";
+
+/** Per-route overrides, a JSON object of route label -> rate (e.g.
+ * `{"block-detail":0.01}`). Routes absent from the map use the default. */
+export const POSTHOG_USAGE_SAMPLE_RATES_ENV = "POSTHOG_USAGE_SAMPLE_RATES";
+
+// Unsampled by default, and deliberately so: a Math.random() gate cannot be
+// no-op'd by isUsageTelemetryConfigured the way every other capture here can
+// (that only checks for a token), so an on-by-default rate would make every
+// existing test that mocks fetch with a real token and asserts an exact call
+// count randomly flaky. Requiring an explicit rate keeps test call-count
+// assertions deterministic by construction (no test sets these vars) while a
+// real deployment sets them once, in wrangler.jsonc. Same reasoning, and the
+// same default, as POSTHOG_TRACES_SAMPLE_RATE in src/tracing.ts.
+const DEFAULT_USAGE_SAMPLE_RATE = 1;
+
+// Single-entry memo of the parsed override map, keyed on the raw var text so
+// it re-parses if the value ever differs -- a per-request JSON.parse at this
+// module's call volume is pure waste.
+//
+// Registered with the module-state registry because this IS observable across
+// test files under `isolate: false`, even though the memo returns the same
+// answer for the same input: the malformed-map console.error below fires once
+// per distinct raw value, so without a reset a second file's identical
+// malformed map would stay silent and its assertion would fail depending on
+// file order.
+let usageSampleRatesRaw: string | undefined;
+let usageSampleRatesParsed: Record<string, number> = {};
+
+registerModuleStateReset("src/usage-telemetry.ts", () => {
+  usageSampleRatesRaw = undefined;
+  usageSampleRatesParsed = {};
+  // The $exception storm guard's per-fingerprint window (declared below).
+  // Without this a burst in one test file would throttle the first capture of
+  // the next file, which is precisely the cross-file channel this registry
+  // exists to close.
+  exceptionThrottle.clear();
+  // Same hazard, same reason, for the MCP refusal guard (#9639).
+  mcpRefusalThrottle.clear();
+});
+
+function parseRate(value: unknown): number | undefined {
+  // An empty or whitespace-only var is UNSET, not zero. Number("") is 0,
+  // which is a perfectly valid rate meaning "sample nothing" -- so without
+  // this guard, a var set to "" (a stray wrangler edit, a CI secret that
+  // resolved to nothing) would silently take usage telemetry entirely dark
+  // while every other signal looked healthy.
+  if (typeof value === "string" && !value.trim()) return undefined;
+  const rate = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1) return undefined;
+  return rate;
+}
+
+function usageSampleRatesByRoute(
+  env: TelemetryEnv | null | undefined,
+): Record<string, number> {
+  const raw = env?.[POSTHOG_USAGE_SAMPLE_RATES_ENV];
+  if (typeof raw !== "string" || !raw.trim()) return {};
+  if (raw === usageSampleRatesRaw) return usageSampleRatesParsed;
+  const parsed: Record<string, number> = {};
+  try {
+    for (const [route, value] of Object.entries(
+      asJsonObject(JSON.parse(raw)) ?? {},
+    )) {
+      const rate = parseRate(value);
+      if (rate !== undefined) parsed[route] = rate;
+    }
+  } catch {
+    // A malformed map must never take telemetry (or the request) down: fall
+    // back to the default rate for every route, and say so once per isolate.
+    console.error(
+      `[usage-telemetry] ${POSTHOG_USAGE_SAMPLE_RATES_ENV} is not valid JSON; using the default rate for every route`,
+    );
+  }
+  usageSampleRatesRaw = raw;
+  usageSampleRatesParsed = parsed;
+  return parsed;
+}
+
+/**
+ * Route-label namespace for the MCP protocol methods (`mcp:initialize`,
+ * `mcp:ping`, `mcp:resources/read`, ...).
+ *
+ * Declared HERE and imported by the minting site
+ * (scheduleMcpProtocolUsageEvent, src/mcp-server.ts) rather than written as a
+ * literal in both: the sampling exemption below and the label that has to
+ * match it are one decision, and a copy of the string in each file is a
+ * silent divergence waiting to happen -- exactly the failure this exemption
+ * is fixing, where the intent lived in one file and the implementation in
+ * another.
+ */
+export const MCP_PROTOCOL_ROUTE_PREFIX = "mcp:";
+
+/**
+ * The one MCP protocol method that does NOT inherit the never-sampled
+ * exemption below.
+ *
+ * The exemption's stated premise is a volume one: "The whole MCP surface is
+ * ~2K events/day against a REST firehose three orders of magnitude larger, so
+ * exempting it costs nothing the sampling was introduced to save." Measured
+ * 2026-08-10, `mcp:ping` ALONE ran ~175/hour -- ~4,200/day, more than twice
+ * the entire surface the premise was priced on, and 13% of every analytics
+ * event the project captured that day. The premise held when it was written
+ * and a single client polling ping invalidated it.
+ *
+ * It is also the one method whose exemption buys nothing. The rest of the
+ * `mcp:` surface answers ADR 0027's "does anyone actually authenticate/call
+ * tools?"; a keepalive answers whether a transport is still open, which
+ * $mcp_initialize already establishes and which no dashboard reads. Sampled
+ * rather than dropped so a ping storm stays VISIBLE as a weighted count
+ * (sum(1/sample_rate)) instead of becoming an absence nobody can distinguish
+ * from a quiet day.
+ */
+export const MCP_PING_ROUTE = `${MCP_PROTOCOL_ROUTE_PREFIX}ping`;
+
+/** The sample rate that applies to one usage event: 1 for anything never
+ * sampled (failures, every MCP surface), otherwise the route override,
+ * otherwise the deployment default. */
+export function resolveUsageSampleRate(
+  env: TelemetryEnv | null | undefined,
+  event: UsageEvent,
+): number {
+  if (event.ok === false) return 1;
+  if (sanitizeLabel(event.mcpTool) !== undefined) return 1;
+  const route = sanitizeLabel(event.route);
+  // The `mcpTool` check above exempts tools/call and nothing else, because
+  // that is the only MCP event that carries a tool name. Every OTHER MCP
+  // protocol method -- ping, resources/read, prompts/get, the notifications --
+  // arrives here with `route: "mcp:<method>"` and no `mcpTool`, so it fell
+  // through to the REST default and was sampled at 5%: 95% of the MCP
+  // protocol surface dropped, by accident, while this module's own header
+  // says MCP is "the product's core signal" and must not be sampled.
+  //
+  // The whole MCP surface is ~2K events/day against a REST firehose three
+  // orders of magnitude larger, so exempting it costs nothing the sampling
+  // was introduced to save.
+  // MCP_PING_ROUTE is carved back out and falls through to the override
+  // map/default below -- see its declaration for the measurement that
+  // invalidated this exemption's own volume premise.
+  if (
+    route !== undefined &&
+    route.startsWith(MCP_PROTOCOL_ROUTE_PREFIX) &&
+    route !== MCP_PING_ROUTE
+  ) {
+    return 1;
+  }
+  if (route !== undefined) {
+    const override = usageSampleRatesByRoute(env)[route];
+    if (override !== undefined) return override;
+  }
+  return (
+    parseRate(env?.[POSTHOG_USAGE_SAMPLE_RATE_ENV]) ?? DEFAULT_USAGE_SAMPLE_RATE
+  );
+}
+
+// Cap free-form string fields so a buggy caller can't ship unbounded payloads.
+const MAX_LABEL_CHARS = 256;
+
+// Agent intent is prose, not an identifier, so it needs a ceiling of its own
+// (#9642). MAX_LABEL_CHARS is sized for a tool or route name and would cut a
+// real sentence mid-clause; this is long enough for the one-or-two-sentence
+// answer the argument's description asks for, and short enough that an agent
+// pasting an entire system prompt into it cannot ship that on every call.
+const MAX_MCP_INTENT_CHARS = 1024;
+
+// Ceiling on $mcp_listed_tool_names entries. The catalogue is ~240 tools and
+// grows by ones; 512 leaves headroom for years of additions while bounding
+// what a misplumbed caller could ship on an unsampled event.
+const MAX_MCP_LISTED_TOOL_NAMES = 512;
+
+/**
+ * A trimmed string capped at `max`, or undefined when there is nothing to say.
+ *
+ * Separate from sanitizeLabel purely because the LIMIT differs -- the
+ * empty/non-string/trim rules are identical, and duplicating them was the
+ * alternative.
+ */
+function trimToLength(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
+// ─── deployment dimensions (environment / release) ──────────────────────────
+//
+// Every event this module emits was, until now, indistinguishable from every
+// other deployment's: there was no environment and no version on the wire. Two
+// concrete consequences, both observed in the live project:
+//
+//   1. A `wrangler dev` session on a developer's machine captures into the
+//      SAME PostHog project as production. Error Tracking showed issues whose
+//      stack frames resolve to `.wrangler/tmp/dev-*` paths inside a local
+//      worktree, interleaved with real production faults and counted in the
+//      same Issue. Nothing in the payload could separate them.
+//   2. A regression could not be pinned to the deploy that introduced it,
+//      which is exactly what $mcp_server_version already buys on the MCP
+//      events -- the other surfaces simply never got the equivalent.
+//
+// CF_VERSION_METADATA is Cloudflare's own `version_metadata` binding (declared
+// in wrangler.jsonc since the Worker was set up, and until now never read by
+// anything). A real deployment always carries a version id; a local
+// `wrangler dev` isolate has no deployed version to report. That asymmetry is
+// the environment signal, so this needs no new var to configure and no
+// per-deployment step someone can forget -- which a plain `vars` entry could
+// not achieve anyway, since `wrangler dev` reads the same wrangler.jsonc and
+// would inherit whatever it said.
+//
+// The failure mode if that asymmetry ever stops holding is deliberately
+// benign: an event is labelled `production` when it wasn't, which is exactly
+// the status quo this replaces -- never the reverse (a real production fault
+// hidden under a `development` label).
+
+
+/**
+ * Resolve the environment/release pair for this isolate. Never throws: an
+ * absent or malformed binding degrades to `development` with no release,
+ * because a telemetry dimension must never be the thing that breaks a request.
+ *
+ * Typed `Partial<WorkerVersionMetadata>` against Cloudflare's own generated
+ * binding type (workers/worker-configuration.d.ts) rather than a hand-written
+ * shape -- but PARTIAL, because the generated type describes the binding as it
+ * exists on a real deployment, and the case this function exists to detect is
+ * precisely the one where it does not.
+ */
+export function resolveDeployment(env: TelemetryEnv | null | undefined): {
+  environment: DeploymentEnvironment;
+  release?: string;
+} {
+  const metadata = env?.CF_VERSION_METADATA;
+  const id = sanitizeLabel(metadata?.id);
+  if (id === undefined) return { environment: "development" };
+  // Prefer the human-meaningful tag when the deployment set one; the id is a
+  // UUID and is always present, so it is the dependable fallback.
+  const tag = sanitizeLabel(metadata?.tag);
+  return { environment: "production", release: tag ?? id };
+}
+
+/** Stamp environment/release onto any outgoing property bag. Shared by every
+ * recorder here so a breakdown behaves identically whichever event it starts
+ * from -- the same discipline assignMcpAttribution already applies. */
+function assignDeployment(
+  properties: Record<string, unknown>,
+  env: TelemetryEnv | null | undefined,
+): void {
+  const { environment, release } = resolveDeployment(env);
+  properties.environment = environment;
+  if (release !== undefined) {
+    properties.release = release;
+    // PostHog Error Tracking reads `$exception_releases` for its own
+    // release-filtering UI; carrying both means the generic `release`
+    // dimension works on usage/AI events too, from one resolution.
+    properties.$exception_releases = [release];
+  }
+}
+
+
+/** Public capture endpoint, appended to the resolved PostHog host. */
+export const POSTHOG_CAPTURE_PATH = "/i/v0/e/";
+
+export interface RecordUsageEventDeps {
+  /** Injectable fetch (tests). */
+  fetch?: typeof fetch;
+  /** Override distinct_id (tests). */
+  distinctId?: string;
+  /** Injectable [0,1) source for the sampling gate (tests) -- keeps a
+   * sampled deployment's behavior deterministic under assertion. */
+  random?: () => number;
+  /** Injectable cross-isolate storm gate (#9900). Same reason
+   * `admitExceptionCapture` is exported: "was it held by the FLEET-wide
+   * gate" is otherwise indistinguishable from "was it held locally" or
+   * "was it a no-op", and the distinction is the entire point of the fix. */
+  admitShared?: typeof admitExceptionCaptureShared;
+}
+
+// #8963: best-effort client identity from the User-Agent, for the tool calls
+// that carry no session to link back to an initialize handshake. MCP HTTP
+// clients send a conventional `name/version` first token (claude-code/2.1.220,
+// mcporter/0.12.3, python-httpx/0.27.0), so the first token before any space
+// is split on its last "/". Anything that doesn't fit that shape yields a name
+// with no version rather than a guess. Capped well under the telemetry
+// module's own label cap so a hostile UA can't dominate a payload.
+const MAX_USER_AGENT_CLIENT_CHARS = 80;
+
+export function parseUserAgentClient(userAgent: unknown): {
+  clientName?: string;
+  clientVersion?: string;
+} {
+  if (typeof userAgent !== "string") return {};
+  const token = userAgent.trim().split(/\s+/)[0] ?? "";
+  if (!token) return {};
+  const slash = token.lastIndexOf("/");
+  // A leading "/" (or a bare "/") leaves no name -- treat the whole token as
+  // the name rather than emitting an empty one.
+  const name = slash > 0 ? token.slice(0, slash) : token;
+  const version = slash > 0 ? token.slice(slash + 1) : "";
+  if (!name) return {};
+  return {
+    clientName: name.slice(0, MAX_USER_AGENT_CLIENT_CHARS),
+    ...(version
+      ? { clientVersion: version.slice(0, MAX_USER_AGENT_CLIENT_CHARS) }
+      : {}),
+  };
+}
+
+/** True when this deployment has a non-empty PostHog project token configured. */
+
+export function isUsageTelemetryConfigured(
+  env: TelemetryEnv | null | undefined,
+): boolean {
+  const token = env?.[POSTHOG_PROJECT_TOKEN_ENV];
+  return typeof token === "string" && token.trim().length > 0;
+}
+
+/**
+ * Build the allowlisted PostHog properties object, or null when the event is
+ * too malformed to record (missing ok / non-finite duration).
+ */
+export function usageEventProperties(
+  event: UsageEvent | null | undefined,
+): Record<string, string | number | boolean> | null {
+  if (!event || typeof event !== "object") return null;
+  if (typeof event.ok !== "boolean") return null;
+  if (
+    typeof event.durationMs !== "number" ||
+    !Number.isFinite(event.durationMs) ||
+    event.durationMs < 0
+  ) {
+    return null;
+  }
+
+  const properties: Record<string, string | number | boolean> = {
+    ok: event.ok,
+    // Coarse integer ms — drop sub-ms noise; clamp absurd values at 24h.
+    duration_ms: Math.min(Math.round(event.durationMs), 86_400_000),
+  };
+
+  const route = sanitizeLabel(event.route);
+  if (route !== undefined) properties.route = route;
+
+  const mcpTool = sanitizeLabel(event.mcpTool);
+  if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
+
+  // metagraphed#7726: categorizes WHY a failed call failed, so analytics can
+  // break failures down by cause instead of only a success/fail ratio. Only
+  // ever one of a small set of literal codes this codebase itself defines
+  // (see UsageEvent.errorCode) -- sanitizeLabel is reused here purely for
+  // defense-in-depth (the same cap every other free-ish-form field gets),
+  // not because this field is expected to need it.
+  const errorCode = sanitizeLabel(event.errorCode);
+  if (errorCode !== undefined) properties.error_code = errorCode;
+
+  // #8963 dimensions. Each is omitted (not defaulted) when absent, matching
+  // the contract every other optional field here already follows.
+  const method = sanitizeLabel(event.method);
+  if (method !== undefined) properties.method = method.toUpperCase();
+
+  const statusClass = sanitizeLabel(event.statusClass);
+  if (statusClass !== undefined) properties.status_class = statusClass;
+
+  const client = sanitizeLabel(event.client);
+  if (client !== undefined) properties.client = client;
+
+  const authTier = sanitizeLabel(event.authTier);
+  if (authTier !== undefined) properties.auth_tier = authTier;
+
+  // #9900 dimensions. Same omitted-not-defaulted contract as everything
+  // above: an ordinary usage event's payload is byte-for-byte unchanged, so
+  // every pre-existing query keeps working.
+  if (event.expected === true) properties.expected = true;
+
+  const queryKind = sanitizeLabel(event.queryKind);
+  if (queryKind !== undefined) properties.query_kind = queryKind;
+
+  const queryShape = sanitizeLabel(event.queryShape);
+  if (queryShape !== undefined) properties.query_shape = queryShape;
+
+  return properties;
+}
+
+/**
+ * Map an HTTP status to its class label (#8963). Anything outside 100-599 is
+ * not a status we produced, so it yields undefined rather than a bucket that
+ * would quietly absorb garbage.
+ */
+export function statusClassOf(status: unknown): string | undefined {
+  if (typeof status !== "number" || !Number.isFinite(status)) return undefined;
+  if (status < 100 || status > 599) return undefined;
+  return `${Math.floor(status / 100)}xx`;
+}
+
+/**
+ * Is this caller a person PostHog should keep a profile for?
+ *
+ * THE SINGLE PREDICATE, because there were two and they disagreed. The MCP
+ * gate keyed only on `github:` while the usage gate keyed on `github:` OR
+ * `account:`, so a key-authenticated MCP caller was a person on one capture
+ * and not on the other -- and PostHog creates the profile when ANY event on an
+ * id asks for one, which makes a disagreement resolve to the expensive answer
+ * silently.
+ */
+function isUsagePerson(distinctId?: string): boolean {
+  const id = distinctId ?? USAGE_EVENT_DISTINCT_ID;
+  return (
+    id.startsWith(USAGE_ACCOUNT_NAMESPACE) ||
+    id.startsWith(MCP_PERSON_NAMESPACE)
+  );
+}
+
+/**
+ * The one place an event reaches PostHog.
+ *
+ * ## WHY THIS EXISTS
+ *
+ * This body was written TEN TIMES -- ten copies of `api_key` / `event` /
+ * `distinct_id` / `properties`, differing only in the event name. Ten copies
+ * of one decision is not a style problem, it is a coverage problem: a rule
+ * that must hold on every capture was enforced by remembering to write it ten
+ * times, and remembering is what failed.
+ *
+ * It failed measurably. `$process_person_profile` was written on six of the
+ * ten, so PostHog kept minting a person profile per MCP session at ~25-31/hour
+ * straight through the flag's own deploy (measured 2026-08-12) while every
+ * `$mcp_*` event politely said `false` -- because ONE unflagged event on an id
+ * is enough. Two more surfaced as soon as a derived sweep asked all ten
+ * (#10949), and three `$ai_*` recorders after that.
+ *
+ * So the flag is stamped HERE. Omitting it stops being possible rather than
+ * being remembered, which is the only version of this that holds.
+ */
+async function capturePostHogEvent(
+  env: TelemetryEnv | null | undefined,
+  eventName: string,
+  properties: Record<string, unknown>,
+  deps: RecordUsageEventDeps,
+): Promise<boolean> {
+  // Every invariant that must hold on EVERY capture belongs above the fetch,
+  // never at a call site. tests/posthog-capture-invariants.test.ts asserts
+  // them against all thirteen recorders.
+  properties["$process_person_profile"] = isUsagePerson(deps.distinctId);
+  // Keep verified first-party checks observable without including them in
+  // PostHog's native MCP product metrics. This replaces the capture; it does
+  // not emit an additional event or trust a caller's User-Agent.
+  if (eventName.startsWith("$mcp_") && properties["$mcp_probe"]) {
+    eventName = `mcp_probe_${eventName.slice(5)}`;
+  }
+  const doFetch = deps.fetch ?? globalThis.fetch;
+  const response = await doFetch(
+    `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+        event: eventName,
+        distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+        properties,
+      }),
+    },
+  );
+  // A rejected capture is PostHog's problem, not the caller's -- reported as
+  // not-recorded rather than thrown, exactly as each copy did.
+  return response?.ok === true;
+}
+
+/**
+ * Stamp `$process_person_profile` for a usage event.
+ *
+ * ## THIS IS A COST GATE, NOT A LABEL
+ *
+ * A distinct_id and a person profile are separable, and conflating them is how
+ * this project already spent $650 once (the free-tier volume crisis). PostHog
+ * counts `uniq(distinct_id)` straight off the events table with no profile
+ * involved -- so giving anonymous callers real ids buys accurate caller counts
+ * for nothing, while ALSO minting a profile per id would bill for one person
+ * per address seen. The first is the point; the second is the bill.
+ *
+ * So: an account-namespaced caller is a person (a known account, few of them,
+ * and the profile is what makes retention and funnels work). Everything else
+ * -- an anonymous `ip:` caller and the `metagraphed-worker` fallback -- is
+ * explicitly NOT, and `false` is written rather than omitted so an event's
+ * person handling is readable off the event itself. Same discipline, and the
+ * same reasoning, as assignMcpPersonProcessing above.
+ */
+export function assignUsagePersonProcessing(
+  properties: Record<string, unknown>,
+  distinctId?: string,
+): void {
+  const id = distinctId ?? USAGE_EVENT_DISTINCT_ID;
+  // BOTH person namespaces, because one request produces events on both
+  // paths. An authenticated MCP call emits `$mcp_*` (which key on
+  // MCP_PERSON_NAMESPACE) AND a `usage_event` carrying the same `github:` id
+  // -- so checking only `account:` here would have this capture disagree with
+  // those about whether the very same caller is a person. Disagreement is not
+  // a labelling nit: PostHog creates the profile if ANY event on the id asks
+  // for one, so the two files must answer identically or the flag means
+  // nothing.
+  properties["$process_person_profile"] =
+    id.startsWith(USAGE_ACCOUNT_NAMESPACE) ||
+    id.startsWith(MCP_PERSON_NAMESPACE);
+}
+
+/**
+ * Record one product-usage event. Resolves without throwing; returns whether
+ * an event was handed to PostHog. Callers that need Workers flush semantics
+ * should schedule the returned promise via `ctx.waitUntil(...)`.
+ */
+export async function recordUsageEvent(
+  env: TelemetryEnv | null | undefined,
+  event: UsageEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties = usageEventProperties(event);
+    if (!properties) return false;
+
+    // Sampling gate. Applied AFTER the shape validation above so a malformed
+    // event is still reported as not-recorded for the same reason it always
+    // was, never as "sampled out".
+    const sampleRate = resolveUsageSampleRate(env, event);
+    if (sampleRate < 1) {
+      const random = deps.random ?? Math.random;
+      if (random() >= sampleRate) return false;
+      // The weight rides with the event so a count can be scaled back up --
+      // see this module's sampling header for the weighted-aggregate query.
+      properties.sample_rate = sampleRate;
+    }
+
+    // Applied after the sampling gate so a dropped event costs no work, and
+    // outside usageEventProperties so that function stays a pure projection of
+    // its UsageEvent argument (it is exported and asserted as one).
+    assignDeployment(properties, env);
+
+    return await capturePostHogEvent(env, USAGE_EVENT_NAME, properties, deps);
+  } catch {
+    // Telemetry must never surface into the request/tool path.
+    return false;
+  }
+}
+
+export function resolvePostHogHost(
+  env: TelemetryEnv | null | undefined,
+): string {
+  return typeof env?.[POSTHOG_HOST_ENV] === "string" &&
+    env[POSTHOG_HOST_ENV].trim()
+    ? env[POSTHOG_HOST_ENV].trim()
+    : DEFAULT_POSTHOG_HOST;
+}
+
+function sanitizeLabel(value: unknown): string | undefined {
+  return trimToLength(value, MAX_LABEL_CHARS);
+}
+
+/**
+ * Bound a caller-derived label before it becomes a distinct_id.
+ *
+ * Exported because `resolveUsageDistinctId` builds the `worker:` id in
+ * workers/api.ts, and an unbounded id is an unbounded property on an event
+ * this project emits ~1.1M times a day.
+ *
+ * Returns undefined rather than a placeholder, and the caller guards on THAT
+ * rather than on the raw header. A placeholder would have been dead code here
+ * -- the Headers API normalises a whitespace-only value to the empty string,
+ * so a header that is truthy but sanitises to nothing cannot arrive over
+ * HTTP -- and it would have minted `worker:unknown` as though it were an
+ * identity if anything ever did reach it.
+ */
+export function sanitizeUsageLabel(value: unknown): string | undefined {
+  return sanitizeLabel(value);
+}
+
+// ─── $mcp_error_type projection (#8963) ────────────────────────────────────
+//
+// PostHog's MCP Analytics dashboards group failures by $mcp_error_type, whose
+// vocabulary is a small fixed set. This codebase already carries a richer,
+// developer-defined error code on every failed tool result
+// (structuredContent.error.code — see toolError in src/mcp-server.ts), so the
+// projection below is the only missing piece: it maps OUR code onto THEIR
+// bucket. Nothing here invents classification the tool path didn't already
+// have.
+//
+// Two layers, deliberately:
+//
+//   1. EXPLICIT — every code the MCP tool path is known to raise, mapped by
+//      hand. This is the authoritative layer; when a code's bucket is not
+//      obvious from its name, it belongs here.
+//   2. CONVENTION — suffix/prefix rules over this codebase's own naming
+//      habits (`*_unavailable`, `*_rate_limited`, `invalid_*`). The code
+//      vocabulary is open-ended by design: helpers outside mcp-server.ts
+//      (health-history-mcp.ts, stake-quote.ts, the per-domain sync modules)
+//      each mint their own codes and propagate them through toolError, and
+//      new ones land without touching this file. A hand-maintained list
+//      alone would silently degrade every new code to `internal`; the rules
+//      keep the long tail classified.
+//
+// Anything neither layer recognizes falls back to `internal`, which is
+// PostHog's own documented catch-all bucket.
+
+
+/**
+ * Layer 1: codes whose bucket is not derivable from the name, or where the
+ * naming convention would derive the WRONG bucket. Keep alphabetical.
+ */
+export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
+  // A caller offering a credential the target surface has no slot for is a
+  // malformed request, not an authorization failure — the call would fail
+  // identically with a perfectly valid credential.
+  credential_not_supported: "validation",
+  forbidden: "permission",
+  auth_required: "permission",
+  internal_error: "internal",
+  // ── The pre-dispatch refusal vocabulary (mcpRefusalReason) ──────────────
+  // These never pass through toolError, because they are raised by the gate
+  // in front of the dispatcher rather than by a handler. They reach this
+  // projection all the same now that a refusal also emits $mcp_tool_call, and
+  // none of them would have bucketed correctly on the naming rules alone:
+  // `blocked` and `rate_limited` are bare words the `_blocked$` /
+  // `_rate_limited$` suffixes do not match, and the rest are unlike anything
+  // this codebase's handlers mint.
+  bad_request: "validation",
+  // The four faults `bad_request` used to be. All `validation` -- they are OUR
+  // refusal of a caller's request, the same reading bad_request already
+  // carried -- but each names what to change: 27 of these arrived from real
+  // Claude clients in a week under one label that said only "something was
+  // wrong with your POST".
+  invalid_json: "validation",
+  unsupported_protocol_version: "validation",
+  empty_batch: "validation",
+  batch_too_large: "validation",
+  blocked: "permission",
+  body_too_large: "validation",
+  daily_quota: "rate_limited",
+  method_not_allowed: "validation",
+  // A duplicate SSE stream on one session. `validation` rather than a 4xx
+  // bucket for the same reason method_not_allowed and bad_request are: this is
+  // OUR refusal of a caller's request, not an upstream's 4xx reaching us, and
+  // the caller fixes it by not opening a second stream.
+  stream_taken: "validation",
+  unauthorized: "permission",
+  // "This surface exists but declares no callable path/schema" — the caller
+  // is missing context about the target, not sending bad syntax.
+  no_schema: "missing_context",
+  not_callable: "missing_context",
+  not_found: "missing_context",
+  path_not_declared: "missing_context",
+  // Blocked by our own method policy, not by the upstream.
+  rpc_method_blocked: "permission",
+  // The caller asked for more than the pool can fill — an input problem, not a
+  // fault. Reachable from get_subnet_stake_quote / get_stake_action_preview via
+  // computeStakeQuote's own code.
+  insufficient_liquidity: "validation",
+  // An adapter's upstream provider failed or answered with garbage. Both are
+  // somebody else's 5xx from the caller's side.
+  provider_error: "api_5xx",
+  provider_invalid_response: "api_5xx",
+  // The artifact existed and was withdrawn — the caller is missing context
+  // about what is current, not sending bad syntax.
+  retired_artifact: "missing_context",
+  // The upstream answered, but with something unparseable — their fault.
+  rpc_invalid_response: "api_5xx",
+  // ...whereas an invalid *request* is the caller's.
+  rpc_invalid_request: "validation",
+  rpc_upstream_error: "api_5xx",
+  // A tools/call naming a tool this server does not register. Classified as
+  // validation rather than missing_context: `name` is an argument of the
+  // tools/call request, and the caller can fix it from tools/list alone.
+  unknown_tool: "validation",
+  unsupported_content_type: "validation",
+};
+
+/**
+ * Layer 2: naming-convention rules, in precedence order. First match wins.
+ */
+const MCP_ERROR_TYPE_RULES: [RegExp, McpErrorType][] = [
+  // Checked before `*_unavailable`, since `rpc_state_query_rate_limited` and
+  // friends would otherwise fall through to the 5xx rule below.
+  //
+  // The `^rate_limited$` alternative is load-bearing and was MISSING. The bare
+  // code -- what `requireAiRateLimit` and every plain limiter raises, and by
+  // far the most common member of the family -- has no underscore prefix, so
+  // `_rate_limited$` alone did not match it and it fell through to `internal`.
+  // The unit tests did not catch it because the production sample they were
+  // built from contained `data_rate_limited` and `graphql_rate_limited` but no
+  // bare `rate_limited`: MCP AI rate limiting had not tripped during the
+  // measurement window. Found by tripping the live limiter and reading the
+  // emitted event.
+  [/^rate_limited$|_rate_limited$/, "rate_limited"],
+  [/^timeout$|_timeout$/, "timeout"],
+  // mcpRefusalReason's catch-all spelling for a status it has no name for
+  // (`status_503`). Mapped by class so a refusal the gate has not been taught
+  // to name still lands in the right bucket rather than in `internal`.
+  [/^status_4\d\d$/, "api_4xx"],
+  [/^status_5\d\d$/, "api_5xx"],
+  [/^invalid_|^malformed_|_invalid$/, "validation"],
+  // Our own dependency (a tier, a binding, an upstream provider) could not
+  // serve the call. From the caller's side this is indistinguishable from a
+  // 5xx, which is the bucket PostHog intends for it.
+  [/_unavailable$|_unreachable$|^unavailable$/, "api_5xx"],
+  [/_not_configured$|_missing$|_not_found$/, "missing_context"],
+  // Refused by our own policy rather than by a dependency (api_key_blocked;
+  // rpc_method_blocked is already named explicitly above).
+  [/_blocked$/, "permission"],
+];
+
+/**
+ * Project one internal tool-error code onto PostHog's $mcp_error_type bucket.
+ * Never returns undefined — an unrecognized code is `internal`, so a failure
+ * is never silently unclassified in the dashboards.
+ */
+export function classifyMcpErrorType(code: unknown): McpErrorType {
+  if (typeof code !== "string") return "internal";
+  const normalized = code.trim().toLowerCase();
+  if (!normalized) return "internal";
+  const explicit = MCP_ERROR_TYPE_BY_CODE[normalized];
+  if (explicit) return explicit;
+  for (const [pattern, type] of MCP_ERROR_TYPE_RULES) {
+    if (pattern.test(normalized)) return type;
+  }
+  return "internal";
+}
+
+/**
+ * The `$mcp_source` marker @posthog/mcp stamps on every event it emits.
+ * PostHog's own docs designate it the filter for separating MCP analytics
+ * from everything else in a mixed project, so this hand-rolled emitter must
+ * carry it too or a `$mcp_source`-scoped query silently excludes this server.
+ */
+export const MCP_ANALYTICS_SOURCE = "posthog_mcp_analytics";
+
+/**
+ * The distinct_id namespace that names a real person.
+ *
+ * Owned here rather than in mcp-server.ts because the person-processing
+ * decision below has to agree with mcpDistinctId's namespacing forever, and a
+ * shared constant is what makes disagreement impossible. `mcp-session:<id>`
+ * and the anonymous fallback are transport artifacts, not people.
+ */
+export const MCP_PERSON_NAMESPACE = "github:";
+
+/**
+ * Stamp `$process_person_profile` per the SDK's own contract: false for
+ * sessions with no resolved identity, so anonymous MCP traffic does not mint
+ * (and bill as) a person profile per event -- only a `github:`-verified
+ * caller is a person. Explicit `true` for those rather than omitted, so an
+ * event's person handling is always readable off the event itself.
+ */
+function assignMcpPersonProcessing(
+  properties: Record<string, unknown>,
+  deps: RecordUsageEventDeps,
+  authTier?: string,
+): void {
+  // NO LONGER STAMPS $process_person_profile -- capturePostHogEvent does, for
+  // every capture, which is what stops six of ten setting it and four not.
+  // This keeps only the part that is genuinely MCP's: the person PROPERTY.
+  //
+  // It also silently fixed a disagreement. This gate keyed on `github:` alone
+  // while the usage gate keyed on `github:` OR `account:`, so a
+  // key-authenticated MCP caller was a person on one capture and not on the
+  // other -- and PostHog resolves that to the expensive answer without
+  // saying so. One predicate now, `isUsagePerson`.
+  //
+  // Person properties ride the event itself ($set on capture) rather than a
+  // separate $identify — the SDK's identify() feature without its extra
+  // event per session, which matters on a project already paying for volume.
+  // Only for a real person: $set on an anonymous event is dead weight.
+  if (
+    isUsagePerson(deps.distinctId) &&
+    typeof authTier === "string" &&
+    authTier
+  ) {
+    properties["$set"] = { mcp_auth_tier: authTier };
+  }
+}
+
+/**
+ * Stamp client + server attribution onto an outgoing $mcp_* property bag
+ * (#8963). Shared by every event in the family so a breakdown by client or by
+ * deploy version behaves identically whichever event it starts from.
+ *
+ * Also stamps `$mcp_source`, because this is the one function every `$mcp_*`
+ * recorder already calls -- the family marker must not depend on which event
+ * a query starts from.
+ */
+function assignMcpAttribution(
+  properties: Record<string, unknown>,
+  event: {
+    clientName?: string;
+    clientVersion?: string;
+    clientNameSource?: McpClientNameSource;
+    authTier?: string;
+  } & McpServerIdentity,
+): void {
+  properties["$mcp_source"] = MCP_ANALYTICS_SOURCE;
+  // #11565: a FIRST-PARTY probe declaring itself, so our own monitoring stops
+  // being counted as product usage. The nightly MCP conformance sweep alone was
+  // 4,990 tool calls over 30 days -- ~14% of the surface's traffic, touching
+  // all 242 tools every run, which distorts exactly the per-tool caller counts
+  // #11179 requires pricing to be chosen from.
+  //
+  // Keep the verified label for auditing. capturePostHogEvent routes these
+  // rows to mcp_probe_* so native MCP Analytics excludes our own checks too.
+  //
+  // A DECLARED HEADER, NOT A USER-AGENT MATCH. Our sweep sets its own UA, but
+  // matching on the string would also catch `flowstacks-mcp-conformance` --
+  // observed in production, a THIRD party's conformance checker whose traffic
+  // is real usage and must not be filtered out of our numbers.
+  const probe = sanitizeLabel(event.probe);
+  if (probe !== undefined) properties["$mcp_probe"] = probe;
+  if (
+    event.profile === "core" ||
+    event.profile === "full" ||
+    event.profile === "discovery"
+  ) {
+    properties["$mcp_profile"] = event.profile;
+  }
+  const protocolVersion = sanitizeLabel(event.protocolVersion);
+  if (protocolVersion !== undefined) {
+    properties["$mcp_protocol_version"] = protocolVersion;
+  }
+  // #8967: "anonymous", or the tier of the verified mg_ key. This is the one
+  // dimension that makes the MCP access model measurable -- authentication
+  // currently buys throughput only, and without this there is no way to ask
+  // what share of traffic is authenticated, which is the question any decision
+  // to extend the tier system has to start from.
+  const authTier = sanitizeLabel(event.authTier);
+  if (authTier !== undefined) properties["$mcp_auth_tier"] = authTier;
+
+  const clientName = sanitizeLabel(event.clientName);
+  if (clientName !== undefined) {
+    properties["$mcp_client_name"] = clientName;
+    // Provenance rides with the value, never separately — an unlabelled
+    // client name would be indistinguishable from an MCP-declared one.
+    if (event.clientNameSource) {
+      properties["$mcp_client_name_source"] = event.clientNameSource;
+    }
+  }
+
+  const clientVersion = sanitizeLabel(event.clientVersion);
+  if (clientVersion !== undefined) {
+    properties["$mcp_client_version"] = clientVersion;
+  }
+
+  // Native harness resolution needs the interface suffix in the original
+  // User-Agent and the vendor header, not only our parsed client label.
+  const clientUserAgent = sanitizeLabel(event.clientUserAgent);
+  if (clientUserAgent !== undefined)
+    properties["$mcp_client_user_agent"] = clientUserAgent;
+  const vendorClient = sanitizeLabel(event.vendorClient);
+  if (vendorClient !== undefined)
+    properties["$mcp_vendor_client"] = vendorClient;
+
+  const serverName = sanitizeLabel(event.serverName);
+  if (serverName !== undefined) properties["$mcp_server_name"] = serverName;
+
+  const serverVersion = sanitizeLabel(event.serverVersion);
+  if (serverVersion !== undefined) {
+    properties["$mcp_server_version"] = serverVersion;
+  }
+}
+
+// MCP Analytics events (#7737). Emit PostHog's canonical $mcp_* event family
+// so PostHog's built-in MCP Analytics dashboards work out of the box.
+// Implemented via the same raw-fetch pattern as recordUsageEvent — posthog-
+// node cannot be bundled into the Worker (bundle-budget constraint; see the
+// header comment), so there is no SDK `instrument()` wrapper here and no
+// SDK-provided default redaction sitting in front of what gets sent. Whatever
+// this module includes in $mcp_parameters / $mcp_response, it redacts itself.
+//
+// redactMcpSensitiveFields mirrors the key-name-substring redaction
+// posthog-node/@posthog/mcp applies automatically when instrument() drives
+// capture (authorization/cookie/password/token/secret/api_key/private_key,
+// per https://posthog.com/docs/mcp-analytics/privacy) — plus `credential`,
+// which that default list does NOT cover and which call_subnet_surface's own
+// `credential` argument (src/call-subnet-surface.ts) needs: a bearer token,
+// API key, or Bittensor hotkey-signed bundle a caller supplies for one call.
+// Every other sensitive argument this server takes is already covered by the
+// baseline set — e.g. get_alert_trigger's `owner_token` via the "token"
+// substring — so `credential` is the only addition needed.
+
+const MCP_SENSITIVE_KEY_PATTERN =
+  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential/i;
+
+const MCP_REDACTED_VALUE = "[redacted]";
+
+// Caps recursion on a pathologically deep structure (call_subnet_surface's
+// `body` argument and its upstream response body are both fully caller/
+// third-party-controlled) — a v8 stack limit is a much uglier failure mode
+// than a placeholder string.
+const MCP_REDACT_MAX_DEPTH = 8;
+
+function redactMcpUri(value: string): string {
+  try {
+    const uri = new URL(value);
+    if (uri.username) uri.username = MCP_REDACTED_VALUE;
+    if (uri.password) uri.password = MCP_REDACTED_VALUE;
+    for (const key of new Set(uri.searchParams.keys())) {
+      if (MCP_SENSITIVE_KEY_PATTERN.test(key)) {
+        uri.searchParams.set(key, MCP_REDACTED_VALUE);
+      }
+    }
+    // Fragments can carry OAuth credentials and are not sent to a server.
+    uri.hash = "";
+    return uri.href;
+  } catch {
+    // A malformed URI is still useful as a validation failure, but its raw
+    // value is not safe to capture.
+    return "[invalid uri]";
+  }
+}
+
+
+function redactMcpSensitiveFields(
+  value: unknown,
+  budget: McpPayloadBudget,
+  depth = 0,
+): unknown {
+  budget.nodes -= 1;
+  if (depth > MCP_REDACT_MAX_DEPTH) return "[max depth exceeded]";
+  if (typeof value === "string") {
+    const kept = value.slice(0, Math.max(0, budget.characters));
+    budget.characters -= kept.length;
+    if (kept.length < value.length) budget.truncated = true;
+    return kept;
+  }
+  if (Array.isArray(value)) {
+    const redacted: unknown[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      if (budget.characters <= 0 || budget.nodes <= 0) {
+        budget.truncated = true;
+        break;
+      }
+      budget.characters -= 1;
+      redacted.push(redactMcpSensitiveFields(value[index], budget, depth + 1));
+    }
+    return redacted;
+  }
+  if (value && typeof value === "object") {
+    const redacted: Array<[string, unknown]> = [];
+    for (const key of Object.keys(value)) {
+      if (key.length + 3 > budget.characters || budget.nodes <= 0) {
+        budget.truncated = true;
+        break;
+      }
+      budget.characters -= key.length + 3;
+      if (
+        MCP_SENSITIVE_KEY_PATTERN.test(key) ||
+        key === "blob" ||
+        (key === "data" &&
+          ["image", "audio"].includes(
+            String((value as Record<string, unknown>).type),
+          ))
+      ) {
+        redacted.push([key, MCP_REDACTED_VALUE]);
+        budget.characters -= MCP_REDACTED_VALUE.length;
+      } else {
+        const entry = (value as Record<string, unknown>)[key];
+        if ((key === "uri" || key === "url") && typeof entry === "string") {
+          // Do not parse an unbounded URL or truncate it before redaction:
+          // cutting through userinfo could turn a credential into a hostname.
+          if (entry.length > budget.characters) {
+            redacted.push([key, "[uri exceeds limit]"]);
+            budget.characters = 0;
+            budget.truncated = true;
+          } else {
+            const uri = redactMcpUri(entry);
+            redacted.push([key, uri]);
+            budget.characters -= uri.length;
+          }
+        } else {
+          redacted.push([
+            key,
+            redactMcpSensitiveFields(entry, budget, depth + 1),
+          ]);
+        }
+      }
+    }
+    return Object.fromEntries(redacted);
+  }
+  return value;
+}
+
+// Generous for typical tool-call arguments; far below call_subnet_surface's
+// own 256 KiB response cap (src/call-subnet-surface.ts's MAX_RESPONSE_BYTES)
+// so one large response can't balloon a PostHog capture payload.
+const MCP_PAYLOAD_MAX_CHARS = 4096;
+
+function boundedMcpPayload(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  // Bound work before copying large results. The serialized cap alone still
+  // traversed every row and allocated a second full response before slicing.
+  const budget = {
+    characters: MCP_PAYLOAD_MAX_CHARS,
+    nodes: 512,
+    truncated: false,
+  };
+  let redacted: unknown;
+  let serialized: string | undefined;
+  try {
+    redacted = redactMcpSensitiveFields(value, budget);
+    serialized = JSON.stringify(redacted);
+  } catch {
+    return undefined;
+  }
+  if (typeof serialized !== "string") return undefined;
+  if (!budget.truncated && serialized.length <= MCP_PAYLOAD_MAX_CHARS)
+    return redacted;
+  return {
+    truncated: true,
+    preview: serialized.slice(0, MCP_PAYLOAD_MAX_CHARS),
+  };
+}
+
+
+
+/** Unverified caller metadata, never an authorization or billing identity. */
+export function normalizeMcpLlmModel(value: unknown): string | undefined {
+  const model = sanitizeLabel(value);
+  return model?.toLowerCase() === "unknown" ? undefined : model;
+}
+
+
+
+function assignMcpCallContext(
+  properties: Record<string, unknown>,
+  event: McpCallContext,
+): void {
+  assignMcpResourceName(properties, event.resourceName, event.resourceIsUri);
+  const toolName = sanitizeLabel(event.toolName);
+  if (toolName !== undefined) {
+    properties["$mcp_tool_name"] = toolName;
+    properties["$mcp_resource_name"] = toolName;
+  }
+
+  const model = normalizeMcpLlmModel(event.llmModel);
+  if (
+    model !== undefined &&
+    (event.llmModelSource === "client_metadata" ||
+      event.llmModelSource === "self_reported")
+  ) {
+    properties["$mcp_llm_model"] = model;
+    properties["$mcp_llm_model_source"] = event.llmModelSource;
+  }
+
+  // Not sanitizeLabel: a tool description is prose, and MAX_LABEL_CHARS is
+  // sized for identifiers. Same reasoning as $mcp_intent below, and the same
+  // ceiling — this is server-authored text, but it still rides on an event
+  // that is never sampled.
+  const toolDescription = trimToLength(
+    event.toolDescription,
+    MAX_MCP_INTENT_CHARS,
+  );
+  if (toolDescription !== undefined) {
+    properties["$mcp_tool_description"] = toolDescription;
+  }
+
+  // Agent intent (#9642). NOT sanitizeLabel: that caps at MAX_LABEL_CHARS,
+  // which is sized for identifiers like a tool or route name, and would
+  // truncate a real sentence into uselessness. This is meant to be prose,
+  // so it gets its own, longer ceiling -- but a ceiling all the same,
+  // because it is model output on an unsampled event.
+  //
+  // $mcp_intent_source is part of the wire contract rather than decoration:
+  // PostHog distinguishes an intent the agent actually stated
+  // ("context_parameter") from one a server inferred on its behalf
+  // ("inferred"). The label travels with the text always, so the fallback's
+  // mechanical strings can never be read as agent speech.
+  const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
+  if (intent !== undefined) {
+    properties["$mcp_intent"] = intent;
+    properties["$mcp_intent_source"] =
+      event.intentSource === "inferred" ? "inferred" : "context_parameter";
+  }
+}
+
+function assignMcpResourceName(
+  properties: Record<string, unknown>,
+  name: unknown,
+  isUri: boolean | undefined,
+): void {
+  const resourceName = sanitizeLabel(
+    isUri && typeof name === "string" ? redactMcpUri(name) : name,
+  );
+  if (resourceName !== undefined) {
+    properties["$mcp_resource_name"] = resourceName;
+  }
+}
+
+
+
+
+function assignMcpProtocolOutcome(
+  properties: Record<string, unknown>,
+  event: McpProtocolOutcome,
+): void {
+  if (typeof event.isError === "boolean") {
+    properties["$mcp_is_error"] = event.isError;
+  }
+  if (
+    typeof event.durationMs === "number" &&
+    Number.isFinite(event.durationMs) &&
+    event.durationMs > 0
+  ) {
+    properties["$mcp_duration_ms"] = Math.min(
+      Math.round(event.durationMs),
+      86_400_000,
+    );
+  }
+  if (event.isError) {
+    properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+    const errorCode = sanitizeLabel(event.errorCode);
+    if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
+    const errorMessage = trimToLength(event.errorMessage, MAX_MCP_INTENT_CHARS);
+    if (errorMessage !== undefined)
+      properties["$mcp_error_message"] = errorMessage;
+  }
+  const parameters = boundedMcpPayload(event.parameters);
+  if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
+}
+
+/**
+ * Emit a PostHog `$mcp_tool_call` event via the capture endpoint.
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpToolCallEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpToolCallEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.durationMs !== "number" ||
+      !Number.isFinite(event.durationMs) ||
+      event.durationMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $mcp_is_error: event.isError,
+    };
+
+    // Duration honesty (#8963): a 0 here means Date.now() never advanced,
+    // which on Workers means no I/O happened — the call is unmeasurable, not
+    // instantaneous. Omit the property entirely so percentile math and the
+    // "fast call" bucket are computed only over real measurements. See the
+    // durationMs doc comment on McpToolCallEvent.
+    const durationMs = Math.min(Math.round(event.durationMs), 86_400_000);
+    if (durationMs > 0) properties["$mcp_duration_ms"] = durationMs;
+
+    // Fixed custom dimensions complement PostHog's native elapsed duration.
+    // Never emit arbitrary boundary names or pretend an unmeasured zero is a
+    // latency. Counts remain useful even when Workers' clock did not advance.
+    for (const name of ["d1", "d1_sql"] as const) {
+      const timing = event.backendTimings?.get(name);
+      if (
+        !timing ||
+        !Number.isInteger(timing.count) ||
+        timing.count <= 0 ||
+        !Number.isFinite(timing.durationMs) ||
+        timing.durationMs < 0
+      ) {
+        continue;
+      }
+      properties[`mcp_${name}_call_count`] = Math.min(timing.count, 1_000_000);
+      if (timing.durationMs > 0) {
+        properties[`mcp_${name}_duration_ms`] = Math.min(
+          timing.durationMs,
+          86_400_000,
+        );
+      }
+    }
+
+    assignMcpCallContext(properties, event);
+
+    // What a refusal arrived on (#10810). Only set by scheduleMcpRefusalEvent,
+    // so a dispatched call never carries them -- see the doc comment on
+    // McpToolCallEvent.requestMethod for why the refusal class alone needs it.
+    const requestMethod = sanitizeLabel(event.requestMethod);
+    if (requestMethod !== undefined) {
+      properties["$mcp_request_method"] = requestMethod;
+    }
+    const requestPath = sanitizeLabel(event.requestPath);
+    if (requestPath !== undefined) {
+      properties["$mcp_request_path"] = requestPath;
+    }
+
+    // Failure classification (#8963). Emitted only on failure: an
+    // $mcp_error_type on a successful call would poison every breakdown.
+    if (event.isError) {
+      const errorCode = sanitizeLabel(event.errorCode);
+      if (errorCode !== undefined) properties["$mcp_error_code"] = errorCode;
+      properties["$mcp_error_type"] = classifyMcpErrorType(event.errorCode);
+      const errorMessage = trimToLength(
+        event.errorMessage,
+        MAX_MCP_INTENT_CHARS,
+      );
+      if (errorMessage !== undefined)
+        properties["$mcp_error_message"] = errorMessage;
+      // Bounded to real HTTP statuses: this recorder's callers are trusted,
+      // but a number outside 100-599 could only be a plumbing mistake, and a
+      // dashboard grouping by status must never have to explain a 0 or a NaN.
+      if (
+        typeof event.errorStatus === "number" &&
+        Number.isInteger(event.errorStatus) &&
+        event.errorStatus >= 100 &&
+        event.errorStatus <= 599
+      ) {
+        properties["$mcp_error_status"] = event.errorStatus;
+      }
+    }
+
+    assignMcpAttribution(properties, event);
+    // The tool call is the one event whose volume makes the $set rider stick:
+    // an identified caller must call tools to matter, so their person profile
+    // picks the tier up here without a separate $identify per session.
+    assignMcpPersonProcessing(properties, deps, event.authTier);
+
+    await assignMcpConversation(properties, event);
+
+    const parameters = boundedMcpPayload(event.parameters);
+    if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
+
+    const responseBody = boundedMcpPayload(event.response);
+    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(
+      env,
+      event.requestStage === "refused"
+        ? "mcp_request_refused"
+        : "$mcp_tool_call",
+      properties,
+      deps,
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Emit a PostHog `$mcp_initialize` event via the capture endpoint.
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpInitializeEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpInitializeEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    // clientInfo from the handshake itself is authoritative when the client
+    // sent one -- but #8994 lets initialize fall back to the User-Agent-derived
+    // name for a client that omits clientInfo, and that name must NOT be
+    // labelled client_info. An explicit source wins; the client_info default
+    // applies only when the caller did not say.
+    assignMcpAttribution(properties, {
+      ...event,
+      clientNameSource:
+        event.clientNameSource ??
+        (event.clientName ? "client_info" : undefined),
+    });
+    assignMcpPersonProcessing(properties, deps);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(env, "$mcp_initialize", properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Emit a PostHog `$mcp_tools_list` event via the capture endpoint (#8963).
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpToolsListEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpToolsListEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    if (
+      typeof event.toolCount === "number" &&
+      Number.isFinite(event.toolCount) &&
+      event.toolCount >= 0
+    ) {
+      properties["$mcp_tools_count"] = Math.round(event.toolCount);
+    }
+
+    // Names, not just the count: each entry passes the same label cap every
+    // identifier here gets, and non-strings are dropped rather than
+    // stringified — a malformed entry is a caller bug, not data. The array
+    // itself is capped so a pathological caller cannot balloon the payload
+    // past the catalogue's own size.
+    if (Array.isArray(event.listedToolNames)) {
+      const names = event.listedToolNames
+        .map((name) => sanitizeLabel(name))
+        .filter((name): name is string => name !== undefined)
+        .slice(0, MAX_MCP_LISTED_TOOL_NAMES);
+      if (names.length > 0) properties["$mcp_listed_tool_names"] = names;
+    }
+
+    assignMcpProtocolOutcome(properties, event);
+    const responseBody = boundedMcpPayload(event.response);
+    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
+    assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(env, "$mcp_tools_list", properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+// ─── Resource + prompt traffic ──────────────────────────────────────────────
+//
+// The other half of this server's MCP surface was uninstrumented. It advertises
+// both `resources` and `prompts` in MCP_CAPABILITIES and serves four methods
+// behind them -- resources/list, resources/read, prompts/list, prompts/get --
+// and PostHog defines an event for each ($mcp_resources_list,
+// $mcp_resource_read, $mcp_prompts_list, $mcp_prompt_get). None were emitted.
+//
+// On the analytics side that traffic therefore did not exist. A client that
+// read a resource on every turn was indistinguishable from one that never
+// touched the surface, and there was no way to ask which resources or prompts
+// were earning their place in the catalogue -- the same blind spot #8963 closed
+// for tools/list, left open one method family over.
+//
+// PostHog names the resource AND the prompt with the same property,
+// `$mcp_resource_name` -- there is no `$mcp_prompt_name` -- so both travel
+// under one field here rather than being invented separately.
+
+
+/**
+ * The one poster behind all four resource/prompt events.
+ *
+ * Written once rather than four times: these differ only in the event name and
+ * in which optional fields the caller populates, and four hand-copied bodies is
+ * how the deployment stamp ends up on three of them.
+ */
+async function postMcpResourceEvent(
+  env: TelemetryEnv | null | undefined,
+  eventName: string,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps,
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    assignMcpResourceName(
+      properties,
+      event.resourceName,
+      eventName === "$mcp_resource_read",
+    );
+    assignMcpProtocolOutcome(properties, event);
+    assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    // PostHog's resource-read contract explicitly excludes bodies. Do not
+    // even traverse one: it may contain secrets or a multi-megabyte catalogue.
+    if (eventName !== "$mcp_resource_read") {
+      const responseBody = boundedMcpPayload(event.response);
+      if (responseBody !== undefined)
+        properties["$mcp_response"] = responseBody;
+    }
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(env, eventName, properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+/** Emit `$mcp_resources_list`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpResourcesListEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_resources_list", event, deps);
+}
+
+/** Emit `$mcp_resource_read`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpResourceReadEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_resource_read", event, deps);
+}
+
+/** Emit `$mcp_prompts_list`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpPromptsListEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_prompts_list", event, deps);
+}
+
+/** Emit `$mcp_prompt_get`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpPromptGetEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_prompt_get", event, deps);
+}
+
+
+/** Hashing runs in the existing background capture, never the response path. */
+async function assignMcpConversation(
+  properties: Record<string, unknown>,
+  event: Pick<
+    McpToolCallEvent,
+    "sessionId" | "conversationId" | "conversationIdAccepted"
+  >,
+): Promise<void> {
+  const protocolSession = sanitizeLabel(event.sessionId);
+  if (protocolSession !== undefined) {
+    properties["$session_id"] = protocolSession;
+  }
+  const conversationId = sanitizeLabel(event.conversationId);
+  if (conversationId !== undefined) {
+    properties["$mcp_conversation_id"] = conversationId;
+  }
+  const accepted =
+    event.conversationIdAccepted === true
+      ? acceptedMcpConversationId(conversationId)
+      : undefined;
+  if (accepted) {
+    properties["$session_id"] =
+      `ses_${await sha256Hex(`mcp-conversation:${accepted}`)}`;
+    // Retain a join to initialize/discovery on the original transport session.
+    if (protocolSession !== undefined) {
+      properties["$mcp_protocol_session_id"] = protocolSession;
+    }
+  }
+}
+
+/**
+ * Emit `$mcp_missing_capability` -- the agent asked for something this server
+ * does not have.
+ *
+ * The one event here that is not a record of traffic. Everything else in this
+ * module measures what the server DID; this measures what it could not do, in
+ * the agent's own words, and it is the only signal that names a gap in the
+ * catalogue before somebody thinks to look for it.
+ *
+ * `$mcp_intent_source` is `context_parameter` and not `inferred`: the agent
+ * typed the string. PostHog's own docs note the same thing about this event --
+ * the SDK defined the schema, but the words are the caller's.
+ */
+export async function recordMcpMissingCapabilityEvent(
+  env: TelemetryEnv | null | undefined,
+  event: McpMissingCapabilityEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
+    if (intent !== undefined) {
+      properties["$mcp_intent"] = intent;
+      properties["$mcp_intent_source"] = "context_parameter";
+    }
+
+    assignMcpAttribution(properties, event);
+    assignMcpPersonProcessing(properties, deps);
+    await assignMcpConversation(properties, event);
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(
+      env,
+      "$mcp_missing_capability",
+      properties,
+      deps,
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Error tracking via PostHog's `$exception` capture (#7758).
+//
+// The exception SHAPE is built by @posthog/core's own ErrorPropertiesBuilder
+// (#9068) rather than by hand. It was hand-written for as long as the bundle
+// budget claimed a 1 MiB ceiling; #9060 established the real ceiling is 10 MB
+// on Workers Paid, and with that gone there is no reason to keep a private
+// copy of a shaper the ecosystem maintains. What the library does that the
+// hand-written version did not:
+//
+//   - attaches chunk_id PER FILENAME via getFilenameToChunkIdMap; ours only
+//     worked when exactly one distinct chunk registered itself and gave up
+//     entirely under code splitting,
+//   - emits `platform: "node:javascript"` from the parser, so the field that
+//     took months to get right (#9045) can no longer drift,
+//   - walks `{ cause }` chains, which we dropped on the floor entirely,
+//   - coerces non-Error throws (string, object, DOMException, ErrorEvent)
+//     instead of collapsing them through String(),
+//   - carries Sentry's hardened frame parsing/reversal/limits upstream.
+//
+// The TRANSPORT deliberately stays ours: one fetch per event. posthog-node's
+// client batches on a flush interval for a long-lived Node process, and a
+// Workers isolate can be evicted between requests, so a batched event is a
+// dropped event. We adopt the library's shaping, not its client lifecycle.
+
+// Immutable: coercer set and parser never vary per call, so build once per
+// isolate rather than per exception.
+const EXCEPTION_STACK_PARSER = ErrorTracking.createStackParser(
+  "node:javascript",
+  ErrorTracking.nodeStackLineParser,
+);
+const EXCEPTION_PROPERTIES_BUILDER = new ErrorTracking.ErrorPropertiesBuilder(
+  [
+    new ErrorTracking.ErrorCoercer(),
+    new ErrorTracking.StringCoercer(),
+    new ErrorTracking.ObjectCoercer(),
+    new ErrorTracking.PrimitiveCoercer(),
+  ],
+  EXCEPTION_STACK_PARSER,
+);
+
+
+// ─── $exception storm guard ────────────────────────────────────────────────
+//
+// One fault in a hot path can spend a MONTH of quota in a day, and this
+// project has already had it happen: a single Issue
+// (`wallet-auth-keys:PostgresError`, "relation api_key_usage_daily does not
+// exist") captured 871,649 events over four days -- one per request against a
+// dropped table -- while the free tier is 1M events/MONTH. Because PostHog
+// drops events indiscriminately once quota is exhausted, an $exception storm
+// does not merely cost money: it takes down the error inbox and the alerts
+// that exist to report the very outage causing it. Sampling protects
+// `usage_event` (see this module's sampling header) and deliberately never
+// touches failures -- so nothing at all stood in front of this.
+//
+// A recurring fault needs to be REPORTED, not COUNTED. One occurrence per
+// fingerprint per window carries the same diagnosis (same type, same message,
+// same stack) as a hundred thousand, so this throttles per fingerprint and
+// carries the suppressed count on the next event that gets through. That
+// preserves the volume signal -- which is what a storm guard that merely
+// dropped would destroy -- while capping the cost at one event per
+// fingerprint per window.
+//
+// Deliberately a TIME window rather than data-api's permanent per-isolate set
+// (shouldSkipDriftCapture, workers/data-api.ts): schema drift is a fixed
+// condition where the second occurrence genuinely adds nothing for the life of
+// the isolate, whereas a general fault can stop and restart, and a permanent
+// suppression would hide the restart forever. Same shape and reasoning as
+// shouldEmitCondition in workers/wss-lb.ts, which throttles its availability
+// events on exactly this model.
+//
+// OFF UNLESS EXPLICITLY CONFIGURED, for exactly the reason
+// POSTHOG_USAGE_SAMPLE_RATE and POSTHOG_TRACES_SAMPLE_RATE are (see their own
+// comments above and in src/tracing.ts): a guard that silently drops the
+// second capture of a fingerprint cannot be no-op'd by
+// isUsageTelemetryConfigured the way every other behavior here can, so an
+// on-by-default window would change the observed call count of any test that
+// captures the same route+type twice with a real token -- 13 of them in the
+// existing suite the moment this was tried on-by-default. Requiring an
+// explicit window keeps every call-count assertion deterministic by
+// construction (no test sets this var) while the deployed Worker sets it once,
+// in wrangler.jsonc, where the storm this exists to stop actually happens.
+
+/** Per-fingerprint $exception throttle window in ms, as a wrangler var (e.g.
+ * "60000"). Unset or 0 disables the guard entirely. */
+export const POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV =
+  "POSTHOG_EXCEPTION_STORM_WINDOW_MS";
+
+// The var's contract as a schema rather than a typeof/Number/isFinite ladder:
+// wrangler vars arrive as strings, every invalid shape means the same thing
+// (guard off), and `.catch` states that once instead of at each branch. 0 is
+// the disabled sentinel, so an absent, blank, malformed, zero or negative
+// value all converge on it by construction.
+const ExceptionStormWindowSchema = z.coerce
+  .number()
+  .finite()
+  .positive()
+  .catch(0);
+
+function exceptionStormWindowMs(env: TelemetryEnv | null | undefined): number {
+  const raw = env?.[POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV];
+  // z.coerce.number() maps "" and null to 0, which .positive() then rejects
+  // into the same disabled sentinel -- but undefined coerces to NaN, so the
+  // schema covers every case without a pre-check.
+  return ExceptionStormWindowSchema.parse(raw);
+}
+
+
+// Reset alongside the sample-rate memo below, under this module's single
+// registry key -- the validator keys on the module path, so one module
+// registers one reset covering all of its state.
+const exceptionThrottle = new Map<string, ExceptionThrottleState>();
+
+/**
+ * Decide whether this fingerprint may emit now. Returns the number of
+ * occurrences suppressed since the last emission when it may (0 when this is
+ * the first sighting), or null when it must be throttled.
+ *
+ * Exported for tests: the branch that suppresses a storm is the entire point
+ * of this code, and recordExceptionEvent is a no-op without a token, so
+ * "was it throttled" is otherwise indistinguishable from "was it a no-op".
+ * Same reasoning as captureDataApiError's boolean return.
+ */
+export function admitExceptionCapture(
+  env: TelemetryEnv | null | undefined,
+  fingerprint: string,
+  nowMs: number = Date.now(),
+): number | null {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+  const state = exceptionThrottle.get(fingerprint);
+  if (state === undefined || nowMs - state.windowStartedAtMs >= windowMs) {
+    exceptionThrottle.set(fingerprint, {
+      windowStartedAtMs: nowMs,
+      suppressed: 0,
+    });
+    return state?.suppressed ?? 0;
+  }
+  state.suppressed += 1;
+  return null;
+}
+
+/** KV key prefix for the cross-isolate half of the storm guard. */
+export const EXCEPTION_STORM_KV_PREFIX = "exception-storm:";
+
+// Workers KV's own floor for `expirationTtl`. A shorter storm window is legal
+// (and the tests use one), so the TTL is clamped up to this rather than
+// rejected -- a guard that throws on a valid config would be worse than one
+// that holds its key slightly longer than asked.
+const KV_MIN_EXPIRATION_TTL_SECONDS = 60;
+
+/**
+ * The cross-isolate half of the storm guard: has THIS fingerprint already
+ * been reported anywhere in the fleet inside the current window?
+ *
+ * Returns 0 when the caller may emit, or null when it must be held.
+ *
+ * WHY THE LOCAL MAP WAS NEVER ENOUGH (#9900). `admitExceptionCapture` above
+ * throttles on a module-scope `Map`, which in a Worker is PER-ISOLATE state.
+ * Cloudflare recycles isolates constantly, so a fault that recurs across
+ * short-lived isolates arrives as a "first sighting" nearly every time -- and
+ * a first sighting is admitted unconditionally. That is not a theory: across
+ * 6,137 `$exception` events on 2026-08-03..04, exactly ONE carried
+ * `suppressed_occurrences`. It is also why widening the window 60s -> 300s in
+ * #9453 changed nothing for the three loudest sources; the window was never
+ * the binding constraint, the isolate boundary was.
+ *
+ * PRESENCE IS THE WINDOW. The key holds no state -- it is written with an
+ * `expirationTtl` equal to the storm window, so KV expiring it IS the window
+ * closing. That removes any read-modify-write race between isolates, and
+ * means a storm costs READS (cheap, and served from KV's edge cache) while
+ * writes happen at most once per fingerprint per window.
+ *
+ * SUPPRESSION COUNTS STAY LOCAL, DELIBERATELY. Counting globally would need a
+ * KV write per suppressed occurrence -- one write per event during exactly
+ * the burst this exists to make cheap. `suppressed_occurrences` therefore
+ * keeps the meaning it already had: occurrences held by THIS isolate since
+ * its last emission. It is a floor on the real count, not the total.
+ *
+ * FAILS OPEN, ALWAYS. No KV binding (registry-sync-api, wss-lb) or a KV
+ * error degrades to the local-only behaviour that shipped before this, never
+ * to silence. Losing the first report of a genuine outage to a KV blip would
+ * trade a billing problem for an availability one.
+ */
+export async function admitExceptionCaptureShared(
+  env: TelemetryEnv | null | undefined,
+  fingerprint: string,
+  deps: { now?: () => number } = {},
+): Promise<number | null> {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+
+  const kv = env?.METAGRAPH_CONTROL;
+  if (!kv?.get || !kv?.put) return 0;
+
+  const key = `${EXCEPTION_STORM_KV_PREFIX}${fingerprint}`;
+  try {
+    if ((await kv.get(key)) !== null) return null;
+    await kv.put(key, String(deps.now?.() ?? Date.now()), {
+      expirationTtl: Math.max(
+        KV_MIN_EXPIRATION_TTL_SECONDS,
+        Math.ceil(windowMs / 1000),
+      ),
+    });
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+
+// The MCP pre-dispatch refusal guard (#9639). Its own map, not a shared
+// namespace on exceptionThrottle: these are analytics `usage_event`s, not
+// $exception captures, and a burst of one must never consume the other's
+// window. It reuses exceptionStormWindowMs deliberately -- the question
+// ("how often may one repeating signal speak") is identical, and a second
+// knob would be one more thing to set correctly on four wrangler configs.
+const mcpRefusalThrottle = new Map<string, ExceptionThrottleState>();
+
+/**
+ * Decide whether this MCP refusal reason may emit now. Same contract as
+ * admitExceptionCapture: the number of occurrences suppressed since the last
+ * emission when it may (0 on first sighting), or null when it must be held.
+ *
+ * WHY A REFUSAL NEEDS A GUARD AT ALL. resolveUsageSampleRate returns 1 for
+ * `ok: false` AND for the `mcp:` route prefix, so a refusal event is
+ * unsampled twice over -- correct for a signal that should never be lost, and
+ * a quota hazard for one a single caller can generate without bound. A client
+ * hammering the rate limiter produces one refusal per request; that is the
+ * shape that spent a month's event budget in two days. One event per reason
+ * per window, carrying the suppressed count, keeps the signal and drops the
+ * storm.
+ */
+export function admitMcpRefusalCapture(
+  env: TelemetryEnv | null | undefined,
+  reason: string,
+  nowMs: number = Date.now(),
+): number | null {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+  const state = mcpRefusalThrottle.get(reason);
+  if (state === undefined || nowMs - state.windowStartedAtMs >= windowMs) {
+    mcpRefusalThrottle.set(reason, {
+      windowStartedAtMs: nowMs,
+      suppressed: 0,
+    });
+    return state?.suppressed ?? 0;
+  }
+  state.suppressed += 1;
+  return null;
+}
+
+/**
+ * Collapse volatile identifiers in an exception message so PostHog's Error
+ * Tracking groups occurrences of the SAME fault into one Issue.
+ *
+ * #9019: PostHog groups Issues by the message, not by our
+ * $exception_fingerprint (which is already correctly bucketed -- one
+ * fingerprint, many payloads). Hyperdrive names each pooled connection in its
+ * error text:
+ *
+ *   write CONNECTION_CLOSED 1f462de30803897f4c87cfe341e93970.hyperdrive.local:5432
+ *   write CONNECTION_CLOSED 5c01896f5cccb129888261dcc240daee.hyperdrive.local:5432
+ *
+ * so every dropped connection minted a new Issue, most with one occurrence,
+ * burying the ones that matter. Same "one issue per occurrence" pathology
+ * #9001 removed from our own route labels, arriving through a different door.
+ *
+ * NARROW, NAMED PATTERNS ONLY -- deliberately not a blanket hex-strip. A
+ * message like `relation "api_usage_rollup" does not exist` must survive
+ * verbatim: the identifier IS the diagnostic content there, and normalizing it
+ * would have merged the five distinct drifted objects of #8960 into one
+ * indistinguishable Issue. The test asserts that directly.
+ *
+ * Lossless in the only sense that matters: a Hyperdrive connection id is a
+ * per-connection handle that never recurs, so nothing is diagnosable from it.
+ */
+export function normalizeExceptionMessage(message: string): string {
+  return message.replace(
+    /\b[0-9a-f]{16,}\.hyperdrive\.local\b/gi,
+    "<connection>.hyperdrive.local",
+  );
+}
+
+function exceptionListEntry(error: unknown): {
+  type: string;
+  entry: Record<string, unknown>;
+} {
+  const built = EXCEPTION_PROPERTIES_BUILDER.buildFromUnknown(error, {
+    // Every capture site wraps a genuinely caught (try/catch), non-fatal
+    // fault -- never an uncaught/fatal one. Since #7766 removed Sentry's
+    // automatic withSentry() wrap, a truly uncaught throw has no dedicated
+    // $exception capture of its own; it still surfaces as an ok:false usage
+    // event (and trace span, if sampled) via withUsageTelemetry's finally
+    // block in workers/api.ts, just without a stack trace.
+    mechanism: { handled: true, type: "generic" },
+  });
+  const entry = (built.$exception_list?.[0] ?? {}) as Record<string, unknown>;
+  const type = sanitizeLabel(entry.type) ?? "Error";
+  // Two things stay OURS on top of the library's shape, because neither is a
+  // reimplementation of anything it provides: the Hyperdrive-host collapse
+  // that keeps one logical fault from splitting into an Issue per connection
+  // (normalizeExceptionMessage), and the label cap every free-form field in
+  // this module gets.
+  const rawValue =
+    typeof entry.value === "string" ? entry.value : String(entry.value ?? "");
+  const value =
+    sanitizeLabel(normalizeExceptionMessage(rawValue)) ?? "(no message)";
+  return { type, entry: { ...entry, type, value } };
+}
+
+/**
+ * Platform lifecycle messages that are NOT faults, and must never spend
+ * error-tracking quota or land in the error inbox.
+ *
+ * "Durable Object reset because its code was updated" is the runtime telling
+ * us a deploy landed while a DO was live. It is expected on EVERY deploy,
+ * self-heals (the alarm/request simply re-runs), and there is no action a
+ * reader could take. workers/api.ts's firehose-ingest handler already
+ * documents it as "expected/occasional, not a real fault" and swallows it at
+ * that one call site -- but the DOs' own alarm loops capture it too, and
+ * their per-isolate change-detectors (e.g. ChainFirehoseHub's
+ * lastCapturedHeadPollerError) are defeated by construction here: the reset
+ * WIPES the isolate holding the memo, so the next occurrence always looks
+ * new. That is why this needs to be central rather than another local guard
+ * -- all four DOs (chain-firehose, mcp-session, subnet-status, alerter) can
+ * raise it, and a deploy-heavy day captured 43 of them.
+ *
+ * Deliberately an exact-prefix list of runtime-owned strings, not a fuzzy
+ * "looks benign" heuristic: anything broader would eventually swallow a real
+ * fault, which is the failure mode that actually costs debugging time.
+ */
+const BENIGN_PLATFORM_MESSAGE_PREFIXES = [
+  "Durable Object reset because its code was updated",
+] as const;
+
+/** Exported for tests: a suppressed capture is otherwise indistinguishable
+ * from the unconfigured no-op, the same reasoning as admitExceptionCapture. */
+export function isBenignPlatformMessage(message: string): boolean {
+  return BENIGN_PLATFORM_MESSAGE_PREFIXES.some((prefix) =>
+    message.startsWith(prefix),
+  );
+}
+
+/**
+ * Capture one exception as a PostHog `$exception` event. Same no-throw,
+ * no-op-when-unconfigured contract as recordUsageEvent/recordMcpToolCallEvent.
+ *
+ * Message/stack text is NOT run through the key-based redaction
+ * (redactMcpSensitiveFields) that $mcp_parameters/$mcp_response get --
+ * that helper redacts by object KEY name, and an exception message is free
+ * text with no keys to match. Every capture site this wires into is an
+ * unexpected internal fault (not a caller-input-echoing path), and the one
+ * call site that could plausibly embed a credential in an error string
+ * (call_subnet_surface's own fetches) already scrubs it at the source
+ * (redactCredentialValue in src/call-subnet-surface.ts) before it ever
+ * becomes a thrown/logged error -- so there is no known raw-secret vector
+ * into this function, only the general caution free text always deserves.
+ */
+export async function recordExceptionEvent(
+  env: TelemetryEnv | null | undefined,
+  event: ExceptionEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (!event || typeof event !== "object") return false;
+
+    const { type, entry } = exceptionListEntry(event.error);
+    // Before the storm guard, not after: a benign platform message must never
+    // consume a fingerprint's window either, or a deploy-time reset would
+    // suppress the NEXT genuine fault on that same route for a full window.
+    if (
+      typeof entry.value === "string" &&
+      isBenignPlatformMessage(entry.value)
+    ) {
+      return false;
+    }
+    const route = sanitizeLabel(event.route);
+    const mcpTool = sanitizeLabel(event.mcpTool);
+    // A stable string groups every occurrence of "this site threw this
+    // error type" into one PostHog issue -- matching the route/mcp_tool
+    // tag Sentry already gets at these sites, so the two dashboards read
+    // consistently. Falls back to "unknown" only if neither is supplied.
+    //
+    // `fingerprintDetail` splits a route that reports several independent
+    // subjects (see its doc comment). It is NOT folded into `route`, because
+    // route mirrors UsageEvent's vocabulary so insights filter consistently
+    // across usage_event/$mcp_tool_call/$exception -- a lane name is not a
+    // route, and putting it there would break that mirroring.
+    const detail = sanitizeLabel(event.fingerprintDetail);
+    const fingerprint = `${route ?? mcpTool ?? "unknown"}${
+      detail === undefined ? "" : `:${detail}`
+    }:${type}`;
+
+    // Throttled on the same key PostHog groups by, so a storm of one fault
+    // costs one event per window while a genuinely new fault is never delayed.
+    //
+    // TWO GATES, IN THIS ORDER (#9900). The local map is a no-I/O fast path
+    // that also produces `suppressed_occurrences`; the shared gate is the one
+    // that actually bounds a fleet-wide storm, because the local map is
+    // per-isolate and a recycled isolate always looks like a first sighting.
+    // Local first so a burst inside one isolate never reaches KV at all.
+    const suppressed = admitExceptionCapture(env, fingerprint);
+    if (suppressed === null) return false;
+    const admitShared = deps.admitShared ?? admitExceptionCaptureShared;
+    if ((await admitShared(env, fingerprint)) === null) return false;
+
+    // An EXPECTED condition keeps every dimension it would have carried as an
+    // exception and changes only which product pays for it. Routed through
+    // recordUsageEvent rather than assembled here so it inherits the one
+    // capture path, deployment stamping and sampling gate every other usage
+    // event already goes through -- `ok: false` is never sampled
+    // (resolveUsageSampleRate), so the storm guard above is what bounds it.
+    //
+    // durationMs is 0, not the elapsed query time: these sites report an
+    // OUTCOME, not a timing, and a fabricated duration would pollute the
+    // latency percentiles every other usage event feeds.
+    if (event.expected === true) {
+      return await recordUsageEvent(
+        env,
+        {
+          ok: false,
+          durationMs: 0,
+          expected: true,
+          route,
+          mcpTool,
+          errorCode: event.errorCode,
+          queryKind: event.queryKind,
+          queryShape: event.queryShape,
+        },
+        deps,
+      );
+    }
+
+    const properties: Record<string, unknown> = {
+      $exception_list: [entry],
+      $exception_fingerprint: fingerprint,
+    };
+    // Only on the events that follow a throttled burst, so the ordinary case
+    // keeps its exact existing payload and every pre-existing query is
+    // unaffected -- the same "omitted, not defaulted" contract as sample_rate.
+    if (suppressed > 0) properties.suppressed_occurrences = suppressed;
+    if (route !== undefined) properties.route = route;
+    if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
+    const errorCode = sanitizeLabel(event.errorCode);
+    if (errorCode !== undefined) properties.error_code = errorCode;
+    // Query attribution rides along as PROPERTIES, never as fingerprint input.
+    //
+    // #9459: `route: "r2-sql"` collapses a timeout, a 429, a 422 scan-budget
+    // rejection and a 400 into one issue, so the inbox cannot say which query
+    // is slow. The obvious fix -- fold the answer into the fingerprint -- is
+    // the expensive one, because the storm guard above windows PER
+    // FINGERPRINT: one fingerprint at one event per window becomes N
+    // fingerprints at one event per window EACH, i.e. N times the billable
+    // volume, against the tightest budget this project has (~90K/month of a
+    // 100K free tier before the current fixes).
+    //
+    // A property costs bytes on an event that is already being sent, and
+    // PostHog groups Issues on $exception_fingerprint (set explicitly above),
+    // so occurrences stay in ONE issue while every sampled event names the
+    // query that produced it. Attribution without volume.
+    const queryKind = sanitizeLabel(event.queryKind);
+    if (queryKind !== undefined) properties.query_kind = queryKind;
+    const queryShape = sanitizeLabel(event.queryShape);
+    if (queryShape !== undefined) properties.query_shape = queryShape;
+    if (event.nativeMcp) {
+      properties["$exception_level"] = "error";
+      assignMcpAttribution(properties, event.nativeMcp);
+      assignMcpCallContext(properties, event.nativeMcp);
+      await assignMcpConversation(properties, event.nativeMcp);
+    }
+    assignDeployment(properties, env);
+
+    return await capturePostHogEvent(env, "$exception", properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+// AI generation observability via PostHog's raw `$ai_generation` event (#7763).
+// Same raw-fetch, no-throw, no-op-when-unconfigured contract as the other
+// recordX helpers above -- no SDK (posthog-ai pulls in an LLM-provider client
+// layer neither needed nor affordable inside the Worker bundle budget; see the
+// header comment). The exact property names/units below are NOT from PostHog's
+// docs pages (posthog.com/docs/ai-engineering/observability/manual-capture and
+// .../python both 404 as of this writing) -- they're read off PostHog's own
+// posthog-js-lite SDK source (posthog-ai/src/utils.ts), the same
+// verify-against-source approach #7758's $exception shape used.
+//
+// #7763 started this content-free (only cost/token/latency/model metadata,
+// never prompt/completion text) as the default posture for an unscoped LLM
+// surface. #8082 is the deliberate reversal that clause called for: the one
+// caller of this function (askQuestion() in ai-search.ts) only ever answers
+// questions about public on-chain/registry data -- no private/authenticated
+// user content is ever in scope -- so the content-free default didn't earn
+// its keep here, and withholding it left PostHog's Input/Output Message
+// columns blank and Sentiment analysis unable to run (it reads the input/
+// output text). `input`/`outputChoices` below are genuinely optional on the
+// TYPE (a future caller with a real privacy-sensitive surface can simply
+// omit them and get the original #7763 behavior back).
+
+
+
+/**
+ * Record one degraded-AI-path event as `ai_degraded` (#8965). Same no-throw,
+ * no-op-when-unconfigured contract as every recorder here.
+ */
+export async function recordAiDegradedEvent(
+  env: TelemetryEnv | null | undefined,
+  event: AiDegradedEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    const reason = sanitizeLabel(event?.reason);
+    if (reason === undefined) return false;
+
+    const properties: Record<string, unknown> = { reason };
+    const surface = sanitizeLabel(event.surface);
+    if (surface !== undefined) properties.surface = surface;
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    return await capturePostHogEvent(env, "ai_degraded", properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+
+/**
+ * Capture one embedding call as a PostHog `$ai_embedding` event (#8965). Same
+ * no-throw, no-op-when-unconfigured contract as recordAiGenerationEvent.
+ *
+ * No cost is reported. Workers AI bills embeddings in neurons, not per token,
+ * and there is no published neuron→USD rate stable enough to hard-code the way
+ * ASK_MODEL's per-million-token prices are (see ai-search.ts). Emitting a
+ * fabricated $ai_total_cost_usd would poison the same cost dashboards the
+ * generation events feed honestly, so the call count and token count are
+ * reported and the cost column is left genuinely empty.
+ */
+export async function recordAiEmbeddingEvent(
+  env: TelemetryEnv | null | undefined,
+  event: AiEmbeddingEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.latencyMs !== "number" ||
+      !Number.isFinite(event.latencyMs) ||
+      event.latencyMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $ai_trace_id: event.traceId ?? crypto.randomUUID(),
+      $ai_model: sanitizeLabel(event.model) ?? "unknown",
+      $ai_provider: sanitizeLabel(event.provider) ?? "unknown",
+      // PostHog reports latency in SECONDS, as with $ai_generation.
+      $ai_latency: event.latencyMs / 1000,
+      $ai_http_status: event.isError ? 500 : 200,
+      $ai_is_error: event.isError,
+    };
+
+    // Workers AI's embedding response carries no `usage` object, so a token
+    // count is genuinely unavailable here -- not zero. Reporting 0 would be
+    // the same fabricated-value defect #8963 fixed for $mcp_duration_ms: it
+    // makes "we cannot measure this" indistinguishable from "this embedded
+    // nothing", and it drags any sum or average over embeddings toward zero.
+    // Omit unless a caller actually has a count. ($ai_generation keeps its own
+    // 0 default: Workers AI does return usage for completions, so a 0 there is
+    // a real reading, and changing it would rewrite established semantics
+    // mid-stream.)
+    if (Number.isFinite(event.inputTokens)) {
+      properties.$ai_input_tokens = event.inputTokens;
+    }
+
+    const traceName = sanitizeLabel(event.traceName);
+    if (traceName !== undefined) properties.$ai_trace_name = traceName;
+
+    if (
+      Number.isFinite(event.inputCount) &&
+      (event.inputCount as number) >= 0
+    ) {
+      properties.$ai_input_count = Math.round(event.inputCount as number);
+    }
+
+    if (event.isError) {
+      const { type, entry } = exceptionListEntry(event.error);
+      properties.$ai_error = `${type}: ${entry.value}`;
+    }
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+
+    return await capturePostHogEvent(env, "$ai_embedding", properties, deps);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Capture one LLM call as a PostHog `$ai_generation` event. Same no-throw,
+ * no-op-when-unconfigured contract as recordUsageEvent/recordExceptionEvent.
+ */
+export async function recordAiGenerationEvent(
+  env: TelemetryEnv | null | undefined,
+  event: AiGenerationEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.latencyMs !== "number" ||
+      !Number.isFinite(event.latencyMs) ||
+      event.latencyMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $ai_trace_id: event.traceId ?? crypto.randomUUID(),
+      $ai_model: sanitizeLabel(event.model) ?? "unknown",
+      $ai_provider: sanitizeLabel(event.provider) ?? "unknown",
+      // PostHog's $ai_generation schema reports latency in SECONDS, not ms.
+      $ai_latency: event.latencyMs / 1000,
+      // env.AI.run() is a Workers RPC binding, not raw HTTP -- there is no
+      // real transport status to report, so this is derived from isError.
+      $ai_http_status: event.isError ? 500 : 200,
+      $ai_input_tokens: Number.isFinite(event.inputTokens)
+        ? event.inputTokens
+        : 0,
+      $ai_output_tokens: Number.isFinite(event.outputTokens)
+        ? event.outputTokens
+        : 0,
+      $ai_is_error: event.isError,
+    };
+
+    const traceName = sanitizeLabel(event.traceName);
+    if (traceName !== undefined) properties.$ai_trace_name = traceName;
+
+    if (event.modelParameters) {
+      properties.$ai_model_parameters = event.modelParameters;
+    }
+
+    if (Array.isArray(event.input) && event.input.length > 0) {
+      properties.$ai_input = event.input;
+    }
+
+    if (Array.isArray(event.outputChoices) && event.outputChoices.length > 0) {
+      properties.$ai_output_choices = event.outputChoices;
+    }
+
+    if (
+      Number.isFinite(event.inputCostUsd) &&
+      Number.isFinite(event.outputCostUsd)
+    ) {
+      properties.$ai_input_cost_usd = event.inputCostUsd;
+      properties.$ai_output_cost_usd = event.outputCostUsd;
+      properties.$ai_total_cost_usd =
+        (event.inputCostUsd as number) + (event.outputCostUsd as number);
+    }
+
+    if (event.isError) {
+      const { type, entry } = exceptionListEntry(event.error);
+      properties.$ai_error = `${type}: ${entry.value}`;
+    }
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+
+    return await capturePostHogEvent(env, "$ai_generation", properties, deps);
+  } catch {
+    return false;
+  }
+}

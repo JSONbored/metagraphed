@@ -1,0 +1,61 @@
+export type Row = Record<string, unknown>;
+
+export type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
+export interface NeuronSelection {
+  hotkeys?: string[] | null;
+  active?: boolean | null;
+  minIncentive?: number | null;
+  sortBy?: string | null;
+  order?: "asc" | "desc" | null;
+  limit?: number | null;
+}
+
+export interface ImmunityWindow {
+  immunity_expires_at_block?: number;
+  immunity_expires_at?: string | null;
+}
+
+export interface ValidatorAccumEntry {
+  hotkey: string;
+  featured: boolean;
+  coldkeys: Map<string, number>;
+  netuids: Set<number>;
+  uidCount: number;
+  emissionTotalRao: bigint;
+  validatorTrustTotal: number;
+  validatorTrustCount: number;
+  maxValidatorTrust: number | null;
+  latestCapturedAt: number | null;
+  latestBlockNumber: number | null;
+  take: number | null;
+  subnets: Row[];
+}
+
+export interface BuildGlobalValidatorsOptions {
+  sort?: string;
+  limit?: unknown;
+  /** Internal projections may need every validator rather than the bounded
+   * public leaderboard page. Public callers must continue to use `limit`. */
+  includeAll?: boolean;
+  /** Required per-netuid emission pricing. Never used to value voting weight. */
+  priceByNetuid: Map<number, number | null>;
+  featuredHotkeys?: ReadonlySet<string>;
+  identityByColdkey?: Map<string, Row>;
+  nominatorCounts?: Map<string, number>;
+  /** @deprecated Ignored: tempo does not establish investment principal. */
+  tempoByNetuid?: Map<number, number>;
+  /** @deprecated Ignored: balance snapshots cannot measure returns (#12015). */
+  realizedStakeByHotkey?: Map<string, Row>;
+}
+
+export interface BuildValidatorDetailOptions {
+  identityByColdkey?: Map<string, Row>;
+  /** Required per-netuid emission pricing. Never used to value voting weight. */
+  priceByNetuid: Map<number, number | null>;
+  nominatorCount?: number | null;
+  /** @deprecated Ignored: tempo does not establish investment principal. */
+  tempoByNetuid?: Map<number, number>;
+  /** @deprecated Ignored: balance snapshots cannot measure returns (#12015). */
+  realizedStake?: Row | null;
+}

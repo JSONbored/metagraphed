@@ -1,0 +1,88 @@
+export interface DayBucket {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  unique_signers: number;
+}
+
+export interface ChainActivityDay {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  success_rate: number | null;
+  unique_signers: number;
+}
+
+export interface ChainActivityResult {
+  schema_version: 1;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  days: ChainActivityDay[];
+}
+
+export interface ChainCall {
+  call_module: string;
+  call_function: string | null;
+  count: number;
+  share: number | null;
+}
+
+export interface ChainCallsResult {
+  schema_version: 1;
+  window: string;
+  group_by: string;
+  observed_at: string | null;
+  total_extrinsics: number;
+  call_count: number;
+  calls: ChainCall[];
+}
+
+export interface ChainSigner {
+  signer: string;
+  tx_count: number;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  last_tx_block: number | null;
+}
+
+export interface ChainSignersResult {
+  schema_version: 1;
+  window: string;
+  sort: "tx_count" | "total_fee_tao";
+  observed_at: string | null;
+  signer_count: number;
+  signers: ChainSigner[];
+}
+
+export interface ChainFeesDay {
+  day: string;
+  extrinsic_count: number;
+  signed_extrinsic_count: number;
+  total_fee_tao: number;
+  avg_fee_tao: number | null;
+  median_fee_tao: number | null;
+  total_tip_tao: number;
+  avg_tip_tao: number | null;
+  median_tip_tao: number | null;
+}
+
+export interface ChainFeesPayer {
+  signer: string;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  extrinsic_count: number;
+}
+
+export interface ChainFeesResult {
+  schema_version: 1;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  daily: ChainFeesDay[];
+  top_fee_payers: ChainFeesPayer[];
+}

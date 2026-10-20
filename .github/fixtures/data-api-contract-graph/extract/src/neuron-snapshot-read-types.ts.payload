@@ -1,0 +1,26 @@
+export interface SubnetSnapshotPart {
+  shard: number;
+  payload: string | null;
+  uid: number | null;
+  hotkey: string | null;
+  coldkey: string | null;
+}
+
+export interface NeuronDirectoryRow extends Record<string, unknown> {
+  // Both statements exclude NULL hotkeys before returning rows.
+  hotkey: string;
+}
+
+export interface DirectoryNominatorRow extends Record<string, unknown> {
+  hotkey: string;
+  nominator_count: number | null;
+  scan_at: number | null;
+}
+
+export interface NeuronDailyRollup extends Record<string, unknown> {
+  snapshot_date: string;
+  neuron_count: string | number;
+  validator_count: string | number;
+  total_stake_tao: string | number | null;
+  total_emission_tao: string | number | null;
+}

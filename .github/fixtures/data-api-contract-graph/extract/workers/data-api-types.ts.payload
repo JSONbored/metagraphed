@@ -1,0 +1,86 @@
+import type { NeuronDaily, SubnetSnapshots, SurfaceStatus } from "../generated/db/types.ts";
+import type { PgSql } from "../src/pg-sql.ts";
+
+/**
+ * One neuron-day joined to its subnet's pool, as the history endpoints select
+ * it. `stake_alpha`/`emission_alpha` are the raw per-subnet alpha figures
+ * under their on-chain column names; the `total_*_tao` pair is the same value
+ * PRICED through the pool ratio, which is why those two are the ones that mean
+ * TAO (#9051) -- and why they are computed, not column types.
+ */
+export type NeuronDailyPoint = {
+  snapshot_date: NeuronDaily["snapshot_date"];
+  subnet_count: number;
+  netuid: NeuronDaily["netuid"];
+  uid: NeuronDaily["uid"];
+  stake_alpha: NeuronDaily["stake_tao"];
+  emission_alpha: NeuronDaily["emission_tao"];
+  validator_trust: NeuronDaily["validator_trust"];
+  consensus: NeuronDaily["consensus"];
+  dividends: NeuronDaily["dividends"];
+  take: NeuronDaily["take"];
+  validator_permit: NeuronDaily["validator_permit"];
+  subnet_total_stake: SubnetSnapshots["total_stake_tao"];
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
+};
+
+export type Row = Record<string, unknown>;
+
+/**
+ * One incoming hyperparams row, formatted and hashed exactly once -- both
+ * stores' history diffs consume this same sequence, so the hash can never
+ * diverge between them; only each store's own latest-hash map differs.
+ */
+export interface HashedHyperparamsRow {
+  netuid: number;
+  block_number: unknown;
+  hyperparameters: Row | null;
+  hash: string | null;
+}
+
+/** One sanitized identity row, snapshot-shaped and hashed exactly once --
+ * both stores' history diffs consume this same sequence (see
+ * HashedHyperparamsRow's identical contract above). */
+export interface HashedIdentityRow {
+  account: string;
+  snapshot: Row;
+  hash: string | null;
+}
+
+export type NeuronsStoreRouteHandler = (
+  sql: PgSql,
+  env: DataApiEnv,
+  ctx: ExecutionContext,
+) => Promise<Response>;
+
+/** The live surface-status row, as HEALTH_STATUS_LIVE_READ_COLUMNS selects it. */
+export type HealthStatusLiveStoreRow = Pick<
+  SurfaceStatus,
+  | "surface_id"
+  | "surface_key"
+  | "netuid"
+  | "kind"
+  | "provider"
+  | "url"
+  | "status"
+  | "classification"
+  | "latency_ms"
+  | "status_code"
+  | "last_checked"
+  | "last_ok"
+  | "consecutive_failures"
+>;
+
+/** One performance-history day, as PERFORMANCE_HISTORY_READ_COLUMNS selects it. */
+export type PerformanceHistoryRow = Pick<
+  NeuronDaily,
+  | "snapshot_date"
+  | "incentive"
+  | "dividends"
+  | "trust"
+  | "consensus"
+  | "validator_trust"
+  | "active"
+  | "validator_permit"
+>;

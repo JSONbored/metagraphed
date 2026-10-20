@@ -1,0 +1,36 @@
+/** The `{parameter, message}` shape every query-parameter error already uses. */
+export interface FieldProjectionError {
+  parameter: string;
+  message: string;
+}
+
+/**
+ * `fields` null means "no projection requested" -- the caller gets the full
+ * shape, byte for byte. It is not the same as an empty list, which is a
+ * malformed request and reports as one.
+ */
+export interface FieldProjectionResult {
+  fields?: string[] | null;
+  error?: FieldProjectionError;
+}
+
+/**
+ * Given the requested names, return the subset this surface cannot serve.
+ *
+ * A function rather than a `Set` so the row-union case can keep its lazy scan
+ * (see {@link unknownAgainstRows}) instead of materialising every row's keys
+ * to answer a question that is usually settled by the first row.
+ */
+export type UnknownFieldResolver = ((requested: string[]) => string[]) & {
+  /**
+   * The full vocabulary, for the unsupported-field message.
+   *
+   * Separate from the resolver call, and only ever invoked on the ERROR path,
+   * because the two have opposite cost profiles: {@link unknownAgainstRows}
+   * settles a VALID request from the first row and must keep doing so, while
+   * listing every field necessarily materialises the union. Paying that on a
+   * request that has already failed is free; paying it on every request is the
+   * lazy scan thrown away.
+   */
+  known?: () => string[];
+};

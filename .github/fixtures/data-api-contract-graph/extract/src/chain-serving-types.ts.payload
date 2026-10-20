@@ -1,0 +1,40 @@
+import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
+
+export interface IntensityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+export interface ChainServingNetwork {
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+
+export interface ChainServingSubnet {
+  netuid: number;
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number;
+}
+
+export interface ChainServingResult {
+  schema_version: 1;
+  window: string | null;
+  observed_at: string | null;
+  /** NULL only on a decline -- see ChainEventCardDecline. */
+  subnet_count: number | null;
+  /** NULL only on a decline: after a failed read nothing is known about
+   * the network block, and zeros there are the confident zero #11417 names. */
+  network: ChainServingNetwork | null;
+  intensity_distribution: IntensityDistribution | null;
+  subnets: ChainServingSubnet[];
+  /** Present ONLY on a decline. An empty card WITHOUT it is a measurement. */
+  degraded?: EventStreamDegraded;
+}

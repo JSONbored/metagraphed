@@ -1,0 +1,27 @@
+export type Representation = "raw" | "gzip";
+
+export interface Frame {
+  valueId: string;
+  length: number;
+  digest: string;
+}
+
+export interface ChainDetailSpoolJournal {
+  /** Persist before the first part, so cancellation leaves an abortable ID. */
+  opened(key: string, uploadId: string): Promise<void>;
+  completed(size: number, etag: string): Promise<void>;
+}
+
+export interface ChainDetailPayloadSpool {
+  append(
+    valueId: string,
+    representation: Representation,
+    part: number,
+    bytes: Uint8Array,
+  ): Promise<void>;
+  finish(): Promise<void>;
+  scan(
+    representation: Representation,
+  ): AsyncIterable<{ valueId: string; parts: AsyncIterable<Uint8Array> }>;
+  discard(): Promise<void>;
+}

@@ -1,0 +1,116 @@
+// Copied documentation references to nearby runtime code and tests refer to src/table-freshness-watchdog.ts.
+import type { LaneHealthDb } from "./lane-health.ts";
+import type { ProducerLane } from "./producer-cadence.ts";
+
+export interface FreshnessExpectation {
+  /** The column carrying "when did a row last arrive". */
+  column: string;
+  /** `ms` = epoch milliseconds; `date` = a 'YYYY-MM-DD' text column. */
+  kind: "ms" | "date";
+  /** How old the newest row may be. `null` = staleness is meaningless here. */
+  maxAgeMs: number | null;
+  /** Why that number, or why null. Read by whoever gets the alarm. */
+  reason: string;
+  /**
+   * The producer whose cadence this bound is derived from, when it is.
+   *
+   * DECLARED so the relationship can be CHECKED. `maxAgeMs` alone cannot be
+   * audited -- 12 hours is either generous or guaranteed-to-alarm depending
+   * entirely on a number that used to live only in prose, and #10329 is the
+   * case where it was the second one. With the producer named,
+   * tests/table-freshness-cadence.test.ts can assert every derived bound
+   * clears one full tick, which is the rule this map's own header states.
+   *
+   * Absent for the crons and the measured bounds -- `chain-detail` is sized
+   * against a DOWNSTREAM consumer's lag and `rpc-usage` against a traffic
+   * floor, so naming a producer there would assert a derivation that does not
+   * exist.
+   */
+  producer?: ProducerLane;
+  /**
+   * Read the stamp from a DIFFERENT table that carries the same value.
+   *
+   * WHY A TABLE WOULD NOT ANSWER ITS OWN QUESTION. `captured_at` is the
+   * freshness stamp, so it changes on every upsert -- which means it can never
+   * be indexed on an upsert-heavy table without cost. Postgres skips the HOT
+   * path whenever an indexed column changes, and `account_position_daily`
+   * takes ~10M updates per 3.5 days at a 33.6% HOT rate; an index on
+   * `captured_at` would drive that toward zero and add ~10M index writes to
+   * save the ~24 reads a day this sweep makes. So the choice is not
+   * "index or scan", it is "scan a 497 MB table, or ask something smaller".
+   *
+   * Every lane in PASS_TABLES (src/pass-completeness.ts) already writes a
+   * `*_passes` row per producer pass, carrying the same `captured_at`.
+   * Measured 2026-08-11, `neurons_passes` is 88 kB against
+   * `account_position_daily`'s 497 MB and reports the identical value.
+   *
+   * NOT A FREE SUBSTITUTION, which is why crossCheckSql exists below. A pass
+   * row and the rows it describes are two different writes, so a stamp read
+   * from the pass table asserts "a pass was recorded", not "its rows landed" --
+   * and #9530 is this repo's own case of a freshness signal advancing over data
+   * that had not arrived. The sweep takes the cheap read; the cross-check
+   * proves the two agree and says so out loud when they do not.
+   */
+  stampFrom?: string;
+  /** An open issue explaining a table that is ALREADY breaching, so the alarm
+   * points somewhere instead of merely being loud. */
+  knownIssue?: string;
+  /**
+   * The `lane_health` lane that carries this table's liveness instead of a time
+   * bound. Only meaningful alongside `maxAgeMs: null`.
+   *
+   * A THIRD CLASSIFICATION, distinct from the two `null` already meant.
+   * `api_keys` is null because staleness is *meaningless* — a quiet signup
+   * table is not a fault in any sense. The registry cluster is different: it
+   * has a producer that CAN die, and when it did, five days passed unnoticed
+   * (#9779). Calling that "meaningless" would be the exemption this file's
+   * header warns about.
+   *
+   * What makes null correct there now is that the producer reports itself. So
+   * the classification is not "cannot be stale", it is "asked somewhere else",
+   * and naming where turns an exemption into a redirection that a reader — and
+   * the test beside this file — can follow and check.
+   *
+   * The bar for adding one: the named lane must alarm on BOTH the producer
+   * failing and the producer stopping, or this is a blind spot with a citation.
+   */
+  coveredBy?: string;
+}
+
+/** The minimal store surface this needs, so a test can hand it a fake. */
+export interface FreshnessDb {
+  query(text: string, values?: unknown[]): Promise<Record<string, unknown>[]>;
+}
+
+export interface StampDivergence {
+  table: string;
+  stampFrom: string;
+  cheap: number | null;
+  actual: number | null;
+}
+
+export interface StaleTable {
+  table: string;
+  ageMs: number;
+  maxAgeMs: number;
+  reason: string;
+  knownIssue?: string;
+}
+
+export interface FreshnessDeps {
+  db?: FreshnessDb | null;
+  laneHealthDb?: LaneHealthDb | null;
+  now?: () => number;
+  spec?: Readonly<Record<string, FreshnessExpectation>>;
+}
+
+export interface FreshnessOutcome {
+  attempted: boolean;
+  stale?: StaleTable[];
+  checked?: number;
+  reason?: string;
+  /** Redirected tables whose pass stamp no longer matches their own, empty when
+   * they all agree. Surfaced on the outcome as well as in the lane detail so a
+   * caller can act on the pair of numbers rather than parse the prose. */
+  divergences?: StampDivergence[];
+}
