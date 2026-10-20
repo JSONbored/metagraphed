@@ -409,7 +409,10 @@ async function main() {
     ];
   }
   function presubmitStderrTail(before: Buffer, incoming: Buffer): Buffer {
-    return Buffer.concat([before.subarray(-65_536), incoming.subarray(-65_536)]).subarray(-65_536);
+    return Buffer.concat([
+      before.subarray(-65_536),
+      incoming.subarray(-65_536),
+    ]).subarray(-65_536);
   }
   function presubmitFailureProjection(stderr: string) {
     if (Buffer.byteLength(stderr) > 65_536) return null;
@@ -423,13 +426,15 @@ async function main() {
     } catch {
       return null;
     }
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      return null;
     const report = value as Record<string, unknown>;
     if (
       Object.keys(report).sort().join(",") !== "failed_script,mode,results" ||
       report.mode !== "check" ||
       !Array.isArray(report.results)
-    ) return null;
+    )
+      return null;
     const scripts = pipelineCheckScripts();
     const results = report.results;
     if (results.length < 1 || results.length > scripts.length) return null;
@@ -445,10 +450,15 @@ async function main() {
         !Number.isSafeInteger(row.elapsed_ms) ||
         row.elapsed_ms < 0 ||
         row.elapsed_ms > 35 * 60 * 1000
-      ) return null;
+      )
+        return null;
       elapsed += row.elapsed_ms;
     }
-    if (elapsed > 35 * 60 * 1000 || report.failed_script !== scripts[results.length - 1]) return null;
+    if (
+      elapsed > 35 * 60 * 1000 ||
+      report.failed_script !== scripts[results.length - 1]
+    )
+      return null;
     return {
       kind: "reported_pinned_pipeline_failure" as const,
       failed_script: scripts[results.length - 1],
@@ -483,25 +493,37 @@ async function main() {
         passed_steps: length - 1,
         observed_steps: length,
         total_steps: 85,
-        elapsed_ms: length * (length - 1) / 2,
+        elapsed_ms: (length * (length - 1)) / 2,
         raw_output_retained: false,
       });
       checked++;
     }
     const valid = report(4);
     const expected = presubmitFailureProjection(encode(valid));
-    for (const prefix of ["previous command output\n", "\u001b[31mprevious\u001b[0m\n"]) {
-      assert.deepEqual(presubmitFailureProjection(prefix + encode(valid)), expected);
+    for (const prefix of [
+      "previous command output\n",
+      "\u001b[31mprevious\u001b[0m\n",
+    ]) {
+      assert.deepEqual(
+        presubmitFailureProjection(prefix + encode(valid)),
+        expected,
+      );
       checked++;
     }
-    const badRows = (index: number, changes: Record<string, unknown>) => valid.results.map((row, at) => at === index ? { ...row, ...changes } : row);
+    const badRows = (index: number, changes: Record<string, unknown>) =>
+      valid.results.map((row, at) =>
+        at === index ? { ...row, ...changes } : row,
+      );
     const refusals = [
       encode({ ...valid, failed_script: "not-a-pipeline-script" }),
       encode({ ...valid, mode: "refresh" }),
       encode({ ...valid, extra: "withheld" }),
       encode({ ...valid, results: [] }),
       encode({ ...valid, results: "not-an-array" }),
-      encode({ ...valid, results: [...report(85).results, report(1).results[0]] }),
+      encode({
+        ...valid,
+        results: [...report(85).results, report(1).results[0]],
+      }),
       encode({ ...valid, results: badRows(1, { script: scripts[2] }) }),
       encode({ ...valid, results: badRows(1, { status: "failed" }) }),
       encode({ ...valid, results: badRows(3, { status: "passed" }) }),
@@ -509,10 +531,16 @@ async function main() {
       encode({ ...valid, results: badRows(3, { elapsed_ms: 0.5 }) }),
       encode({ ...valid, results: badRows(3, { elapsed_ms: "1" }) }),
       encode({ ...valid, results: badRows(3, { elapsed_ms: null }) }),
-      encode({ ...valid, results: badRows(3, { elapsed_ms: 35 * 60 * 1000 + 1 }) }),
+      encode({
+        ...valid,
+        results: badRows(3, { elapsed_ms: 35 * 60 * 1000 + 1 }),
+      }),
       encode({ ...valid, results: badRows(3, { elapsed_ms: 35 * 60 * 1000 }) }),
       encode({ ...valid, results: badRows(3, { extra: "withheld" }) }),
-      encode({ ...valid, results: valid.results.map((row, index) => index === 1 ? null : row) }),
+      encode({
+        ...valid,
+        results: valid.results.map((row, index) => (index === 1 ? null : row)),
+      }),
       encode({ ...valid, results: badRows(3, { script: scripts[0] }) }),
       encode({ ...valid, failed_script: scripts[0] }),
       encode({ mode: "check", results: valid.results }),
@@ -529,16 +557,28 @@ async function main() {
       checked++;
     }
     const first = Buffer.from("earlier-prefix");
-    assert.equal(presubmitStderrTail(first, Buffer.from("later")).toString(), "earlier-prefixlater");
+    assert.equal(
+      presubmitStderrTail(first, Buffer.from("later")).toString(),
+      "earlier-prefixlater",
+    );
     checked++;
-    const large = presubmitStderrTail(Buffer.alloc(65_536, 120), Buffer.from("\n" + encode(valid)));
+    const large = presubmitStderrTail(
+      Buffer.alloc(65_536, 120),
+      Buffer.from("\n" + encode(valid)),
+    );
     assert.equal(large.length, 65_536);
     assert.deepEqual(presubmitFailureProjection(large.toString()), expected);
     checked++;
-    assert.equal(presubmitStderrTail(Buffer.alloc(0), Buffer.alloc(80_000, 121)).length, 65_536);
+    assert.equal(
+      presubmitStderrTail(Buffer.alloc(0), Buffer.alloc(80_000, 121)).length,
+      65_536,
+    );
     checked++;
     assert.equal(checked, 34);
-    return { presubmit_failure_controls_passed: checked, presubmit_pipeline_steps: scripts.length };
+    return {
+      presubmit_failure_controls_passed: checked,
+      presubmit_pipeline_steps: scripts.length,
+    };
   }
 
   async function run(id: string) {
@@ -553,7 +593,11 @@ async function main() {
     const cwd = realpathSync(path.join(ROOT, command.working_directory));
     assert.ok(cwd === ROOT || cwd.startsWith(ROOT + path.sep));
     const presubmit = command.id === "validate-presubmit-check";
-    if (presubmit) assert.equal(hash(bytes(path.join(ROOT, "scripts/pipeline.ts"), 65_536)), "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410");
+    if (presubmit)
+      assert.equal(
+        hash(bytes(path.join(ROOT, "scripts/pipeline.ts"), 65_536)),
+        "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410",
+      );
     let presubmitStderr: Buffer = Buffer.alloc(0);
     const started = Date.now();
     let stdoutBytes = 0,
@@ -606,7 +650,8 @@ async function main() {
         terminate();
       }
       rolling = (rolling + data.toString("utf8")).slice(-8192);
-      if (presubmit && stream === "stderr") presubmitStderr = presubmitStderrTail(presubmitStderr, data);
+      if (presubmit && stream === "stderr")
+        presubmitStderr = presubmitStderrTail(presubmitStderr, data);
       diagnostics.push(stream, data.toString("utf8"));
       const projected = fixedClassification(rolling);
       if (projected !== "command_failure") category = projected;
@@ -651,7 +696,14 @@ async function main() {
       actual_unhandled_diagnostic: diagnostic.actualUnhandled,
       observed_test_summaries: diagnostic.testSummaries,
       output_withheld: true,
-      ...(presubmit ? { presubmit_pipeline_failure: result.code !== 0 ? presubmitFailureProjection(presubmitStderr.toString("utf8")) : null } : {}),
+      ...(presubmit
+        ? {
+            presubmit_pipeline_failure:
+              result.code !== 0
+                ? presubmitFailureProjection(presubmitStderr.toString("utf8"))
+                : null,
+          }
+        : {}),
     };
     save(path.join(runDirectory(job), command.id + ".json"), receipt);
     console.log(JSON.stringify(receipt));

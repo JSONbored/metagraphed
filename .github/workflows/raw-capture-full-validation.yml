@@ -1,8 +1,8 @@
-name: Exact presubmit wrapper qualification
+name: Exact presubmit wrapper failure diagnosis
 
 on:
   push:
-    branches: [ci/raw-capture-retry-presubmit-20261020]
+    branches: [ci/raw-capture-presubmit-diagnostic-20261020]
 
 permissions:
   contents: read
@@ -67,7 +67,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw9-exact-presubmit-${{ github.run_attempt }}
+          name: raw9-exact-presubmit-diagnostic-${{ github.run_attempt }}
           path: tmp/raw-capture-full-validation/upload/validate/
           retention-days: 1
           if-no-files-found: error
