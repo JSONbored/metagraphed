@@ -1,0 +1,317 @@
+{
+  "version": 1,
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "fixed_branch": "ci/queue-memory-architecture-native-spool-20261020",
+  "scope": "initial_hosted_diagnostics_only",
+  "files": [
+    {
+      "path": "src/capture-family-d1.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/capture-family-d1.ts.payload",
+      "bytes": 6800,
+      "sha256": "f81a499fcfedf474f6d185e03aba0306d35098276b85759daf5f7c892a2dbacd",
+      "expected_base_blob_sha": "5fb3380b0277234b660defbbbf92609bd0ef16bd"
+    },
+    {
+      "path": "src/chain-detail-d1-staging.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/chain-detail-d1-staging.ts.payload",
+      "bytes": 13020,
+      "sha256": "66a7703facfa1dac11fe80729c51e1c59c34da451337cc77af3f229e5942f5e2",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/chain-detail-payload-spool.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/chain-detail-payload-spool.ts.payload",
+      "bytes": 8843,
+      "sha256": "5372ee14097ebc46f2746fbeae4dacfda322feb3879503d4539023e3048c6a22",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/chain-detail-projected-write.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/chain-detail-projected-write.ts.payload",
+      "bytes": 9443,
+      "sha256": "148cbb3cece60b841614893b8dbd7e221462833c53a28da691aee153a0310d8b",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/chain-detail-stream-payloads.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/chain-detail-stream-payloads.ts.payload",
+      "bytes": 15915,
+      "sha256": "b6e9dd251ca5bfaabd7d747d35154dbcf70d995fb59dffc62f72c510bd36354c",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "src/sync-batch-projected-chain-detail.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/src/sync-batch-projected-chain-detail.ts.payload",
+      "bytes": 30144,
+      "sha256": "872376805018e4a4385068726475e98041030885c945c8caa547574b20e88d4e",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/capture-upsert-streaming.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/capture-upsert-streaming.test.ts.payload",
+      "bytes": 5357,
+      "sha256": "0a86a1ebd89306b23851a7a06699792684a41bd58ef8f5344dda5c1b7e49da5b",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/chain-detail-d1-staging.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/chain-detail-d1-staging.test.ts.payload",
+      "bytes": 22542,
+      "sha256": "ae32e6677b407bbb26268dcf0498a103f55cee6fbe0ebd5b18b41e4fef61b62e",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/chain-detail-payload-spool.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/chain-detail-payload-spool.test.ts.payload",
+      "bytes": 1787,
+      "sha256": "1cd56ffafff6774fb7b59fc875449d0457fded669b5348a42089f062337882c5",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/chain-detail-projected-write.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/chain-detail-projected-write.test.ts.payload",
+      "bytes": 12719,
+      "sha256": "35a2c7cb71fd47e6cea3f2e26a797d5dec724b7664de5847ae1365359341c767",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/chain-detail-stream-payloads.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/chain-detail-stream-payloads.test.ts.payload",
+      "bytes": 9894,
+      "sha256": "c96206052380f25fdf182ee2ae969592b373c9bffe73bf9854e65231cbce0b36",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/fixtures/capture-upsert-canonical0a65.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/fixtures/capture-upsert-canonical0a65.ts.payload",
+      "bytes": 1970,
+      "sha256": "2e428a59de5253ee7bc4ffbcfdb3967b11cdf41d0614c4ec980824f77f3459ca",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/fixtures/chain-detail-d1-canonical.sql",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-d1-canonical.sql.payload",
+      "bytes": 2234,
+      "sha256": "fdeb8038c7edbfb636f67c764e1d5ad3e89d37a683dfcc09a4dbc3d9f6ea207c",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/fixtures/chain-detail-d1-staging.sql",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-d1-staging.sql.payload",
+      "bytes": 9567,
+      "sha256": "2f769613e4dba91ce92c4a749eebed5c1b585f6131b92bed95ecde350235f2a7",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/fixtures/chain-detail-payload-spool-native.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-payload-spool-native.ts.payload",
+      "bytes": 11199,
+      "sha256": "4814f78107115c2e3b6ba738e68d90ec19e9da401559505b75c438b061ec58a5",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/helpers/native-workerd-fixture.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/helpers/native-workerd-fixture.ts.payload",
+      "bytes": 1633,
+      "sha256": "111a5a15bafa46e8686d4f3ac306216ae33abd0f2e0b7157fbba00cb75df2640",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "tests/sync-batch-projected-chain-detail.test.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/tests/sync-batch-projected-chain-detail.test.ts.payload",
+      "bytes": 27052,
+      "sha256": "8ded6e0f1fcf2a0f5c935d72c3298e483bcecd8386c45ff4dc9bc3f21926357c",
+      "expected_base_blob_sha": null
+    },
+    {
+      "path": "workers/data-api.ts",
+      "payload": ".github/fixtures/queue-memory-architecture/workers/data-api.ts.payload",
+      "bytes": 395494,
+      "sha256": "3d26260a637c9805692e95cca393902f9cf5c1c0547ef1d2a7ca1efd7cb535f0",
+      "expected_base_blob_sha": "2aab2e6ddc156307678bc5e1d3675d791bc79a9a"
+    }
+  ],
+  "carrier_files": [
+    ".github/fixtures/queue-memory-architecture/manifest.json",
+    ".github/fixtures/queue-memory-architecture/src/capture-family-d1.ts.payload",
+    ".github/fixtures/queue-memory-architecture/src/chain-detail-d1-staging.ts.payload",
+    ".github/fixtures/queue-memory-architecture/src/chain-detail-payload-spool.ts.payload",
+    ".github/fixtures/queue-memory-architecture/src/chain-detail-projected-write.ts.payload",
+    ".github/fixtures/queue-memory-architecture/src/chain-detail-stream-payloads.ts.payload",
+    ".github/fixtures/queue-memory-architecture/src/sync-batch-projected-chain-detail.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/capture-upsert-streaming.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/chain-detail-d1-staging.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/chain-detail-payload-spool.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/chain-detail-projected-write.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/chain-detail-stream-payloads.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/fixtures/capture-upsert-canonical0a65.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-d1-canonical.sql.payload",
+    ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-d1-staging.sql.payload",
+    ".github/fixtures/queue-memory-architecture/tests/fixtures/chain-detail-payload-spool-native.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/helpers/native-workerd-fixture.ts.payload",
+    ".github/fixtures/queue-memory-architecture/tests/sync-batch-projected-chain-detail.test.ts.payload",
+    ".github/fixtures/queue-memory-architecture/workers/data-api.ts.payload",
+    ".github/scripts/check-queue-memory-architecture.ts",
+    ".github/tsconfig.queue-memory-architecture.json",
+    ".github/vitest.queue-memory-architecture.config.ts",
+    ".github/workflows/queue-memory-architecture-initial.yml"
+  ],
+  "tests": [
+    "tests/capture-upsert-streaming.test.ts",
+    "tests/chain-detail-d1-staging.test.ts",
+    "tests/chain-detail-payload-spool.test.ts",
+    "tests/chain-detail-projected-write.test.ts",
+    "tests/chain-detail-stream-payloads.test.ts",
+    "tests/sync-batch-projected-chain-detail.test.ts"
+  ],
+  "required_phases": [
+    "apply",
+    "controls",
+    "format",
+    "lint",
+    "types",
+    "helper_types",
+    "boundary",
+    "workflow",
+    "tests"
+  ],
+  "format_files": [
+    "src/capture-family-d1.ts",
+    "src/chain-detail-d1-staging.ts",
+    "src/chain-detail-payload-spool.ts",
+    "src/chain-detail-projected-write.ts",
+    "src/chain-detail-stream-payloads.ts",
+    "src/sync-batch-projected-chain-detail.ts",
+    "tests/capture-upsert-streaming.test.ts",
+    "tests/chain-detail-d1-staging.test.ts",
+    "tests/chain-detail-payload-spool.test.ts",
+    "tests/chain-detail-projected-write.test.ts",
+    "tests/chain-detail-stream-payloads.test.ts",
+    "tests/fixtures/capture-upsert-canonical0a65.ts",
+    "tests/fixtures/chain-detail-payload-spool-native.ts",
+    "tests/helpers/native-workerd-fixture.ts",
+    "tests/sync-batch-projected-chain-detail.test.ts",
+    "workers/data-api.ts",
+    ".github/scripts/check-queue-memory-architecture.ts",
+    ".github/tsconfig.queue-memory-architecture.json",
+    ".github/vitest.queue-memory-architecture.config.ts",
+    ".github/fixtures/queue-memory-architecture/manifest.json",
+    ".github/workflows/queue-memory-architecture-initial.yml"
+  ],
+  "lint_files": [
+    "src/capture-family-d1.ts",
+    "src/chain-detail-d1-staging.ts",
+    "src/chain-detail-payload-spool.ts",
+    "src/chain-detail-projected-write.ts",
+    "src/chain-detail-stream-payloads.ts",
+    "src/sync-batch-projected-chain-detail.ts",
+    "tests/capture-upsert-streaming.test.ts",
+    "tests/chain-detail-d1-staging.test.ts",
+    "tests/chain-detail-payload-spool.test.ts",
+    "tests/chain-detail-projected-write.test.ts",
+    "tests/chain-detail-stream-payloads.test.ts",
+    "tests/fixtures/capture-upsert-canonical0a65.ts",
+    "tests/fixtures/chain-detail-payload-spool-native.ts",
+    "tests/helpers/native-workerd-fixture.ts",
+    "tests/sync-batch-projected-chain-detail.test.ts",
+    "workers/data-api.ts",
+    ".github/scripts/check-queue-memory-architecture.ts",
+    ".github/vitest.queue-memory-architecture.config.ts"
+  ],
+  "source_ids": [
+    ".github/fixtures/queue-memory-architecture/manifest.json",
+    ".github/scripts/check-queue-memory-architecture.ts",
+    ".github/tsconfig.queue-memory-architecture.json",
+    ".github/vitest.queue-memory-architecture.config.ts",
+    ".github/workflows/queue-memory-architecture-initial.yml",
+    "src/capture-family-d1.ts",
+    "src/chain-detail-d1-staging.ts",
+    "src/chain-detail-payload-spool.ts",
+    "src/chain-detail-projected-write.ts",
+    "src/chain-detail-stream-payloads.ts",
+    "src/sync-batch-projected-chain-detail.ts",
+    "tests/capture-upsert-streaming.test.ts",
+    "tests/chain-detail-d1-staging.test.ts",
+    "tests/chain-detail-payload-spool.test.ts",
+    "tests/chain-detail-projected-write.test.ts",
+    "tests/chain-detail-stream-payloads.test.ts",
+    "tests/fixtures/capture-upsert-canonical0a65.ts",
+    "tests/fixtures/chain-detail-d1-canonical.sql",
+    "tests/fixtures/chain-detail-d1-staging.sql",
+    "tests/fixtures/chain-detail-payload-spool-native.ts",
+    "tests/helpers/native-workerd-fixture.ts",
+    "tests/sync-batch-projected-chain-detail.test.ts",
+    "workers/data-api.ts"
+  ],
+  "helper_sha256": "7527355434541ab7e2957c2d702836df76eaa661f70c86e105a3d6cf6b8c6e11",
+  "transport": {
+    "payload_files": 18,
+    "per_file_max_bytes": 1048576,
+    "total_payload_max_bytes": 1048576,
+    "kind": "carrier_only_not_a_runtime_or_source_budget_limit"
+  },
+  "artifact": {
+    "public_source_paths": [
+      ".github/fixtures/queue-memory-architecture/manifest.json",
+      ".github/scripts/check-queue-memory-architecture.ts",
+      ".github/tsconfig.queue-memory-architecture.json",
+      ".github/vitest.queue-memory-architecture.config.ts",
+      ".github/workflows/queue-memory-architecture-initial.yml",
+      "src/capture-family-d1.ts",
+      "src/chain-detail-d1-staging.ts",
+      "src/chain-detail-payload-spool.ts",
+      "src/chain-detail-projected-write.ts",
+      "src/chain-detail-stream-payloads.ts",
+      "src/sync-batch-projected-chain-detail.ts",
+      "tests/capture-upsert-streaming.test.ts",
+      "tests/chain-detail-d1-staging.test.ts",
+      "tests/chain-detail-payload-spool.test.ts",
+      "tests/chain-detail-projected-write.test.ts",
+      "tests/chain-detail-stream-payloads.test.ts",
+      "tests/fixtures/capture-upsert-canonical0a65.ts",
+      "tests/fixtures/chain-detail-d1-canonical.sql",
+      "tests/fixtures/chain-detail-d1-staging.sql",
+      "tests/fixtures/chain-detail-payload-spool-native.ts",
+      "tests/helpers/native-workerd-fixture.ts",
+      "tests/sync-batch-projected-chain-detail.test.ts",
+      "workers/data-api.ts"
+    ],
+    "curated_receipt_glob": "queue-architecture-reports/*-receipt.json",
+    "max_each_receipt_bytes": 131072,
+    "expected_receipts_on_all_phases_run": 10,
+    "raw_native_outputs_uploaded": false
+  },
+  "held_acceptance": {
+    "full_native_suite": false,
+    "canonical_source_budget": false,
+    "canonical_bundle_budget": false,
+    "branch_counted_patch": {
+      "accepted": false,
+      "target_percent": 99,
+      "slack_percent": 0
+    },
+    "authenticated_actual_codecov": false,
+    "quota_provider_and_mixed_lanes": false,
+    "whole_isolate_memory_cpu": false,
+    "production_activation": false
+  },
+  "source_notes": [
+    "Fourteen inherited payloads are exact native-formatted source bytes from failed run39375955795/headc1cc8c2e/artifact12242997779.",
+    "Only the spool terminal value unknown snapshot and native three-file replacement are new; original six focused test paths and nine spool assertion bodies/names/order are preserved.",
+    "The qualification helper is the exact actual formatted helper with three manifest target/source-ID count literals changed only; all50 controls, first-frame/BYOB classifications, native commands and bounds remain unchanged.",
+    "No handler18-case additions or graph extraction. Full/native coverage/source/bundle/resource/production acceptance remains held."
+  ],
+  "native_spool_source_lineage": {
+    "run_id": 39375955795,
+    "head": "c1cc8c2eb225e30cf3eafe99c6e65fa2065a8eab",
+    "artifact_id": 12242997779,
+    "zip_sha256": "b18c1670f9d08979e8005a2c80210b196514eaabf05cc90e56b311f77b3a6374",
+    "actual_readback_sha256": "d2c5bbf806cd3d629bbc2cc13b0febd55d2021e3d68686f8ee3cc8da52731584",
+    "actual_helper_sha256": "c93799e7729c36a77c57e96ab9512f23a2a7f85584d9bf858798b0e50df562b2",
+    "owner_pins_sha256": "1059117f48d74b018a89482e9c7e25a08f913e38fe00920fe108799d6ec8ae06",
+    "old_test_destination": "tests/chain-detail-payload-spool.test.ts",
+    "new_native_driver_maps_same_destination": true,
+    "preserved_spool_cases": 9,
+    "assertion_body_sha256": "b7830ef20256891684d3e34281ab768224b10003e661f126d4f48d05867cc273"
+  }
+}

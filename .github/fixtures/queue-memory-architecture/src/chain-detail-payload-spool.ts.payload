@@ -1,0 +1,251 @@
+import { createHash } from "node:crypto";
+
+const UPLOAD_BYTES = 5 * 1024 * 1024;
+const TRANSFER_BYTES = 384 * 1024;
+type Representation = "raw" | "gzip";
+interface Frame {
+  valueId: string;
+  length: number;
+  digest: string;
+}
+export interface ChainDetailSpoolJournal {
+  /** Persist before the first part, so cancellation leaves an abortable ID. */
+  opened(key: string, uploadId: string): Promise<void>;
+  completed(size: number, etag: string): Promise<void>;
+}
+export interface ChainDetailPayloadSpool {
+  append(
+    valueId: string,
+    representation: Representation,
+    part: number,
+    bytes: Uint8Array,
+  ): Promise<void>;
+  finish(): Promise<void>;
+  scan(
+    representation: Representation,
+  ): AsyncIterable<{ valueId: string; parts: AsyncIterable<Uint8Array> }>;
+  discard(): Promise<void>;
+}
+
+/** One invocation owns every stream, buffer and I/O object. This is not a
+ * cross-request spool broker. Only gzip is persisted: a raw-selected value is
+ * reconstructed by the caller's bounded inflate, preserving its original hash.
+ * The attempt namespace is private and never becomes a published payload ref. */
+export function createChainDetailPayloadSpool(
+  bucket: R2Bucket,
+  token: string,
+  journal: ChainDetailSpoolJournal,
+): ChainDetailPayloadSpool {
+  if (!/^[a-f0-9-]{36}$/.test(token))
+    throw new TypeError("Invalid private payload spool token");
+  const key = `metagraph/ingest-stage/v1/${token}/gzip`;
+  const frames: Frame[] = [];
+  const seen = new Set<string>();
+  let current:
+    | {
+        valueId: string;
+        length: number;
+        nextPart: number;
+        hash: ReturnType<typeof createHash>;
+      }
+    | undefined;
+  let buffer: Uint8Array | undefined;
+  let length = 0,
+    total = 0;
+  let upload: R2MultipartUpload | undefined;
+  const uploaded: R2UploadedPart[] = [];
+  let object: { size: number; etag: string } | undefined;
+  let state: "open" | "finishing" | "finished" | "failed" | "closed" = "open";
+  let busy = false,
+    scanning = false,
+    scanned = false;
+  const closeFrame = () => {
+    if (!current) return;
+    frames.push({
+      valueId: current.valueId,
+      length: current.length,
+      digest: current.hash.digest("hex"),
+    });
+    current = undefined;
+  };
+  const flush = async () => {
+    if (!length) return;
+    if (!upload) {
+      upload = await bucket.createMultipartUpload(key);
+      await journal.opened(key, upload.uploadId);
+    }
+    // A known-length byte view, never an unknown-length ReadableStream put.
+    // Await native ownership before reusing the single 5-MiB part buffer.
+    uploaded.push(
+      await upload.uploadPart(uploaded.length + 1, buffer!.subarray(0, length)),
+    );
+    length = 0;
+  };
+  return {
+    async append(valueId, representation, part, bytes) {
+      if (busy || state !== "open")
+        throw new Error("Invalid private payload spool lifecycle");
+      busy = true;
+      try {
+        if (representation !== "gzip")
+          throw new TypeError("Only the private gzip candidate is spooled");
+        if (
+          !/^[a-z_]{1,64}:[0-9]+$/.test(valueId) ||
+          !Number.isSafeInteger(part) ||
+          part < 0 ||
+          bytes.byteLength > TRANSFER_BYTES
+        )
+          throw new TypeError("Invalid private payload spool part");
+        if (current?.valueId !== valueId) {
+          if (part !== 0 || seen.has(valueId))
+            throw new Error("Private payload spool value ordering mismatch");
+          closeFrame();
+          seen.add(valueId);
+          current = {
+            valueId,
+            length: 0,
+            nextPart: 0,
+            hash: createHash("sha256"),
+          };
+        }
+        const active = current!;
+        if (part !== active.nextPart++)
+          throw new Error("Private payload spool part ordering mismatch");
+        active.hash.update(bytes);
+        active.length += bytes.byteLength;
+        total += bytes.byteLength;
+        buffer ??= new Uint8Array(UPLOAD_BYTES);
+        for (let offset = 0; offset < bytes.length;) {
+          const take = Math.min(bytes.length - offset, buffer.length - length);
+          buffer.set(bytes.subarray(offset, offset + take), length);
+          length += take;
+          offset += take;
+          if (length === UPLOAD_BYTES) await flush();
+        }
+      } catch (error) {
+        state = "failed";
+        throw error;
+      } finally {
+        busy = false;
+      }
+    },
+    async finish() {
+      if (busy || state !== "open")
+        throw new Error("Invalid private payload spool lifecycle");
+      busy = true;
+      state = "finishing";
+      try {
+        closeFrame();
+        await flush();
+        if (upload) {
+          const result = await upload.complete(uploaded);
+          if (result.size !== total)
+            throw new Error("Private payload spool completion size mismatch");
+          object = { size: result.size, etag: result.etag };
+          await journal.completed(result.size, result.etag);
+        }
+        buffer = undefined;
+        state = "finished";
+      } catch (error) {
+        state = "failed";
+        throw error;
+      } finally {
+        busy = false;
+      }
+    },
+    async *scan(representation) {
+      if (state !== "finished" || busy || scanning || scanned)
+        throw new Error("Invalid private payload spool scan lifecycle");
+      if (representation === "raw") return;
+      if (representation !== "gzip")
+        throw new TypeError("Unknown private payload spool representation");
+      scanned = true;
+      if (!object) {
+        if (total !== 0)
+          throw new Error("Missing private payload spool object");
+        return;
+      }
+      scanning = true;
+      let reader: ReadableStreamBYOBReader | undefined;
+      try {
+        const stored = await bucket.get(key, {
+          onlyIf: { etagMatches: object.etag },
+        });
+        if (!stored || !("body" in stored) || stored.size !== total)
+          throw new Error("Missing or replaced private payload spool object");
+        // Native R2 byte streams support bounded BYOB. No whole-object read.
+        const input = stored.body.getReader({ mode: "byob" });
+        reader = input;
+        for (const frame of frames) {
+          let remaining = frame.length,
+            consumed = false;
+          const digest = createHash("sha256");
+          const parts = (async function* () {
+            while (remaining) {
+              const next = await input.read(
+                new Uint8Array(Math.min(TRANSFER_BYTES, remaining)),
+              );
+              if (!next.value?.byteLength || next.value.byteLength > remaining)
+                throw new Error("Truncated private payload spool frame");
+              remaining -= next.value.byteLength;
+              digest.update(next.value);
+              yield next.value;
+            }
+            if (digest.digest("hex") !== frame.digest)
+              throw new Error("Corrupt private payload spool frame");
+            consumed = true;
+          })();
+          yield { valueId: frame.valueId, parts };
+          if (!consumed)
+            throw new Error(
+              "Private payload spool frame was not fully consumed",
+            );
+        }
+        const terminal = await input.read(new Uint8Array(1));
+        const terminalValue: unknown = terminal.value;
+        if (
+          !terminal.done ||
+          (terminalValue !== undefined &&
+            (!(terminalValue instanceof Uint8Array) ||
+              terminalValue.byteLength !== 0))
+        )
+          throw new Error("Private payload spool has trailing bytes");
+      } finally {
+        scanning = false;
+        if (reader) {
+          void reader.cancel().catch(() => undefined);
+          reader.releaseLock();
+        }
+      }
+    },
+    async discard() {
+      if (busy || scanning)
+        throw new Error("Cannot discard active private payload spool I/O");
+      state = "closed";
+      buffer = undefined;
+      // Always delete the known attempt key: complete() may have committed even
+      // when its acknowledgement was lost. Never delete by a shared prefix.
+      let failure: unknown;
+      try {
+        if (upload && !object) await upload.abort();
+        upload = undefined;
+      } catch (error) {
+        // Pinned workerd emits action + message + numeric code; 10024 is the
+        // documented NoSuchUpload result, including completed/aborted uploads.
+        // Do not classify network/auth/other failures as successful cleanup.
+        if (
+          error instanceof Error &&
+          /^abortMultipartUpload: [^\r\n]* \(10024\)$/.test(error.message)
+        )
+          upload = undefined;
+        else failure = error;
+      }
+      try {
+        if (upload || frames.length) await bucket.delete(key);
+      } catch (error) {
+        failure ??= error;
+      }
+      if (failure !== undefined) throw failure;
+    },
+  };
+}

@@ -1,0 +1,121 @@
+-- Unpublished schema proposal. Migration registration/activation is held.
+-- Executor columns and conflicts derive from canonical 0a65 chain-detail plans.
+CREATE TABLE chain_detail_ingest_stage_sessions (
+  token TEXT PRIMARY KEY NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version=1),
+  state TEXT NOT NULL CHECK (state IN ('open','sealed','applied')),
+  created_at INTEGER NOT NULL,
+  statement_count INTEGER NOT NULL CHECK (statement_count BETWEEN 0 AND 900),
+  body_bytes INTEGER NOT NULL CHECK (body_bytes>=0),
+  manifest TEXT,
+  spool_key TEXT,
+  spool_upload TEXT,
+  spool_size INTEGER,
+  spool_etag TEXT,
+  spool_complete INTEGER NOT NULL DEFAULT 0 CHECK(spool_complete IN (0,1)),
+  CHECK (state='open' OR (manifest IS NOT NULL AND length(manifest)=64 AND (spool_upload IS NULL OR spool_complete=1)))
+);
+-- statement-breakpoint
+CREATE TABLE chain_detail_ingest_stage_fragments (
+  token TEXT NOT NULL,
+  ordinal INTEGER NOT NULL CHECK (ordinal BETWEEN 0 AND 899),
+  family INTEGER NOT NULL CHECK (family BETWEEN 0 AND 3),
+  row_ordinal INTEGER NOT NULL CHECK(row_ordinal>=0),
+  field_rank INTEGER NOT NULL CHECK(field_rank IN (0,1)),
+  part_ordinal INTEGER NOT NULL CHECK(part_ordinal>=0),
+  kind TEXT NOT NULL CHECK (kind IN ('capture','chunk','extra')),
+  body TEXT NOT NULL CHECK (json_valid(body) AND json_type(body)='array'),
+  body_bytes INTEGER NOT NULL CHECK (body_bytes=length(CAST(body AS BLOB))),
+  digest TEXT NOT NULL CHECK (length(digest)=64),
+  PRIMARY KEY(token,ordinal)
+);
+-- statement-breakpoint
+CREATE TABLE chain_detail_ingest_stage_checks (
+  token TEXT PRIMARY KEY NOT NULL,
+  okay INTEGER NOT NULL CHECK (okay=1)
+);
+-- statement-breakpoint
+CREATE TABLE chain_detail_ingest_stage_apply (
+  token TEXT NOT NULL,
+  ordinal INTEGER NOT NULL,
+  PRIMARY KEY(token,ordinal)
+);
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_insert BEFORE INSERT ON chain_detail_ingest_stage_fragments
+BEGIN
+  SELECT CASE WHEN EXISTS (SELECT 1 FROM chain_detail_ingest_stage_sessions
+    WHERE token=NEW.token AND state='open' AND version=1 AND statement_count=NEW.ordinal)
+    THEN 1 ELSE RAISE(ABORT,'Invalid chain detail stage sequence') END;
+END;
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_count AFTER INSERT ON chain_detail_ingest_stage_fragments
+BEGIN
+  UPDATE chain_detail_ingest_stage_sessions SET statement_count=statement_count+1,body_bytes=body_bytes+NEW.body_bytes
+    WHERE token=NEW.token;
+END;
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_immutable BEFORE UPDATE ON chain_detail_ingest_stage_fragments
+BEGIN
+  SELECT RAISE(ABORT,'Immutable chain detail stage fragment');
+END;
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_session_immutable BEFORE UPDATE ON chain_detail_ingest_stage_sessions
+WHEN (OLD.state<>'open' AND NOT(OLD.state='sealed' AND NEW.state='applied' AND NEW.token IS OLD.token AND NEW.version IS OLD.version AND NEW.created_at IS OLD.created_at AND NEW.statement_count IS OLD.statement_count AND NEW.body_bytes IS OLD.body_bytes AND NEW.manifest IS OLD.manifest AND NEW.spool_key IS OLD.spool_key AND NEW.spool_upload IS OLD.spool_upload AND NEW.spool_size IS OLD.spool_size AND NEW.spool_etag IS OLD.spool_etag AND NEW.spool_complete IS OLD.spool_complete)) OR NEW.token<>OLD.token OR NEW.version<>OLD.version OR NEW.created_at<>OLD.created_at
+BEGIN
+  SELECT RAISE(ABORT,'Immutable sealed chain detail stage');
+END;
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_apply_guard BEFORE INSERT ON chain_detail_ingest_stage_apply
+BEGIN
+  SELECT CASE WHEN EXISTS (SELECT 1 FROM chain_detail_ingest_stage_checks WHERE token=NEW.token AND okay=1)
+    AND EXISTS (SELECT 1 FROM chain_detail_ingest_stage_sessions WHERE token=NEW.token AND state='sealed' AND version=1)
+    AND EXISTS (SELECT 1 FROM chain_detail_ingest_stage_fragments WHERE token=NEW.token AND ordinal=NEW.ordinal)
+    THEN 1 ELSE RAISE(ABORT,'Unverified chain detail stage') END;
+END;
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_execute AFTER INSERT ON chain_detail_ingest_stage_apply
+BEGIN
+  INSERT INTO chain_detail_payload_chunks(sha256,part,data)
+  SELECT json_extract(f.body,'$[0]'),json_extract(f.body,'$[1]'),json_extract(f.body,'$[2]')
+  FROM chain_detail_ingest_stage_fragments f
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='chunk'
+  ON CONFLICT(sha256,part) DO UPDATE SET data=CASE
+    WHEN chain_detail_payload_chunks.data=excluded.data THEN chain_detail_payload_chunks.data ELSE NULL END;
+  INSERT INTO chain_detail_payload_chunks(sha256,part,data)
+  SELECT json_extract(f.body,'$[0]'),-1,'' FROM chain_detail_ingest_stage_fragments f
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='extra'
+    AND EXISTS (SELECT 1 FROM chain_detail_payload_chunks c
+      WHERE c.sha256=json_extract(f.body,'$[1]') AND c.part>=json_extract(f.body,'$[2]'));
+  INSERT INTO chain_detail_extrinsics(block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,call_args,observed_at)
+  SELECT json_extract(r.value,'$[0]'),json_extract(r.value,'$[1]'),json_extract(r.value,'$[2]'),json_extract(r.value,'$[3]'),json_extract(r.value,'$[4]'),json_extract(r.value,'$[5]'),json_extract(r.value,'$[6]'),json_extract(r.value,'$[7]'),json_extract(r.value,'$[8]'),json_extract(r.value,'$[9]'),json_extract(r.value,'$[10]')
+  FROM chain_detail_ingest_stage_fragments f,json_each(f.body) r
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='capture' AND f.family=0
+  ORDER BY CAST(r.key AS INTEGER)
+  ON CONFLICT(block_number,extrinsic_index) DO UPDATE SET extrinsic_hash=excluded.extrinsic_hash,signer=excluded.signer,call_module=excluded.call_module,call_function=excluded.call_function,success=excluded.success,fee_tao=excluded.fee_tao,tip_tao=excluded.tip_tao,call_args=excluded.call_args,observed_at=excluded.observed_at;
+  INSERT INTO chain_detail_chain_events(block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at)
+  SELECT json_extract(r.value,'$[0]'),json_extract(r.value,'$[1]'),json_extract(r.value,'$[2]'),json_extract(r.value,'$[3]'),json_extract(r.value,'$[4]'),json_extract(r.value,'$[5]'),json_extract(r.value,'$[6]'),json_extract(r.value,'$[7]')
+  FROM chain_detail_ingest_stage_fragments f,json_each(f.body) r
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='capture' AND f.family=1
+  ORDER BY CAST(r.key AS INTEGER)
+  ON CONFLICT(block_number,event_index) DO UPDATE SET pallet=excluded.pallet,method=excluded.method,args=excluded.args,phase=excluded.phase,extrinsic_index=excluded.extrinsic_index,observed_at=excluded.observed_at;
+  INSERT INTO chain_detail_account_events(block_number,event_index,extrinsic_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at)
+  SELECT json_extract(r.value,'$[0]'),json_extract(r.value,'$[1]'),json_extract(r.value,'$[2]'),json_extract(r.value,'$[3]'),json_extract(r.value,'$[4]'),json_extract(r.value,'$[5]'),json_extract(r.value,'$[6]'),json_extract(r.value,'$[7]'),json_extract(r.value,'$[8]'),json_extract(r.value,'$[9]'),json_extract(r.value,'$[10]')
+  FROM chain_detail_ingest_stage_fragments f,json_each(f.body) r
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='capture' AND f.family=2
+  ORDER BY CAST(r.key AS INTEGER)
+  ON CONFLICT(block_number,event_index) DO UPDATE SET extrinsic_index=excluded.extrinsic_index,event_kind=excluded.event_kind,hotkey=excluded.hotkey,coldkey=excluded.coldkey,netuid=excluded.netuid,uid=excluded.uid,amount_tao=excluded.amount_tao,alpha_amount=excluded.alpha_amount,observed_at=excluded.observed_at;
+  INSERT INTO chain_detail_blocks(block_number,block_hash,spec_version,extrinsic_count,chain_event_count,account_event_count,observed_at,synced_at,native_transfer_tao,stake_flow_tao,economic_activity_tao,fee_tao,tip_tao,issuance_tao,subnet_ids,economics_complete)
+  SELECT json_extract(r.value,'$[0]'),json_extract(r.value,'$[1]'),json_extract(r.value,'$[2]'),json_extract(r.value,'$[3]'),json_extract(r.value,'$[4]'),json_extract(r.value,'$[5]'),json_extract(r.value,'$[6]'),json_extract(r.value,'$[7]'),json_extract(r.value,'$[8]'),json_extract(r.value,'$[9]'),json_extract(r.value,'$[10]'),json_extract(r.value,'$[11]'),json_extract(r.value,'$[12]'),json_extract(r.value,'$[13]'),json_extract(r.value,'$[14]'),json_extract(r.value,'$[15]')
+  FROM chain_detail_ingest_stage_fragments f,json_each(f.body) r
+  WHERE f.token=NEW.token AND f.ordinal=NEW.ordinal AND f.kind='capture' AND f.family=3
+  ORDER BY CAST(r.key AS INTEGER)
+  ON CONFLICT(block_number) DO UPDATE SET block_hash=excluded.block_hash,spec_version=excluded.spec_version,extrinsic_count=excluded.extrinsic_count,chain_event_count=excluded.chain_event_count,account_event_count=excluded.account_event_count,observed_at=excluded.observed_at,synced_at=excluded.synced_at,native_transfer_tao=excluded.native_transfer_tao,stake_flow_tao=excluded.stake_flow_tao,economic_activity_tao=excluded.economic_activity_tao,fee_tao=excluded.fee_tao,tip_tao=excluded.tip_tao,issuance_tao=excluded.issuance_tao,subnet_ids=excluded.subnet_ids,economics_complete=excluded.economics_complete;
+END;
+
+-- statement-breakpoint
+CREATE TRIGGER chain_detail_ingest_stage_session_cleanup AFTER DELETE ON chain_detail_ingest_stage_sessions
+BEGIN
+ DELETE FROM chain_detail_ingest_stage_apply WHERE token=OLD.token;
+ DELETE FROM chain_detail_ingest_stage_fragments WHERE token=OLD.token;
+ DELETE FROM chain_detail_ingest_stage_checks WHERE token=OLD.token;
+END;
