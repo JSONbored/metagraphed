@@ -1,0 +1,2106 @@
+// The gap guarantee is the whole point of src/raw-chain-capture.ts, so these
+// tests attack it directly: a tick that fails mid-run must NOT advance the
+// watermark past the failure, and a later tick must re-capture that exact
+// height. A test that only proved the happy path would pass while the module
+// silently skipped blocks.
+import assert from "node:assert/strict";
+import { describe, test, vi } from "vitest";
+import { createChainRpcAdmission } from "../src/chain-rpc-admission.ts";
+import {
+  captureTick,
+  fetchRawBlockChunk,
+  nextCaptureHeights,
+  rawBatchKey,
+  SYSTEM_EVENTS_STORAGE_KEY,
+  MAX_CAPTURE_CHUNK_BLOCKS,
+  type RawCaptureStore,
+  type WatermarkStore,
+} from "../src/raw-chain-capture.ts";
+
+/**
+ * A fake node that speaks what the real one speaks: `chain_getBlockHash` over
+ * a LIST of heights, and JSON-RPC BATCH request bodies.
+ *
+ * The two failure options are deliberately different kinds of event, because
+ * the module treats them differently and the difference is the guarantee:
+ *   - `failAt` is a per-CALL error, what a node returns for a height it cannot
+ *     serve. The chunk keeps its prefix and stops there.
+ *   - `httpFailAt` fails the whole REQUEST, so the chunk is lost entirely and
+ *     the caller must rotate to another endpoint.
+ */
+function rpcFetch(
+  opts: {
+    head?: number;
+    failAt?: number;
+    httpFailAt?: number;
+    events?: string | null;
+    badBlockAt?: number;
+    badHashAt?: number;
+    badEventsAt?: number;
+    headNumber?: unknown;
+    /** Answer batches in reverse, to prove correlation is by id not position. */
+    shuffle?: boolean;
+  } = {},
+) {
+  const heightOf = (hash: string) => Number(hash.replace("0xh", ""));
+  /** Heights a call touches, so a transport failure can be aimed at one. */
+  const touches = (method: string, params: unknown[]): number[] => {
+    if (method === "chain_getBlockHash") {
+      const first = params[0];
+      return (Array.isArray(first) ? first : [first]) as number[];
+    }
+    if (method === "chain_getBlock") return [heightOf(params[0] as string)];
+    if (method === "state_getStorage") return [heightOf(params[1] as string)];
+    return [];
+  };
+  /** One call's envelope, exactly as the node would answer it. */
+  const answer = (
+    method: string,
+    params: unknown[],
+  ): { result?: unknown; error?: { message: string } } => {
+    if (method === "chain_getHeader") {
+      return {
+        result: {
+          number:
+            "headNumber" in opts
+              ? opts.headNumber
+              : `0x${(opts.head ?? 100).toString(16)}`,
+        },
+      };
+    }
+    if (method === "chain_getBlockHash") {
+      const first = params[0];
+      const wanted = (Array.isArray(first) ? first : [first]) as number[];
+      const hashes = wanted.map((n) =>
+        n === opts.badHashAt ? null : `0xh${n}`,
+      );
+      // A list request is answered with a list; a bare one with a bare value.
+      return { result: Array.isArray(first) ? hashes : hashes[0] };
+    }
+    if (method === "chain_getBlock") {
+      const n = heightOf(params[0] as string);
+      if (n === opts.failAt) {
+        return { error: { message: `state already discarded at ${n}` } };
+      }
+      if (n === opts.badBlockAt) return { result: { block: { header: {} } } };
+      return {
+        result: {
+          block: {
+            header: {
+              parentHash: `0xh${n - 1}`,
+              number: `0x${n.toString(16)}`,
+            },
+            extrinsics: [`0xext${n}a`, `0xext${n}b`],
+          },
+        },
+      };
+    }
+    if (method === "state_getStorage") {
+      assert.equal(params[0], SYSTEM_EVENTS_STORAGE_KEY);
+      const n = heightOf(params[1] as string);
+      if (n === opts.badEventsAt) return { result: 42 };
+      return { result: opts.events === undefined ? `0xev${n}` : opts.events };
+    }
+    return { error: { message: `unknown method ${method}` } };
+  };
+
+  return (async (_url: unknown, init?: { body?: string }) => {
+    const body = JSON.parse(init?.body ?? "{}") as
+      | { method: string; params: unknown[] }
+      | { id: number; method: string; params: unknown[] }[];
+    const calls = Array.isArray(body) ? body : [body];
+    if (
+      opts.httpFailAt !== undefined &&
+      calls.some((c) => touches(c.method, c.params).includes(opts.httpFailAt!))
+    ) {
+      return { ok: false, status: 500 } as Response;
+    }
+    if (!Array.isArray(body)) {
+      return {
+        ok: true,
+        json: async () => answer(body.method, body.params),
+      } as unknown as Response;
+    }
+    const replies = body.map((call) => ({
+      id: call.id,
+      ...answer(call.method, call.params),
+    }));
+    return {
+      ok: true,
+      json: async () => (opts.shuffle ? replies.reverse() : replies),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+}
+
+function memoryStore() {
+  const puts = new Map<string, string>();
+  const store: RawCaptureStore = {
+    put: async (key, value) => void puts.set(key, value),
+  };
+  return { store, puts };
+}
+
+function memoryWatermark(initial: number | null = null) {
+  let value = initial;
+  const watermark: WatermarkStore = {
+    read: async () => value,
+    write: async (v) => void (value = v),
+  };
+  return { watermark, get: () => value };
+}
+
+describe("fallback response-unit burst recovery", () => {
+  const url = "https://bittensor-finney.api.onfinality.io/public";
+  function rateLimitedNode(head: number) {
+    let at = 0;
+    let rejected = 0;
+    let inWindow: { at: number; units: number }[] = [];
+    const requests: { at: number; units: number }[] = [];
+    const ordinary = rpcFetch({ head });
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const units = Array.isArray(body) ? body.length : 1;
+      inWindow = inWindow.filter((request) => at - request.at < 1_000);
+      requests.push({ at, units });
+      if (
+        inWindow.reduce((sum, request) => sum + request.units, 0) + units >
+        50
+      ) {
+        rejected += 1;
+        return new Response("rate limit", { status: 429 });
+      }
+      inWindow.push({ at, units });
+      return ordinary(input as RequestInfo, init);
+    }) as typeof fetch;
+    const now = () => at;
+    const sleep = async (ms: number) => void (at += ms);
+    return { fetchImpl, now, sleep, requests, rejected: () => rejected };
+  }
+
+  test("the former HTTP-only pacing stalls a full chunk at its original watermark", async () => {
+    const node = rateLimitedNode(25);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 25,
+      fetchImpl: node.fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: async () => undefined,
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.stoppedAt, 1);
+    assert.equal(result.reason, "batch(50): HTTP 429");
+    assert.equal(get(), 0);
+    assert.equal(puts.size, 0);
+    assert.equal(node.rejected(), 1);
+  });
+
+  test("operation admission captures full chunks and every original field without retries", async () => {
+    const node = rateLimitedNode(51);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 51,
+      fetchImpl: node.fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: createChainRpcAdmission(node.now, node.sleep),
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 51);
+    assert.equal(result.behind, 0);
+    assert.equal(get(), 51);
+    assert.equal(node.rejected(), 0);
+    assert.deepEqual(
+      node.requests.map(({ units }) => units),
+      [1, 1, 50, 1, 50, 1, 2],
+    );
+    const blocks = [...puts.values()].flatMap((value) =>
+      value
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line)),
+    );
+    assert.equal(blocks.length, 51);
+    for (const [index, block] of blocks.entries()) {
+      const height = index + 1;
+      assert.deepEqual(block, {
+        block_number: height,
+        block_hash: `0xh${height}`,
+        parent_hash: `0xh${height - 1}`,
+        header: {
+          parentHash: `0xh${height - 1}`,
+          number: `0x${height.toString(16)}`,
+        },
+        extrinsics: [`0xext${height}a`, `0xext${height}b`],
+        events: `0xev${height}`,
+        captured_at: height <= 25 ? 1_000 : height <= 50 ? 3_000 : 4_000,
+      });
+    }
+  });
+
+  test("external rejection still stops without advancing or retrying the failed chunk", async () => {
+    const node = rateLimitedNode(25);
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(0);
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      if (Array.isArray(JSON.parse(String(init?.body))))
+        return new Response("shared capacity exhausted", { status: 429 });
+      return node.fetchImpl(input as RequestInfo, init);
+    }) as typeof fetch;
+    const result = await captureTick({
+      rpcUrls: [url],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 25,
+      fetchImpl,
+      now: node.now,
+      sleepFn: node.sleep,
+      admission: createChainRpcAdmission(node.now, node.sleep),
+      requireEvents: true,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.reason, "batch(50): HTTP 429");
+    assert.equal(get(), 0);
+    assert.equal(puts.size, 0);
+    assert.equal(node.requests.length, 2);
+  });
+});
+
+describe("nextCaptureHeights", () => {
+  test("returns the contiguous run from the watermark, never a jump to head", () => {
+    assert.deepEqual(nextCaptureHeights(10, 14, 100), [11, 12, 13, 14]);
+    assert.deepEqual(
+      nextCaptureHeights(10, 10_000, 3),
+      [11, 12, 13],
+      "bounded by maxPerTick, and starts at the watermark — falling behind is recoverable, skipping is not",
+    );
+  });
+
+  test("returns nothing when caught up, or when the head is behind us", () => {
+    assert.deepEqual(nextCaptureHeights(10, 10, 5), []);
+    assert.deepEqual(nextCaptureHeights(10, 4, 5), []);
+  });
+
+  test("rejects nonsense bounds rather than guessing", () => {
+    assert.deepEqual(nextCaptureHeights(10, -1, 5), []);
+    assert.deepEqual(nextCaptureHeights(10, 1.5, 5), []);
+    assert.deepEqual(nextCaptureHeights(10, 20, 0), []);
+    assert.deepEqual(nextCaptureHeights(10, 20, -3), []);
+    assert.deepEqual(nextCaptureHeights(10, 20, 1.5), []);
+  });
+});
+
+describe("rawBatchKey", () => {
+  test("pads so lexicographic order matches block order", () => {
+    assert.equal(
+      rawBatchKey(9, 12),
+      "chain/raw/blocks/000000000009-000000000012.ndjson",
+    );
+    assert.ok(rawBatchKey(9, 9) < rawBatchKey(10, 10));
+    assert.ok(rawBatchKey(99, 99) < rawBatchKey(100, 100));
+  });
+
+  test("mainnet keeps the bare prefix, explicitly and by default (#8700)", () => {
+    // The decode lane lists `chain/raw/blocks/` and every object captured
+    // before networks existed lives there, so this prefix is a compatibility
+    // contract, not a naming preference.
+    assert.equal(
+      rawBatchKey(9, 12, "mainnet"),
+      "chain/raw/blocks/000000000009-000000000012.ndjson",
+    );
+    assert.equal(rawBatchKey(9, 12), rawBatchKey(9, 12, "mainnet"));
+  });
+
+  test("testnet writes under its own prefix, so equal heights cannot collide", () => {
+    // The key encodes only a block RANGE. Without the prefix, testnet block
+    // 7,700,000 and mainnet block 7,700,000 are the same object, and the
+    // second write silently replaces the first with another chain's bytes.
+    assert.equal(
+      rawBatchKey(9, 12, "testnet"),
+      "chain/raw/testnet/blocks/000000000009-000000000012.ndjson",
+    );
+    assert.notEqual(rawBatchKey(9, 12, "testnet"), rawBatchKey(9, 12));
+    // Ordering still holds within a network.
+    assert.ok(rawBatchKey(9, 9, "testnet") < rawBatchKey(10, 10, "testnet"));
+  });
+});
+
+describe("fetchRawBlockChunk", () => {
+  test("captures header, extrinsics and the events blob verbatim", async () => {
+    const { blocks } = await fetchRawBlockChunk(
+      "https://rpc",
+      [7],
+      rpcFetch(),
+      () => 1234,
+    );
+    const block = blocks[0]!;
+    assert.equal(block.block_number, 7);
+    assert.equal(block.block_hash, "0xh7");
+    assert.equal(block.parent_hash, "0xh6");
+    assert.deepEqual(block.extrinsics, ["0xext7a", "0xext7b"]);
+    assert.equal(block.events, "0xev7");
+    assert.equal(block.captured_at, 1234);
+  });
+
+  test("reads a whole run in TWO requests, however many blocks", async () => {
+    // The point of the chunk. Three requests per block is what capped the lane
+    // at ~33 blocks/minute against a limit that counts round trips.
+    let requests = 0;
+    const counting = (async (url: unknown, init?: { body?: string }) => {
+      requests += 1;
+      return rpcFetch()(url as never, init as never);
+    }) as unknown as typeof fetch;
+    const heights = Array.from({ length: 25 }, (_, i) => 100 + i);
+    const { blocks } = await fetchRawBlockChunk(
+      "https://rpc",
+      heights,
+      counting,
+    );
+    assert.equal(blocks.length, 25);
+    assert.equal(requests, 2, "one hash list, one batch of bodies and events");
+    assert.deepEqual(
+      blocks.map((b) => b.block_number),
+      heights,
+      "and in height order",
+    );
+  });
+
+  test("correlates batch replies by id, not by position", async () => {
+    // JSON-RPC lets a server return batch members in ANY order. Reading them
+    // positionally assembles every block from another block's bytes -- capture
+    // that is WRONG rather than missing, which no gap check would ever catch.
+    const heights = [10, 11, 12];
+    const { blocks } = await fetchRawBlockChunk(
+      "https://rpc",
+      heights,
+      rpcFetch({ shuffle: true }),
+    );
+    assert.equal(blocks.length, 3);
+    for (const block of blocks) {
+      assert.equal(
+        block.block_hash,
+        `0xh${block.block_number}`,
+        "each block carries its OWN hash",
+      );
+      assert.deepEqual(block.extrinsics, [
+        `0xext${block.block_number}a`,
+        `0xext${block.block_number}b`,
+      ]);
+      assert.equal(block.events, `0xev${block.block_number}`);
+    }
+  });
+
+  test("records a pruned events blob as null, distinct from 'no events'", async () => {
+    const { blocks } = await fetchRawBlockChunk(
+      "https://rpc",
+      [7],
+      rpcFetch({ events: null }),
+    );
+    assert.equal(blocks[0]!.events, null);
+  });
+
+  test("keeps the prefix before a bad block and says where it stopped", async () => {
+    for (const [opts, pattern] of [
+      [{ badHashAt: 5 }, /no hash at height 5/],
+      [{ badBlockAt: 5 }, /malformed block at height 5/],
+      [{ badEventsAt: 5 }, /malformed events at height 5/],
+      [{ failAt: 5 }, /state already discarded at 5/],
+    ] as const) {
+      const { blocks, stopped } = await fetchRawBlockChunk(
+        "https://rpc",
+        [3, 4, 5, 6],
+        rpcFetch(opts),
+      );
+      assert.deepEqual(
+        blocks.map((b) => b.block_number),
+        [3, 4],
+        `prefix kept for ${JSON.stringify(opts)}`,
+      );
+      assert.equal(stopped?.at, 5);
+      assert.match(stopped?.reason ?? "", pattern);
+    }
+  });
+
+  test("an events failure stops the chunk exactly like a body failure", async () => {
+    // Both legs of the batch matter. A chunk that kept a block whose events
+    // call failed would advance the watermark over bytes that are not there.
+    const eventsBad = (async (_u: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}");
+      if (!Array.isArray(body)) {
+        return {
+          ok: true,
+          json: async () => ({ result: ["0xh3", "0xh4", "0xh5"] }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () =>
+          body.map((call: { id: number; method: string; params: unknown[] }) =>
+            call.method === "state_getStorage" && call.params[1] === "0xh5"
+              ? { id: call.id, error: { message: "events pruned at 5" } }
+              : {
+                  id: call.id,
+                  result:
+                    call.method === "chain_getBlock"
+                      ? {
+                          block: {
+                            header: { parentHash: "0xp" },
+                            extrinsics: [],
+                          },
+                        }
+                      : "0xev",
+                },
+          ),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const { blocks, stopped } = await fetchRawBlockChunk(
+      "https://rpc",
+      [3, 4, 5],
+      eventsBad,
+    );
+    assert.deepEqual(
+      blocks.map((b) => b.block_number),
+      [3, 4],
+    );
+    assert.equal(stopped?.at, 5);
+    assert.match(stopped?.reason ?? "", /events pruned at 5/);
+  });
+
+  test("a null hash at the FIRST height captures nothing and says so", async () => {
+    // The chain has not produced it yet. That BOUNDS the chunk rather than
+    // failing it, and with nothing before it the chunk is empty -- which must
+    // still carry a reason, or the lane declines without saying why.
+    const { blocks, stopped } = await fetchRawBlockChunk(
+      "https://rpc",
+      [5, 6, 7],
+      rpcFetch({ badHashAt: 5 }),
+    );
+    assert.deepEqual(blocks, []);
+    assert.equal(stopped?.at, 5);
+    assert.match(stopped?.reason ?? "", /no hash at height 5/);
+  });
+
+  test("a whole-request failure throws, so the caller can rotate", async () => {
+    // Distinct from a per-call error: nothing was read, so there is no prefix
+    // to keep and another endpoint may serve the same heights.
+    await assert.rejects(
+      fetchRawBlockChunk("https://rpc", [4, 5], rpcFetch({ httpFailAt: 5 })),
+      /HTTP 500/,
+    );
+  });
+
+  test("a non-array answer to a batch is a failure, not an empty read", async () => {
+    // What the live node returns over its stated 50-call limit: HTTP 200
+    // carrying a single error OBJECT. Read as "no results" it would look like
+    // a clean chunk of nothing and advance nothing forever.
+    const tooLarge = (async (_u: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}");
+      if (!Array.isArray(body)) {
+        return {
+          ok: true,
+          json: async () => ({ result: ["0xh1", "0xh2"] }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          error: {
+            code: -32010,
+            message: "The batch request was too large",
+            data: "Exceeded max limit of 50",
+          },
+          id: null,
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    await assert.rejects(
+      fetchRawBlockChunk("https://rpc", [1, 2], tooLarge),
+      /was not a JSON-RPC batch/,
+    );
+  });
+
+  test("a bare value answering a list request is refused", async () => {
+    // Reading one hash as the answer for many heights would give every block
+    // in the chunk the same bytes.
+    const bare = (async () =>
+      ({
+        ok: true,
+        json: async () => ({ result: "0xh1" }),
+      }) as unknown as Response) as unknown as typeof fetch;
+    const { blocks, stopped } = await fetchRawBlockChunk(
+      "https://rpc",
+      [1, 2, 3],
+      bare,
+    );
+    assert.deepEqual(blocks, []);
+    assert.equal(stopped?.at, 1);
+    assert.match(stopped?.reason ?? "", /expected a list of 3 hashes/);
+  });
+
+  test("a non-string extrinsic is refused, not coerced", async () => {
+    const mixed = (async (_u: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}");
+      if (!Array.isArray(body)) {
+        return {
+          ok: true,
+          json: async () => ({ result: ["0xh5"] }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () =>
+          body.map((call: { id: number; method: string }) => ({
+            id: call.id,
+            result:
+              call.method === "chain_getBlock"
+                ? { block: { header: { parentHash: "0xp" }, extrinsics: [1] } }
+                : "0xev5",
+          })),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const { blocks, stopped } = await fetchRawBlockChunk(
+      "https://rpc",
+      [5],
+      mixed,
+    );
+    assert.deepEqual(blocks, []);
+    assert.match(stopped?.reason ?? "", /non-string extrinsic/);
+  });
+
+  test("a non-string parentHash degrades to empty rather than throwing", async () => {
+    const noParent = (async (_u: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}");
+      if (!Array.isArray(body)) {
+        return {
+          ok: true,
+          json: async () => ({ result: ["0xh5"] }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () =>
+          body.map((call: { id: number; method: string }) => ({
+            id: call.id,
+            result:
+              call.method === "chain_getBlock"
+                ? { block: { header: {}, extrinsics: [] } }
+                : "0xev5",
+          })),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const { blocks } = await fetchRawBlockChunk("https://rpc", [5], noParent);
+    assert.equal(
+      blocks[0]!.parent_hash,
+      "",
+      "the block is still captured -- a missing parentHash must not cost us the bytes",
+    );
+  });
+
+  test("no heights means no request at all", async () => {
+    let requests = 0;
+    const counting = (async () => {
+      requests += 1;
+      return { ok: false, status: 500 } as Response;
+    }) as unknown as typeof fetch;
+    const chunk = await fetchRawBlockChunk("https://rpc", [], counting);
+    assert.deepEqual(chunk.blocks, []);
+    assert.equal(chunk.stopped, null);
+    assert.equal(requests, 0);
+  });
+
+  test("a thrown non-Error is still recorded as a reason", async () => {
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const throwsString = (async (_u: unknown, init?: { body?: string }) => {
+      const m = JSON.parse(init?.body ?? "{}").method;
+      if (m === "chain_getHeader")
+        return {
+          ok: true,
+          json: async () => ({ result: { number: "0x6e" } }),
+        } as unknown as Response;
+      throw "plain string failure";
+    }) as unknown as typeof fetch;
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 3,
+      fetchImpl: throwsString,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.reason, "plain string failure");
+    assert.equal(get(), 99);
+  });
+
+  test("surfaces a JSON-RPC error body", async () => {
+    const erroring = (async () =>
+      ({
+        ok: true,
+        json: async () => ({ error: { message: "boom" } }),
+      }) as unknown as Response) as unknown as typeof fetch;
+    await assert.rejects(
+      fetchRawBlockChunk("https://rpc", [1], erroring),
+      /boom/,
+    );
+  });
+});
+
+describe("captureTick — the no-gap guarantee", () => {
+  test("first tick starts AT the floor, not after it", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(null);
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 50,
+      maxPerTick: 3,
+      fetchImpl: rpcFetch({ head: 60 }),
+    });
+    assert.equal(result.captured, 3);
+    assert.equal(get(), 52);
+    assert.ok(puts.has(rawBatchKey(50, 52)), "batch starts at the floor block");
+  });
+
+  test("a mid-run failure keeps the prefix and does NOT advance past it", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 10,
+      fetchImpl: rpcFetch({ head: 110, failAt: 103 }),
+    });
+    assert.equal(result.captured, 3, "100,101,102 captured");
+    assert.equal(result.stoppedAt, 103);
+    assert.equal(
+      get(),
+      102,
+      "watermark stops one BELOW the failure so the next tick retries it",
+    );
+    assert.ok(puts.has(rawBatchKey(100, 102)));
+    assert.ok(
+      !puts.has(rawBatchKey(100, 109)),
+      "no batch claims blocks that were never fetched",
+    );
+  });
+
+  test("the next tick re-captures exactly the failed height — no hole", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const failing = {
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 10,
+    };
+    await captureTick({
+      ...failing,
+      fetchImpl: rpcFetch({ head: 110, failAt: 103 }),
+    });
+    assert.equal(get(), 102);
+    // The blip clears; the retry must resume at 103, not at 104 or at head.
+    const second = await captureTick({
+      ...failing,
+      fetchImpl: rpcFetch({ head: 110 }),
+    });
+    assert.equal(second.watermark, 110);
+    const keys = [...puts.keys()].sort();
+    assert.deepEqual(keys, [rawBatchKey(100, 102), rawBatchKey(103, 110)]);
+    // Every height in [100,110] appears exactly once across the batches.
+    const seen = [...puts.values()]
+      .flatMap((v) => v.trim().split("\n"))
+      .map((line) => JSON.parse(line).block_number as number)
+      .sort((a, b) => a - b);
+    assert.deepEqual(
+      seen,
+      Array.from({ length: 11 }, (_, i) => 100 + i),
+      "contiguous, no duplicates, no holes",
+    );
+  });
+
+  test("a failure on the FIRST height writes nothing and holds the watermark", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 5,
+      fetchImpl: rpcFetch({ head: 110, failAt: 100 }),
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(result.watermark, 99);
+    assert.equal(result.stoppedAt, 100);
+    assert.ok(result.reason);
+    assert.equal(get(), 99, "watermark unmoved");
+    assert.equal(puts.size, 0, "nothing written");
+  });
+
+  test("caught up: no work, and `behind` reports zero", async () => {
+    const { store, puts } = memoryStore();
+    const { watermark } = memoryWatermark(110);
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 5,
+      fetchImpl: rpcFetch({ head: 110 }),
+    });
+    assert.deepEqual(result, { captured: 0, watermark: 110, behind: 0 });
+    assert.equal(puts.size, 0);
+  });
+
+  test("reports how far behind the head it still is, so lag is queryable", async () => {
+    const { store, watermark } = { ...memoryStore(), ...memoryWatermark(0) };
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 5,
+      fetchImpl: rpcFetch({ head: 1000 }),
+    });
+    assert.equal(result.captured, 5);
+    assert.equal(result.watermark, 5);
+    assert.equal(result.behind, 995);
+  });
+
+  test("a non-integer stored watermark falls back to the floor", async () => {
+    const { store } = memoryStore();
+    const watermark: WatermarkStore = {
+      read: async () => 1.5 as unknown as number,
+      write: async () => undefined,
+    };
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 20,
+      maxPerTick: 2,
+      fetchImpl: rpcFetch({ head: 30 }),
+    });
+    assert.equal(result.watermark, 21, "resumed from the floor, not from 1.5");
+  });
+
+  test("an unusable head number throws instead of capturing garbage", async () => {
+    const { store, watermark } = { ...memoryStore(), ...memoryWatermark(0) };
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://rpc"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 5,
+        fetchImpl: rpcFetch({ headNumber: "not-hex" }),
+      }),
+      /unusable head number/,
+    );
+  });
+
+  test("uses the real fetch/now defaults when none are injected", async () => {
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(5);
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = rpcFetch({ head: 6 });
+    try {
+      const result = await captureTick({
+        rpcUrls: ["https://rpc"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 2,
+      });
+      assert.equal(result.captured, 1);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+// #9430. The whole point of chunked flushing is what survives an invocation
+// that does NOT finish, so these assert the durability boundary rather than
+// the happy path.
+describe("captureTick flushes in chunks", () => {
+  function chunkedDeps(opts: {
+    heights: number;
+    flushEvery?: number;
+    minGapMs?: number;
+    failAt?: number;
+  }) {
+    const puts: { key: string; lines: number }[] = [];
+    const marks: number[] = [];
+    const gaps: number[] = [];
+    return {
+      puts,
+      marks,
+      gaps,
+      deps: {
+        rpcUrls: ["https://rpc.invalid"],
+        genesisFloor: 100,
+        maxPerTick: opts.heights,
+        flushEvery: opts.flushEvery,
+        minGapMs: opts.minGapMs ?? 0,
+        sleepFn: async (ms: number) => {
+          gaps.push(ms);
+        },
+        store: {
+          put: async (key: string, value: string) => {
+            puts.push({ key, lines: value.trimEnd().split("\n").length });
+          },
+        },
+        watermark: {
+          read: async () => 99,
+          write: async (n: number) => {
+            marks.push(n);
+          },
+        },
+        now: () => 1,
+        fetchImpl: rpcFetch({
+          head: 100 + opts.heights,
+          ...(opts.failAt ? { failAt: opts.failAt } : {}),
+        }),
+      },
+    };
+  }
+
+  test("writes one object per chunk, and the watermark trails each", async () => {
+    const { puts, marks, deps } = chunkedDeps({ heights: 10, flushEvery: 4 });
+    const result = await captureTick(deps as never);
+    assert.equal(result.captured, 10);
+    // 4 + 4 + 2, the last being the remainder.
+    assert.deepEqual(
+      puts.map((p) => p.lines),
+      [4, 4, 2],
+    );
+    // BYTES FIRST, WATERMARK AFTER -- one mark per chunk, each naming that
+    // chunk's last block, so the watermark never claims a height whose object
+    // is not already durable.
+    assert.deepEqual(marks, [103, 107, 109]);
+    assert.equal(result.watermark, 109);
+  });
+
+  // The property the whole change rests on: a tick that dies mid-way keeps
+  // everything it flushed, and the watermark points at exactly that.
+  test("a failure keeps every flushed chunk and claims no more", async () => {
+    const { puts, marks, deps } = chunkedDeps({
+      heights: 10,
+      flushEvery: 3,
+      failAt: 106,
+    });
+    const result = await captureTick(deps as never);
+    // 100-102 and 103-105 landed; 106 failed, so nothing beyond it is claimed.
+    assert.deepEqual(
+      puts.map((p) => p.lines),
+      [3, 3],
+    );
+    assert.deepEqual(marks, [102, 105]);
+    assert.equal(result.watermark, 105);
+    assert.equal(result.stoppedAt, 106);
+    assert.equal(result.captured, 6);
+  });
+
+  test("a failure before any chunk flushes claims nothing at all", async () => {
+    const { puts, marks, deps } = chunkedDeps({
+      heights: 10,
+      flushEvery: 5,
+      failAt: 100,
+    });
+    const result = await captureTick(deps as never);
+    assert.deepEqual(puts, []);
+    assert.deepEqual(marks, []);
+    assert.equal(result.captured, 0);
+    assert.equal(result.watermark, 99, "the watermark must not move");
+  });
+
+  // A retry re-reads from the same watermark, so it rebuilds the same chunk
+  // boundaries and overwrites byte-for-byte rather than appending a duplicate.
+  test("a retry of an unflushed range reproduces the same key", async () => {
+    const first = chunkedDeps({ heights: 6, flushEvery: 3 });
+    await captureTick(first.deps as never);
+    const second = chunkedDeps({ heights: 6, flushEvery: 3 });
+    await captureTick(second.deps as never);
+    assert.deepEqual(
+      first.puts.map((p) => p.key),
+      second.puts.map((p) => p.key),
+    );
+  });
+
+  test("without flushEvery it writes once, exactly as before", async () => {
+    const { puts, marks, deps } = chunkedDeps({ heights: 7 });
+    await captureTick(deps as never);
+    assert.equal(puts.length, 1);
+    assert.equal(puts[0]!.lines, 7);
+    assert.deepEqual(marks, [106]);
+  });
+
+  test("pacing waits between chunks, never before the first", async () => {
+    const { gaps, deps } = chunkedDeps({
+      heights: 4,
+      flushEvery: 1,
+      minGapMs: 4500,
+    });
+    const result = await captureTick(deps as never);
+    assert.equal(result.captured, 4);
+    assert.deepEqual(gaps, [4500, 4500, 4500]);
+  });
+
+  test("the gap is a CYCLE time, so a slow read does not add to it", async () => {
+    // A flat sleep after the work makes the real period `gap + latency`, and a
+    // chunk is ~1.7 s of transfer against the live archive -- so a tick paced
+    // that way overruns its cron interval and gets killed, which is the exact
+    // failure the chunking exists to end. Pacing from the START of the previous
+    // read keeps the REQUEST RATE on budget whatever the latency costs.
+    const gaps: number[] = [];
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    let clock = 0;
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 100,
+      maxPerTick: 3,
+      flushEvery: 1,
+      minGapMs: 1000,
+      // Each read costs 400ms of the 1000ms cycle.
+      now: () => (clock += 400),
+      fetchImpl: rpcFetch({ head: 103 }),
+      sleepFn: async (ms) => {
+        gaps.push(ms);
+      },
+    });
+    assert.equal(result.captured, 3);
+    assert.ok(
+      gaps.every((ms) => ms < 1000),
+      `the read's own duration must come off the gap, got ${JSON.stringify(gaps)}`,
+    );
+  });
+
+  test("a read slower than its gap waits not at all, rather than negatively", async () => {
+    // The other side of cycle pacing. Once a chunk takes longer than the
+    // budgeted period the lane is already at or under its request rate, so
+    // there is nothing left to wait for -- and sleeping a negative number, or
+    // the full gap on top, is how a tick overruns its interval.
+    const gaps: number[] = [];
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    let clock = 0;
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 100,
+      maxPerTick: 3,
+      flushEvery: 1,
+      minGapMs: 10,
+      // Every clock read jumps well past the 10ms gap.
+      now: () => (clock += 5_000),
+      fetchImpl: rpcFetch({ head: 103 }),
+      sleepFn: async (ms) => {
+        gaps.push(ms);
+      },
+    });
+    assert.equal(result.captured, 3);
+    assert.deepEqual(gaps, [], "no sleep at all once the read outran the gap");
+  });
+
+  test("the default sleep is a real timer, not a no-op", async () => {
+    // Every other test injects one, so without this the shipped pacing would be
+    // exercised by nothing. Milliseconds: this is about the wiring.
+    const { deps } = chunkedDeps({ heights: 3, flushEvery: 1, minGapMs: 20 });
+    const { sleepFn: _injected, ...shipped } = deps as Record<string, unknown>;
+    const started = Date.now();
+    const result = await captureTick(shipped as never);
+    assert.equal(result.captured, 3);
+    // Two gaps between three chunks, so at least ~40ms of real waiting.
+    assert.ok(
+      Date.now() - started >= 30,
+      "the shipped pacing did not actually wait",
+    );
+  });
+});
+
+/**
+ * Reading from MORE THAN ONE archive host.
+ *
+ * NOT FOR RATE. The lane fell 8,409 blocks (~28 h) behind on 2026-08-16, and
+ * rotation was not what bought it out -- batching was. The allowance is per
+ * BACKEND NODE (re-measured 2026-08-16: exhausting archive.chain.opentensor.ai
+ * then draining lite.chain.opentensor.ai got a full fresh 100), but two of the
+ * three mainnet names resolve to the same machine, and one node's allowance
+ * already funds hundreds of blocks/minute against a chain producing five. So
+ * the list buys FAILOVER and archive-depth coverage. The no-gap guarantee is
+ * the thing that must survive it, so these are mostly about that.
+ */
+describe("captureTick — reading across several endpoints", () => {
+  /**
+   * Records which heights each host was asked for.
+   *
+   * `failOn` is a per-CALL error, which is how a node actually refuses a height
+   * it cannot serve -- the chunk then keeps its prefix, which is the behaviour
+   * these tests are about.
+   */
+  function trackingFetch(
+    opts: {
+      head?: number;
+      failOn?: (url: string, height: number) => boolean;
+    } = {},
+  ) {
+    const byHost: Record<string, number[]> = {};
+    const heightOf = (hash: string) => Number(hash.replace("0xh", ""));
+    const impl = (async (url: unknown, init?: { body?: string }) => {
+      const body = JSON.parse(init?.body ?? "{}") as
+        | { method: string; params: unknown[] }
+        | { id: number; method: string; params: unknown[] }[];
+      const host = String(url);
+      const answer = (method: string, params: unknown[]) => {
+        if (method === "chain_getHeader") {
+          return { result: { number: `0x${(opts.head ?? 110).toString(16)}` } };
+        }
+        if (method === "chain_getBlockHash") {
+          const first = params[0];
+          const wanted = (Array.isArray(first) ? first : [first]) as number[];
+          (byHost[host] ||= []).push(...wanted);
+          const hashes = wanted.map((n) => `0xh${n}`);
+          return { result: Array.isArray(first) ? hashes : hashes[0] };
+        }
+        if (method === "chain_getBlock") {
+          const n = heightOf(params[0] as string);
+          if (opts.failOn?.(host, n)) {
+            return { error: { message: `cannot serve ${n} from ${host}` } };
+          }
+          return {
+            result: {
+              block: {
+                header: { number: "0x1", parentHash: "0xp" },
+                extrinsics: ["0xaa"],
+              },
+            },
+          };
+        }
+        return { result: "0xevents" };
+      };
+      if (!Array.isArray(body)) {
+        return {
+          ok: true,
+          json: async () => answer(body.method, body.params),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () =>
+          body.map((call) => ({
+            id: call.id,
+            ...answer(call.method, call.params),
+          })),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return { impl, byHost };
+  }
+
+  test("consecutive CHUNKS land on different hosts", async () => {
+    // Rotation is per chunk now, because a chunk is the unit of a read.
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const { impl, byHost } = trackingFetch();
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 4,
+      flushEvery: 2,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 4);
+    assert.deepEqual(byHost["https://a"], [100, 101]);
+    assert.deepEqual(byHost["https://b"], [102, 103]);
+  });
+
+  test("a height one host cannot serve is retried on another, NOT skipped", async () => {
+    // A flaky host must degrade throughput, never pin the watermark -- and it
+    // must never leave a hole, which is the one thing this module exists for.
+    // The failing height leads the chunk, so the read returns NOTHING from the
+    // first host, which is exactly the condition that rotates.
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const { impl } = trackingFetch({
+      failOn: (url, height) => url === "https://a" && height === 100,
+    });
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 3,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 3, "100 came from the second host");
+    assert.equal(result.stoppedAt, undefined);
+    assert.equal(get(), 102);
+  });
+
+  test("a height NO host can serve still stops the tick and keeps the prefix", async () => {
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const { impl } = trackingFetch({
+      failOn: (_url, height) => height === 102,
+    });
+    const result = await captureTick({
+      rpcUrls: ["https://a", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 6,
+      fetchImpl: impl,
+    });
+    assert.equal(result.captured, 2, "100 and 101 only");
+    assert.equal(result.stoppedAt, 102);
+    assert.equal(
+      get(),
+      101,
+      "one BELOW the failure, so the next tick retries it",
+    );
+  });
+
+  test("the head is read from whichever host answers, not a fixed one", async () => {
+    // A tick must not be lost because the preferred host is down when another
+    // could have served the whole run.
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const inner = trackingFetch();
+    const firstHostDead = (async (url: unknown, init?: { body?: string }) => {
+      if (String(url) === "https://dead") throw new Error("dead host");
+      return inner.impl(url as string, init as RequestInit);
+    }) as unknown as typeof fetch;
+    const result = await captureTick({
+      rpcUrls: ["https://dead", "https://b"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 2,
+      fetchImpl: firstHostDead,
+    });
+    assert.equal(result.captured, 2);
+  });
+
+  test("one transient testnet head failure recovers without skipping blocks", async () => {
+    const { store } = memoryStore();
+    const { watermark, get } = memoryWatermark(99);
+    const inner = rpcFetch({ head: 101 });
+    let heads = 0;
+    const sleeps: number[] = [];
+    const result = await captureTick({
+      rpcUrls: ["https://rpc"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 2,
+      sleepFn: async (ms) => {
+        sleeps.push(ms);
+      },
+      fetchImpl: (async (url, init) => {
+        assert.ok(
+          init?.signal,
+          "head, hash and batch reads all have a deadline",
+        );
+        if (
+          JSON.parse(String(init?.body)).method === "chain_getHeader" &&
+          ++heads === 1
+        ) {
+          return new Response(null, { status: 525 });
+        }
+        return inner(url, init);
+      }) as typeof fetch,
+    });
+    assert.equal(result.captured, 2);
+    assert.equal(get(), 101);
+    assert.equal(heads, 2);
+    assert.deepEqual(sleeps, [2000]);
+  });
+
+  test.each([false, true])(
+    "exhausted head endpoints retain the final cause and custody (pending=%s)",
+    async (hasPending) => {
+      const { store, puts } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      const original = hasPending
+        ? {
+            key: rawBatchKey(100, 100),
+            first: 100,
+            last: 100,
+            receipt: { original: true },
+          }
+        : null;
+      const pending = vi.fn(async () => original);
+      const acknowledgeWatermark = vi.fn(async () => undefined);
+      const rpcUrls = [
+        "https://primary.example.test",
+        "https://backup.example.test",
+      ];
+      const requests: string[] = [];
+      const sleeps: number[] = [];
+      await assert.rejects(
+        captureTick({
+          rpcUrls,
+          store: { ...store, pending, acknowledgeWatermark },
+          watermark,
+          genesisFloor: 0,
+          maxPerTick: 2,
+          sleepFn: async (ms) => {
+            sleeps.push(ms);
+          },
+          fetchImpl: (async (url, init) => {
+            assert.equal(
+              JSON.parse(String(init?.body)).method,
+              "chain_getHeader",
+              "head exhaustion must not read block bytes",
+            );
+            requests.push(String(url));
+            return new Response(null, {
+              status: String(url) === rpcUrls[0] ? 502 : 525,
+            });
+          }) as typeof fetch,
+        }),
+        {
+          name: "Error",
+          message:
+            "chain_getHeader: no endpoint answered (chain_getHeader: HTTP 525)",
+        },
+      );
+      assert.deepEqual(requests, [...rpcUrls, ...rpcUrls]);
+      assert.deepEqual(sleeps, [2000]);
+      assert.deepEqual(pending.mock.calls, [["mainnet"]]);
+      assert.equal(puts.size, 0);
+      assert.equal(get(), 99);
+      assert.equal(acknowledgeWatermark.mock.calls.length, 0);
+    },
+  );
+
+  test.each([429, 400, 525])(
+    "persistent HTTP %i leaves the watermark intact and bounds retries",
+    async (status) => {
+      const { store } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      let requests = 0;
+      const sleeps: number[] = [];
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://rpc"],
+          store,
+          watermark,
+          genesisFloor: 0,
+          maxPerTick: 2,
+          sleepFn: async (ms) => {
+            sleeps.push(ms);
+          },
+          fetchImpl: (async () => {
+            requests += 1;
+            return new Response(null, { status });
+          }) as typeof fetch,
+        }),
+        new RegExp(`chain_getHeader: HTTP ${status}`),
+      );
+      assert.equal(requests, status === 525 ? 2 : 1);
+      assert.deepEqual(sleeps, status === 525 ? [2000] : []);
+      assert.equal(get(), 99);
+    },
+  );
+
+  test.each([null, { number: "bad" }, { number: "0x20000000000000" }])(
+    "an invalid head fails over to a usable endpoint",
+    async (invalid) => {
+      const { store } = memoryStore();
+      const { watermark, get } = memoryWatermark(99);
+      const inner = rpcFetch({ head: 101 });
+      let heads = 0;
+      const result = await captureTick({
+        rpcUrls: ["https://bad", "https://good"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 2,
+        sleepFn: async () => {
+          assert.fail("failover must precede retry backoff");
+        },
+        fetchImpl: (async (url, init) => {
+          if (JSON.parse(String(init?.body)).method === "chain_getHeader") {
+            heads += 1;
+            if (url === "https://bad")
+              return Response.json({ result: invalid });
+          }
+          return inner(url, init);
+        }) as typeof fetch,
+      });
+      assert.equal(heads, 2);
+      assert.equal(result.captured, 2);
+      assert.equal(get(), 101);
+    },
+  );
+
+  test("a hanging preferred host times out and fails over without a retry", async () => {
+    vi.useFakeTimers();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation((ms) => {
+        assert.equal(ms, 10_000);
+        const controller = new AbortController();
+        setTimeout(
+          () => controller.abort(new DOMException("deadline", "TimeoutError")),
+          ms,
+        );
+        return controller.signal;
+      });
+    try {
+      const { store } = memoryStore();
+      const { watermark } = memoryWatermark(99);
+      const inner = rpcFetch({ head: 101 });
+      const pending = captureTick({
+        rpcUrls: ["https://hung", "https://good"],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 2,
+        sleepFn: async () => {
+          assert.fail("a healthy alternative needs no retry");
+        },
+        fetchImpl: (async (url, init) => {
+          if (
+            url === "https://hung" &&
+            JSON.parse(String(init?.body)).method === "chain_getHeader"
+          ) {
+            return new Promise<Response>((_resolve, reject) => {
+              init!.signal!.addEventListener(
+                "abort",
+                () => reject(init!.signal!.reason),
+                { once: true },
+              );
+            });
+          }
+          return inner(url, init);
+        }) as typeof fetch,
+      });
+      await vi.advanceTimersByTimeAsync(10_000);
+      assert.equal((await pending).captured, 2);
+    } finally {
+      timeout.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  test("the per-chunk gap does NOT shrink as endpoints are added", async () => {
+    // The premise correction, twice over. Dividing the gap by the rotation
+    // width assumes each name is its own allowance; DNS says otherwise --
+    // entrypoint-finney.opentensor.ai is a CNAME to lite.chain.opentensor.ai,
+    // one machine under two names, and draining the second after the first got
+    // 0 requests. A divisor would spend one node's minute in a fraction of it
+    // and buy a 429 partway through the tick. Batching made the question moot:
+    // there is no throughput left to want. The rotation is failover, not rate.
+    const slept: number[] = [];
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    const { impl } = trackingFetch();
+    await captureTick({
+      rpcUrls: ["https://a", "https://b", "https://c"],
+      store,
+      watermark,
+      genesisFloor: 0,
+      maxPerTick: 3,
+      flushEvery: 1,
+      minGapMs: 900,
+      fetchImpl: impl,
+      // Pinned so the gap is the whole assertion: captureTick paces on the
+      // CYCLE, subtracting a read's own duration, so a moving clock would make
+      // the expected numbers depend on how fast the fake fetch resolved.
+      now: () => 1000,
+      sleepFn: async (ms) => {
+        slept.push(ms);
+      },
+    });
+    assert.deepEqual(
+      slept,
+      [900, 900],
+      "the caller's gap, unscaled, and never before the first chunk",
+    );
+  });
+
+  test("an empty endpoint list is refused rather than read as 'no work'", async () => {
+    const { store } = memoryStore();
+    const { watermark } = memoryWatermark(99);
+    await assert.rejects(
+      captureTick({
+        rpcUrls: [],
+        store,
+        watermark,
+        genesisFloor: 0,
+        maxPerTick: 1,
+        fetchImpl: trackingFetch().impl,
+      }),
+      /rpcUrls is empty/,
+    );
+  });
+});
+
+describe("durable raw capture retry intent lifecycle", () => {
+  const pending = (first = 10, last = 10) => ({
+    key: rawBatchKey(first, last),
+    first,
+    last,
+    receipt: { original: true },
+  });
+  test("a pending short chunk keeps its original range before later full chunks", async () => {
+    const { watermark, get } = memoryWatermark(9);
+    const calls: string[] = [];
+    const keys: string[] = [];
+    const store: RawCaptureStore = {
+      pending: async (network) => {
+        assert.equal(network, "mainnet");
+        return pending();
+      },
+      put: async (key) => {
+        keys.push(key);
+        calls.push("put:" + key);
+        return { key };
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.deepEqual(receipt, { key });
+        assert.equal(get(), Number(key.slice(-19, -7)));
+        calls.push("ack:" + key);
+      },
+    };
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 26,
+      flushEvery: 25,
+      fetchImpl: rpcFetch({ head: 35 }),
+      now: () => 1000,
+    });
+    assert.equal(result.captured, 26);
+    assert.equal(result.watermark, 35);
+    assert.deepEqual(keys, [rawBatchKey(10, 10), rawBatchKey(11, 35)]);
+    assert.deepEqual(
+      calls,
+      keys.flatMap((key) => ["put:" + key, "ack:" + key]),
+    );
+  });
+
+  test("an already committed pending watermark is acknowledged before new capture", async () => {
+    const { watermark, get } = memoryWatermark(10);
+    const calls: string[] = [];
+    const old = pending();
+    const store: RawCaptureStore = {
+      pending: async () => old,
+      put: async (key) => {
+        calls.push("put");
+        return { key };
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        calls.push("ack");
+        if (key === old.key) assert.deepEqual(receipt, old.receipt);
+        assert(get()! >= Number(key.slice(-19, -7)));
+      },
+    };
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark,
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: rpcFetch({ head: 11 }),
+      now: () => 1000,
+    });
+    assert.equal(result.watermark, 11);
+    assert.deepEqual(calls, ["ack", "put", "ack"]);
+  });
+
+  test("a failed watermark write never releases the put receipt", async () => {
+    let acknowledgments = 0,
+      puts = 0;
+    const store: RawCaptureStore = {
+      pending: async () => pending(),
+      put: async () => {
+        puts++;
+        return { original: true };
+      },
+      acknowledgeWatermark: async () => {
+        acknowledgments++;
+      },
+    };
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store,
+        watermark: {
+          read: async () => 9,
+          write: async () => {
+            throw new Error("watermark failed");
+          },
+        },
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+        now: () => 1000,
+      }),
+      /watermark failed/,
+    );
+    assert.equal(puts, 1);
+    assert.equal(acknowledgments, 0);
+  });
+
+  test("a committed watermark with a lost reply reconciles before any refetch", async () => {
+    let position = 9,
+      puts = 0,
+      acknowledgments = 0;
+    const old = pending();
+    const store: RawCaptureStore = {
+      pending: async () => old,
+      put: async () => {
+        puts++;
+        return old.receipt;
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.equal(position, 10);
+        assert.equal(key, old.key);
+        assert.deepEqual(receipt, old.receipt);
+        acknowledgments++;
+      },
+    };
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store,
+        watermark: {
+          read: async () => position,
+          write: async (value) => {
+            position = value;
+            throw new Error("lost reply");
+          },
+        },
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+        now: () => 1000,
+      }),
+      /lost reply/,
+    );
+    const result = await captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      store,
+      watermark: {
+        read: async () => position,
+        write: async () => {
+          throw new Error("unexpected write");
+        },
+      },
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: rpcFetch({ head: 10 }),
+      now: () => 2000,
+    });
+    assert.equal(result.captured, 0);
+    assert.equal(puts, 1);
+    assert.equal(acknowledgments, 1);
+  });
+
+  test.each([
+    { ...pending(), first: NaN },
+    { ...pending(), last: NaN },
+    pending(11, 11),
+    pending(10, 9),
+    pending(10, 35),
+    { ...pending(), key: "wrong" },
+  ])(
+    "an incompatible pending identity refuses before reading chain bytes: %s",
+    async (state) => {
+      let reads = 0;
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://archive.example.test"],
+          store: {
+            pending: async () => state,
+            put: async () => {
+              throw new Error("unexpected put");
+            },
+            acknowledgeWatermark: async () => {
+              throw new Error("unexpected acknowledgment");
+            },
+          },
+          watermark: memoryWatermark(9).watermark,
+          genesisFloor: 1,
+          maxPerTick: 25,
+          fetchImpl: async () => {
+            reads++;
+            throw new Error("unexpected read");
+          },
+        }),
+        /pending range/,
+      );
+      assert.equal(reads, 0);
+    },
+  );
+
+  test("a pending port without acknowledgment cannot silently forget its receipt", async () => {
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store: { pending: async () => pending(), put: async () => undefined },
+        watermark: memoryWatermark(9).watermark,
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: rpcFetch({ head: 10 }),
+      }),
+      /pending range differs/,
+    );
+  });
+
+  test.each([
+    { head: 9, budget: 1 },
+    { head: 10, budget: 0 },
+  ])(
+    "unavailable pending height or request budget preserves the pending range: %s",
+    async ({ head, budget }) => {
+      let writes = 0;
+      await assert.rejects(
+        captureTick({
+          rpcUrls: ["https://archive.example.test"],
+          store: {
+            pending: async () => pending(),
+            put: async () => {
+              writes++;
+            },
+            acknowledgeWatermark: async () => {
+              writes++;
+            },
+          },
+          watermark: memoryWatermark(9).watermark,
+          genesisFloor: 1,
+          maxPerTick: budget,
+          fetchImpl: rpcFetch({ head }),
+          now: () => 1000,
+        }),
+        /available capture budget/,
+      );
+      assert.equal(writes, 0);
+    },
+  );
+
+  test("a partial pending RPC range cannot create a new shorter capture identity", async () => {
+    let writes = 0;
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        store: {
+          pending: async () => pending(10, 11),
+          put: async () => {
+            writes++;
+          },
+          acknowledgeWatermark: async () => {
+            writes++;
+          },
+        },
+        watermark: memoryWatermark(9).watermark,
+        genesisFloor: 1,
+        maxPerTick: 2,
+        fetchImpl: rpcFetch({ head: 11, failAt: 11 }),
+        now: () => 1000,
+      }),
+      /pending range cannot be reconstructed/,
+    );
+    assert.equal(writes, 0);
+  });
+});
+
+test("a pending exact range rotates past a partial primary to a complete secondary", async () => {
+  const { watermark, get } = memoryWatermark(9);
+  const first = rpcFetch({ head: 11, failAt: 11 });
+  const second = rpcFetch({ head: 11 });
+  const reads: string[] = [];
+  let stored = "",
+    acknowledgments = 0;
+  const result = await captureTick({
+    rpcUrls: ["https://partial.example.test", "https://complete.example.test"],
+    store: {
+      pending: async () => ({
+        key: rawBatchKey(10, 11),
+        first: 10,
+        last: 11,
+        receipt: "original",
+      }),
+      put: async (key, value) => {
+        assert.equal(key, rawBatchKey(10, 11));
+        stored = value;
+        return "winner";
+      },
+      acknowledgeWatermark: async (key, receipt) => {
+        assert.equal(key, rawBatchKey(10, 11));
+        assert.equal(receipt, "winner");
+        assert.equal(get(), 11);
+        acknowledgments++;
+      },
+    },
+    watermark,
+    genesisFloor: 1,
+    maxPerTick: 2,
+    now: () => 1000,
+    fetchImpl: (async (input, init) => {
+      reads.push(String(input));
+      return String(input).startsWith("https://partial")
+        ? first(input, init)
+        : second(input, init);
+    }) as typeof fetch,
+  });
+  assert.equal(result.captured, 2);
+  assert.equal(result.watermark, 11);
+  assert.equal(stored.trim().split("\n").length, 2);
+  assert.equal(acknowledgments, 1);
+  assert(reads.some((url) => url.startsWith("https://complete")));
+});
+
+test("the actual capture producer clamps every new intent to its RPC chunk contract", async () => {
+  const sizes: number[] = [];
+  const { watermark } = memoryWatermark(0);
+  const result = await captureTick({
+    rpcUrls: ["https://archive.example.test"],
+    store: {
+      pending: async () => null,
+      put: async (_key, raw) => {
+        sizes.push(raw.trim().split("\n").length);
+        return "receipt";
+      },
+      acknowledgeWatermark: async () => undefined,
+    },
+    watermark,
+    genesisFloor: 1,
+    maxPerTick: 51,
+    flushEvery: 4096,
+    fetchImpl: rpcFetch({ head: 51 }),
+    now: () => 1000,
+  });
+  assert.equal(MAX_CAPTURE_CHUNK_BLOCKS, 25);
+  assert.deepEqual(sizes, [25, 25, 1]);
+  assert.equal(result.captured, 51);
+});
+describe("captureTick consumes only its private chunk rows", () => {
+  function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<T>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
+    return { promise, resolve, reject };
+  }
+
+  // The envelope schema keeps result references. Freezing those RPC-owned
+  // objects catches cleanup that reaches beyond the producer's outer array.
+  function retainedNode(opts: {
+    head: number;
+    failAt?: number;
+    serializationError?: Error;
+  }) {
+    const ordinary = rpcFetch(opts);
+    const aliases: { header: Record<string, unknown>; extrinsics: string[] }[] = [];
+    const serialized: string[] = [];
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await ordinary(input, init);
+      const value: unknown = await response.json();
+      if (Array.isArray(value)) {
+        for (const envelope of value) {
+          const block = (envelope as {
+            result?: {
+              block?: { header: Record<string, unknown>; extrinsics: string[] };
+            };
+          }).result?.block;
+          if (!block) continue;
+          const { header, extrinsics } = block;
+          const number = String(header.number);
+          Object.defineProperty(header, "toJSON", {
+            value: function (this: Record<string, unknown>) {
+              assert.equal(this, header);
+              serialized.push("header:" + number);
+              if (opts.serializationError) throw opts.serializationError;
+              return this;
+            },
+          });
+          Object.defineProperty(extrinsics, "toJSON", {
+            value: function (this: string[]) {
+              assert.equal(this, extrinsics);
+              serialized.push("extrinsics:" + number);
+              return this;
+            },
+          });
+          Object.freeze(header);
+          Object.freeze(extrinsics);
+          aliases.push({ header, extrinsics });
+        }
+      }
+      return { ok: true, json: async () => value } as Response;
+    }) as typeof fetch;
+    return { fetchImpl, aliases, serialized };
+  }
+
+  test("delayed durability preserves full and partial counts, exact bytes and RPC aliases", async () => {
+    const expected = [];
+    for (const heights of [[1, 2], [3, 4]]) {
+      const chunk = await fetchRawBlockChunk(
+        "https://archive.example.test",
+        heights,
+        rpcFetch({ head: 6, failAt: 4 }),
+        () => 1000,
+        false,
+        async () => undefined,
+      );
+      expected.push(chunk.blocks.map((row) => JSON.stringify(row)).join("\n") + "\n");
+      assert.equal(chunk.blocks.length, heights[0] === 1 ? 2 : 1);
+    }
+    const node = retainedNode({ head: 6, failAt: 4 });
+    const puts = [deferred<unknown>(), deferred<unknown>()];
+    const marks = [deferred<void>(), deferred<void>()];
+    const acks = [deferred<void>(), deferred<void>()];
+    const putStarted = [deferred<void>(), deferred<void>()];
+    const markStarted = [deferred<void>(), deferred<void>()];
+    const ackStarted = [deferred<void>(), deferred<void>()];
+    const calls: string[] = [];
+    const values: string[] = [];
+    const receipts = [{ range: "1-2" }, { range: "3-3" }];
+    let position = 0;
+    let putIndex = 0;
+    let markIndex = 0;
+    let ackIndex = 0;
+    let settled = false;
+    const tick = captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      genesisFloor: 1,
+      maxPerTick: 6,
+      flushEvery: 2,
+      fetchImpl: node.fetchImpl,
+      now: () => 1000,
+      admission: async () => undefined,
+      store: {
+        put: (key, value) => {
+          const index = putIndex++;
+          assert.equal(key, index === 0 ? rawBatchKey(1, 2) : rawBatchKey(3, 3));
+          assert.equal(value, expected[index]);
+          calls.push("put:" + index);
+          values.push(value);
+          putStarted[index]!.resolve();
+          return puts[index]!.promise;
+        },
+        acknowledgeWatermark: async (key, receipt) => {
+          const index = ackIndex++;
+          assert.equal(receipt, receipts[index]);
+          assert.equal(key, index === 0 ? rawBatchKey(1, 2) : rawBatchKey(3, 3));
+          assert.equal(position, index === 0 ? 2 : 3);
+          calls.push("ack:" + index);
+          ackStarted[index]!.resolve();
+          await acks[index]!.promise;
+        },
+      },
+      watermark: {
+        read: async () => position,
+        write: async (height) => {
+          const index = markIndex++;
+          assert.equal(height, index === 0 ? 2 : 3);
+          calls.push("mark:" + index);
+          markStarted[index]!.resolve();
+          await marks[index]!.promise;
+          position = height;
+        },
+      },
+    });
+    void tick.then(() => { settled = true; }, () => { settled = true; });
+    for (const index of [0, 1]) {
+      await putStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(position, index === 0 ? 0 : 2);
+      assert.equal(node.aliases.length, index === 0 ? 2 : 3);
+      assert.deepEqual(calls, index === 0
+        ? ["put:0"]
+        : ["put:0", "mark:0", "ack:0", "put:1"]);
+      puts[index]!.resolve(receipts[index]);
+      await markStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(ackIndex, index);
+      assert.equal(node.aliases.length, index === 0 ? 2 : 3);
+      marks[index]!.resolve();
+      await ackStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(putIndex, index + 1, "no later chunk before acknowledgment");
+      acks[index]!.resolve();
+    }
+    assert.deepEqual(await tick, {
+      captured: 3,
+      watermark: 3,
+      behind: 3,
+      stoppedAt: 4,
+      reason: "chain_getBlock: state already discarded at 4",
+    });
+    assert.deepEqual(values, expected);
+    assert.deepEqual(calls, ["put:0", "mark:0", "ack:0", "put:1", "mark:1", "ack:1"]);
+    assert.deepEqual(node.serialized, [
+      "header:0x1", "extrinsics:0x1", "header:0x2", "extrinsics:0x2",
+      "header:0x3", "extrinsics:0x3",
+    ]);
+    assert.deepEqual(node.aliases.map(({ header, extrinsics }) => ({
+      header: { ...header }, extrinsics: [...extrinsics],
+    })), [1, 2, 3].map((height) => ({
+      header: { parentHash: `0xh${height - 1}`, number: `0x${height}` },
+      extrinsics: [`0xext${height}a`, `0xext${height}b`],
+    })));
+  });
+
+  test.each(["put_sync", "put_async", "watermark", "ack"] as const)(
+    "%s failure preserves the exact rejection and does not start a later chunk",
+    async (stage) => {
+      const failure = new Error("synthetic " + stage);
+      const node = retainedNode({ head: 2 });
+      const put = deferred<unknown>();
+      const entered = deferred<void>();
+      const receipt = { original: true };
+      const calls: string[] = [];
+      let position = 0;
+      const tick = captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        genesisFloor: 1,
+        maxPerTick: 2,
+        flushEvery: 1,
+        fetchImpl: node.fetchImpl,
+        now: () => 1000,
+        admission: async () => undefined,
+        store: {
+          put: () => {
+            calls.push("put");
+            entered.resolve();
+            if (stage === "put_sync") throw failure;
+            return put.promise;
+          },
+          acknowledgeWatermark: async (_key, actualReceipt) => {
+            assert.equal(actualReceipt, receipt);
+            calls.push("ack");
+            throw failure;
+          },
+        },
+        watermark: {
+          read: async () => position,
+          write: async (height) => {
+            calls.push("watermark");
+            if (stage === "watermark") throw failure;
+            position = height;
+          },
+        },
+      });
+      const rejected = assert.rejects(tick, (error) => error === failure);
+      await entered.promise;
+      assert.deepEqual(calls, ["put"]);
+      assert.equal(position, 0);
+      if (stage === "put_async") put.reject(failure);
+      else if (stage !== "put_sync") put.resolve(receipt);
+      await rejected;
+      assert.deepEqual(calls, stage.startsWith("put") ? ["put"]
+        : stage === "watermark" ? ["put", "watermark"] : ["put", "watermark", "ack"]);
+      assert.equal(position, stage === "ack" ? 1 : 0);
+      assert.equal(node.aliases.length, 1, "no second chunk was fetched");
+      assert.deepEqual(node.aliases[0]!.extrinsics, ["0xext1a", "0xext1b"]);
+      assert.deepEqual({ ...node.aliases[0]!.header }, { parentHash: "0xh0", number: "0x1" });
+    },
+  );
+
+  test("synchronous row serialization failure never calls the put or later durability ports", async () => {
+    const failure = new Error("synthetic serialization");
+    const node = retainedNode({ head: 1, serializationError: failure });
+    const calls: string[] = [];
+    await assert.rejects(captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: node.fetchImpl,
+      now: () => 1000,
+      admission: async () => undefined,
+      store: {
+        put: async () => { calls.push("put"); },
+        acknowledgeWatermark: async () => { calls.push("ack"); },
+      },
+      watermark: {
+        read: async () => 0,
+        write: async () => { calls.push("watermark"); },
+      },
+    }), (error) => error === failure);
+    assert.deepEqual(calls, []);
+    assert.deepEqual(node.serialized, ["header:0x1"]);
+    assert.deepEqual(node.aliases[0]!.extrinsics, ["0xext1a", "0xext1b"]);
+  });
+
+  test("overlapping network ticks keep their bytes, receipt and progress independent", async () => {
+    const gates = [deferred<unknown>(), deferred<unknown>()];
+    const entered = [deferred<void>(), deferred<void>()];
+    const receipts = [{ network: "mainnet" }, { network: "testnet" }];
+    const positions = [0, 0];
+    const calls: string[] = [];
+    const values: string[] = [];
+    const nodes = [retainedNode({ head: 1 }), retainedNode({ head: 1 })];
+    const ticks = (["mainnet", "testnet"] as const).map((network, index) => captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      network,
+      genesisFloor: 1,
+      maxPerTick: 1,
+      fetchImpl: nodes[index]!.fetchImpl,
+      now: () => 1000,
+      admission: async () => undefined,
+      store: {
+        put: (key, value) => {
+          assert.equal(key, rawBatchKey(1, 1, network));
+          calls.push("put:" + network);
+          values[index] = value;
+          entered[index]!.resolve();
+          return gates[index]!.promise;
+        },
+        acknowledgeWatermark: async (key, receipt) => {
+          assert.equal(key, rawBatchKey(1, 1, network));
+          assert.equal(receipt, receipts[index]);
+          assert.equal(positions[index], 1);
+          calls.push("ack:" + network);
+        },
+      },
+      watermark: {
+        read: async () => positions[index]!,
+        write: async (height) => { positions[index] = height; },
+      },
+    }));
+    await Promise.all(entered.map((item) => item.promise));
+    const started = [...calls];
+    assert.deepEqual(started.slice().sort(), ["put:mainnet", "put:testnet"]);
+    assert.deepEqual(positions, [0, 0]);
+    assert.equal(values[0], values[1]);
+    gates[1]!.resolve(receipts[1]);
+    assert.equal((await ticks[1]!).captured, 1);
+    assert.deepEqual(positions, [0, 1]);
+    assert.deepEqual(calls, [...started, "ack:testnet"]);
+    gates[0]!.resolve(receipts[0]);
+    assert.equal((await ticks[0]!).captured, 1);
+    assert.deepEqual(positions, [1, 1]);
+    assert.deepEqual(calls, [...started, "ack:testnet", "ack:mainnet"]);
+  });
+});
