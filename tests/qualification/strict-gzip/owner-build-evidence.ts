@@ -1,3 +1,8 @@
+import {
+  ownerProofFailure,
+  withOwnerProofReason,
+  withOwnerProofReasonAsync,
+} from "./owner-proof-reasons.ts";
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import { withPublicInputDiagnostics } from "./owner-input-diagnostics.ts";
 import {
@@ -39,11 +44,19 @@ function sourceFile(root: string, relative: string): string {
   relativeName(relative);
   const file = path.join(root, relative);
   regular(file);
-  const canonical = realpathSync(file);
+  const canonical = withOwnerProofReason("evidence-001", () =>
+    realpathSync(file),
+  );
   const allowed = relative.startsWith("node_modules/")
-    ? realpathSync(path.join(root, "node_modules"))
-    : realpathSync(root);
-  assert.ok(canonical.startsWith(allowed + path.sep));
+    ? withOwnerProofReason("evidence-002", () =>
+        realpathSync(path.join(root, "node_modules")),
+      )
+    : withOwnerProofReason("evidence-003", () => realpathSync(root));
+  try {
+    assert.ok(canonical.startsWith(allowed + path.sep));
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-004");
+  }
   return file;
 }
 // Bind the lexical metadata identity to the exact canonical source file. Both
@@ -53,14 +66,30 @@ export function ownerBuildInputIdentity(
   dependencyRoot: string,
   name: string,
 ): string {
-  assert.equal(realpathSync(root), root);
-  assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot);
+  try {
+    assert.equal(realpathSync(root), root);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-005");
+  }
+  try {
+    assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-006");
+  }
   const logical = ownerSourceIdentity(root, dependencyRoot, name);
   const expected = logical.startsWith("node_modules/")
     ? path.join(dependencyRoot, logical.slice("node_modules/".length))
     : path.join(root, logical);
-  assert.equal(realpathSync(path.resolve(root, name)), expected);
-  assert.equal(realpathSync(path.join(root, logical)), expected);
+  try {
+    assert.equal(realpathSync(path.resolve(root, name)), expected);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-007");
+  }
+  try {
+    assert.equal(realpathSync(path.join(root, logical)), expected);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-008");
+  }
   return logical;
 }
 // Read only the fixed public source/config inventory for an exact reviewed
@@ -72,8 +101,19 @@ export function readDiscardedInputEvidence(
 ): Pick<OptionalPgEvidence, "discardedInputSources" | "erasureConfigSources"> {
   let proofStage = "discarded-input-sources";
   try {
-    assert.equal(realpathSync(root), root);
-    assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot);
+    try {
+      assert.equal(realpathSync(root), root);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-009");
+    }
+    try {
+      assert.equal(
+        realpathSync(path.join(root, "node_modules")),
+        dependencyRoot,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-010");
+    }
     const plan = planDiscardedInputReads(
       metafile,
       new Map(
@@ -86,30 +126,46 @@ export function readDiscardedInputEvidence(
     if (!plan) return {};
     const discardedInputSources = Object.fromEntries(
       plan.sources.map(({ logical, actual }) => {
-        assert.equal(
-          ownerBuildInputIdentity(root, dependencyRoot, actual),
-          logical,
-        );
+        try {
+          assert.equal(
+            ownerBuildInputIdentity(root, dependencyRoot, actual),
+            logical,
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-011");
+        }
         const pin =
           DISCARDED_INPUT_SOURCE_PINS[
             logical as keyof typeof DISCARDED_INPUT_SOURCE_PINS
           ];
-        assert.ok(pin);
+        try {
+          assert.ok(pin);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-012");
+        }
         return [actual, boundedBuildFile(sourceFile(root, logical), pin.bytes)];
       }),
     );
     proofStage = "erasure-config-sources";
     const erasureConfigSources = Object.fromEntries(
       plan.configs.map((relative) => {
-        assert.equal(
-          ownerBuildInputIdentity(root, dependencyRoot, relative),
-          relative,
-        );
+        try {
+          assert.equal(
+            ownerBuildInputIdentity(root, dependencyRoot, relative),
+            relative,
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-013");
+        }
         const pin =
           ERASURE_CONFIG_SOURCE_PINS[
             relative as keyof typeof ERASURE_CONFIG_SOURCE_PINS
           ];
-        assert.ok(pin);
+        try {
+          assert.ok(pin);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-014");
+        }
         return [
           relative,
           boundedBuildFile(sourceFile(root, relative), pin.bytes),
@@ -132,8 +188,14 @@ export function optionalPgBuildAssociation(
 ) {
   let proofStage = "environment";
   try {
-    assert.equal(Object.hasOwn(process.env, "NODE_PG_FORCE_NATIVE"), false);
-    const dependencyRoot = realpathSync(path.join(root, "node_modules"));
+    try {
+      assert.equal(Object.hasOwn(process.env, "NODE_PG_FORCE_NATIVE"), false);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-015");
+    }
+    const dependencyRoot = withOwnerProofReason("evidence-016", () =>
+      realpathSync(path.join(root, "node_modules")),
+    );
     proofStage = "native-absence";
     for (const relative of [
       "pg-native",
@@ -143,12 +205,18 @@ export function optionalPgBuildAssociation(
     ]) {
       let absent = false;
       try {
-        lstatSync(path.join(dependencyRoot, relative));
+        withOwnerProofReason("evidence-017", () =>
+          lstatSync(path.join(dependencyRoot, relative)),
+        );
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         absent = true;
       }
-      assert.ok(absent, "No optional native package may be supplied");
+      try {
+        assert.ok(absent, "No optional native package may be supplied");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-018");
+      }
     }
     const needsProof = Object.values(metafile.outputs).some((output) =>
       output.imports.some((dependency) => dependency.path === "pg-native"),
@@ -163,13 +231,15 @@ export function optionalPgBuildAssociation(
         )
       : {};
     const discarded = readDiscardedInputEvidence(
-      realpathSync(root),
+      withOwnerProofReason("evidence-019", () => realpathSync(root)),
       dependencyRoot,
       metafile,
     );
     proofStage = "proof";
     return validateOptionalPgNativeImport({
-      sourceRoot: realpathSync(root),
+      sourceRoot: withOwnerProofReason("evidence-020", () =>
+        realpathSync(root),
+      ),
       dependencyRoot,
       outputRoot,
       metafile,
@@ -188,34 +258,56 @@ export function optionalPgBuildAssociation(
 }
 
 export function boundedBuildFile(file: string, maximum: number): Buffer {
-  assert.ok(
-    Number.isSafeInteger(maximum) &&
-      maximum >= 0 &&
-      maximum <= 256 * 1024 * 1024,
-  );
-  const fd = openSync(
-    file,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  try {
+    assert.ok(
+      Number.isSafeInteger(maximum) &&
+        maximum >= 0 &&
+        maximum <= 256 * 1024 * 1024,
+    );
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-021");
+  }
+  const fd = withOwnerProofReason("evidence-022", () =>
+    openSync(
+      file,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    ),
   );
   try {
-    const stat = fstatSync(fd);
-    assert.ok(stat.isFile() && stat.size <= maximum);
+    const stat = withOwnerProofReason("evidence-023", () => fstatSync(fd));
+    try {
+      assert.ok(stat.isFile() && stat.size <= maximum);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-024");
+    }
     const bytes = Buffer.alloc(stat.size + 1);
     let used = 0;
     while (used < bytes.length) {
-      const count = readSync(fd, bytes, used, bytes.length - used, null);
+      const count = withOwnerProofReason("evidence-025", () =>
+        readSync(fd, bytes, used, bytes.length - used, null),
+      );
       if (!count) break;
       used += count;
     }
-    assert.equal(used, stat.size);
-    assert.equal(fstatSync(fd).size, stat.size);
+    try {
+      assert.equal(used, stat.size);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-026");
+    }
+    try {
+      assert.equal(fstatSync(fd).size, stat.size);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-027");
+    }
     return bytes.subarray(0, used);
   } finally {
-    closeSync(fd);
+    withOwnerProofReason("evidence-028", () => closeSync(fd));
   }
 }
 const hash = (bytes: Uint8Array) =>
-  createHash("sha256").update(bytes).digest("hex");
+  withOwnerProofReason("evidence-029", () =>
+    createHash("sha256").update(bytes).digest("hex"),
+  );
 export const OWNER_BUILD_LIMITS = {
   files: 257,
   moduleBytes: 32 * 1024 * 1024,
@@ -256,17 +348,25 @@ export interface ExpectedOwnerIdentity {
   modules: { sha256: string; bytes: number }[];
 }
 function regular(file: string) {
-  const info = lstatSync(file);
-  assert.ok(info.isFile() && !info.isSymbolicLink());
+  const info = withOwnerProofReason("evidence-030", () => lstatSync(file));
+  try {
+    assert.ok(info.isFile() && !info.isSymbolicLink());
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-031");
+  }
 }
 function relativeName(name: string) {
-  assert.ok(
-    name.length > 0 &&
-      name.length <= 512 &&
-      !path.isAbsolute(name) &&
-      !name.includes("\\") &&
-      !name.split("/").some((part) => part === ".." || !part || part === "."),
-  );
+  try {
+    assert.ok(
+      name.length > 0 &&
+        name.length <= 512 &&
+        !path.isAbsolute(name) &&
+        !name.includes("\\") &&
+        !name.split("/").some((part) => part === ".." || !part || part === "."),
+    );
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-032");
+  }
 }
 const requiredSources = {
   raw: [
@@ -299,38 +399,70 @@ export function preserveOwnerBuild(
   try {
     const result = process.env.DECODER_QUALIFICATION_RESULT,
       root = process.env.DECODER_QUALIFICATION_ROOT;
-    assert.ok(
-      result && root && path.isAbsolute(result) && path.isAbsolute(root),
-    );
+    try {
+      assert.ok(
+        result && root && path.isAbsolute(result) && path.isAbsolute(root),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-033");
+    }
     const directory = path.join(path.dirname(result), "owner-builds", owner);
-    mkdirSync(directory, { recursive: true, mode: 0o700 });
-    assert.equal(readdirSync(directory).length, 0);
-    proofStage = "modules";
-    assert.ok(
-      modules.length > 0 && modules.length <= OWNER_BUILD_LIMITS.files - 2,
+    withOwnerProofReason("evidence-034", () =>
+      mkdirSync(directory, { recursive: true, mode: 0o700 }),
     );
+    try {
+      assert.equal(readdirSync(directory).length, 0);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-035");
+    }
+    proofStage = "modules";
+    try {
+      assert.ok(
+        modules.length > 0 && modules.length <= OWNER_BUILD_LIMITS.files - 2,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-036");
+    }
     let total = 0;
     const names = new Set<string>();
     const stored = modules.map((module, index) => {
       relativeName(module.name);
-      assert.ok(!names.has(module.name));
+      try {
+        assert.ok(!names.has(module.name));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-037");
+      }
       names.add(module.name);
-      assert.ok(
-        ["ESModule", "CommonJS", "CompiledWasm", "Data", "Text"].includes(
-          module.type,
-        ),
-      );
-      assert.ok(
-        module.bytes.byteLength > 0 &&
-          module.bytes.byteLength <= OWNER_BUILD_LIMITS.moduleBytes,
-      );
+      try {
+        assert.ok(
+          ["ESModule", "CommonJS", "CompiledWasm", "Data", "Text"].includes(
+            module.type,
+          ),
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-038");
+      }
+      try {
+        assert.ok(
+          module.bytes.byteLength > 0 &&
+            module.bytes.byteLength <= OWNER_BUILD_LIMITS.moduleBytes,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-039");
+      }
       total += module.bytes.byteLength;
-      assert.ok(total <= OWNER_BUILD_LIMITS.totalBytes);
+      try {
+        assert.ok(total <= OWNER_BUILD_LIMITS.totalBytes);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-040");
+      }
       const file = `module-${String(index).padStart(3, "0")}.bin`;
-      writeFileSync(path.join(directory, file), module.bytes, {
-        flag: "wx",
-        mode: 0o600,
-      });
+      withOwnerProofReason("evidence-041", () =>
+        writeFileSync(path.join(directory, file), module.bytes, {
+          flag: "wx",
+          mode: 0o600,
+        }),
+      );
       return {
         name: module.name,
         type: module.type,
@@ -340,12 +472,24 @@ export function preserveOwnerBuild(
       };
     });
     proofStage = "entry";
-    assert.equal(entry, owner === "raw" ? "api.entry.js" : "data-api.js");
-    assert.ok(names.has(entry));
-    assert.equal(
-      modules.find((module) => module.name === entry)!.type,
-      "ESModule",
-    );
+    try {
+      assert.equal(entry, owner === "raw" ? "api.entry.js" : "data-api.js");
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-042");
+    }
+    try {
+      assert.ok(names.has(entry));
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-043");
+    }
+    try {
+      assert.equal(
+        modules.find((module) => module.name === entry)!.type,
+        "ESModule",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-044");
+    }
     proofStage = "sources";
     const sources = [...new Set([...sourcePaths, ...requiredSources[owner]])]
       .sort()
@@ -355,21 +499,39 @@ export function preserveOwnerBuild(
         return { path: relative, sha256: hash(bytes) };
       });
     proofStage = "association";
-    assert.equal(
-      association.kind,
-      owner === "raw" ? "api-builder" : "wrangler-upload",
+    try {
+      assert.equal(
+        association.kind,
+        owner === "raw" ? "api-builder" : "wrangler-upload",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-045");
+    }
+    try {
+      assert.ok(
+        association.bytes.byteLength > 0 &&
+          association.bytes.byteLength <= OWNER_BUILD_LIMITS.associationBytes,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-046");
+    }
+    try {
+      assert.ok(
+        total + association.bytes.byteLength <= OWNER_BUILD_LIMITS.totalBytes,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-047");
+    }
+    withOwnerProofReason("evidence-048", () =>
+      writeFileSync(
+        path.join(directory, "association.bin"),
+        association.bytes,
+        {
+          flag: "wx",
+          mode: 0o600,
+        },
+      ),
     );
-    assert.ok(
-      association.bytes.byteLength > 0 &&
-        association.bytes.byteLength <= OWNER_BUILD_LIMITS.associationBytes,
-    );
-    assert.ok(
-      total + association.bytes.byteLength <= OWNER_BUILD_LIMITS.totalBytes,
-    );
-    writeFileSync(path.join(directory, "association.bin"), association.bytes, {
-      flag: "wx",
-      mode: 0o600,
-    });
     proofStage = "manifest";
     const manifest: OwnerBuildManifest = {
       version: 1,
@@ -385,13 +547,19 @@ export function preserveOwnerBuild(
       },
     };
     const serialized = JSON.stringify(manifest) + "\n";
-    assert.ok(
-      Buffer.byteLength(serialized) <= OWNER_BUILD_LIMITS.manifestBytes,
+    try {
+      assert.ok(
+        Buffer.byteLength(serialized) <= OWNER_BUILD_LIMITS.manifestBytes,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-049");
+    }
+    withOwnerProofReason("evidence-050", () =>
+      writeFileSync(path.join(directory, "manifest.json"), serialized, {
+        flag: "wx",
+        mode: 0o600,
+      }),
     );
-    writeFileSync(path.join(directory, "manifest.json"), serialized, {
-      flag: "wx",
-      mode: 0o600,
-    });
     return manifest.modules.map(({ sha256, bytes }) => ({ sha256, bytes }));
   } catch (cause) {
     throw ownerBuildStageFailure("preserve", proofStage, cause);
@@ -406,91 +574,190 @@ export async function validateOwnerBuild(
 ): Promise<ExpectedOwnerIdentity> {
   let proofStage = "runtime-identity";
   try {
-    assert.match(expectedRuntimeSha256, /^[a-f0-9]{64}$/);
+    try {
+      assert.match(expectedRuntimeSha256, /^[a-f0-9]{64}$/);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-051");
+    }
     proofStage = "directory";
-    const stat = lstatSync(directory);
-    assert.ok(stat.isDirectory() && !stat.isSymbolicLink());
-    const entries = readdirSync(directory, { withFileTypes: true });
-    assert.ok(
-      entries.length >= 2 && entries.length <= OWNER_BUILD_LIMITS.files,
+    const stat = withOwnerProofReason("evidence-052", () =>
+      lstatSync(directory),
     );
-    assert.ok(
-      entries.every((entry) => entry.isFile() && !entry.isSymbolicLink()),
+    try {
+      assert.ok(stat.isDirectory() && !stat.isSymbolicLink());
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-053");
+    }
+    const entries = withOwnerProofReason("evidence-054", () =>
+      readdirSync(directory, { withFileTypes: true }),
     );
+    try {
+      assert.ok(
+        entries.length >= 2 && entries.length <= OWNER_BUILD_LIMITS.files,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-055");
+    }
+    try {
+      assert.ok(
+        entries.every((entry) => entry.isFile() && !entry.isSymbolicLink()),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-056");
+    }
     proofStage = "manifest";
-    const manifest = JSON.parse(
-      boundedBuildFile(
-        path.join(directory, "manifest.json"),
-        OWNER_BUILD_LIMITS.manifestBytes,
-      ).toString(),
+    const manifest = withOwnerProofReason("evidence-057", () =>
+      JSON.parse(
+        boundedBuildFile(
+          path.join(directory, "manifest.json"),
+          OWNER_BUILD_LIMITS.manifestBytes,
+        ).toString(),
+      ),
     ) as OwnerBuildManifest;
-    assert.equal(manifest.version, 1);
-    assert.equal(manifest.owner, owner);
-    assert.ok(
-      Array.isArray(manifest.modules) &&
-        manifest.modules.length > 0 &&
-        manifest.modules.length <= OWNER_BUILD_LIMITS.files - 2,
-    );
-    assert.deepEqual(
-      entries.map((e) => e.name).sort(),
-      [
-        "manifest.json",
-        "association.bin",
-        ...manifest.modules.map((row) => row.file),
-      ].sort(),
-    );
+    try {
+      assert.equal(manifest.version, 1);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-058");
+    }
+    try {
+      assert.equal(manifest.owner, owner);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-059");
+    }
+    try {
+      assert.ok(
+        Array.isArray(manifest.modules) &&
+          manifest.modules.length > 0 &&
+          manifest.modules.length <= OWNER_BUILD_LIMITS.files - 2,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-060");
+    }
+    try {
+      assert.deepEqual(
+        entries.map((e) => e.name).sort(),
+        [
+          "manifest.json",
+          "association.bin",
+          ...manifest.modules.map((row) => row.file),
+        ].sort(),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-061");
+    }
     proofStage = "modules";
     let total = 0;
     const names = new Set<string>();
     const modules = manifest.modules.map((module, index) => {
       relativeName(module.name);
-      assert.ok(!names.has(module.name));
+      try {
+        assert.ok(!names.has(module.name));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-062");
+      }
       names.add(module.name);
-      assert.ok(
-        ["ESModule", "CommonJS", "CompiledWasm", "Data", "Text"].includes(
-          module.type,
-        ),
-      );
-      assert.equal(module.file, `module-${String(index).padStart(3, "0")}.bin`);
+      try {
+        assert.ok(
+          ["ESModule", "CommonJS", "CompiledWasm", "Data", "Text"].includes(
+            module.type,
+          ),
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-063");
+      }
+      try {
+        assert.equal(
+          module.file,
+          `module-${String(index).padStart(3, "0")}.bin`,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-064");
+      }
       const bytes = boundedBuildFile(
         path.join(directory, module.file),
         OWNER_BUILD_LIMITS.moduleBytes,
       );
       total += bytes.byteLength;
-      assert.ok(total <= OWNER_BUILD_LIMITS.totalBytes);
-      assert.equal(bytes.byteLength, module.bytes);
-      assert.ok(module.bytes > 0);
-      assert.equal(hash(bytes), module.sha256);
+      try {
+        assert.ok(total <= OWNER_BUILD_LIMITS.totalBytes);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-065");
+      }
+      try {
+        assert.equal(bytes.byteLength, module.bytes);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-066");
+      }
+      try {
+        assert.ok(module.bytes > 0);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-067");
+      }
+      try {
+        assert.equal(hash(bytes), module.sha256);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-068");
+      }
       return { sha256: module.sha256, bytes: module.bytes };
     });
     proofStage = "entry";
-    assert.equal(
-      manifest.entry,
-      owner === "raw" ? "api.entry.js" : "data-api.js",
-    );
-    assert.ok(names.has(manifest.entry));
-    assert.equal(
-      manifest.modules.find((module) => module.name === manifest.entry)!.type,
-      "ESModule",
-    );
+    try {
+      assert.equal(
+        manifest.entry,
+        owner === "raw" ? "api.entry.js" : "data-api.js",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-069");
+    }
+    try {
+      assert.ok(names.has(manifest.entry));
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-070");
+    }
+    try {
+      assert.equal(
+        manifest.modules.find((module) => module.name === manifest.entry)!.type,
+        "ESModule",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-071");
+    }
     proofStage = "sources";
-    assert.ok(
-      Array.isArray(manifest.sources) &&
-        manifest.sources.length > 0 &&
-        manifest.sources.length <= 4096,
-    );
+    try {
+      assert.ok(
+        Array.isArray(manifest.sources) &&
+          manifest.sources.length > 0 &&
+          manifest.sources.length <= 4096,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-072");
+    }
     const seen = new Set<string>();
     for (const source of manifest.sources) {
       relativeName(source.path);
-      assert.ok(!seen.has(source.path));
+      try {
+        assert.ok(!seen.has(source.path));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-073");
+      }
       seen.add(source.path);
-      assert.equal(
-        hash(boundedBuildFile(sourceFile(root, source.path), 32 * 1024 * 1024)),
-        source.sha256,
-      );
+      try {
+        assert.equal(
+          hash(
+            boundedBuildFile(sourceFile(root, source.path), 32 * 1024 * 1024),
+          ),
+          source.sha256,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-074");
+      }
     }
     for (const required of requiredSources[owner])
-      assert.ok(seen.has(required));
+      try {
+        assert.ok(seen.has(required));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-075");
+      }
     if (owner === "queue")
       for (const relative of Object.keys(OWNER_PG_SOURCES))
         assertOwnerPgSource(
@@ -501,18 +768,40 @@ export async function validateOwnerBuild(
           ),
         );
     proofStage = "association";
-    assert.equal(
-      manifest.association.kind,
-      owner === "raw" ? "api-builder" : "wrangler-upload",
-    );
-    assert.equal(manifest.association.file, "association.bin");
+    try {
+      assert.equal(
+        manifest.association.kind,
+        owner === "raw" ? "api-builder" : "wrangler-upload",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-076");
+    }
+    try {
+      assert.equal(manifest.association.file, "association.bin");
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-077");
+    }
     const association = boundedBuildFile(
       path.join(directory, "association.bin"),
       OWNER_BUILD_LIMITS.associationBytes,
     );
-    assert.equal(association.byteLength, manifest.association.bytes);
-    assert.equal(hash(association), manifest.association.sha256);
-    assert.ok(total + association.byteLength <= OWNER_BUILD_LIMITS.totalBytes);
+    try {
+      assert.equal(association.byteLength, manifest.association.bytes);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-078");
+    }
+    try {
+      assert.equal(hash(association), manifest.association.sha256);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-079");
+    }
+    try {
+      assert.ok(
+        total + association.byteLength <= OWNER_BUILD_LIMITS.totalBytes,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-080");
+    }
     await validateBuildAssociation(
       owner,
       association,
@@ -527,15 +816,30 @@ export async function validateOwnerBuild(
 }
 
 export function runnerRuntimeIdentity(run: string, root: string): string {
-  const config = JSON.parse(
-    boundedBuildFile(path.join(run, "guard-config.json"), 32 * 1024).toString(),
+  const config = withOwnerProofReason("evidence-081", () =>
+    JSON.parse(
+      boundedBuildFile(
+        path.join(run, "guard-config.json"),
+        32 * 1024,
+      ).toString(),
+    ),
   );
-  assert.equal(config.root, realpathSync(root));
-  assert.ok(Array.isArray(config.allowedNativeExecutables));
-  const expected = realpathSync(
-    path.join(
-      root,
-      "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64/bin/workerd",
+  try {
+    assert.equal(config.root, realpathSync(root));
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-082");
+  }
+  try {
+    assert.ok(Array.isArray(config.allowedNativeExecutables));
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-083");
+  }
+  const expected = withOwnerProofReason("evidence-084", () =>
+    realpathSync(
+      path.join(
+        root,
+        "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64/bin/workerd",
+      ),
     ),
   );
   const matches = config.allowedNativeExecutables.filter(
@@ -543,13 +847,29 @@ export function runnerRuntimeIdentity(run: string, root: string): string {
       row.packagePath ===
       "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64",
   );
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0].path, expected);
-  assert.equal(matches[0].version, "1.20260730.1");
-  assert.equal(
-    matches[0].sha256,
-    hash(boundedBuildFile(expected, 256 * 1024 * 1024)),
-  );
+  try {
+    assert.equal(matches.length, 1);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-085");
+  }
+  try {
+    assert.equal(matches[0].path, expected);
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-086");
+  }
+  try {
+    assert.equal(matches[0].version, "1.20260730.1");
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-087");
+  }
+  try {
+    assert.equal(
+      matches[0].sha256,
+      hash(boundedBuildFile(expected, 256 * 1024 * 1024)),
+    );
+  } catch (cause) {
+    throw ownerProofFailure(cause, "evidence-088");
+  }
   return matches[0].sha256;
 }
 
@@ -564,7 +884,11 @@ async function validateBuildAssociation(
   try {
     const moduleBytes = (name: string) => {
       const row = manifest.modules.find((module) => module.name === name);
-      assert.ok(row);
+      try {
+        assert.ok(row);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-089");
+      }
       return boundedBuildFile(
         path.join(directory, row.file),
         OWNER_BUILD_LIMITS.moduleBytes,
@@ -574,12 +898,28 @@ async function validateBuildAssociation(
       map: Record<string, unknown>,
       sourceNames: readonly string[],
     ) => {
-      assert.equal(map.version, 3);
-      assert.ok(
-        Array.isArray(map.sources) && Array.isArray(map.sourcesContent),
-      );
-      assert.equal(map.sources.length, map.sourcesContent.length);
-      assert.ok(map.sources.length <= 8192);
+      try {
+        assert.equal(map.version, 3);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-090");
+      }
+      try {
+        assert.ok(
+          Array.isArray(map.sources) && Array.isArray(map.sourcesContent),
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-091");
+      }
+      try {
+        assert.equal(map.sources.length, map.sourcesContent.length);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-092");
+      }
+      try {
+        assert.ok(map.sources.length <= 8192);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-093");
+      }
       for (const relative of sourceNames) {
         const matches: number[] = (map.sources as unknown[]).flatMap(
           (source, index) =>
@@ -591,32 +931,66 @@ async function validateBuildAssociation(
         );
         if (!matches.length) continue;
         for (const index of matches)
-          assert.equal(
-            (map.sourcesContent as unknown[])[index],
-            boundedBuildFile(
-              sourceFile(root, relative),
-              32 * 1024 * 1024,
-            ).toString(),
-          );
+          try {
+            assert.equal(
+              (map.sourcesContent as unknown[])[index],
+              boundedBuildFile(
+                sourceFile(root, relative),
+                32 * 1024 * 1024,
+              ).toString(),
+            );
+          } catch (cause) {
+            throw ownerProofFailure(cause, "evidence-094");
+          }
       }
     };
     if (owner === "queue") {
       proofStage = "queue-envelope";
       const end = bytes.indexOf("\r\n");
-      assert.ok(end > 2 && end < 200);
+      try {
+        assert.ok(end > 2 && end < 200);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-095");
+      }
       const line = bytes.subarray(0, end).toString();
-      assert.match(line, /^--[-A-Za-z0-9]+$/);
-      const form = await new Response(new Uint8Array(bytes).buffer, {
-        headers: {
-          "Content-Type": `multipart/form-data; boundary=${line.slice(2)}`,
-        },
-      }).formData();
+      try {
+        assert.match(line, /^--[-A-Za-z0-9]+$/);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-096");
+      }
+      const form = await withOwnerProofReasonAsync(
+        "evidence-097",
+        async () =>
+          await new Response(new Uint8Array(bytes).buffer, {
+            headers: {
+              "Content-Type": `multipart/form-data; boundary=${line.slice(2)}`,
+            },
+          }).formData(),
+      );
       const metadata = form.get("metadata");
-      assert.equal(typeof metadata, "string");
-      const info = JSON.parse(metadata as string);
-      assert.equal(info.main_module, "data-api.js");
-      assert.equal(info.compatibility_date, "2026-06-06");
-      assert.deepEqual(info.compatibility_flags, ["nodejs_compat"]);
+      try {
+        assert.equal(typeof metadata, "string");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-098");
+      }
+      const info = withOwnerProofReason("evidence-099", () =>
+        JSON.parse(metadata as string),
+      );
+      try {
+        assert.equal(info.main_module, "data-api.js");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-100");
+      }
+      try {
+        assert.equal(info.compatibility_date, "2026-06-06");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-101");
+      }
+      try {
+        assert.deepEqual(info.compatibility_flags, ["nodejs_compat"]);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-102");
+      }
       const types = {
         "application/javascript+module": "ESModule",
         "application/javascript": "CommonJS",
@@ -629,31 +1003,67 @@ async function validateBuildAssociation(
       proofStage = "queue-modules";
       for (const [name, value] of form) {
         if (name === "metadata") continue;
-        assert.notEqual(typeof value, "string");
+        try {
+          assert.notEqual(typeof value, "string");
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-103");
+        }
         const file = value as File;
         if (file.type === "application/source-map") {
-          assert.ok(file.size <= OWNER_BUILD_LIMITS.associationBytes);
-          maps.push(JSON.parse(await file.text()));
+          try {
+            assert.ok(file.size <= OWNER_BUILD_LIMITS.associationBytes);
+          } catch (cause) {
+            throw ownerProofFailure(cause, "evidence-104");
+          }
+          maps.push(
+            await withOwnerProofReasonAsync("evidence-105", async () =>
+              JSON.parse(await file.text()),
+            ),
+          );
           continue;
         }
-        assert.ok(!seen.has(name));
+        try {
+          assert.ok(!seen.has(name));
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-106");
+        }
         seen.add(name);
         const expected = manifest.modules.find(
           (module) => module.name === name,
         );
-        assert.ok(expected);
-        assert.equal(expected.type, types[file.type as keyof typeof types]);
-        assert.deepEqual(
-          Buffer.from(await file.arrayBuffer()),
-          moduleBytes(name),
-        );
+        try {
+          assert.ok(expected);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-107");
+        }
+        try {
+          assert.equal(expected.type, types[file.type as keyof typeof types]);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-108");
+        }
+        try {
+          assert.deepEqual(
+            Buffer.from(await file.arrayBuffer()),
+            moduleBytes(name),
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-109");
+        }
       }
-      assert.deepEqual(
-        [...seen].sort(),
-        manifest.modules.map((module) => module.name).sort(),
-      );
+      try {
+        assert.deepEqual(
+          [...seen].sort(),
+          manifest.modules.map((module) => module.name).sort(),
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-110");
+      }
       proofStage = "queue-source-maps";
-      assert.ok(maps.length > 0 && maps.length <= 256);
+      try {
+        assert.ok(maps.length > 0 && maps.length <= 256);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-111");
+      }
       const actualSources = manifest.sources
         .map((source) => source.path)
         .filter((source) => source !== "wrangler.data.jsonc");
@@ -661,56 +1071,107 @@ async function validateBuildAssociation(
       for (const required of requiredSources.queue.filter(
         (source) => source !== "wrangler.data.jsonc",
       ))
-        assert.ok(
-          maps.some((map) =>
-            (map.sources as string[]).some(
-              (source) =>
-                source === required ||
-                source.replaceAll("\\", "/").endsWith("/" + required),
+        try {
+          assert.ok(
+            maps.some((map) =>
+              (map.sources as string[]).some(
+                (source) =>
+                  source === required ||
+                  source.replaceAll("\\", "/").endsWith("/" + required),
+              ),
             ),
-          ),
-          "Required genuine bundle source association missing",
-        );
+            "Required genuine bundle source association missing",
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-112");
+        }
       return;
     }
     proofStage = "raw-envelope";
-    const association = JSON.parse(bytes.toString());
-    assert.equal(association.kind, "esbuild-api");
-    assert.equal(association.sourceRoot, realpathSync(root));
-    assert.equal(
-      association.dependencyRoot,
-      realpathSync(path.join(root, "node_modules")),
+    const association = withOwnerProofReason("evidence-113", () =>
+      JSON.parse(bytes.toString()),
     );
-    assert.ok(
-      typeof association.outputRoot === "string" &&
-        path.isAbsolute(association.outputRoot),
-    );
-    assert.match(
-      association.outputRoot,
-      /\/raw-owner-qualification-[A-Za-z0-9]+\/modules$/,
-    );
-    assert.ok(
-      Array.isArray(association.outputs) && association.outputs.length <= 1024,
-    );
-    assert.ok(
-      Array.isArray(association.sourceMaps) &&
-        association.sourceMaps.length <= 512,
-    );
+    try {
+      assert.equal(association.kind, "esbuild-api");
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-114");
+    }
+    try {
+      assert.equal(association.sourceRoot, realpathSync(root));
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-115");
+    }
+    try {
+      assert.equal(
+        association.dependencyRoot,
+        realpathSync(path.join(root, "node_modules")),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-116");
+    }
+    try {
+      assert.ok(
+        typeof association.outputRoot === "string" &&
+          path.isAbsolute(association.outputRoot),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-117");
+    }
+    try {
+      assert.match(
+        association.outputRoot,
+        /\/raw-owner-qualification-[A-Za-z0-9]+\/modules$/,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-118");
+    }
+    try {
+      assert.ok(
+        Array.isArray(association.outputs) &&
+          association.outputs.length <= 1024,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-119");
+    }
+    try {
+      assert.ok(
+        Array.isArray(association.sourceMaps) &&
+          association.sourceMaps.length <= 512,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-120");
+    }
     const meta = association.metafile;
-    assert.ok(
-      meta &&
-        typeof meta.inputs === "object" &&
-        typeof meta.outputs === "object",
-    );
+    try {
+      assert.ok(
+        meta &&
+          typeof meta.inputs === "object" &&
+          typeof meta.outputs === "object",
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-121");
+    }
     const inputs = Object.keys(meta.inputs);
-    assert.ok(inputs.length > 0 && inputs.length <= 8192);
+    try {
+      assert.ok(inputs.length > 0 && inputs.length <= 8192);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-122");
+    }
     proofStage = "raw-inputs";
     const knownSources = new Set(manifest.sources.map((source) => source.path));
     const inputIdentities = new Set<string>();
     for (const name of inputs) {
       if (name.startsWith("native-node-require:")) {
-        assert.match(name, /^native-node-require:[A-Za-z0-9_/-]+$/);
-        assert.ok(isBuiltin(name.slice("native-node-require:".length)));
+        try {
+          assert.match(name, /^native-node-require:[A-Za-z0-9_/-]+$/);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-123");
+        }
+        try {
+          assert.ok(isBuiltin(name.slice("native-node-require:".length)));
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-124");
+        }
         continue;
       }
       const relative = ownerBuildInputIdentity(
@@ -718,42 +1179,88 @@ async function validateBuildAssociation(
         association.dependencyRoot,
         name,
       );
-      assert.ok(!inputIdentities.has(relative), "Duplicate input identity");
+      try {
+        assert.ok(!inputIdentities.has(relative), "Duplicate input identity");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-125");
+      }
       inputIdentities.add(relative);
-      assert.ok(knownSources.has(relative));
-      assert.equal(
-        meta.inputs[name].bytes,
-        boundedBuildFile(sourceFile(root, relative), 32 * 1024 * 1024)
-          .byteLength,
-      );
+      try {
+        assert.ok(knownSources.has(relative));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-126");
+      }
+      try {
+        assert.equal(
+          meta.inputs[name].bytes,
+          boundedBuildFile(sourceFile(root, relative), 32 * 1024 * 1024)
+            .byteLength,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-127");
+      }
     }
     proofStage = "raw-output-inventory";
     const outputNames = new Map<string, string>();
     for (const name of Object.keys(meta.outputs)) {
       const absolute = path.resolve(root, name);
-      assert.ok(absolute.startsWith(association.outputRoot + path.sep));
+      try {
+        assert.ok(absolute.startsWith(association.outputRoot + path.sep));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-128");
+      }
       const relative = path.relative(association.outputRoot, absolute);
       relativeName(relative);
-      assert.ok(!outputNames.has(relative));
+      try {
+        assert.ok(!outputNames.has(relative));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-129");
+      }
       outputNames.set(relative, name);
     }
-    assert.equal(outputNames.size, association.outputs.length);
+    try {
+      assert.equal(outputNames.size, association.outputs.length);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-130");
+    }
     proofStage = "raw-source-maps";
     const maps = new Map<string, Record<string, unknown>>();
     for (const map of association.sourceMaps) {
       relativeName(map.name);
-      assert.ok(map.name.endsWith(".js.map") && !maps.has(map.name));
-      assert.equal(typeof map.base64, "string");
+      try {
+        assert.ok(map.name.endsWith(".js.map") && !maps.has(map.name));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-131");
+      }
+      try {
+        assert.equal(typeof map.base64, "string");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-132");
+      }
       const decoded = Buffer.from(map.base64, "base64");
-      assert.equal(decoded.toString("base64"), map.base64);
-      assert.ok(decoded.length <= OWNER_BUILD_LIMITS.associationBytes);
-      const parsed = JSON.parse(decoded.toString());
+      try {
+        assert.equal(decoded.toString("base64"), map.base64);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-133");
+      }
+      try {
+        assert.ok(decoded.length <= OWNER_BUILD_LIMITS.associationBytes);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-134");
+      }
+      const parsed = withOwnerProofReason("evidence-135", () =>
+        JSON.parse(decoded.toString()),
+      );
       matchSources(parsed, [...knownSources]);
       maps.set(map.name, parsed);
-      assert.equal(
-        meta.outputs[outputNames.get(map.name)!]?.bytes,
-        decoded.length,
-      );
+      try {
+        assert.equal(
+          meta.outputs[outputNames.get(map.name)!]?.bytes,
+          decoded.length,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-136");
+      }
     }
     proofStage = "optional-proof";
     const optionalPg = optionalPgBuildAssociation(
@@ -771,9 +1278,17 @@ async function validateBuildAssociation(
             const map = association.sourceMaps.find(
               (row: { name: string }) => row.name === output.sourceMapName,
             );
-            assert.ok(map);
+            try {
+              assert.ok(map);
+            } catch (cause) {
+              throw ownerProofFailure(cause, "evidence-137");
+            }
             const mapPath = outputNames.get(output.sourceMapName);
-            assert.ok(mapPath);
+            try {
+              assert.ok(mapPath);
+            } catch (cause) {
+              throw ownerProofFailure(cause, "evidence-138");
+            }
             return {
               metafilePath: output.metafilePath,
               bytes: moduleBytes(output.name),
@@ -791,42 +1306,106 @@ async function validateBuildAssociation(
       edges: { from: string; to: string; dynamic: boolean }[] = [];
     for (const output of association.outputs) {
       relativeName(output.name);
-      assert.ok(!seen.has(output.name));
+      try {
+        assert.ok(!seen.has(output.name));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-139");
+      }
       seen.add(output.name);
-      assert.equal(output.metafilePath, outputNames.get(output.name));
+      try {
+        assert.equal(output.metafilePath, outputNames.get(output.name));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-140");
+      }
       const info = meta.outputs[output.metafilePath];
-      assert.ok(info);
+      try {
+        assert.ok(info);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-141");
+      }
       if (output.type === "SourceMap") {
-        assert.ok(maps.has(output.name));
-        assert.equal(output.sourceMapName, null);
+        try {
+          assert.ok(maps.has(output.name));
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-142");
+        }
+        try {
+          assert.equal(output.sourceMapName, null);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-143");
+        }
         const sourceMap = association.sourceMaps.find(
           (row: { name: string }) => row.name === output.name,
         );
-        assert.equal(
-          output.sha256,
-          hash(Buffer.from(sourceMap.base64, "base64")),
-        );
+        try {
+          assert.equal(
+            output.sha256,
+            hash(Buffer.from(sourceMap.base64, "base64")),
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-144");
+        }
         continue;
       }
-      assert.ok(output.type === "ESModule" || output.type === "CompiledWasm");
+      try {
+        assert.ok(output.type === "ESModule" || output.type === "CompiledWasm");
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-145");
+      }
       const registered = manifest.modules.find(
         (module) => module.name === output.name,
       );
-      assert.ok(registered);
-      assert.equal(registered.type, output.type);
-      assert.equal(info.bytes, registered.bytes);
-      assert.equal(output.sha256, hash(moduleBytes(output.name)));
-      if (output.type === "ESModule") {
-        assert.equal(output.sourceMapName, output.name + ".map");
-        assert.ok(maps.has(output.sourceMapName));
-      } else {
-        assert.equal(output.sourceMapName, null);
-        assert.deepEqual(
-          [...moduleBytes(output.name).subarray(0, 8)],
-          [0, 97, 115, 109, 1, 0, 0, 0],
-        );
+      try {
+        assert.ok(registered);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-146");
       }
-      assert.ok(Array.isArray(info.imports));
+      try {
+        assert.equal(registered.type, output.type);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-147");
+      }
+      try {
+        assert.equal(info.bytes, registered.bytes);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-148");
+      }
+      try {
+        assert.equal(output.sha256, hash(moduleBytes(output.name)));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-149");
+      }
+      if (output.type === "ESModule") {
+        try {
+          assert.equal(output.sourceMapName, output.name + ".map");
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-150");
+        }
+        try {
+          assert.ok(maps.has(output.sourceMapName));
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-151");
+        }
+      } else {
+        try {
+          assert.equal(output.sourceMapName, null);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-152");
+        }
+        try {
+          assert.deepEqual(
+            [...moduleBytes(output.name).subarray(0, 8)],
+            [0, 97, 115, 109, 1, 0, 0, 0],
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-153");
+        }
+      }
+      try {
+        assert.ok(Array.isArray(info.imports));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-154");
+      }
       for (const [importIndex, dependency] of info.imports.entries()) {
         if (dependency.external) {
           if (
@@ -850,7 +1429,11 @@ async function validateBuildAssociation(
         ]
           .map((candidate) => path.relative(association.outputRoot, candidate))
           .filter((candidate) => outputNames.has(candidate));
-        assert.equal(candidates.length, 1);
+        try {
+          assert.equal(candidates.length, 1);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-155");
+        }
         edges.push({
           from: output.name,
           to: candidates[0]!,
@@ -858,25 +1441,41 @@ async function validateBuildAssociation(
         });
       }
     }
-    assert.deepEqual([...seen].sort(), [...outputNames.keys()].sort());
-    assert.deepEqual(
-      association.outputs
-        .filter((output: { type: string }) => output.type !== "SourceMap")
-        .map((output: { name: string }) => output.name)
-        .sort(),
-      manifest.modules.map((module) => module.name).sort(),
-    );
+    try {
+      assert.deepEqual([...seen].sort(), [...outputNames.keys()].sort());
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-156");
+    }
+    try {
+      assert.deepEqual(
+        association.outputs
+          .filter((output: { type: string }) => output.type !== "SourceMap")
+          .map((output: { name: string }) => output.name)
+          .sort(),
+        manifest.modules.map((module) => module.name).sort(),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-157");
+    }
     proofStage = "raw-closure";
     const entryInfo = meta.outputs[outputNames.get("api.entry.js")!];
-    assert.equal(entryInfo.entryPoint, "workers/api.entry.ts");
-    assert.deepEqual([...entryInfo.exports].sort(), [
-      "AlerterHub",
-      "ChainFirehoseHub",
-      "McpSessionHub",
-      "NeonWriteBufferHub",
-      "SubnetStatusHub",
-      "default",
-    ]);
+    try {
+      assert.equal(entryInfo.entryPoint, "workers/api.entry.ts");
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-158");
+    }
+    try {
+      assert.deepEqual([...entryInfo.exports].sort(), [
+        "AlerterHub",
+        "ChainFirehoseHub",
+        "McpSessionHub",
+        "NeonWriteBufferHub",
+        "SubnetStatusHub",
+        "default",
+      ]);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-159");
+    }
     const closure = (dynamic: boolean) => {
       const reached = new Set(["api.entry.js"]);
       for (let previous = -1; previous !== reached.size;) {
@@ -887,10 +1486,14 @@ async function validateBuildAssociation(
       }
       return reached;
     };
-    assert.deepEqual(
-      [...closure(true)].sort(),
-      manifest.modules.map((module) => module.name).sort(),
-    );
+    try {
+      assert.deepEqual(
+        [...closure(true)].sort(),
+        manifest.modules.map((module) => module.name).sort(),
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "evidence-160");
+    }
     const eager = closure(false);
     proofStage = "raw-contributions";
     for (const required of [
@@ -903,48 +1506,72 @@ async function validateBuildAssociation(
       const names = inputs.filter(
         (name) => path.resolve(root, name) === path.join(root, required),
       );
-      assert.equal(names.length, 1);
+      try {
+        assert.equal(names.length, 1);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-161");
+      }
       const contributions = Object.entries(meta.outputs).filter(
         ([, output]) =>
           ((output as { inputs: Record<string, { bytesInOutput: number }> })
             .inputs[names[0]!]?.bytesInOutput ?? 0) > 0,
       );
-      assert.ok(contributions.length > 0);
+      try {
+        assert.ok(contributions.length > 0);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "evidence-162");
+      }
       for (const [output] of contributions) {
         const relative = path.relative(
           association.outputRoot,
           path.resolve(root, output),
         );
         const map = maps.get(relative + ".map");
-        assert.ok(map);
+        try {
+          assert.ok(map);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-163");
+        }
         const matches = (map.sources as string[]).flatMap((source, index) =>
           source === required ||
           source.replaceAll("\\", "/").endsWith("/" + required)
             ? [index]
             : [],
         );
-        assert.ok(matches.length > 0);
+        try {
+          assert.ok(matches.length > 0);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-164");
+        }
         for (const index of matches)
-          assert.equal(
-            (map.sourcesContent as unknown[])[index],
-            boundedBuildFile(
-              sourceFile(root, required),
-              32 * 1024 * 1024,
-            ).toString(),
-          );
+          try {
+            assert.equal(
+              (map.sourcesContent as unknown[])[index],
+              boundedBuildFile(
+                sourceFile(root, required),
+                32 * 1024 * 1024,
+              ).toString(),
+            );
+          } catch (cause) {
+            throw ownerProofFailure(cause, "evidence-165");
+          }
       }
       if (required === "workers/api.ts")
-        assert.ok(
-          contributions.every(
-            ([output]) =>
-              !eager.has(
-                path.relative(
-                  association.outputRoot,
-                  path.resolve(root, output),
+        try {
+          assert.ok(
+            contributions.every(
+              ([output]) =>
+                !eager.has(
+                  path.relative(
+                    association.outputRoot,
+                    path.resolve(root, output),
+                  ),
                 ),
-              ),
-          ),
-        );
+            ),
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "evidence-166");
+        }
     }
   } catch (cause) {
     throw ownerBuildStageFailure("association", proofStage, cause);

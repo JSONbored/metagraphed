@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import {
+  ownerProofReasonMarker,
+  parseOwnerProofReasonMarker,
+} from "./owner-proof-reasons.ts";
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import {
@@ -19,6 +23,9 @@ import {
   optionalProofDiagnosticMarkers,
   OPTIONAL_PROOF_STAGES,
   OPTIONAL_IMPORT_CATEGORIES,
+  OPTIONAL_INPUT_KEY_CATEGORIES,
+  collectOptionalPgInputKeyCounts,
+  parseOptionalPgInputKeyCountsMarker,
   OPTIONAL_PG_DIAGNOSTIC_LIMITS,
   optionalPgExternalRefusalMarker,
   assertOptionalPgExternalImport,
@@ -382,7 +389,7 @@ test("failure wrapper never reads or reflects on a thrown proxy cause", () => {
     (error) => {
       assert.ok(error instanceof Error);
       assert.equal(error.cause, cause);
-      assert.equal(optionalProofDiagnosticMarkers(error).split("\n").length, 3);
+      assert.equal(optionalProofDiagnosticMarkers(error).split("\n").length, 5);
       assert.equal(traps, 0);
       return true;
     },
@@ -477,7 +484,7 @@ test("diagnostic failure never replaces the original proof cause", () => {
       assert.equal(error.cause, original);
       assert.equal(
         error.message,
-        "[owner-optional-proof-failed:roots]\n[owner-optional-import-counts:input:0:0:0:0:0:0:0]\n[owner-optional-import-counts:output:0:0:0:0:0:0:0]",
+        "[owner-optional-proof-failed:roots]\n[owner-optional-import-counts:input:0:0:0:0:0:0:0]\n[owner-optional-import-counts:output:0:0:0:0:0:0:0]\n[owner-optional-input-key-counts:0:0:0:0:0:0:0:0:0:0:0]\n[owner-proof-reason:opg-operation-validate]",
       );
       return true;
     },
@@ -647,7 +654,7 @@ for (const scope of ["input", "output"] as const) {
         () => validateOptionalPgNativeImport(e),
         (error) => {
           assert.ok(error instanceof Error);
-          assert.equal(error.message.split("\n").length, 3);
+          assert.equal(error.message.split("\n").length, 5);
           assert.equal(
             error.message.split("\n")[0],
             "[owner-optional-proof-failed:external-imports]",
@@ -898,9 +905,37 @@ const stageMutations: [
     },
   ],
   [
-    "source-identities",
+    "source-file-identity",
     (e) => {
       e.metafile.inputs["../unreviewed/file.js"] = { bytes: 1, imports: [] };
+    },
+  ],
+  [
+    "source-builtin-syntax",
+    (e) => {
+      e.metafile.inputs["native-node-require:node:fs"] = {
+        bytes: 1,
+        imports: [],
+      };
+    },
+  ],
+  [
+    "source-builtin-identity",
+    (e) => {
+      e.metafile.inputs["native-node-require:not-a-real-builtin"] = {
+        bytes: 1,
+        imports: [],
+      };
+    },
+  ],
+  [
+    "source-duplicate-identity",
+    (e) => {
+      e.dependencyRoot = "/review/deps/node_modules";
+      e.metafile.inputs["../deps/node_modules/pg/esm/index.mjs"] = {
+        bytes: 1,
+        imports: [],
+      };
     },
   ],
   [
@@ -991,6 +1026,31 @@ for (const [stage, mutate] of stageMutations) {
         assert.ok(error instanceof Error);
         const markers = optionalProofDiagnosticMarkers(error).split("\n");
         assert.equal(markers[0], `[owner-optional-proof-failed:${stage}]`);
+        const reason = parseOwnerProofReasonMarker(
+          optionalProofDiagnosticMarkers(error),
+        );
+        assert.ok(reason && reason !== "opg-operation-validate");
+        assert.ok(
+          optionalProofDiagnosticMarkers(error).includes(
+            ownerProofReasonMarker(error),
+          ),
+        );
+        assert.ok(
+          parseOptionalPgInputKeyCountsMarker(
+            optionalProofDiagnosticMarkers(error),
+          ),
+        );
+        assert.equal(
+          markers.filter((line) => line.startsWith("[owner-proof-reason:"))
+            .length,
+          1,
+        );
+        assert.equal(
+          markers.filter((line) =>
+            line.startsWith("[owner-optional-input-key-counts:"),
+          ).length,
+          1,
+        );
         assert.equal(
           markers.filter((line) =>
             line.startsWith("[owner-optional-proof-failed:"),
@@ -2364,4 +2424,396 @@ test("reviewed batch is source-identity proof, not evidence that target modules 
   // This target input may be bundled through another edge while its specific
   // reviewed import declaration remains erased and absent from output imports.
   assert.ok(validateOptionalPgNativeImport(e));
+});
+
+const zeroKeyCounts = {
+  project: 0,
+  dependency: 0,
+  "valid-builtin": 0,
+  "invalid-builtin-namespace": 0,
+  "disabled-namespace": 0,
+  "other-namespace": 0,
+  "invalid-path": 0,
+  "escaped-root": 0,
+};
+const emptyKeyCensus = {
+  complete: false,
+  scanned: 0,
+  duplicateLogicalIdentities: 0,
+  counts: zeroKeyCounts,
+};
+const census = (
+  inputs: unknown,
+  sourceRoot: unknown = "/review/repo",
+  dependencyRoot: unknown = "/review/deps/node_modules",
+) => collectOptionalPgInputKeyCounts({ inputs }, sourceRoot, dependencyRoot);
+const censusMarker = (
+  complete: number,
+  scanned: number,
+  duplicate: number,
+  counts: number[],
+) =>
+  `[owner-optional-input-key-counts:${complete}:${scanned}:${duplicate}:${counts.join(":")}]`;
+
+test("input-key census categories are frozen and complete across every original shape", () => {
+  assert.ok(Object.isFrozen(OPTIONAL_INPUT_KEY_CATEGORIES));
+  const input = Object.fromEntries(
+    [
+      "apps/api/index.ts",
+      "node_modules/pg/index.js",
+      "native-node-require:fs",
+      "native-node-require:node:fs",
+      "(disabled):private/secret",
+      "private-namespace:secret",
+      "apps//secret.ts",
+      "../other/secret.ts",
+    ].map((key) => [key, { bytes: 0, imports: [] }]),
+  );
+  assert.deepEqual(census(input), {
+    complete: true,
+    scanned: 8,
+    duplicateLogicalIdentities: 0,
+    counts: Object.fromEntries(
+      OPTIONAL_INPUT_KEY_CATEGORIES.map((key) => [key, 1]),
+    ),
+  });
+  assert.ok(!JSON.stringify(census(input)).includes("secret"));
+});
+for (const [key, category] of [
+  ["apps/api/index.ts", "project"],
+  ["node_modules/pg/index.js", "dependency"],
+  ["../deps/node_modules/pg/index.js", "dependency"],
+  ["native-node-require:fs/promises", "valid-builtin"],
+  ["native-node-require:not-real", "invalid-builtin-namespace"],
+  ["native-node-require:", "invalid-builtin-namespace"],
+  ["native-node-require:node:fs", "invalid-builtin-namespace"],
+  ["(disabled):", "disabled-namespace"],
+  ["(disabled):node_modules/example/index.js", "disabled-namespace"],
+  ["elsewhere:anything", "other-namespace"],
+  ["/review/repo/absolute.ts", "invalid-path"],
+  ["./apps/index.ts", "invalid-path"],
+  ["apps/../index.ts", "invalid-path"],
+  ["apps//index.ts", "invalid-path"],
+  ["", "invalid-path"],
+  ["apps\\index.ts", "invalid-path"],
+  ["apps/\nindex.ts", "invalid-path"],
+  ["../other/index.ts", "escaped-root"],
+  ["../deps/node_modules-other/index.ts", "escaped-root"],
+] as const) {
+  test(
+    "input-key census fixed category " +
+      category +
+      " case " +
+      JSON.stringify(key),
+    () => {
+      assert.deepEqual(census({ [key]: {} }), {
+        complete: true,
+        scanned: 1,
+        duplicateLogicalIdentities: 0,
+        counts: { ...zeroKeyCounts, [category]: 1 },
+      });
+    },
+  );
+}
+test("input-key census duplicate identities are a separate overlapping count", () => {
+  const inputs = {
+    "apps/index.ts": {},
+    "node_modules/pg/index.js": {},
+    "../deps/node_modules/pg/index.js": {},
+  };
+  assert.deepEqual(census(inputs), {
+    complete: true,
+    scanned: 3,
+    duplicateLogicalIdentities: 1,
+    counts: { ...zeroKeyCounts, project: 1, dependency: 2 },
+  });
+  assert.equal(
+    census(Object.fromEntries(Object.entries(inputs).reverse()))
+      .duplicateLogicalIdentities,
+    1,
+  );
+});
+test("input-key census distinguishes a canonical internal dependency root", () => {
+  assert.deepEqual(
+    census(
+      { "node_modules/pg/index.js": {} },
+      "/review/repo",
+      "/review/repo/node_modules",
+    ),
+    {
+      complete: true,
+      scanned: 1,
+      duplicateLogicalIdentities: 0,
+      counts: { ...zeroKeyCounts, dependency: 1 },
+    },
+  );
+});
+for (const [name, inputs] of [
+  ["null", null],
+  ["array", []],
+  ["primitive", 1],
+  ["null record", { ok: null }],
+  ["array record", { ok: [] }],
+  [
+    "hidden entry",
+    Object.defineProperty({}, "ok", { value: {}, enumerable: false }),
+  ],
+  ["symbol entry", { [Symbol("secret")]: {} }],
+  ["nonplain table", Object.create({ secret: {} })],
+  [
+    "over-budget record fields",
+    {
+      ok: Object.fromEntries(
+        Array.from({ length: 33 }, (_, i) => [String(i), 0]),
+      ),
+    },
+  ],
+] as const)
+  test("input-key census malformed " + name + " is complete-or-zero", () =>
+    assert.deepEqual(census(inputs), emptyKeyCensus),
+  );
+for (const roots of [
+  ["relative", "/review/deps"],
+  ["/review//repo", "/review/deps"],
+  ["/review/repo", "/review/repo"],
+  ["/review/repo", "/review"],
+  [null, "/review/deps"],
+  ["/review/repo", {}],
+])
+  test("input-key census rejects invalid roots " + JSON.stringify(roots), () =>
+    assert.deepEqual(
+      census({ ok: {} }, ...(roots as [unknown, unknown])),
+      emptyKeyCensus,
+    ),
+  );
+test("input-key census detects a late malformed entry and discards earlier counts", () => {
+  const value = { "apps/good.ts": {}, late: {} };
+  Object.defineProperty(value, "late", {
+    get() {
+      throw new Error("must not run");
+    },
+  });
+  assert.deepEqual(census(value), emptyKeyCensus);
+});
+test("input-key census rejects proxies and accessors without invoking any trap", () => {
+  let traps = 0;
+  const poison = (value: object) =>
+    new Proxy(value, {
+      get() {
+        traps++;
+        throw 0;
+      },
+      ownKeys() {
+        traps++;
+        throw 0;
+      },
+      getOwnPropertyDescriptor() {
+        traps++;
+        throw 0;
+      },
+      getPrototypeOf() {
+        traps++;
+        throw 0;
+      },
+    });
+  const accessor = Object.defineProperty({}, "imports", {
+    enumerable: true,
+    get() {
+      traps++;
+      throw 0;
+    },
+  });
+  const tableAccessor = Object.defineProperty({}, "secret", {
+    enumerable: true,
+    get() {
+      traps++;
+      throw 0;
+    },
+  });
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  for (const value of [
+    poison({}),
+    revoked.proxy,
+    { ok: poison({}) },
+    { ok: { imports: poison([]) } },
+    { ok: accessor },
+    tableAccessor,
+  ])
+    assert.deepEqual(census(value), emptyKeyCensus);
+  assert.deepEqual(
+    collectOptionalPgInputKeyCounts(poison({}), "/review/repo", "/review/deps"),
+    emptyKeyCensus,
+  );
+  assert.deepEqual(
+    collectOptionalPgInputKeyCounts(
+      Object.defineProperty({}, "inputs", {
+        get() {
+          traps++;
+          throw 0;
+        },
+      }),
+      "/review/repo",
+      "/review/deps",
+    ),
+    emptyKeyCensus,
+  );
+  assert.equal(traps, 0);
+});
+test("input-key census respects exact record and cumulative character budgets", () => {
+  const cap = OPTIONAL_PG_DIAGNOSTIC_LIMITS.inputRecords;
+  assert.equal(
+    census(
+      Object.fromEntries(
+        Array.from({ length: cap }, (_, i) => [`app/${i}.ts`, {}]),
+      ),
+    ).scanned,
+    cap,
+  );
+  assert.deepEqual(
+    census(
+      Object.fromEntries(
+        Array.from({ length: cap + 1 }, (_, i) => [`app/${i}.ts`, {}]),
+      ),
+    ),
+    emptyKeyCensus,
+  );
+  assert.deepEqual(census({ ["x".repeat(4097)]: {} }), emptyKeyCensus);
+  assert.deepEqual(
+    census(
+      Object.fromEntries(
+        Array.from({ length: 4200 }, (_, i) => [
+          String(i).padStart(4, "0") + "x".repeat(4092),
+          {},
+        ]),
+      ),
+    ),
+    emptyKeyCensus,
+  );
+});
+test("input-key marker parser roundtrips complete and incomplete fixed summaries", () => {
+  const complete = censusMarker(1, 3, 1, [1, 2, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(parseOptionalPgInputKeyCountsMarker(complete), {
+    complete: true,
+    scanned: 3,
+    duplicateLogicalIdentities: 1,
+    counts: { ...zeroKeyCounts, project: 1, dependency: 2 },
+  });
+  assert.deepEqual(
+    parseOptionalPgInputKeyCountsMarker(
+      censusMarker(0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]),
+    ),
+    emptyKeyCensus,
+  );
+  assert.equal(
+    parseOptionalPgInputKeyCountsMarker("prefix\n" + complete + "\nstack")
+      ?.scanned,
+    3,
+  );
+});
+const validKeyMarker = censusMarker(1, 1, 0, [1, 0, 0, 0, 0, 0, 0, 0]);
+for (const [name, value] of [
+  ["null", null],
+  [
+    "object",
+    {
+      toString() {
+        throw 0;
+      },
+    },
+  ],
+  ["missing", "unrelated"],
+  ["duplicate", validKeyMarker + validKeyMarker],
+  [
+    "conflict",
+    validKeyMarker + censusMarker(0, 0, 0, [0, 0, 0, 0, 0, 0, 0, 0]),
+  ],
+  ["overflow", censusMarker(1, 8193, 0, [8193, 0, 0, 0, 0, 0, 0, 0])],
+  ["sum overflow", censusMarker(1, 8192, 0, [8192, 8192, 0, 0, 0, 0, 0, 0])],
+  ["sum mismatch", censusMarker(1, 2, 0, [1, 0, 0, 0, 0, 0, 0, 0])],
+  ["duplicate mismatch", censusMarker(1, 1, 1, [0, 0, 1, 0, 0, 0, 0, 0])],
+  ["incomplete nonzero", censusMarker(0, 1, 0, [1, 0, 0, 0, 0, 0, 0, 0])],
+  ["negative", validKeyMarker.replace(":1:1:", ":1:-1:")],
+  ["leading zero", validKeyMarker.replace(":1:1:", ":1:01:")],
+  ["fraction", validKeyMarker.replace(":1:1:", ":1:1.0:")],
+  ["exponent", validKeyMarker.replace(":1:1:", ":1:1e0:")],
+  ["status", validKeyMarker.replace(":1:1:", ":2:1:")],
+  ["truncated", validKeyMarker.slice(0, -1)],
+  ["extra field", validKeyMarker.replace("]", ":0]")],
+  ["secret field", validKeyMarker.replace(":1:1:", ":1:secret:")],
+  ["huge text", validKeyMarker + "x".repeat(65536)],
+] as const)
+  test("input-key marker rejects " + name, () =>
+    assert.equal(parseOptionalPgInputKeyCountsMarker(value), null),
+  );
+test("successful optional proof does not inspect diagnostic-only accessor data", () => {
+  const e = sample();
+  let reads = 0;
+  Object.defineProperty(e.metafile.inputs[ESM], "diagnosticTrap", {
+    get() {
+      reads++;
+      throw 0;
+    },
+  });
+  assert.equal(validateOptionalPgNativeImport(e)?.package, "pg-native");
+  assert.equal(reads, 0);
+});
+test("failure-only census does not change original primitive failure or invoke extra accessors", () => {
+  const e = sample();
+  let reads = 0;
+  Object.defineProperty(e, "sourceRoot", {
+    get() {
+      reads++;
+      throw "fixed synthetic primitive";
+    },
+  });
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.cause, "fixed synthetic primitive");
+      assert.deepEqual(
+        parseOptionalPgInputKeyCountsMarker(
+          optionalProofDiagnosticMarkers(error),
+        ),
+        emptyKeyCensus,
+      );
+      assert.equal(reads, 1);
+      return true;
+    },
+  );
+});
+for (const malformed of [
+  "[owner-optional-input-key-counts]",
+  "[owner-optional-input-key-countsX:1]",
+])
+  test(
+    "input-key parser rejects malformed accompanying marker " + malformed,
+    () =>
+      assert.equal(
+        parseOptionalPgInputKeyCountsMarker(malformed + validKeyMarker),
+        null,
+      ),
+  );
+test("valid builtin namespace inventory still passes the original proof", () => {
+  const e = sample();
+  e.metafile.inputs["native-node-require:fs"] = { bytes: 0, imports: [] };
+  assert.equal(validateOptionalPgNativeImport(e)?.package, "pg-native");
+});
+test("malformed source-map JSON retains a specific parse-operation reason", () => {
+  const e = sample();
+  e.outputs[0]!.sourceMap.bytes = Buffer.from("{");
+  e.metafile.outputs[outputKey + ".map"]!.bytes = 1;
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.ok(error.cause instanceof SyntaxError);
+      assert.equal(
+        parseOwnerProofReasonMarker(optionalProofDiagnosticMarkers(error)),
+        "opg-operation-source-map-json",
+      );
+      return true;
+    },
+  );
 });

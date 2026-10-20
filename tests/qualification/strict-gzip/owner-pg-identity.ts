@@ -1,3 +1,4 @@
+import { ownerProofFailure } from "./owner-proof-reasons.ts";
 // Exact public release-source identities. Sources are inert test data, never imported.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -19,9 +20,17 @@ export function assertOwnerPgSource(
   relative: string,
   bytes: Uint8Array | string,
 ) {
-  assert.ok(Object.hasOwn(OWNER_PG_SOURCES, relative));
-  assert.equal(
-    createHash("sha256").update(bytes).digest("hex"),
-    OWNER_PG_SOURCES[relative as keyof typeof OWNER_PG_SOURCES],
-  );
+  try {
+    assert.ok(Object.hasOwn(OWNER_PG_SOURCES, relative));
+  } catch (cause) {
+    throw ownerProofFailure(cause, "pg-source-001");
+  }
+  try {
+    assert.equal(
+      createHash("sha256").update(bytes).digest("hex"),
+      OWNER_PG_SOURCES[relative as keyof typeof OWNER_PG_SOURCES],
+    );
+  } catch (cause) {
+    throw ownerProofFailure(cause, "pg-source-002");
+  }
 }

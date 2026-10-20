@@ -300,6 +300,45 @@ outside the runtime overlay. The fixture files remain under the existing 512 KiB
 per-file and 2 MiB total overlay limits. Final code review and an exact hosted
 rerun are required before claiming the combined owner scenario passed.
 
+## Exact failure predicates for the remaining build proof
+
+Run [39497598907](https://github.com/JSONbored/metagraphed/actions/runs/39497598907)
+again passed all 490 baseline assertions and the real queue-owner assertion, with
+zero denials and two complete guarded threads. Raw build proof advanced past the
+original external-import refusal but failed at `source-identities`, before the
+new source/config batch was accepted. The receipt does not establish whether a
+builtin namespace, ordinary file identity or duplicate identity caused that
+failure. Pinned esbuild can emit a `(disabled):` namespace, but that mechanism is
+only a possible explanation until observed. The raw-owner and combined owner
+gates remain failed.
+
+This diagnostics-only update assigns a fixed reason code to every existing
+assertion in the optional/imported-source proof, raw source/builder proof, private
+build preservation/association validation and pg source identity checks. Existing
+read, parser and builder operations also have fixed failure codes. The immutable
+`owner-proof-reason-codes.ts` registry binds each code to its exact prior public
+source hash, original line/column and expression hash at baseline head
+`1205cb808f6537aed17d57b0110c992447992cdb`. Assertion statements stay
+unchanged inside failure-only try/catch blocks; sync/async operation wrappers
+invoke the original operation once. The deepest reason is privately branded on
+the same thrown value. No message, stack, argument, path or property of the error
+is inspected. Existing outer wrappers inherit only the trusted fixed code.
+
+A bounded failure-only census separately counts original input-key shapes:
+project files, dependency files, valid/invalid builtin namespace, disabled
+namespace, other namespace, invalid paths and escaped roots. Primary counts are
+mutually exclusive and sum to the scanned total; duplicate logical identities
+are a separate bounded count. Incomplete scans expose only explicit incomplete
+status and zeros. These counts observe shapes without authorizing any identity.
+
+Public reduction accepts one canonical fixed reason and one canonical census,
+rejecting duplicate, unknown, malformed and inconsistent markers. Arrays with
+Proxy/accessor behavior are rejected without invoking them. Passed receipts never
+publish stale failure diagnostics. Existing stage/import counts remain required,
+and no diagnostic field participates in acceptance. The source fixture, runtime,
+service, network and production builder policies are unchanged. Final independent
+review and an exact hosted rerun remain required.
+
 ## Third-party fixture notice
 
 The inert source strings in owner-pg-source-fixtures.json and

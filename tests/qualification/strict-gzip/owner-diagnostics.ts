@@ -1,3 +1,5 @@
+import { parseOwnerProofReasonMarker } from "./owner-proof-reasons.ts";
+import { types } from "node:util";
 import {
   OWNER_BUILD_STAGES,
   ownerBuildDiagnosticMarkers,
@@ -5,6 +7,7 @@ import {
 import {
   OPTIONAL_PROOF_STAGES,
   OPTIONAL_IMPORT_CATEGORIES,
+  parseOptionalPgInputKeyCountsMarker,
 } from "./optional-pg-import.ts";
 import { OWNER_REFUSED_IMPORTS } from "./owner-resource-policy.ts";
 import { publicInputIdentityDiagnostics } from "./owner-input-diagnostics.ts";
@@ -29,11 +32,44 @@ export const OWNER_FRAME_PATHS = [
 // Only the failed required assertion can supply these optional diagnostics.
 // A malformed, missing, duplicate or conflicting marker set supplies no report.
 export function publicBuildProofDiagnostics(value: unknown) {
-  if (!Array.isArray(value) || value.length > 19) return null;
+  if (types.isProxy(value) || !Array.isArray(value) || value.length > 19)
+    return null;
+  const messages: string[] = [];
+  for (let index = 0; index < value.length; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (
+      !descriptor ||
+      !Object.hasOwn(descriptor, "value") ||
+      typeof descriptor.value !== "string" ||
+      descriptor.value.length > 65536
+    )
+      return null;
+    messages.push(descriptor.value);
+  }
+  const reasonMessages = messages.filter((message) =>
+    message.includes("[owner-proof-reason"),
+  );
+  if (reasonMessages.length > 1) return null;
+  const reason = reasonMessages.length
+    ? parseOwnerProofReasonMarker(reasonMessages[0])
+    : null;
+  if (reasonMessages.length && reason === null) return null;
+  const keyMessages = messages.filter((message) =>
+    message.includes("[owner-optional-input-key-counts"),
+  );
+  if (keyMessages.length > 1) return null;
+  const inputKeys = keyMessages.length
+    ? parseOptionalPgInputKeyCountsMarker(keyMessages[0])
+    : null;
+  if (keyMessages.length && inputKeys === null) return null;
+  const extras = {
+    ...(reason ? { reason } : {}),
+    ...(inputKeys ? { inputKeys } : {}),
+  };
   const markers: string[] = [];
   const prefix =
     /\[owner-(?:optional-proof-failed|optional-import-counts|build-proof-failed):/g;
-  for (const message of value) {
+  for (const message of messages) {
     if (typeof message !== "string" || message.length > 65536) return null;
     const starts = [...message.matchAll(prefix)];
     const matches = [
@@ -46,6 +82,7 @@ export function publicBuildProofDiagnostics(value: unknown) {
     if (markers.length > 3) return null;
   }
   if (markers.length === 1) {
+    if (inputKeys) return null;
     const match = /^\[owner-build-proof-failed:([a-z-]+):([a-z-]+)\]$/.exec(
       markers[0]!,
     );
@@ -53,7 +90,9 @@ export function publicBuildProofDiagnostics(value: unknown) {
     const scope = match[1] as keyof typeof OWNER_BUILD_STAGES;
     const stages = OWNER_BUILD_STAGES[scope] as readonly string[];
     const index = stages.indexOf(match[2]!);
-    return index < 0 ? null : { scope, stage: stages[index]!, imports: [] };
+    return index < 0
+      ? null
+      : { scope, stage: stages[index]!, imports: [], ...extras };
   }
   if (markers.length !== 3) return null;
   const stageMarkers = markers.filter((marker) =>
@@ -102,6 +141,7 @@ export function publicBuildProofDiagnostics(value: unknown) {
     scope: "optional-pg",
     stage: OPTIONAL_PROOF_STAGES[stageIndex]!,
     imports,
+    ...extras,
   };
 }
 export function publicBuildProofFailure(error: unknown) {

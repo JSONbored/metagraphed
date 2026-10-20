@@ -1,3 +1,7 @@
+import {
+  inheritOwnerProofReason,
+  ownerProofReasonMarker,
+} from "./owner-proof-reasons.ts";
 // Failure-only fixed stage labels. Never supplies acceptance evidence.
 import { optionalProofDiagnosticMarkers } from "./optional-pg-import.ts";
 import { publicInputDiagnosticMarkers } from "./owner-input-diagnostics.ts";
@@ -86,9 +90,14 @@ export function ownerBuildStageFailure(
       ] as readonly string[])
     : [];
   const validStage = typeof stage === "string" && allowed.includes(stage);
-  const error = new Error(
-    `[owner-build-proof-failed:${validScope ? scope : "unknown"}:${validStage ? stage : "unknown"}]`,
-    { cause },
+  const reason = ownerProofReasonMarker(cause);
+  const error = inheritOwnerProofReason(
+    new Error(
+      `[owner-build-proof-failed:${validScope ? scope : "unknown"}:${validStage ? stage : "unknown"}]` +
+        (reason ? "\n" + reason : ""),
+      { cause },
+    ),
+    cause,
   );
   marked.set(error, error.message);
   return error;

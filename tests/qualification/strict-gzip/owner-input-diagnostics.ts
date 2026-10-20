@@ -1,3 +1,4 @@
+import { inheritOwnerProofReason } from "./owner-proof-reasons.ts";
 // Failure-only public source identities. Never supplies acceptance evidence.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -159,7 +160,7 @@ export function withPublicInputDiagnostics(
     const message = original + "\n" + marker;
     // Keep the original failure privately. A rendered Error.cause chain would
     // duplicate its proof markers and correctly fail strict public parsing.
-    const error = new Error(message);
+    const error = inheritOwnerProofReason(new Error(message), cause);
     marked.set(error, { message, originalFailure: cause });
     return error;
   } catch {

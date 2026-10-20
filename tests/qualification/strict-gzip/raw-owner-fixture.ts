@@ -1,3 +1,8 @@
+import {
+  ownerProofFailure,
+  withOwnerProofReason,
+  withOwnerProofReasonAsync,
+} from "./owner-proof-reasons.ts";
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import {
   optionalPgBuildAssociation,
@@ -99,20 +104,29 @@ const DO_EXPORTS = [
   "default",
 ];
 export const rawDigest = (value: string | Uint8Array) =>
-  createHash("sha256").update(value).digest("hex");
+  withOwnerProofReason("raw-001", () =>
+    createHash("sha256").update(value).digest("hex"),
+  );
 
 export async function verifyRawSources(root: string) {
   const sources = [];
   for (const [name, gitBlob] of Object.entries(RAW_SOURCE_BLOBS)) {
-    const bytes = await readFile(path.join(root, name));
-    assert.equal(
-      createHash("sha1")
-        .update(`blob ${bytes.byteLength}\0`)
-        .update(bytes)
-        .digest("hex"),
-      gitBlob,
-      `Unreviewed raw owner source: ${name}`,
+    const bytes = await withOwnerProofReasonAsync(
+      "raw-002",
+      async () => await readFile(path.join(root, name)),
     );
+    try {
+      assert.equal(
+        createHash("sha1")
+          .update(`blob ${bytes.byteLength}\0`)
+          .update(bytes)
+          .digest("hex"),
+        gitBlob,
+        `Unreviewed raw owner source: ${name}`,
+      );
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-003");
+    }
     sources.push({ name, gitBlob, sha256: rawDigest(bytes) });
   }
   return sources;
@@ -122,44 +136,91 @@ export async function verifyRawSources(root: string) {
 export async function buildRawOwner(root: string, output: string) {
   let proofStage = "source-pins";
   try {
-    assert.equal(process.env.METAGRAPH_REPO_ROOT, undefined);
+    try {
+      assert.equal(process.env.METAGRAPH_REPO_ROOT, undefined);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-004");
+    }
     const sources = await verifyRawSources(root);
     proofStage = "builder";
-    const { buildApiWorker } = (await import(
-      pathToFileURL(path.join(root, "scripts/build-api-worker.ts")).href
+    const { buildApiWorker } = (await withOwnerProofReasonAsync(
+      "raw-005",
+      async () =>
+        await import(
+          pathToFileURL(path.join(root, "scripts/build-api-worker.ts")).href
+        ),
     )) as {
       buildApiWorker(
         outdir: string,
       ): Promise<{ errors: unknown[]; metafile?: Metafile }>;
     };
-    const esbuild = await import("esbuild");
+    const esbuild = await withOwnerProofReasonAsync(
+      "raw-006",
+      async () => await import("esbuild"),
+    );
     let result: Awaited<ReturnType<typeof buildApiWorker>>;
     try {
-      result = await buildApiWorker(output);
+      result = await withOwnerProofReasonAsync(
+        "raw-007",
+        async () => await buildApiWorker(output),
+      );
     } finally {
       // Close the reviewed service before the test worker exits, so its launch
       // guard can observe termination rather than inheriting an unexplained child.
-      await esbuild.stop();
+      await withOwnerProofReasonAsync(
+        "raw-008",
+        async () => await esbuild.stop(),
+      );
     }
     proofStage = "output-inventory";
-    assert.deepEqual(result.errors, []);
-    assert.ok(result.metafile);
+    try {
+      assert.deepEqual(result.errors, []);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-009");
+    }
+    try {
+      assert.ok(result.metafile);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-010");
+    }
     const meta = result.metafile;
-    const outputRoot = await realpath(output);
+    const outputRoot = await withOwnerProofReasonAsync(
+      "raw-011",
+      async () => await realpath(output),
+    );
     const files: string[] = [];
     async function walk(directory: string, depth = 0): Promise<void> {
-      assert.ok(depth <= 8);
-      for (const entry of await readdir(directory, { withFileTypes: true })) {
+      try {
+        assert.ok(depth <= 8);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-012");
+      }
+      for (const entry of await withOwnerProofReasonAsync(
+        "raw-013",
+        async () => await readdir(directory, { withFileTypes: true }),
+      )) {
         const file = path.join(directory, entry.name);
-        assert.ok(
-          (await realpath(file)).startsWith(`${outputRoot}${path.sep}`),
-        );
+        try {
+          assert.ok(
+            (await realpath(file)).startsWith(`${outputRoot}${path.sep}`),
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "raw-014");
+        }
         if (entry.isDirectory()) await walk(file, depth + 1);
         else {
-          assert.ok(entry.isFile(), "No output symlinks or special files");
+          try {
+            assert.ok(entry.isFile(), "No output symlinks or special files");
+          } catch (cause) {
+            throw ownerProofFailure(cause, "raw-015");
+          }
           files.push(file);
         }
-        assert.ok(files.length <= 1024);
+        try {
+          assert.ok(files.length <= 1024);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "raw-016");
+        }
       }
     }
     await walk(outputRoot);
@@ -170,29 +231,52 @@ export async function buildRawOwner(root: string, output: string) {
         value,
       ]),
     );
-    assert.deepEqual([...outputs.keys()].sort(), files);
+    try {
+      assert.deepEqual([...outputs.keys()].sort(), files);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-017");
+    }
     const modules: { type: "ESModule" | "CompiledWasm"; path: string }[] = [];
     const sourceMaps: { name: string; bytes: Uint8Array }[] = [];
     const records = [];
     let totalBytes = 0;
     proofStage = "output-bytes";
     for (const file of files) {
-      const bytes = await readFile(file);
-      totalBytes += bytes.length;
-      assert.ok(
-        bytes.length <= 128 * 1024 ** 2 && totalBytes <= 256 * 1024 ** 2,
+      const bytes = await withOwnerProofReasonAsync(
+        "raw-018",
+        async () => await readFile(file),
       );
-      assert.equal(outputs.get(file)!.bytes, bytes.length);
+      totalBytes += bytes.length;
+      try {
+        assert.ok(
+          bytes.length <= 128 * 1024 ** 2 && totalBytes <= 256 * 1024 ** 2,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-019");
+      }
+      try {
+        assert.equal(outputs.get(file)!.bytes, bytes.length);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-020");
+      }
       const extension = path.extname(file);
-      assert.ok([".js", ".wasm", ".map"].includes(extension));
+      try {
+        assert.ok([".js", ".wasm", ".map"].includes(extension));
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-021");
+      }
       const type = extension === ".js" ? "ESModule" : "CompiledWasm";
       if (extension !== ".map") modules.push({ type, path: file });
       else sourceMaps.push({ name: path.relative(outputRoot, file), bytes });
       if (extension === ".wasm")
-        assert.deepEqual(
-          [...bytes.subarray(0, 8)],
-          [0, 97, 115, 109, 1, 0, 0, 0],
-        );
+        try {
+          assert.deepEqual(
+            [...bytes.subarray(0, 8)],
+            [0, 97, 115, 109, 1, 0, 0, 0],
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "raw-022");
+        }
       records.push({
         name: path.relative(outputRoot, file),
         type: extension === ".map" ? "SourceMap" : type,
@@ -222,8 +306,16 @@ export async function buildRawOwner(root: string, output: string) {
     );
     proofStage = "entry-exports";
     const entry = path.join(outputRoot, "api.entry.js");
-    assert.ok(outputs.has(entry));
-    assert.deepEqual([...outputs.get(entry)!.exports].sort(), DO_EXPORTS);
+    try {
+      assert.ok(outputs.has(entry));
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-023");
+    }
+    try {
+      assert.deepEqual([...outputs.get(entry)!.exports].sort(), DO_EXPORTS);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-024");
+    }
     proofStage = "output-graph";
     const edges: { from: number; to: number; dynamic: boolean }[] = [];
     for (const [metafilePath, value] of Object.entries(meta.outputs)) {
@@ -245,7 +337,11 @@ export async function buildRawOwner(root: string, output: string) {
             path.resolve(path.dirname(file), dependency.path),
           ]),
         ].filter((candidate) => outputs.has(candidate));
-        assert.equal(candidates.length, 1);
+        try {
+          assert.equal(candidates.length, 1);
+        } catch (cause) {
+          throw ownerProofFailure(cause, "raw-025");
+        }
         edges.push({
           from: files.indexOf(file),
           to: files.indexOf(candidates[0]!),
@@ -267,18 +363,26 @@ export async function buildRawOwner(root: string, output: string) {
     const executable = records.flatMap((record, index) =>
       record.type === "SourceMap" ? [] : [index],
     );
-    assert.deepEqual(closure(true), executable);
+    try {
+      assert.deepEqual(closure(true), executable);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-026");
+    }
     const eager = closure(false);
     proofStage = "source-contributions";
     const contributions = OWNER_INPUTS.map((source) => {
       const inputs = Object.keys(meta.inputs).filter(
         (name) => path.resolve(root, name) === path.join(root, source),
       );
-      assert.equal(
-        inputs.length,
-        1,
-        `Missing raw owner contribution: ${source}`,
-      );
+      try {
+        assert.equal(
+          inputs.length,
+          1,
+          `Missing raw owner contribution: ${source}`,
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-027");
+      }
       const matching = [...outputs].flatMap(([file, value]) =>
         Object.entries(value.inputs).flatMap(([name, input]) =>
           inputs.includes(name) && input.bytesInOutput > 0
@@ -286,9 +390,19 @@ export async function buildRawOwner(root: string, output: string) {
             : [],
         ),
       );
-      assert.ok(matching.length > 0);
+      try {
+        assert.ok(matching.length > 0);
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-028");
+      }
       if (source === "workers/api.ts")
-        assert.ok(matching.every((item) => !eager.includes(item.outputIndex)));
+        try {
+          assert.ok(
+            matching.every((item) => !eager.includes(item.outputIndex)),
+          );
+        } catch (cause) {
+          throw ownerProofFailure(cause, "raw-029");
+        }
       return { source, outputs: matching };
     });
     modules.sort((a, b) =>
@@ -300,9 +414,19 @@ export async function buildRawOwner(root: string, output: string) {
     );
     proofStage = "input-custody";
     // Read-only identity verification again catches an intervening source change.
-    assert.deepEqual(await verifyRawSources(root), sources);
-    const canonicalRoot = await realpath(root);
-    const dependencyRoot = await realpath(path.join(root, "node_modules"));
+    try {
+      assert.deepEqual(await verifyRawSources(root), sources);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-030");
+    }
+    const canonicalRoot = await withOwnerProofReasonAsync(
+      "raw-031",
+      async () => await realpath(root),
+    );
+    const dependencyRoot = await withOwnerProofReasonAsync(
+      "raw-032",
+      async () => await realpath(path.join(root, "node_modules")),
+    );
     const sourcePaths: string[] = [];
     for (const name of Object.keys(meta.inputs)) {
       // The production builder alone generates these native-builtin adapters.
@@ -312,10 +436,14 @@ export async function buildRawOwner(root: string, output: string) {
         dependencyRoot,
         name,
       );
-      assert.ok(
-        !sourcePaths.includes(relative),
-        "Duplicate raw input identity",
-      );
+      try {
+        assert.ok(
+          !sourcePaths.includes(relative),
+          "Duplicate raw input identity",
+        );
+      } catch (cause) {
+        throw ownerProofFailure(cause, "raw-033");
+      }
       sourcePaths.push(relative);
     }
     proofStage = "association-serialization";
@@ -330,15 +458,24 @@ export async function buildRawOwner(root: string, output: string) {
             : ("SourceMap" as const);
         const sourceMapName = type === "ESModule" ? `${name}.map` : null;
         if (sourceMapName)
-          assert.ok(
-            sourceMaps.some((sourceMap) => sourceMap.name === sourceMapName),
-          );
+          try {
+            assert.ok(
+              sourceMaps.some((sourceMap) => sourceMap.name === sourceMapName),
+            );
+          } catch (cause) {
+            throw ownerProofFailure(cause, "raw-034");
+          }
         return {
           metafilePath,
           name,
           type,
           sourceMapName,
-          sha256: rawDigest(await readFile(file)),
+          sha256: rawDigest(
+            await withOwnerProofReasonAsync(
+              "raw-035",
+              async () => await readFile(file),
+            ),
+          ),
         };
       }),
     );
@@ -356,7 +493,11 @@ export async function buildRawOwner(root: string, output: string) {
         outputs: associations,
       }),
     );
-    assert.ok(association.byteLength <= 64 * 1024 ** 2);
+    try {
+      assert.ok(association.byteLength <= 64 * 1024 ** 2);
+    } catch (cause) {
+      throw ownerProofFailure(cause, "raw-036");
+    }
     return {
       modules,
       sourcePaths: [

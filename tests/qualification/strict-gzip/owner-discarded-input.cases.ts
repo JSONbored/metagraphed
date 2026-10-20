@@ -290,3 +290,45 @@ test("read adapter does not pretend that source reads alone grant admission", ()
       "erasureConfigSources",
     ]);
   }));
+
+import { publicBuildProofFailure } from "./owner-diagnostics.ts";
+import { ownerProofReasonMarker } from "./owner-proof-reasons.ts";
+for (const [mode, expected] of [
+  ["missing", "evidence-007"],
+  ["oversized", "evidence-024"],
+  ["root-alias", "evidence-009"],
+  ["dependency-mismatch", "evidence-010"],
+] as const)
+  test(`actual source adapter preserves the exact fixed ${mode} reason`, () =>
+    fixture((root, deps, scratch) => {
+      const name = Object.keys(sources)[0]!;
+      let selectedRoot = root,
+        selectedDeps = deps;
+      if (mode === "missing") rmSync(path.join(root, name));
+      if (mode === "oversized")
+        writeFileSync(path.join(root, name), sources[name]! + "\n");
+      if (mode === "root-alias") {
+        selectedRoot = path.join(scratch, "alias");
+        symlinkSync(root, selectedRoot);
+      }
+      if (mode === "dependency-mismatch") {
+        selectedDeps = path.join(scratch, "other");
+        mkdirSync(selectedDeps);
+      }
+      let caught: unknown;
+      try {
+        readDiscardedInputEvidence(selectedRoot, selectedDeps, metadata());
+      } catch (error) {
+        caught = error;
+      }
+      assert.ok(caught instanceof Error);
+      assert.equal(
+        ownerProofReasonMarker(caught),
+        `[owner-proof-reason:${expected}]`,
+      );
+      const result = publicBuildProofFailure(caught);
+      assert.equal(result?.reason, expected);
+      assert.equal(result?.scope, "optional-adapter");
+      assert.ok(!JSON.stringify(result).includes(scratch));
+      assert.ok(!JSON.stringify(result).includes(name));
+    }));

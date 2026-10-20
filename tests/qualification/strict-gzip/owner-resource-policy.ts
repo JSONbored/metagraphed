@@ -1,3 +1,4 @@
+import { ownerProofFailure } from "./owner-proof-reasons.ts";
 // Observational evidence only. Public workerd does not enforce production
 // isolate-memory or request-CPU limits. No number here can certify either.
 import assert from "node:assert/strict";
@@ -33,7 +34,10 @@ export function assertOwnerExternalImport(value: unknown): void {
     value === "utf-8-validate"
       ? value
       : "other";
-  throw new Error(`[owner-import-refused:${label}]`);
+  throw ownerProofFailure(
+    new Error(`[owner-import-refused:${label}]`),
+    "import-policy-001",
+  );
 }
 
 export const OWNER_SCENARIOS = {

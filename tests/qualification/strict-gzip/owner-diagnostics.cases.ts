@@ -337,3 +337,137 @@ test("publisher failure diagnostics use only private brands and never read arbit
     !JSON.stringify(publicBuildProofFailure(branded)).includes("private"),
   );
 });
+
+// Failure-only exact-predicate labels are independently rebuilt from fixed enums.
+import { OWNER_PROOF_REASON_CODES } from "./owner-proof-reason-codes.ts";
+import { ownerProofFailure } from "./owner-proof-reasons.ts";
+const validInputKeyMarker =
+  "[owner-optional-input-key-counts:1:8:1:2:1:1:1:1:1:1:0]";
+for (const code of OWNER_PROOF_REASON_CODES)
+  test(`publishes only reviewed exact predicate reason ${code}`, () => {
+    const value = publicBuildProofDiagnostics([
+      proofMarkers() + `\n[owner-proof-reason:${code}]\n` + validInputKeyMarker,
+    ]);
+    assert.equal(value?.reason, code);
+    assert.deepEqual(value?.inputKeys, {
+      complete: true,
+      scanned: 8,
+      duplicateLogicalIdentities: 1,
+      counts: {
+        project: 2,
+        dependency: 1,
+        "valid-builtin": 1,
+        "invalid-builtin-namespace": 1,
+        "disabled-namespace": 1,
+        "other-namespace": 1,
+        "invalid-path": 1,
+        "escaped-root": 0,
+      },
+    });
+  });
+for (const marker of [
+  "[owner-proof-reason:private-token]",
+  "[owner-proof-reason]",
+  "[owner-optional-input-key-counts]",
+  "[owner-proof-reason:opg-001] [owner-proof-reason:opg-001]",
+  "[owner-proof-reason:opg-001] [owner-proof-reason:evidence-001]",
+  "[owner-proof-reason:opg-001",
+  "[owner-proof-reason:opg-001\n]",
+  validInputKeyMarker + validInputKeyMarker,
+  validInputKeyMarker.replace(":1:8:", ":1:9:"),
+  validInputKeyMarker.replace(":1:8:", ":1:08:"),
+  validInputKeyMarker.replace(":1:8:", ":1:8193:"),
+  validInputKeyMarker.replace(":1:8:", ":0:8:"),
+  validInputKeyMarker.replace(":8:1:", ":8:4:"),
+  "[owner-optional-input-key-counts:private-token]",
+])
+  test("malformed, duplicated or inconsistent predicate diagnostics are omitted", () => {
+    assert.equal(
+      publicBuildProofDiagnostics([proofMarkers() + "\n" + marker]),
+      null,
+    );
+  });
+test("fixed census and reason can appear in separate bounded failure messages", () => {
+  const result = publicBuildProofDiagnostics([
+    proofMarkers(),
+    validInputKeyMarker,
+    "[owner-proof-reason:opg-001]",
+  ]);
+  assert.equal(result?.reason, "opg-001");
+  assert.equal(result?.inputKeys?.scanned, 8);
+});
+test("a duplicate reason split across messages cannot be merged", () => {
+  assert.equal(
+    publicBuildProofDiagnostics([
+      proofMarkers(),
+      "[owner-proof-reason:opg-001]",
+      "[owner-proof-reason:opg-001]",
+    ]),
+    null,
+  );
+});
+test("a duplicate census split across messages cannot be merged", () => {
+  assert.equal(
+    publicBuildProofDiagnostics([
+      proofMarkers(),
+      validInputKeyMarker,
+      validInputKeyMarker,
+    ]),
+    null,
+  );
+});
+test("incomplete input-key census publishes explicit zero observations", () => {
+  const result = publicBuildProofDiagnostics([
+    proofMarkers() +
+      "\n[owner-optional-input-key-counts:0:0:0:0:0:0:0:0:0:0:0]",
+  ]);
+  assert.equal(result?.inputKeys?.complete, false);
+  assert.equal(result?.inputKeys?.scanned, 0);
+});
+test("input-key census cannot attach to an unrelated surrounding stage", () => {
+  assert.equal(
+    publicBuildProofDiagnostics([
+      "[owner-build-proof-failed:raw-build:builder]\n" + validInputKeyMarker,
+    ]),
+    null,
+  );
+});
+test("surrounding build failure retains its deepest fixed predicate reason", () => {
+  const cause = ownerProofFailure(new Error(secret), "evidence-001");
+  const wrapped = ownerBuildStageFailure("association", "raw-inputs", cause);
+  assert.equal(publicBuildProofFailure(wrapped)?.reason, "evidence-001");
+  assert.ok(!JSON.stringify(publicBuildProofFailure(wrapped)).includes(secret));
+});
+test("public proof reduction does not inspect Proxy or accessor messages", () => {
+  let touched = 0;
+  const proxy = new Proxy([], {
+    get() {
+      touched++;
+      throw Error(secret);
+    },
+    getOwnPropertyDescriptor() {
+      touched++;
+      throw Error(secret);
+    },
+  });
+  assert.equal(publicBuildProofDiagnostics(proxy), null);
+  const messages = [] as unknown[];
+  Object.defineProperty(messages, "0", {
+    get() {
+      touched++;
+      throw Error(secret);
+    },
+  });
+  assert.equal(publicBuildProofDiagnostics(messages), null);
+  assert.equal(touched, 0);
+});
+test("passed owner assertions cannot publish stale reason or census diagnostics", () => {
+  const value = fixture(),
+    suite = value.testResults[0]!;
+  suite.status = "passed";
+  suite.assertionResults[0]!.status = "passed";
+  suite.assertionResults[0]!.failureMessages = [
+    proofMarkers() + "\n[owner-proof-reason:opg-001]\n" + validInputKeyMarker,
+  ];
+  assert.equal(publicOwnerProgress(value, root)[0]!.buildProof, null);
+});

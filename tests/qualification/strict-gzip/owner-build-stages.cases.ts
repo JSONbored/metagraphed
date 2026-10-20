@@ -60,7 +60,7 @@ test("optional proof failure remains the same branded error through all surround
   }
   assert.ok(failure instanceof Error);
   const markers = optionalProofDiagnosticMarkers(failure);
-  assert.equal(markers.split("\n").length, 3);
+  assert.equal(markers.split("\n").length, 5);
   for (const [scope, stages] of Object.entries(OWNER_BUILD_STAGES))
     assert.equal(ownerBuildStageFailure(scope, stages[0], failure), failure);
   assert.equal(optionalProofDiagnosticMarkers(failure), markers);
