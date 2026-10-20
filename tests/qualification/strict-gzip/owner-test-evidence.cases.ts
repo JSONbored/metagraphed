@@ -43,25 +43,27 @@ test("requires 490 unchanged focused assertions plus two exact owner assertions"
   assert.equal(result.owners.length, 2);
 });
 for (const [name, edit] of Object.entries({
-  "missing original suite": (v: ReturnType<typeof fixture>) =>
+  "missing original suite": (v: ReturnType<typeof fixture>): unknown =>
     v.testResults.shift(),
-  "missing owner": (v: ReturnType<typeof fixture>) => v.testResults.pop(),
-  "duplicate owner": (v: ReturnType<typeof fixture>) =>
+  "missing owner": (v: ReturnType<typeof fixture>): unknown =>
+    v.testResults.pop(),
+  "duplicate owner": (v: ReturnType<typeof fixture>): unknown =>
     (v.testResults[11] = v.testResults[10]!),
-  "wrong native title": (v: ReturnType<typeof fixture>) =>
+  "wrong native title": (v: ReturnType<typeof fixture>): unknown =>
     (v.testResults[11]!.assertionResults[0]!.title = "other"),
-  "skipped owner": (v: ReturnType<typeof fixture>) =>
+  "skipped owner": (v: ReturnType<typeof fixture>): unknown =>
     (v.testResults[11]!.assertionResults[0]!.status = "pending"),
-  "failed owner": (v: ReturnType<typeof fixture>) =>
+  "failed owner": (v: ReturnType<typeof fixture>): unknown =>
     (v.testResults[10]!.status = "failed"),
-  "extra assertion": (v: ReturnType<typeof fixture>) =>
+  "extra assertion": (v: ReturnType<typeof fixture>): unknown =>
     v.testResults[10]!.assertionResults.push({
       title: "extra",
       status: "passed",
     }),
-  "replaced original assertion": (v: ReturnType<typeof fixture>) =>
+  "replaced original assertion": (v: ReturnType<typeof fixture>): unknown =>
     v.testResults[0]!.assertionResults.pop(),
-  "invented count": (v: ReturnType<typeof fixture>) => (v.numTotalTests = 493),
+  "invented count": (v: ReturnType<typeof fixture>): unknown =>
+    (v.numTotalTests = 493),
 }))
   test(`rejects ${name}`, () => {
     const value = fixture();

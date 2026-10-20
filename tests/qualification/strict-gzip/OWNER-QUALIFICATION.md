@@ -1,8 +1,11 @@
 # Minimal whole-owner validation proposal
 
-Status: local implementation and pure/static checks only. No proposed PostgreSQL
-service, native owner execution or publication has occurred. Independent review
-must clear the final snapshot before a separate draft-PR/CI authorization.
+Status: the first reviewed snapshot was published to draft PR #12862 at
+`ca94ffb327199b1e3ba90ad9c67b4b8ab5bd6052`. Hosted run
+[39477904356](https://github.com/JSONbored/metagraphed/actions/runs/39477904356)
+started the isolated PostgreSQL service and native tests but failed owner
+qualification. All 490 baseline assertions passed. The diagnostics update has
+passed local pure/static checks and awaits its reviewed hosted rerun.
 
 ## Immutable baseline and test split
 
@@ -114,3 +117,14 @@ identity before emitting only the existing bounded summary and sanitized LCOV.
 Raw logs, SQL values, source bytes, URLs, argument vectors and Docker JSON are
 never uploaded. Any missing, skipped, failed, mismatched or refused evidence
 prevents a pass. No ready/merge/deployment action is part of this proposal.
+
+## Failed-run diagnostics
+
+The first owner run preserved all 490 baseline assertions and zero guard
+denials, but failed owner qualification. Its artifact did not identify the owner
+failure locations, so no owner cause or success is inferred. The optional
+ownerProgress summary now reports only fixed owner identities, statuses, counts
+and up to five numeric source positions per owner (ten across both owners).
+Paths are represented by a fixed allowlist index. Titles, errors, stacks, source
+text and arbitrary paths are never copied. These diagnostics cannot satisfy or
+alter any acceptance validator; missing evidence still prevents qualification.

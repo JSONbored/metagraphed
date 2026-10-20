@@ -49,30 +49,30 @@ test("correlates actual exact owner launch and observed pinned disposal exit", (
     1,
   ));
 for (const [name, edit] of Object.entries({
-  "exit before launch": (v: any[]) => ([v[1], v[2]] = [v[2], v[1]]),
-  "ambiguous reused runtime PID": (v: any[]) =>
+  "exit before launch": (v: any[]): unknown => ([v[1], v[2]] = [v[2], v[1]]),
+  "ambiguous reused runtime PID": (v: any[]): unknown =>
     v.push({ ...v[1], launchId: "101:2" }),
-  "missing host guard": (v: any[]) => v.shift(),
-  "missing launch": (v: any[]) => v.splice(1, 1),
-  "missing actual exit": (v: any[]) => v.pop(),
-  "duplicate launch": (v: any[]) => v.push({ ...v[1] }),
-  "duplicate exit": (v: any[]) => v.push({ ...v[2] }),
-  "wrong host": (v: any[]) => (v[1].pid = 303),
-  "wrong runtime": (v: any[]) => (v[1].childPid = 303),
-  "thread spoof launch": (v: any[]) => (v[1].threadId = 1),
-  "thread spoof exit": (v: any[]) => (v[2].threadId = 1),
-  "wrong native role": (v: any[]) => (v[1].role = "esbuild"),
-  "synchronous substitute": (v: any[]) => (v[1].synchronous = true),
-  "wrong exit owner": (v: any[]) => (v[2].pid = 303),
-  "wrong exit child": (v: any[]) => (v[2].childPid = 303),
-  "promise instead of exit": (v: any[]) =>
+  "missing host guard": (v: any[]): unknown => v.shift(),
+  "missing launch": (v: any[]): unknown => v.splice(1, 1),
+  "missing actual exit": (v: any[]): unknown => v.pop(),
+  "duplicate launch": (v: any[]): unknown => v.push({ ...v[1] }),
+  "duplicate exit": (v: any[]): unknown => v.push({ ...v[2] }),
+  "wrong host": (v: any[]): unknown => (v[1].pid = 303),
+  "wrong runtime": (v: any[]): unknown => (v[1].childPid = 303),
+  "thread spoof launch": (v: any[]): unknown => (v[1].threadId = 1),
+  "thread spoof exit": (v: any[]): unknown => (v[2].threadId = 1),
+  "wrong native role": (v: any[]): unknown => (v[1].role = "esbuild"),
+  "synchronous substitute": (v: any[]): unknown => (v[1].synchronous = true),
+  "wrong exit owner": (v: any[]): unknown => (v[2].pid = 303),
+  "wrong exit child": (v: any[]): unknown => (v[2].childPid = 303),
+  "promise instead of exit": (v: any[]): unknown =>
     (v[2].observation = "resolved-promise"),
-  "different signal": (v: any[]) => (v[2].signal = "SIGTERM"),
-  "numeric exit instead of signal": (v: any[]) => {
+  "different signal": (v: any[]): unknown => (v[2].signal = "SIGTERM"),
+  "numeric exit instead of signal": (v: any[]): void => {
     v[2].code = 0;
     v[2].signal = null;
   },
-  "wrong launch identity": (v: any[]) => (v[1].launchId = "303:1"),
+  "wrong launch identity": (v: any[]): unknown => (v[1].launchId = "303:1"),
 }))
   test(`rejects owner lifecycle ${name}`, () => {
     const rows = fixture();

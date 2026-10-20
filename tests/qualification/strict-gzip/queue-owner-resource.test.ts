@@ -136,7 +136,9 @@ test("the complete Data API owner overlaps two native ten-message events through
     QUEUE_FIRST_QUERY,
   );
   const transport = await inspectQueueHyperdriveTransport(
-    HYPERDRIVE_PLUGIN as Parameters<typeof inspectQueueHyperdriveTransport>[0],
+    HYPERDRIVE_PLUGIN as unknown as Parameters<
+      typeof inspectQueueHyperdriveTransport
+    >[0],
   );
   let built: Awaited<ReturnType<typeof buildQueueOwner>> | undefined;
   let runtime: Miniflare | undefined, barrier: QueueBarrier | undefined;

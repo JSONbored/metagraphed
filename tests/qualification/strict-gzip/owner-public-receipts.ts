@@ -1,3 +1,4 @@
+import { publicOwnerProgress } from "./owner-diagnostics.ts";
 import assert from "node:assert/strict";
 import { validateServiceReceipt } from "./owner-service.ts";
 import { splitOwnerTests } from "./owner-test-evidence.ts";
@@ -128,6 +129,16 @@ export async function publish(
         );
       } catch {
         // Progress is optional diagnostics, never acceptance evidence.
+      }
+      try {
+        summary.ownerProgress = publicOwnerProgress(
+          JSON.parse(
+            boundedFile(testPath, RAW_LIMITS["vitest-results.json"]).toString(),
+          ),
+          candidate,
+        );
+      } catch {
+        /* Optional fixed diagnostics never satisfy acceptance. */
       }
       try {
         const evidence = validateCompletionEvidence(
