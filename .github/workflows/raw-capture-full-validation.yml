@@ -2,7 +2,7 @@ name: Raw capture full native validation
 
 on:
   push:
-    branches: [ci/raw-capture-retry-full-recovery-20261020]
+    branches: [ci/raw-capture-producer-retention-full-20261020]
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ concurrency:
 
 env:
   FORCE_FULL_QUALIFICATION: "true"
-  FULL_VALIDATION_MANIFEST_SHA256: 007f8ac842bda1e1363d2a6dafd8b97a76d1bb71a619a503e3ff79c950bb4842
+  FULL_VALIDATION_MANIFEST_SHA256: b46ef6f8ab2025dd95c6393bd04a6d16ec8bb14861f4c4a5dfb80973c718530f
   FULL_VALIDATION_COMMANDS_SHA256: cd12f004a197a02ef3801bda933c5fa41392908508a20a64966d3762e206f8e5
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"

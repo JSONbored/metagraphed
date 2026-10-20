@@ -1803,3 +1803,366 @@ test("the actual capture producer clamps every new intent to its RPC chunk contr
   assert.deepEqual(sizes, [25, 25, 1]);
   assert.equal(result.captured, 51);
 });
+describe("captureTick consumes only its private chunk rows", () => {
+  function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<T>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
+    return { promise, resolve, reject };
+  }
+
+  // The envelope schema keeps result references. Freezing those RPC-owned
+  // objects catches cleanup that reaches beyond the producer's outer array.
+  function retainedNode(opts: {
+    head: number;
+    failAt?: number;
+    serializationError?: Error;
+  }) {
+    const ordinary = rpcFetch(opts);
+    const aliases: { header: Record<string, unknown>; extrinsics: string[] }[] =
+      [];
+    const serialized: string[] = [];
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await ordinary(input, init);
+      const value: unknown = await response.json();
+      if (Array.isArray(value)) {
+        for (const envelope of value) {
+          const block = (
+            envelope as {
+              result?: {
+                block?: {
+                  header: Record<string, unknown>;
+                  extrinsics: string[];
+                };
+              };
+            }
+          ).result?.block;
+          if (!block) continue;
+          const { header, extrinsics } = block;
+          const number = String(header.number);
+          Object.defineProperty(header, "toJSON", {
+            value: function (this: Record<string, unknown>) {
+              assert.equal(this, header);
+              serialized.push("header:" + number);
+              if (opts.serializationError) throw opts.serializationError;
+              return this;
+            },
+          });
+          Object.defineProperty(extrinsics, "toJSON", {
+            value: function (this: string[]) {
+              assert.equal(this, extrinsics);
+              serialized.push("extrinsics:" + number);
+              return this;
+            },
+          });
+          Object.freeze(header);
+          Object.freeze(extrinsics);
+          aliases.push({ header, extrinsics });
+        }
+      }
+      return { ok: true, json: async () => value } as Response;
+    }) as typeof fetch;
+    return { fetchImpl, aliases, serialized };
+  }
+
+  test("delayed durability preserves full and partial counts, exact bytes and RPC aliases", async () => {
+    const expected: string[] = [];
+    for (const heights of [
+      [1, 2],
+      [3, 4],
+    ]) {
+      const chunk = await fetchRawBlockChunk(
+        "https://archive.example.test",
+        heights,
+        rpcFetch({ head: 6, failAt: 4 }),
+        () => 1000,
+        false,
+        async () => undefined,
+      );
+      expected.push(
+        chunk.blocks.map((row) => JSON.stringify(row)).join("\n") + "\n",
+      );
+      assert.equal(chunk.blocks.length, heights[0] === 1 ? 2 : 1);
+    }
+    const node = retainedNode({ head: 6, failAt: 4 });
+    const puts = [deferred<unknown>(), deferred<unknown>()];
+    const marks = [deferred<void>(), deferred<void>()];
+    const acks = [deferred<void>(), deferred<void>()];
+    const putStarted = [deferred<void>(), deferred<void>()];
+    const markStarted = [deferred<void>(), deferred<void>()];
+    const ackStarted = [deferred<void>(), deferred<void>()];
+    const calls: string[] = [];
+    const values: string[] = [];
+    const receipts = [{ range: "1-2" }, { range: "3-3" }];
+    let position = 0;
+    let putIndex = 0;
+    let markIndex = 0;
+    let ackIndex = 0;
+    let settled = false;
+    const tick = captureTick({
+      rpcUrls: ["https://archive.example.test"],
+      genesisFloor: 1,
+      maxPerTick: 6,
+      flushEvery: 2,
+      fetchImpl: node.fetchImpl,
+      now: () => 1000,
+      admission: async () => undefined,
+      store: {
+        put: (key, value) => {
+          const index = putIndex++;
+          assert.equal(
+            key,
+            index === 0 ? rawBatchKey(1, 2) : rawBatchKey(3, 3),
+          );
+          assert.equal(value, expected[index]);
+          calls.push("put:" + index);
+          values.push(value);
+          putStarted[index]!.resolve();
+          return puts[index]!.promise;
+        },
+        acknowledgeWatermark: async (key, receipt) => {
+          const index = ackIndex++;
+          assert.equal(receipt, receipts[index]);
+          assert.equal(
+            key,
+            index === 0 ? rawBatchKey(1, 2) : rawBatchKey(3, 3),
+          );
+          assert.equal(position, index === 0 ? 2 : 3);
+          calls.push("ack:" + index);
+          ackStarted[index]!.resolve();
+          await acks[index]!.promise;
+        },
+      },
+      watermark: {
+        read: async () => position,
+        write: async (height) => {
+          const index = markIndex++;
+          assert.equal(height, index === 0 ? 2 : 3);
+          calls.push("mark:" + index);
+          markStarted[index]!.resolve();
+          await marks[index]!.promise;
+          position = height;
+        },
+      },
+    });
+    void tick.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    for (const index of [0, 1]) {
+      await putStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(position, index === 0 ? 0 : 2);
+      assert.equal(node.aliases.length, index === 0 ? 2 : 3);
+      assert.deepEqual(
+        calls,
+        index === 0 ? ["put:0"] : ["put:0", "mark:0", "ack:0", "put:1"],
+      );
+      puts[index]!.resolve(receipts[index]);
+      await markStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(ackIndex, index);
+      assert.equal(node.aliases.length, index === 0 ? 2 : 3);
+      marks[index]!.resolve();
+      await ackStarted[index]!.promise;
+      assert.equal(settled, false);
+      assert.equal(putIndex, index + 1, "no later chunk before acknowledgment");
+      acks[index]!.resolve();
+    }
+    assert.deepEqual(await tick, {
+      captured: 3,
+      watermark: 3,
+      behind: 3,
+      stoppedAt: 4,
+      reason: "chain_getBlock: state already discarded at 4",
+    });
+    assert.deepEqual(values, expected);
+    assert.deepEqual(calls, [
+      "put:0",
+      "mark:0",
+      "ack:0",
+      "put:1",
+      "mark:1",
+      "ack:1",
+    ]);
+    assert.deepEqual(node.serialized, [
+      "header:0x1",
+      "extrinsics:0x1",
+      "header:0x2",
+      "extrinsics:0x2",
+      "header:0x3",
+      "extrinsics:0x3",
+    ]);
+    assert.deepEqual(
+      node.aliases.map(({ header, extrinsics }) => ({
+        header: { ...header },
+        extrinsics: [...extrinsics],
+      })),
+      [1, 2, 3].map((height) => ({
+        header: { parentHash: `0xh${height - 1}`, number: `0x${height}` },
+        extrinsics: [`0xext${height}a`, `0xext${height}b`],
+      })),
+    );
+  });
+
+  test.each(["put_sync", "put_async", "watermark", "ack"] as const)(
+    "%s failure preserves the exact rejection and does not start a later chunk",
+    async (stage) => {
+      const failure = new Error("synthetic " + stage);
+      const node = retainedNode({ head: 2 });
+      const put = deferred<unknown>();
+      const entered = deferred<void>();
+      const receipt = { original: true };
+      const calls: string[] = [];
+      let position = 0;
+      const tick = captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        genesisFloor: 1,
+        maxPerTick: 2,
+        flushEvery: 1,
+        fetchImpl: node.fetchImpl,
+        now: () => 1000,
+        admission: async () => undefined,
+        store: {
+          put: () => {
+            calls.push("put");
+            entered.resolve();
+            if (stage === "put_sync") throw failure;
+            return put.promise;
+          },
+          acknowledgeWatermark: async (_key, actualReceipt) => {
+            assert.equal(actualReceipt, receipt);
+            calls.push("ack");
+            throw failure;
+          },
+        },
+        watermark: {
+          read: async () => position,
+          write: async (height) => {
+            calls.push("watermark");
+            if (stage === "watermark") throw failure;
+            position = height;
+          },
+        },
+      });
+      const rejected = assert.rejects(tick, (error) => error === failure);
+      await entered.promise;
+      assert.deepEqual(calls, ["put"]);
+      assert.equal(position, 0);
+      if (stage === "put_async") put.reject(failure);
+      else if (stage !== "put_sync") put.resolve(receipt);
+      await rejected;
+      assert.deepEqual(
+        calls,
+        stage.startsWith("put")
+          ? ["put"]
+          : stage === "watermark"
+            ? ["put", "watermark"]
+            : ["put", "watermark", "ack"],
+      );
+      assert.equal(position, stage === "ack" ? 1 : 0);
+      assert.equal(node.aliases.length, 1, "no second chunk was fetched");
+      assert.deepEqual(node.aliases[0]!.extrinsics, ["0xext1a", "0xext1b"]);
+      assert.deepEqual(
+        { ...node.aliases[0]!.header },
+        { parentHash: "0xh0", number: "0x1" },
+      );
+    },
+  );
+
+  test("synchronous row serialization failure never calls the put or later durability ports", async () => {
+    const failure = new Error("synthetic serialization");
+    const node = retainedNode({ head: 1, serializationError: failure });
+    const calls: string[] = [];
+    await assert.rejects(
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: node.fetchImpl,
+        now: () => 1000,
+        admission: async () => undefined,
+        store: {
+          put: async () => {
+            calls.push("put");
+          },
+          acknowledgeWatermark: async () => {
+            calls.push("ack");
+          },
+        },
+        watermark: {
+          read: async () => 0,
+          write: async () => {
+            calls.push("watermark");
+          },
+        },
+      }),
+      (error) => error === failure,
+    );
+    assert.deepEqual(calls, []);
+    assert.deepEqual(node.serialized, ["header:0x1"]);
+    assert.deepEqual(node.aliases[0]!.extrinsics, ["0xext1a", "0xext1b"]);
+  });
+
+  test("overlapping network ticks keep their bytes, receipt and progress independent", async () => {
+    const gates = [deferred<unknown>(), deferred<unknown>()];
+    const entered = [deferred<void>(), deferred<void>()];
+    const receipts = [{ network: "mainnet" }, { network: "testnet" }];
+    const positions = [0, 0];
+    const calls: string[] = [];
+    const values: string[] = [];
+    const nodes = [retainedNode({ head: 1 }), retainedNode({ head: 1 })];
+    const ticks = (["mainnet", "testnet"] as const).map((network, index) =>
+      captureTick({
+        rpcUrls: ["https://archive.example.test"],
+        network,
+        genesisFloor: 1,
+        maxPerTick: 1,
+        fetchImpl: nodes[index]!.fetchImpl,
+        now: () => 1000,
+        admission: async () => undefined,
+        store: {
+          put: (key, value) => {
+            assert.equal(key, rawBatchKey(1, 1, network));
+            calls.push("put:" + network);
+            values[index] = value;
+            entered[index]!.resolve();
+            return gates[index]!.promise;
+          },
+          acknowledgeWatermark: async (key, receipt) => {
+            assert.equal(key, rawBatchKey(1, 1, network));
+            assert.equal(receipt, receipts[index]);
+            assert.equal(positions[index], 1);
+            calls.push("ack:" + network);
+          },
+        },
+        watermark: {
+          read: async () => positions[index]!,
+          write: async (height) => {
+            positions[index] = height;
+          },
+        },
+      }),
+    );
+    await Promise.all(entered.map((item) => item.promise));
+    const started = [...calls];
+    assert.deepEqual(started.slice().sort(), ["put:mainnet", "put:testnet"]);
+    assert.deepEqual(positions, [0, 0]);
+    assert.equal(values[0], values[1]);
+    gates[1]!.resolve(receipts[1]);
+    assert.equal((await ticks[1]!).captured, 1);
+    assert.deepEqual(positions, [0, 1]);
+    assert.deepEqual(calls, [...started, "ack:testnet"]);
+    gates[0]!.resolve(receipts[0]);
+    assert.equal((await ticks[0]!).captured, 1);
+    assert.deepEqual(positions, [1, 1]);
+    assert.deepEqual(calls, [...started, "ack:testnet", "ack:mainnet"]);
+  });
+});

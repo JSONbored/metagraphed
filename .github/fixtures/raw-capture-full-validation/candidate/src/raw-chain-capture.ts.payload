@@ -610,10 +610,13 @@ export async function captureTick(deps: {
   const flush = async (batch: RawBlockCapture[]) => {
     const first = batch[0]!.block_number;
     const last = batch[batch.length - 1]!.block_number;
-    const receipt = await deps.store.put(
+    const put = deps.store.put(
       rawBatchKey(first, last, deps.network),
       batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
     );
+    // Only this private outer array is consumed; RPC-owned row fields survive.
+    batch.length = 0;
+    const receipt = await put;
     // Only now -- the bytes are durable, so the watermark may claim them.
     await deps.watermark.write(last);
     await deps.store.acknowledgeWatermark?.(
@@ -701,15 +704,17 @@ export async function captureTick(deps: {
       break;
     }
 
+    const blockCount = chunk.blocks.length;
+    const stopped = chunk.stopped;
     // Durable FIRST, watermark after -- the ordering the guarantee rests on.
     watermark = await flush(chunk.blocks);
-    captured += chunk.blocks.length;
+    captured += blockCount;
 
     // A short chunk means the run ended inside it. Its prefix is written; the
     // height it stopped at is where the next tick resumes.
-    if (chunk.stopped !== null) {
-      stoppedAt = chunk.stopped.at;
-      reason = chunk.stopped.reason;
+    if (stopped !== null) {
+      stoppedAt = stopped.at;
+      reason = stopped.reason;
       break;
     }
   }

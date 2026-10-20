@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "status": "boundary-corrected focused native source freeze; full validation and release acceptance pending",
-  "payload_version": "v2-boundary-native-39354806646",
+  "status": "Actual producer-retention focused native source freeze; fresh full-native/offline patch qualification pending",
+  "payload_version": "v3-producer-retention-native-39368257463",
   "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
   "base_tree": "9aea5cbaf18389b490ca92a946186767086dea5d",
   "canonical_subtrees": {
@@ -10,13 +10,13 @@
     "workers": "a46dd43fac421449d16afbe520f1aaf6ab32f872"
   },
   "qualified_predecessor": {
-    "commit": "6f113e53c39b9ff413ed8b92fdb770105002321a",
-    "run": 39354806646,
-    "artifact": 12235085006,
-    "artifact_zip_sha256": "5047161546e224f3b1dde4df30c46bc73f9656586e5c2d4f70c536190eadae57",
-    "passed_cases": 338,
-    "runtime_coverage": "all four modules 100% all metrics in focused boundary-corrected run",
-    "scope": "focused source/native D1 and actual canonical boundary policy only; full validation, resource acceptance and actual Codecov PR/project verdict pending"
+    "commit": "ba879bb58d0f92ed47e03b53fb5cdedd049e5865",
+    "run": 39368257463,
+    "artifact": 12240238558,
+    "artifact_zip_sha256": "a22b60e6d49357ecbf55308c4964ea5cde6b6d87b17e5875840eeda7cbfc34b5",
+    "passed_cases": 345,
+    "runtime_coverage": "all four modules 100% all four metrics in actual producer focused source qualification",
+    "scope": "Focused producer-retention source/native D1, cold types and policies only; new full-native/offline patch, normal PR/security review, actual Codecov, resources and production acceptance remain separate"
   },
   "maximum_total_payload_bytes": 524288,
   "files": [
@@ -30,9 +30,9 @@
     },
     {
       "path": "src/raw-chain-capture.ts",
-      "sha256": "a017f2075d25aa955ff0cfca2845cc278408c82726cf5e8fe29d028079dc15ad",
-      "git_blob_sha": "285ad4bae1ed8108260bb71ace4753df16428120",
-      "bytes": 28826,
+      "sha256": "2e6088a15ace39313d3d2491c9600ac9f91fd67c8aadc76f60079d9b217223cd",
+      "git_blob_sha": "522b3be453929b4961d53ee3947910b81b1f5895",
+      "bytes": 29001,
       "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/raw-chain-capture.ts.payload"
     },
@@ -62,9 +62,9 @@
     },
     {
       "path": "tests/raw-chain-capture.test.ts",
-      "sha256": "4cb9cc1fee477160b069b3e69c18de091c7ff41cafbbafd6e9bfe0b4b492bbb3",
-      "git_blob_sha": "3eb4539ce1a42f5c75fa06d9294dbb5458cf29e8",
-      "bytes": 60442,
+      "sha256": "b7d30e6f06e3f8165f8b45b44e706d8413a2b22accf6cbab9aae0b2be360dab5",
+      "git_blob_sha": "ec64ebca6d3c02bf91562ba472ae12c7c5057e59",
+      "bytes": 72712,
       "expected_base_blob_sha": "45098943f7de8f0353c6784a446c83a7fadc8510",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/raw-chain-capture.test.ts.payload"
     },
