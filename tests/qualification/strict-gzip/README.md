@@ -76,7 +76,14 @@ paths remain available. Empty IPC paths follow TCP host checks. Refusal events
 contain fixed categories rather than original hostnames, URLs or arguments.
 Caught denials still fail qualification. Coordinator, test-worker, Wrangler
 wrapper, and genuine Wrangler CLI guard startup records are required, as are
-matching start/exit records for every Node child. Actual native exit/close
+matching start/exit records for every Node child. Vitest normally stops its
+workers with SIGTERM. In that role alone, the preload records the actual signal
+and immediately calls its captured original exit function with code 143, allowing
+its exit listener to record real guard state. The parent still must observe the
+child exit; its signal field may be null because the handler exits with code 143.
+The public summary reports the count of observed worker SIGTERMs. No signal or
+child-exit observation is inferred from registration or teardown requests.
+Actual native exit/close
 events are recorded when observed; unref’ed compiler services may exit after
 their Node owner, so missing native exits are counted, never fabricated as
 successful closes. Guard recording failures and event-budget overflow fail closed.
@@ -104,7 +111,10 @@ uploaded. The summary contains fixed identities, booleans, numeric results and u
 fixed-enum refusal-count groups. Unknown labels and excess distinct groups become
 `other`; counts must sum exactly to the reported refusal total. No raw labels are
 echoed.
-coverage contains only the two allowlisted relative source paths and metrics.
+Failed runs may include diagnostic progress for the ten pinned suite paths: fixed
+statuses and numeric assertion/required-case counts only. These partial results
+do not satisfy or replace the unchanged full acceptance checks.
+Coverage contains only the two allowlisted relative source paths and metrics.
 LCOV test/function names and arbitrary source paths are removed or refused.
 The upload step runs only after successful publication validation.
 

@@ -1,20 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   authorizeLaunch,
   authorizeSocketConnect,
   createLaunchGate,
   DENIAL_OPERATIONS,
+  installWorkerTerminationReceipt,
   invokeAuthorized,
   observeChildLifecycle,
   POLICY_CODES,
   PolicyViolation,
   refusalTargetCategory,
+  refuseWorkerCreation,
+  REVIEWED_WORKER_SOURCES,
   sanitizeDenial,
+  workerDenialCode,
   type HostRole,
   type LaunchApi,
   type PolicyContext,
+  type WorkerDiagnosticContext,
 } from "./launch-policy.ts";
 
 const paths = {
@@ -786,4 +792,220 @@ test("launch and socket failures preserve approved diagnostic codes only", () =>
       },
     );
   }
+});
+test("termination receipt registers once for SIGTERM in the test-worker scope only", () => {
+  for (const role of [
+    "coordinator",
+    "test-worker",
+    "wrangler-bin",
+    "wrangler-cli",
+  ] as const) {
+    const registrations: string[] = [];
+    let invoked = false;
+    installWorkerTerminationReceipt(
+      role,
+      (signal) => {
+        registrations.push(signal);
+      },
+      () => {
+        invoked = true;
+      },
+      () => {
+        invoked = true;
+      },
+    );
+    assert.deepEqual(registrations, role === "test-worker" ? ["SIGTERM"] : []);
+    assert.equal(invoked, false);
+  }
+});
+test("worker SIGTERM receipt records fixed metadata before immediate injected exit", () => {
+  let handler: (() => void) | undefined;
+  const events: unknown[] = [];
+  installWorkerTerminationReceipt(
+    "test-worker",
+    (signal, listener) => {
+      assert.equal(signal, "SIGTERM");
+      handler = listener;
+    },
+    (detail) => {
+      events.push(["guard-signal", detail]);
+    },
+    (code) => {
+      events.push(["exit", code]);
+    },
+  );
+  assert.ok(handler);
+  handler();
+  assert.deepEqual(events, [
+    ["guard-signal", { signal: "SIGTERM", exitCode: 143 }],
+    ["exit", 143],
+  ]);
+});
+test("worker SIGTERM receipt always calls injected exit even if recording throws", () => {
+  let handler: (() => void) | undefined;
+  const events: unknown[] = [];
+  const failure = new Error("synthetic recording failure");
+  installWorkerTerminationReceipt(
+    "test-worker",
+    (_signal, listener) => {
+      handler = listener;
+    },
+    () => {
+      events.push("record");
+      throw failure;
+    },
+    (code) => {
+      events.push(["exit", code]);
+    },
+  );
+  assert.ok(handler);
+  assert.throws(
+    () => handler!(),
+    (error: unknown) => error === failure,
+  );
+  assert.deepEqual(events, ["record", ["exit", 143]]);
+});
+
+// Inert, exact cooked string from the reviewed public Miniflare template.
+// Hashing this fixture does not evaluate it or import Miniflare.
+const reviewedMiniflareWorkerScript =
+  '\nconst { createRequire } = require("module");\nconst { workerData } = require("worker_threads");\n\n// Not using parentPort here so we can call receiveMessageOnPort() in host\nconst { notifyHandle, port, filename } = workerData;\n\n// When running Miniflare from Jest, regular \'require("undici")\' will fail here\n// with "Error: Cannot find module \'undici\'". Instead we need to create a\n// \'require\' using the \'__filename\' of the host... :(\nconst actualRequire = createRequire(filename);\nconst { Pool, fetch } = actualRequire("undici");\n\nlet dispatcherUrl;\nlet dispatcher;\n\nport.addEventListener("message", async (event) => {\n  const { id, method, url, headers, body } = event.data;\n  try {\n    if (dispatcherUrl !== url) {\n      dispatcherUrl = url;\n      dispatcher = new Pool(new URL(url).origin, {\n        connect: { rejectUnauthorized: false },\n              // Disable timeouts for local dev — long-running responses (streaming,\n      // slow uploads, long-polling) should not be killed by undici defaults.\n      headersTimeout: 0,\n      bodyTimeout: 0,\n      });\n    }\n    headers["MF-Op-Sync"] = "true";\n    // body cannot be a ReadableStream, so no need to specify duplex\n    const response = await fetch(url, { method, headers, body, dispatcher });\n    const responseBody = response.headers.get("MF-Op-Result-Type") === "ReadableStream"\n      ? response.body\n      : await response.arrayBuffer();\n    const transferList = responseBody === null ? undefined : [responseBody];\n    port.postMessage(\n      {\n        id,\n        response: {\n          status: response.status,\n          headers: Object.fromEntries(response.headers),\n          body: responseBody,\n        }\n      },\n      transferList\n    );\n  } catch (error) {\n    try {\n      port.postMessage({ id, error });\n    } catch {\n      // If error failed to serialise, post simplified version\n      port.postMessage({ id, error: new Error(String(error)) });\n    }\n  } finally {\n    Atomics.store(notifyHandle, /* index */ 0, /* value */ 1);\n    Atomics.notify(notifyHandle, /* index */ 0);\n  }\n});\n\nport.start();\n';
+
+function workerDiagnostics(): WorkerDiagnosticContext {
+  return {
+    esbuildFile: "/installed/esbuild/lib/main.js",
+    vitestThreadsFile: "/installed/vitest/dist/workers/threads.js",
+    digest(source) {
+      return createHash("sha256").update(source).digest("hex");
+    },
+  };
+}
+test("worker diagnostics recognize only canonical reviewed file names and exact inline script hash", () => {
+  const ctx = workerDiagnostics();
+  assert.equal(
+    workerDenialCode(ctx, ctx.esbuildFile, {}),
+    "worker-thread-esbuild-file",
+  );
+  assert.equal(
+    workerDenialCode(ctx, ctx.vitestThreadsFile, {}),
+    "worker-thread-vitest-file",
+  );
+  assert.equal(
+    ctx.digest(reviewedMiniflareWorkerScript),
+    REVIEWED_WORKER_SOURCES.miniflareScriptSha256,
+  );
+  assert.equal(
+    reviewedMiniflareWorkerScript.length,
+    REVIEWED_WORKER_SOURCES.miniflareScriptJsLength,
+  );
+  assert.equal(
+    workerDenialCode(ctx, reviewedMiniflareWorkerScript, { eval: true }),
+    "worker-thread-miniflare-script",
+  );
+  for (const target of [
+    "/alias/esbuild/lib/main.js",
+    "/installed/esbuild/lib/../lib/main.js",
+    "/installed/vitest/dist/workers/vmThreads.js",
+    "/arbitrary/worker.js",
+  ])
+    assert.equal(workerDenialCode(ctx, target, {}), "worker-thread");
+  assert.equal(
+    workerDenialCode(ctx, ctx.esbuildFile, { eval: true }),
+    "worker-thread",
+  );
+  assert.equal(
+    workerDenialCode(ctx, reviewedMiniflareWorkerScript, { eval: false }),
+    "worker-thread",
+  );
+  assert.equal(
+    workerDenialCode({ ...ctx, esbuildFile: null }, ctx.esbuildFile, {}),
+    "worker-thread",
+  );
+});
+test("worker inline source edits, wrong hashes, hash failures and unrecognized inputs stay generic", () => {
+  const ctx = workerDiagnostics();
+  const altered = reviewedMiniflareWorkerScript.replace(
+    "port.start();",
+    "port.close();",
+  );
+  assert.equal(altered.length, reviewedMiniflareWorkerScript.length);
+  for (const source of [
+    altered,
+    reviewedMiniflareWorkerScript + "synthetic-secret",
+    "synthetic-secret",
+    "https://example.invalid/?token=synthetic-secret",
+  ])
+    assert.equal(
+      workerDenialCode(ctx, source, { eval: true }),
+      "worker-thread",
+    );
+  assert.equal(
+    workerDenialCode(
+      { ...ctx, digest: () => "incorrect-hash" },
+      reviewedMiniflareWorkerScript,
+      { eval: true },
+    ),
+    "worker-thread",
+  );
+  assert.equal(
+    workerDenialCode(
+      {
+        ...ctx,
+        digest: () => {
+          throw Error("synthetic-secret");
+        },
+      },
+      reviewedMiniflareWorkerScript,
+      { eval: true },
+    ),
+    "worker-thread",
+  );
+  let touched = 0;
+  const hostile = {
+    toString() {
+      touched += 1;
+      throw Error("synthetic-secret");
+    },
+  };
+  assert.equal(workerDenialCode(ctx, hostile, {}), "worker-thread");
+  const options = Object.defineProperty({}, "eval", {
+    get() {
+      touched += 1;
+      throw Error("synthetic-secret");
+    },
+  });
+  assert.equal(
+    workerDenialCode(ctx, reviewedMiniflareWorkerScript, options),
+    "worker-thread",
+  );
+  assert.equal(touched, 0);
+});
+test("all recognized and unknown worker constructor attempts still synchronously refuse", () => {
+  const ctx = workerDiagnostics();
+  let denied = 0;
+  for (const [target, options, expected] of [
+    [ctx.esbuildFile, {}, "worker-thread-esbuild-file"],
+    [ctx.vitestThreadsFile, {}, "worker-thread-vitest-file"],
+    [
+      reviewedMiniflareWorkerScript,
+      { eval: true },
+      "worker-thread-miniflare-script",
+    ],
+    ["synthetic-secret", {}, "worker-thread"],
+  ]) {
+    assert.throws(
+      () =>
+        refuseWorkerCreation(ctx, target, options, (code) => {
+          denied += 1;
+          assert.equal(code, expected);
+          assert.deepEqual(sanitizeDenial("worker-thread", code), {
+            operation: "worker-thread",
+            policyCode: code,
+          });
+          throw new PolicyViolation(code);
+        }),
+      PolicyViolation,
+    );
+  }
+  assert.equal(denied, 4);
 });

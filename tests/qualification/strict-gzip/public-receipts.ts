@@ -16,6 +16,7 @@ import {
 import {
   object,
   publicRunSummary,
+  publicTestProgress,
   RAW_LIMITS,
   validateCompletionEvidence,
 } from "./receipt-policy.ts";
@@ -95,6 +96,16 @@ export function publish(
       summary.testsAvailable = existsSync(testPath);
       summary.coverageAvailable =
         existsSync(coveragePath) && existsSync(lcovPath);
+      try {
+        summary.testProgress = publicTestProgress(
+          JSON.parse(
+            boundedFile(testPath, RAW_LIMITS["vitest-results.json"]).toString(),
+          ),
+          candidate,
+        );
+      } catch {
+        // Progress is optional diagnostics, never acceptance evidence.
+      }
       try {
         const evidence = validateCompletionEvidence(
           JSON.parse(

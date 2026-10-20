@@ -22,6 +22,7 @@ import {
   RAW_LIMITS,
   REQUIRED_ASSERTIONS,
   publicRunSummary,
+  publicTestProgress,
   redactLcov,
   validateCompletionEvidence,
   validateCoverageEvidence,
@@ -114,6 +115,7 @@ function receipt() {
     wranglerCliGuard: true,
     everyNodeChildGuarded: true,
     unobservedNativeExits: 0,
+    observedWorkerSigterms: 0,
     unchangedFixture: true,
     unchangedCandidate: true,
     completionEvidence: true,
@@ -610,5 +612,146 @@ test("qualification config uses numeric loopback while preserving base server op
     if (previousGuard === undefined) delete globals[guard];
     else globals[guard] = previousGuard;
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("actual worker SIGTERM observations are reported as a bounded count", () => {
+  assert.equal(
+    publicRunSummary({ ...receipt(), observedWorkerSigterms: 10 })
+      .observedWorkerSigterms,
+    10,
+  );
+  for (const value of [undefined, -1, 0.5, 10001, secret])
+    assert.throws(() =>
+      publicRunSummary({ ...receipt(), observedWorkerSigterms: value }),
+    );
+});
+
+test("failed-run progress retains only pinned files, fixed statuses and counts", () => {
+  const value = tests();
+  value.testResults[0]!.status = "failed";
+  value.testResults[0]!.assertionResults[0]!.status = "failed";
+  value.testResults[1]!.assertionResults[0]!.status = "pending";
+  const rows = publicTestProgress(value, candidate);
+  assert.equal(rows.length, 10);
+  assert.equal(JSON.stringify(rows).includes(secret), false);
+  assert.equal(
+    rows.find((row) => row.path === FOCUSED_TESTS[0])!.status,
+    "failed",
+  );
+  assert.equal(
+    rows.find((row) => row.path === FOCUSED_TESTS[1])!.status,
+    "incomplete",
+  );
+  const custody = rows.find(
+    (row) => row.path === "tests/data-api-sync-queue-consumer.test.ts",
+  )!;
+  assert.equal(custody.requiredPassed, 5);
+  assert.equal(custody.requiredTotal, 5);
+  assert.equal(custody.status, "passed");
+});
+test("empty and missing-required progress cannot be labeled passed", () => {
+  const value = tests();
+  value.testResults[0]!.assertionResults = [];
+  const custody = value.testResults.find((row) =>
+    row.name.endsWith("/data-api-sync-queue-consumer.test.ts"),
+  )!;
+  custody.assertionResults[0]!.title = "unrelated assertion";
+  const rows = publicTestProgress(value, candidate);
+  assert.equal(
+    rows.find((row) => row.path === FOCUSED_TESTS[0])!.status,
+    "incomplete",
+  );
+  assert.equal(
+    rows.find(
+      (row) => row.path === "tests/data-api-sync-queue-consumer.test.ts",
+    )!.status,
+    "incomplete",
+  );
+});
+for (const [label, mutate] of [
+  [
+    "foreign file",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults[0]!.name = secret;
+    },
+  ],
+  [
+    "duplicate file",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults[1] = structuredClone(v.testResults[0]!);
+    },
+  ],
+  [
+    "unknown suite status",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults[0]!.status = secret;
+    },
+  ],
+  [
+    "unknown test status",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults[0]!.assertionResults[0]!.status = secret;
+    },
+  ],
+  [
+    "too many files",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults.push(structuredClone(v.testResults[0]!));
+    },
+  ],
+  [
+    "too many assertions",
+    (v: ReturnType<typeof tests>) => {
+      v.testResults[0]!.assertionResults = Array.from(
+        { length: 10001 },
+        () => v.testResults[1]!.assertionResults[0]!,
+      );
+    },
+  ],
+] as const)
+  test(`progress refuses ${label}`, () => {
+    const value = tests();
+    mutate(value);
+    assert.throws(() => publicTestProgress(value, candidate));
+  });
+test("publisher exposes failed-run progress without stamping acceptance", () =>
+  temporary((root) => {
+    const { raw, run, output } = rawRun(root);
+    writeFileSync(
+      path.join(run, "receipt.json"),
+      JSON.stringify({ ...receipt(), status: "failed", code: 1 }),
+    );
+    const value = tests();
+    value.success = false;
+    value.testResults[0]!.status = "failed";
+    writeFileSync(path.join(run, "vitest-results.json"), JSON.stringify(value));
+    publish(raw, output, candidate);
+    const text = readFileSync(
+      path.join(output, "qualification-summary.json"),
+      "utf8",
+    );
+    const summary = JSON.parse(text);
+    assert.equal(summary.status, "failed");
+    assert.equal(summary.evidenceValidated, false);
+    assert.equal(summary.testProgress.length, 10);
+    assert.equal(text.includes(secret), false);
+  }));
+
+test("progress requires all eighteen corrected guard assertions before labeling that suite passed", () => {
+  for (const count of [17, 19]) {
+    const value = tests();
+    const suite = value.testResults.find((row) =>
+      row.name.endsWith("/strict-gzip-host-guard.test.ts"),
+    )!;
+    if (count === 17) suite.assertionResults.pop();
+    else
+      suite.assertionResults.push(structuredClone(suite.assertionResults[0]!));
+    assert.equal(
+      publicTestProgress(value, candidate).find(
+        (row) => row.path === "tests/strict-gzip-host-guard.test.ts",
+      )!.status,
+      "incomplete",
+    );
   }
 });

@@ -303,6 +303,13 @@ const unobservedNativeExits = nativeChildren.filter(
         exit.role === event.role,
     ),
 ).length;
+const observedWorkerSigterms = events.filter(
+  (event) =>
+    event.kind === "guard-signal" &&
+    event.signal === "SIGTERM" &&
+    event.exitCode === 143 &&
+    event.entry.endsWith("/vitest/dist/workers/forks.js"),
+).length;
 const interceptedWrangler = events.filter(
   (event) => event.kind === "wrangler-child-preload",
 ).length;
@@ -371,6 +378,7 @@ writeFileSync(
       wranglerCliGuard,
       everyNodeChildGuarded,
       unobservedNativeExits,
+      observedWorkerSigterms,
       interceptedWrangler,
       unchangedFixture,
       unchangedCandidate,

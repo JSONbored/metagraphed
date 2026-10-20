@@ -86,6 +86,9 @@ export const POLICY_CODES = Object.freeze([
   "udp-denied",
   "direct-child-spawn",
   "worker-thread",
+  "worker-thread-esbuild-file",
+  "worker-thread-vitest-file",
+  "worker-thread-miniflare-script",
   "missing-child-lifecycle",
 ] as const);
 export type PolicyCode = (typeof POLICY_CODES)[number];
@@ -120,6 +123,82 @@ export type LaunchApi =
   | "execFileSync";
 export type HostRole =
   "coordinator" | "test-worker" | "wrangler-bin" | "wrangler-cli";
+export const REVIEWED_WORKER_SOURCES = Object.freeze({
+  esbuildFileSha256:
+    "61ec0ba144ff93f4bf0e96ad6fab6f430ede0aa13e27ace8063ed63ba416b3cd",
+  vitestThreadsFileSha256:
+    "e128672de5c1545775ffe168a5612112789cde2c87af66feed956dd0f8b18cd1",
+  // workers-sdk commit 87fd28ce586693e50aa17d410f121394c5fef24c,
+  // fetch-sync.ts blob ca4c161fd5a58d92cc75e60f7c6736cd1391aa39.
+  miniflareScriptSha256:
+    "4d25b5d205de6b409af1c5138b4b6f8277b532f70eea92767b2b85f821e735ad",
+  miniflareScriptJsLength: 2072,
+});
+export interface WorkerDiagnosticContext {
+  esbuildFile: string | null;
+  vitestThreadsFile: string | null;
+  digest(source: string): string;
+}
+export function workerDenialCode(
+  context: WorkerDiagnosticContext,
+  target: unknown,
+  options: unknown,
+): PolicyCode {
+  try {
+    if (typeof target !== "string") return "worker-thread";
+    let evalMode = false;
+    if (options !== undefined) {
+      if (options === null || typeof options !== "object")
+        return "worker-thread";
+      const prototype = Object.getPrototypeOf(options);
+      if (prototype !== Object.prototype && prototype !== null)
+        return "worker-thread";
+      const descriptor = Object.getOwnPropertyDescriptor(options, "eval");
+      if (descriptor && !("value" in descriptor)) return "worker-thread";
+      const value: unknown = descriptor?.value;
+      if (value !== undefined && value !== false && value !== true)
+        return "worker-thread";
+      evalMode = value === true;
+    }
+    if (!evalMode) {
+      if (target === context.esbuildFile) return "worker-thread-esbuild-file";
+      if (target === context.vitestThreadsFile)
+        return "worker-thread-vitest-file";
+    } else if (
+      target.length === REVIEWED_WORKER_SOURCES.miniflareScriptJsLength &&
+      context.digest(target) === REVIEWED_WORKER_SOURCES.miniflareScriptSha256
+    )
+      return "worker-thread-miniflare-script";
+  } catch {
+    // Classification is best-effort only. Failure never permits construction.
+  }
+  return "worker-thread";
+}
+export function refuseWorkerCreation(
+  context: WorkerDiagnosticContext,
+  target: unknown,
+  options: unknown,
+  deny: (code: PolicyCode) => never,
+): never {
+  return deny(workerDenialCode(context, target, options));
+}
+export function installWorkerTerminationReceipt(
+  role: HostRole,
+  once: (signal: "SIGTERM", listener: () => void) => unknown,
+  record: (detail: Readonly<{ signal: "SIGTERM"; exitCode: 143 }>) => void,
+  exit: (code: 143) => void,
+): void {
+  if (role !== "test-worker") return;
+  once("SIGTERM", () => {
+    try {
+      record({ signal: "SIGTERM", exitCode: 143 });
+    } finally {
+      // The caller supplies the original bound process.exit. Termination must
+      // remain immediate even if synchronous receipt recording fails.
+      exit(143);
+    }
+  });
+}
 export interface NativeExecutable {
   path: string;
   sha256: string;

@@ -116,6 +116,74 @@ export function validateTestEvidence(value: unknown, root: string) {
   };
 }
 
+/** Diagnostic progress only. Never used to satisfy qualification acceptance. */
+export function publicTestProgress(value: unknown, root: string) {
+  const input = object(value);
+  requireValue(Array.isArray(input.testResults));
+  requireValue(input.testResults.length <= FOCUSED_TESTS.length);
+  const seen = new Set<string>();
+  return input.testResults
+    .map((raw: unknown) => {
+      const suite = object(raw);
+      const file = sourcePath(suite.name, root, FOCUSED_TESTS);
+      requireValue(!seen.has(file));
+      seen.add(file);
+      requireValue(
+        Array.isArray(suite.assertionResults) &&
+          suite.assertionResults.length <= 10_000,
+      );
+      requireValue(
+        ["passed", "failed", "pending", "skipped"].includes(
+          suite.status as string,
+        ),
+      );
+      let passed = 0,
+        failed = 0,
+        skipped = 0;
+      const passedTitles = new Set<string>();
+      for (const rawAssertion of suite.assertionResults) {
+        const assertion = object(rawAssertion);
+        if (assertion.status === "passed") {
+          passed++;
+          if (typeof assertion.title === "string")
+            passedTitles.add(assertion.title);
+        } else if (assertion.status === "failed") failed++;
+        else {
+          requireValue(
+            ["pending", "skipped", "todo", "disabled"].includes(
+              assertion.status as string,
+            ),
+          );
+          skipped++;
+        }
+      }
+      const required = REQUIRED_ASSERTIONS[file] ?? [];
+      const requiredPassed = required.filter((title) =>
+        passedTitles.has(title),
+      ).length;
+      return {
+        path: file,
+        status:
+          suite.status === "failed" || failed > 0
+            ? "failed"
+            : suite.status === "passed" &&
+                passed > 0 &&
+                skipped === 0 &&
+                requiredPassed === required.length &&
+                (file !== "tests/strict-gzip-host-guard.test.ts" ||
+                  suite.assertionResults.length === 18)
+              ? "passed"
+              : "incomplete",
+        passed,
+        failed,
+        skipped,
+        requiredPassed,
+        requiredTotal: required.length,
+      };
+    })
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
 export function validateCoverageEvidence(value: unknown, root: string) {
   const input = object(value);
   requireValue(Object.keys(input).length === COVERED_SOURCES.length + 1);
@@ -279,6 +347,7 @@ export function publicRunSummary(value: unknown) {
   const denialCounts = publicDenialCounts(input.denialCounts, deniedAttempts);
   const interceptedWrangler = integer(input.interceptedWrangler, 100);
   const unobservedNativeExits = integer(input.unobservedNativeExits, 10_000);
+  const observedWorkerSigterms = integer(input.observedWorkerSigterms, 10_000);
   requireValue(typeof input.outputLimitExceeded === "boolean");
   requireValue(typeof input.guardRecordingFailed === "boolean");
   const outputLimitExceeded = input.outputLimitExceeded;
@@ -304,6 +373,7 @@ export function publicRunSummary(value: unknown) {
     denialCounts,
     interceptedWrangler,
     unobservedNativeExits,
+    observedWorkerSigterms,
     outputLimitExceeded,
     guardRecordingFailed,
     checks,

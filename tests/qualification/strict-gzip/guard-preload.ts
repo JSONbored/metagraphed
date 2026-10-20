@@ -25,10 +25,13 @@ import workerThreads from "node:worker_threads";
 import {
   authorizeSocketConnect,
   createLaunchGate,
+  installWorkerTerminationReceipt,
   invokeAuthorized,
   observeChildLifecycle,
   PolicyViolation,
   refusalTargetCategory,
+  refuseWorkerCreation,
+  REVIEWED_WORKER_SOURCES,
   sanitizeDenial,
   validateBaseEnvironment,
   type AuthorizedLaunch,
@@ -37,8 +40,11 @@ import {
   type LaunchApi,
   type NativeExecutable,
   type PolicyContext,
+  type WorkerDiagnosticContext,
 } from "./launch-policy.ts";
 
+// Capture before Vitest or fixture imports can replace process.exit.
+const originalProcessExit = process.exit.bind(process);
 const preloadUrl = new URL(import.meta.url);
 const configPath = preloadUrl.searchParams.get("config");
 assert.ok(configPath && path.isAbsolute(configPath), "Missing guard config");
@@ -268,10 +274,37 @@ childPrototype.spawn = function (...args: unknown[]) {
 };
 // This qualification explicitly uses guarded forks. A new JS isolate would
 // otherwise obtain fresh unguarded builtins. Threaded esbuild sync is refused.
+function reviewedWorkerFile(file: string, sha256: string): string | null {
+  try {
+    const canonical = realpathSync(file);
+    return createHash("sha256")
+      .update(readFileSync(canonical))
+      .digest("hex") === sha256
+      ? canonical
+      : null;
+  } catch {
+    return null;
+  }
+}
+const workerDiagnostics: WorkerDiagnosticContext = {
+  esbuildFile: reviewedWorkerFile(
+    path.join(config.root, "node_modules/esbuild/lib/main.js"),
+    REVIEWED_WORKER_SOURCES.esbuildFileSha256,
+  ),
+  vitestThreadsFile: reviewedWorkerFile(
+    path.join(vitestRoot, "dist/workers/threads.js"),
+    REVIEWED_WORKER_SOURCES.vitestThreadsFileSha256,
+  ),
+  digest(source) {
+    return createHash("sha256").update(source).digest("hex");
+  },
+};
 Object.defineProperty(workerThreads, "Worker", {
   value: class RefusedWorker {
-    constructor() {
-      refuse("worker-thread", undefined, "worker-thread");
+    constructor(target: unknown, options?: unknown) {
+      refuseWorkerCreation(workerDiagnostics, target, options, (code) =>
+        refuse("worker-thread", undefined, code),
+      );
     }
   },
 });
@@ -405,3 +438,14 @@ process.once("exit", () => {
   }
   if (state.denied) process.exitCode = 1;
 });
+// Pinned Vitest stops ordinary fork workers with SIGTERM. Node's default
+// signal termination does not emit the JS exit event. Preserve prompt
+// termination while allowing the existing exit listener to record real state.
+// The parent may observe exit code 143 / signal null; guard-signal retains the
+// actual SIGTERM observation. No child-exit receipt is synthesized here.
+installWorkerTerminationReceipt(
+  role,
+  (signal, listener) => process.once(signal, listener),
+  (detail) => record("guard-signal", detail),
+  (code) => originalProcessExit(code),
+);
