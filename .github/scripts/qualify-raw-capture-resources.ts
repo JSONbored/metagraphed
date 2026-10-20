@@ -259,8 +259,17 @@ interface NativeBuildReport {
   esbuildVersion?: string;
   moduleManifestSha256?: string;
   metafileSha256?: string;
-  rawModuleOwnership?: Record<string, { sourceInputs: number; outputIndexes: number[] }>;
-  outputSummary?: { modules: number; js: number; wasm: number; sourceMaps: number; totalBytes: number };
+  rawModuleOwnership?: Record<
+    string,
+    { sourceInputs: number; outputIndexes: number[] }
+  >;
+  outputSummary?: {
+    modules: number;
+    js: number;
+    wasm: number;
+    sourceMaps: number;
+    totalBytes: number;
+  };
   apiAbsentFromEntryEagerClosure?: boolean;
 }
 interface ResourceReport {
@@ -278,31 +287,85 @@ interface ResourceReport {
   fixtureScope: string;
   compatibilityDate: string;
   compatibilityFlags: string[];
-  transportScope: { logicalRpcUrl: string; logicalRole: string; actualTransport: string };
+  transportScope: {
+    logicalRpcUrl: string;
+    logicalRole: string;
+    actualTransport: string;
+  };
   startupDiagnostic?: typeof startupDiagnostic;
   rpcFixtureFailure?: boolean;
-  schemaReceipt?: { sourceHashes: Record<string, string>; canonicalSchemaSha256: string; fullNativeEquality: boolean; seedEquality: boolean; nativeForeignKeys: boolean };
+  schemaReceipt?: {
+    sourceHashes: Record<string, string>;
+    canonicalSchemaSha256: string;
+    fullNativeEquality: boolean;
+    seedEquality: boolean;
+    nativeForeignKeys: boolean;
+  };
   carrierCommit?: string;
   sourceTree?: string;
   runtimeInputManifestSha256?: string;
   carrierRuntimeInputManifestSha256?: string;
   canonicalRuntimeUnchanged?: boolean;
   sourceOverlayScope?: string;
-  productionCompatibilitySource?: { source: string; sourceBase: string; blob: string; sha256: string; flags: string[]; date: string };
-  sourceReceipt?: Record<string, { ref: string; sourcePath: string; blob: string; sha256: string }>;
+  productionCompatibilitySource?: {
+    source: string;
+    sourceBase: string;
+    blob: string;
+    sha256: string;
+    flags: string[];
+    date: string;
+  };
+  sourceReceipt?: Record<
+    string,
+    { ref: string; sourcePath: string; blob: string; sha256: string }
+  >;
   workerSha256?: string;
   fixture?: FixtureReport;
   nativeBuild?: NativeBuildReport;
   bundleSha256?: string;
-  bundler?: { actualBuildApiWorker: boolean; unchangedNativeOptionsAndPlugin: boolean; split: boolean; minified: boolean; format: string; sourceMapsExecutable: boolean };
-  moduleLoader?: { rules: { type: string; include: string[] }[]; verifiedWasm: { bytes: number; sha256: string }[]; scope: string };
-  runtimeVersions?: { node: string; miniflare: string; wrangler: string; workerd: string };
-  inspectorDiscovery?: { targets: number; exactOwnedIdMatches: number; inspected: number; markerMatches: number; executionContexts: number; unavailableContexts: number };
+  bundler?: {
+    actualBuildApiWorker: boolean;
+    unchangedNativeOptionsAndPlugin: boolean;
+    split: boolean;
+    minified: boolean;
+    format: string;
+    sourceMapsExecutable: boolean;
+  };
+  moduleLoader?: {
+    rules: { type: string; include: string[] }[];
+    verifiedWasm: { bytes: number; sha256: string }[];
+    scope: string;
+  };
+  runtimeVersions?: {
+    node: string;
+    miniflare: string;
+    wrangler: string;
+    workerd: string;
+  };
+  inspectorDiscovery?: {
+    targets: number;
+    exactOwnedIdMatches: number;
+    inspected: number;
+    markerMatches: number;
+    executionContexts: number;
+    unavailableContexts: number;
+  };
   phases?: MeasuredPhase[];
   firstFailure?: Awaited<ReturnType<typeof snapshot>>;
   secondFailure?: Awaited<ReturnType<typeof snapshot>>;
-  correctness?: { state: Awaited<ReturnType<typeof snapshot>>; verification: Awaited<ReturnType<typeof verifyStored>> };
-  rpc?: { logicalRpcUrl: string; logicalRole: string; scope: string; permitted: number; blocked: number; requests: number; responses: typeof rpcReceipts };
+  correctness?: {
+    state: Awaited<ReturnType<typeof snapshot>>;
+    verification: Awaited<ReturnType<typeof verifyStored>>;
+  };
+  rpc?: {
+    logicalRpcUrl: string;
+    logicalRole: string;
+    scope: string;
+    permitted: number;
+    blocked: number;
+    requests: number;
+    responses: typeof rpcReceipts;
+  };
   status?: "passed" | "failed";
   failureStage?: string;
   failureClass?: string;
