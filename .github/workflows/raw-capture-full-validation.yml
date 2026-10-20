@@ -58,7 +58,7 @@ jobs:
           QUALIFICATION_EXPR_0: ${{ github.event_name }}
           QUALIFICATION_EXPR_1: ${{ github.event_name }}
         run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run changes-02
-  # Retain focused source evidence alongside the full gates for this draft.
+      # Retain focused source evidence alongside the full gates for this draft.
       - name: Force full qualification independently of committed diff
         id: force
         run: |
@@ -517,17 +517,17 @@ jobs:
       - name: Validate private boundary
         run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run validate-35
 
-  # The suite, split across runners (#10414). It shares nothing with `validate`
-  # above -- that job's ~45 gates and this job's vitest passes were sequential
-  # in one job purely because they were written that way, so a 486s test step
-  # waited on 266s of validators for no reason.
-  #
-  # The MATRIX is over what run-ci-tests.ts already partitions: the mocking
-  # pass keeps its own registry (#8922) and cannot merge into the shared one,
-  # and the shared pass is sliced by file. Codecov merges every leg's upload by
-  # commit SHA exactly as it already merged the two passes' separate reports,
-  # so the denominator is unchanged -- see `Verify coverage reports exist`,
-  # which still refuses an empty report rather than uploading a partial one.
+      # The suite, split across runners (#10414). It shares nothing with `validate`
+      # above -- that job's ~45 gates and this job's vitest passes were sequential
+      # in one job purely because they were written that way, so a 486s test step
+      # waited on 266s of validators for no reason.
+      #
+      # The MATRIX is over what run-ci-tests.ts already partitions: the mocking
+      # pass keeps its own registry (#8922) and cannot merge into the shared one,
+      # and the shared pass is sliced by file. Codecov merges every leg's upload by
+      # commit SHA exactly as it already merged the two passes' separate reports,
+      # so the denominator is unchanged -- see `Verify coverage reports exist`,
+      # which still refuses an empty report rather than uploading a partial one.
       - name: Curate bounded job evidence
         if: always() && steps.overlay.outcome == 'success'
         env:
@@ -738,13 +738,13 @@ jobs:
       - name: Test data-refresh scripts
         run: node "${{ github.workspace }}/.github/scripts/report-raw-capture-full-validation.ts" run python-06
 
-  # apps/ui (TanStack Start/Vite frontend, #3062) — entirely independent of the backend job above:
-  # a backend-only PR never installs or builds this tree, and vice versa. Gated on run_ui_validation
-  # (see the `changes` job comment) at the JOB level since 2026-07-24 — the old per-step guard
-  # pattern still consumed a full runner on every backend PR just to boot, check out, and evaluate
-  # ~18 false guards. Job-level skip is safe for the same reason as `test`'s draft skip: this repo
-  # has ZERO required status contexts on main, and the review pipeline's fetchLiveCiAggregate
-  # buckets skipped identically to success. Draft PRs skip entirely, mirroring the other heavy jobs.
+      # apps/ui (TanStack Start/Vite frontend, #3062) — entirely independent of the backend job above:
+      # a backend-only PR never installs or builds this tree, and vice versa. Gated on run_ui_validation
+      # (see the `changes` job comment) at the JOB level since 2026-07-24 — the old per-step guard
+      # pattern still consumed a full runner on every backend PR just to boot, check out, and evaluate
+      # ~18 false guards. Job-level skip is safe for the same reason as `test`'s draft skip: this repo
+      # has ZERO required status contexts on main, and the review pipeline's fetchLiveCiAggregate
+      # buckets skipped identically to success. Draft PRs skip entirely, mirroring the other heavy jobs.
       - name: Curate bounded job evidence
         if: always() && steps.overlay.outcome == 'success'
         env:
@@ -1119,4 +1119,3 @@ jobs:
             tmp/raw-capture-full-validation/upload/coverage/failure-receipt.json
           retention-days: 1
           if-no-files-found: error
-

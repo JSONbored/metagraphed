@@ -86,7 +86,9 @@ assert.deepEqual(Object.keys(manifest.canonical_subtrees).sort(), [
   "tests",
   "workers",
 ]);
-for (const [directory, expected] of Object.entries(manifest.canonical_subtrees)) {
+for (const [directory, expected] of Object.entries(
+  manifest.canonical_subtrees,
+)) {
   assert.match(expected, /^[a-f0-9]{40}$/);
   assert.equal(git(["rev-parse", BASE_COMMIT + ":" + directory]), expected);
   assert.equal(git(["rev-parse", originalHead + ":" + directory]), expected);
@@ -107,7 +109,10 @@ const pending = manifest.files.map((entry) => {
   assert.match(entry.sha256, /^[a-f0-9]{64}$/);
   assert.match(entry.git_blob_sha, /^[a-f0-9]{40}$/);
   assert.ok(Number.isSafeInteger(entry.bytes) && entry.bytes > 0);
-  assert.equal(entry.payload_path, FIXTURES + "candidate/" + entry.path + ".payload");
+  assert.equal(
+    entry.payload_path,
+    FIXTURES + "candidate/" + entry.path + ".payload",
+  );
   assert.ok(lstatSync(entry.payload_path).isFile());
   assert.ok(!lstatSync(entry.payload_path).isSymbolicLink());
   const bytes = readFileSync(entry.payload_path);
@@ -131,7 +136,10 @@ const pending = manifest.files.map((entry) => {
     );
     assert.ok(lstatSync(entry.path).isFile());
     assert.ok(!lstatSync(entry.path).isSymbolicLink());
-    assert.equal(blobSha(readFileSync(entry.path)), entry.expected_base_blob_sha);
+    assert.equal(
+      blobSha(readFileSync(entry.path)),
+      entry.expected_base_blob_sha,
+    );
   }
   return { entry, bytes };
 });
@@ -151,14 +159,25 @@ assert.deepEqual(staged.split("\n").sort(), [...EXPECTED_PATHS].sort());
 // Build that unpublished object from a separate base-seeded index, so the
 // virtual candidate contains the nine source edits and no carrier files.
 mkdirSync("tmp/raw-capture-full-validation", { recursive: true });
-const candidateIndex = path.join(root, "tmp/raw-capture-full-validation/candidate.index");
+const candidateIndex = path.join(
+  root,
+  "tmp/raw-capture-full-validation/candidate.index",
+);
 assert.ok(!existsSync(candidateIndex));
 const virtualEnvironment = { ...process.env, GIT_INDEX_FILE: candidateIndex };
 let candidateTree: string;
 try {
   git(["read-tree", BASE_COMMIT], virtualEnvironment);
   for (const { entry } of pending)
-    git(["update-index", "--add", "--cacheinfo", "100644," + entry.git_blob_sha + "," + entry.path], virtualEnvironment);
+    git(
+      [
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        "100644," + entry.git_blob_sha + "," + entry.path,
+      ],
+      virtualEnvironment,
+    );
   candidateTree = git(["write-tree"], virtualEnvironment);
 } finally {
   rmSync(candidateIndex, { force: true });
@@ -191,11 +210,23 @@ assert.equal(git(["rev-parse", "HEAD"]), originalHead);
 assert.equal(git(["rev-parse", virtualCommit + "^{tree}"]), candidateTree);
 for (const { entry } of pending) {
   assert.equal(sha256(readFileSync(entry.path)), entry.sha256);
-  assert.equal(git(["rev-parse", virtualCommit + ":" + entry.path]), entry.git_blob_sha);
+  assert.equal(
+    git(["rev-parse", virtualCommit + ":" + entry.path]),
+    entry.git_blob_sha,
+  );
 }
 const patch = execFileSync(
   "git",
-  ["diff", "--no-ext-diff", "--unified=0", BASE_COMMIT, virtualCommit, "--", "src", "workers"],
+  [
+    "diff",
+    "--no-ext-diff",
+    "--unified=0",
+    BASE_COMMIT,
+    virtualCommit,
+    "--",
+    "src",
+    "workers",
+  ],
   { encoding: "utf8", maxBuffer: 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] },
 );
 mkdirSync("tmp/raw-capture-full-validation", { recursive: true });
@@ -228,16 +259,26 @@ writeFileSync(
 if (process.env.GITHUB_OUTPUT) {
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    "candidate_commit=" + virtualCommit + "\n" +
-      "candidate_tree=" + candidateTree + "\n" +
-      "canonical_base=" + BASE_COMMIT + "\n" +
-      "manifest_sha256=" + expectedManifest + "\n",
+    "candidate_commit=" +
+      virtualCommit +
+      "\n" +
+      "candidate_tree=" +
+      candidateTree +
+      "\n" +
+      "canonical_base=" +
+      BASE_COMMIT +
+      "\n" +
+      "manifest_sha256=" +
+      expectedManifest +
+      "\n",
   );
 }
-console.log(JSON.stringify({
-  status: receipt.status,
-  payload_version: manifest.payload_version,
-  files: pending.length,
-  manifest_sha256: expectedManifest,
-  remote_refs_changed: false,
-}));
+console.log(
+  JSON.stringify({
+    status: receipt.status,
+    payload_version: manifest.payload_version,
+    files: pending.length,
+    manifest_sha256: expectedManifest,
+    remote_refs_changed: false,
+  }),
+);
