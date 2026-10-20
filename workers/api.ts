@@ -3198,17 +3198,40 @@ async function dispatchScheduled(
     );
     // NOTHING DUE NEEDS NO SPECIAL CASE, and deliberately does not get one. On a
     // widened grid most ticks legitimately have no work, and every step below
-    // already does the right thing on an empty list: the verdict writes map over
-    // `results`, so a lane that did not run is not stamped -- which matters,
+    // already does the right thing on an empty list: each due lane writes its
+    // verdict, so a lane that did not run is not stamped -- which matters,
     // because a fresh `checked_at` on a lane that never ran would push its next
     // due time out by a tick and starve it. `[].every()` is `true`, so an idle
     // tick reports ok. An early return here would only add a branch reachable
     // solely with a live Postgres handle.
+    // Isolate both the enqueue and its verdict. Artifact reads can throw before
+    // enqueueAll gets a chance to return a decline; one such failure must not
+    // erase a sibling's successful enqueue from lane_health (#12854).
+    const enqueueErrors: unknown[] = [];
     const results = await Promise.all(
-      due.map(async (lane) => ({
-        lane: lane.name,
-        ...(await lane.enqueue(env)),
-      })),
+      due.map(async (lane) => {
+        let outcome: EnqueueResult;
+        try {
+          outcome = await lane.enqueue(env);
+        } catch (error) {
+          enqueueErrors.push(error);
+          outcome = {
+            ok: false,
+            enqueued: 0,
+            // lane_health is public. Keep upstream bodies and credentials out
+            // of the verdict; retain originals in the AggregateError below.
+            reason: "enqueue_threw",
+          };
+        }
+        const result = { lane: lane.name, ...outcome };
+        ctx.waitUntil(
+          recordLaneVerdict(laneHealthStore(env), {
+            ...laneHeartbeatVerdict(result),
+            checked_at: Date.now(),
+          }),
+        );
+        return result;
+      }),
     );
     // The heartbeat is ok only if EVERY producer is. One lane silently failing
     // to enqueue while the others succeed is precisely the shape that let the
@@ -3228,16 +3251,11 @@ async function dispatchScheduled(
     // the revenue lane and a missing binding on the sweep lane send a reader to
     // different places, and a single verdict would collapse them into "the
     // heartbeat is unhappy".
-    ctx.waitUntil(
-      Promise.all(
-        results.map((r) =>
-          recordLaneVerdict(laneHealthStore(env), {
-            ...laneHeartbeatVerdict(r),
-            checked_at: Date.now(),
-          }),
-        ),
-      ),
-    );
+    // Preserve the cron's exception telemetry after every settled producer has
+    // scheduled its own verdict. A thrown producer must not turn the tick ok.
+    if (enqueueErrors.length) {
+      throw new AggregateError(enqueueErrors, "Lane heartbeat enqueue failed");
+    }
     return {
       ok: results.every((r) => r.ok),
       lanes: results,

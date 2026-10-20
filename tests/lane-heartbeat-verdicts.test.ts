@@ -169,3 +169,128 @@ describe("laneHeartbeatVerdict, the rule alone", () => {
     }
   });
 });
+
+describe("heartbeat producer exception isolation", () => {
+  for (const failure of [
+    new Error("artifact rejected: token=private-fixture"),
+    "artifact rejected: token=private-fixture",
+  ]) {
+    test(`records every lane when a producer throws ${String(failure)}`, async () => {
+      const failedLane = LANE_PRODUCERS[1];
+      const spies = LANE_PRODUCERS.map((lane) =>
+        vi.spyOn(lane, "enqueue").mockImplementation(async () => {
+          if (lane === failedLane) throw failure;
+          // Settle after the rejection so the test catches fail-fast reporting.
+          await Promise.resolve();
+          return { ok: true, enqueued: 128 };
+        }),
+      );
+      pg.control.queries.length = 0;
+      const waits: Promise<unknown>[] = [];
+      try {
+        await assert.rejects(
+          handleScheduled(
+            { cron: LANE_HEARTBEAT_CRON } as never,
+            pgMockEnv(["lane_health"]) as never,
+            { waitUntil: (p: Promise<unknown>) => void waits.push(p) } as never,
+          ),
+          (error: unknown) => {
+            assert.ok(error instanceof AggregateError);
+            assert.deepEqual(error.errors, [failure]);
+            return true;
+          },
+        );
+        await Promise.allSettled(waits);
+        const written = pg.control.queries.filter((q) =>
+          /INSERT INTO lane_health/i.test(q.text),
+        );
+        for (const lane of LANE_PRODUCERS) {
+          const row = written.find((q) => q.values.includes(lane.name));
+          assert.ok(row, `missing verdict for ${lane.name}`);
+          assert.ok(row.values.includes(lane === failedLane ? "stale" : "ok"));
+          assert.ok(
+            row.values.includes(
+              lane === failedLane ? "enqueue_threw" : "128 enqueued",
+            ),
+          );
+        }
+        assert.doesNotMatch(JSON.stringify(written), /private-fixture/);
+        for (const spy of spies) assert.equal(spy.mock.calls.length, 1);
+      } finally {
+        for (const spy of spies) spy.mockRestore();
+      }
+    });
+  }
+});
+
+test("heartbeat waits for a pending sibling and preserves multiple exceptions", async () => {
+  const failures = [
+    new Error("first fixture failure"),
+    new Error("second fixture failure"),
+  ];
+  let release!: () => void;
+  let signalEntered!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const entered = new Promise<void>((resolve) => {
+    signalEntered = resolve;
+  });
+  const spies = LANE_PRODUCERS.map((lane, index) =>
+    vi.spyOn(lane, "enqueue").mockImplementation(async () => {
+      if (index < failures.length) throw failures[index];
+      if (index === LANE_PRODUCERS.length - 1) {
+        signalEntered();
+        await gate;
+      }
+      return { ok: true, enqueued: 128 };
+    }),
+  );
+  pg.control.queries.length = 0;
+  const waits: Promise<unknown>[] = [];
+  let settled = false;
+  const tick = handleScheduled(
+    { cron: LANE_HEARTBEAT_CRON } as never,
+    pgMockEnv(["lane_health"]) as never,
+    { waitUntil: (p: Promise<unknown>) => void waits.push(p) } as never,
+  ).then(
+    () => {
+      settled = true;
+      return null;
+    },
+    (error: unknown) => {
+      settled = true;
+      return error;
+    },
+  );
+  try {
+    await entered;
+    // Allow a fail-fast Promise.all rejection to reach handleScheduled.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    assert.equal(
+      settled,
+      false,
+      "tick rejected before its pending sibling settled",
+    );
+    release();
+    const error = await tick;
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, failures);
+    await Promise.allSettled(waits);
+    const written = pg.control.queries.filter((q) =>
+      /INSERT INTO lane_health/i.test(q.text),
+    );
+    assert.equal(written.length, LANE_PRODUCERS.length);
+    const lastLane = LANE_PRODUCERS[LANE_PRODUCERS.length - 1];
+    assert.ok(
+      written.some(
+        (q) => q.values.includes(lastLane.name) && q.values.includes("ok"),
+      ),
+    );
+  } finally {
+    release();
+    await tick;
+    await Promise.allSettled(waits);
+    for (const spy of spies) spy.mockRestore();
+  }
+});
