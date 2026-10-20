@@ -1,0 +1,590 @@
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
+
+const BASE = "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c";
+const BASE_TREE = "9aea5cbaf18389b490ca92a946186767086dea5d";
+const SUBTREES = {
+  src: "c678538f168e63696113dc1f8d599c4ca3e1547e",
+  tests: "8c19c8235ae71b0f596825104c62bd44eb44787d",
+  workers: "a46dd43fac421449d16afbe520f1aaf6ab32f872",
+};
+const FIXTURES = ".github/fixtures/raw-capture-full-validation/";
+const CONTROLS = FIXTURES + "controls/";
+const HELPER = ".github/scripts/apply-raw-capture-full-validation.ts";
+const MANIFEST = FIXTURES + "manifest.json";
+const HARNESS = CONTROLS + "profile-applier-controls.ts.payload";
+const CONFIG = CONTROLS + "profile-applier-config.json";
+const ORIGINAL = CONTROLS + "original-apply-helper.ts.payload";
+const RAW_MANIFEST = CONTROLS + "raw-manifest.json.payload";
+const BASE64_MANIFEST = CONTROLS + "native-base64-manifest.json.payload";
+const EXECUTION = ".github/scripts/profile-applier-controls.runtime.ts";
+const ORIGINAL_SHA = "5127f3a0a384f5b2a5a9cc017204a17768cce11d4d73e73f4b3c855a101bcb5b";
+const ORIGINAL_BLOB = "acb4a6495ad647b22acb449b92e502a1c6045160";
+const RAW_SHA = "f9a3097c39be037d4e50c1988d5850be1ac42f7f45f422d5ab7c8e155cae2fa4";
+const BASE64_SHA = "3083acc73482b450934d45103c05badd42e21d2c1f4c6adf608a04944f8438b2";
+const QUALIFIED_HELPER = {
+  run_id: 39352927080,
+  artifact_id: 12234131053,
+  source_commit: "f476b52eb0e780cec5d76d62f6bb91470debb048",
+  sha256: "8d2717b37b1b04361c5c913458d13b5994fa692521621ea79c90a04c26905aab",
+  git_blob_sha: "d95ba6018b0e27f40fdf2fb61d577b59d171ba18",
+};
+const RAW_PATHS = [
+  "src/raw-capture-d1.ts",
+  "src/raw-chain-capture.ts",
+  "src/raw-capture-retry-intent.ts",
+  "src/raw-capture-retry-store.ts",
+  "tests/raw-capture-d1.test.ts",
+  "tests/raw-chain-capture.test.ts",
+  "tests/raw-capture-retry-intent.test.ts",
+  "tests/raw-capture-retry-d1.test.ts",
+  "tests/raw-capture-cron-wiring.test.ts",
+];
+const BASE64_PATHS = [
+  "src/chain-detail-native-payloads.ts",
+  "tests/chain-detail-native-payloads.test.ts",
+];
+const CARRIER_FILES = new Set([
+  HELPER,
+  ".github/scripts/report-raw-capture-full-validation.ts",
+  ".github/scripts/format-raw-capture-full-validation.ts",
+  ".github/workflows/raw-capture-full-validation.yml",
+  ".github/workflows/raw-capture-full-format.yml",
+]);
+const root = realpathSync(process.cwd());
+const started = Date.now();
+const DEADLINE_MS = 600_000;
+const MAX_RECEIPT_BYTES = 131_072;
+let phase = "initialization";
+let gitCommands = 0;
+const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const blob = (bytes: Uint8Array) =>
+  createHash("sha1").update("blob " + bytes.byteLength + "\0").update(bytes).digest("hex");
+
+interface Entry {
+  path: string;
+  sha256: string;
+  expected_base_blob_sha: string | null;
+  bytes: number;
+  git_blob_sha: string;
+  payload_path: string;
+}
+interface Manifest {
+  format: number;
+  payload_version: string;
+  base_commit: string;
+  base_tree: string;
+  canonical_subtrees: Record<string, string>;
+  maximum_total_payload_bytes: number;
+  files: Entry[];
+}
+interface Configuration {
+  format: number;
+  status: string;
+  canonical_base: string;
+  qualified_helper: typeof QUALIFIED_HELPER;
+}
+interface CommandResult {
+  exit_code: number | null;
+  signal: NodeJS.Signals | null;
+  timed_out: boolean;
+  output_overflow: boolean;
+  spawn_error: boolean;
+  stdout_bytes: number;
+  stderr_bytes: number;
+  output: Buffer;
+}
+interface Case {
+  name: string;
+  manifest: "raw" | "base64";
+  profile?: string;
+  original?: boolean;
+  accepted: boolean;
+}
+interface Loaded {
+  manifest: Manifest;
+  bytes: Buffer;
+  sha256: string;
+  payloads: Map<string, Buffer>;
+}
+const cases: Case[] = [
+  { name: "original-raw", manifest: "raw", original: true, accepted: true },
+  { name: "default-raw", manifest: "raw", accepted: true },
+  { name: "explicit-raw", manifest: "raw", profile: "raw-capture-retry-v2", accepted: true },
+  { name: "explicit-base64", manifest: "base64", profile: "native-base64-v1", accepted: true },
+  { name: "unknown-profile", manifest: "raw", profile: "unknown-profile-control", accepted: false },
+  { name: "raw-profile-base64-manifest", manifest: "base64", profile: "raw-capture-retry-v2", accepted: false },
+  { name: "base64-profile-raw-manifest", manifest: "raw", profile: "native-base64-v1", accepted: false },
+];
+const childEnvironment: Record<string, string> = {
+  PATH: process.env.PATH ?? "",
+  LANG: "C.UTF-8",
+  LC_ALL: "C",
+  TZ: "UTC",
+  GIT_CONFIG_NOSYSTEM: "1",
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_TERMINAL_PROMPT: "0",
+  GIT_CONFIG_COUNT: "2",
+  GIT_CONFIG_KEY_0: "core.hooksPath",
+  GIT_CONFIG_VALUE_0: "/dev/null",
+  GIT_CONFIG_KEY_1: "core.fsmonitor",
+  GIT_CONFIG_VALUE_1: "false",
+};
+
+async function command(
+  executable: string,
+  args: string[],
+  cwd: string,
+  env = childEnvironment,
+  capture = true,
+  input = "",
+  cleanup = false,
+): Promise<CommandResult> {
+  if (executable === "git") gitCommands += 1;
+  const timeout = cleanup ? 30_000 : Math.min(90_000, DEADLINE_MS - (Date.now() - started));
+  assert.ok(timeout > 0);
+  const maximum = capture ? 1_048_576 : 65_536;
+  return await new Promise((resolve) => {
+    const child = spawn(executable, args, { cwd, env, detached: true, stdio: "pipe" });
+    const chunks: Buffer[] = [];
+    let stdout = 0, stderr = 0, timedOut = false, overflow = false, failed = false;
+    const killGroup = () => {
+      if (child.pid) {
+        try { process.kill(-child.pid, "SIGKILL"); } catch { /* Already exited. */ }
+      }
+    };
+    const timer = setTimeout(() => { timedOut = true; killGroup(); }, timeout);
+    child.stdout.on("data", (value: Buffer) => {
+      stdout += value.byteLength;
+      if (stdout + stderr > maximum) { overflow = true; killGroup(); return; }
+      if (capture) chunks.push(value);
+    });
+    child.stderr.on("data", (value: Buffer) => {
+      stderr += value.byteLength;
+      if (stdout + stderr > maximum) { overflow = true; killGroup(); }
+    });
+    child.stdin.on("error", () => undefined);
+    child.on("error", () => { failed = true; });
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      resolve({
+        exit_code: code, signal, timed_out: timedOut, output_overflow: overflow,
+        spawn_error: failed, stdout_bytes: stdout, stderr_bytes: stderr,
+        output: capture && !overflow ? Buffer.concat(chunks) : Buffer.alloc(0),
+      });
+    });
+    child.stdin.end(input);
+  });
+}
+function finite(result: CommandResult) {
+  assert.equal(result.timed_out, false);
+  assert.equal(result.output_overflow, false);
+  assert.equal(result.spawn_error, false);
+  assert.equal(result.signal, null);
+}
+async function git(args: string[], cwd = root, input = "", cleanup = false) {
+  const result = await command("git", args, cwd, childEnvironment, true, input, cleanup);
+  finite(result);
+  assert.equal(result.exit_code, 0);
+  return result.output.toString("utf8").trim();
+}
+function required(name: string) {
+  const value = process.env[name];
+  assert.ok(value);
+  return value;
+}
+function pin(name: string, expected?: string) {
+  const value = required(name);
+  assert.match(value, /^[a-f0-9]{64}$/);
+  assert.notEqual(value, "0".repeat(64));
+  if (expected !== undefined) assert.equal(value, expected);
+  return value;
+}
+function bounded(file: string, maximum: number) {
+  const stat = lstatSync(file);
+  assert.ok(stat.isFile() && !stat.isSymbolicLink());
+  assert.ok(stat.size > 0 && stat.size <= maximum);
+  return readFileSync(file);
+}
+async function tracked(relative: string, maximum: number, sourceHead: string) {
+  const filename = path.join(root, relative);
+  assert.ok(realpathSync(filename).startsWith(root + path.sep));
+  const bytes = bounded(filename, maximum);
+  assert.equal(
+    await git(["ls-tree", sourceHead, "--", relative]),
+    "100644 blob " + blob(bytes) + "\t" + relative,
+  );
+  return bytes;
+}
+function names(value: string) {
+  return value ? value.split("\n").sort() : [];
+}
+async function canonical(cwd: string, head: string) {
+  await git(["merge-base", "--is-ancestor", BASE, head], cwd);
+  assert.equal(await git(["rev-parse", BASE + "^{tree}"], cwd), BASE_TREE);
+  for (const [directory, tree] of Object.entries(SUBTREES)) {
+    assert.equal(await git(["rev-parse", head + ":" + directory], cwd), tree);
+  }
+  const submitted = names(await git(["diff", "--name-only", BASE, head], cwd));
+  for (const file of submitted) assert.ok(file.startsWith(FIXTURES) || CARRIER_FILES.has(file));
+}
+async function load(
+  relative: string, expected: string, paths: string[], version: string, sourceHead: string,
+): Promise<Loaded> {
+  const bytes = await tracked(relative, 65_536, sourceHead);
+  assert.equal(sha(bytes), expected);
+  const manifest = JSON.parse(bytes.toString("utf8")) as Manifest;
+  assert.equal(manifest.format, 1);
+  assert.equal(manifest.payload_version, version);
+  assert.equal(manifest.base_commit, BASE);
+  assert.equal(manifest.base_tree, BASE_TREE);
+  assert.deepEqual(manifest.canonical_subtrees, SUBTREES);
+  assert.equal(manifest.maximum_total_payload_bytes, 524_288);
+  assert.deepEqual(manifest.files.map((entry) => entry.path).sort(), [...paths].sort());
+  assert.equal(new Set(manifest.files.map((entry) => entry.path)).size, paths.length);
+  const payloads = new Map<string, Buffer>();
+  let total = 0;
+  for (const entry of manifest.files) {
+    assert.match(entry.sha256, /^[a-f0-9]{64}$/);
+    assert.match(entry.git_blob_sha, /^[a-f0-9]{40}$/);
+    assert.ok(Number.isSafeInteger(entry.bytes) && entry.bytes > 0);
+    assert.equal(entry.payload_path, FIXTURES + "candidate/" + entry.path + ".payload");
+    const payload = await tracked(entry.payload_path, 524_288, sourceHead);
+    assert.equal(payload.byteLength, entry.bytes);
+    assert.equal(sha(payload), entry.sha256);
+    assert.equal(blob(payload), entry.git_blob_sha);
+    const base = await git(["ls-tree", BASE, "--", entry.path]);
+    if (entry.expected_base_blob_sha === null) {
+      assert.equal(base, "");
+      assert.equal(existsSync(path.join(root, entry.path)), false);
+    } else {
+      assert.match(entry.expected_base_blob_sha, /^[a-f0-9]{40}$/);
+      assert.equal(base, "100644 blob " + entry.expected_base_blob_sha + "\t" + entry.path);
+      assert.equal(blob(bounded(path.join(root, entry.path), 524_288)), entry.expected_base_blob_sha);
+    }
+    total += entry.bytes;
+    payloads.set(entry.payload_path, payload);
+  }
+  assert.ok(total <= manifest.maximum_total_payload_bytes);
+  return { manifest, bytes, sha256: expected, payloads };
+}
+async function referencePins() {
+  return {
+    refs: sha(Buffer.from(await git(["for-each-ref", "--format=%(refname)%00%(objectname)"]))),
+    remote_refs: sha(Buffer.from(await git(["for-each-ref", "--format=%(refname)%00%(objectname)", "refs/remotes"]))),
+  };
+}
+function filePins(manifest: Manifest) {
+  return manifest.files.map(({ path: file, sha256, git_blob_sha, bytes }) => ({
+    path: file, sha256, git_blob_sha, bytes,
+  }));
+}
+function githubOutputs(bytes: Buffer) {
+  assert.ok(bytes.byteLength <= 4096);
+  const values: Record<string, string> = {};
+  for (const line of bytes.toString("utf8").trim().split("\n")) {
+    const match = /^([a-z_]+)=([a-zA-Z0-9_-]+)$/.exec(line);
+    assert.ok(match && !(match[1]! in values));
+    values[match[1]!] = match[2]!;
+  }
+  return values;
+}
+
+const receipt: Record<string, unknown> = {
+  format: 1, status: "profile_applier_controls_not_completed",
+  canonical_base: BASE, source_head: null, run_id: process.env.GITHUB_RUN_ID ?? null,
+  run_attempt: process.env.GITHUB_RUN_ATTEMPT ?? null, cases: [],
+  child_output_retained: false, application_runtime_code_executed: false,
+  remote_operations: false, runtime_qualification: false, production_actions: false,
+};
+const caseReceipts: Record<string, unknown>[] = [];
+let scratch: string | undefined;
+let sourceHead: string | undefined;
+let sourceIndex: string | undefined;
+let refs: Awaited<ReturnType<typeof referencePins>> | undefined;
+let initialWorktrees: string | undefined;
+
+async function unchangedSource() {
+  assert.equal(await git(["rev-parse", "HEAD"]), sourceHead);
+  assert.equal(await git(["status", "--porcelain", "--untracked-files=no"]), "");
+  assert.equal(await git(["write-tree"]), sourceIndex);
+  assert.deepEqual(await referencePins(), refs);
+  assert.equal(await git(["worktree", "list", "--porcelain"]), initialWorktrees);
+}
+async function exercise(test: Case, selected: Loaded, helper: Buffer, original: Buffer, temporary: string) {
+  phase = test.name;
+  const directory = path.join(temporary, test.name);
+  const outputs = path.join(temporary, test.name + ".outputs");
+  let added = false;
+  try {
+    await git(["worktree", "add", "--detach", directory, BASE]);
+    added = true;
+    assert.equal(await git(["rev-parse", "HEAD"], directory), BASE);
+    await canonical(directory, BASE);
+    const fixtureFiles = new Map<string, Buffer>([
+      [HELPER, test.original ? original : helper],
+      [MANIFEST, selected.bytes],
+      [ORIGINAL, original],
+      ...selected.payloads,
+    ]);
+    for (const [relative, bytes] of fixtureFiles) {
+      const destination = path.join(directory, relative);
+      mkdirSync(path.dirname(destination), { recursive: true });
+      assert.ok(realpathSync(path.dirname(destination)).startsWith(directory + path.sep));
+      writeFileSync(destination, bytes);
+    }
+    const fixtureNames = [...fixtureFiles.keys()].sort();
+    await git(["add", "--", ...fixtureNames], directory);
+    assert.deepEqual(names(await git(["diff", "--cached", "--name-only"], directory)), fixtureNames);
+    assert.equal(await git(["diff", "--name-only"], directory), "");
+    const fixtureTree = await git(["write-tree"], directory);
+    const commit = await command(
+      "git", ["commit-tree", fixtureTree, "-p", BASE], directory,
+      {
+        ...childEnvironment, GIT_AUTHOR_NAME: "Validation Fixture",
+        GIT_AUTHOR_EMAIL: "validation@example.invalid", GIT_AUTHOR_DATE: "2026-10-20T00:00:00Z",
+        GIT_COMMITTER_NAME: "Validation Fixture", GIT_COMMITTER_EMAIL: "validation@example.invalid",
+        GIT_COMMITTER_DATE: "2026-10-20T00:00:00Z",
+      },
+      true, "test: inspect isolated profile control " + test.name + "\n",
+    );
+    finite(commit);
+    assert.equal(commit.exit_code, 0);
+    const fixtureCommit = commit.output.toString("utf8").trim();
+    assert.match(fixtureCommit, /^[a-f0-9]{40}$/);
+    await git(["checkout", "--detach", fixtureCommit], directory);
+    const detached = await command("git", ["symbolic-ref", "-q", "HEAD"], directory);
+    finite(detached);
+    assert.equal(detached.exit_code, 1);
+    assert.equal(detached.output.byteLength, 0);
+    assert.equal(await git(["status", "--porcelain", "--untracked-files=no"], directory), "");
+    assert.equal(await git(["write-tree"], directory), fixtureTree);
+    await canonical(directory, fixtureCommit);
+    assert.deepEqual(names(await git(["diff", "--name-only", BASE, fixtureCommit], directory)), fixtureNames);
+    const actualHelper = bounded(path.join(directory, HELPER), 65_536);
+    assert.equal(sha(actualHelper), test.original ? ORIGINAL_SHA : QUALIFIED_HELPER.sha256);
+    assert.equal(await git(["rev-parse", fixtureCommit + ":" + HELPER], directory), blob(actualHelper));
+    const env: Record<string, string> = {
+      ...childEnvironment, FULL_VALIDATION_MANIFEST_SHA256: selected.sha256,
+      GITHUB_RUN_ID: required("GITHUB_RUN_ID"), GITHUB_RUN_ATTEMPT: required("GITHUB_RUN_ATTEMPT"),
+      GITHUB_OUTPUT: outputs,
+    };
+    if (test.profile !== undefined) env.FULL_VALIDATION_PROFILE = test.profile;
+    const result = await command(process.execPath, [HELPER], directory, env, false);
+    const summary: Record<string, unknown> = {
+      case: test.name, expected: test.accepted ? "accept" : "refuse",
+      actual_exit_code: result.exit_code, actual_signal: result.signal,
+      timed_out: result.timed_out, output_overflow: result.output_overflow,
+      stdout_bytes_withheld: result.stdout_bytes, stderr_bytes_withheld: result.stderr_bytes,
+      fixture_commit: fixtureCommit, fixture_tree: fixtureTree,
+      manifest_sha256: selected.sha256, helper_sha256: sha(actualHelper),
+      head_unchanged: false, refs_unchanged: false,
+    };
+    caseReceipts.push(summary);
+    finite(result);
+    assert.equal(await git(["rev-parse", "HEAD"], directory), fixtureCommit);
+    assert.deepEqual(await referencePins(), refs);
+    summary.head_unchanged = true;
+    summary.refs_unchanged = true;
+    const evidenceDirectory = path.join(directory, "tmp/raw-capture-full-validation");
+    if (!test.accepted) {
+      assert.ok(typeof result.exit_code === "number" && result.exit_code !== 0);
+      assert.equal(await git(["write-tree"], directory), fixtureTree);
+      assert.equal(await git(["status", "--porcelain", "--untracked-files=no"], directory), "");
+      assert.equal(existsSync(evidenceDirectory), false);
+      assert.equal(existsSync(outputs), false);
+      for (const entry of selected.manifest.files) {
+        const destination = path.join(directory, entry.path);
+        if (entry.expected_base_blob_sha === null) assert.equal(existsSync(destination), false);
+        else assert.equal(blob(bounded(destination, 524_288)), entry.expected_base_blob_sha);
+      }
+      summary.status = "real_applier_refused_before_overlay";
+      summary.index_and_destinations_unchanged = true;
+    } else {
+      assert.equal(result.exit_code, 0);
+      const overlay = JSON.parse(bounded(path.join(evidenceDirectory, "overlay-receipt.json"), 65_536).toString("utf8")) as Record<string, unknown>;
+      assert.equal(overlay.status, "overlay_applied_not_qualified");
+      assert.equal(overlay.source_head, fixtureCommit);
+      assert.equal(overlay.canonical_base, BASE);
+      assert.equal(overlay.payload_version, selected.manifest.payload_version);
+      assert.equal(overlay.manifest_sha256, selected.sha256);
+      assert.equal(overlay.run_id, required("GITHUB_RUN_ID"));
+      assert.equal(String(overlay.run_attempt), required("GITHUB_RUN_ATTEMPT"));
+      assert.equal(overlay.remote_refs_changed, false);
+      assert.equal(overlay.production_actions, false);
+      assert.equal(overlay.raw_output_retained, false);
+      assert.deepEqual(overlay.files, filePins(selected.manifest));
+      const profile = test.manifest === "raw" ? "raw-capture-retry-v2" : "native-base64-v1";
+      assert.equal(overlay.qualification_profile, test.original ? undefined : profile);
+      const virtualCommit = overlay.candidate_virtual_commit;
+      const virtualTree = overlay.candidate_tree;
+      assert.ok(typeof virtualCommit === "string" && /^[a-f0-9]{40}$/.test(virtualCommit));
+      assert.ok(typeof virtualTree === "string" && /^[a-f0-9]{40}$/.test(virtualTree));
+      assert.equal(await git(["show", "-s", "--format=%P", virtualCommit], directory), BASE);
+      assert.equal(await git(["rev-parse", virtualCommit + "^{tree}"], directory), virtualTree);
+      const expectedPaths = selected.manifest.files.map((entry) => entry.path).sort();
+      assert.deepEqual(names(await git(["diff", "--name-only", BASE, virtualCommit], directory)), expectedPaths);
+      assert.deepEqual(names(await git(["diff", "--cached", "--name-only", fixtureCommit], directory)), expectedPaths);
+      assert.equal(await git(["diff", "--name-only"], directory), "");
+      for (const entry of selected.manifest.files) {
+        const destination = bounded(path.join(directory, entry.path), 524_288);
+        assert.equal(destination.byteLength, entry.bytes);
+        assert.equal(sha(destination), entry.sha256);
+        assert.equal(blob(destination), entry.git_blob_sha);
+        assert.equal(await git(["rev-parse", virtualCommit + ":" + entry.path], directory), entry.git_blob_sha);
+      }
+      const patch = await command("git", ["diff", "--no-ext-diff", "--unified=0", BASE, virtualCommit, "--", "src", "workers"], directory);
+      finite(patch);
+      assert.equal(patch.exit_code, 0);
+      assert.equal(sha(patch.output), overlay.runtime_patch_sha256);
+      assert.equal(sha(bounded(path.join(evidenceDirectory, "runtime.patch"), 1_048_576)), overlay.runtime_patch_sha256);
+      const expectedOutputs: Record<string, string> = {
+        candidate_commit: virtualCommit, candidate_tree: virtualTree,
+        canonical_base: BASE, manifest_sha256: selected.sha256,
+      };
+      if (!test.original) expectedOutputs.qualification_profile = profile;
+      assert.deepEqual(githubOutputs(bounded(outputs, 4096)), expectedOutputs);
+      Object.assign(summary, {
+        status: "real_applier_overlay_verified", virtual_commit: virtualCommit,
+        virtual_tree: virtualTree, runtime_patch_sha256: overlay.runtime_patch_sha256,
+        qualification_profile: test.original ? "original_helper_without_profile_field" : profile,
+        actual_source_pins: overlay.files,
+      });
+    }
+  } finally {
+    if (added) await git(["worktree", "remove", "--force", directory], root, "", true);
+  }
+  await unchangedSource();
+}
+
+async function main() {
+  let output: string | undefined;
+  try {
+    phase = "configuration";
+    assert.equal(process.platform, "linux");
+    assert.equal(process.version, "v22.23.2");
+    assert.equal(root, realpathSync(required("GITHUB_WORKSPACE")));
+    assert.match(required("GITHUB_RUN_ID"), /^[1-9][0-9]*$/);
+    assert.match(required("GITHUB_RUN_ATTEMPT"), /^[1-9][0-9]*$/);
+    const runnerTemporary = realpathSync(required("RUNNER_TEMP"));
+    assert.ok(!runnerTemporary.startsWith(root + path.sep) && runnerTemporary !== root);
+    output = path.join(runnerTemporary, "native-base64-profile-controls-receipt.json");
+    assert.equal(existsSync(output), false);
+    const configBytes = bounded(path.join(root, CONFIG), 16_384);
+    assert.equal(sha(configBytes), pin("PROFILE_CONTROLS_CONFIG_SHA256"));
+    const configuration = JSON.parse(configBytes.toString("utf8")) as Configuration;
+    assert.deepEqual(Object.keys(configuration).sort(), ["canonical_base", "format", "qualified_helper", "status"]);
+    assert.equal(configuration.format, 1);
+    assert.equal(configuration.status, "ready_after_actual_stage1_readback");
+    assert.equal(configuration.canonical_base, BASE);
+    assert.deepEqual(configuration.qualified_helper, QUALIFIED_HELPER);
+    pin("PROFILE_CONTROLS_FORMATTED_HELPER_SHA256", QUALIFIED_HELPER.sha256);
+    pin("PROFILE_CONTROLS_RAW_MANIFEST_SHA256", RAW_SHA);
+    pin("PROFILE_CONTROLS_BASE64_MANIFEST_SHA256", BASE64_SHA);
+    const execution = realpathSync(process.argv[1]!);
+    assert.equal(execution, path.join(root, EXECUTION));
+    const executionBytes = bounded(execution, 65_536);
+    assert.equal(sha(executionBytes), pin("PROFILE_CONTROLS_HARNESS_SHA256"));
+    phase = "committed_source";
+    sourceHead = await git(["rev-parse", "HEAD"]);
+    assert.equal(sourceHead, required("GITHUB_SHA"));
+    assert.equal(sourceHead, required("PROFILE_CONTROLS_SOURCE_HEAD"));
+    assert.match(sourceHead, /^[a-f0-9]{40}$/);
+    assert.equal(await git(["status", "--porcelain", "--untracked-files=no"]), "");
+    await canonical(root, sourceHead);
+    assert.equal(await git(["ls-files", "--", EXECUTION]), "");
+    const committedHarness = await tracked(HARNESS, 65_536, sourceHead);
+    assert.equal(sha(committedHarness), pin("PROFILE_CONTROLS_HARNESS_SOURCE_SHA256"));
+    assert.deepEqual(await tracked(CONFIG, 16_384, sourceHead), configBytes);
+    const helper = await tracked(HELPER, 65_536, sourceHead);
+    assert.equal(sha(helper), QUALIFIED_HELPER.sha256);
+    assert.equal(blob(helper), QUALIFIED_HELPER.git_blob_sha);
+    const original = await tracked(ORIGINAL, 65_536, sourceHead);
+    assert.equal(sha(original), ORIGINAL_SHA);
+    assert.equal(blob(original), ORIGINAL_BLOB);
+    const raw = await load(RAW_MANIFEST, RAW_SHA, RAW_PATHS, "v2-native-39348983680", sourceHead);
+    const base64 = await load(BASE64_MANIFEST, BASE64_SHA, BASE64_PATHS, "native-base64-v1-native-39348420082", sourceHead);
+    sourceIndex = await git(["write-tree"]);
+    refs = await referencePins();
+    initialWorktrees = await git(["worktree", "list", "--porcelain"]);
+    Object.assign(receipt, {
+      source_head: sourceHead, config_sha256: sha(configBytes),
+      qualified_helper: configuration.qualified_helper,
+      original_helper: { run_id: 39351891864, artifact_id: 12233656652, sha256: ORIGINAL_SHA, git_blob_sha: ORIGINAL_BLOB },
+      harness_committed_source_sha256: sha(committedHarness),
+      harness_execution_sha256: sha(executionBytes),
+      raw_manifest_sha256: RAW_SHA, base64_manifest_sha256: BASE64_SHA,
+    });
+    scratch = mkdtempSync(path.join(runnerTemporary, "native-base64-profile-controls-"));
+    for (const test of cases) await exercise(test, test.manifest === "raw" ? raw : base64, helper, original, scratch);
+    const rawComparators = caseReceipts.filter((item) => ["original-raw", "default-raw", "explicit-raw"].includes(String(item.case)));
+    assert.equal(rawComparators.length, 3);
+    assert.equal(new Set(rawComparators.map((item) => item.virtual_commit)).size, 1);
+    assert.equal(new Set(rawComparators.map((item) => item.virtual_tree)).size, 1);
+    assert.equal(new Set(rawComparators.map((item) => item.runtime_patch_sha256)).size, 1);
+    assert.equal(caseReceipts.length, 7);
+    await unchangedSource();
+    receipt.status = "real_profile_applier_controls_passed_not_full_validation";
+    receipt.raw_virtual_commit_identity_preserved = true;
+    receipt.source_head_index_refs_and_worktrees_unchanged = true;
+    receipt.positive_cases = 4;
+    receipt.negative_cases = 3;
+    phase = "complete";
+  } catch {
+    receipt.status = "real_profile_applier_controls_failed";
+    receipt.failure_phase = phase;
+    process.exitCode = 1;
+  } finally {
+    if (scratch && existsSync(scratch)) {
+      // A failed worktree removal must leave its registration available for diagnosis.
+      if (initialWorktrees !== undefined) {
+        try {
+          await unchangedSource();
+          rmSync(scratch, { recursive: true, force: true });
+        } catch {
+          receipt.status = "real_profile_applier_controls_failed";
+          receipt.cleanup_or_source_invariant_failed = true;
+          process.exitCode = 1;
+        }
+      }
+    }
+    receipt.cases = caseReceipts;
+    receipt.harness_git_commands = gitCommands;
+    receipt.elapsed_ms = Date.now() - started;
+    const bytes = Buffer.from(JSON.stringify(receipt, null, 2) + "\n");
+    if (bytes.byteLength > MAX_RECEIPT_BYTES) {
+      process.exitCode = 1;
+      if (output) writeFileSync(output, JSON.stringify({ format: 1, status: "profile_controls_receipt_budget_exceeded" }) + "\n");
+      console.log(JSON.stringify({ status: "profile_controls_receipt_budget_exceeded" }));
+    } else {
+      if (output) writeFileSync(output, bytes);
+      console.log(JSON.stringify({
+        status: receipt.status, observed_cases: caseReceipts.length,
+        failure_phase: receipt.failure_phase ?? null, raw_child_output_retained: false,
+        runtime_qualification: false, publication: false,
+      }));
+    }
+  }
+}
+
+try {
+  await main();
+} catch {
+  process.exitCode = 1;
+  console.log(JSON.stringify({
+    status: "profile_controls_terminal_failure", raw_child_output_retained: false,
+    runtime_qualification: false, publication: false,
+  }));
+}

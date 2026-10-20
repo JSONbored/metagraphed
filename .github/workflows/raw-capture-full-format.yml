@@ -1,0 +1,129 @@
+name: Native base64 profile real applier controls
+
+on:
+  push:
+    branches: [ci/native-base64-profile-controls-20261020]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-base64-profile-controls-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PROFILE_CONTROLS_CONFIG_SHA256: dac2d9ecd926e25716d22063d2fa3573fb84c3d13f779b23d4eb77defd888cdb
+      PROFILE_CONTROLS_HARNESS_SOURCE_SHA256: 2593b72322c8184ee63626d117ec2c3ad294ff862943548e42d9603977aa52ee
+      PROFILE_CONTROLS_FORMATTED_HELPER_SHA256: 8d2717b37b1b04361c5c913458d13b5994fa692521621ea79c90a04c26905aab
+      PROFILE_CONTROLS_RAW_MANIFEST_SHA256: f9a3097c39be037d4e50c1988d5850be1ac42f7f45f422d5ab7c8e155cae2fa4
+      PROFILE_CONTROLS_BASE64_MANIFEST_SHA256: 3083acc73482b450934d45103c05badd42e21d2c1f4c6adf608a04944f8438b2
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      DO_NOT_TRACK: "1"
+    steps:
+      - name: Checkout exact source-only controls commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact qualification Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Qualify public harness and run actual applier controls
+        env:
+          PROFILE_CONTROLS_SOURCE_HEAD: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { spawnSync } from "node:child_process";
+          import { createHash } from "node:crypto";
+          import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+          import path from "node:path";
+          const root = realpathSync(process.cwd());
+          const output = path.join(root, "tmp/native-base64-profile-controls/upload");
+          const payload = path.join(root, ".github/fixtures/raw-capture-full-validation/controls/profile-applier-controls.ts.payload");
+          const runtime = path.join(root, ".github/scripts/profile-applier-controls.runtime.ts");
+          const tsconfig = path.join(root, "tmp/native-base64-profile-controls.tsconfig.json");
+          const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+          mkdirSync(output, { recursive: true });
+          const phases = [];
+          let active = "source_pins", status = "failed", harnessInputs = 0, harnessHash = null;
+          function run(phase, command, args, timeout = 120000, env = process.env) {
+            active = phase;
+            const result = spawnSync(command, args, { cwd: root, encoding: "utf8", env, timeout, killSignal: "SIGKILL", maxBuffer: 4 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+            const codes = [...new Set((String(result.stdout ?? "") + String(result.stderr ?? "")).match(/TS[0-9]{3,6}/g) ?? [])].slice(0, 32);
+            phases.push({ phase, exit_code: result.status, signal: result.signal, error_code: result.error?.code ?? null, ts_error_codes: codes, output_withheld: true });
+            assert.equal(result.status, 0);
+            assert.equal(result.signal, null);
+            assert.equal(result.error, undefined);
+            return result.stdout;
+          }
+          try {
+            assert.match(process.env.PROFILE_CONTROLS_HARNESS_SOURCE_SHA256 ?? "", /^[a-f0-9]{64}$/);
+            assert.match(process.env.PROFILE_CONTROLS_CONFIG_SHA256 ?? "", /^[a-f0-9]{64}$/);
+            assert.ok(statSync(payload).size > 0 && statSync(payload).size <= 131072);
+            assert.equal(hash(readFileSync(payload)), process.env.PROFILE_CONTROLS_HARNESS_SOURCE_SHA256);
+            assert.equal(process.env.PROFILE_CONTROLS_SOURCE_HEAD, process.env.GITHUB_SHA);
+            assert.ok(typeof process.env.RUNNER_TEMP === "string" && path.isAbsolute(process.env.RUNNER_TEMP));
+            assert.equal(existsSync(runtime), false);
+            copyFileSync(payload, runtime);
+            run("native_install", "npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], 180000);
+            run("native_harness_format", process.execPath, ["node_modules/prettier/bin/prettier.cjs", "--write", runtime]);
+            run("native_harness_format_check", process.execPath, ["node_modules/prettier/bin/prettier.cjs", "--check", runtime]);
+            run("native_harness_lint", process.execPath, ["node_modules/eslint/bin/eslint.js", "--max-warnings=0", runtime]);
+            writeFileSync(tsconfig, JSON.stringify({ extends: "../tsconfig.json", compilerOptions: { incremental: false }, files: ["../.github/scripts/profile-applier-controls.runtime.ts"], include: [], exclude: [] }) + "\n");
+            const typeFiles = run("native_harness_types", process.execPath, ["node_modules/typescript/bin/tsc", "--project", tsconfig, "--noEmit", "--listFiles"]);
+            assert.ok(typeFiles.split(/\r?\n/).map(line => line.trim()).includes(runtime));
+            harnessInputs = 1;
+            harnessHash = hash(readFileSync(runtime));
+            copyFileSync(runtime, path.join(output, "profile-applier-controls.runtime.ts"));
+            run("actual_applier_controls", process.execPath, [runtime], 660000, { ...process.env, PROFILE_CONTROLS_HARNESS_SHA256: harnessHash });
+            active = "actual_receipt_acceptance";
+            const childReceipt = path.join(process.env.RUNNER_TEMP, "native-base64-profile-controls-receipt.json");
+            assert.ok(statSync(childReceipt).size > 0 && statSync(childReceipt).size <= 131072);
+            const child = JSON.parse(readFileSync(childReceipt, "utf8"));
+            assert.equal(child.status, "real_profile_applier_controls_passed_not_full_validation");
+            assert.equal(child.source_head, process.env.GITHUB_SHA);
+            assert.equal(child.run_id, process.env.GITHUB_RUN_ID);
+            assert.equal(child.run_attempt, process.env.GITHUB_RUN_ATTEMPT);
+            assert.equal(child.positive_cases, 4);
+            assert.equal(child.negative_cases, 3);
+            assert.equal(child.cases.length, 7);
+            assert.equal(child.raw_virtual_commit_identity_preserved, true);
+            assert.equal(child.source_head_index_refs_and_worktrees_unchanged, true);
+            assert.equal(child.harness_execution_sha256, harnessHash);
+            assert.equal(child.harness_committed_source_sha256, process.env.PROFILE_CONTROLS_HARNESS_SOURCE_SHA256);
+            assert.equal(child.qualified_helper.sha256, process.env.PROFILE_CONTROLS_FORMATTED_HELPER_SHA256);
+            copyFileSync(childReceipt, path.join(output, "profile-applier-receipt.json"));
+            status = "native_harness_and_actual_applier_controls_passed_not_full_runtime_qualification";
+          } catch {
+            process.exitCode = 1;
+          } finally {
+            try {
+              assert.ok(typeof process.env.RUNNER_TEMP === "string" && path.isAbsolute(process.env.RUNNER_TEMP));
+              const childReceipt = path.join(process.env.RUNNER_TEMP, "native-base64-profile-controls-receipt.json");
+              assert.ok(statSync(childReceipt).size > 0 && statSync(childReceipt).size <= 131072);
+              copyFileSync(childReceipt, path.join(output, "profile-applier-receipt.json"));
+            } catch {}
+            const receipt = { status, active_phase: active, source_head: process.env.GITHUB_SHA, run_id: process.env.GITHUB_RUN_ID, run_attempt: process.env.GITHUB_RUN_ATTEMPT, phases, actual_harness_inputs_confirmed: harnessInputs, committed_harness_sha256: process.env.PROFILE_CONTROLS_HARNESS_SOURCE_SHA256, executed_harness_sha256: harnessHash, config_sha256: process.env.PROFILE_CONTROLS_CONFIG_SHA256, raw_output_retained: false, production_actions: false, full_runtime_qualification: false };
+            writeFileSync(path.join(output, "qualification-receipt.json"), JSON.stringify(receipt, null, 2) + "\n");
+            rmSync(runtime, { force: true });
+            rmSync(tsconfig, { force: true });
+            console.log(JSON.stringify({ status, active_phase: active, phases: phases.length, actual_harness_inputs_confirmed: harnessInputs }));
+          }
+          NODE
+      - name: Retain bounded public source and control receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-base64-profile-controls-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tmp/native-base64-profile-controls/upload/
+          retention-days: 1
+          if-no-files-found: error

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "status": "ready_after_actual_stage1_readback",
+  "canonical_base": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "qualified_helper": {
+    "run_id": 39352927080,
+    "artifact_id": 12234131053,
+    "source_commit": "f476b52eb0e780cec5d76d62f6bb91470debb048",
+    "sha256": "8d2717b37b1b04361c5c913458d13b5994fa692521621ea79c90a04c26905aab",
+    "git_blob_sha": "d95ba6018b0e27f40fdf2fb61d577b59d171ba18"
+  }
+}

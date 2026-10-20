@@ -1,0 +1,812 @@
+{
+  "format": 1,
+  "force_full_qualification": true,
+  "native_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "native_workflow_blob": "4f2f47c59c96d7a65b949cebdc5ba947a8dbdb16",
+  "commands": [
+    {
+      "id": "changes-02",
+      "job": "changes",
+      "native_name": "Compute fast-lane eligibility",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/changes-02.sh.payload",
+      "sha256": "961ec7a783e90fbb405e6dcc20227beeda556e0081489f5f02f7f6195523a81d",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "c87d71905c73dfe6f7adc84ccca597317cf47f315a01eb07a2b4075ea7a2ad7d",
+      "expression_substitutions": [
+        {
+          "expression": "${{ github.event_name }}",
+          "environment": "QUALIFICATION_EXPR_0"
+        },
+        {
+          "expression": "${{ github.event_name }}",
+          "environment": "QUALIFICATION_EXPR_1"
+        }
+      ]
+    },
+    {
+      "id": "bundle-source-03",
+      "job": "bundle-source",
+      "native_name": "Install without lifecycle scripts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-03.sh.payload",
+      "sha256": "b9164ea2aa662f5c64f41bb39467da10deea1b2eda2592f61d72178b0d3231fe",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "b9164ea2aa662f5c64f41bb39467da10deea1b2eda2592f61d72178b0d3231fe",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-04",
+      "job": "bundle-source",
+      "native_name": "Check source formatting",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-04.sh.payload",
+      "sha256": "f5c55701d0ece777339308c0ba0e10a003b92d04394b065ba15013175a008f30",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "f5c55701d0ece777339308c0ba0e10a003b92d04394b065ba15013175a008f30",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-05",
+      "job": "bundle-source",
+      "native_name": "Retain native formatting diff on failure",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-05.sh.payload",
+      "sha256": "a617034f8c3a0d037ed8b929a44001be4a402c060590ff3c93710ac128a20752",
+      "working_directory": ".",
+      "counts_as_native_gate": false,
+      "native_source_sha256": "a617034f8c3a0d037ed8b929a44001be4a402c060590ff3c93710ac128a20752",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-06",
+      "job": "bundle-source",
+      "native_name": "Lint source support",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-06.sh.payload",
+      "sha256": "25c9eae3ab7d8f4b8b81c40e568b20951216751a97ca6c4dfb42a1fb98c9106b",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "25c9eae3ab7d8f4b8b81c40e568b20951216751a97ca6c4dfb42a1fb98c9106b",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-07",
+      "job": "bundle-source",
+      "native_name": "Typecheck source support and regression fixtures",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-07.sh.payload",
+      "sha256": "b35f44126527980e439131b2b9f439be028184aeadb63485dad288b848d94e80",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "b35f44126527980e439131b2b9f439be028184aeadb63485dad288b848d94e80",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-08",
+      "job": "bundle-source",
+      "native_name": "Test snapshot extraction and archive-policy wiring",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-08.sh.payload",
+      "sha256": "a9c1ca35c485330065d04aac783c663b24c2bbf498ab19d83775a37bc8264d5b",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "a9c1ca35c485330065d04aac783c663b24c2bbf498ab19d83775a37bc8264d5b",
+      "expression_substitutions": []
+    },
+    {
+      "id": "bundle-source-09",
+      "job": "bundle-source",
+      "native_name": "Audit committed snapshots and workflow rules",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/bundle-source-09.sh.payload",
+      "sha256": "c9462404484df1e549c80ca62ac4a874e78f0be581a92f51821a4a0592141055",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "c9462404484df1e549c80ca62ac4a874e78f0be581a92f51821a4a0592141055",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-02",
+      "job": "validate",
+      "native_name": "Compute submitted files",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-02.sh.payload",
+      "sha256": "367df559b5eba50548bf145ab103df617c8940791cd1970cb4ad51ad0adc2e7d",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "8a2798f8c91a649612fc1e044190da81a4cbbf95fe71d36d4123c52e44c99d28",
+      "expression_substitutions": [
+        {
+          "expression": "${{ github.event_name }}",
+          "environment": "QUALIFICATION_EXPR_0"
+        }
+      ]
+    },
+    {
+      "id": "validate-05",
+      "job": "validate",
+      "native_name": "Dependency CVE scan (SCA, report-only)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-05.sh.payload",
+      "sha256": "8447601dc281816fa96dd6e588d5a04ab127cb8bb5c147de2f664d10acd18958",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "8447601dc281816fa96dd6e588d5a04ab127cb8bb5c147de2f664d10acd18958",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-07",
+      "job": "validate",
+      "native_name": "Lint + format",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-07.sh.payload",
+      "sha256": "d3e493bab2d37fa5902945e8c0213ff3a2b457fbebbd18a1aaacc7e702806d7e",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "d3e493bab2d37fa5902945e8c0213ff3a2b457fbebbd18a1aaacc7e702806d7e",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-09",
+      "job": "validate",
+      "native_name": "Typecheck",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-09.sh.payload",
+      "sha256": "5bd319875d2e2af9cf583fbf41264ade30f65089c0c933f841be454d0bb822e5",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "5bd319875d2e2af9cf583fbf41264ade30f65089c0c933f841be454d0bb822e5",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-10",
+      "job": "validate",
+      "native_name": "Cold typecheck for native qualification",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-10.sh.payload",
+      "sha256": "df784ad604f6163a0011a31946892c127595810aaa7a411638570bef9d23d4db",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "df784ad604f6163a0011a31946892c127595810aaa7a411638570bef9d23d4db",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-11",
+      "job": "validate",
+      "native_name": "Validate committed contract (drift)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-11.sh.payload",
+      "sha256": "94ed6cca541bc4e8650ddadb0c79cdb7378c588d03dc37b256d56c99a5460312",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "94ed6cca541bc4e8650ddadb0c79cdb7378c588d03dc37b256d56c99a5460312",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-12",
+      "job": "validate",
+      "native_name": "Build artifacts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-12.sh.payload",
+      "sha256": "dae58de3ddfde95b066b259e24d83e50d15aedeafb58b0b20d7b26dd324ef0ef",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "dae58de3ddfde95b066b259e24d83e50d15aedeafb58b0b20d7b26dd324ef0ef",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-13",
+      "job": "validate",
+      "native_name": "Worker handler smoke",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-13.sh.payload",
+      "sha256": "1fadcbf75eafb8450061852ebe4274199dbcc70e657b096e1426e750ea64ca99",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "1fadcbf75eafb8450061852ebe4274199dbcc70e657b096e1426e750ea64ca99",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-14",
+      "job": "validate",
+      "native_name": "Verify submitted public artifacts are reproducible",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-14.sh.payload",
+      "sha256": "e6fbda11a3f04a8144b0db1563cc519f953e2fb0fae67dfcbaa44fc1b6024061",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "e6fbda11a3f04a8144b0db1563cc519f953e2fb0fae67dfcbaa44fc1b6024061",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-15",
+      "job": "validate",
+      "native_name": "Validate registry",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-15.sh.payload",
+      "sha256": "83ae29035b96c3e288776624db81ae0c99324584a5f5d60013c83b1af3ae43a3",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "83ae29035b96c3e288776624db81ae0c99324584a5f5d60013c83b1af3ae43a3",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-16",
+      "job": "validate",
+      "native_name": "Generate R2 manifest",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-16.sh.payload",
+      "sha256": "559437a70f7d0fc115239d88f943087a77d7f7704a9ca618856a804768e195b1",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "559437a70f7d0fc115239d88f943087a77d7f7704a9ca618856a804768e195b1",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-17",
+      "job": "validate",
+      "native_name": "Verify committed derived artifacts are fresh",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-17.sh.payload",
+      "sha256": "a9f8fbd2457b88ce101abaae324b67cc89e5352aefd188d55e1744cc514e6544",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "a9f8fbd2457b88ce101abaae324b67cc89e5352aefd188d55e1744cc514e6544",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-18",
+      "job": "validate",
+      "native_name": "Validate the API contract surface",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-18.sh.payload",
+      "sha256": "2125f03bef42df1a83d4cb5234e6c1085a518136a88710a9d893ba802cc77691",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "2125f03bef42df1a83d4cb5234e6c1085a518136a88710a9d893ba802cc77691",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-19",
+      "job": "validate",
+      "native_name": "Validate client-SDK sync (contract \u2194 published version)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-19.sh.payload",
+      "sha256": "579a540fd39dfacb890326456870d20956c36ca5cfcca44b8e4c767e62181fe0",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "579a540fd39dfacb890326456870d20956c36ca5cfcca44b8e4c767e62181fe0",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-20",
+      "job": "validate",
+      "native_name": "Validate artifact size budgets",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-20.sh.payload",
+      "sha256": "545f570ad0ebac6aabaab6f533d7ad87e60f0f4b5e67efdcbf12399bcd4ad400",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "545f570ad0ebac6aabaab6f533d7ad87e60f0f4b5e67efdcbf12399bcd4ad400",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-21",
+      "job": "validate",
+      "native_name": "Validate documentation contracts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-21.sh.payload",
+      "sha256": "6ba6c1b12d2336b34333e7b2191c98537afe5bcda3d2f405a02ba0cb5c1cef94",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "6ba6c1b12d2336b34333e7b2191c98537afe5bcda3d2f405a02ba0cb5c1cef94",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-22",
+      "job": "validate",
+      "native_name": "Validate contract \u2194 doc sync",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-22.sh.payload",
+      "sha256": "5df175a06b4f8063b06cc6fe2aec9af452f4850b6ea7403ba64f0dda752d6520",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "5df175a06b4f8063b06cc6fe2aec9af452f4850b6ea7403ba64f0dda752d6520",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-23",
+      "job": "validate",
+      "native_name": "Validate intake templates",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-23.sh.payload",
+      "sha256": "39cc54e297b256c9d3208946052b4f99e274460612d2486e013c483fca2c54a4",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "39cc54e297b256c9d3208946052b4f99e274460612d2486e013c483fca2c54a4",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-24",
+      "job": "validate",
+      "native_name": "Validate registry subnet files",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-24.sh.payload",
+      "sha256": "9dae218154891e6f45255763759339c43726145772655060970d4f42a6f7ff67",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "9dae218154891e6f45255763759339c43726145772655060970d4f42a6f7ff67",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-25",
+      "job": "validate",
+      "native_name": "Validate revenue provenance",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-25.sh.payload",
+      "sha256": "fd5b2283e46c7f2931693afe94a0d8c2b5c58b0ec6d14378529d0dca544b84bc",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "fd5b2283e46c7f2931693afe94a0d8c2b5c58b0ec6d14378529d0dca544b84bc",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-26",
+      "job": "validate",
+      "native_name": "Validate operational-surface parity",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-26.sh.payload",
+      "sha256": "b8444f03a2773f1b588ed3bfb77f238da6a35ab68a1b6410c8e49f96f68dea64",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "b8444f03a2773f1b588ed3bfb77f238da6a35ab68a1b6410c8e49f96f68dea64",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-27",
+      "job": "validate",
+      "native_name": "Validate workflows",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-27.sh.payload",
+      "sha256": "eaea157f1ca927c70c0b75f98483178471c810d45786a7b7e34d8959fe922fa1",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "eaea157f1ca927c70c0b75f98483178471c810d45786a7b7e34d8959fe922fa1",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-28",
+      "job": "validate",
+      "native_name": "Validate migration sequence",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-28.sh.payload",
+      "sha256": "f2333ff94eb8a37e15c6c2b902259cef3c7dd8e6382c21062f59c3d55d0beea8",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "f2333ff94eb8a37e15c6c2b902259cef3c7dd8e6382c21062f59c3d55d0beea8",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-29",
+      "job": "validate",
+      "native_name": "Validate the source-tree locks",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-29.sh.payload",
+      "sha256": "6655dc15801418a440d8cc432ebee3ea45c27a4bcaa75cd85f8f5216a5635255",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "6655dc15801418a440d8cc432ebee3ea45c27a4bcaa75cd85f8f5216a5635255",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-30",
+      "job": "validate",
+      "native_name": "Validate Cloudflare config",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-30.sh.payload",
+      "sha256": "2d5fac15437d899bd2f999b665c6d98592e1013fd6770fba5545ea0ac2fc8d99",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "2d5fac15437d899bd2f999b665c6d98592e1013fd6770fba5545ea0ac2fc8d99",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-31",
+      "job": "validate",
+      "native_name": "Validate R2 manifest",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-31.sh.payload",
+      "sha256": "7e0d0f5c0fe4e823a6cd632db9d72f550f0a3db025815931e4a2717e10ed95b1",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "7e0d0f5c0fe4e823a6cd632db9d72f550f0a3db025815931e4a2717e10ed95b1",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-32",
+      "job": "validate",
+      "native_name": "Worker deploy dry-run",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-32.sh.payload",
+      "sha256": "0c6c78d0d24e0b594d225403d5cef8c8a091a833213e6c282fdb4efee6db4d57",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "0c6c78d0d24e0b594d225403d5cef8c8a091a833213e6c282fdb4efee6db4d57",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-33",
+      "job": "validate",
+      "native_name": "Worker bundle-size budget",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-33.sh.payload",
+      "sha256": "e666ca7b801de6e9c2d009a5e54b726a532c0e0b13ed09327d1431f266231d83",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "e666ca7b801de6e9c2d009a5e54b726a532c0e0b13ed09327d1431f266231d83",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-34",
+      "job": "validate",
+      "native_name": "Public-safety scan",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-34.sh.payload",
+      "sha256": "227f6f125c103d331b65fe7f5b1826082ef008b3638cf8363fc0d2cfbc657649",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "227f6f125c103d331b65fe7f5b1826082ef008b3638cf8363fc0d2cfbc657649",
+      "expression_substitutions": []
+    },
+    {
+      "id": "validate-35",
+      "job": "validate",
+      "native_name": "Validate private boundary",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-35.sh.payload",
+      "sha256": "0b3e70e1a9e4ad401e90407d013374b4f79073034ba5261ab66a8d8aded311a7",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "0b3e70e1a9e4ad401e90407d013374b4f79073034ba5261ab66a8d8aded311a7",
+      "expression_substitutions": []
+    },
+    {
+      "id": "test-04",
+      "job": "test",
+      "native_name": "Build artifacts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/test-04.sh.payload",
+      "sha256": "dae58de3ddfde95b066b259e24d83e50d15aedeafb58b0b20d7b26dd324ef0ef",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "dae58de3ddfde95b066b259e24d83e50d15aedeafb58b0b20d7b26dd324ef0ef",
+      "expression_substitutions": []
+    },
+    {
+      "id": "test-05",
+      "job": "test",
+      "native_name": "Prepare test reports dir",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/test-05.sh.payload",
+      "sha256": "1383dbcb89d2536c1f6b07c6959ba5d63bfbd548cd245232e23becbe0e51685f",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "1383dbcb89d2536c1f6b07c6959ba5d63bfbd548cd245232e23becbe0e51685f",
+      "expression_substitutions": []
+    },
+    {
+      "id": "test-06",
+      "job": "test",
+      "native_name": "Test (split passes, with coverage gate)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/test-06.sh.payload",
+      "sha256": "4656a53195834d3476fb080af727f2aac84ef67f5810fad3fde03eba42c40088",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "3d428d95bab2b037dad1264113e05a5118222e35c83e69271a3b3a66637cc2b0",
+      "expression_substitutions": [
+        {
+          "expression": "${{ matrix.args }}",
+          "environment": "QUALIFICATION_EXPR_0"
+        }
+      ]
+    },
+    {
+      "id": "test-07",
+      "job": "test",
+      "native_name": "Verify coverage reports exist",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/test-07.sh.payload",
+      "sha256": "b26ab00b739ad65409f53102e16a42312b5c3a3a0141fd32366f88ef91d5a426",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "5b04a5e1f331aa0c8ed3d4ea9204f9cf3fdde478f9554dd134172afd09cf9c45",
+      "expression_substitutions": [
+        {
+          "expression": "${{ matrix.cov }}",
+          "environment": "QUALIFICATION_EXPR_0"
+        }
+      ]
+    },
+    {
+      "id": "python-03",
+      "job": "python",
+      "native_name": "Test Python SDK",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/python-03.sh.payload",
+      "sha256": "f7bbf6dcb4dd0c48a8e5b87f5896862549b0919cca706692aef95086d67e1a22",
+      "working_directory": "python",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "f7bbf6dcb4dd0c48a8e5b87f5896862549b0919cca706692aef95086d67e1a22",
+      "expression_substitutions": []
+    },
+    {
+      "id": "python-04",
+      "job": "python",
+      "native_name": "Install and check the locked data-refresh environment",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/python-04.sh.payload",
+      "sha256": "911241370ad1075b2fc32d6cbb06002ecad5d2b25b20adc769e6b823f71f7677",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "911241370ad1075b2fc32d6cbb06002ecad5d2b25b20adc769e6b823f71f7677",
+      "expression_substitutions": []
+    },
+    {
+      "id": "python-05",
+      "job": "python",
+      "native_name": "Test scripts in their locked dependency environment",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/python-05.sh.payload",
+      "sha256": "a1b489121443d4a2ffbb6281bed742ab46fc60aa8b7d67c40706c73de0e9d81b",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "a1b489121443d4a2ffbb6281bed742ab46fc60aa8b7d67c40706c73de0e9d81b",
+      "expression_substitutions": []
+    },
+    {
+      "id": "python-06",
+      "job": "python",
+      "native_name": "Test data-refresh scripts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/python-06.sh.payload",
+      "sha256": "a8e4bb27637b6103678dac4780fb1b06cd97c08771d24273b45cefd74831f31a",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "a8e4bb27637b6103678dac4780fb1b06cd97c08771d24273b45cefd74831f31a",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-04",
+      "job": "ui",
+      "native_name": "Build packages/client (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-04.sh.payload",
+      "sha256": "92b24070661c393e98495409610635e86d5ffd27a44dfcba6fe4270828ccbbb7",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "92b24070661c393e98495409610635e86d5ffd27a44dfcba6fe4270828ccbbb7",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-05",
+      "job": "ui",
+      "native_name": "Build packages/ui-kit (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-05.sh.payload",
+      "sha256": "f885dd199857cc6df980ebef7da7b7c8e41c4abf9261ad5655dd2a099ff57647",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "f885dd199857cc6df980ebef7da7b7c8e41c4abf9261ad5655dd2a099ff57647",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-06",
+      "job": "ui",
+      "native_name": "Build packages/chain-summaries (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-06.sh.payload",
+      "sha256": "afd05eb343de1ff513427f6f610b8775070f8592095e914418621e76a57590b0",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "afd05eb343de1ff513427f6f610b8775070f8592095e914418621e76a57590b0",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-07",
+      "job": "ui",
+      "native_name": "Build API reference docs (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-07.sh.payload",
+      "sha256": "00a07b1c794174fcd0d6e5bb31c6f912a2b0bfde4c5edee05714042caf88c02d",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "00a07b1c794174fcd0d6e5bb31c6f912a2b0bfde4c5edee05714042caf88c02d",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-08",
+      "job": "ui",
+      "native_name": "Build limits docs (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-08.sh.payload",
+      "sha256": "247f5bf93062c2946f0c16c755f4cf03383561ea0ae23b0eeac6fa7a8fa15c96",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "247f5bf93062c2946f0c16c755f4cf03383561ea0ae23b0eeac6fa7a8fa15c96",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-09",
+      "job": "ui",
+      "native_name": "Build digest pages (drift check)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-09.sh.payload",
+      "sha256": "ef63f028f92dcfc4f16c0294987542edc7c3399b0b8338c5ed710af0f1da1b94",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "ef63f028f92dcfc4f16c0294987542edc7c3399b0b8338c5ed710af0f1da1b94",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-10",
+      "job": "ui",
+      "native_name": "Typecheck packages/ui-kit",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-10.sh.payload",
+      "sha256": "23ec5b7a2275f097389a683a31282690e5d5734b87796344c8b69d3b63d25eef",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "23ec5b7a2275f097389a683a31282690e5d5734b87796344c8b69d3b63d25eef",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-11",
+      "job": "ui",
+      "native_name": "Test packages/ui-kit",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-11.sh.payload",
+      "sha256": "814e5e035abab6a18a9bef6c64e6994ea0993be0a193786d528b7d5dbd946b40",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "814e5e035abab6a18a9bef6c64e6994ea0993be0a193786d528b7d5dbd946b40",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-12",
+      "job": "ui",
+      "native_name": "Lint packages/ui-kit (app-logic import guardrail)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-12.sh.payload",
+      "sha256": "f39e0a141024b365d7bedcdaa5c54c7330a67ec19b758f79ddd1ca01368c0b9e",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "f39e0a141024b365d7bedcdaa5c54c7330a67ec19b758f79ddd1ca01368c0b9e",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-13",
+      "job": "ui",
+      "native_name": "Typecheck packages/chain-summaries",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-13.sh.payload",
+      "sha256": "7f55ad4b7a0061395397d4dc10a9165a3e27c444db00aa17d3e096bc40c51ad5",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "7f55ad4b7a0061395397d4dc10a9165a3e27c444db00aa17d3e096bc40c51ad5",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-14",
+      "job": "ui",
+      "native_name": "Test packages/chain-summaries",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-14.sh.payload",
+      "sha256": "16b024f9a39b107ea15cd3518bfc8d9293a916d5880f2a0b9a347690a0a001bb",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "16b024f9a39b107ea15cd3518bfc8d9293a916d5880f2a0b9a347690a0a001bb",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-15",
+      "job": "ui",
+      "native_name": "Lint packages/chain-summaries (app-logic import guardrail)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-15.sh.payload",
+      "sha256": "018b3bbf56a1a1bb8a6dbb4fc4078193e92730d01d70029ffbcbf79961ba4006",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "018b3bbf56a1a1bb8a6dbb4fc4078193e92730d01d70029ffbcbf79961ba4006",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-17",
+      "job": "ui",
+      "native_name": "Lint (ESLint + Prettier)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-17.sh.payload",
+      "sha256": "89040e2e41a54d3562adc839c8bdb8fa52ae183cac049103dbb6a5bbf5a6a048",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "89040e2e41a54d3562adc839c8bdb8fa52ae183cac049103dbb6a5bbf5a6a048",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-19",
+      "job": "ui",
+      "native_name": "Typecheck",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-19.sh.payload",
+      "sha256": "c09ef287f87d5298627fec74d807111f3e969f730d45b82663ccfccc0c3c778c",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "c09ef287f87d5298627fec74d807111f3e969f730d45b82663ccfccc0c3c778c",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-20",
+      "job": "ui",
+      "native_name": "Test",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-20.sh.payload",
+      "sha256": "e176ee655a32c14e4e234851be5e1e18c033381e009e985de785a463e78e13fc",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "e176ee655a32c14e4e234851be5e1e18c033381e009e985de785a463e78e13fc",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-21",
+      "job": "ui",
+      "native_name": "Build",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-21.sh.payload",
+      "sha256": "3273d253d72ad467525db5dded2e36bc080ac4def68ed51849796bf99402a784",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "3273d253d72ad467525db5dded2e36bc080ac4def68ed51849796bf99402a784",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-22",
+      "job": "ui",
+      "native_name": "Resolve Playwright version",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-22.sh.payload",
+      "sha256": "4de942ad98a856dd1606a6b0191f639c484f0c3c5a55841ee88d2325247b174a",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "4de942ad98a856dd1606a6b0191f639c484f0c3c5a55841ee88d2325247b174a",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-24",
+      "job": "ui",
+      "native_name": "Install Playwright Chromium",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-24.sh.payload",
+      "sha256": "7861471753ffa9fd6e50723dbf00c179242c4acde75437e317af5c85be004663",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "7ebd0427691c99c7678465cf24d51cc0e46142f8eed19bddbeda565b5d8bb42a",
+      "expression_substitutions": [
+        {
+          "expression": "${{ steps.playwright-cache.outputs.cache-hit }}",
+          "environment": "QUALIFICATION_EXPR_0"
+        }
+      ]
+    },
+    {
+      "id": "ui-25",
+      "job": "ui",
+      "native_name": "Responsive overflow check (e2e)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-25.sh.payload",
+      "sha256": "e63a6645e28f069781085c77d3145820fe1c83b548f6435b3aa852417612d227",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "e63a6645e28f069781085c77d3145820fe1c83b548f6435b3aa852417612d227",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-28",
+      "job": "ui",
+      "native_name": "SSR content isolation",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-28.sh.payload",
+      "sha256": "9996ef09b6f01fe5d52a54d987c51477f4a9161281d13c389519c76f689bad46",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "9996ef09b6f01fe5d52a54d987c51477f4a9161281d13c389519c76f689bad46",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-29",
+      "job": "ui",
+      "native_name": "Bundle size budget (initial client JS, gzipped)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-29.sh.payload",
+      "sha256": "04b809b4d76d27d2de894fee151263a92a6695f9bfde34c6b3cbbef538c74cad",
+      "working_directory": "apps/ui",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "04b809b4d76d27d2de894fee151263a92a6695f9bfde34c6b3cbbef538c74cad",
+      "expression_substitutions": []
+    },
+    {
+      "id": "ui-30",
+      "job": "ui",
+      "native_name": "Dependency CVE scan (SCA, report-only)",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/ui-30.sh.payload",
+      "sha256": "3fc98b28710ee83bb0e7b59e04e64605dc29b9eecc9423ec0a1de4b074d630a1",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "3fc98b28710ee83bb0e7b59e04e64605dc29b9eecc9423ec0a1de4b074d630a1",
+      "expression_substitutions": []
+    },
+    {
+      "id": "unsharded-01",
+      "job": "unsharded",
+      "native_name": "Build artifacts",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/unsharded-01.sh.payload",
+      "sha256": "dae58de3ddfde95b066b259e24d83e50d15aedeafb58b0b20d7b26dd324ef0ef",
+      "working_directory": ".",
+      "counts_as_native_gate": true
+    },
+    {
+      "id": "unsharded-02",
+      "job": "unsharded",
+      "native_name": "Full unsharded coverage with native backstops",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/unsharded-02.sh.payload",
+      "sha256": "9a3e3c1aed77bd429668e6966d60771fa9ab2f9250e35914cc9e3b2072dcee40",
+      "working_directory": ".",
+      "counts_as_native_gate": true
+    },
+    {
+      "id": "validate-carrier-helpers",
+      "job": "validate",
+      "native_name": "Qualify carrier helpers without changing tracked inputs",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-carrier-helpers.sh.payload",
+      "sha256": "2e165b48f80ed99743d26abc8567231b3532718c10ce1455c86380072d567281",
+      "working_directory": ".",
+      "counts_as_native_gate": true
+    }
+  ]
+}
