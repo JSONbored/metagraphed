@@ -36,13 +36,18 @@ jobs:
       - name: Install existing workspace dependencies
         uses: ./.github/actions/install-deps
       - name: Verify canonical Git tree and apply pinned candidate only in runner
+        id: overlay
         run: node .github/scripts/apply-raw-capture-retry.ts
       - name: Obtain native formatting
         run: npx prettier --write src/raw-capture-d1.ts src/raw-chain-capture.ts src/raw-capture-retry-intent.ts src/raw-capture-retry-store.ts tests/raw-capture-d1.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-retry-intent.test.ts tests/raw-capture-retry-d1.test.ts tests/raw-capture-cron-wiring.test.ts .github/workflows/raw-capture-producer-retention-source-qualification.yml .github/scripts/apply-raw-capture-retry.ts .github/scripts/qualify-raw-capture-retry.ts .github/vitest.raw-capture.config.ts .github/fixtures/raw-capture-retry/manifest.json
       - name: Lint actual source and fixtures
         run: npx eslint src/raw-capture-d1.ts src/raw-chain-capture.ts src/raw-capture-retry-intent.ts src/raw-capture-retry-store.ts tests/raw-capture-d1.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-retry-intent.test.ts tests/raw-capture-retry-d1.test.ts tests/raw-capture-cron-wiring.test.ts
+      - name: Lint bounded cold-type diagnostic helper
+        run: npx eslint --max-warnings=0 .github/scripts/qualify-raw-capture-retry.ts
+      - name: Verify bounded cold-type projection controls
+        run: node .github/scripts/qualify-raw-capture-retry.ts cold-type-controls
       - name: Cold typecheck
-        run: npm run typecheck -- --incremental false
+        run: node .github/scripts/qualify-raw-capture-retry.ts cold-types
       - name: Validate actual canonical boundary-cast policy
         run: npm run validate:boundary-casts
       - name: Validate workflow policies
@@ -53,10 +58,10 @@ jobs:
         id: native
         run: node .github/scripts/qualify-raw-capture-retry.ts
       - name: Retain only formatted source and curated synthetic receipt
-        if: always() && (steps.native.outcome == 'success' || steps.native.outcome == 'failure')
+        if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-producer-retention-${{ steps.native.outcome }}-source
+          name: raw-capture-producer-retention-${{ github.run_attempt }}-${{ job.status }}-source
           path: |
             src/raw-capture-d1.ts
             src/raw-chain-capture.ts
