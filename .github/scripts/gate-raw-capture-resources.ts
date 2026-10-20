@@ -26,7 +26,7 @@ async function main() {
   }
   if (process.argv[2] === "selfcheck") {
     console.log(
-      JSON.stringify({ ...diagnosticControls(), ...helperTypeControls() }),
+      JSON.stringify({ ...diagnosticControls(), ...helperTypeControls(), ...inspectorMessageControls() }),
     );
     return;
   }
@@ -164,6 +164,7 @@ async function main() {
       ".github/scripts/qualify-raw-capture-resources.ts",
       ".github/fixtures/raw-capture-resource-worker.ts",
       ".github/scripts/gate-raw-capture-resources.ts",
+      ".github/fixtures/raw-capture-ws-declarations/index.d.mts",
     ];
   }
   interface HelperTypeOutcome {
@@ -319,6 +320,11 @@ async function main() {
     const one = (text: string, native = good) =>
       projectHelperTypes(text, "", sources, native);
     let checked = 0;
+    const declaration = one(sources[3].file + "(1,1): error TS2345: withheld\n" + sources[3].file);
+    assert.equal(declaration.frames[0].helper_id, 3);
+    assert.equal(declaration.frames[0].sha256, sources[3].sha256);
+    assert.deepEqual(declaration.included_helper_ids, [3]);
+    checked++;
     for (const file of [
       sources[0].file,
       "./" + sources[0].file,
@@ -457,11 +463,28 @@ async function main() {
       0,
     );
     checked++;
-    assert.equal(checked, 29);
+    assert.equal(checked, 30);
     return {
       helper_type_controls_passed: checked,
       helper_type_sources: sources.length,
     };
+  }
+
+  function inspectorMessageControls() {
+    const withinLimit = (raw: Buffer | Buffer[] | ArrayBuffer) =>
+      "length" in raw && raw.length <= 65536;
+    const buffer = Buffer.alloc(0);
+    const cases: [Buffer | Buffer[] | ArrayBuffer, boolean][] = [
+      [buffer, true],
+      [Buffer.alloc(65536), true],
+      [Buffer.alloc(65537), false],
+      [Array<Buffer>(65536).fill(buffer), true],
+      [Array<Buffer>(65537).fill(buffer), false],
+      [new ArrayBuffer(1), false],
+      [new ArrayBuffer(65536), false],
+    ];
+    for (const [raw, expected] of cases) assert.equal(withinLimit(raw), expected);
+    return { inspector_message_controls_passed: cases.length };
   }
 
   function integer(value: string): number {
@@ -486,10 +509,16 @@ async function main() {
     ".github/scripts/gate-raw-capture-resources.ts",
     ".github/tsconfig.raw-capture-resources.json",
   ];
+  const typeDependencyFiles = [
+    ".github/fixtures/raw-capture-ws-declarations/index.d.mts",
+    ".github/fixtures/raw-capture-ws-declarations/LICENSE",
+    ".github/fixtures/raw-capture-ws-declarations/provenance.json",
+  ];
   const workflowPath =
     ".github/workflows/raw-capture-resource-qualification.yml";
   const carrierFiles = [
     ...helperFiles,
+    ...typeDependencyFiles,
     workflowPath,
     manifestPath,
     ...variants.flatMap((id) =>
@@ -571,6 +600,8 @@ async function main() {
     >;
     resource_gate: {
       helper_pins: Pin[];
+      type_dependency_pins: Pin[];
+      required_native_steps: { format: string[]; qualify: string[] };
       native_format_readback: {
         runId: number;
         runAttempt: number;
@@ -656,7 +687,7 @@ async function main() {
     lines(git(["diff", "--name-only", base, "HEAD"])),
     carrierFiles,
   );
-  assert.equal(carrierFiles.length, 14);
+  assert.equal(carrierFiles.length, 17);
   assert.equal(
     git(["diff", "--name-only", "HEAD"]).length,
     0,
@@ -682,7 +713,9 @@ async function main() {
       };
     });
   const helperPinsBefore = pins(helperFiles);
+  const typeDependencyPinsBefore = pins(typeDependencyFiles);
   assert.deepEqual(manifest.resource_gate.helper_pins, helperPinsBefore);
+  assert.deepEqual(manifest.resource_gate.type_dependency_pins, typeDependencyPinsBefore);
   if (phase === "qualify") {
     const formatted = manifest.resource_gate.native_format_readback;
     assert.ok(formatted);
@@ -801,10 +834,10 @@ async function main() {
     if (helperTypeSources) {
       helperTypeControlsPassed =
         helperTypeControls().helper_type_controls_passed;
-      assert.equal(helperTypeControlsPassed, 29);
+      assert.equal(helperTypeControlsPassed, 30);
       assert.deepEqual(
         helperTypeSources.map((source) => source.file),
-        helperFiles.filter((file) => file.endsWith(".ts")),
+        [...helperFiles.filter((file) => file.endsWith(".ts")), typeDependencyFiles[0]],
       );
     }
     const result = spawnSync(command, args, {
@@ -904,6 +937,7 @@ async function main() {
       assert.ok(helperTypeDiagnostics);
       assert.equal(helperTypeDiagnostics.projection_truncated, false);
       assert.equal(helperTypeDiagnostics.native_success, true);
+      assert.deepEqual(helperTypeDiagnostics.included_helper_ids, [0, 1, 2, 3]);
     }
     return result.stdout ?? "";
   };
@@ -923,7 +957,21 @@ async function main() {
   let stage = "format",
     restored = false,
     observerControls = 0,
-    typeInputsConfirmed = 0;
+    typeInputsConfirmed = 0,
+    declarationInputsConfirmed = 0,
+    inspectorMessageControlsPassed = 0;
+  let workspacePretypecheck: {
+    command: string[];
+    root_script: string;
+    workspace_script: string;
+    tracked_inputs_unchanged: boolean;
+    source_manifest_sha256: string;
+    declaration: Pin;
+  } | null = null;
+  const requiredNativeSteps = phase === "format"
+    ? ["format", "workflow_reformat", "lint", "workspace_pretypecheck", "helper_types", "workflow_policy"]
+    : ["format", "lint", "workspace_pretypecheck", "helper_types", "workflow_policy"];
+  assert.deepEqual(manifest.resource_gate.required_native_steps[phase], requiredNativeSteps);
   let status: string;
   let preflightSha256: string | null = null;
   try {
@@ -962,6 +1010,35 @@ async function main() {
       "--max-warnings=0",
       ...typeInputs,
     ]);
+    stage = "inspector_message_controls";
+    inspectorMessageControlsPassed = inspectorMessageControls().inspector_message_controls_passed;
+    assert.equal(inspectorMessageControlsPassed, 7);
+    assert.equal([...read(helperFiles[0]).toString("utf8").matchAll(/assert\.ok\(\s*"length" in raw && raw\.length <= 65536,\s*"bounded inspector message",?\s*\);/g)].length, 1);
+    stage = "workspace_pretypecheck";
+    const rootScripts = JSON.parse(read("package.json").toString("utf8")).scripts;
+    const workspaceScripts = JSON.parse(read("packages/chain-summaries/package.json").toString("utf8")).scripts;
+    assert.equal(rootScripts.pretypecheck, "npm run build --workspace=packages/chain-summaries");
+    assert.equal(rootScripts.prepretypecheck, undefined);
+    assert.equal(rootScripts.postpretypecheck, undefined);
+    assert.equal(workspaceScripts.build, "tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake");
+    assert.equal(workspaceScripts.prebuild, undefined);
+    assert.equal(workspaceScripts.postbuild, undefined);
+    const workspaceInputs = ["package.json", "package-lock.json", "packages/chain-summaries"];
+    const sourceManifest = git(["ls-tree", "-r", "HEAD", "--", ...workspaceInputs]);
+    native("workspace_pretypecheck", "npm", ["run", "pretypecheck"]);
+    git(["diff", "--exit-code", "HEAD", "--", ...workspaceInputs]);
+    assert.deepEqual(git(["ls-tree", "-r", "HEAD", "--", ...workspaceInputs]), sourceManifest);
+    const declarationPath = "packages/chain-summaries/dist/index.d.ts";
+    assert.equal(git(["check-ignore", "--", declarationPath]).toString("utf8").trim(), declarationPath);
+    const declarationBytes = read(declarationPath, 1048576);
+    workspacePretypecheck = {
+      command: ["npm", "run", "pretypecheck"],
+      root_script: rootScripts.pretypecheck,
+      workspace_script: workspaceScripts.build,
+      tracked_inputs_unchanged: true,
+      source_manifest_sha256: digest(sourceManifest),
+      declaration: { path: declarationPath, bytes: declarationBytes.length, sha256: digest(declarationBytes), blob: blob(declarationBytes) },
+    };
     stage = "helper_types";
     const listed = local("helper_types", "tsc", [
       "--noEmit",
@@ -975,16 +1052,21 @@ async function main() {
       listed.includes(path.resolve(file)),
     ).length;
     assert.equal(typeInputsConfirmed, 3);
+    declarationInputsConfirmed = Number(listed.includes(path.resolve(typeDependencyFiles[0])));
+    assert.equal(declarationInputsConfirmed, 1);
     stage = "observer_controls";
     observerControls = diagnosticControls().diagnostic_controls_passed;
     assert.equal(observerControls, 38);
     stage = "workflow_policy";
     native("workflow_policy", "npm", ["run", "validate:workflows"]);
-    // No runtime formatter, native builder or capture is invoked by this gate.
+    // Only the canonical workspace declaration prerequisite builds in format mode;
+    // no API Worker builder, runtime formatter or capture is invoked here.
     for (const file of runtimeFiles)
       assert.equal(digest(read(file)), candidate.files[file].sha256);
+    assert.deepEqual(nativeReceipts.map((step) => step.step), requiredNativeSteps);
     if (phase === "qualify") {
       assert.deepEqual(pins(helperFiles), helperPinsBefore);
+      assert.deepEqual(pins(typeDependencyFiles), typeDependencyPinsBefore);
       assert.equal(digest(read(manifestPath)), manifestHash);
       assert.equal(digest(read(workflowPath)), digest(workflowBefore));
     }
@@ -1032,7 +1114,7 @@ async function main() {
       process.exitCode = 1;
     }
   }
-  const sourcePinsAfter = pins([...helperFiles, workflowPath, manifestPath]);
+  const sourcePinsAfter = pins([...helperFiles, ...typeDependencyFiles, workflowPath, manifestPath]);
   const retainSources = () => {
     for (const pin of sourcePinsAfter) {
       const destination = path.join(upload, "source", pin.path);
@@ -1042,6 +1124,8 @@ async function main() {
   };
   retainSources();
   if (status === "native_checks_passed_resource_not_run" && restored) {
+    assert.deepEqual(nativeReceipts.map((step) => step.step), requiredNativeSteps);
+    assert.ok(workspacePretypecheck);
     const preflight = {
       status,
       phase,
@@ -1054,11 +1138,16 @@ async function main() {
       native_qualification: candidate.nativeQualification,
       native_format_readback: manifest.resource_gate.native_format_readback,
       helper_pins: pins(helperFiles),
+      type_dependency_pins: pins(typeDependencyFiles),
       canonical_runtime_restored: true,
       canonical_runtime_manifest_sha256: canonicalManifest,
       native_steps: nativeReceipts,
+      required_native_steps: requiredNativeSteps,
+      workspace_pretypecheck: workspacePretypecheck,
       observer_controls_passed: observerControls,
       type_inputs_confirmed: typeInputsConfirmed,
+      declaration_inputs_confirmed: declarationInputsConfirmed,
+      inspector_message_controls_passed: inspectorMessageControlsPassed,
       production_actions: false,
     };
     const bytes = boundedJson(path.join(scratch, "preflight.json"), preflight);
@@ -1078,6 +1167,7 @@ async function main() {
       manifest_sha256_after: digest(read(manifestPath)),
       source_pins_before: [
         ...helperPinsBefore,
+        ...typeDependencyPinsBefore,
         {
           path: workflowPath,
           bytes: workflowBefore.length,
@@ -1097,8 +1187,12 @@ async function main() {
       canonical_runtime_restored_before_resource_child: restored,
       canonical_runtime_manifest_sha256: canonicalManifest,
       native_steps: nativeReceipts,
+      required_native_steps: requiredNativeSteps,
+      workspace_pretypecheck: workspacePretypecheck,
       observer_controls_passed: observerControls,
       type_inputs_confirmed: typeInputsConfirmed,
+      declaration_inputs_confirmed: declarationInputsConfirmed,
+      inspector_message_controls_passed: inspectorMessageControlsPassed,
       project_resource_run_started: null,
       resource_child_start_attempted: false,
       preflight_sha256: preflightSha256,
@@ -1143,6 +1237,7 @@ async function main() {
     manifest_sha256_after: digest(read(manifestPath)),
     source_pins_before: [
       ...helperPinsBefore,
+      ...typeDependencyPinsBefore,
       {
         path: workflowPath,
         bytes: workflowBefore.length,
@@ -1162,11 +1257,15 @@ async function main() {
     canonical_runtime_restored_before_resource_child: restored,
     canonical_runtime_manifest_sha256: canonicalManifest,
     native_steps: nativeReceipts,
+    required_native_steps: requiredNativeSteps,
+    workspace_pretypecheck: workspacePretypecheck,
     lint_diagnostics: lintDiagnostics,
     helper_type_controls_passed: helperTypeControlsPassed,
     helper_type_diagnostics: helperTypeDiagnostics,
     observer_controls_passed: observerControls,
     type_inputs_confirmed: typeInputsConfirmed,
+    declaration_inputs_confirmed: declarationInputsConfirmed,
+    inspector_message_controls_passed: inspectorMessageControlsPassed,
     project_resource_run_started:
       status === "native_checks_and_resource_child_passed"
         ? true

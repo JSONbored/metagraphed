@@ -1,12 +1,16 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "incremental": false
+    "incremental": false,
+    "paths": {
+      "ws": ["./fixtures/raw-capture-ws-declarations/index.d.mts"]
+    }
   },
   "include": [
     "scripts/qualify-raw-capture-resources.ts",
     "scripts/gate-raw-capture-resources.ts",
     "fixtures/raw-capture-resource-worker.ts",
-    "../workers/**/*.d.ts"
+    "../workers/**/*.d.ts",
+    "fixtures/raw-capture-ws-declarations/index.d.mts"
   ]
 }

@@ -97,16 +97,16 @@
   "final_pin_source": "Actual same-run/attempt compatibility qualify ZIP sources and exact four-layer proof from run 39365100831; no format-only or proposal source substituted",
   "resource_gate": {
     "status": "unexecuted_unpublishable_format_first_gate",
-    "format_phase": "format_only_no_capture_or_native_build",
+    "format_phase": "format_lint_canonical_workspace_pretypecheck_strict_helper_types_workflow_only_no_api_build_or_capture",
     "qualify_phase": "frozen_check_lint_types_workflow_then_fixed_four_cases",
     "native_format_readback": null,
     "native_checks_status": "not_run",
     "helper_pins": [
       {
         "path": ".github/scripts/qualify-raw-capture-resources.ts",
-        "bytes": 66740,
-        "sha256": "35e6fb7074268545b1001056756dd73fa91f8633f7da99fcb841b116fc142e43",
-        "blob": "46b47612c7c207e23f6db3195753608860d15e64"
+        "bytes": 69943,
+        "sha256": "b884c81666d29717ffd3eb916292772b3c2522349d56e4e5d98c099b32082c21",
+        "blob": "d24762039be2dd6a769e298634f1efe6d856b5ea"
       },
       {
         "path": ".github/fixtures/raw-capture-resource-worker.ts",
@@ -116,16 +116,64 @@
       },
       {
         "path": ".github/scripts/gate-raw-capture-resources.ts",
-        "bytes": 40355,
-        "sha256": "72fbebb9778f7c6d52eda5dedae0f591ce5c25cbb883dad3f6ea27c256d7557b",
-        "blob": "e89fd03ed735f6c3c5beff1dd8287af85aeb9c0e"
+        "bytes": 46179,
+        "sha256": "975b28e9a95da7d38ed6de9db6439f30aa6a1e8ac1336e197667d4f6ecd4b8fd",
+        "blob": "ede46ee90ed4de1fe4db02fd4d901bbd063d65dc"
       },
       {
         "path": ".github/tsconfig.raw-capture-resources.json",
-        "bytes": 276,
-        "sha256": "3a9aa7b126ad245be111c6c9f422b8e9347bc00330d1dc6237be5969bc24b08d",
-        "blob": "6ce94d9ffd09c12e20c45e2f277efdb68e62bd61"
+        "bytes": 421,
+        "sha256": "cfc14219aa59c87ff00f185bfb6a30d87e9973bb9f2afb467aff043b1b74c72b",
+        "blob": "6b2b50804cf3c1bf6fcc78eac6f0dc2b4dd0ffbd"
       }
-    ]
+    ],
+    "type_dependency_pins": [
+      {
+        "path": ".github/fixtures/raw-capture-ws-declarations/index.d.mts",
+        "bytes": 19499,
+        "sha256": "41b2a25018200d1deef82999c2f44a23bd4b8618aa788fff90292ce25366fa68",
+        "blob": "7e619fbb76e221fac53b74a71bc71f2666b0d14f"
+      },
+      {
+        "path": ".github/fixtures/raw-capture-ws-declarations/LICENSE",
+        "bytes": 1167,
+        "sha256": "0a48f63d7d32a49d196dce4b2e0cbc236c2cc8fef42cb20e005e4d5f813cc8f6",
+        "blob": "c3ee6e73d5736bd3b45fa59722d0c61d12617a91"
+      },
+      {
+        "path": ".github/fixtures/raw-capture-ws-declarations/provenance.json",
+        "bytes": 1904,
+        "sha256": "a36ab0a3ebe7d52f9103bc0d6a522f20d9823b3abb48137c3262e23c851db865",
+        "blob": "06825cfae9d53e55f75476fc932e848753daeac5"
+      }
+    ],
+    "workspace_pretypecheck": {
+      "command": [
+        "npm",
+        "run",
+        "pretypecheck"
+      ],
+      "root_script": "npm run build --workspace=packages/chain-summaries",
+      "workspace_script": "tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake",
+      "generated_type_entry": "packages/chain-summaries/dist/index.d.ts",
+      "scope": "Established ordinary typecheck prerequisite; includes workspace JS/declaration compilation, not API Worker build/capture/resources"
+    },
+    "required_native_steps": {
+      "format": [
+        "format",
+        "workflow_reformat",
+        "lint",
+        "workspace_pretypecheck",
+        "helper_types",
+        "workflow_policy"
+      ],
+      "qualify": [
+        "format",
+        "lint",
+        "workspace_pretypecheck",
+        "helper_types",
+        "workflow_policy"
+      ]
+    }
   }
 }

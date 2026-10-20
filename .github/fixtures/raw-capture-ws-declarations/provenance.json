@@ -1,0 +1,47 @@
+{
+  "status": "unmodified_upstream_declaration_compiler_only_not_a_runtime_implementation",
+  "runtime": {
+    "package": "ws",
+    "version": "8.21.3",
+    "lock_sha256": "8082ef81ed8d765c977314cf17bb77946043a0d8a8ec2668a660b3c4d756f7eb",
+    "implementation_unchanged": true,
+    "installed": false
+  },
+  "declaration": {
+    "repository": "DefinitelyTyped/DefinitelyTyped",
+    "commit": "78b9f418d53d5fdc8a232dec70856b159ce19d45",
+    "source_package": "@types/ws",
+    "source_package_version": "8.18.9999",
+    "source_version_scope": "development source version; no published npm version is claimed",
+    "source_package_blob": "5a15f7a9cacde8208b67c7fccd31a15e64ec9a22",
+    "source_package_url": "https://github.com/DefinitelyTyped/DefinitelyTyped/blob/78b9f418d53d5fdc8a232dec70856b159ce19d45/types/ws/package.json",
+    "path": "types/ws/index.d.mts",
+    "bytes": 19499,
+    "blob": "7e619fbb76e221fac53b74a71bc71f2666b0d14f",
+    "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/blob/78b9f418d53d5fdc8a232dec70856b159ce19d45/types/ws/index.d.mts",
+    "license": "MIT",
+    "modified": false,
+    "sha256": "41b2a25018200d1deef82999c2f44a23bd4b8618aa788fff90292ce25366fa68"
+  },
+  "license": {
+    "path": "LICENSE",
+    "bytes": 1167,
+    "blob": "c3ee6e73d5736bd3b45fa59722d0c61d12617a91",
+    "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/blob/78b9f418d53d5fdc8a232dec70856b159ce19d45/LICENSE",
+    "modified": false,
+    "sha256": "0a48f63d7d32a49d196dce4b2e0cbc236c2cc8fef42cb20e005e4d5f813cc8f6"
+  },
+  "scope": {
+    "mapping": {
+      "ws": [
+        "./fixtures/raw-capture-ws-declarations/index.d.mts"
+      ]
+    },
+    "compiler_only": true,
+    "dependency_install": false,
+    "compiler_settings_weakened": false,
+    "runtime_import_unchanged": true,
+    "ambient_inputs": "Existing canonical workers/**/*.d.ts retained",
+    "type_source_id": 3
+  }
+}

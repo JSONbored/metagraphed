@@ -128,7 +128,26 @@ const preflight = JSON.parse(preflightBytes.toString("utf8")) as {
   canonical_runtime_restored: boolean;
   observer_controls_passed: number;
   type_inputs_confirmed: number;
+  declaration_inputs_confirmed: number;
+  inspector_message_controls_passed: number;
+  required_native_steps: string[];
+  native_steps: {
+    step: string;
+    exit_code: number | null;
+    signal: string | null;
+    actual_unhandled_diagnostic: boolean;
+    vitest_unhandled_errors: number;
+  }[];
+  workspace_pretypecheck: {
+    command: string[];
+    root_script: string;
+    workspace_script: string;
+    tracked_inputs_unchanged: boolean;
+    source_manifest_sha256: string;
+    declaration: { path: string; bytes: number; sha256: string };
+  };
   helper_pins: { path: string; bytes: number; sha256: string }[];
+  type_dependency_pins: { path: string; bytes: number; sha256: string }[];
 };
 assert.equal(preflight.status, "native_checks_passed_resource_not_run");
 assert.equal(preflight.phase, "qualify");
@@ -145,6 +164,30 @@ assert.deepEqual(
 assert.equal(preflight.canonical_runtime_restored, true);
 assert.equal(preflight.observer_controls_passed, 38);
 assert.equal(preflight.type_inputs_confirmed, 3);
+assert.equal(preflight.declaration_inputs_confirmed, 1);
+assert.equal(preflight.inspector_message_controls_passed, 7);
+assert.deepEqual(preflight.required_native_steps, [
+  "format", "lint", "workspace_pretypecheck", "helper_types", "workflow_policy",
+]);
+assert.deepEqual(preflight.native_steps.map((step) => step.step), preflight.required_native_steps);
+for (const step of preflight.native_steps) {
+  assert.equal(step.exit_code, 0);
+  assert.equal(step.signal, null);
+  assert.equal(step.actual_unhandled_diagnostic, false);
+  assert.equal(step.vitest_unhandled_errors, 0);
+}
+assert.deepEqual(preflight.workspace_pretypecheck.command, ["npm", "run", "pretypecheck"]);
+assert.equal(preflight.workspace_pretypecheck.root_script, "npm run build --workspace=packages/chain-summaries");
+assert.equal(preflight.workspace_pretypecheck.workspace_script, "tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake");
+assert.equal(preflight.workspace_pretypecheck.tracked_inputs_unchanged, true);
+assert.match(preflight.workspace_pretypecheck.source_manifest_sha256, /^[a-f0-9]{64}$/);
+assert.equal(preflight.workspace_pretypecheck.declaration.path, "packages/chain-summaries/dist/index.d.ts");
+const workspaceDeclarationInfo = lstatSync(preflight.workspace_pretypecheck.declaration.path);
+assert.ok(workspaceDeclarationInfo.isFile() && !workspaceDeclarationInfo.isSymbolicLink() && workspaceDeclarationInfo.size > 0 && workspaceDeclarationInfo.size <= 1048576);
+const workspaceDeclaration = readFileSync(preflight.workspace_pretypecheck.declaration.path);
+assert.ok(workspaceDeclaration.length > 0 && workspaceDeclaration.length <= 1048576);
+assert.equal(workspaceDeclaration.length, preflight.workspace_pretypecheck.declaration.bytes);
+assert.equal(createHash("sha256").update(workspaceDeclaration).digest("hex"), preflight.workspace_pretypecheck.declaration.sha256);
 assert.deepEqual(
   preflight.helper_pins.map((pin) => pin.path),
   [
@@ -156,6 +199,18 @@ assert.deepEqual(
 );
 for (const pin of preflight.helper_pins) {
   const bytes = readFileSync(pin.path);
+  assert.equal(bytes.length, pin.bytes);
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), pin.sha256);
+}
+const typeDependencyPaths = [
+  ".github/fixtures/raw-capture-ws-declarations/index.d.mts",
+  ".github/fixtures/raw-capture-ws-declarations/LICENSE",
+  ".github/fixtures/raw-capture-ws-declarations/provenance.json",
+];
+assert.deepEqual(preflight.type_dependency_pins.map((pin) => pin.path), typeDependencyPaths);
+for (const pin of preflight.type_dependency_pins) {
+  const bytes = readFileSync(pin.path);
+  assert.ok(bytes.length > 0 && bytes.length <= 131072);
   assert.equal(bytes.length, pin.bytes);
   assert.equal(createHash("sha256").update(bytes).digest("hex"), pin.sha256);
 }
@@ -177,6 +232,7 @@ const carrierPaths = [
   ".github/workflows/raw-capture-resource-qualification.yml",
   ".github/scripts/gate-raw-capture-resources.ts",
   ".github/tsconfig.raw-capture-resources.json",
+  ...typeDependencyPaths,
   pinManifestPath,
   ...variants.flatMap((id) =>
     candidateFiles.map((file) => fixturePath(file, id)),
@@ -611,7 +667,7 @@ async function connect(url: string, expectedPort: string) {
     }
   >();
   ws.on("message", (raw) => {
-    assert.ok(raw.length <= 65536, "bounded inspector message");
+    assert.ok("length" in raw && raw.length <= 65536, "bounded inspector message");
     const message = JSON.parse(raw.toString());
     if (message.method === "Runtime.executionContextCreated") {
       const contextId = message.params?.context?.id;
@@ -1099,7 +1155,7 @@ try {
   assert.deepEqual(
     changed,
     [...carrierPaths].sort(),
-    "only the fourteen isolated .github carrier files differ",
+    "only the seventeen isolated .github carrier files differ",
   );
   execFileSync(
     "git",
@@ -1183,9 +1239,9 @@ try {
       candidateBlob,
     );
     assert.equal(digest(readFileSync(fixture)), candidateHashes[file]);
-    const ref = result.carrierCommit;
+    const ref: string = result.carrierCommit;
     const expectedBlob = candidateBlob;
-    const sourcePath = fixture;
+    const sourcePath: string = fixture;
     const blob = execFileSync("git", ["rev-parse", `${ref}:${sourcePath}`], {
       encoding: "utf8",
     }).trim();
@@ -1316,7 +1372,7 @@ export default {
   };
   stage = "native-build";
   checkpoint();
-  const { buildApiWorker } = await import(
+  const { buildApiWorker }: typeof import("../../scripts/build-api-worker.ts") = await import(
     path.join(root, "scripts/build-api-worker.ts")
   );
   const esbuild = await import("esbuild");
