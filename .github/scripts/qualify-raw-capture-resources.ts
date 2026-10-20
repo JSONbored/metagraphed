@@ -547,9 +547,21 @@ try {
   stage = "bundle-metadata-byte-bound";
   assert.ok(result.bundleModuleDiagnostic.metadataBytes <= 32768);
   result.bundler = { nativeWranglerDryRun: true, stdoutRetained: false, stderrRetained: false };
+  stage = "bundle-wasm-identity";
+  const expectedWasm = [
+    { bytes: 1373887, sha256: "375e38603c5f5128a9a0e6e2ac90ac14f1b79a0f8b667eb434c2c1b18a031733" },
+    { bytes: 88658, sha256: "47fb4f81d274932184cd19c75ed34f902d13f0519301590789a37f7077977e27" },
+  ];
+  const actualWasm = assetRecords.filter(record => record.extension === ".wasm").map(record => ({ bytes: record.bytes, sha256: record.sha256 })).sort((a, b) => String(a.sha256).localeCompare(String(b.sha256)));
+  assert.deepEqual(actualWasm, expectedWasm);
+  for (const name of assetNames.filter(name => name.endsWith(".wasm"))) {
+    const fd = openSync(path.join(bundled, name), "r"); const magic = Buffer.alloc(8);
+    try { assert.equal(readSync(fd, magic), 8); assert.deepEqual([...magic], [0, 97, 115, 109, 1, 0, 0, 0]); } finally { closeSync(fd); }
+  }
+  result.moduleLoader = { rule: "CompiledWasm", verifiedWasm: expectedWasm, nativeWranglerRuleSource: { tag: "wrangler@4.129.1", commit: "87fd28ce586693e50aa17d410f121394c5fef24c", blob: "b37cb933db438a3448c72eaeacf85fc493c91595", sha256: "ba2de1b7fa21209c12e8eb9ca4e5840cc234333d56712994d3a7b117c0e7bb9b" }, miniflareDefaultRuleSource: { tag: "miniflare@5.20260730.0-alpha", commit: "fcb5402346b2424008c7a0d0612ee8ba2f65bf3e", blob: "c1ff9c53ecf891f745eee9cde722cab95f5b12b9", sha256: "d5c330681362a9fd18873121aac7791f8ad2ce84ad9716389e0cd42a9ca342de" }, scope: "Only the two identity-verified native emitted wasm modules; full bundled JavaScript unchanged" };
   stage = "runtime-constructor"; checkpoint();
   mf = new Miniflare({
-    modules: true, name: "resource-capture", scriptPath, host: "127.0.0.1", compatibilityDate: compatibleDate, compatibilityFlags, inspectorPort: 0,
+    modules: true, modulesRules: [{ type: "CompiledWasm", include: ["**/*.wasm"] }], name: "resource-capture", scriptPath, host: "127.0.0.1", compatibilityDate: compatibleDate, compatibilityFlags, inspectorPort: 0,
     log: new NoOpLog(), handleStructuredLogs: event => { structuredLogs[["info", "warn", "error", "debug"].includes(event.level) ? event.level : "other"]++; },
     unsafeHandleRuntimeRestart: () => { runtimeRestarts++; }, bindings: { RESOURCE_RPC_URL: LOGICAL_RPC_URL }, d1Databases: ["D1_STATE"],
     outboundService: async request => {
