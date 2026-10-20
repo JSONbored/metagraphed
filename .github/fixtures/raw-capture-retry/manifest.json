@@ -1,7 +1,7 @@
 {
   "version": 1,
   "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
-  "scope": "reviewed v2 structural byte proof; frozen338-case tests; canonical runtime unchanged in carrier Git tree",
+  "scope": "reviewed q8 two-site numeric conversion correction; unchanged338-case tests and bundle floors; canonical runtime unchanged in carrier Git tree",
   "files": [
     {
       "path": "src/raw-capture-d1.ts",
@@ -20,8 +20,8 @@
     {
       "path": "src/raw-capture-retry-intent.ts",
       "payload": ".github/fixtures/raw-capture-retry/src/raw-capture-retry-intent.ts.payload",
-      "sha256": "59431bc97dc13d8b0ea4395e103b55fb4afba88f10789f8d1a21f385cb20b860",
-      "bytes": 10425,
+      "sha256": "1df43f4e5278a86e903152714dd3453005fdc4e0a0c891b71b934fe472b8e411",
+      "bytes": 10397,
       "expected_base_blob_sha": null
     },
     {

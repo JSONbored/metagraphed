@@ -1,9 +1,9 @@
-name: Raw capture runner-only source qualification
+name: Raw capture boundary correction source qualification
 
 on:
   push:
     branches:
-      - ci/raw-capture-retry-source-qualification-20261020
+      - ci/raw-capture-retry-boundary-qualification-20261020
 
 permissions:
   contents: read
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   qualify:
+    if: github.ref == 'refs/heads/ci/raw-capture-retry-boundary-qualification-20261020'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -42,6 +43,8 @@ jobs:
         run: npx eslint src/raw-capture-d1.ts src/raw-chain-capture.ts src/raw-capture-retry-intent.ts src/raw-capture-retry-store.ts tests/raw-capture-d1.test.ts tests/raw-chain-capture.test.ts tests/raw-capture-retry-intent.test.ts tests/raw-capture-retry-d1.test.ts tests/raw-capture-cron-wiring.test.ts
       - name: Cold typecheck
         run: npm run typecheck -- --incremental false
+      - name: Validate actual canonical boundary-cast policy
+        run: npm run validate:boundary-casts
       - name: Validate workflow policies
         run: npm run validate:workflows
       - name: Prove actual baseline and candidate D1, capture and bundle contracts

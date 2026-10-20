@@ -164,7 +164,7 @@ function prepareBytes(
     compressed_sha256: digest(compressed),
     parts: Math.ceil(compressed.length / RAW_CAPTURE_CHUNK_BYTES),
     captured_at: Math.max(
-      ...tokens.map((token) => JSON.parse(token) as number),
+      ...tokens.map((token) => Number(token)),
     ),
   };
   return {
@@ -253,7 +253,7 @@ export function decodeRawCaptureIntent(payload: string): RawCaptureIntent {
         !positiveInteger(JSON.parse(token)),
     ) ||
     Math.max(
-      ...control.provenance.map((token) => JSON.parse(token) as number),
+      ...control.provenance.map((token) => Number(token)),
     ) !== d.captured_at
   )
     throw new Error("Raw capture retry descriptor differs");
