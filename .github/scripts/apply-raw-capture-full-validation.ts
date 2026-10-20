@@ -30,6 +30,9 @@ const RAW_EXPECTED_PATHS = [
 const BASE64_EXPECTED_PATHS = [
   "src/chain-detail-native-payloads.ts",
   "tests/chain-detail-native-payloads.test.ts",
+  "scripts/pipeline.ts",
+  "tests/fixtures/pipeline-emission-original.ts.payload",
+  "tests/pipeline-emission.test.ts",
 ];
 const PROFILE = process.env.FULL_VALIDATION_PROFILE ?? "raw-capture-retry-v2";
 assert.ok(PROFILE === "raw-capture-retry-v2" || PROFILE === "native-base64-v1");
@@ -40,7 +43,7 @@ const EXPECTED_PATHS =
 const EXPECTED_PAYLOAD_VERSION =
   PROFILE === "raw-capture-retry-v2"
     ? "v2-native-39348983680"
-    : "native-base64-v1-native-39348420082";
+    : "native-base64-v1-native-39348420082-reporting-repair";
 const ALLOWED_CARRIER_FILES = new Set([
   ".github/scripts/apply-raw-capture-full-validation.ts",
   ".github/scripts/report-raw-capture-full-validation.ts",
@@ -121,7 +124,7 @@ assert.deepEqual(
 );
 assert.equal(
   new Set(manifest.files.map((entry) => entry.path)).size,
-  PROFILE === "raw-capture-retry-v2" ? 9 : 2,
+  PROFILE === "raw-capture-retry-v2" ? 9 : 5,
 );
 const pending = manifest.files.map((entry) => {
   assert.match(entry.sha256, /^[a-f0-9]{64}$/);
