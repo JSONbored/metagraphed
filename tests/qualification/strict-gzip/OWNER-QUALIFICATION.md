@@ -194,7 +194,7 @@ Run [39487268538](https://github.com/JSONbored/metagraphed/actions/runs/39487268
 passed the real queue-owner case and all 490 baseline assertions again, with zero
 guard denials. The fixed checker frame identifies the earlier external-import
 assertion: an additional non-pg-native, non-builtin external was refused before
-canonical source identities were checked. Its exact package is still unknown,
+canonical source identities were checked. Its exact import identity was unknown at that stage,
 and the canonical-path compatibility hypothesis remains untested.
 
 Failure-only diagnostics now identify fixed stages across the raw build,
@@ -221,7 +221,7 @@ until an exact run supplies every required owner and baseline proof.
 Run [39489525233](https://github.com/JSONbored/metagraphed/actions/runs/39489525233)
 again passed the real queue-owner case and all 490 baseline assertions, with zero
 guard denials. Complete metadata scans found 33 additional input externals and
-zero additional output externals. Those 33 records are still unidentified.
+zero additional output externals. Those 33 records were still unidentified at that stage.
 Pinned esbuild source shows that discarded TypeScript imports can appear as input
 externals, but the aggregate counts do not prove these records are type-only.
 The canonical dependency spelling stage has still not been reached.
@@ -254,8 +254,51 @@ against the same immutable index and rejects duplicate or malformed markers.
 The original marked failure is retained only in a private weak reference map,
 so a rendered error-cause chain cannot duplicate the strict stage/count markers.
 No diagnostic result participates in acceptance or grants an import exception.
-Actual individual identities and combined owner qualification remain pending
-the exact reviewed hosted rerun.
+The next reviewed hosted run established the individual identities below.
+Combined owner qualification remains failed.
+
+## Exact reviewed discarded-import records
+
+Run [39493041173](https://github.com/JSONbored/metagraphed/actions/runs/39493041173)
+identified all 33 refused records against 20 exact public base source blobs, with
+complete scans, zero identification refusals and no overflow. All 490 baseline
+assertions and the real queue-owner assertion passed again, with zero guard
+denials. Raw-owner qualification still failed before the source/module proof.
+The canonical dependency spelling stage has not yet been demonstrated in CI.
+
+Independent source inspection classified six all-inline-type-specifier imports,
+six empty named imports, and 21 ordinary named imports whose bindings occur only
+in TypeScript type syntax. Exact record indices disambiguate repeated targets.
+The public audit record is `discarded-input-source-review.json`, SHA-256
+`e856fbbbc4850f49853ac331584ac1d785790625c53ebc51e6ec15d937990c36`.
+It preserves the source/import identities, binding-use locations, pinned compiler
+citations and unchanged builder/tsconfig/lock identities. This is evidence about
+individual discarded import records; another live import may bundle the same
+target module.
+
+The proposed correction admits no arbitrary input external. It recognizes only
+the complete fixed batch of 33 exact importer/index/kind/target tuples. All 20
+importer byte counts, SHA-256 hashes and Git blobs must match independently read
+canonical files and the genuine input metadata. The three separately read pins
+for `tsconfig.json`, `scripts/build-api-worker.ts` and `package-lock.json` bind the
+reviewed erasure semantics to the actual builder/compiler configuration. Source
+and configuration inventories are separate from the unchanged four-file pg proof.
+
+Complete bounded scans require every reviewed target to be absent from every
+original output import, including nonexternal and non-JavaScript outputs. Any
+positive importer contribution requires exact source-map content and a genuine
+decoded mapping to that importer. The erased import line itself cannot be mapped.
+Zero-contribution sources retain input/source custody without claiming emitted
+code. The full existing pg-native/output/module/map proof must finish before a
+result can return; the no-pg early return cannot accept a pending batch. Runtime
+loading, subprocess, service and network permissions remain unchanged.
+
+New compressed JSON fixtures contain only inert pinned public source/config
+bytes for pure tests. Bounded decoding validates exact inventories and hashes;
+no fixture source is imported or evaluated. The audit JSON is review material
+outside the runtime overlay. The fixture files remain under the existing 512 KiB
+per-file and 2 MiB total overlay limits. Final code review and an exact hosted
+rerun are required before claiming the combined owner scenario passed.
 
 ## Third-party fixture notice
 

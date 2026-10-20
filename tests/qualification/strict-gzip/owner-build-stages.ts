@@ -18,6 +18,8 @@ export const OWNER_BUILD_STAGES = Object.freeze({
     "environment",
     "native-absence",
     "source-bytes",
+    "discarded-input-sources",
+    "erasure-config-sources",
     "proof",
   ]),
   preserve: Object.freeze([

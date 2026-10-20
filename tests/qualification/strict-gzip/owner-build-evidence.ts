@@ -1,10 +1,16 @@
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
 import { withPublicInputDiagnostics } from "./owner-input-diagnostics.ts";
 import {
+  DISCARDED_INPUT_SOURCE_PINS,
+  ERASURE_CONFIG_SOURCE_PINS,
+  planDiscardedInputReads,
+} from "./discarded-input-proof.ts";
+import {
   OPTIONAL_PG_SOURCE_PINS,
   ownerSourceIdentity,
   validateOptionalPgNativeImport,
   type OptionalPgMetafile,
+  type OptionalPgEvidence,
   type PreservedOptionalPgOutput,
 } from "./optional-pg-import.ts";
 import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
@@ -57,6 +63,64 @@ export function ownerBuildInputIdentity(
   assert.equal(realpathSync(path.join(root, logical)), expected);
   return logical;
 }
+// Read only the fixed public source/config inventory for an exact reviewed
+// batch. This read plan never grants admission; the full proof hashes it again.
+export function readDiscardedInputEvidence(
+  root: string,
+  dependencyRoot: string,
+  metafile: unknown,
+): Pick<OptionalPgEvidence, "discardedInputSources" | "erasureConfigSources"> {
+  let proofStage = "discarded-input-sources";
+  try {
+    assert.equal(realpathSync(root), root);
+    assert.equal(realpathSync(path.join(root, "node_modules")), dependencyRoot);
+    const plan = planDiscardedInputReads(
+      metafile,
+      new Map(
+        Object.keys(DISCARDED_INPUT_SOURCE_PINS).map((logical) => [
+          logical,
+          logical,
+        ]),
+      ),
+    );
+    if (!plan) return {};
+    const discardedInputSources = Object.fromEntries(
+      plan.sources.map(({ logical, actual }) => {
+        assert.equal(
+          ownerBuildInputIdentity(root, dependencyRoot, actual),
+          logical,
+        );
+        const pin =
+          DISCARDED_INPUT_SOURCE_PINS[
+            logical as keyof typeof DISCARDED_INPUT_SOURCE_PINS
+          ];
+        assert.ok(pin);
+        return [actual, boundedBuildFile(sourceFile(root, logical), pin.bytes)];
+      }),
+    );
+    proofStage = "erasure-config-sources";
+    const erasureConfigSources = Object.fromEntries(
+      plan.configs.map((relative) => {
+        assert.equal(
+          ownerBuildInputIdentity(root, dependencyRoot, relative),
+          relative,
+        );
+        const pin =
+          ERASURE_CONFIG_SOURCE_PINS[
+            relative as keyof typeof ERASURE_CONFIG_SOURCE_PINS
+          ];
+        assert.ok(pin);
+        return [
+          relative,
+          boundedBuildFile(sourceFile(root, relative), pin.bytes),
+        ];
+      }),
+    ) as unknown as NonNullable<OptionalPgEvidence["erasureConfigSources"]>;
+    return { discardedInputSources, erasureConfigSources };
+  } catch (cause) {
+    throw ownerBuildStageFailure("optional-adapter", proofStage, cause);
+  }
+}
 // Read-only adapter for the single source-proven unresolved optional require.
 // It never resolves/imports a package and never changes any environment value.
 export function optionalPgBuildAssociation(
@@ -98,6 +162,11 @@ export function optionalPgBuildAssociation(
           ]),
         )
       : {};
+    const discarded = readDiscardedInputEvidence(
+      realpathSync(root),
+      dependencyRoot,
+      metafile,
+    );
     proofStage = "proof";
     return validateOptionalPgNativeImport({
       sourceRoot: realpathSync(root),
@@ -105,6 +174,7 @@ export function optionalPgBuildAssociation(
       outputRoot,
       metafile,
       sources,
+      ...discarded,
       outputs,
       registeredModuleNames,
     });

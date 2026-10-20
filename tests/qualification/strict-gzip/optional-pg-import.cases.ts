@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { createHash } from "node:crypto";
+import { gunzipSync, gzipSync } from "node:zlib";
+import {
+  DISCARDED_INPUT_SOURCE_PINS,
+  DISCARDED_INPUT_RECORD_PINS,
+  ERASURE_CONFIG_SOURCE_PINS,
+  DISCARDED_INPUT_LIMITS,
+  planDiscardedInputReads,
+  type ErasureConfigSources,
+} from "./discarded-input-proof.ts";
 import {
   OPTIONAL_PG_SOURCE_PINS,
   ownerSourceIdentity,
@@ -21,6 +31,72 @@ const fixtures = JSON.parse(
     "utf8",
   ),
 ) as Record<string, string>;
+function decodeInertFixture(
+  value: any,
+  pins: Record<string, { bytes: number; sha256: string; gitBlob: string }>,
+): Record<string, string> {
+  assert.deepEqual(
+    Object.keys(value).sort(),
+    ["version", "encoding", "decodedBytes", "decodedSha256", "contents"].sort(),
+  );
+  assert.equal(value.version, 1);
+  assert.equal(value.encoding, "gzip-base64");
+  assert.ok(
+    typeof value.contents === "string" &&
+      value.contents.length < 512 * 1024 &&
+      /^[A-Za-z0-9+/]*={0,2}$/.test(value.contents),
+  );
+  assert.ok(
+    Number.isSafeInteger(value.decodedBytes) &&
+      value.decodedBytes > 0 &&
+      value.decodedBytes <= 2 * 1024 * 1024,
+  );
+  assert.match(value.decodedSha256, /^[a-f0-9]{64}$/);
+  const bytes = gunzipSync(Buffer.from(value.contents, "base64"), {
+    maxOutputLength: 2 * 1024 * 1024,
+  });
+  assert.equal(bytes.length, value.decodedBytes);
+  assert.equal(
+    createHash("sha256").update(bytes).digest("hex"),
+    value.decodedSha256,
+  );
+  const data = JSON.parse(bytes.toString("utf8")) as Record<string, string>;
+  assert.deepEqual(Object.keys(data).sort(), Object.keys(pins).sort());
+  for (const [name, pin] of Object.entries(pins)) {
+    assert.equal(typeof data[name], "string");
+    const source = Buffer.from(data[name]!);
+    assert.equal(source.length, pin.bytes);
+    assert.equal(createHash("sha256").update(source).digest("hex"), pin.sha256);
+    assert.equal(
+      createHash("sha1")
+        .update(`blob ${source.length}\0`)
+        .update(source)
+        .digest("hex"),
+      pin.gitBlob,
+    );
+  }
+  return data;
+}
+const sourceFixtureEnvelope = JSON.parse(
+  readFileSync(
+    new URL("./discarded-input-source-fixtures.json", import.meta.url),
+    "utf8",
+  ),
+);
+const configFixtureEnvelope = JSON.parse(
+  readFileSync(
+    new URL("./erasure-config-source-fixtures.json", import.meta.url),
+    "utf8",
+  ),
+);
+const discardedFixtures = decodeInertFixture(
+  sourceFixtureEnvelope,
+  DISCARDED_INPUT_SOURCE_PINS,
+);
+const configFixtures = decodeInertFixture(
+  configFixtureEnvelope,
+  ERASURE_CONFIG_SOURCE_PINS,
+);
 const names = Object.keys(OPTIONAL_PG_SOURCE_PINS);
 const [ESM, MAIN, NATIVE, CLIENT] = names as [string, string, string, string];
 const outputKey =
@@ -710,10 +786,89 @@ function editOutput(e: OptionalPgEvidence, value: string) {
   e.outputs[0]!.bytes = bytes;
   e.metafile.outputs[outputKey]!.bytes = bytes.length;
 }
+function discardedSample(contributing = true): OptionalPgEvidence {
+  const e = sample();
+  e.discardedInputSources = Object.fromEntries(
+    Object.entries(discardedFixtures).map(([name, text]) => [
+      name,
+      Buffer.from(text),
+    ]),
+  );
+  e.erasureConfigSources = Object.fromEntries(
+    Object.entries(configFixtures).map(([name, text]) => [
+      name,
+      Buffer.from(text),
+    ]),
+  ) as unknown as ErasureConfigSources;
+  const sourceNames = Object.keys(DISCARDED_INPUT_SOURCE_PINS);
+  for (const name of sourceNames) {
+    const rows = DISCARDED_INPUT_RECORD_PINS.filter(
+      (pin) => pin.sourcePath === name,
+    );
+    const length = Math.max(...rows.map((pin) => pin.importIndex)) + 1;
+    const imports = Array.from({ length }, () => ({
+      path: "node:assert",
+      kind: "import-statement",
+      external: true,
+    }));
+    for (const pin of rows)
+      imports[pin.importIndex] = {
+        path: pin.target,
+        kind: pin.kind,
+        external: true,
+      };
+    e.metafile.inputs[name] = {
+      bytes: Buffer.byteLength(discardedFixtures[name]!),
+      imports,
+    };
+    if (contributing)
+      e.metafile.outputs[outputKey]!.inputs[name] = { bytesInOutput: 8 };
+  }
+  if (contributing) {
+    editOutput(
+      e,
+      Buffer.from(e.outputs[0]!.bytes).toString() +
+        sourceNames.map((_, index) => `let source${index}=0;\n`).join(""),
+    );
+    editMap(e, (map) => {
+      for (const source of sourceNames) {
+        map.sources.push(
+          path.relative(
+            path.dirname(path.resolve(e.sourceRoot, outputKey)),
+            path.resolve(e.sourceRoot, source),
+          ),
+        );
+        map.sourcesContent.push(discardedFixtures[source]);
+      }
+      map.mappings +=
+        ";" +
+        sourceNames
+          .map((_, index) =>
+            (index === 0 ? [0, 1, -6, -11] : [0, 1, 0, 0]).map(vlq).join(""),
+          )
+          .join(";");
+    });
+  }
+  return e;
+}
 const stageMutations: [
   (typeof OPTIONAL_PROOF_STAGES)[number],
   (e: OptionalPgEvidence) => void,
 ][] = [
+  [
+    "discarded-inputs",
+    (e) => {
+      Object.assign(e, discardedSample());
+      e.discardedInputSources = {};
+    },
+  ],
+  [
+    "erasure-config",
+    (e) => {
+      Object.assign(e, discardedSample());
+      delete e.erasureConfigSources;
+    },
+  ],
   [
     "roots",
     (e) => {
@@ -1714,3 +1869,499 @@ for (const [label, mutate] of negatives) {
     assert.throws(() => validateOptionalPgNativeImport(e));
   });
 }
+
+const discardedNames = Object.keys(DISCARDED_INPUT_SOURCE_PINS);
+const fixedReadIdentities = new Map(discardedNames.map((name) => [name, name]));
+test("fixed discarded-input pins are deeply frozen", () => {
+  for (const value of [
+    DISCARDED_INPUT_SOURCE_PINS,
+    ERASURE_CONFIG_SOURCE_PINS,
+    DISCARDED_INPUT_RECORD_PINS,
+    DISCARDED_INPUT_LIMITS,
+  ])
+    assert.ok(Object.isFrozen(value));
+  for (const value of [
+    ...Object.values(DISCARDED_INPUT_SOURCE_PINS),
+    ...Object.values(ERASURE_CONFIG_SOURCE_PINS),
+    ...DISCARDED_INPUT_RECORD_PINS,
+  ])
+    assert.ok(Object.isFrozen(value));
+  assert.equal(discardedNames.length, 20);
+  assert.equal(DISCARDED_INPUT_RECORD_PINS.length, 33);
+});
+test("complete source-reviewed batch preserves the exact existing pg result shape", () => {
+  const e = discardedSample();
+  const result = validateOptionalPgNativeImport(e)!;
+  assert.deepEqual(
+    Object.keys(result).sort(),
+    [
+      "kind",
+      "package",
+      "universallyClosedGraph",
+      "branchInactivityProven",
+      "admitted",
+    ].sort(),
+  );
+  assert.equal(result.admitted.output, outputKey);
+  assert.equal(result.admitted.importIndex, 0);
+  assert.equal(result.universallyClosedGraph, false);
+  assert.equal(result.branchInactivityProven, false);
+  assert.deepEqual(Object.keys(e.sources).sort(), names.slice().sort());
+});
+test("zero-contribution discarded importers retain custody without an emitted-source requirement", () => {
+  const e = discardedSample(false);
+  assert.ok(validateOptionalPgNativeImport(e));
+});
+test("exact-batch read plan returns only fixed actual/logical source keys and config paths", () => {
+  const e = discardedSample();
+  const plan = planDiscardedInputReads(e.metafile, fixedReadIdentities)!;
+  assert.deepEqual(
+    plan.sources,
+    discardedNames.map((logical) => ({ logical, actual: logical })),
+  );
+  assert.deepEqual(plan.configs, Object.keys(ERASURE_CONFIG_SOURCE_PINS));
+  assert.deepEqual(Object.keys(plan).sort(), ["configs", "sources"]);
+});
+test("read plan is not a substitute for bytes, config or full pg proof", () => {
+  const e = discardedSample();
+  delete e.erasureConfigSources;
+  delete e.discardedInputSources;
+  assert.ok(planDiscardedInputReads(e.metafile, fixedReadIdentities));
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("pg-only graph has no read plan and preserves its success", () => {
+  const e = sample();
+  assert.equal(planDiscardedInputReads(e.metafile, fixedReadIdentities), null);
+  assert.ok(validateOptionalPgNativeImport(e));
+});
+test("empty new evidence fields do not alter existing success", () => {
+  const e = sample();
+  e.discardedInputSources = {};
+  e.erasureConfigSources = {} as ErasureConfigSources;
+  assert.ok(validateOptionalPgNativeImport(e));
+});
+test("evidence without a pending reviewed batch is refused", () => {
+  for (const field of [
+    "discardedInputSources",
+    "erasureConfigSources",
+  ] as const) {
+    const e = sample();
+    (e as any)[field] = { secret: new Uint8Array(1) };
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  }
+});
+for (const [rowIndex, pin] of DISCARDED_INPUT_RECORD_PINS.entries()) {
+  for (const mutation of [
+    "target",
+    "kind",
+    "external",
+    "original",
+    "index",
+    "missing",
+  ] as const) {
+    test(`discarded tuple ${rowIndex} rejects changed ${mutation}`, () => {
+      const e = discardedSample(false);
+      const rows = e.metafile.inputs[pin.sourcePath]!.imports;
+      if (mutation === "target")
+        rows[pin.importIndex]!.path = pin.target + "-unreviewed";
+      if (mutation === "kind") rows[pin.importIndex]!.kind = "require-call";
+      if (mutation === "external") rows[pin.importIndex]!.external = false;
+      if (mutation === "original")
+        rows[pin.importIndex]!.original = "private-alias";
+      if (mutation === "index")
+        rows.splice(pin.importIndex, 0, {
+          path: "node:fs",
+          kind: "import-statement",
+          external: true,
+        });
+      if (mutation === "missing")
+        rows[pin.importIndex] = {
+          path: "node:fs",
+          kind: "import-statement",
+          external: true,
+        };
+      assert.equal(
+        planDiscardedInputReads(e.metafile, fixedReadIdentities),
+        null,
+      );
+      assert.throws(() => validateOptionalPgNativeImport(e));
+    });
+  }
+}
+for (const source of discardedNames) {
+  test(`discarded importer pin refuses changed bytes: ${source}`, () => {
+    const e = discardedSample(false);
+    e.discardedInputSources![source]![0] ^= 1;
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+  test(`discarded importer refuses changed metadata byte count: ${source}`, () => {
+    const e = discardedSample(false);
+    e.metafile.inputs[source]!.bytes++;
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+  test(`positive discarded importer refuses changed map bytes: ${source}`, () => {
+    const e = discardedSample();
+    editMap(e, (map) => {
+      map.sourcesContent[names.length + discardedNames.indexOf(source)] += "\n";
+    });
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+  test(`positive discarded importer refuses missing map association: ${source}`, () => {
+    const e = discardedSample();
+    editMap(e, (map) => {
+      map.sources[names.length + discardedNames.indexOf(source)] +=
+        ".unrelated";
+    });
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+  test(`positive discarded importer refuses absent genuine mapping: ${source}`, () => {
+    const e = discardedSample();
+    editMap(e, (map) => {
+      // Replace this source's generated segment with an unmapped segment, and
+      // preserve the cumulative source index for later still-mapped segments.
+      const lines = map.mappings.split(";");
+      const i = names.length + discardedNames.indexOf(source);
+      lines[i] = "A";
+      if (i + 1 < lines.length) {
+        const fields = i === names.length ? [0, 2, -6, -11] : [0, 2, 0, 0];
+        lines[i + 1] = fields.map(vlq).join("");
+      }
+      map.mappings = lines.join(";");
+    });
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+}
+for (const source of Object.keys(
+  ERASURE_CONFIG_SOURCE_PINS,
+) as (keyof typeof ERASURE_CONFIG_SOURCE_PINS)[]) {
+  test(`erasure config refuses changed bytes: ${source}`, () => {
+    const e = discardedSample(false);
+    e.erasureConfigSources![source][0] ^= 1;
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+  test(`erasure config refuses missing source: ${source}`, () => {
+    const e = discardedSample(false);
+    delete (e.erasureConfigSources as any)[source];
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+}
+test("no pending discarded batch can pass the no-pg null branch", () => {
+  const e = discardedSample(false);
+  e.metafile.inputs[CLIENT]!.imports = [];
+  e.metafile.outputs[outputKey]!.imports = [];
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("partial known batch refuses before success and returns no read plan", () => {
+  const e = discardedSample(false);
+  const pin = DISCARDED_INPUT_RECORD_PINS[0];
+  e.metafile.inputs[pin.sourcePath]!.imports[pin.importIndex] = {
+    path: "node:fs",
+    kind: "import-statement",
+    external: true,
+  };
+  assert.equal(planDiscardedInputReads(e.metafile, fixedReadIdentities), null);
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("unknown tuple retains original branded refusal without source reads", () => {
+  const e = sample();
+  e.metafile.inputs[MAIN]!.imports.push({
+    path: "clsx",
+    kind: "import-statement",
+    external: true,
+  });
+  let touched = 0;
+  Object.defineProperty(e, "discardedInputSources", {
+    get() {
+      touched++;
+      throw Error("private");
+    },
+  });
+  assert.equal(planDiscardedInputReads(e.metafile, fixedReadIdentities), null);
+  assert.throws(
+    () => validateOptionalPgNativeImport(e),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(
+        error.message.split("\n")[0],
+        "[owner-optional-proof-failed:external-imports]",
+      );
+      assert.ok(error.cause instanceof Error);
+      assert.equal(
+        error.cause.message,
+        optionalPgExternalRefusalMarker("input", "clsx"),
+      );
+      return true;
+    },
+  );
+  assert.equal(touched, 0);
+});
+test("a different importer cannot borrow the exact target/index", () => {
+  const e = discardedSample(false);
+  const pin = DISCARDED_INPUT_RECORD_PINS[0];
+  e.metafile.inputs["src/unreviewed.ts"] = e.metafile.inputs[pin.sourcePath]!;
+  delete e.metafile.inputs[pin.sourcePath];
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("canonical alias cannot duplicate an importer", () => {
+  const e = discardedSample(false);
+  e.metafile.inputs["./" + discardedNames[0]] =
+    e.metafile.inputs[discardedNames[0]!]!;
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("extra source or config evidence is refused", () => {
+  for (const field of [
+    "discardedInputSources",
+    "erasureConfigSources",
+  ] as const) {
+    const e = discardedSample(false);
+    (e[field] as any)["unreviewed"] = Buffer.from("x");
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  }
+});
+test("extra source-map alias is refused for a reviewed importer", () => {
+  const e = discardedSample();
+  editMap(e, (map) => {
+    map.sources.push(map.sources[4]);
+    map.sourcesContent.push(map.sourcesContent[4]);
+  });
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+for (const scope of ["js", "map", "wasm"] as const)
+  for (const external of [true, false])
+    test(`discarded target equality refuses ${scope} output external=${external}`, () => {
+      const e = discardedSample(false);
+      const key =
+        scope === "js"
+          ? outputKey
+          : scope === "map"
+            ? mapKey
+            : outputKey.replace(/\.js$/, ".wasm");
+      if (scope === "wasm") {
+        e.metafile.outputs[key] = { bytes: 1, imports: [], inputs: {} };
+        e.registeredModuleNames.push("chunks/pg-test.wasm");
+      }
+      e.metafile.outputs[key]!.imports.push({
+        path: DISCARDED_INPUT_RECORD_PINS[0].target,
+        kind: "import-statement",
+        external,
+      });
+      assert.equal(
+        planDiscardedInputReads(e.metafile, fixedReadIdentities),
+        null,
+      );
+      assert.throws(() => validateOptionalPgNativeImport(e));
+    });
+for (const [label, mutate] of negatives)
+  test("valid discarded batch cannot bypass old refusal: " + label, () => {
+    const e = discardedSample();
+    mutate(e);
+    assert.throws(() => validateOptionalPgNativeImport(e));
+  });
+test("read plan rejects malformed scopes, complete-scan budgets and duplicate identity values", () => {
+  const e = discardedSample(false);
+  assert.equal(
+    planDiscardedInputReads(
+      e.metafile,
+      new Map([...fixedReadIdentities, ["alias", discardedNames[0]!]]),
+    ),
+    null,
+  );
+  for (const mutate of [
+    (e: OptionalPgEvidence) => {
+      e.metafile.outputs[outputKey]!.imports.push({
+        path: "x",
+        kind: "import-statement",
+        external: "yes" as any,
+      });
+    },
+    (e: OptionalPgEvidence) => {
+      e.metafile.outputs[outputKey]!.imports = new Array(1);
+    },
+    (e: OptionalPgEvidence) => {
+      e.metafile.outputs[outputKey]!.imports = Array.from(
+        { length: 65537 },
+        () => ({ path: "node:fs", kind: "import-statement", external: true }),
+      );
+    },
+    (e: OptionalPgEvidence) => {
+      Object.defineProperty(e.metafile.outputs, "hidden", {
+        value: { bytes: 0, imports: [] },
+      });
+    },
+  ]) {
+    const e = discardedSample(false);
+    mutate(e);
+    assert.equal(
+      planDiscardedInputReads(e.metafile, fixedReadIdentities),
+      null,
+    );
+  }
+});
+test("read plan rejects proxies and accessors without running traps", () => {
+  let calls = 0;
+  const proxy = <T extends object>(value: T) =>
+    new Proxy(value, {
+      get() {
+        calls++;
+        throw Error("private");
+      },
+      ownKeys() {
+        calls++;
+        throw Error("private");
+      },
+      getOwnPropertyDescriptor() {
+        calls++;
+        throw Error("private");
+      },
+    });
+  const e = discardedSample(false);
+  assert.equal(
+    planDiscardedInputReads(proxy(e.metafile), fixedReadIdentities),
+    null,
+  );
+  assert.equal(
+    planDiscardedInputReads(e.metafile, proxy(fixedReadIdentities)),
+    null,
+  );
+  Object.defineProperty(e.metafile.inputs[discardedNames[0]!]!, "imports", {
+    get() {
+      calls++;
+      throw Error("private");
+    },
+  });
+  assert.equal(planDiscardedInputReads(e.metafile, fixedReadIdentities), null);
+  assert.equal(calls, 0);
+});
+test("source/config bytes reject proxy, accessor, shared and oversized values", () => {
+  let calls = 0;
+  for (const field of [
+    "discardedInputSources",
+    "erasureConfigSources",
+  ] as const)
+    for (const mode of ["proxy", "accessor", "shared", "oversized"]) {
+      const e = discardedSample(false);
+      const values = e[field] as Record<string, Uint8Array>;
+      const first = Object.keys(values)[0]!;
+      if (mode === "proxy")
+        values[first] = new Proxy(values[first]!, {
+          get() {
+            calls++;
+            throw Error("private");
+          },
+        });
+      if (mode === "accessor")
+        Object.defineProperty(values, first, {
+          get() {
+            calls++;
+            throw Error("private");
+          },
+        });
+      if (mode === "shared")
+        values[first] = new Uint8Array(new SharedArrayBuffer(1));
+      if (mode === "oversized")
+        values[first] = new Uint8Array(2 * 1024 * 1024 + 1);
+      assert.throws(() => validateOptionalPgNativeImport(e));
+    }
+  assert.equal(calls, 0);
+});
+test("inert fixture decoder rejects corruption, wrong inventory, and decompression overflow", () => {
+  for (const mutate of [
+    (v: any) => v.decodedBytes++,
+    (v: any) => (v.decodedSha256 = "0".repeat(64)),
+    (v: any) => (v.contents = "!"),
+    (v: any) => (v.extra = true),
+    (v: any) => (v.decodedBytes = 2 * 1024 * 1024 + 1),
+  ]) {
+    const value = { ...sourceFixtureEnvelope };
+    mutate(value);
+    assert.throws(() => decodeInertFixture(value, DISCARDED_INPUT_SOURCE_PINS));
+  }
+  assert.throws(() =>
+    decodeInertFixture(sourceFixtureEnvelope, ERASURE_CONFIG_SOURCE_PINS),
+  );
+  const overflow = Buffer.alloc(2 * 1024 * 1024 + 1, 32);
+  assert.throws(() =>
+    decodeInertFixture(
+      {
+        version: 1,
+        encoding: "gzip-base64",
+        decodedBytes: 2 * 1024 * 1024,
+        decodedSha256: "0".repeat(64),
+        contents: gzipSync(overflow).toString("base64"),
+      },
+      DISCARDED_INPUT_SOURCE_PINS,
+    ),
+  );
+});
+test("complete discarded batch works with canonical dependency-root pg metadata", () => {
+  const e = discardedSample();
+  const canonical = canonicalSample();
+  e.dependencyRoot = canonical.dependencyRoot;
+  for (const name of names) {
+    delete e.metafile.inputs[name];
+    delete e.metafile.outputs[outputKey]!.inputs[name];
+  }
+  Object.assign(e.metafile.inputs, canonical.metafile.inputs);
+  Object.assign(
+    e.metafile.outputs[outputKey]!.inputs,
+    canonical.metafile.outputs[outputKey]!.inputs,
+  );
+  const canonicalMap = JSON.parse(
+    Buffer.from(canonical.outputs[0]!.sourceMap.bytes).toString(),
+  );
+  editMap(e, (map) => {
+    map.sources.splice(0, names.length, ...canonicalMap.sources);
+  });
+  const before = JSON.stringify(e.metafile);
+  assert.ok(validateOptionalPgNativeImport(e));
+  assert.equal(JSON.stringify(e.metafile), before);
+});
+test("reviewed importer mappings can lie away from the erased declaration", () => {
+  const e = discardedSample();
+  const first = DISCARDED_INPUT_RECORD_PINS.find(
+    (row) => row.sourcePath === discardedNames[0],
+  )!;
+  assert.ok(first.line > 1);
+  // Synthetic contributing mappings use source line 1; the actual erased import
+  // is later in this pinned source. No mapping at the erased import is needed.
+  assert.ok(validateOptionalPgNativeImport(e));
+});
+test("late output target equality cannot hide behind earlier builtin imports", () => {
+  const e = discardedSample(false);
+  e.metafile.outputs[mapKey]!.imports = [
+    { path: "node:fs", kind: "import-statement", external: true },
+    {
+      path: DISCARDED_INPUT_RECORD_PINS.at(-1)!.target,
+      kind: "import-statement",
+      external: false,
+    },
+  ];
+  assert.equal(planDiscardedInputReads(e.metafile, fixedReadIdentities), null);
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("partial mappings may not borrow another reviewed source's positive contribution", () => {
+  const e = discardedSample();
+  editMap(e, (map) => {
+    const lines = map.mappings.split(";");
+    lines[4] = [0, 2, -6, -11].map(vlq).join("");
+    lines[5] = [0, 0, 0, 0].map(vlq).join("");
+    map.mappings = lines.join(";");
+  });
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("the batch cannot introduce an unreviewed second optional input", () => {
+  const e = discardedSample(false);
+  e.metafile.inputs[discardedNames[0]!]!.imports.push({
+    path: "pg-native",
+    kind: "require-call",
+    external: true,
+  });
+  assert.throws(() => validateOptionalPgNativeImport(e));
+});
+test("reviewed batch is source-identity proof, not evidence that target modules are absent", () => {
+  const e = discardedSample();
+  e.metafile.inputs["src/history-readers.ts"] = { bytes: 10, imports: [] };
+  // This target input may be bundled through another edge while its specific
+  // reviewed import declaration remains erased and absent from output imports.
+  assert.ok(validateOptionalPgNativeImport(e));
+});

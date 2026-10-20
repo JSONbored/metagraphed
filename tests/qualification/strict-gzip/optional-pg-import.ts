@@ -4,6 +4,15 @@ import { createHash } from "node:crypto";
 import { isBuiltin } from "node:module";
 import path from "node:path";
 import { types } from "node:util";
+import {
+  assertErasureConfigSources,
+  assertNoDiscardedInputEvidence,
+  isReviewedDiscardedInputTuple,
+  proveDiscardedInputBatch,
+  type DiscardedInputSource,
+  type ErasureConfigSources,
+  type PendingDiscardedInput,
+} from "./discarded-input-proof.ts";
 
 export const OPTIONAL_PG_SOURCE_COMMIT =
   "b617619f9fb6fbd231731823e2732a2927ded4be";
@@ -58,6 +67,8 @@ export const OPTIONAL_PROOF_STAGES = Object.freeze([
   "module-inventory",
   "source-identities",
   "input-edges",
+  "discarded-inputs",
+  "erasure-config",
   "source-pins",
   "pinned-edges",
   "optional-input",
@@ -236,6 +247,9 @@ export interface OptionalPgEvidence {
   metafile: OptionalPgMetafile;
   // Bounded, canonical reads by the caller. No supplied hashes are trusted.
   sources: Record<string, Uint8Array>;
+  // Separate exact source/config custody for the fixed reviewed discarded batch.
+  discardedInputSources?: Readonly<Record<string, Uint8Array>>;
+  erasureConfigSources?: ErasureConfigSources;
   // All executable JS outputs, not a hand-selected pg-containing subset.
   outputs: PreservedOptionalPgOutput[];
   // Complete actual registered-module inventory, checked by the caller.
@@ -457,23 +471,54 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
     }
     stage = "external-imports";
     let mentionsOptional = false;
+    const pendingDiscarded: PendingDiscardedInput[] = [];
     for (const info of Object.values(meta.outputs))
       assert.ok(Array.isArray(info.imports));
-    for (const { scope, info } of [
-      ...Object.values(meta.inputs).map((info) => ({ scope: "input", info })),
-      ...Object.values(meta.outputs).map((info) => ({ scope: "output", info })),
+    for (const { scope, name, info } of [
+      ...Object.entries(meta.inputs).map(([name, info]) => ({
+        scope: "input",
+        name,
+        info,
+      })),
+      ...Object.entries(meta.outputs).map(([name, info]) => ({
+        scope: "output",
+        name,
+        info,
+      })),
     ]) {
       // Legacy synthetic no-exception graphs omit input import arrays. They can
       // return null, but can never establish an optional-import exception.
       assert.ok(info.imports === undefined || Array.isArray(info.imports));
-      for (const dependency of info.imports ?? []) {
+      for (const [index, dependency] of (info.imports ?? []).entries()) {
         assert.equal(typeof dependency.path, "string");
         assert.ok(
           !suppliedNative(dependency.path) || dependency.path === "pg-native",
           "Supplied native dependency is forbidden",
         );
         if (dependency.external && dependency.path !== "pg-native") {
-          assertOptionalPgExternalImport(scope, dependency.path);
+          let reviewed = false;
+          if (
+            scope === "input" &&
+            !/^(?:node:|cloudflare:)/.test(dependency.path)
+          ) {
+            try {
+              const logical = ownerSourceIdentity(
+                evidence.sourceRoot,
+                evidence.dependencyRoot,
+                name,
+              );
+              reviewed = isReviewedDiscardedInputTuple(
+                logical,
+                index,
+                dependency,
+              );
+            } catch {
+              /* An unknown input retains the original refusal path. */
+            }
+          }
+          if (reviewed)
+            pendingDiscarded.push({ actual: name, importIndex: index });
+          else assertOptionalPgExternalImport(scope, dependency.path);
         }
         if (
           dependency.path === "pg-native" ||
@@ -499,7 +544,15 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
     }
     // No exception is needed. The caller retains its ordinary closed-graph and
     // builtin checks; absent optional-source provenance cannot grant an exception.
-    if (!mentionsOptional) return null;
+    if (!mentionsOptional) {
+      assert.equal(
+        pendingDiscarded.length,
+        0,
+        "Discarded records require the complete optional pg proof",
+      );
+      assertNoDiscardedInputEvidence(evidence);
+      return null;
+    }
     for (const info of Object.values(meta.inputs))
       assert.ok(Array.isArray(info.imports), "Missing input import provenance");
     stage = "output-inventory";
@@ -552,6 +605,19 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
           "Internal edge uses an input identity alias",
         );
       }
+    }
+    let discardedSources: ReadonlyMap<string, DiscardedInputSource> = new Map();
+    if (pendingDiscarded.length) {
+      stage = "erasure-config";
+      assertErasureConfigSources(evidence);
+      stage = "discarded-inputs";
+      discardedSources = proveDiscardedInputBatch(
+        evidence,
+        actualInputs,
+        pendingDiscarded,
+      );
+    } else {
+      assertNoDiscardedInputEvidence(evidence);
     }
     stage = "source-pins";
     assert.deepEqual(
@@ -770,6 +836,44 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
         sourceIndexes.set(source, sourceIndex);
         contributed.add(source);
       }
+      for (const [source, proved] of discardedSources) {
+        const expected = path.resolve(evidence.sourceRoot, source);
+        const matches = map.sources.flatMap((name, index) =>
+          path.resolve(path.dirname(absoluteOutput), name) === expected
+            ? [index]
+            : [],
+        );
+        assert.ok(
+          matches.length <= 1,
+          "Duplicate discarded importer map alias",
+        );
+        const contribution = info.inputs[proved.actual]?.bytesInOutput ?? 0;
+        assert.ok(Number.isSafeInteger(contribution) && contribution >= 0);
+        if (matches.length) {
+          const content = map.sourcesContent[matches[0]!];
+          assert.equal(typeof content, "string");
+          assert.equal(
+            Buffer.byteLength(content!),
+            proved.bytes,
+            "Discarded importer map byte count changed",
+          );
+          assert.equal(
+            sha256(content!),
+            proved.sha256,
+            "Discarded importer map source changed",
+          );
+        }
+        if (contribution === 0) continue;
+        assert.equal(
+          matches.length,
+          1,
+          "Contributing discarded importer absent from map",
+        );
+        assert.ok(
+          mappings.some((mapping) => mapping.source === matches[0]),
+          "Discarded importer has no genuine mapping",
+        );
+      }
       stage = "optional-output";
       assert.ok(Array.isArray(info.imports));
       for (const [index, dependency] of info.imports.entries()) {
@@ -833,6 +937,10 @@ export function validateOptionalPgNativeImport(evidence: OptionalPgEvidence) {
       }
     }
     stage = "completeness";
+    assert.ok(
+      pendingDiscarded.length === 0 || discardedSources.size === 20,
+      "Incomplete discarded-input proof",
+    );
     assert.deepEqual(
       [...contributed].sort(),
       pins.map(([name]) => name).sort(),
