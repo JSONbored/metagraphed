@@ -755,3 +755,158 @@ test("progress requires all eighteen corrected guard assertions before labeling 
     );
   }
 });
+
+function queueDiagnostic(messages: string[]) {
+  const value = tests();
+  const suite = value.testResults.find((row) =>
+    row.name.endsWith("/data-api-sync-queue-consumer.test.ts"),
+  )!;
+  suite.status = "failed";
+  suite.assertionResults[2]!.status = "failed";
+  suite.assertionResults[2]!.failureMessages = messages;
+  const row = publicTestProgress(value, candidate).find(
+    (row) => row.path === "tests/data-api-sync-queue-consumer.test.ts",
+  )!;
+  return { value, suite, row };
+}
+
+test("required-case diagnostics expose fixed index/status and numeric known-source frames only", () => {
+  const source = `${candidate}/tests/data-api-sync-queue-consumer.test.ts`;
+  const { row } = queueDiagnostic([
+    `${secret}\n at arbitrarySecretFunction (${source}:720:15)\n at ${source}:720:15\n at ${source}:721:2`,
+  ]);
+  assert.equal(row.requiredPassed, 4);
+  assert.equal(row.status, "failed");
+  assert.deepEqual(row.requiredCases[2], {
+    index: 2,
+    status: "failed",
+    frames: [
+      { line: 720, column: 15 },
+      { line: 721, column: 2 },
+    ],
+  });
+  assert.equal(row.requiredCases.length, 5);
+  assert.equal(JSON.stringify(row).includes(secret), false);
+  assert.equal(JSON.stringify(row).includes("arbitrarySecretFunction"), false);
+  assert.equal(JSON.stringify(row).includes(candidate), false);
+  assert.equal(
+    JSON.stringify(row).includes(REQUIRED_ASSERTIONS[row.path]![2]!),
+    false,
+  );
+});
+
+test("source frames refuse foreign paths, malformed positions and unbounded messages", () => {
+  const source = `${candidate}/tests/data-api-sync-queue-consumer.test.ts`;
+  const { row } = queueDiagnostic([
+    `${secret}:1:2`,
+    `/foreign${source}:1:2`,
+    `${source}.other:1:2`,
+    `${source}:0:2`,
+    `${source}:1:0`,
+    `${source}:100000:2`,
+    `${source}:1:10000`,
+    `${source}:1:2suffix`,
+    `${source}:1:2\n` + "x".repeat(65536),
+    `${candidate}/tests/strict-gzip-reader.test.ts:1:2`,
+  ]);
+  assert.deepEqual(row.requiredCases[2]!.frames, []);
+  assert.deepEqual(
+    queueDiagnostic(Array(101).fill(`${source}:1:2`)).row.requiredCases[2]!
+      .frames,
+    [],
+  );
+});
+
+test("source frames remain unique and capped at three per failed required case", () => {
+  const source = `${candidate}/tests/data-api-sync-queue-consumer.test.ts`;
+  const { row } = queueDiagnostic(
+    Array.from({ length: 100 }, (_, i) => ` at (${source}:${i + 1}:1)`),
+  );
+  assert.deepEqual(row.requiredCases[2]!.frames, [
+    { line: 1, column: 1 },
+    { line: 2, column: 1 },
+    { line: 3, column: 1 },
+  ]);
+});
+
+test("missing and duplicate required identities have fixed diagnostic statuses", () => {
+  const value = tests();
+  const suite = value.testResults.find((row) =>
+    row.name.endsWith("/data-api-sync-queue-consumer.test.ts"),
+  )!;
+  suite.assertionResults[1]!.title = secret;
+  suite.assertionResults.push(structuredClone(suite.assertionResults[0]!));
+  const row = publicTestProgress(value, candidate).find(
+    (row) => row.path === "tests/data-api-sync-queue-consumer.test.ts",
+  )!;
+  assert.deepEqual(row.requiredCases[0], {
+    index: 0,
+    status: "ambiguous",
+    frames: [],
+  });
+  assert.deepEqual(row.requiredCases[1], {
+    index: 1,
+    status: "missing",
+    frames: [],
+  });
+  assert.equal(row.status, "incomplete");
+  assert.equal(JSON.stringify(row).includes(secret), false);
+});
+
+test("only uniquely failed required assertions receive diagnostic frames", () => {
+  const { value, suite } = queueDiagnostic([]);
+  suite.assertionResults[0]!.failureMessages = [`${suite.name}:1:2`];
+  suite.assertionResults[1]!.status = "todo";
+  suite.assertionResults[1]!.failureMessages = [`${suite.name}:1:2`];
+  suite.assertionResults.push({
+    title: secret,
+    status: "failed",
+    fullName: secret,
+    failureMessages: [`${suite.name}:1:2`],
+  });
+  const row = publicTestProgress(value, candidate).find(
+    (row) => row.path === "tests/data-api-sync-queue-consumer.test.ts",
+  )!;
+  assert.deepEqual(row.requiredCases[0], {
+    index: 0,
+    status: "passed",
+    frames: [],
+  });
+  assert.deepEqual(row.requiredCases[1], {
+    index: 1,
+    status: "skipped",
+    frames: [],
+  });
+  assert.equal(row.requiredCases.length, 5);
+  assert.equal(JSON.stringify(row).includes(secret), false);
+  assert.throws(() => validateTestEvidence(value, candidate));
+});
+
+test("publisher retains bounded case diagnostics without converting failure to acceptance", () =>
+  temporary((root) => {
+    const { raw, run, output } = rawRun(root);
+    writeFileSync(
+      path.join(run, "receipt.json"),
+      JSON.stringify({ ...receipt(), status: "failed", code: 1 }),
+    );
+    const { value } = queueDiagnostic([
+      `${secret}\n at (${candidate}/tests/data-api-sync-queue-consumer.test.ts:720:15)`,
+    ]);
+    writeFileSync(path.join(run, "vitest-results.json"), JSON.stringify(value));
+    publish(raw, output, candidate);
+    const text = readFileSync(
+      path.join(output, "qualification-summary.json"),
+      "utf8",
+    );
+    const result = JSON.parse(text);
+    assert.equal(result.status, "failed");
+    assert.equal(result.evidenceValidated, false);
+    assert.deepEqual(
+      result.testProgress.find(
+        (row: { path: string }) =>
+          row.path === "tests/data-api-sync-queue-consumer.test.ts",
+      ).requiredCases[2],
+      { index: 2, status: "failed", frames: [{ line: 720, column: 15 }] },
+    );
+    assert.equal(text.includes(secret), false);
+  }));

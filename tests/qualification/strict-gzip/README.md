@@ -112,8 +112,12 @@ fixed-enum refusal-count groups. Unknown labels and excess distinct groups becom
 `other`; counts must sum exactly to the reported refusal total. No raw labels are
 echoed.
 Failed runs may include diagnostic progress for the ten pinned suite paths: fixed
-statuses and numeric assertion/required-case counts only. These partial results
-do not satisfy or replace the unchanged full acceptance checks.
+statuses, numeric assertion counts, and fixed required-case indices in
+`REQUIRED_ASSERTIONS` order. Failed required cases may include at most three
+numeric line/column pairs extracted only from that suite’s exact candidate path;
+raw titles, messages, stacks and paths are never copied. Missing or duplicate
+required cases receive fixed `missing` or `ambiguous` statuses. These partial
+results do not satisfy or replace the unchanged full acceptance checks.
 Coverage contains only the two allowlisted relative source paths and metrics.
 LCOV test/function names and arbitrary source paths are removed or refused.
 The upload step runs only after successful publication validation.

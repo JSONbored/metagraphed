@@ -116,6 +116,35 @@ export function validateTestEvidence(value: unknown, root: string) {
   };
 }
 
+function failedSourceFrames(value: unknown, root: string, file: string) {
+  if (!Array.isArray(value) || value.length > 100) return [];
+  const prefix = path.join(root, file) + ":";
+  const frames: { line: number; column: number }[] = [];
+  for (const message of value) {
+    if (typeof message !== "string" || message.length > 65_536) continue;
+    let from = 0;
+    for (;;) {
+      const at = message.indexOf(prefix, from);
+      if (at < 0 || frames.length === 3) break;
+      from = at + prefix.length;
+      if (at > 0 && !/[\s(]/.test(message[at - 1]!)) continue;
+      const match = /^([1-9][0-9]{0,4}):([1-9][0-9]{0,3})(?:\)|\s|$)/.exec(
+        message.slice(from),
+      );
+      if (!match) continue;
+      const frame = { line: Number(match[1]), column: Number(match[2]) };
+      if (
+        !frames.some(
+          (row) => row.line === frame.line && row.column === frame.column,
+        )
+      )
+        frames.push(frame);
+    }
+    if (frames.length === 3) break;
+  }
+  return frames;
+}
+
 /** Diagnostic progress only. Never used to satisfy qualification acceptance. */
 export function publicTestProgress(value: unknown, root: string) {
   const input = object(value);
@@ -137,11 +166,12 @@ export function publicTestProgress(value: unknown, root: string) {
           suite.status as string,
         ),
       );
+      const assertions = suite.assertionResults;
       let passed = 0,
         failed = 0,
         skipped = 0;
       const passedTitles = new Set<string>();
-      for (const rawAssertion of suite.assertionResults) {
+      for (const rawAssertion of assertions) {
         const assertion = object(rawAssertion);
         if (assertion.status === "passed") {
           passed++;
@@ -161,6 +191,27 @@ export function publicTestProgress(value: unknown, root: string) {
       const requiredPassed = required.filter((title) =>
         passedTitles.has(title),
       ).length;
+      const requiredCases = required.map((title, index) => {
+        const matches = assertions.filter((raw) => object(raw).title === title);
+        if (matches.length !== 1)
+          return {
+            index,
+            status: matches.length ? "ambiguous" : "missing",
+            frames: [],
+          };
+        const assertion = object(matches[0]);
+        return {
+          index,
+          status:
+            assertion.status === "passed" || assertion.status === "failed"
+              ? assertion.status
+              : "skipped",
+          frames:
+            assertion.status === "failed"
+              ? failedSourceFrames(assertion.failureMessages, root, file)
+              : [],
+        };
+      });
       return {
         path: file,
         status:
@@ -170,6 +221,7 @@ export function publicTestProgress(value: unknown, root: string) {
                 passed > 0 &&
                 skipped === 0 &&
                 requiredPassed === required.length &&
+                requiredCases.every((row) => row.status === "passed") &&
                 (file !== "tests/strict-gzip-host-guard.test.ts" ||
                   suite.assertionResults.length === 18)
               ? "passed"
@@ -179,6 +231,7 @@ export function publicTestProgress(value: unknown, root: string) {
         skipped,
         requiredPassed,
         requiredTotal: required.length,
+        requiredCases,
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path));
