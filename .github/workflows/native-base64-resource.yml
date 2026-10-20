@@ -1,0 +1,54 @@
+name: Isolated native base64 high-entropy HTTP resource comparison
+
+on:
+  push:
+    branches:
+      - ci/native-base64-resource-20261020
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-base64-resource-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        variant: [binary-string, shared-buffer]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Fetch exact shared source base
+        run: git fetch --no-tags --depth=1 origin 0a65fcffd51b0a6a2b9757905be02c1d8b859e6c
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format only the temporary hosted driver and workflow
+        run: npx prettier --write .github/scripts/native-base64-resource.ts .github/workflows/native-base64-resource.yml
+      - name: Run one isolated synthetic workerd case
+        env:
+          WRANGLER_SEND_METRICS: "false"
+          WRANGLER_WRITE_LOGS: "false"
+        run: node .github/scripts/native-base64-resource.ts 'http-chunks' '${{ matrix.variant }}'
+      - name: Retain only synthetic bounded receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workerd-base64-http-chunks-${{ matrix.variant }}
+          path: |
+            resource-reports/*.json
+            resource-reports/driver.ts
+          retention-days: 1
+          if-no-files-found: error
