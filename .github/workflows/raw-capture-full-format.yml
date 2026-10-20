@@ -1,8 +1,8 @@
-name: Presubmit diagnostic native formatting
+name: Presubmit byte-bound diagnostic native formatting
 
 on:
   push:
-    branches: [ci/raw-capture-presubmit-diagnostic-format-20261020]
+    branches: [ci/raw-capture-presubmit-observer-byte-format-20261020]
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   format:
-    if: github.ref == 'refs/heads/ci/raw-capture-presubmit-diagnostic-format-20261020'
+    if: github.ref == 'refs/heads/ci/raw-capture-presubmit-observer-byte-format-20261020'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,7 +36,7 @@ jobs:
         if: always() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-presubmit-diagnostic-format-${{ github.run_attempt }}-${{ steps.format.outcome }}
+          name: raw-capture-presubmit-observer-byte-format-${{ github.run_attempt }}-${{ steps.format.outcome }}
           path: |
             .github/scripts/apply-raw-capture-full-validation.ts
             .github/scripts/report-raw-capture-full-validation.ts
