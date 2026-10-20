@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "scope": "runner-only pipeline drain-safe failure emission and exact-old-source causal controls; no real pipeline commands or provider acceptance",
+  "carrier_files": [
+    ".github/fixtures/pipeline-emission/manifest.json",
+    ".github/fixtures/pipeline-emission/scripts/pipeline.ts.payload",
+    ".github/fixtures/pipeline-emission/tests/fixtures/pipeline-emission-original.ts.payload.payload",
+    ".github/fixtures/pipeline-emission/tests/pipeline-emission.test.ts.payload",
+    ".github/scripts/qualify-pipeline-emission.ts",
+    ".github/workflows/pipeline-emission-source-qualification.yml"
+  ],
+  "files": [
+    {
+      "path": "scripts/pipeline.ts",
+      "bytes": 12542,
+      "sha256": "6f0ef0966ff840dcba3f8d9672e4c95bbb03c838147f36cf42adf191e66c9d3f",
+      "git_blob_sha": "496be52057f8cbd515f627172df27610dde86160",
+      "expected_base_blob_sha": "166fa028808963551b3cb109591eb5deaa6ec16f",
+      "payload": ".github/fixtures/pipeline-emission/scripts/pipeline.ts.payload"
+    },
+    {
+      "path": "tests/fixtures/pipeline-emission-original.ts.payload",
+      "bytes": 12303,
+      "sha256": "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410",
+      "git_blob_sha": "166fa028808963551b3cb109591eb5deaa6ec16f",
+      "expected_base_blob_sha": null,
+      "payload": ".github/fixtures/pipeline-emission/tests/fixtures/pipeline-emission-original.ts.payload.payload"
+    },
+    {
+      "path": "tests/pipeline-emission.test.ts",
+      "bytes": 9483,
+      "sha256": "96d04f92301ab6e9dbe3fed4de480fbf5e3fa0114b240cf37fac59ad6fd9a6d9",
+      "git_blob_sha": "ddb42ea82f5d0894e9e688c718fb736c58967baf",
+      "expected_base_blob_sha": null,
+      "payload": ".github/fixtures/pipeline-emission/tests/pipeline-emission.test.ts.payload"
+    }
+  ]
+}

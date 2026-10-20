@@ -1,0 +1,57 @@
+name: Pipeline terminal emission source qualification
+
+on:
+  push:
+    branches: [ci/pipeline-emission-source-qualification-20261020]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-emission-source-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    if: github.ref == 'refs/heads/ci/pipeline-emission-source-qualification-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_COLOR: "0"
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+    steps:
+      - name: Checkout exact source-only carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup exact native Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Verify canonical source and apply exact runner-only payload
+        id: overlay
+        run: node .github/scripts/qualify-pipeline-emission.ts apply
+      - name: Native format, lint, cold types and focused subprocess proof
+        id: native
+        run: node .github/scripts/qualify-pipeline-emission.ts qualify
+      - name: Retain actual formatted sources and bounded curated receipts
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pipeline-emission-source-${{ github.run_attempt }}-${{ steps.native.outcome }}
+          path: |
+            scripts/pipeline.ts
+            tests/pipeline-emission.test.ts
+            tests/fixtures/pipeline-emission-original.ts.payload
+            .github/scripts/qualify-pipeline-emission.ts
+            .github/workflows/pipeline-emission-source-qualification.yml
+            .github/fixtures/pipeline-emission/manifest.json
+            tmp/pipeline-emission/*-receipt.json
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
