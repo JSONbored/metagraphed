@@ -210,9 +210,7 @@ describe("heartbeat producer exception isolation", () => {
           assert.ok(row.values.includes(lane === failedLane ? "stale" : "ok"));
           assert.ok(
             row.values.includes(
-              lane === failedLane
-                ? "enqueue_threw"
-                : "128 enqueued",
+              lane === failedLane ? "enqueue_threw" : "128 enqueued",
             ),
           );
         }
