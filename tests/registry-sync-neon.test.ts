@@ -41,6 +41,173 @@ const provider = {
 };
 
 describe("the transaction is real", () => {
+  for (const mode of ["reject", "throw"] as const) {
+    test(`a connect ${mode} closes without issuing transaction SQL`, async () => {
+      const failure = new Error("handshake failed");
+      const { client, texts } = fakeClient();
+      const life: string[] = [];
+      client.connect = () => {
+        life.push("connect");
+        if (mode === "throw") throw failure;
+        return Promise.reject(failure);
+      };
+      let release!: () => void;
+      const ended = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      client.end = async () => {
+        life.push("end");
+        await ended;
+      };
+      let settled = false;
+      const operation = applyRegistrySyncToNeon(
+        "postgres://x",
+        {
+          providers: [provider],
+          subnets: [],
+          surfaces: [],
+          pruneSurfaces: [],
+          deleteSubnets: [],
+        },
+        { clientFactory: () => client },
+      ).finally(() => {
+        settled = true;
+      });
+      const rejected = assert.rejects(operation, (error) => error === failure);
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.deepEqual(life, ["connect", "end"]);
+        assert.deepEqual(texts(), [], "neither BEGIN nor ROLLBACK can run");
+        assert.equal(settled, false, "the transaction owner awaits cleanup");
+      } finally {
+        release();
+        await rejected;
+      }
+      assert.equal(settled, true);
+    });
+  }
+
+  test("failed connect and teardown preserve the connection error", async () => {
+    const failure = new Error("handshake failed");
+    const { client, texts } = fakeClient();
+    let ends = 0;
+    client.connect = async () => {
+      throw failure;
+    };
+    client.end = async () => {
+      ends += 1;
+      throw new Error("teardown failed");
+    };
+    await assert.rejects(
+      applyRegistrySyncToNeon(
+        "postgres://x",
+        {
+          providers: [provider],
+          subnets: [],
+          surfaces: [],
+          pruneSurfaces: [],
+          deleteSubnets: [],
+        },
+        { clientFactory: () => client },
+      ),
+      (error) => error === failure,
+    );
+    assert.equal(ends, 1);
+    assert.deepEqual(texts(), []);
+  });
+
+  for (const stage of ["BEGIN", "INSERT INTO providers", "COMMIT"]) {
+    test(`${stage} failure retains rollback and the original error`, async () => {
+      const failure = new Error(`${stage} failed`);
+      const { client } = fakeClient();
+      const life: string[] = [];
+      client.connect = async () => {
+        life.push("connect");
+      };
+      client.query = async (text) => {
+        const operation = text.startsWith("INSERT INTO providers")
+          ? "INSERT INTO providers"
+          : text;
+        life.push(operation);
+        if (operation === stage) throw failure;
+        if (operation === "ROLLBACK") throw new Error("rollback failed");
+        return { rows: [] };
+      };
+      client.end = async () => {
+        life.push("end");
+        throw new Error("teardown failed");
+      };
+      await assert.rejects(
+        applyRegistrySyncToNeon(
+          "postgres://x",
+          {
+            providers: [provider],
+            subnets: [],
+            surfaces: [],
+            pruneSurfaces: [],
+            deleteSubnets: [],
+          },
+          { clientFactory: () => client },
+        ),
+        (error) => error === failure,
+      );
+      const attempted = ["BEGIN", "INSERT INTO providers", "COMMIT"];
+      assert.deepEqual(life, [
+        "connect",
+        ...attempted.slice(0, attempted.indexOf(stage) + 1),
+        "ROLLBACK",
+        "end",
+      ]);
+    });
+  }
+
+  for (const rejectEnd of [false, true]) {
+    test(`successful commit awaits teardown and preserves its summary (end rejects=${rejectEnd})`, async () => {
+      const { client, texts } = fakeClient();
+      let ends = 0;
+      let release!: () => void;
+      const ended = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      client.end = async () => {
+        ends += 1;
+        await ended;
+        if (rejectEnd) throw new Error("teardown failed");
+      };
+      let settled = false;
+      const operation = applyRegistrySyncToNeon(
+        "postgres://x",
+        {
+          providers: [provider],
+          subnets: [],
+          surfaces: [],
+          pruneSurfaces: [],
+          deleteSubnets: [],
+        },
+        { clientFactory: () => client },
+      ).finally(() => {
+        settled = true;
+      });
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.equal(texts()[0], "BEGIN");
+        assert.equal(texts().at(-1), "COMMIT");
+        assert.equal(texts().includes("ROLLBACK"), false);
+        assert.equal(ends, 1);
+        assert.equal(settled, false);
+      } finally {
+        release();
+      }
+      assert.deepEqual(await operation, {
+        providers_written: 1,
+        subnets_written: 0,
+        surfaces_written: 0,
+        surfaces_deleted: 0,
+        subnets_deleted: 0,
+      });
+    });
+  }
+
   test("BEGIN wraps everything and COMMIT closes it", async () => {
     const { client, texts } = fakeClient();
     await applyRegistrySyncToNeon(
