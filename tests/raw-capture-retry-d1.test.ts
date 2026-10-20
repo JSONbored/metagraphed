@@ -523,7 +523,9 @@ test("native D1 archive conversion before reservation cannot recreate released s
   assert.equal(await count("raw_capture_batches"), 0);
   assert.equal(await count("raw_capture_chunks"), 0);
   assert.deepEqual(
-    await native.prepare("SELECT bytes,objects FROM raw_capture_budget").first(),
+    await native
+      .prepare("SELECT bytes,objects FROM raw_capture_budget")
+      .first(),
     { bytes: 0, objects: 0 },
   );
   assert.deepEqual(await plain.put(key, value(3000)), receipt);
