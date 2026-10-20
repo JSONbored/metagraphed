@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createCipheriv, createHash } from "node:crypto";
-import { mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import { DatabaseSync } from "node:sqlite";
@@ -513,24 +513,38 @@ try {
   diagnosticModules = [...new Set([...readFileSync(scriptPath, "utf8").matchAll(/["']((?:node|cloudflare):[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*)["']/g)].map(match => match[1]))].sort();
   assert.ok(diagnosticModules.length <= 128); result.diagnosticModuleAllowlistSha256 = digest(JSON.stringify(diagnosticModules));
   const classifyExtension = (value: string) => { const extension = path.extname(value).toLowerCase(); return [".js", ".mjs", ".cjs", ".wasm", ".txt", ".html", ".bin", ".json", ".map", ".sql"].includes(extension) ? extension : "other"; };
-  const assetNames = readdirSync(bundled).sort(); assert.ok(assetNames.length <= 128);
-  const nativeTypes = ["ESModule", "CommonJS", "CompiledWasm", "Text", "Data"];
+  stage = "bundle-asset-count";
+  const assetNames = readdirSync(bundled).sort();
+  result.bundleModuleDiagnostic = { assetCount: assetNames.length, assets: [], imports: [] };
+  assert.ok(assetNames.length <= 128);
+  const nativeTypes = ["ESModule", "CommonJS", "CompiledWasm", "Text", "Data", "esm", "commonjs", "compiled-wasm", "text", "buffer"];
   const nativeOutput = (bundle.stdout ?? "") + (bundle.stderr ?? "");
-  const assetRecords = assetNames.map((name, index) => {
-    const file = path.join(bundled, name); assert.ok(realpathSync(file).startsWith(realpathSync(bundled) + path.sep));
-    const bytes = readFileSync(file); assert.ok(bytes.length <= 16 * 1024 * 1024);
+  const assetRecords = result.bundleModuleDiagnostic.assets as Record<string, unknown>[];
+  let assetBytes = 0;
+  for (let index = 0; index < assetNames.length; index++) {
+    const name = assetNames[index], file = path.join(bundled, name);
+    stage = "bundle-asset-ownership"; assert.ok(realpathSync(file).startsWith(realpathSync(bundled) + path.sep));
+    const info = statSync(file);
+    const record: Record<string, unknown> = { index, extension: classifyExtension(name), bytes: info.size, sha256: null, nativeOutputType: null };
+    assetRecords.push(record); result.bundleModuleDiagnostic.totalAssetBytes = assetBytes += info.size;
+    stage = "bundle-asset-byte-bound"; assert.ok(info.isFile() && info.size <= 128 * 1024 * 1024 && assetBytes <= 256 * 1024 * 1024);
+    const fd = openSync(file, "r"); const hash = createHash("sha256"); const buffer = Buffer.allocUnsafe(128 * 1024);
+    try { let bytes = 0; for (;;) { stage = "bundle-asset-digest"; assert.ok(Date.now() < deadline); const size = readSync(fd, buffer); if (!size) break; bytes += size; hash.update(buffer.subarray(0, size)); } assert.equal(bytes, info.size); record.sha256 = hash.digest("hex"); }
+    finally { closeSync(fd); }
     const types = [...new Set(nativeOutput.split("\n").filter(line => line.includes(name)).flatMap(line => nativeTypes.filter(type => new RegExp("\\b" + type + "\\b").test(line))))];
-    return { index, extension: classifyExtension(name), bytes: bytes.length, sha256: digest(bytes), nativeOutputType: types.length === 1 ? types[0] : null };
-  });
+    record.nativeOutputType = types.length === 1 ? types[0] : null;
+  }
+  stage = "bundle-import-count";
   const code = readFileSync(scriptPath, "utf8");
   diagnosticImportSpecifiers = [...new Set([...code.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"'\n]{1,512})["']/g)].map(match => match[1]))].sort();
-  assert.ok(diagnosticImportSpecifiers.length <= 128);
+  result.bundleModuleDiagnostic.importCount = diagnosticImportSpecifiers.length; assert.ok(diagnosticImportSpecifiers.length <= 128);
   const importRecords = diagnosticImportSpecifiers.map((specifier, index) => {
     const resolved = path.resolve(path.dirname(scriptPath), specifier);
     const assetIndex = assetNames.findIndex(name => path.join(bundled, name) === resolved);
     return { index, specifierSha256: digest(specifier), extension: classifyExtension(specifier), assetIndex: assetIndex >= 0 ? assetIndex : null, kind: /^(node|cloudflare|workerd):/.test(specifier) ? "builtin" : specifier.startsWith(".") ? "relative" : "bare" };
   });
-  result.bundleModuleDiagnostic = { assets: assetRecords, imports: importRecords, metadataBytes: Buffer.byteLength(JSON.stringify({ assetRecords, importRecords })) };
+  result.bundleModuleDiagnostic.imports = importRecords; result.bundleModuleDiagnostic.metadataBytes = Buffer.byteLength(JSON.stringify({ assetRecords, importRecords }));
+  stage = "bundle-metadata-byte-bound";
   assert.ok(result.bundleModuleDiagnostic.metadataBytes <= 32768);
   result.bundler = { nativeWranglerDryRun: true, stdoutRetained: false, stderrRetained: false };
   stage = "runtime-constructor"; checkpoint();
