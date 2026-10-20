@@ -16,6 +16,27 @@
       "expression_substitutions": []
     },
     {
+      "id": "validate-presubmit-prepare-r2",
+      "job": "validate",
+      "native_name": "Prepare matching local R2 staging prerequisite",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-presubmit-prepare-r2.sh.payload",
+      "sha256": "ff61bdeb017b68c90ac24783d2172435bf9890004703debf1c84341ccef6d474",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "required_presubmit_prerequisite": true
+    },
+    {
+      "id": "validate-16",
+      "job": "validate",
+      "native_name": "Generate R2 manifest",
+      "script_path": ".github/fixtures/raw-capture-full-validation/commands/validate-16.sh.payload",
+      "sha256": "559437a70f7d0fc115239d88f943087a77d7f7704a9ca618856a804768e195b1",
+      "working_directory": ".",
+      "counts_as_native_gate": true,
+      "native_source_sha256": "559437a70f7d0fc115239d88f943087a77d7f7704a9ca618856a804768e195b1",
+      "expression_substitutions": []
+    },
+    {
       "id": "validate-presubmit-check",
       "job": "validate",
       "native_name": "Exact required npm check wrapper",
@@ -36,5 +57,5 @@
       "required_presubmit_followup": true
     }
   ],
-  "scope": "Exact named presubmit follow-up only; no full native CI or coverage aggregation claim"
+  "scope": "Exact named presubmit follow-up with matching runner-only R2 staging and native manifest prerequisites; no full native CI or coverage aggregation claim"
 }
