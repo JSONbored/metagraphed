@@ -55,6 +55,8 @@ const nativePhases: {
   ts_error_codes: string[];
 }[] = [];
 let diagnosticControlsPassed = 0;
+let receiptControlsPassed = 0;
+let receiptControlLargeBytes = 0;
 let helpersIncluded = 0;
 let controlSemanticsPreserved = false;
 const lintDiagnostics: {
@@ -173,16 +175,20 @@ try {
   }
   assert.equal(helpersIncluded, 3);
   const control = JSON.parse(
-    native("native_diagnostic_controls", [
+    native("native_reporter_controls", [
       ".github/scripts/report-raw-capture-full-validation.ts",
       "selfcheck",
     ]).trim(),
   );
-  assert.ok(
-    Number.isSafeInteger(control.diagnostic_controls_passed) &&
-      control.diagnostic_controls_passed >= 33,
-  );
+  assert.equal(control.diagnostic_controls_passed, 38);
+  assert.equal(control.receipt_controls_passed, 32);
+  assert.equal(control.reader_writer_maximum, 32 * 1024 * 1024);
+  assert.equal(control.source_artifacts_required, 11);
+  assert.ok(Number.isSafeInteger(control.large_receipt_bytes) &&
+    control.large_receipt_bytes > 131_072 && control.large_receipt_bytes < control.reader_writer_maximum);
   diagnosticControlsPassed = control.diagnostic_controls_passed;
+  receiptControlsPassed = control.receipt_controls_passed;
+  receiptControlLargeBytes = control.large_receipt_bytes;
   assert.deepEqual(
     JSON.parse(readFileSync(fixture + "manifest.json", "utf8")),
     manifestBefore,
@@ -215,6 +221,8 @@ try {
     formatter_exit_code: exitCode,
     native_phases: nativePhases,
     diagnostic_controls_passed: diagnosticControlsPassed,
+    receipt_controls_passed: receiptControlsPassed,
+    receipt_control_large_bytes: receiptControlLargeBytes,
     actual_helper_inputs_confirmed: helpersIncluded,
     lint_diagnostics: lintDiagnostics,
     before,

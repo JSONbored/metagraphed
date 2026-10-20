@@ -81,7 +81,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -133,7 +133,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -537,7 +537,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -684,7 +684,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -754,7 +754,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -1028,7 +1028,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-${{ env.QUALIFICATION_JOB_ID }}
+          name: raw-capture-full-source-${{ github.run_attempt }}-${{ env.QUALIFICATION_JOB_ID }}
           path: tmp/raw-capture-full-validation/upload/${{ env.QUALIFICATION_JOB_ID }}/
           retention-days: 1
           if-no-files-found: error
@@ -1074,7 +1074,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-unsharded
+          name: raw-capture-full-source-${{ github.run_attempt }}-unsharded
           path: tmp/raw-capture-full-validation/upload/unsharded/
           retention-days: 1
           if-no-files-found: error
@@ -1104,7 +1104,7 @@ jobs:
       - name: Download every bounded job artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: raw-capture-full-*
+          pattern: raw-capture-full-source-${{ github.run_attempt }}-*
           merge-multiple: false
           path: tmp/raw-capture-full-validation/downloaded/
       - name: Verify all native outcomes and exact offline patch obligations
@@ -1113,7 +1113,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-final-proof
+          name: raw-capture-full-proof-${{ github.run_attempt }}
           path: |
             tmp/raw-capture-full-validation/upload/proof/
             tmp/raw-capture-full-validation/upload/coverage/failure-receipt.json

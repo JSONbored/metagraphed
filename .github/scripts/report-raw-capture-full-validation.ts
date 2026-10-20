@@ -5,26 +5,21 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  rmSync,
   statSync,
+  truncateSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 async function main() {
-  if (process.argv[2] === "selfcheck") {
-    diagnosticControls();
-    return;
-  }
-  const ROOT = realpathSync(process.env.GITHUB_WORKSPACE ?? process.cwd());
-  const FIXTURES = ".github/fixtures/raw-capture-full-validation/";
-  const SCRATCH = path.join(ROOT, "tmp/raw-capture-full-validation");
-  const OUTPUT = path.join(SCRATCH, "upload");
   const MAX_REPORT_BYTES = 32 * 1024 * 1024;
-  const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
-  const MAX_RECORDS = 2_000_000;
   const JOBS = [
     "changes",
     "bundle-source",
@@ -38,6 +33,20 @@ async function main() {
     "test-mocked-1",
     "test-mocked-2",
   ];
+  if (process.argv[2] === "selfcheck") {
+    console.log(JSON.stringify({ ...diagnosticControls(), ...receiptControls() }));
+    return;
+  }
+  if (process.argv[2] === "receipt-selfcheck") {
+    console.log(JSON.stringify(receiptControls()));
+    return;
+  }
+  const ROOT = realpathSync(process.env.GITHUB_WORKSPACE ?? process.cwd());
+  const FIXTURES = ".github/fixtures/raw-capture-full-validation/";
+  const SCRATCH = path.join(ROOT, "tmp/raw-capture-full-validation");
+  const OUTPUT = path.join(SCRATCH, "upload");
+  const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
+  const MAX_RECORDS = 2_000_000;
   const LEGS = ["shared-1", "shared-2", "shared-3", "mocked-1", "mocked-2"];
   const hash = (value: Uint8Array) =>
     createHash("sha256").update(value).digest("hex");
@@ -200,7 +209,7 @@ async function main() {
     const testSummaries: RunReceipt["observed_test_summaries"] = [];
     const unfinished = { stdout: "", stderr: "" };
     const observe = (line: string) => {
-      const clean = line.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
+      const clean = stripVTControlCharacters(line);
       if (actualUnhandledLine(clean)) actualUnhandled = true;
       if (/^[\s\u23af-]*Unhandled Errors[\s\u23af-]*$/.test(clean))
         unhandledBanner = true;
@@ -248,6 +257,7 @@ async function main() {
   function diagnosticControls() {
     const positives = [
       "Unhandled Rejection: synthetic diagnostic\n",
+      "\u001b]8;;https://example.invalid/fixture\u0007Unhandled Rejection: synthetic diagnostic\u001b]8;;\u0007\n",
       "Uncaught Exception: synthetic diagnostic\n",
       "(node:123) UnhandledPromiseRejectionWarning: synthetic diagnostic\n",
       "Uncaught Error: synthetic diagnostic\n",
@@ -256,6 +266,7 @@ async function main() {
     ];
     const negatives = [
       ' ✓ refuses "Unhandled Rejection" inputs\n',
+      '\u001b]8;;https://example.invalid/fixture\u0007 ✓ handles "Uncaught Exception" fixture text\u001b]8;;\u0007\n',
       ' ✓ handles "Uncaught Exception" fixture text\n',
       ' ✓ recognizes "⎯⎯⎯ Unhandled Errors ⎯⎯⎯"\n',
       'stdout | test.ts > named "Unhandled Rejection"\n',
@@ -294,12 +305,10 @@ async function main() {
     sticky.push("stderr", positives[0]);
     sticky.push("stdout", "Tests 99 passed (99)\nall later output is benign\n");
     assert.equal(sticky.finish().actualUnhandled, true);
-    console.log(
-      JSON.stringify({
-        diagnostic_controls_passed: positives.length * 4 + negatives.length + 2,
-        raw_output_retained: false,
-      }),
-    );
+    return {
+      diagnostic_controls_passed: positives.length * 4 + negatives.length + 2,
+      raw_output_retained: false,
+    };
   }
 
   async function run(id: string) {
@@ -551,9 +560,12 @@ async function main() {
     return selected;
   }
   function e2eCounts() {
-    const report = json(
+    return e2eReportCounts(json(
       path.join(ROOT, "apps/ui/test-results/e2e-results.json"),
-    ) as Record<string, unknown>;
+    ));
+  }
+  function e2eReportCounts(value: unknown) {
+    const report = value as Record<string, unknown>;
     const stats = report.stats as Record<string, number>;
     const counts = Object.fromEntries(
       ["expected", "unexpected", "flaky", "skipped"].map((metric) => {
@@ -848,18 +860,110 @@ async function main() {
       global_errors: number;
     };
   }
+  function readJobReceipt(file: string): JobReceipt {
+    return json(file, MAX_REPORT_BYTES) as JobReceipt;
+  }
+  function sourceArtifacts(entries: string[], attempt: string | undefined) {
+    assert.match(attempt ?? "", /^[1-9]\d{0,8}$/);
+    const prefix = "raw-capture-full-source-" + attempt + "-";
+    assert.deepEqual([...entries].sort(), JOBS.map((job) => prefix + job).sort());
+    return prefix;
+  }
+  function receiptControls() {
+    const directory = mkdtempSync(path.join(tmpdir(), "raw-capture-full-receipt-controls-"));
+    const file = path.join(directory, "job-receipt.json");
+    let controls = 0;
+    const check = (operation: () => void) => { operation(); controls++; };
+    const report = (outcomes: string[]) => ({
+      stats: Object.fromEntries(["expected", "unexpected", "flaky", "skipped"].map((outcome) =>
+        [outcome, outcomes.filter((item) => item === outcome).length])),
+      suites: [{ specs: [{ tests: outcomes.map((status) => ({ status,
+        results: [{ retry: 0, status: status === "skipped" ? "skipped" : "passed", errors: [] }] })) }] }],
+      errors: [],
+    });
+    let largeReceiptBytes = 0;
+    try {
+      const large = { status: "passed", job: "ui", e2e: e2eReportCounts(report(Array(768).fill("expected"))) };
+      check(() => {
+        save(file, large);
+        largeReceiptBytes = statSync(file).size;
+        assert.ok(largeReceiptBytes > 131_072 && largeReceiptBytes < MAX_REPORT_BYTES);
+        assert.throws(() => json(file, 131_072), { code: "ERR_ASSERTION" });
+        assert.deepEqual(readJobReceipt(file), large);
+      });
+      check(() => {
+        truncateSync(file, MAX_REPORT_BYTES + 1);
+        assert.equal(statSync(file).size, MAX_REPORT_BYTES + 1);
+        assert.throws(() => readJobReceipt(file), { code: "ERR_ASSERTION" });
+      });
+      check(() => {
+        writeFileSync(file, "{malformed");
+        assert.throws(() => readJobReceipt(file), { name: "SyntaxError" });
+      });
+      check(() => {
+        writeFileSync(file, "");
+        assert.throws(() => readJobReceipt(file), { code: "ERR_ASSERTION" });
+      });
+      check(() => {
+        const balanced = e2eReportCounts(report(["expected", "unexpected", "flaky", "skipped"]));
+        assert.deepEqual(balanced.stats, { expected: 1, unexpected: 1, flaky: 1, skipped: 1 });
+        assert.equal(balanced.cases.length, 4);
+        assert.equal(balanced.attempts, 4);
+      });
+      check(() => {
+        const mismatch = report(Array(768).fill("expected"));
+        mismatch.stats.expected--;
+        mismatch.stats.flaky++;
+        assert.throws(() => e2eReportCounts(mismatch));
+      });
+      check(() => {
+        const mismatch = report(["expected"]);
+        mismatch.stats.expected++;
+        assert.throws(() => e2eReportCounts(mismatch));
+      });
+      for (const malformedStats of [
+        undefined, null, "invalid",
+        { expected: 1, unexpected: 0, flaky: 0 },
+        { expected: -1, unexpected: 0, flaky: 0, skipped: 0 },
+        { expected: 1.5, unexpected: 0, flaky: 0, skipped: 0 },
+        { expected: "1", unexpected: 0, flaky: 0, skipped: 0 },
+        { expected: Number.MAX_SAFE_INTEGER + 1, unexpected: 0, flaky: 0, skipped: 0 },
+      ]) check(() => assert.throws(() => e2eReportCounts({ ...report(["expected"]), stats: malformedStats })));
+      for (const status of ["passed", "Expected", "unknown"])
+        check(() => assert.throws(() => e2eReportCounts(report([status]))));
+      check(() => assert.throws(() => e2eReportCounts(report([]))));
+      check(() => {
+        const noAttempts = report(["expected"]);
+        noAttempts.suites[0].specs[0].tests[0].results = [];
+        assert.throws(() => e2eReportCounts(noAttempts));
+      });
+      const names = JOBS.map((job) => "raw-capture-full-source-2-" + job);
+      check(() => assert.equal(sourceArtifacts(names, "2"), "raw-capture-full-source-2-"));
+      check(() => assert.throws(() => sourceArtifacts(names, "1")));
+      check(() => assert.throws(() => sourceArtifacts(names.slice(1), "2")));
+      check(() => assert.throws(() => sourceArtifacts([...names, "raw-capture-full-proof-2"], "2")));
+      check(() => assert.throws(() => sourceArtifacts([...names.slice(1), "raw-capture-full-source-2-impostor"], "2")));
+      check(() => assert.throws(() => sourceArtifacts([...names.slice(1), names[1]], "2")));
+      for (const attempt of [undefined, "0", "01", "-1", "2/x", "1000000000"])
+        check(() => assert.throws(() => sourceArtifacts(names, attempt)));
+      assert.equal(controls, 32);
+      return { status: "receipt_selfcheck_passed", receipt_controls_passed: controls,
+        large_receipt_bytes: largeReceiptBytes, former_reader_maximum: 131_072,
+        reader_writer_maximum: MAX_REPORT_BYTES, source_artifacts_required: JOBS.length,
+        raw_output_retained: false, production_actions: false };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
   function merge() {
     const directory = path.join(SCRATCH, "downloaded");
     const entries = readdirSync(directory).sort();
-    assert.equal(entries.length, JOBS.length);
+    const artifactPrefix = sourceArtifacts(entries, process.env.GITHUB_RUN_ATTEMPT);
     const byJob = new Map<string, { receipt: JobReceipt; directory: string }>();
     for (const name of entries) {
-      assert.match(name, /^raw-capture-full-[a-z0-9-]+$/);
       const artifactDirectory = path.join(directory, name);
-      const receipt = json(
-        path.join(artifactDirectory, "job-receipt.json"),
-        131_072,
-      ) as JobReceipt;
+      const receipt = readJobReceipt(path.join(artifactDirectory, "job-receipt.json"));
+      assert.equal(name, artifactPrefix + receipt.job);
       assert.ok(JOBS.includes(receipt.job) && !byJob.has(receipt.job));
       assert.equal(receipt.status, "passed");
       assert.equal(receipt.actual_unhandled_diagnostic, false);
