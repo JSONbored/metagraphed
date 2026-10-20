@@ -76,30 +76,58 @@ interface RunSteps {
   summary_failed: number | null;
 }
 function observeRunSteps(output: string, commands: string[]): RunSteps {
-  const result: RunSteps = { groups: [], failures: [], summary_list: [], unknown_groups: 0, unknown_failures: 0, unknown_summary_lines: 0, summary_count: 0, summary_passed: null, summary_failed: null };
-  const ids = new Map(commands.map((command, ordinal) => ["npm run " + command, ordinal]));
+  const result: RunSteps = {
+    groups: [],
+    failures: [],
+    summary_list: [],
+    unknown_groups: 0,
+    unknown_failures: 0,
+    unknown_summary_lines: 0,
+    summary_count: 0,
+    summary_passed: null,
+    summary_failed: null,
+  };
+  const ids = new Map(
+    commands.map((command, ordinal) => ["npm run " + command, ordinal]),
+  );
   let inFailedSummary = false;
   for (const raw of stripVTControlCharacters(output).split(/\r?\n/)) {
     if (raw.startsWith("::group::")) {
       const ordinal = ids.get(raw.slice(9));
-      if (ordinal === undefined || result.groups.length === 27) result.unknown_groups++;
+      if (ordinal === undefined || result.groups.length === 27)
+        result.unknown_groups++;
       else result.groups.push(ordinal);
     } else if (raw.startsWith("::error::")) {
       const summary = /^::error::([1-9]\d?) step\(s\) failed:$/.exec(raw);
-      const failure = /^::error::(.+) failed \(exit ([1-9]\d{0,2})\)$/.exec(raw);
+      const failure = /^::error::(.+) failed \(exit ([1-9]\d{0,2})\)$/.exec(
+        raw,
+      );
       if (summary && Number(summary[1]) <= 27) {
-        result.summary_count++; result.summary_failed = Number(summary[1]); inFailedSummary = true;
+        result.summary_count++;
+        result.summary_failed = Number(summary[1]);
+        inFailedSummary = true;
       } else if (failure) {
-        const ordinal = ids.get(failure[1]!); const exit = Number(failure[2]);
-        if (ordinal === undefined || exit > 255 || result.failures.length === 27) result.unknown_failures++;
+        const ordinal = ids.get(failure[1]!);
+        const exit = Number(failure[2]);
+        if (
+          ordinal === undefined ||
+          exit > 255 ||
+          result.failures.length === 27
+        )
+          result.unknown_failures++;
         else result.failures.push({ ordinal, exit });
       } else result.unknown_failures++;
     } else {
       const passed = /^All ([1-9]\d?) step\(s\) passed\.$/.exec(raw);
-      if (passed) { result.summary_count++; result.summary_passed = Number(passed[1]); }
-      else if (inFailedSummary && raw !== "") {
-        const ordinal = raw.startsWith("  - ") ? ids.get(raw.slice(4)) : undefined;
-        if (ordinal === undefined || result.summary_list.length === 27) result.unknown_summary_lines++;
+      if (passed) {
+        result.summary_count++;
+        result.summary_passed = Number(passed[1]);
+      } else if (inFailedSummary && raw !== "") {
+        const ordinal = raw.startsWith("  - ")
+          ? ids.get(raw.slice(4))
+          : undefined;
+        if (ordinal === undefined || result.summary_list.length === 27)
+          result.unknown_summary_lines++;
         else result.summary_list.push(ordinal);
       }
     }
@@ -108,38 +136,113 @@ function observeRunSteps(output: string, commands: string[]): RunSteps {
 }
 function validateRunSteps(result: RunSteps | null, failed: boolean) {
   assert.ok(result);
-  assert.deepEqual(result.groups, Array.from({ length: 27 }, (_, i) => i));
-  assert.equal(result.unknown_groups, 0); assert.equal(result.unknown_failures, 0); assert.equal(result.unknown_summary_lines, 0); assert.equal(result.summary_count, 1);
-  assert.equal(new Set(result.failures.map((item) => item.ordinal)).size, result.failures.length);
+  assert.deepEqual(
+    result.groups,
+    Array.from({ length: 27 }, (_, i) => i),
+  );
+  assert.equal(result.unknown_groups, 0);
+  assert.equal(result.unknown_failures, 0);
+  assert.equal(result.unknown_summary_lines, 0);
+  assert.equal(result.summary_count, 1);
+  assert.equal(
+    new Set(result.failures.map((item) => item.ordinal)).size,
+    result.failures.length,
+  );
   if (failed) {
-    assert.ok(result.failures.length > 0); assert.equal(result.summary_passed, null);
-    assert.equal(result.summary_failed, result.failures.length); assert.deepEqual(result.summary_list, result.failures.map((item) => item.ordinal));
+    assert.ok(result.failures.length > 0);
+    assert.equal(result.summary_passed, null);
+    assert.equal(result.summary_failed, result.failures.length);
+    assert.deepEqual(
+      result.summary_list,
+      result.failures.map((item) => item.ordinal),
+    );
   } else {
-    assert.deepEqual(result.failures, []); assert.deepEqual(result.summary_list, []); assert.equal(result.summary_passed, 27); assert.equal(result.summary_failed, null);
+    assert.deepEqual(result.failures, []);
+    assert.deepEqual(result.summary_list, []);
+    assert.equal(result.summary_passed, 27);
+    assert.equal(result.summary_failed, null);
   }
 }
 function runStepControls(commands: string[]) {
-  const groups = commands.map((command) => "::group::npm run " + command + "\n::endgroup::\n").join("");
+  const groups = commands
+    .map((command) => "::group::npm run " + command + "\n::endgroup::\n")
+    .join("");
   const passed = groups + "All 27 step(s) passed.\n";
-  const failed = (ordinals: number[], exit = 1) => groups + ordinals.map((ordinal) => "::error::npm run " + commands[ordinal]! + " failed (exit " + exit + ")\n").join("") + "::error::" + ordinals.length + " step(s) failed:\n" + ordinals.map((ordinal) => "  - npm run " + commands[ordinal]! + "\n").join("");
+  const failed = (ordinals: number[], exit = 1) =>
+    groups +
+    ordinals
+      .map(
+        (ordinal) =>
+          "::error::npm run " +
+          commands[ordinal]! +
+          " failed (exit " +
+          exit +
+          ")\n",
+      )
+      .join("") +
+    "::error::" +
+    ordinals.length +
+    " step(s) failed:\n" +
+    ordinals
+      .map((ordinal) => "  - npm run " + commands[ordinal]! + "\n")
+      .join("");
   validateRunSteps(observeRunSteps(passed, commands), false);
   validateRunSteps(observeRunSteps(failed([0]), commands), true);
   validateRunSteps(observeRunSteps(failed([1, 26], 143), commands), true);
-  validateRunSteps(observeRunSteps(failed(Array.from({ length: 27 }, (_, i) => i), 255), commands), true);
-  validateRunSteps(observeRunSteps("\u001b[32m" + passed.replaceAll("\n", "\r\n") + "\u001b[0m", commands), false);
+  validateRunSteps(
+    observeRunSteps(
+      failed(
+        Array.from({ length: 27 }, (_, i) => i),
+        255,
+      ),
+      commands,
+    ),
+    true,
+  );
+  validateRunSteps(
+    observeRunSteps(
+      "\u001b[32m" + passed.replaceAll("\n", "\r\n") + "\u001b[0m",
+      commands,
+    ),
+    false,
+  );
   const refused = [
-    { text: passed.replace("::group::npm run " + commands[0]!, "::group::npm run validate:unknown"), failed: false },
-    { text: passed.replace("::group::npm run " + commands[0]! + "\n::endgroup::\n", ""), failed: false },
+    {
+      text: passed.replace(
+        "::group::npm run " + commands[0]!,
+        "::group::npm run validate:unknown",
+      ),
+      failed: false,
+    },
+    {
+      text: passed.replace(
+        "::group::npm run " + commands[0]! + "\n::endgroup::\n",
+        "",
+      ),
+      failed: false,
+    },
     { text: "::group::npm run " + commands[0]! + "\n" + passed, failed: false },
     { text: failed([0, 0]), failed: true },
     { text: failed([0]).replace("exit 1", "exit 0"), failed: true },
     { text: failed([0]).replace("exit 1", "exit 256"), failed: true },
-    { text: failed([0]).replace("1 step(s) failed:", "2 step(s) failed:"), failed: true },
-    { text: failed([0]).replace("  - npm run " + commands[0]!, "  - npm run " + commands[1]!), failed: true },
+    {
+      text: failed([0]).replace("1 step(s) failed:", "2 step(s) failed:"),
+      failed: true,
+    },
+    {
+      text: failed([0]).replace(
+        "  - npm run " + commands[0]!,
+        "  - npm run " + commands[1]!,
+      ),
+      failed: true,
+    },
     { text: passed + "::error::unknown\n", failed: false },
     { text: passed + "All 27 step(s) passed.\n", failed: false },
   ];
-  for (const item of refused) assert.throws(() => validateRunSteps(observeRunSteps(item.text, commands), item.failed));
+  for (const item of refused)
+    assert.throws(() =>
+      validateRunSteps(observeRunSteps(item.text, commands), item.failed),
+    );
   return 5 + refused.length;
 }
 interface TrackedFile {
@@ -152,6 +255,7 @@ interface TrackedState {
   index_sha256: string;
   files: TrackedFile[];
 }
+const trackedDrift: { id: string; path_mode_sha256: string; index_changed: boolean; changed_total: number; omitted_count: number; rows: { source_id: number; expected: { mode: string; bytes: number; sha256: string }; actual: { mode: string; bytes: number; sha256: string } }[] }[] = [];
 const trackedReceipts: {
   id: string;
   count: number;
@@ -245,9 +349,21 @@ function native(
         framesTruncated = true;
         break;
       }
-      const existing = frames.find((frame) => frame.source_id === source.id && frame.source_sha256 === source.expected && frame.line === line && frame.column === column);
-      if (existing) { existing.occurrences++; continue; }
-      if (frames.length === 8) { framesTruncated = true; break; }
+      const existing = frames.find(
+        (frame) =>
+          frame.source_id === source.id &&
+          frame.source_sha256 === source.expected &&
+          frame.line === line &&
+          frame.column === column,
+      );
+      if (existing) {
+        existing.occurrences++;
+        continue;
+      }
+      if (frames.length === 8) {
+        framesTruncated = true;
+        break;
+      }
       frames.push({
         source_id: source.id,
         source_sha256: source.expected,
@@ -271,7 +387,9 @@ function native(
     frames_truncated: framesTruncated,
     ts_codes: [...new Set(clean.match(/\bTS\d{4,5}\b/g) ?? [])].slice(0, 32),
     cwd_id: cwdId,
-    run_steps: id.endsWith("-validate-11") ? observeRunSteps(stdout, input.validate_11.commands) : null,
+    run_steps: id.endsWith("-validate-11")
+      ? observeRunSteps(stdout, input.validate_11.commands)
+      : null,
   };
   nativeReceipts.push(receipt);
   assert.equal(receipt.signal, null);
@@ -416,7 +534,18 @@ function trackedState(id: string, expected?: TrackedState): TrackedState {
       ),
     ),
   });
-  if (expected) assert.deepEqual(state, expected);
+  if (expected) {
+    const changed = files.flatMap((file, sourceId) => {
+      const before = expected.files[sourceId]!; assert.equal(file.path, before.path);
+      if (file.mode === before.mode && file.bytes === before.bytes && file.sha256 === before.sha256) return [];
+      return [{ source_id: sourceId, expected: { mode: before.mode, bytes: before.bytes, sha256: before.sha256 }, actual: { mode: file.mode, bytes: file.bytes, sha256: file.sha256 } }];
+    });
+    if (changed.length || state.index_sha256 !== expected.index_sha256) {
+      assert.equal(trackedDrift.length, 0);
+      trackedDrift.push({ id, path_mode_sha256: input.tracked.path_mode_sha256, index_changed: state.index_sha256 !== expected.index_sha256, changed_total: changed.length, omitted_count: Math.max(0, changed.length - 16), rows: changed.slice(0, 16) });
+    }
+    assert.deepEqual(state, expected);
+  }
   return state;
 }
 function prerequisite(
@@ -449,10 +578,18 @@ assert.deepEqual(
 );
 assert.equal(input.sources.length, 6);
 assert.equal(input.raw_pairs.length, 2);
-assert.equal(input.validate_11.commands.length, 27); assert.equal(new Set(input.validate_11.commands).size, 27);
-for (const label of input.validate_11.commands) assert.match(label, /^validate:[a-z0-9:-]+$/);
-assert.deepEqual(pins([input.validate_11.payload.path])[0], input.validate_11.payload);
-assert.deepEqual(pins([input.validate_11.wrapper.path])[0], input.validate_11.wrapper);
+assert.equal(input.validate_11.commands.length, 27);
+assert.equal(new Set(input.validate_11.commands).size, 27);
+for (const label of input.validate_11.commands)
+  assert.match(label, /^validate:[a-z0-9:-]+$/);
+assert.deepEqual(
+  pins([input.validate_11.payload.path])[0],
+  input.validate_11.payload,
+);
+assert.deepEqual(
+  pins([input.validate_11.wrapper.path])[0],
+  input.validate_11.wrapper,
+);
 assert.equal(
   sha(readFileSync(F + "manifest.json")),
   input.full_manifest_sha256,
@@ -504,7 +641,8 @@ let stage = "input";
 let status = "failed_or_incomplete";
 let observerControls = 0;
 try {
-  stage = "observer_controls"; observerControls = runStepControls(input.validate_11.commands);
+  stage = "observer_controls";
+  observerControls = runStepControls(input.validate_11.commands);
   if (mode === "preflight") {
     stage = "format";
     pass(
@@ -642,7 +780,12 @@ try {
         args: ["scripts/generate-limits-docs.ts"],
         cwd: "ui",
       },
-      { id: "validate-11", command: "bash", args: ["-eo", "pipefail", input.validate_11.payload.path], cwd: "root" },
+      {
+        id: "validate-11",
+        command: "bash",
+        args: ["-eo", "pipefail", input.validate_11.payload.path],
+        cwd: "root",
+      },
     ];
     const originals: { id: string; result: ReturnType<typeof native> }[] = [];
     for (const item of prerequisites) {
@@ -662,11 +805,12 @@ try {
       else if (id === "validate-11") {
         assert.equal(original.receipt.exit, 1);
         validateRunSteps(original.receipt.run_steps, true);
-      }
-      else {
+      } else {
         assert.equal(original.receipt.exit, 1);
         assert.equal(original.receipt.unsupported_typescript, true);
-        assert.ok(original.receipt.frames.some((frame) => frame.source_id === 0));
+        assert.ok(
+          original.receipt.frames.some((frame) => frame.source_id === 0),
+        );
       }
     }
     assert.deepEqual(
@@ -711,14 +855,15 @@ try {
     for (const item of prerequisites) {
       stage = "fixed_" + item.id;
       const fixed = prerequisite(
-          "fixed-" + item.id,
-          item.command,
-          item.args,
-          expectedTracked,
-          item.cwd,
-        );
+        "fixed-" + item.id,
+        item.command,
+        item.args,
+        expectedTracked,
+        item.cwd,
+      );
       pass(fixed);
-      if (item.id === "validate-11") validateRunSteps(fixed.receipt.run_steps, false);
+      if (item.id === "validate-11")
+        validateRunSteps(fixed.receipt.run_steps, false);
     }
     const expectedRuntime = originalRuntimePins.map((file) => {
       const pair = input.raw_pairs.find(
@@ -753,6 +898,7 @@ try {
       native_receipts: nativeReceipts,
       syntax_receipts: syntaxReceipts,
       tracked_receipts: trackedReceipts,
+      tracked_drift: trackedDrift,
       observer_controls: observerControls,
       raw_output_retained: false,
       full_acceptance: false,
