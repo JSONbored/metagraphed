@@ -444,10 +444,11 @@ export function authorizeLaunch(
       ? {}
       : object(call[optionIndex]);
   need(!options.shell, "shell-option");
-  need(
-    options.cwd === undefined || options.cwd === context.root,
-    "working-directory",
-  );
+  // scripts/lib.ts's fileURLToPath(directory URL) retains one trailing "/".
+  // Admit only that exact spelling alongside the verified canonical root.
+  const candidateCwd =
+    options.cwd === context.root || options.cwd === `${context.root}/`;
+  need(options.cwd === undefined || candidateCwd, "working-directory");
   const canonical = context.resolve(file);
   need(canonical, "unresolved-executable");
   if (api === "fork") {
@@ -498,7 +499,7 @@ export function authorizeLaunch(
       );
       keys(options, ["cwd", "env", "timeout", "maxBuffer"]);
       need(
-        options.cwd === context.root &&
+        candidateCwd &&
           options.timeout === 60000 &&
           options.maxBuffer === 1024 * 1024,
         "wrangler-bin-options",

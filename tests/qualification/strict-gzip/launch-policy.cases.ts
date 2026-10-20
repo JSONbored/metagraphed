@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   authorizeLaunch,
   authorizeSocketConnect,
@@ -330,6 +331,59 @@ test("exact fixture execFile gains only a preload and preserves callback/options
   ]);
   assert.equal(result.call[2], call[2]);
   assert.equal(result.call[3], callback);
+});
+test("fixture directory URL yields one trailing separator, accepted without changing caller options", () => {
+  const ctx = context("test-worker");
+  const directoryForm = fileURLToPath(
+    new URL("..", "file:///candidate/scripts/lib.ts"),
+  );
+  assert.equal(directoryForm, `${ctx.root}/`);
+  for (const cwd of [ctx.root, directoryForm]) {
+    const call = binCall(ctx);
+    const options = call[2] as Record<string, unknown>;
+    options.cwd = cwd;
+    const decision = authorizeLaunch(ctx, "execFile", call);
+    assert.equal(decision.role, "wrangler-bin");
+    assert.equal(decision.call[2], options);
+    assert.equal((decision.call[2] as Record<string, unknown>).cwd, cwd);
+  }
+});
+test("cwd rejects parent, sibling, normalized, relative and symlink spellings", () => {
+  const ctx = context("test-worker");
+  const originalResolve = ctx.resolve;
+  let cwdResolutionAttempts = 0;
+  ctx.resolve = (file) => {
+    if (file === "/linked-candidate") {
+      cwdResolutionAttempts += 1;
+      return ctx.root;
+    }
+    return originalResolve(file);
+  };
+  for (const cwd of [
+    "/",
+    "/candidate-other",
+    "/candidate/..",
+    "/candidate/subdir/..",
+    "/candidate//",
+    "/candidate/.",
+    "//candidate",
+    ".",
+    "./candidate",
+    "candidate",
+    "/linked-candidate",
+  ]) {
+    const call = binCall(ctx);
+    (call[2] as Record<string, unknown>).cwd = cwd;
+    rejects(ctx, "execFile", call);
+  }
+  assert.equal(cwdResolutionAttempts, 0);
+});
+test("repository-root environment redirection stays refused", () => {
+  const ctx = context("test-worker");
+  const call = binCall(ctx);
+  (call[2] as { env: Record<string, string> }).env.METAGRAPH_REPO_ROOT =
+    "/elsewhere";
+  rejects(ctx, "execFile", call);
 });
 test("Wrangler bin is unavailable to coordinator, arbitrary Node API, changed dry-run or credentials", () => {
   rejects(context(), "execFile", binCall(context()));
