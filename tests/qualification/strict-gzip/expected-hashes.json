@@ -1,7 +1,7 @@
 {
   "baseCommit": "6b8422966b1411dff6d7c486f4e9a549acecc761",
   "primitiveCommit": "1c4518f8b4b6837f8978222bcab83c7a41ec9f7d",
-  "patchSha256": "9918d3bd7b76bc4452915dff522e5afcc8fc688412382c57416c1e519bf09f32",
+  "patchSha256": "67938c85de4f8e34b673cabfded73ad765fa183ee94fab0b325930ce5d6fcf72",
   "files": [
     {
       "path": "docs/strict-gzip-reader.md",
@@ -61,7 +61,7 @@
     {
       "path": "tests/data-api-sync-queue-consumer.test.ts",
       "baseGitBlob": "5f1e619fc750e68433219fffb8a6560978c788cd",
-      "sha256": "852b380ac74762a9e0ce31f493a4901843d4a4eb7dea2b60f04883cf78a5bca7"
+      "sha256": "9045508febe0944ee4e13096683c4506da4791b308cc2e2a3518610f7b19bc9e"
     },
     {
       "path": "tests/fixtures/strict-gzip-observer.ts",

@@ -11,10 +11,14 @@ source/test files. The primitive remains byte-identical to commit
 `1c4518f8b4b6837f8978222bcab83c7a41ec9f7d`, SHA-256
 `5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec`.
 No passing qualification, provider result, or production activation is claimed.
-The [first hosted attempt](https://github.com/JSONbored/metagraphed/actions/runs/39457875085)
-passed setup and synthetic regressions, then failed closed on a runtime policy
-refusal before focused test evidence. Fixed-enum diagnostics identify refusals
-without publishing raw logs or relaxing the policy.
+The [diagnostic hosted attempt](https://github.com/JSONbored/metagraphed/actions/runs/39465272507)
+passed 485 assertions, including 200 native primitive cases and four of five
+required main-entrypoint cases. It failed full qualification: native bundle
+custody was blocked by four exact Miniflare sync-fetch thread refusals, and valid
+input parity compared unequal lane-health memo state. The parity fixture now
+resets its existing memo hook between representations while retaining the fixed
+clock and exact complete SQL/parameter comparison. The next hosted result must
+verify this source-supported cause.
 
 ## Invocation
 
@@ -52,7 +56,8 @@ Candidate-scoped V8 coverage includes only `src/strict-gzip-reader.ts` and
 values and retains text, JSON summary, and LCOV reports in the receipts. It is
 not sent to Codecov and is not full-suite production coverage.
 
-The guarded runtime uses a new temporary HOME, a minimal environment, no account
+The runner and preload require exact Node `v22.23.2`, whose native brand/Worker
+semantics were reviewed. The guarded runtime uses a new temporary HOME, a minimal environment, no account
 credentials, disabled Wrangler metrics/keyring, explicit empty Wrangler env
 file, Miniflare `cf:false`, numeric loopback, local bindings, and the fixture's
 refusing `outboundService`.
@@ -87,6 +92,40 @@ Actual native exit/close
 events are recorded when observed; unref’ed compiler services may exit after
 their Node owner, so missing native exits are counted, never fabricated as
 successful closes. Guard recording failures and event-budget overflow fail closed.
+
+### Exact synchronous-fetch thread adapter
+
+Only the lock-pinned root Miniflare synchronous-fetch source may start a thread,
+and only from the ordinary test-worker process. The original 2,072-character
+source is hash-checked, then placed unchanged inside a fixed adapter-owned
+CommonJS wrapper. That wrapper explicitly awaits the exact guard module import
+before running the source. It does not rely on inherited `--import` behavior.
+The options, native data brands, exact canonical package filename/hash, one
+MessagePort transfer and four-byte notification buffer are checked. The adapter
+adds only fixed metadata, a separate four-byte startup buffer, a fresh minimal
+environment and empty execArgv. No caller wrapper, environment, extra data or
+arbitrary target is accepted. The preceding known Vitest warning preload is
+hash-pinned and does not populate Worker environment data; all guarded hosts
+and threads refuse `setEnvironmentData`.
+
+The fresh thread gets the same loopback-only network restrictions and refuses
+all subprocesses and nested threads. The original Worker constructor stays
+closure-private; returned instance/prototype constructor paths lead through the
+same standalone guarded adapter. The owner waits under a monotonic five-second
+deadline for state 2: guards installed, startup receipt recorded, and the exact
+source's synchronous initialization completed. State 1 or Node's `online` event
+cannot release the owner into Miniflare's independent blocking request.
+Startup failure requests termination and fails closed.
+
+Every guard event identifies its actual writer thread ID. Existing process
+receipts require ID 0. Every accepted thread needs one correlated actual launch,
+thread guard start, source readiness, owner handshake and parent-observed exit;
+missing, duplicate or orphan evidence fails. Errors and failures remain fatal
+through later termination. Requested termination may produce actual exit code 1,
+but the request or its promise never substitutes for an exit. Forced termination
+need not run the thread's JavaScript exit listener, so that receipt is neither
+required nor fabricated. Thread counts are observed, not inferred from prior
+refusals. The public summary contains only bounded counts and a completion flag.
 
 A passing receipt requires valid Vitest JSON for every one of the ten focused
 files, all required custody/cancellation assertion titles, and no skipped, todo,
@@ -128,8 +167,8 @@ The upload step runs only after successful publication validation.
   no alternate route or native retry was used.
 - Wrangler 4.129.1 is absent locally. The exact release wrapper was reviewed via
   its official repository and its source bytes are pinned before execution;
-  compiled CLI behavior still has not executed under this guard. Unrecognized
-  behavior must fail for review, never silently relax the policy or substitute
+  the genuine CLI has since executed in the hosted guarded build gate.
+  Unrecognized behavior must still fail for review, never silently relax the policy or substitute
   another bundler.
 - Dependency installation is a separate network-enabled phase with lifecycle
   scripts disabled. The job never runs an automatic postinstall/rebuild fallback.

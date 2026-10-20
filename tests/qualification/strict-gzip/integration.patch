@@ -616,7 +616,7 @@
 +}, 120_000);
 --- a/tests/data-api-sync-queue-consumer.test.ts
 +++ b/tests/data-api-sync-queue-consumer.test.ts
-@@ -588,3 +588,226 @@
+@@ -588,3 +588,232 @@
      );
    });
  });
@@ -740,8 +740,12 @@
 +  });
 +
 +  test("small valid compressed input still writes the identical business rows and ACKs", async () => {
++    const { resetNeonWriteVerdictMemo } = await import("../src/neon-write.ts");
 +    const clock = vi.spyOn(Date, "now").mockReturnValue(1_780_000_000_001);
 +    try {
++      // Compare identical isolate state: repeated successful verdicts at a
++      // frozen clock intentionally suppress lane-health SQL after the first.
++      resetNeonWriteVerdictMemo();
 +      const expected = positionMessage();
 +      await consume([expected]);
 +      assert.deepEqual(expected.calls, ["ack"]);
@@ -749,12 +753,14 @@
 +      const packed = Uint8Array.from(gzipSync(JSON.stringify(expected.body)));
 +      for (const body of [packed, packed.slice().buffer]) {
 +        pg.control.queries.length = 0;
++        resetNeonWriteVerdictMemo();
 +        const item = message(body);
 +        await consume([item]);
 +        assert.deepEqual(item.calls, ["ack"]);
 +        assert.deepEqual(pg.control.queries, baseline);
 +      }
 +    } finally {
++      resetNeonWriteVerdictMemo();
 +      clock.mockRestore();
 +    }
 +  });

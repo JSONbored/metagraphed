@@ -26,9 +26,19 @@ import { appendBudget, boundedFile } from "./receipt-files.ts";
 import {
   RAW_LIMITS,
   aggregateDenials,
+  processChildGuardEvidence,
+  nativeUnobservedExitCount,
+  threadLifecycleEvidence,
   validateCompletionEvidence,
 } from "./receipt-policy.ts";
 
+import { THREAD_SOURCE_IDENTITIES } from "./thread-policy.ts";
+
+assert.equal(
+  process.version,
+  "v22.23.2",
+  "Qualification requires the reviewed Node runtime",
+);
 const here = path.dirname(fileURLToPath(import.meta.url));
 assert.equal(
   process.argv.length,
@@ -51,6 +61,15 @@ assert.equal(
   "4.129.1",
 );
 assert.ok(existsSync(vitest), "Blocked: installed Vitest is unavailable");
+// --require runs before the worker guard; verify its entire known inert source
+// before any Vitest process can execute it or populate environmentData.
+assert.equal(
+  sha256(
+    readFileSync(path.join(root, "node_modules/vitest/suppress-warnings.cjs")),
+  ),
+  THREAD_SOURCE_IDENTITIES.suppressSha256,
+  "Unreviewed preceding Vitest preload",
+);
 const fixture = path.join(
   root,
   "tests/data-api-sync-quarantine-isolate.test.ts",
@@ -266,7 +285,9 @@ const events: GuardEvent[] = boundedFile(
   .filter(Boolean)
   .map((line) => JSON.parse(line) as GuardEvent);
 const denied = events.filter((event) => event.kind === "denied");
-const starts = events.filter((event) => event.kind === "guard-start");
+const starts = events.filter(
+  (event) => event.kind === "guard-start" && event.threadId === 0,
+);
 const coordinatorGuard = starts.some((event) => event.entry === vitest);
 const workerGuard = starts.some((event) =>
   event.entry.endsWith("/vitest/dist/workers/forks.js"),
@@ -275,43 +296,31 @@ const wranglerGuard = starts.some((event) => event.realEntry === wranglerBin);
 const wranglerCliGuard = starts.some(
   (event) => event.realEntry === wranglerCli,
 );
-const expectedNodeChildren = events.filter(
-  (event) => event.kind === "node-child",
-);
-const exits = events.filter((event) => event.kind === "guard-exit");
-const everyNodeChildGuarded = expectedNodeChildren.every(
-  (event) =>
-    typeof event.childPid === "number" &&
-    starts.some((start) => start.pid === event.childPid) &&
-    exits.some((exit) => exit.pid === event.childPid) &&
-    events.some(
-      (exit) =>
-        exit.kind === "node-child-exit" &&
-        exit.launchId === event.launchId &&
-        exit.childPid === event.childPid,
-    ),
-);
-const nativeChildren = events.filter((event) => event.kind === "native-child");
-// An unref'ed compiler service may observe closed stdin only after its Node
-// owner exits. Report absent native exits; never pretend they were observed.
-const unobservedNativeExits = nativeChildren.filter(
-  (event) =>
-    !events.some(
-      (exit) =>
-        exit.kind === "native-child-exit" &&
-        exit.launchId === event.launchId &&
-        exit.role === event.role,
-    ),
-).length;
+const everyNodeChildGuarded = processChildGuardEvidence(events);
+let threads = {
+  acceptedThreads: 0,
+  completedThreads: 0,
+  threadFailures: 0,
+  everyThreadGuarded: false,
+};
+try {
+  threads = threadLifecycleEvidence(events);
+} catch {
+  /* Malformed evidence cannot qualify. */
+}
+// An unref'ed compiler may exit after its owner. Count absent actual exits;
+// positive-thread-ID records cannot impersonate either native-process side.
+const unobservedNativeExits = nativeUnobservedExitCount(events);
 const observedWorkerSigterms = events.filter(
   (event) =>
     event.kind === "guard-signal" &&
+    event.threadId === 0 &&
     event.signal === "SIGTERM" &&
     event.exitCode === 143 &&
     event.entry.endsWith("/vitest/dist/workers/forks.js"),
 ).length;
 const interceptedWrangler = events.filter(
-  (event) => event.kind === "wrangler-child-preload",
+  (event) => event.kind === "wrangler-child-preload" && event.threadId === 0,
 ).length;
 const unchangedFixture =
   sha256(readFileSync(fixture)) === manifest.fixtureSha256;
@@ -355,6 +364,7 @@ const passed =
   wranglerGuard &&
   wranglerCliGuard &&
   everyNodeChildGuarded &&
+  threads.everyThreadGuarded &&
   interceptedWrangler === 1 &&
   unchangedFixture &&
   unchangedCandidate &&
@@ -377,6 +387,7 @@ writeFileSync(
       wranglerGuard,
       wranglerCliGuard,
       everyNodeChildGuarded,
+      ...threads,
       unobservedNativeExits,
       observedWorkerSigterms,
       interceptedWrangler,

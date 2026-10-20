@@ -375,12 +375,191 @@ function publicDenialCounts(value: unknown, total: number) {
   );
 }
 
+/** Actual Worker lifecycle only; thread-side events never prove process exit. */
+export function threadLifecycleEvidence(events: readonly unknown[]) {
+  requireValue(events.length <= 100_000);
+  const kinds = new Set([
+    "thread-launch",
+    "thread-guard-start",
+    "thread-ready",
+    "thread-handshake",
+    "thread-terminate-request",
+    "thread-error",
+    "thread-exit",
+    "thread-failure",
+  ]);
+  const groups = new Map<
+    string,
+    { event: Record<string, unknown>; index: number }[]
+  >();
+  const threadIdentities = new Map<string, string>();
+  let valid = true;
+  let acceptedThreads = 0,
+    completedThreads = 0,
+    threadFailures = 0;
+  const positive = (value: unknown) =>
+    Number.isSafeInteger(value) &&
+    Number(value) > 0 &&
+    Number(value) <= 2_147_483_647;
+  for (const [index, raw] of events.entries()) {
+    const event = object(raw);
+    if (typeof event.kind !== "string" || !event.kind.startsWith("thread-"))
+      continue;
+    if (!kinds.has(event.kind)) {
+      valid = false;
+      continue;
+    }
+    if (event.kind === "thread-launch") acceptedThreads++;
+    if (event.kind === "thread-error" || event.kind === "thread-failure") {
+      valid = false;
+      threadFailures++;
+    }
+    if (
+      !positive(event.ownerPid) ||
+      !positive(event.targetThreadId) ||
+      event.pid !== event.ownerPid ||
+      typeof event.threadLaunchId !== "string" ||
+      !new RegExp(`^${event.ownerPid}:thread:[1-9][0-9]{0,5}$`).test(
+        event.threadLaunchId,
+      )
+    ) {
+      valid = false;
+      continue;
+    }
+    const threadSide =
+      event.kind === "thread-guard-start" || event.kind === "thread-ready";
+    // A failure may originate in either isolate; successful evidence has one exact writer.
+    if (event.kind === "thread-failure") {
+      if (event.threadId !== 0 && event.threadId !== event.targetThreadId)
+        valid = false;
+    } else if (event.threadId !== (threadSide ? event.targetThreadId : 0))
+      valid = false;
+    const key = event.threadLaunchId;
+    const identity = `${event.ownerPid}:${event.targetThreadId}`;
+    if (
+      threadIdentities.has(identity) &&
+      threadIdentities.get(identity) !== key
+    )
+      valid = false;
+    threadIdentities.set(identity, key);
+    const group = groups.get(key) ?? [];
+    if (
+      group.some(
+        (row) =>
+          row.event.targetThreadId !== event.targetThreadId ||
+          row.event.ownerPid !== event.ownerPid,
+      )
+    )
+      valid = false;
+    group.push({ event, index });
+    groups.set(key, group);
+  }
+  for (const group of groups.values()) {
+    const rows = (kind: string) =>
+      group.filter((row) => row.event.kind === kind);
+    const launch = rows("thread-launch"),
+      start = rows("thread-guard-start"),
+      ready = rows("thread-ready"),
+      handshake = rows("thread-handshake"),
+      exit = rows("thread-exit"),
+      terminate = rows("thread-terminate-request");
+    if (
+      [launch, start, ready, handshake, exit].some(
+        (rows) => rows.length !== 1,
+      ) ||
+      terminate.length > 1
+    ) {
+      valid = false;
+      continue;
+    }
+    const ordered =
+      start[0]!.index < ready[0]!.index &&
+      ready[0]!.index < handshake[0]!.index &&
+      launch[0]!.index < handshake[0]!.index &&
+      handshake[0]!.index < exit[0]!.index;
+    const requested =
+      terminate.length === 1 &&
+      terminate[0]!.event.reason === "requested" &&
+      terminate[0]!.index > handshake[0]!.index &&
+      terminate[0]!.index < exit[0]!.index;
+    if (!ordered || (terminate.length && !requested)) valid = false;
+    const exitCode = exit[0]!.event.code;
+    const clean =
+      exit[0]!.event.failed === false &&
+      (exitCode === 0 || (exitCode === 1 && requested));
+    const failed =
+      rows("thread-error").length > 0 || rows("thread-failure").length > 0;
+    if (!clean || failed) valid = false;
+    if (ordered && clean && !failed && (!terminate.length || requested))
+      completedThreads++;
+  }
+  // At least one real guarded thread must substantiate this new allowance.
+  return {
+    acceptedThreads,
+    completedThreads,
+    threadFailures,
+    everyThreadGuarded:
+      valid &&
+      acceptedThreads > 0 &&
+      groups.size === acceptedThreads &&
+      completedThreads === acceptedThreads,
+  };
+}
+
+export function processChildGuardEvidence(events: readonly unknown[]) {
+  requireValue(events.length <= 100_000);
+  const rows = events.map(object);
+  const children = rows.filter((event) => event.kind === "node-child");
+  return children.every(
+    (event) =>
+      event.threadId === 0 &&
+      typeof event.childPid === "number" &&
+      rows.some(
+        (start) =>
+          start.kind === "guard-start" &&
+          start.threadId === 0 &&
+          start.pid === event.childPid,
+      ) &&
+      rows.some(
+        (exit) =>
+          exit.kind === "guard-exit" &&
+          exit.threadId === 0 &&
+          exit.pid === event.childPid,
+      ) &&
+      rows.some(
+        (exit) =>
+          exit.kind === "node-child-exit" &&
+          exit.threadId === 0 &&
+          exit.launchId === event.launchId &&
+          exit.childPid === event.childPid,
+      ),
+  );
+}
+
+export function nativeUnobservedExitCount(events: readonly unknown[]) {
+  requireValue(events.length <= 100_000);
+  const rows = events.map(object);
+  return rows
+    .filter((event) => event.kind === "native-child" && event.threadId === 0)
+    .filter(
+      (event) =>
+        !rows.some(
+          (exit) =>
+            exit.kind === "native-child-exit" &&
+            exit.threadId === 0 &&
+            exit.launchId === event.launchId &&
+            exit.role === event.role,
+        ),
+    ).length;
+}
+
 const CHECK_NAMES = [
   "coordinatorGuard",
   "workerGuard",
   "wranglerGuard",
   "wranglerCliGuard",
   "everyNodeChildGuarded",
+  "everyThreadGuarded",
   "unchangedFixture",
   "unchangedCandidate",
   "completionEvidence",
@@ -403,6 +582,16 @@ export function publicRunSummary(value: unknown) {
   const observedWorkerSigterms = integer(input.observedWorkerSigterms, 10_000);
   requireValue(typeof input.outputLimitExceeded === "boolean");
   requireValue(typeof input.guardRecordingFailed === "boolean");
+  const acceptedThreads = integer(input.acceptedThreads, 10_000);
+  const completedThreads = integer(input.completedThreads, 10_000);
+  const threadFailures = integer(input.threadFailures, 100_000);
+  requireValue(completedThreads <= acceptedThreads);
+  if (input.everyThreadGuarded)
+    requireValue(
+      acceptedThreads > 0 &&
+        completedThreads === acceptedThreads &&
+        threadFailures === 0,
+    );
   const outputLimitExceeded = input.outputLimitExceeded;
   const guardRecordingFailed = input.guardRecordingFailed;
   if (input.status === "passed") {
@@ -427,6 +616,9 @@ export function publicRunSummary(value: unknown) {
     interceptedWrangler,
     unobservedNativeExits,
     observedWorkerSigterms,
+    acceptedThreads,
+    completedThreads,
+    threadFailures,
     outputLimitExceeded,
     guardRecordingFailed,
     checks,

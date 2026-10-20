@@ -51,6 +51,7 @@ jobs:
           harness="$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip"
           env -i PATH="$PATH" CI=true node "$harness/launch-policy.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/receipt-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/thread-policy.cases.ts"
 
       - name: Install the full pinned base lockfile without lifecycle scripts
         working-directory: qualification-base

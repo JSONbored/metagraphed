@@ -23,6 +23,9 @@ import {
   REQUIRED_ASSERTIONS,
   publicRunSummary,
   publicTestProgress,
+  threadLifecycleEvidence,
+  processChildGuardEvidence,
+  nativeUnobservedExitCount,
   redactLcov,
   validateCompletionEvidence,
   validateCoverageEvidence,
@@ -114,6 +117,10 @@ function receipt() {
     wranglerGuard: true,
     wranglerCliGuard: true,
     everyNodeChildGuarded: true,
+    everyThreadGuarded: true,
+    acceptedThreads: 1,
+    completedThreads: 1,
+    threadFailures: 0,
     unobservedNativeExits: 0,
     observedWorkerSigterms: 0,
     unchangedFixture: true,
@@ -910,3 +917,313 @@ test("publisher retains bounded case diagnostics without converting failure to a
     );
     assert.equal(text.includes(secret), false);
   }));
+
+function threadEvents() {
+  const common = {
+    pid: 123,
+    ownerPid: 123,
+    targetThreadId: 7,
+    threadLaunchId: "123:thread:1",
+  };
+  return [
+    { ...common, threadId: 0, kind: "thread-launch" },
+    { ...common, threadId: 7, kind: "thread-guard-start" },
+    { ...common, threadId: 7, kind: "thread-ready" },
+    { ...common, threadId: 0, kind: "thread-handshake" },
+    {
+      ...common,
+      threadId: 0,
+      kind: "thread-terminate-request",
+      reason: "requested",
+    },
+    { ...common, threadId: 0, kind: "thread-exit", code: 1, failed: false },
+  ] as Record<string, unknown>[];
+}
+
+test("thread evidence requires real bijective launch, guard, ready, handshake and observed exit", () => {
+  assert.deepEqual(threadLifecycleEvidence(threadEvents()), {
+    acceptedThreads: 1,
+    completedThreads: 1,
+    threadFailures: 0,
+    everyThreadGuarded: true,
+  });
+  const natural = threadEvents().filter(
+    (row) => row.kind !== "thread-terminate-request",
+  );
+  natural.at(-1)!.code = 0;
+  assert.equal(threadLifecycleEvidence(natural).everyThreadGuarded, true);
+  assert.equal(threadLifecycleEvidence([]).everyThreadGuarded, false);
+  // Thread startup may race the parent launch receipt; handshake may not.
+  const racing = threadEvents();
+  [racing[0], racing[1]] = [racing[1]!, racing[0]!];
+  assert.equal(threadLifecycleEvidence(racing).everyThreadGuarded, true);
+});
+
+for (const kind of [
+  "thread-launch",
+  "thread-guard-start",
+  "thread-ready",
+  "thread-handshake",
+  "thread-exit",
+]) {
+  test(`thread evidence refuses missing ${kind}`, () =>
+    assert.equal(
+      threadLifecycleEvidence(threadEvents().filter((row) => row.kind !== kind))
+        .everyThreadGuarded,
+      false,
+    ));
+  test(`thread evidence refuses duplicate ${kind}`, () => {
+    const rows = threadEvents();
+    rows.push({ ...rows.find((row) => row.kind === kind)! });
+    assert.equal(threadLifecycleEvidence(rows).everyThreadGuarded, false);
+  });
+}
+for (const [label, mutate] of [
+  [
+    "wrong owner writer",
+    (rows: Record<string, unknown>[]) => {
+      rows[0]!.threadId = 7;
+    },
+  ],
+  [
+    "wrong thread writer",
+    (rows: Record<string, unknown>[]) => {
+      rows[1]!.threadId = 0;
+    },
+  ],
+  [
+    "missing writer",
+    (rows: Record<string, unknown>[]) => {
+      delete rows[1]!.threadId;
+    },
+  ],
+  [
+    "wrong owner pid",
+    (rows: Record<string, unknown>[]) => {
+      rows[1]!.pid = 124;
+    },
+  ],
+  [
+    "different target id",
+    (rows: Record<string, unknown>[]) => {
+      rows[1]!.targetThreadId = 8;
+    },
+  ],
+  [
+    "invalid launch id",
+    (rows: Record<string, unknown>[]) => {
+      rows[1]!.threadLaunchId = secret;
+    },
+  ],
+  [
+    "zero target id",
+    (rows: Record<string, unknown>[]) => {
+      rows[1]!.targetThreadId = 0;
+    },
+  ],
+  [
+    "missing ready before handshake",
+    (rows: Record<string, unknown>[]) => {
+      [rows[2], rows[3]] = [rows[3]!, rows[2]!];
+    },
+  ],
+  [
+    "exit before handshake",
+    (rows: Record<string, unknown>[]) => {
+      [rows[3], rows[5]] = [rows[5]!, rows[3]!];
+    },
+  ],
+  [
+    "termination after exit",
+    (rows: Record<string, unknown>[]) => {
+      [rows[4], rows[5]] = [rows[5]!, rows[4]!];
+    },
+  ],
+  [
+    "startup-failure termination",
+    (rows: Record<string, unknown>[]) => {
+      rows[4]!.reason = "startup-failure";
+    },
+  ],
+  [
+    "unknown termination reason",
+    (rows: Record<string, unknown>[]) => {
+      rows[4]!.reason = secret;
+    },
+  ],
+  [
+    "unrequested code one",
+    (rows: Record<string, unknown>[]) => {
+      rows.splice(4, 1);
+    },
+  ],
+  [
+    "unexpected exit code",
+    (rows: Record<string, unknown>[]) => {
+      rows[5]!.code = 2;
+    },
+  ],
+  [
+    "latched exit failure",
+    (rows: Record<string, unknown>[]) => {
+      rows[5]!.failed = true;
+    },
+  ],
+  [
+    "missing exit failure state",
+    (rows: Record<string, unknown>[]) => {
+      delete rows[5]!.failed;
+    },
+  ],
+  [
+    "missing exit code",
+    (rows: Record<string, unknown>[]) => {
+      delete rows[5]!.code;
+    },
+  ],
+  [
+    "duplicate terminate request",
+    (rows: Record<string, unknown>[]) => {
+      rows.splice(4, 0, { ...rows[4]! });
+    },
+  ],
+  [
+    "orphan identity",
+    (rows: Record<string, unknown>[]) => {
+      rows.push({
+        ...rows[1]!,
+        threadLaunchId: "123:thread:2",
+        targetThreadId: 8,
+        threadId: 8,
+      });
+    },
+  ],
+  [
+    "unknown thread event",
+    (rows: Record<string, unknown>[]) => {
+      rows.push({ ...rows[0]!, kind: "thread-unknown" });
+    },
+  ],
+] as const)
+  test(`thread evidence refuses ${label}`, () => {
+    const rows = threadEvents();
+    mutate(rows);
+    assert.equal(threadLifecycleEvidence(rows).everyThreadGuarded, false);
+  });
+
+test("thread errors and failures remain fatal despite later requested termination and real exit", () => {
+  for (const kind of ["thread-error", "thread-failure"]) {
+    const rows = threadEvents();
+    rows.splice(4, 0, { ...rows[0]!, kind });
+    const result = threadLifecycleEvidence(rows);
+    assert.equal(result.everyThreadGuarded, false);
+    assert.equal(result.threadFailures, 1);
+    assert.equal(result.completedThreads, 0);
+  }
+});
+test("thread count is derived from actual identities rather than prior refusal attempts", () => {
+  const second = threadEvents().map((row) => ({
+    ...row,
+    targetThreadId: 8,
+    threadLaunchId: "123:thread:2",
+    threadId: row.threadId === 7 ? 8 : 0,
+  }));
+  assert.deepEqual(threadLifecycleEvidence([...threadEvents(), ...second]), {
+    acceptedThreads: 2,
+    completedThreads: 2,
+    threadFailures: 0,
+    everyThreadGuarded: true,
+  });
+  const reused = second.map((row) => ({
+    ...row,
+    targetThreadId: 7,
+    threadId: row.threadId === 8 ? 7 : 0,
+  }));
+  assert.equal(
+    threadLifecycleEvidence([...threadEvents(), ...reused]).everyThreadGuarded,
+    false,
+  );
+});
+
+test("same-pid thread events can never satisfy Node process guard or parent exit evidence", () => {
+  const rows = [
+    {
+      kind: "node-child",
+      threadId: 0,
+      pid: 100,
+      childPid: 123,
+      launchId: "100:1",
+    },
+    { kind: "guard-start", threadId: 0, pid: 123 },
+    { kind: "guard-exit", threadId: 0, pid: 123 },
+    {
+      kind: "node-child-exit",
+      threadId: 0,
+      pid: 100,
+      childPid: 123,
+      launchId: "100:1",
+    },
+  ];
+  assert.equal(processChildGuardEvidence(rows), true);
+  for (let i = 0; i < rows.length; i++) {
+    const changed = structuredClone(rows);
+    changed[i]!.threadId = 7;
+    assert.equal(processChildGuardEvidence(changed), false);
+    assert.equal(
+      processChildGuardEvidence([...changed, ...threadEvents()]),
+      false,
+    );
+  }
+});
+
+test("public thread evidence is bounded, fixed-field and fails closed", () => {
+  const result = publicRunSummary({
+    ...receipt(),
+    threadSource: secret,
+    threadArguments: [secret],
+  });
+  assert.equal(result.acceptedThreads, 1);
+  assert.equal(result.checks.everyThreadGuarded, true);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+  for (const change of [
+    { acceptedThreads: 0 },
+    { completedThreads: 0 },
+    { threadFailures: 1 },
+    { acceptedThreads: 10001 },
+    { completedThreads: 2 },
+    { everyThreadGuarded: false },
+    { threadFailures: -1 },
+  ])
+    assert.throws(() => publicRunSummary({ ...receipt(), ...change }));
+  assert.equal(
+    publicRunSummary({
+      ...receipt(),
+      status: "failed",
+      code: 1,
+      everyThreadGuarded: false,
+      completedThreads: 0,
+      threadFailures: 1,
+    }).checks.everyThreadGuarded,
+    false,
+  );
+});
+
+test("positive-thread-ID events cannot impersonate native child launches or exits", () => {
+  const child = {
+    kind: "native-child",
+    threadId: 0,
+    launchId: "123:1",
+    role: "esbuild",
+  };
+  const exit = {
+    kind: "native-child-exit",
+    threadId: 0,
+    launchId: "123:1",
+    role: "esbuild",
+  };
+  assert.equal(nativeUnobservedExitCount([child]), 1);
+  assert.equal(nativeUnobservedExitCount([child, exit]), 0);
+  assert.equal(nativeUnobservedExitCount([child, { ...exit, threadId: 7 }]), 1);
+  assert.equal(nativeUnobservedExitCount([{ ...child, threadId: 7 }]), 0);
+  assert.equal(nativeUnobservedExitCount([{ ...child, threadId: 7 }, exit]), 0);
+});

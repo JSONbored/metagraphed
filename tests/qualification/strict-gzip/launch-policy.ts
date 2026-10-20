@@ -18,6 +18,7 @@ export const DENIAL_OPERATIONS = Object.freeze([
   "process-execFileSync",
   "direct-child-spawn",
   "worker-thread",
+  "worker-environment-data",
   "missing-child-lifecycle",
 ] as const);
 export const POLICY_CODES = Object.freeze([
@@ -89,6 +90,24 @@ export const POLICY_CODES = Object.freeze([
   "worker-thread-esbuild-file",
   "worker-thread-vitest-file",
   "worker-thread-miniflare-script",
+  "thread-owner",
+  "thread-source",
+  "thread-options",
+  "thread-transfer",
+  "thread-identity",
+  "thread-port",
+  "thread-notify",
+  "thread-environment",
+  "thread-metadata",
+  "thread-startup",
+  "thread-startup-timeout",
+  "thread-transition",
+  "thread-lifecycle",
+  "thread-worker-error",
+  "thread-receipt",
+  "thread-constructor",
+  "thread-subprocess",
+  "worker-environment-data",
   "missing-child-lifecycle",
 ] as const);
 export type PolicyCode = (typeof POLICY_CODES)[number];
