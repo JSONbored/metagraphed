@@ -1,0 +1,1 @@
+node scripts/ci-verify-submitted-artifacts.ts --changed-files submitted-artifact-files.txt

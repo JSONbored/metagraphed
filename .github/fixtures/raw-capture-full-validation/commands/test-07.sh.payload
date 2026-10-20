@@ -1,0 +1,1 @@
+test -s ${QUALIFICATION_EXPR_0}/lcov.info

@@ -1,0 +1,5 @@
+npm run build --workspace=packages/chain-summaries
+if ! git diff --exit-code -- packages/chain-summaries/dist; then
+  echo "::error::packages/chain-summaries/dist is stale -- run 'npm run build --workspace=packages/chain-summaries' and commit the result."
+  exit 1
+fi

@@ -1,0 +1,1 @@
+npm run check:ssr-content-isolation --workspace=apps/ui

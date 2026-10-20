@@ -1,0 +1,2 @@
+npm run validate:archive-policy
+npm run validate:workflows

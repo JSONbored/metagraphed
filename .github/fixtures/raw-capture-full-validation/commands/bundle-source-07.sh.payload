@@ -1,0 +1,18 @@
+node --input-type=module <<'NODE'
+import { writeFileSync } from 'node:fs';
+writeFileSync('.bundle-source.tsconfig.json', JSON.stringify({
+  extends: './tsconfig.json',
+  compilerOptions: { incremental: false },
+  include: [
+    'scripts/archive-policy-bundles.ts',
+    'scripts/archive-policy-d1-source.ts',
+    'scripts/validate-archive-policy.ts',
+    'tests/archive-policy-bundles.test.ts',
+    'tests/archive-policy-d1-source.test.ts',
+    'tests/archive-policy.test.ts',
+    'tests/d1-schema-snapshot.test.ts',
+    'workers/**/*.d.ts'
+  ]
+}));
+NODE
+npx tsc --project .bundle-source.tsconfig.json --noEmit

@@ -1,0 +1,1 @@
+uv run --extra test python -m unittest discover -s tests

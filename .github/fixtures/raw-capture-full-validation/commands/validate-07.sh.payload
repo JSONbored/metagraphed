@@ -1,0 +1,6 @@
+npm run lint & lint=$!
+npm run format:check & fmt=$!
+rc=0
+wait $lint || rc=$?
+wait $fmt || rc=$?
+exit $rc

@@ -1,0 +1,5 @@
+npm run build --workspace=packages/ui-kit
+if ! git diff --exit-code -- packages/ui-kit/dist; then
+  echo "::error::packages/ui-kit/dist is stale -- run 'npm run build --workspace=packages/ui-kit' and commit the result."
+  exit 1
+fi
