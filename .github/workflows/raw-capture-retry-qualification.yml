@@ -43,12 +43,13 @@ jobs:
       - name: Validate workflow policies
         run: npm run validate:workflows
       - name: Prove actual baseline and candidate D1, capture and bundle contracts
+        id: native
         run: node .github/scripts/qualify-raw-capture-retry.ts
       - name: Retain only formatted source and curated synthetic receipt
-        if: success()
+        if: always() && (steps.native.outcome == 'success' || steps.native.outcome == 'failure')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-retry-qualified-source
+          name: raw-capture-retry-${{ steps.native.outcome }}-source
           path: |
             src/raw-capture-d1.ts
             src/raw-chain-capture.ts
@@ -59,7 +60,7 @@ jobs:
             tests/raw-capture-retry-intent.test.ts
             tests/raw-capture-retry-d1.test.ts
             tests/raw-capture-cron-wiring.test.ts
-            raw-capture-retry-reports/source-receipt.json
+            raw-capture-retry-reports/*-receipt.json
           retention-days: 1
           if-no-files-found: error
 

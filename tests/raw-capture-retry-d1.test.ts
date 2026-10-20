@@ -3,11 +3,12 @@ import { randomBytes, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, beforeEach, test } from "vitest";
-import { Miniflare } from "miniflare";
+import { Miniflare, NoOpLog } from "miniflare";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { prepareRawCapture, encodeRawCaptureIntent, rawCaptureIntentKey } from "../src/raw-capture-retry-intent.ts";
 
 const runtime = new Miniflare({
+  log: new NoOpLog(),
   modules: true,
   script: "export default {fetch(){return new Response('synthetic fixture')}}",
   compatibilityDate: "2026-06-06",

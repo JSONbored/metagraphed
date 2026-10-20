@@ -31,11 +31,48 @@ const baselineFixture = readFileSync(".github/fixtures/raw-capture-retry-baselin
 assert.equal(digest(baselineFixture), "8315db29336d73c8eba07b12770b1dcf211f40aa1a2a425ba0e8f6c2775a92a8");
 mkdirSync("raw-capture-retry-reports", {recursive:true});
 interface Case { fullName: string; status: string; failureMessages: string[]; duration?: number; }
-interface Report { numFailedTests: number; numPassedTests: number; testResults: { assertionResults: Case[]; message: string; }[]; }
+interface Report { numFailedTests: number; numPassedTests: number; testResults: { name?: string; assertionResults: Case[]; message: string; }[]; }
 const selected = new Map([
   ["fresh capture provenance resumes one incomplete reservation", "failed"],
   ["exact original replay completes its incomplete reservation", "passed"],
 ]);
+let verifiedBaseline: unknown = null;
+function classification(message: string): string {
+  if (/Hook timed out|hook timeout/i.test(message)) return "hook_timeout";
+  if (/syntax error/i.test(message)) return "sql_syntax";
+  if (/no such table/i.test(message)) return "missing_table";
+  if (/constraint/i.test(message)) return "constraint";
+  if (/cannot find (?:module|package)|ERR_MODULE_NOT_FOUND/i.test(message)) return "missing_module";
+  if (/timeout|timed out/i.test(message)) return "timeout";
+  if (/AssertionError|expected .* to /i.test(message)) return "assertion";
+  if (/TypeError/.test(message)) return "type_error";
+  return "unclassified";
+}
+function frames(message: string) {
+  return [...message.matchAll(/(?:src|tests)\/raw-[A-Za-z0-9.-]+\.ts:\d+:\d+/g)]
+    .map((match) => match[0]).slice(0,12);
+}
+function retainFailure(label: string, report: Report, status: number | null) {
+  const receipt = {
+    phase: label + "_failure", source_commit: process.env.GITHUB_SHA,
+    failed: report.numFailedTests, passed: report.numPassedTests, exit_code: status,
+    files: report.testResults.filter((file) => file.message !== "").map((file) => ({
+      file: typeof file.name === "string" ? file.name.split("/").at(-1)?.slice(0,120) : null,
+      classification: classification(file.message), frames: frames(file.message),
+    })),
+    cases: report.testResults.flatMap((file) => file.assertionResults)
+      .filter((row) => row.status === "failed").map((row) => ({
+        name: row.fullName.slice(0,240),
+        classification: classification(row.failureMessages.join("\n")),
+        frames: frames(row.failureMessages.join("\n")),
+      })),
+    baseline: verifiedBaseline,
+    candidate_files: Object.fromEntries([...candidates].map(([path,content])=>[path,digest(content)])),
+    raw_output_retained: false, production_actions: false,
+  };
+  writeFileSync("raw-capture-retry-reports/failure-receipt.json",JSON.stringify(receipt,null,2)+"\n");
+  console.error(JSON.stringify(receipt));
+}
 function run(label: string, tests: string[], extra: string[] = []) {
   const path = "raw-capture-retry-reports/" + label + ".json";
   const rss = "raw-capture-retry-reports/" + label + "-rss.txt";
@@ -52,8 +89,10 @@ function run(label: string, tests: string[], extra: string[] = []) {
   const raw = readFileSync(path,"utf8");
   assert.ok(!/MF-Proxy-Shared-Secret/i.test(raw));
   const report = JSON.parse(raw) as Report;
-  if (report.testResults.some((file) => file.message !== ""))
+  if (report.testResults.some((file) => file.message !== "")) {
+    retainFailure(label,report,result.status);
     throw new Error(label + " file/hook failure; raw output withheld");
+  }
   const cases = report.testResults.flatMap((file) => file.assertionResults);
   const peak = Number(readFileSync(rss,"utf8").trim().split("\n").at(-1))*1024;
   assert.ok(Number.isSafeInteger(peak) && peak > 0);
@@ -93,6 +132,8 @@ try {
     assert.equal(chunk.parts,8);
     assert.equal(chunk.bytes,8*65_536);
   }
+  verifiedBaseline = { failed: 1, passed: 1, actual_state: state,
+    elapsed_ms: baseline.elapsed_ms, gnu_time_max_rss_bytes: baseline.gnu_time_max_rss_bytes };
   for (const [path, content] of candidates) writeFileSync(path,content);
   const tests = readdirSync("tests").filter((name) => /^raw-capture-.*\.test\.ts$/.test(name))
     .map((name) => "tests/"+name);
@@ -100,11 +141,7 @@ try {
   const candidate = run("candidate",tests,["--config",".github/vitest.raw-capture.config.ts","--coverage"]);
   const failures=candidate.cases.filter((row)=>row.status==="failed");
   if (candidate.status !== 0 || candidate.report.numFailedTests !== 0 || failures.length) {
-    console.error(JSON.stringify({ phase: "candidate_failure", exit_code: candidate.status,
-      failed: candidate.report.numFailedTests, passed: candidate.report.numPassedTests,
-      cases: failures.map((row) => ({ name: row.fullName.slice(0,240),
-        frames: [...row.failureMessages.join("\n").matchAll(/(?:src|tests)\/raw-[A-Za-z0-9.-]+\.ts:\d+:\d+/g)]
-          .map((match) => match[0]).slice(0,12) })) }));
+    retainFailure("candidate",candidate.report,candidate.status);
     throw new Error("Candidate qualification failed; raw logs withheld");
   }
   assert.ok(candidate.report.numPassedTests>300);
