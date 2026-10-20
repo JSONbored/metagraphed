@@ -1,0 +1,53 @@
+name: Isolated paired HTTP payload stream resource qualification
+
+on:
+  push:
+    branches:
+      - ci/payload-stream-resource-20261020
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payload-stream-resource-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        scenario: [http-exact, http-chunks]
+        variant: [blob, owned-stream]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Format the temporary hosted driver
+        run: npx prettier --write .github/scripts/resource-qualification.ts .github/workflows/resource-qualification.yml
+      - name: Run one isolated synthetic workerd case
+        env:
+          WRANGLER_SEND_METRICS: "false"
+          WRANGLER_WRITE_LOGS: "false"
+        run: node .github/scripts/resource-qualification.ts '${{ matrix.scenario }}' '${{ matrix.variant }}'
+      - name: Retain only synthetic bounded receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workerd-resource-${{ matrix.scenario }}-${{ matrix.variant }}
+          path: |
+            resource-reports/*.json
+            resource-reports/driver.ts
+          retention-days: 1
+          if-no-files-found: error
