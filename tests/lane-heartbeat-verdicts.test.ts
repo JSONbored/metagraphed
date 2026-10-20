@@ -170,7 +170,6 @@ describe("laneHeartbeatVerdict, the rule alone", () => {
   });
 });
 
-
 describe("heartbeat producer exception isolation", () => {
   for (const failure of [
     new Error("artifact rejected: token=private-fixture"),
