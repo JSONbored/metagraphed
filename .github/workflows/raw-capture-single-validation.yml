@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  COMPARISON_MANIFEST_SHA256: 0b7e15ce27fee21cefacc57f775ea4dbda13cf5db8d72349617dda06ec3502e5
-  COMPARISON_PHASE: format
+  COMPARISON_MANIFEST_SHA256: 578b0e950e8b427470b1108c8955f5ff8b2dd586b6ca833f701df6c0d2d3b77b
+  COMPARISON_PHASE: qualify
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"
   FORCE_COLOR: "0"
@@ -60,7 +60,7 @@ jobs:
           if-no-files-found: error
 
   compare:
-    if: ${{ false }}
+    if: always() && github.ref == 'refs/heads/ci/raw-capture-single-validation-20261020'
     needs: comparison
     runs-on: ubuntu-latest
     timeout-minutes: 10

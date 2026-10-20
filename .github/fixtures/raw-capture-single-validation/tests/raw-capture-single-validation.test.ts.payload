@@ -12,7 +12,8 @@ import {
   type RawCaptureIntent,
 } from "../src/raw-capture-retry-intent.ts";
 
-const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
+const digest = (value: string | Uint8Array) =>
+  createHash("sha256").update(value).digest("hex");
 const key = (testnet = false, first = 41) =>
   `chain/raw/${testnet ? "testnet/" : ""}blocks/${String(first).padStart(12, "0")}-${String(first + 1).padStart(12, "0")}.ndjson`;
 const original =
@@ -41,8 +42,14 @@ test("one private input supports identity, fresh preparation and exact resume wi
     assert.deepEqual(resumed, expected);
     assert.equal(gunzipSync(resumed.compressed).toString("utf8"), original);
     assert.equal(resumed.descriptor.sha256, digest(original));
-    assert.equal(resumed.descriptor.compressed_sha256, digest(resumed.compressed));
-    assert.deepEqual(resumed.provenance, ["1.700000000000e12", "1700000000001.0000000000000000000"]);
+    assert.equal(
+      resumed.descriptor.compressed_sha256,
+      digest(resumed.compressed),
+    );
+    assert.deepEqual(resumed.provenance, [
+      "1.700000000000e12",
+      "1700000000001.0000000000000000000",
+    ]);
     assert.deepEqual(resumed, resumeRawCapture(intent, object, fresh));
     resumed.provenance[0] = "invalid";
     assert.deepEqual(input.resume(intent), expected);
@@ -51,14 +58,31 @@ test("one private input supports identity, fresh preparation and exact resume wi
 
 test("lazy factory preserves direct resume metadata and key refusal before parsing invalid raw input", () => {
   const object = key();
-  const retained = decodeRawCaptureIntent(encodeRawCaptureIntent(prepareRawCapture(object, original)));
+  const retained = decodeRawCaptureIntent(
+    encodeRawCaptureIntent(prepareRawCapture(object, original)),
+  );
   const malformed = "not-json\n";
-  const invalidIntent = { ...retained, version: 2 } as unknown as RawCaptureIntent;
+  const invalidIntent = {
+    ...retained,
+    version: 2,
+  } as unknown as RawCaptureIntent;
   const input = rawCaptureInput(object, malformed);
-  assert.throws(() => input.resume(invalidIntent), /retry intent identity differs/);
-  assert.throws(() => resumeRawCapture(invalidIntent, object, malformed), /retry intent identity differs/);
-  assert.throws(() => rawCaptureInput(key(false, 43), malformed).resume(retained), /retry range differs/);
-  assert.throws(() => resumeRawCapture(retained, key(false, 43), malformed), /retry range differs/);
+  assert.throws(
+    () => input.resume(invalidIntent),
+    /retry intent identity differs/,
+  );
+  assert.throws(
+    () => resumeRawCapture(invalidIntent, object, malformed),
+    /retry intent identity differs/,
+  );
+  assert.throws(
+    () => rawCaptureInput(key(false, 43), malformed).resume(retained),
+    /retry range differs/,
+  );
+  assert.throws(
+    () => resumeRawCapture(retained, key(false, 43), malformed),
+    /retry range differs/,
+  );
   assert.throws(() => input.identity());
   assert.throws(() => input.prepare());
   assert.throws(() => input.resume(retained));
