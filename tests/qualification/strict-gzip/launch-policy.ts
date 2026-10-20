@@ -308,6 +308,12 @@ function runtimeEnvironment(
     VITEST_MODE: ["RUN"],
     FORCE_TTY: ["", "true"],
     SSR: ["", "1"],
+    // Pinned Vitest 4.1.11 configResolved copies Vite 7.3.6 metadata.
+    // This qualification fixes NODE_ENV=test, mode=test and base="/".
+    PROD: [""],
+    DEV: ["1"],
+    BASE_URL: ["/"],
+    MODE: ["test"],
     NODE_CHANNEL_SERIALIZATION_MODE: ["advanced"],
     ...(mode === "workerd" ? { TZ: ["UTC"], FORCE_COLOR: ["0", "1"] } : {}),
   };
@@ -457,8 +463,6 @@ export function authorizeLaunch(
         "--experimental-import-meta-resolve",
         "--require",
         context.vitestSuppress,
-        "--conditions",
-        "module",
         "--conditions",
         "node",
         "--conditions",

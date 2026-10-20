@@ -123,13 +123,15 @@ function forkCall(ctx: PolicyContext): unknown[] {
         VITEST: "true",
         VITEST_MODE: "RUN",
         FORCE_TTY: "",
+        PROD: "",
+        DEV: "1",
+        BASE_URL: "/",
+        MODE: "test",
       },
       execArgv: [
         "--experimental-import-meta-resolve",
         "--require",
         paths.vitestSuppress,
-        "--conditions",
-        "module",
         "--conditions",
         "node",
         "--conditions",
@@ -227,6 +229,69 @@ test("observed Vitest4.1.11 coordinator fork retains exact explicit preload", ()
 test("worker and Wrangler contexts cannot create additional Vitest forks", () => {
   for (const role of ["test-worker", "wrangler-bin", "wrangler-cli"] as const)
     rejects(context(role), "fork", forkCall(context(role)));
+});
+test("fork requires only the pinned node/development conditions with the exact preload", () => {
+  const ctx = context();
+  const accepted = forkCall(ctx);
+  assert.equal(authorizeLaunch(ctx, "fork", accepted).role, "vitest-worker");
+  const exact = (accepted[2] as { execArgv: string[] }).execArgv;
+  for (const changed of [
+    [...exact.slice(0, 3), "--conditions", "module", ...exact.slice(3)],
+    exact.map((value) => (value === "development" ? "production" : value)),
+    exact.map((value) => (value === "node" ? "arbitrary-condition" : value)),
+    [...exact, "--conditions", "node"],
+    exact.filter((_, index) => index !== 5 && index !== 6),
+  ]) {
+    const call = forkCall(ctx);
+    (call[2] as { execArgv: string[] }).execArgv = changed;
+    rejects(ctx, "fork", call);
+  }
+});
+test("fork accepts only the four exact source-derived local metadata values", () => {
+  const ctx = context();
+  const fixed: Record<string, string> = {
+    PROD: "",
+    DEV: "1",
+    BASE_URL: "/",
+    MODE: "test",
+  };
+  assert.equal(
+    authorizeLaunch(ctx, "fork", forkCall(ctx)).role,
+    "vitest-worker",
+  );
+  for (const key of Object.keys(fixed)) {
+    for (const value of [
+      "synthetic-secret",
+      "production",
+      "https://example.invalid/",
+      undefined,
+      null,
+      1,
+    ]) {
+      const call = forkCall(ctx);
+      (call[2] as { env: Record<string, unknown> }).env[key] = value;
+      rejects(ctx, "fork", call);
+    }
+  }
+  for (const [key, value] of Object.entries({
+    PROD: "1",
+    DEV: "",
+    BASE_URL: "//",
+    MODE: "development",
+  })) {
+    const call = forkCall(ctx);
+    (call[2] as { env: Record<string, unknown> }).env[key] = value;
+    rejects(ctx, "fork", call);
+  }
+  for (const key of [
+    "VITE_ARBITRARY",
+    "GITHUB_TOKEN",
+    "AWS_SECRET_ACCESS_KEY",
+  ]) {
+    const call = forkCall(ctx);
+    (call[2] as { env: Record<string, unknown> }).env[key] = "synthetic-secret";
+    rejects(ctx, "fork", call);
+  }
 });
 test("fork refuses missing preload, altered require target, unknown env, executable override", () => {
   const ctx = context();
