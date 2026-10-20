@@ -59,6 +59,7 @@ let receiptControlsPassed = 0;
 let branchControlsPassed = 0;
 let receiptControlLargeBytes = 0;
 let helpersIncluded = 0;
+let presubmitControlsPassed = 0;
 let controlSemanticsPreserved = false;
 const lintDiagnostics: {
   helper_id: number;
@@ -195,6 +196,8 @@ try {
   assert.equal(control.diagnostic_controls_passed, 38);
   assert.equal(control.receipt_controls_passed, 32);
   assert.equal(control.lcov_branch_controls_passed, 20);
+  assert.equal(control.presubmit_failure_controls_passed, 42);
+  assert.equal(control.presubmit_pipeline_steps, 85);
   assert.equal(control.reader_writer_maximum, 32 * 1024 * 1024);
   assert.equal(control.source_artifacts_required, 11);
   assert.ok(
@@ -205,6 +208,7 @@ try {
   diagnosticControlsPassed = control.diagnostic_controls_passed;
   receiptControlsPassed = control.receipt_controls_passed;
   branchControlsPassed = control.lcov_branch_controls_passed;
+  presubmitControlsPassed = control.presubmit_failure_controls_passed;
   receiptControlLargeBytes = control.large_receipt_bytes;
   assert.deepEqual(
     JSON.parse(readFileSync(fixture + "manifest.json", "utf8")),
@@ -240,6 +244,8 @@ try {
     diagnostic_controls_passed: diagnosticControlsPassed,
     receipt_controls_passed: receiptControlsPassed,
     lcov_branch_controls_passed: branchControlsPassed,
+    presubmit_failure_controls_passed: presubmitControlsPassed,
+    presubmit_pipeline_steps: 85,
     receipt_control_large_bytes: receiptControlLargeBytes,
     actual_helper_inputs_confirmed: helpersIncluded,
     lint_diagnostics: lintDiagnostics,

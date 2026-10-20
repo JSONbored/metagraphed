@@ -1,9 +1,8 @@
-name: Raw capture carrier native formatting
+name: base64 reporting repair native helper format
 
 on:
   push:
-    branches: [ci/native-base64-full-format-20261020]
-  workflow_dispatch:
+    branches: [ci/native-base64-presubmit-reporting-format-20261020]
 
 permissions:
   contents: read
@@ -14,6 +13,7 @@ concurrency:
 
 jobs:
   format:
+    if: github.ref == 'refs/heads/ci/native-base64-presubmit-reporting-format-20261020'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,7 +36,7 @@ jobs:
         if: always() && (steps.format.outcome == 'success' || steps.format.outcome == 'failure')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: raw-capture-full-format-${{ steps.format.outcome }}
+          name: base64-reporting-repair-format-${{ github.run_attempt }}-${{ steps.format.outcome }}
           path: |
             .github/scripts/apply-raw-capture-full-validation.ts
             .github/scripts/report-raw-capture-full-validation.ts

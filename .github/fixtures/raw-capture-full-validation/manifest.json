@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "status": "isolated native-base64 profile proposal; full native validation and release acceptance pending",
-  "payload_version": "native-base64-v1-native-39348420082",
+  "status": "profile candidate plus exact native-qualified failure-reporting repair; full wrapper acceptance pending",
+  "payload_version": "native-base64-v1-native-39348420082-reporting-repair",
   "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
   "base_tree": "9aea5cbaf18389b490ca92a946186767086dea5d",
   "canonical_subtrees": {
@@ -35,6 +35,45 @@
       "bytes": 14965,
       "expected_base_blob_sha": "7900bc7eb225cd605d3201851c454d81d6ffafe2",
       "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/chain-detail-native-payloads.test.ts.payload"
+    },
+    {
+      "path": "scripts/pipeline.ts",
+      "sha256": "6f0ef0966ff840dcba3f8d9672e4c95bbb03c838147f36cf42adf191e66c9d3f",
+      "git_blob_sha": "496be52057f8cbd515f627172df27610dde86160",
+      "bytes": 12542,
+      "expected_base_blob_sha": "166fa028808963551b3cb109591eb5deaa6ec16f",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/scripts/pipeline.ts.payload"
+    },
+    {
+      "path": "tests/fixtures/pipeline-emission-original.ts.payload",
+      "sha256": "33f3afcf125f4aad4b3ebe2e84c52299b4240886679f0fe740735366628d9410",
+      "git_blob_sha": "166fa028808963551b3cb109591eb5deaa6ec16f",
+      "bytes": 12303,
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/fixtures/pipeline-emission-original.ts.payload.payload"
+    },
+    {
+      "path": "tests/pipeline-emission.test.ts",
+      "sha256": "00f57b8f39ad4bd298eaf22a6c1194ac90f26cbe7fe8175ac890aedc03f9a8cd",
+      "git_blob_sha": "8999644f36bce3eec4f69e796e31bc2dbe9a1012",
+      "bytes": 10091,
+      "expected_base_blob_sha": null,
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/pipeline-emission.test.ts.payload"
     }
-  ]
+  ],
+  "reporting_repair_qualification": {
+    "source_only_run": 39376281902,
+    "source_only_head": "f4929b8123315c057583b03212602e53fbeadbd3",
+    "source_only_artifact": 12243114502,
+    "source_only_artifact_zip_sha256": "1ac59d303db7fd03fceb21f526c0ce4bee0e92bc3c36243c13427f82dbdc5811",
+    "native_phases": 6,
+    "failure_frame_controls": 13,
+    "causal_cases": 4,
+    "scope": "Controlled reporting-protocol source proof only; prior wrapper cause unknown; exact wrapper acceptance pending",
+    "observer_format_run": 39372902027,
+    "observer_format_artifact": 12241329211,
+    "observer_format_zip_sha256": "7ceea1b43bae96acab9db56c9a8ee751280187943a57eea24f6c5d3365dfeb7d",
+    "qualified_observer_sha256": "392ac7a0b53921df36b79b44caa11e522f5c0f303d09b78bda7a0e07ac3d3bce",
+    "observer_semantic_delta": "Only normal-run expected pipeline SHA repinned to exact qualified pipeline; all parsing/controls/limits/acceptance unchanged"
+  }
 }

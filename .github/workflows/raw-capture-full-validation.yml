@@ -1,8 +1,8 @@
-name: Exact base64 presubmit with matching R2 staging
+name: Exact presubmit with qualified failure reporting
 
 on:
   push:
-    branches: [ci/native-base64-presubmit-r2-prerequisite-20261020]
+    branches: [ci/native-base64-presubmit-reporting-repair-20261020]
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ concurrency:
 env:
   FORCE_FULL_QUALIFICATION: "true"
   FULL_VALIDATION_PROFILE: native-base64-v1
-  FULL_VALIDATION_MANIFEST_SHA256: 3083acc73482b450934d45103c05badd42e21d2c1f4c6adf608a04944f8438b2
+  FULL_VALIDATION_MANIFEST_SHA256: dfab10545b01c809fcad124e62fa5a209f03871e171bfa3dfbf7a0b70edd10a4
   FULL_VALIDATION_COMMANDS_SHA256: 56b45658546a8e448a8bb56fb962a7960b0af3a2bf011619881ffa0872aa41a0
   WRANGLER_SEND_METRICS: "false"
   WRANGLER_WRITE_LOGS: "false"
@@ -74,7 +74,7 @@ jobs:
         if: always() && steps.overlay.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: base64-exact-presubmit-r2-prerequisite-${{ github.run_attempt }}
+          name: base64-exact-presubmit-reporting-repair-${{ github.run_attempt }}
           path: tmp/raw-capture-full-validation/upload/validate/
           retention-days: 1
           if-no-files-found: error
