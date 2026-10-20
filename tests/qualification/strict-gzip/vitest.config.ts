@@ -16,6 +16,7 @@ const { default: base } = (await import(
 )) as {
   default: {
     test?: { coverage?: Record<string, unknown>; [key: string]: unknown };
+    server?: Record<string, unknown>;
     [key: string]: unknown;
   };
 };
@@ -23,6 +24,9 @@ const { default: base } = (await import(
 export default {
   ...base,
   root,
+  // Vite otherwise resolves the name "localhost" during client-inject startup,
+  // even with HMR disabled. Keep local startup numeric; DNS remains refused.
+  server: { ...base.server, host: "127.0.0.1" },
   test: {
     ...base.test,
     include: [...FOCUSED_TESTS],

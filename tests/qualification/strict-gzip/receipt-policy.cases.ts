@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { FOCUSED_TESTS } from "./verify-candidate.ts";
 import {
   COVERED_SOURCES,
@@ -564,3 +565,50 @@ test("publisher exposes bounded refusal codes without raw logs or arguments", ()
       },
     ]);
   }));
+
+test("qualification config uses numeric loopback while preserving base server options", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "strict-gzip-config-policy-"));
+  const keys = [
+    "DECODER_QUALIFICATION_ROOT",
+    "DECODER_QUALIFICATION_PRELOAD",
+    "DECODER_QUALIFICATION_RESULT",
+  ] as const;
+  const prior = keys.map((key) => process.env[key]);
+  const globals = globalThis as unknown as Record<symbol, unknown>;
+  const guard = Symbol.for("decoder-qualification.host-guard");
+  const previousGuard = globals[guard];
+  const source =
+    'export default { server: { host: "localhost", hmr: false, port: 1234 }, test: { coverage: { thresholds: { lines: 77 } } } };';
+  try {
+    writeFileSync(path.join(root, "vitest.targeted.config.ts"), source);
+    process.env.DECODER_QUALIFICATION_ROOT = root;
+    process.env.DECODER_QUALIFICATION_PRELOAD = pathToFileURL(
+      path.join(root, "synthetic-preload.ts"),
+    ).href;
+    process.env.DECODER_QUALIFICATION_RESULT = path.join(root, "results.json");
+    globals[guard] = true;
+    // The base is a synthetic data-only module. No Vitest/Vite/native import runs.
+    const { default: config } = await import("./vitest.config.ts");
+    assert.deepEqual(config.server, {
+      host: "127.0.0.1",
+      hmr: false,
+      port: 1234,
+    });
+    assert.deepEqual(
+      (config.test.coverage as Record<string, unknown>).thresholds,
+      { lines: 77 },
+    );
+    assert.equal(
+      readFileSync(path.join(root, "vitest.targeted.config.ts"), "utf8"),
+      source,
+    );
+  } finally {
+    keys.forEach((key, i) => {
+      if (prior[i] === undefined) delete process.env[key];
+      else process.env[key] = prior[i];
+    });
+    if (previousGuard === undefined) delete globals[guard];
+    else globals[guard] = previousGuard;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
