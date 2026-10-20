@@ -69,7 +69,7 @@ function faultableDatabase(db: D1Database, fault: Error | null) {
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: unknown) {
+  async fetch(request: Request, env: Env, _ctx: unknown) {
     const pathname = new URL(request.url).pathname;
     if (pathname === "/__resource/warm") {
       // Load the same lazy API module as the production scheduled entry before

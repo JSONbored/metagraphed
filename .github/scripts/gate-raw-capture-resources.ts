@@ -511,16 +511,21 @@ async function main() {
         );
         assert.ok(helperId >= 0 && !seenHelpers.has(helperId));
         seenHelpers.add(helperId);
-        assert.ok(Array.isArray(report.messages) && report.messages.length <= 128);
+        assert.ok(
+          Array.isArray(report.messages) && report.messages.length <= 128,
+        );
         for (const item of report.messages) {
           assert.ok(lintDiagnostics.length < 128);
           assert.ok(
-            item.ruleId === null || (typeof item.ruleId === "string" && /^[A-Za-z0-9_@/-]{1,128}$/.test(item.ruleId)),
+            item.ruleId === null ||
+              (typeof item.ruleId === "string" &&
+                /^[A-Za-z0-9_@/-]{1,128}$/.test(item.ruleId)),
           );
           assert.ok(item.severity === 1 || item.severity === 2);
           for (const value of [item.line, item.column])
             assert.ok(
-              value === undefined || (Number.isSafeInteger(value) && value >= 0),
+              value === undefined ||
+                (Number.isSafeInteger(value) && value >= 0),
             );
           lintDiagnostics.push({
             helper_id: helperId,
@@ -591,7 +596,11 @@ async function main() {
       assert.equal(digest(read(file)), candidate.files[file].sha256);
     stage = "lint";
     const typeInputs = helperFiles.filter((file) => file.endsWith(".ts"));
-    local("lint", "eslint", ["--format=json", "--max-warnings=0", ...typeInputs]);
+    local("lint", "eslint", [
+      "--format=json",
+      "--max-warnings=0",
+      ...typeInputs,
+    ]);
     stage = "helper_types";
     const listed = local("helper_types", "tsc", [
       "--noEmit",

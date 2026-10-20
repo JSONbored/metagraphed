@@ -196,7 +196,124 @@ const digest = (value: string | Uint8Array) =>
 const compatibleDate = "2026-06-06";
 const compatibilityFlags = ["nodejs_compat", "global_fetch_strictly_public"];
 const LOGICAL_RPC_URL = "https://rpc.fixture.invalid/rpc";
-const result: Record<string, any> = {
+interface InspectorReply {
+  result?: { value?: boolean };
+  usedSize?: number;
+  totalSize?: number;
+  embedderHeapUsedSize?: number;
+  backingStorageSize?: number;
+}
+type RpcFixtureCall = { jsonrpc: "2.0"; id: number | string } & (
+  | { method: "chain_getHeader"; params: [] }
+  | { method: "chain_getBlockHash"; params: [number[]] }
+  | { method: "chain_getBlock"; params: [string] }
+  | { method: "state_getStorage"; params: [string, string] }
+);
+interface RawCaptureBatchRow {
+  key: string;
+  sha256: string;
+  network: "mainnet" | "testnet";
+  first_block: number;
+  last_block: number;
+  raw_bytes: number;
+  compressed_bytes: number;
+  compressed_sha256: string;
+  parts: number;
+  captured_at: number;
+  complete: 0 | 1;
+}
+interface MeasuredPhase {
+  label: string;
+  operationStartedAt: string;
+  initialHeap: typeof sampledHeap;
+  initialRss: typeof rss;
+  outcome?: unknown;
+  elapsedMs?: number;
+  heap?: typeof sampledHeap;
+  rss?: typeof rss;
+}
+interface FixtureReport {
+  records: number;
+  rawBytes: number;
+  first: number;
+  last: number;
+  eventsBytes: number;
+  eventsSha256: string;
+  entropy: string;
+  expected: ReturnType<typeof fixture>["expected"];
+  eventsStorageKey?: string;
+}
+interface NativeBuildReport {
+  sourcePins: Record<string, { sha256: string; blob: string }>;
+  transformedEntrySha256: string;
+  entryWrapperSha256: string;
+  entryTransform: string;
+  options: string;
+  instrumentationScope: string;
+  ownedOutput?: {
+    freshPrivateParent: boolean;
+    parentAndOutputNonSymlink: boolean;
+    realCheckoutContainment: boolean;
+    ephemeralPathRetained: boolean;
+  };
+  esbuildVersion?: string;
+  moduleManifestSha256?: string;
+  metafileSha256?: string;
+  rawModuleOwnership?: Record<string, { sourceInputs: number; outputIndexes: number[] }>;
+  outputSummary?: { modules: number; js: number; wasm: number; sourceMaps: number; totalBytes: number };
+  apiAbsentFromEntryEagerClosure?: boolean;
+}
+interface ResourceReport {
+  scenario: typeof scenario;
+  variant: typeof variant;
+  sourceBase: string;
+  nativeQualification: typeof nativeQualification;
+  sourcePinManifestSha256: string;
+  protocolProfile: string;
+  nativeGatePreflightSha256: typeof preflightSha256;
+  formattedDriverSha256: string;
+  workerFixtureSha256: string;
+  productionActions: boolean;
+  startupGraph: string;
+  fixtureScope: string;
+  compatibilityDate: string;
+  compatibilityFlags: string[];
+  transportScope: { logicalRpcUrl: string; logicalRole: string; actualTransport: string };
+  startupDiagnostic?: typeof startupDiagnostic;
+  rpcFixtureFailure?: boolean;
+  schemaReceipt?: { sourceHashes: Record<string, string>; canonicalSchemaSha256: string; fullNativeEquality: boolean; seedEquality: boolean; nativeForeignKeys: boolean };
+  carrierCommit?: string;
+  sourceTree?: string;
+  runtimeInputManifestSha256?: string;
+  carrierRuntimeInputManifestSha256?: string;
+  canonicalRuntimeUnchanged?: boolean;
+  sourceOverlayScope?: string;
+  productionCompatibilitySource?: { source: string; sourceBase: string; blob: string; sha256: string; flags: string[]; date: string };
+  sourceReceipt?: Record<string, { ref: string; sourcePath: string; blob: string; sha256: string }>;
+  workerSha256?: string;
+  fixture?: FixtureReport;
+  nativeBuild?: NativeBuildReport;
+  bundleSha256?: string;
+  bundler?: { actualBuildApiWorker: boolean; unchangedNativeOptionsAndPlugin: boolean; split: boolean; minified: boolean; format: string; sourceMapsExecutable: boolean };
+  moduleLoader?: { rules: { type: string; include: string[] }[]; verifiedWasm: { bytes: number; sha256: string }[]; scope: string };
+  runtimeVersions?: { node: string; miniflare: string; wrangler: string; workerd: string };
+  inspectorDiscovery?: { targets: number; exactOwnedIdMatches: number; inspected: number; markerMatches: number; executionContexts: number; unavailableContexts: number };
+  phases?: MeasuredPhase[];
+  firstFailure?: Awaited<ReturnType<typeof snapshot>>;
+  secondFailure?: Awaited<ReturnType<typeof snapshot>>;
+  correctness?: { state: Awaited<ReturnType<typeof snapshot>>; verification: Awaited<ReturnType<typeof verifyStored>> };
+  rpc?: { logicalRpcUrl: string; logicalRole: string; scope: string; permitted: number; blocked: number; requests: number; responses: typeof rpcReceipts };
+  status?: "passed" | "failed";
+  failureStage?: string;
+  failureClass?: string;
+  cleanupFailure?: boolean;
+  runtimeRestarts?: number;
+  elapsedMs?: number;
+  structuredLogCounts?: typeof structuredLogs;
+  inspectorProtocolErrors?: typeof inspectorProtocolErrors;
+  measurementScope?: { heap: string; process: string; excludes: string };
+}
+const result: ResourceReport = {
   scenario,
   variant,
   sourceBase: base,
@@ -315,7 +432,7 @@ function checkpoint() {
   lastCheckpoint = Date.now();
 }
 let mf: Miniflare | undefined;
-let sockets: WebSocket[] = [];
+const sockets: WebSocket[] = [];
 let samplerStopped = false;
 let sampledHeap = {
   samples: 0,
@@ -425,7 +542,7 @@ async function connect(url: string, expectedPort: string) {
   const waiting = new Map<
     number,
     {
-      resolve(value: any): void;
+      resolve(value: InspectorReply): void;
       reject(error: Error): void;
       timer: ReturnType<typeof setTimeout>;
     }
@@ -477,7 +594,7 @@ async function connect(url: string, expectedPort: string) {
         ),
       );
       const requestId = ++id;
-      return new Promise<any>((resolve, reject) => {
+      return new Promise<InspectorReply>((resolve, reject) => {
         const timer = setTimeout(() => {
           waiting.delete(requestId);
           reject(new Error("inspector_reply_timeout"));
@@ -558,7 +675,7 @@ async function ownedRpc(
         assert.ok(Buffer.byteLength(body) <= 65536);
       }
       const input = JSON.parse(body);
-      const answer = (call: any) => {
+      const answer = (call: RpcFixtureCall) => {
         assert.equal(call.jsonrpc, "2.0");
         assert.ok(typeof call.id === "number" || typeof call.id === "string");
         let value: unknown;
@@ -659,7 +776,7 @@ async function initializeSchema(db: D1Database) {
     );
     assert.ok(seed);
     await db.prepare(seed[0]).run();
-    const sort = (rows: any[]) =>
+    const sort = (rows: typeof ddl) =>
       rows
         .map((row) => ({ type: row.type, name: row.name, sql: row.sql }))
         .sort((a, b) => (a.type + a.name).localeCompare(b.type + b.name));
@@ -667,7 +784,7 @@ async function initializeSchema(db: D1Database) {
       .prepare(
         "SELECT type,name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'",
       )
-      .all();
+      .all<(typeof ddl)[number]>();
     assert.deepEqual(sort(actual.results), sort(ddl));
     const budget = await db
       .prepare("SELECT id,bytes,objects FROM raw_capture_budget")
@@ -705,8 +822,8 @@ async function snapshot(db: D1Database) {
   const batches = (
     await db
       .prepare("SELECT * FROM raw_capture_batches ORDER BY key,sha256")
-      .all()
-  ).results as Record<string, any>[];
+      .all<RawCaptureBatchRow>()
+  ).results;
   assert.ok(batches.length <= 2);
   const budget = await db
     .prepare("SELECT bytes,objects FROM raw_capture_budget WHERE id=1")
@@ -1567,32 +1684,32 @@ export default {
   stage = "inspector-heap";
   const sample = async () => {
     const heap = await client!.call("Runtime.getHeapUsage");
-    for (const key of ["usedSize", "totalSize"])
-      assert.ok(Number.isFinite(heap[key]) && heap[key] >= 0);
+    for (const key of ["usedSize", "totalSize"] as const)
+      assert.ok(Number.isFinite(heap[key]) && heap[key]! >= 0);
     sampledHeap.samples++;
-    sampledHeap.maxUsedSize = Math.max(sampledHeap.maxUsedSize, heap.usedSize);
+    sampledHeap.maxUsedSize = Math.max(sampledHeap.maxUsedSize, heap.usedSize!);
     sampledHeap.maxTotalSize = Math.max(
       sampledHeap.maxTotalSize,
-      heap.totalSize,
+      heap.totalSize!,
     );
     if (
       Number.isFinite(heap.embedderHeapUsedSize) &&
-      heap.embedderHeapUsedSize >= 0
+      heap.embedderHeapUsedSize! >= 0
     ) {
       sampledHeap.embedderSamples++;
       sampledHeap.maxEmbedderHeapUsedSize = Math.max(
         sampledHeap.maxEmbedderHeapUsedSize ?? 0,
-        heap.embedderHeapUsedSize,
+        heap.embedderHeapUsedSize!,
       );
     }
     if (
       Number.isFinite(heap.backingStorageSize) &&
-      heap.backingStorageSize >= 0
+      heap.backingStorageSize! >= 0
     ) {
       sampledHeap.backingStorageSamples++;
       sampledHeap.maxBackingStorageSize = Math.max(
         sampledHeap.maxBackingStorageSize ?? 0,
-        heap.backingStorageSize,
+        heap.backingStorageSize!,
       );
     }
     const runtimeStatus = status(pid),
@@ -1615,13 +1732,13 @@ export default {
     stage = label;
     const phaseStarted = Date.now();
     await sample();
-    const phase: Record<string, unknown> = {
+    const phase: MeasuredPhase = {
       label,
       operationStartedAt: new Date(phaseStarted).toISOString(),
       initialHeap: { ...sampledHeap },
       initialRss: { ...rss },
     };
-    result.phases.push(phase);
+    result.phases!.push(phase);
     checkpoint();
     sampler = (async () => {
       while (
@@ -1710,7 +1827,7 @@ export default {
     assert.equal(first.prefix.length, 8);
     assert.ok(first.prefix.every((part) => part.bytes === 65536));
     assert.equal(first.archives, 0);
-    const { complete, ...originalDescriptor } = descriptor;
+    const { complete: _complete, ...originalDescriptor } = descriptor;
     assert.equal(first.controls[0].key, "raw-capture-retry/v1/mainnet");
     assert.equal(first.controls[0].provenanceCount, 25);
     assert.deepEqual(first.controls[0].descriptor, originalDescriptor);
@@ -1846,7 +1963,7 @@ export default {
       variant,
       status: result.status,
       failureStage: result.failureStage,
-      phases: result.phases?.map((phase: any) => ({
+      phases: result.phases?.map((phase) => ({
         label: phase.label,
         heap: phase.heap,
         rss: phase.rss,
