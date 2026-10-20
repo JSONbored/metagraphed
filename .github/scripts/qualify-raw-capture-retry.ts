@@ -38,6 +38,11 @@ const selected = new Map([
 ]);
 let verifiedBaseline: unknown = null;
 function classification(message: string): string {
+  if (/incomplete input/i.test(message)) return "sql_incomplete_input";
+  if (/not authorized|SQLITE_AUTH/i.test(message)) return "sql_not_authorized";
+  if (/already exists/i.test(message)) return "sql_already_exists";
+  if (/statement.*(?:prefix|prepare)|prepare.*statement/i.test(message)) return "sql_prepare";
+  if (/SQLITE_ERROR|D1_ERROR|D1_EXEC_ERROR/.test(message)) return "d1_error";
   if (/Hook timed out|hook timeout/i.test(message)) return "hook_timeout";
   if (/syntax error/i.test(message)) return "sql_syntax";
   if (/no such table/i.test(message)) return "missing_table";
@@ -61,7 +66,7 @@ function frames(message: string) {
   return [...message.matchAll(/(?:src|tests)\/raw-[A-Za-z0-9.-]+\.ts:\d+:\d+/g)]
     .map((match) => match[0]).slice(0,12);
 }
-function retainFailure(label: string, report: Report, status: number | null) {
+function readNativeSetup() {
   const setupPath = "raw-capture-retry-reports/native-setup.json";
   let nativeSetup: unknown = null;
   if (existsSync(setupPath)) {
@@ -69,8 +74,38 @@ function retainFailure(label: string, report: Report, status: number | null) {
     assert(["fixture_loaded","runtime_construct","database","migration_read","migration_statement","state_read","state_statement","ready"].includes(stage.stage));
     assert(Number.isSafeInteger(stage.migration) && stage.migration >= -1 && stage.migration < 3);
     assert(Number.isSafeInteger(stage.statement) && stage.statement >= -1 && stage.statement < 1000);
+    if (stage.ddl_probe !== null) {
+      const d = stage.ddl_probe;
+      assert(/^[a-f0-9]{64}$/.test(d.exact_sha256) && /^[a-f0-9]{64}$/.test(d.logical_sha256));
+      assert(Number.isSafeInteger(d.exact_bytes) && d.exact_bytes > 0 && d.exact_bytes < 10_000);
+      assert(Number.isSafeInteger(d.logical_bytes) && d.logical_bytes > 0 && d.logical_bytes < d.exact_bytes);
+      assert(d.error === null || ["sql_no_statement","sql_incomplete_input","sql_not_authorized","sql_no_such_table","sql_no_such_column","sql_multiple_statement","sql_syntax","sql_already_exists","unclassified"].includes(d.error));
+      assert(typeof d.reconciled === "boolean");
+    }
     nativeSetup = stage;
   }
+  return nativeSetup;
+}
+function coverageState() {
+  if (!existsSync("coverage/coverage-summary.json")) return null;
+  const raw = JSON.parse(readFileSync("coverage/coverage-summary.json","utf8"));
+  const selected = files.filter((path) => path.startsWith("src/"));
+  const summary = Object.fromEntries(selected.map((path) => [path,Object.entries(raw).find(([key]) => key.endsWith("/"+path))?.[1] ?? null]));
+  const missing: Record<string,{lines:number[];branches:{line:number;block:number;branch:number}[]}> = {};
+  for (const path of selected) missing[path]={lines:[],branches:[]};
+  let current: string | undefined;
+  if (existsSync("coverage/lcov.info")) for (const line of readFileSync("coverage/lcov.info","utf8").split("\n")) {
+    if (line.startsWith("SF:")) current=selected.find((path) => line.slice(3).endsWith(path));
+    if (!current) continue;
+    const da=/^DA:(\d+),0$/.exec(line);
+    if (da) missing[current].lines.push(Number(da[1]));
+    const branch=/^BRDA:(\d+),(\d+),(\d+),(?:0|-)$/.exec(line);
+    if (branch) missing[current].branches.push({line:Number(branch[1]),block:Number(branch[2]),branch:Number(branch[3])});
+  }
+  for (const item of Object.values(missing)) assert(item.lines.length<2000 && item.branches.length<5000);
+  return {summary,missing};
+}
+function retainFailure(label: string, report: Report, status: number | null) {
   const receipt = {
     phase: label + "_failure", source_commit: process.env.GITHUB_SHA,
     failed: report.numFailedTests, passed: report.numPassedTests, exit_code: status,
@@ -86,7 +121,8 @@ function retainFailure(label: string, report: Report, status: number | null) {
         frames: frames(row.failureMessages.join("\n")),
       })),
     baseline: verifiedBaseline,
-    native_setup: nativeSetup,
+    native_setup: readNativeSetup(),
+    coverage: coverageState(),
     candidate_files: Object.fromEntries([...candidates].map(([path,content])=>[path,digest(content)])),
     raw_output_retained: false, production_actions: false,
   };
@@ -174,6 +210,8 @@ try {
   }));
   const receipt={
     source_commit:process.env.GITHUB_SHA,base_commit:base,
+    native_setup:readNativeSetup(),
+    coverage_detail:coverageState(),
     files:Object.fromEntries(files.map((path)=>[path,digest(readFileSync(path))])),
     baseline:{failed:1,passed:1,filtered:baseline.cases.length-2,actual_state:state,
       elapsed_ms:baseline.elapsed_ms,gnu_time_max_rss_bytes:baseline.gnu_time_max_rss_bytes},

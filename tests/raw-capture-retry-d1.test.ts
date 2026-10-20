@@ -2,15 +2,33 @@ import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
+import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, beforeEach, test } from "vitest";
 import { Miniflare, NoOpLog } from "miniflare";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { prepareRawCapture, encodeRawCaptureIntent, rawCaptureIntentKey } from "../src/raw-capture-retry-intent.ts";
 
 let runtime: Miniflare | undefined;
+let ddlProbe: { exact_sha256: string; exact_bytes: number; logical_sha256: string; logical_bytes: number; error: string | null; reconciled: boolean } | null = null;
 function setupStage(stage: string, migration = -1, statement = -1) {
   if (process.env.RAW_CAPTURE_QUALIFY_DIAGNOSTICS === "1")
-    writeFileSync("raw-capture-retry-reports/native-setup.json", JSON.stringify({stage,migration,statement}));
+    writeFileSync("raw-capture-retry-reports/native-setup.json", JSON.stringify({stage,migration,statement,ddl_probe:ddlProbe}));
+}
+function setupError(error: unknown): string {
+  for (let depth=0; depth<4 && error && typeof error === "object"; depth++) {
+    const current = error as {message?:unknown;cause?:unknown};
+    const message = typeof current.message === "string" ? current.message : "";
+    if (/did not contain a statement|no (?:sql )?statement/i.test(message)) return "sql_no_statement";
+    if (/incomplete input/i.test(message)) return "sql_incomplete_input";
+    if (/not authorized|SQLITE_AUTH/i.test(message)) return "sql_not_authorized";
+    if (/no such table/i.test(message)) return "sql_no_such_table";
+    if (/no such column/i.test(message)) return "sql_no_such_column";
+    if (/multiple statement|one statement at a time/i.test(message)) return "sql_multiple_statement";
+    if (/syntax error/i.test(message)) return "sql_syntax";
+    if (/already exists/i.test(message)) return "sql_already_exists";
+    error = current.cause;
+  }
+  return "unclassified";
 }
 setupStage("fixture_loaded");
 let native: D1Database;
@@ -65,6 +83,8 @@ async function compressed(sha: string) {
   return Buffer.concat(chunks);
 }
 beforeAll(async () => {
+  const reference = new DatabaseSync(":memory:");
+  try {
   setupStage("runtime_construct");
   runtime = new Miniflare({
     log: new NoOpLog(),
@@ -78,19 +98,45 @@ beforeAll(async () => {
   for (const [migration,path] of ["0027_generated_artifacts.sql","0028_raw_capture_storage.sql","0029_raw_capture_archive.sql"].entries()) {
     setupStage("migration_read",migration);
     const sql = readFileSync(new URL("../migrations/d1/"+path,import.meta.url),"utf8");
+    reference.exec(sql);
     for (const [ordinal,statement] of sql.split(/(?=^(?:CREATE (?:TABLE|TRIGGER|INDEX)|INSERT INTO))/m).entries())
       if (/^(?:CREATE|INSERT)/.test(statement.trim())) {
         setupStage("migration_statement",migration,ordinal);
-        await native.prepare(statement).run();
+        // Keep the exact prepare attempt. Only trailing line comments may be
+        // separated from a trigger, with original full-DDL schema proof below.
+        const logical = statement.replace(/(?:\n[ \t]*--[^\n]*)+\s*$/, "");
+        if (logical !== statement && /^CREATE TRIGGER /.test(statement)) {
+          const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+          ddlProbe = {exact_sha256:hash(statement),exact_bytes:Buffer.byteLength(statement),logical_sha256:hash(logical),logical_bytes:Buffer.byteLength(logical),error:null,reconciled:false};
+          try { await native.prepare(statement).run(); }
+          catch (error) {
+            ddlProbe.error = setupError(error);
+            const name = /^CREATE TRIGGER (\w+)/.exec(statement)![1];
+            const expected = {...reference.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").get(name)};
+            let actual = await native.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").bind(name).first<{sql:string}>();
+            if (!actual) {
+              await native.prepare(logical).run();
+              actual = await native.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").bind(name).first<{sql:string}>();
+            }
+            assert.deepEqual(actual,expected);
+            ddlProbe.reconciled = true;
+          }
+        } else await native.prepare(statement).run();
+        setupStage("migration_statement",migration,ordinal);
       }
   }
   setupStage("state_read");
   const schema = readFileSync(new URL("../db/d1-schema.sql",import.meta.url),"utf8");
   const watermark = /CREATE TABLE raw_capture_state[\s\S]*?;/.exec(schema);
   assert(watermark);
+  reference.exec(watermark[0]);
   setupStage("state_statement");
   await native.prepare(watermark[0]).run();
+  const expected = reference.prepare("SELECT type,name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all().map((row) => ({...row}));
+  const actual = await native.prepare("SELECT type,name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY type,name").all();
+  assert.deepEqual(actual.results,expected);
   setupStage("ready");
+  } finally { reference.close(); }
 });
 beforeEach(async () => {
   for (const table of ["raw_capture_selected","raw_capture_archives","raw_capture_batches","generated_artifacts","raw_capture_state"])
