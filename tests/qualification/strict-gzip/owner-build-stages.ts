@@ -1,5 +1,6 @@
 // Failure-only fixed stage labels. Never supplies acceptance evidence.
 import { optionalProofDiagnosticMarkers } from "./optional-pg-import.ts";
+import { publicInputDiagnosticMarkers } from "./owner-input-diagnostics.ts";
 export const OWNER_BUILD_STAGES = Object.freeze({
   "raw-build": Object.freeze([
     "source-pins",
@@ -58,7 +59,11 @@ export function ownerBuildDiagnosticMarkers(error: unknown): string {
     typeof error !== "function"
   )
     return "";
-  return marked.get(error as object) ?? optionalProofDiagnosticMarkers(error);
+  return (
+    marked.get(error as object) ??
+    (publicInputDiagnosticMarkers(error) ||
+      optionalProofDiagnosticMarkers(error))
+  );
 }
 export function ownerBuildStageFailure(
   scope: unknown,

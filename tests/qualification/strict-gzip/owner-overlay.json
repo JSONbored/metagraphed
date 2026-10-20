@@ -8,6 +8,16 @@
       "bytes": 27879
     },
     {
+      "path": "tests/qualification/strict-gzip/input-only-public-diagnostics.cases.ts",
+      "sha256": "d9eb02d6ac2d77ed2967ca31a787a1884c2fb5e13826faec18b85048dca0b8d8",
+      "bytes": 25976
+    },
+    {
+      "path": "tests/qualification/strict-gzip/input-only-public-diagnostics.ts",
+      "sha256": "f0c6f3d46c8b1ab5868a6ec6a094524b8d99f0eec3563114a44bda1a3650faf4",
+      "bytes": 23858
+    },
+    {
       "path": "tests/qualification/strict-gzip/launch-policy.cases.ts",
       "sha256": "27161c9421ba7b3d3d3a2aa8130cadba7f97d5cb9fc0336f7d485951d37fd6da",
       "bytes": 35451
@@ -39,8 +49,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
-      "sha256": "cd7c666692faf4ff5a71f95c427d08d3a2002f95e18bef84e3fa920191601832",
-      "bytes": 29342
+      "sha256": "95676e988dfbd4c86b733fb13d5251cafdd6bc665b6399e2f8e8c952a4676c51",
+      "bytes": 29486
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-stages.cases.ts",
@@ -49,8 +59,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-stages.ts",
-      "sha256": "f0b23e45497c395cc8787cd9813cea981f1e04b61c22509c98672dfb615afd35",
-      "bytes": 2253
+      "sha256": "490b0692eca5a845cf99f5d9a382f096764dd4f6ec9052a7d9f4aca6a095185b",
+      "bytes": 2391
     },
     {
       "path": "tests/qualification/strict-gzip/owner-deadline.ts",
@@ -64,13 +74,23 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-diagnostics.ts",
-      "sha256": "ea0870eaad9edcdfb3289bd1d165e51a1c9913885542cc13b4f9960cf898b18f",
-      "bytes": 9066
+      "sha256": "7cb41ba85b91bd8af1cf85e9ce1bf23d146ed63f4150f655e7c5df012b51d10a",
+      "bytes": 9615
     },
     {
       "path": "tests/qualification/strict-gzip/owner-evidence.ts",
       "sha256": "e486563bec956a172d121d606f5cc69db3f29e7ea6a96c1578e73e9d1e430196",
       "bytes": 4382
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-input-diagnostics.cases.ts",
+      "sha256": "6f08e0a81a0d02e9d1017c58748cb79a6b7179309ae1ada86f82fa34bad1beec",
+      "bytes": 10409
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-input-diagnostics.ts",
+      "sha256": "4ebcb5bd681c135093360394c134af92a7181b5b199f793dc2470647e95ad17d",
+      "bytes": 7134
     },
     {
       "path": "tests/qualification/strict-gzip/owner-native-evidence.cases.ts",
@@ -109,8 +129,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-public-receipts.ts",
-      "sha256": "d9b43c802baeb6b8da5392cba344ccc7926adbc4347a5e9ff654449a058c578c",
-      "bytes": 7299
+      "sha256": "4bb7ae23662a7b588c13e17acb0d72627d3ad7baee3b161c9e6c55810960adef",
+      "bytes": 7493
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-public-source-index.json",
+      "sha256": "925030f85772dc33c2ef3557b3b092b2801e59f9f82304a152112b01623e9b80",
+      "bytes": 287991
     },
     {
       "path": "tests/qualification/strict-gzip/owner-raw-build.cases.ts",

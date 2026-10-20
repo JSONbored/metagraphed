@@ -1,4 +1,5 @@
 import { ownerBuildStageFailure } from "./owner-build-stages.ts";
+import { withPublicInputDiagnostics } from "./owner-input-diagnostics.ts";
 import {
   OPTIONAL_PG_SOURCE_PINS,
   ownerSourceIdentity,
@@ -108,7 +109,11 @@ export function optionalPgBuildAssociation(
       registeredModuleNames,
     });
   } catch (cause) {
-    throw ownerBuildStageFailure("optional-adapter", proofStage, cause);
+    throw ownerBuildStageFailure(
+      "optional-adapter",
+      proofStage,
+      withPublicInputDiagnostics(cause, root, metafile),
+    );
   }
 }
 

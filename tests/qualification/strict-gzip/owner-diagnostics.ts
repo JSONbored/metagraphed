@@ -7,6 +7,7 @@ import {
   OPTIONAL_IMPORT_CATEGORIES,
 } from "./optional-pg-import.ts";
 import { OWNER_REFUSED_IMPORTS } from "./owner-resource-policy.ts";
+import { publicInputIdentityDiagnostics } from "./owner-input-diagnostics.ts";
 // Optional bounded diagnostics only. Never participates in acceptance decisions.
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -107,6 +108,10 @@ export function publicBuildProofFailure(error: unknown) {
   const markers = ownerBuildDiagnosticMarkers(error);
   return markers ? publicBuildProofDiagnostics([markers]) : null;
 }
+export function publicInputIdentityFailure(error: unknown) {
+  const markers = ownerBuildDiagnosticMarkers(error);
+  return markers ? publicInputIdentityDiagnostics([markers]) : null;
+}
 function refusedBuildImports(value: unknown): string[] {
   if (!Array.isArray(value) || value.length > 20) return [];
   return OWNER_REFUSED_IMPORTS.filter((label) =>
@@ -189,6 +194,7 @@ export function publicOwnerProgress(input: unknown, root: string) {
         frames: [],
         refusedBuildImports: [],
         buildProof: null,
+        inputOnlyPublicIdentities: null,
       };
     assert.ok(
       ["passed", "failed", "pending", "skipped"].includes(suite.status),
@@ -250,6 +256,12 @@ export function publicOwnerProgress(input: unknown, root: string) {
       buildProof:
         status === "failed" && requiredCase === "failed"
           ? publicBuildProofDiagnostics(messages)
+          : null,
+      inputOnlyPublicIdentities:
+        status === "failed" &&
+        requiredCase === "failed" &&
+        publicBuildProofDiagnostics(messages)?.scope === "optional-pg"
+          ? publicInputIdentityDiagnostics(messages)
           : null,
       refusedBuildImports:
         status === "passed" ? [] : refusedBuildImports(diagnosticMessages),

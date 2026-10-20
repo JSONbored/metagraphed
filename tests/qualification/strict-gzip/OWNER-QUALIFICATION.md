@@ -216,6 +216,47 @@ duplicated marker chains. All original proof checks, runtime/service/network
 rules and acceptance gates are retained. Hosted qualification remains failed
 until an exact run supplies every required owner and baseline proof.
 
+## Public identities for refused input-only records
+
+Run [39489525233](https://github.com/JSONbored/metagraphed/actions/runs/39489525233)
+again passed the real queue-owner case and all 490 baseline assertions, with zero
+guard denials. Complete metadata scans found 33 additional input externals and
+zero additional output externals. Those 33 records are still unidentified.
+Pinned esbuild source shows that discarded TypeScript imports can appear as input
+externals, but the aggregate counts do not prove these records are type-only.
+The canonical dependency spelling stage has still not been reached.
+
+This diagnostic-only snapshot preserves the existing refusal. After that proof
+fails, a read-only adapter can identify at most 64 records against a SHA-256-pinned
+index of public repository sources. The index contains 3,231 mode 100644 paths
+from the exact base plus changed/new code blobs from the unchanged integration
+patch. Its conservative extension subset is .ts, .tsx, .js, .jsx, .mjs, .mts and
+.cts; .cjs and executable-mode files are deliberately excluded. Paths containing
+public route syntax such as $ or [.] remain exact indexed names.
+
+Both bounded original metadata scans must complete before any identification.
+Each emitted record requires an exact indexed source path, recomputed Git blob,
+matching metadata byte count, unique canonical input identity, fixed import kind
+and import index, and absence of its exact target from every original output
+import path. At most three bounded numeric quoted-text locations aid subsequent
+manual source inspection. These are literal occurrence locations, not syntax
+classification or proof of TypeScript erasure.
+
+Only the verified public path, pinned Git blob, import index/kind and numeric
+locations can be published. Target text/hashes, metadata keys, source bytes,
+dependency/private paths, URLs and arbitrary errors are never copied. Source
+reads require canonical containment, nonsymlink ancestors and bounded regular-file
+opens. Unindexed, unavailable (including missing/unreadable/oversized/aliased),
+changed, ambiguous, emitted or otherwise unsupported records remain explicit
+fixed refusal counts. Incomplete scans and overflow cannot claim complete
+identification. The publisher independently reconstructs each bounded report
+against the same immutable index and rejects duplicate or malformed markers.
+The original marked failure is retained only in a private weak reference map,
+so a rendered error-cause chain cannot duplicate the strict stage/count markers.
+No diagnostic result participates in acceptance or grants an import exception.
+Actual individual identities and combined owner qualification remain pending
+the exact reviewed hosted rerun.
+
 ## Third-party fixture notice
 
 The inert source strings in owner-pg-source-fixtures.json and
