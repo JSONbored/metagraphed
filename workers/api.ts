@@ -3450,6 +3450,7 @@ async function dispatchScheduled(
         },
       ),
       env,
+      ctx,
     );
     const body = asJsonObject(await response.json());
     return { ok: response.ok, status: response.status, body };
