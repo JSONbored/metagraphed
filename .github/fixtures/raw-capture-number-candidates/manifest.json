@@ -116,15 +116,15 @@
       },
       {
         "path": ".github/scripts/gate-raw-capture-resources.ts",
-        "bytes": 38427,
-        "sha256": "0be74622116cfc78042e27c0e9d3fcdec645e559787e54701272f4af073ca2fb",
-        "blob": "2434764cafac3096f3888eec891089afd316c8ef"
+        "bytes": 40355,
+        "sha256": "72fbebb9778f7c6d52eda5dedae0f591ce5c25cbb883dad3f6ea27c256d7557b",
+        "blob": "e89fd03ed735f6c3c5beff1dd8287af85aeb9c0e"
       },
       {
         "path": ".github/tsconfig.raw-capture-resources.json",
-        "bytes": 248,
-        "sha256": "c701c101c879f5174cb6b1b102ce6d2127f44e18657b652dc4ab6feca3f84388",
-        "blob": "f5916780e231749bf8fca2a02d6f65a6d6e4e052"
+        "bytes": 276,
+        "sha256": "3a9aa7b126ad245be111c6c9f422b8e9347bc00330d1dc6237be5969bc24b08d",
+        "blob": "6ce94d9ffd09c12e20c45e2f277efdb68e62bd61"
       }
     ]
   }

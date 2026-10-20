@@ -6,6 +6,7 @@
   "include": [
     "scripts/qualify-raw-capture-resources.ts",
     "scripts/gate-raw-capture-resources.ts",
-    "fixtures/raw-capture-resource-worker.ts"
+    "fixtures/raw-capture-resource-worker.ts",
+    "../workers/**/*.d.ts"
   ]
 }

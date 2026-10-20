@@ -25,7 +25,9 @@ async function main() {
     }[];
   }
   if (process.argv[2] === "selfcheck") {
-    console.log(JSON.stringify({ ...diagnosticControls(), ...helperTypeControls() }));
+    console.log(
+      JSON.stringify({ ...diagnosticControls(), ...helperTypeControls() }),
+    );
     return;
   }
   function actualUnhandledLine(clean: string) {
@@ -169,102 +171,297 @@ async function main() {
     signal: string | null;
     process_error: boolean;
   }
-  function projectHelperTypes(stdout: string, stderr: string, sources: HelperTypeSource[], native: HelperTypeOutcome) {
+  function projectHelperTypes(
+    stdout: string,
+    stderr: string,
+    sources: HelperTypeSource[],
+    native: HelperTypeOutcome,
+  ) {
     const maximum = 1024 * 1024;
-    let truncated = Buffer.byteLength(stdout) > maximum || Buffer.byteLength(stderr) > maximum;
-    const prefix = (value: string) => Buffer.from(value.slice(0, maximum)).subarray(0, maximum).toString("utf8");
+    let truncated =
+      Buffer.byteLength(stdout) > maximum ||
+      Buffer.byteLength(stderr) > maximum;
+    const prefix = (value: string) =>
+      Buffer.from(value.slice(0, maximum))
+        .subarray(0, maximum)
+        .toString("utf8");
     const lines = (prefix(stdout) + "\n" + prefix(stderr)).split(/\r?\n/);
     if (lines.length > 8192) truncated = true;
     const codeCounts: Record<string, number> = {};
-    const frames: { helper_id: number; sha256: string; code: string; line: number; column: number }[] = [];
-    let diagnostics = 0, unknownSources = 0, refusedLocations = 0, globalDiagnostics = 0, malformedDiagnostics = 0;
+    const frames: {
+      helper_id: number;
+      sha256: string;
+      code: string;
+      line: number;
+      column: number;
+    }[] = [];
+    let diagnostics = 0,
+      unknownSources = 0,
+      refusedLocations = 0,
+      globalDiagnostics = 0,
+      malformedDiagnostics = 0;
     const included = new Set<number>();
     for (const raw of lines.slice(0, 8192)) {
       const line = stripVTControlCharacters(raw);
       for (const source of sources)
-        if ([source.file, "./" + source.file, path.resolve(source.file)].includes(line.trim())) included.add(source.helper_id);
-      const located = /^(.*)\(([^,()]*),([^()]*)\): (?:error|warning) (TS[^\s:]{1,12}):/.exec(line);
+        if (
+          [source.file, "./" + source.file, path.resolve(source.file)].includes(
+            line.trim(),
+          )
+        )
+          included.add(source.helper_id);
+      const located =
+        /^(.*)\(([^,()]*),([^()]*)\): (?:error|warning) (TS[^\s:]{1,12}):/.exec(
+          line,
+        );
       const global = /^(?:error|warning) (TS[^\s:]{1,12}):/.exec(line);
       if (!located && !global) continue;
       diagnostics++;
       const code = located ? located[4] : global![1];
-      if (!/^TS\d{3,6}$/.test(code)) { malformedDiagnostics++; continue; }
-      if (code in codeCounts || Object.keys(codeCounts).length < 32) codeCounts[code] = (codeCounts[code] ?? 0) + 1;
-      else truncated = true;
-      if (!located) { globalDiagnostics++; continue; }
-      const source = sources.find((item) => [item.file, "./" + item.file, path.resolve(item.file)].includes(located[1]));
-      if (!source) { unknownSources++; continue; }
-      const at = Number(located[2]), column = Number(located[3]);
-      if (!/^\d+$/.test(located[2]) || !/^\d+$/.test(located[3]) ||
-          !Number.isSafeInteger(at) || at <= 0 || at > source.line_lengths.length ||
-          !Number.isSafeInteger(column) || column <= 0 || column > source.line_lengths[at - 1] + 1) {
-        refusedLocations++; continue;
+      if (!/^TS\d{3,6}$/.test(code)) {
+        malformedDiagnostics++;
+        continue;
       }
-      if (frames.some((item) => item.helper_id === source.helper_id && item.code === code && item.line === at && item.column === column)) continue;
-      if (frames.length === 64) { truncated = true; continue; }
-      frames.push({ helper_id: source.helper_id, sha256: source.sha256, code, line: at, column });
+      if (code in codeCounts || Object.keys(codeCounts).length < 32)
+        codeCounts[code] = (codeCounts[code] ?? 0) + 1;
+      else truncated = true;
+      if (!located) {
+        globalDiagnostics++;
+        continue;
+      }
+      const source = sources.find((item) =>
+        [item.file, "./" + item.file, path.resolve(item.file)].includes(
+          located[1],
+        ),
+      );
+      if (!source) {
+        unknownSources++;
+        continue;
+      }
+      const at = Number(located[2]),
+        column = Number(located[3]);
+      if (
+        !/^\d+$/.test(located[2]) ||
+        !/^\d+$/.test(located[3]) ||
+        !Number.isSafeInteger(at) ||
+        at <= 0 ||
+        at > source.line_lengths.length ||
+        !Number.isSafeInteger(column) ||
+        column <= 0 ||
+        column > source.line_lengths[at - 1] + 1
+      ) {
+        refusedLocations++;
+        continue;
+      }
+      if (
+        frames.some(
+          (item) =>
+            item.helper_id === source.helper_id &&
+            item.code === code &&
+            item.line === at &&
+            item.column === column,
+        )
+      )
+        continue;
+      if (frames.length === 64) {
+        truncated = true;
+        continue;
+      }
+      frames.push({
+        helper_id: source.helper_id,
+        sha256: source.sha256,
+        code,
+        line: at,
+        column,
+      });
     }
     return {
-      native_exit_code: native.exit_code, native_signal: native.signal, process_error: native.process_error,
-      native_success: native.exit_code === 0 && native.signal === null && !native.process_error && !truncated && diagnostics === 0,
-      diagnostic_count: diagnostics, code_counts: codeCounts, frames,
-      unknown_source_diagnostics: unknownSources, refused_locations: refusedLocations,
-      global_diagnostics: globalDiagnostics, malformed_diagnostics: malformedDiagnostics,
-      projection_truncated: truncated, included_helper_ids: [...included].sort((a,b) => a-b),
-      helper_sources: sources.map((source) => ({helper_id:source.helper_id,sha256:source.sha256,bytes:source.bytes,lines:source.line_lengths.length})),
+      native_exit_code: native.exit_code,
+      native_signal: native.signal,
+      process_error: native.process_error,
+      native_success:
+        native.exit_code === 0 &&
+        native.signal === null &&
+        !native.process_error &&
+        !truncated &&
+        diagnostics === 0,
+      diagnostic_count: diagnostics,
+      code_counts: codeCounts,
+      frames,
+      unknown_source_diagnostics: unknownSources,
+      refused_locations: refusedLocations,
+      global_diagnostics: globalDiagnostics,
+      malformed_diagnostics: malformedDiagnostics,
+      projection_truncated: truncated,
+      included_helper_ids: [...included].sort((a, b) => a - b),
+      helper_sources: sources.map((source) => ({
+        helper_id: source.helper_id,
+        sha256: source.sha256,
+        bytes: source.bytes,
+        lines: source.line_lengths.length,
+      })),
       raw_output_retained: false,
     };
   }
   function helperTypeControls() {
-    const sources = helperTypeFiles().map((file, helper_id) => ({helper_id,file,sha256:"0".repeat(64),bytes:12,line_lengths:["a😀b","second"].map((line) => line.length)}));
-    const good: HelperTypeOutcome = {exit_code:0,signal:null,process_error:false};
-    const one = (text: string, native = good) => projectHelperTypes(text,"",sources,native);
+    const sources = helperTypeFiles().map((file, helper_id) => ({
+      helper_id,
+      file,
+      sha256: "0".repeat(64),
+      bytes: 12,
+      line_lengths: ["a😀b", "second"].map((line) => line.length),
+    }));
+    const good: HelperTypeOutcome = {
+      exit_code: 0,
+      signal: null,
+      process_error: false,
+    };
+    const one = (text: string, native = good) =>
+      projectHelperTypes(text, "", sources, native);
     let checked = 0;
-    for (const file of [sources[0].file,"./"+sources[0].file,path.resolve(sources[0].file)]) {
-      const value = one(file+"(2,7): error TS2345: withheld message\n"+file);
-      assert.deepEqual(value.frames,[{helper_id:0,sha256:sources[0].sha256,code:"TS2345",line:2,column:7}]);
-      assert.equal(value.diagnostic_count,1);assert.equal(value.unknown_source_diagnostics,0);assert.deepEqual(value.included_helper_ids,[0]);checked++;
+    for (const file of [
+      sources[0].file,
+      "./" + sources[0].file,
+      path.resolve(sources[0].file),
+    ]) {
+      const value = one(
+        file + "(2,7): error TS2345: withheld message\n" + file,
+      );
+      assert.deepEqual(value.frames, [
+        {
+          helper_id: 0,
+          sha256: sources[0].sha256,
+          code: "TS2345",
+          line: 2,
+          column: 7,
+        },
+      ]);
+      assert.equal(value.diagnostic_count, 1);
+      assert.equal(value.unknown_source_diagnostics, 0);
+      assert.deepEqual(value.included_helper_ids, [0]);
+      checked++;
     }
     for (const text of [
-      sources[0].file+"(0,1): error TS2345: withheld",
-      sources[0].file+"(3,1): error TS2345: withheld",
-      sources[0].file+"(1,0): error TS2345: withheld",
-      sources[0].file+"(1,7): error TS2345: withheld",
-      sources[0].file+"(9007199254740992,1): error TS2345: withheld",
-    ]) {const value=one(text);assert.equal(value.frames.length,0);assert.equal(value.refused_locations,1);checked++;}
-    const unknown=one("other/private-file.ts(1,1): error TS2304: withheld");
-    assert.equal(unknown.unknown_source_diagnostics,1);assert.deepEqual(unknown.frames,[]);checked++;
-    const global=one("error TS18003: withheld path and message");
-    assert.equal(global.global_diagnostics,1);assert.deepEqual(global.frames,[]);checked++;
-    const ansi=one("\u001b[31m"+sources[2].file+"(1,1): error TS2322: withheld\u001b[0m");
-    assert.equal(ansi.frames[0].helper_id,2);checked++;
-    const repeated=one((sources[0].file+"(1,1): error TS2345: withheld\n").repeat(3));
-    assert.equal(repeated.frames.length,1);assert.equal(repeated.code_counts.TS2345,3);checked++;
-    for (const text of ["TS2345 is data","stdout | named error TS1234: data","src/else.ts(1,1): message TS2345: data"]) {
-      assert.equal(one(text).diagnostic_count,0);checked++;
+      sources[0].file + "(0,1): error TS2345: withheld",
+      sources[0].file + "(3,1): error TS2345: withheld",
+      sources[0].file + "(1,0): error TS2345: withheld",
+      sources[0].file + "(1,7): error TS2345: withheld",
+      sources[0].file + "(9007199254740992,1): error TS2345: withheld",
+    ]) {
+      const value = one(text);
+      assert.equal(value.frames.length, 0);
+      assert.equal(value.refused_locations, 1);
+      checked++;
     }
-    const malformed=one("error TS12: withheld");assert.equal(malformed.malformed_diagnostics,1);assert.equal(malformed.native_success,false);checked++;
+    const unknown = one("other/private-file.ts(1,1): error TS2304: withheld");
+    assert.equal(unknown.unknown_source_diagnostics, 1);
+    assert.deepEqual(unknown.frames, []);
+    checked++;
+    const global = one("error TS18003: withheld path and message");
+    assert.equal(global.global_diagnostics, 1);
+    assert.deepEqual(global.frames, []);
+    checked++;
+    const ansi = one(
+      "\u001b[31m" + sources[2].file + "(1,1): error TS2322: withheld\u001b[0m",
+    );
+    assert.equal(ansi.frames[0].helper_id, 2);
+    checked++;
+    const repeated = one(
+      (sources[0].file + "(1,1): error TS2345: withheld\n").repeat(3),
+    );
+    assert.equal(repeated.frames.length, 1);
+    assert.equal(repeated.code_counts.TS2345, 3);
+    checked++;
+    for (const text of [
+      "TS2345 is data",
+      "stdout | named error TS1234: data",
+      "src/else.ts(1,1): message TS2345: data",
+    ]) {
+      assert.equal(one(text).diagnostic_count, 0);
+      checked++;
+    }
+    const malformed = one("error TS12: withheld");
+    assert.equal(malformed.malformed_diagnostics, 1);
+    assert.equal(malformed.native_success, false);
+    checked++;
     for (const native of [
-      {exit_code:2,signal:null,process_error:false},
-      {exit_code:0,signal:"SIGTERM",process_error:false},
-      {exit_code:0,signal:null,process_error:true},
-      {exit_code:null,signal:null,process_error:false},
-    ]) {const value=one("",native);assert.equal(value.native_success,false);assert.equal(value.native_exit_code,native.exit_code);assert.equal(value.native_signal,native.signal);checked++;}
-    assert.equal(one("").native_success,true);checked++;
-    assert.equal(one(sources[0].file+"(1,1): error TS2345: withheld").native_success,false);checked++;
-    assert.equal(one(sources[0].file+"(1,5): error TS2345: withheld").frames.length,1);
-    assert.equal(one(sources[0].file+"(1,6): error TS2345: withheld").refused_locations,1);checked++;
-    assert.equal(one("x".repeat(1024*1024+1)).projection_truncated,true);checked++;
-    assert.equal(one("\n".repeat(8193)).projection_truncated,true);checked++;
-    const codes=one(Array.from({length:33},(_,index)=>"error TS"+(1000+index)+": withheld").join("\n"));
-    assert.equal(Object.keys(codes.code_counts).length,32);assert.equal(codes.projection_truncated,true);checked++;
-    assert.equal(JSON.stringify(unknown).includes("private-file"),false);checked++;
-    const crowdedSources=sources.map((source)=>({...source,line_lengths:[100,100]}));
-    const crowded=projectHelperTypes(Array.from({length:65},(_,index)=>sources[index%3].file+"(1,"+(1+Math.floor(index/3))+"): error TS2345: withheld").join("\n"),"",crowdedSources,good);
-    assert.equal(crowded.frames.length,64);assert.equal(crowded.projection_truncated,true);checked++;
-    assert.equal(projectHelperTypes("",sources[0].file+"(1,1): error TS2345: withheld",sources,good).frames[0].helper_id,0);checked++;
-    assert.equal(checked,29);
-    return {helper_type_controls_passed:checked,helper_type_sources:sources.length};
+      { exit_code: 2, signal: null, process_error: false },
+      { exit_code: 0, signal: "SIGTERM", process_error: false },
+      { exit_code: 0, signal: null, process_error: true },
+      { exit_code: null, signal: null, process_error: false },
+    ]) {
+      const value = one("", native);
+      assert.equal(value.native_success, false);
+      assert.equal(value.native_exit_code, native.exit_code);
+      assert.equal(value.native_signal, native.signal);
+      checked++;
+    }
+    assert.equal(one("").native_success, true);
+    checked++;
+    assert.equal(
+      one(sources[0].file + "(1,1): error TS2345: withheld").native_success,
+      false,
+    );
+    checked++;
+    assert.equal(
+      one(sources[0].file + "(1,5): error TS2345: withheld").frames.length,
+      1,
+    );
+    assert.equal(
+      one(sources[0].file + "(1,6): error TS2345: withheld").refused_locations,
+      1,
+    );
+    checked++;
+    assert.equal(one("x".repeat(1024 * 1024 + 1)).projection_truncated, true);
+    checked++;
+    assert.equal(one("\n".repeat(8193)).projection_truncated, true);
+    checked++;
+    const codes = one(
+      Array.from(
+        { length: 33 },
+        (_, index) => "error TS" + (1000 + index) + ": withheld",
+      ).join("\n"),
+    );
+    assert.equal(Object.keys(codes.code_counts).length, 32);
+    assert.equal(codes.projection_truncated, true);
+    checked++;
+    assert.equal(JSON.stringify(unknown).includes("private-file"), false);
+    checked++;
+    const crowdedSources = sources.map((source) => ({
+      ...source,
+      line_lengths: [100, 100],
+    }));
+    const crowded = projectHelperTypes(
+      Array.from(
+        { length: 65 },
+        (_, index) =>
+          sources[index % 3].file +
+          "(1," +
+          (1 + Math.floor(index / 3)) +
+          "): error TS2345: withheld",
+      ).join("\n"),
+      "",
+      crowdedSources,
+      good,
+    );
+    assert.equal(crowded.frames.length, 64);
+    assert.equal(crowded.projection_truncated, true);
+    checked++;
+    assert.equal(
+      projectHelperTypes(
+        "",
+        sources[0].file + "(1,1): error TS2345: withheld",
+        sources,
+        good,
+      ).frames[0].helper_id,
+      0,
+    );
+    checked++;
+    assert.equal(checked, 29);
+    return {
+      helper_type_controls_passed: checked,
+      helper_type_sources: sources.length,
+    };
   }
 
   function integer(value: string): number {
@@ -577,21 +774,38 @@ async function main() {
     ignored_file: boolean;
   }[] = [];
   let helperTypeControlsPassed = 0;
-  let helperTypeDiagnostics: ReturnType<typeof projectHelperTypes> | null = null;
+  let helperTypeDiagnostics: ReturnType<typeof projectHelperTypes> | null =
+    null;
   const native = (
     step: string,
     command: string,
     args: string[],
     maximumSeconds = 180,
   ) => {
-    const helperTypeSources = step === "helper_types" ? helperTypeFiles().map((file, helper_id) => {
-      const bytes = read(file);
-      return {helper_id,file,sha256:digest(bytes),bytes:bytes.length,line_lengths:bytes.toString("utf8").split(/\r?\n/).map((line)=>line.length)};
-    }) : null;
+    const helperTypeSources =
+      step === "helper_types"
+        ? helperTypeFiles().map((file, helper_id) => {
+            const bytes = read(file);
+            return {
+              helper_id,
+              file,
+              sha256: digest(bytes),
+              bytes: bytes.length,
+              line_lengths: bytes
+                .toString("utf8")
+                .split(/\r?\n/)
+                .map((line) => line.length),
+            };
+          })
+        : null;
     if (helperTypeSources) {
-      helperTypeControlsPassed = helperTypeControls().helper_type_controls_passed;
+      helperTypeControlsPassed =
+        helperTypeControls().helper_type_controls_passed;
       assert.equal(helperTypeControlsPassed, 29);
-      assert.deepEqual(helperTypeSources.map((source) => source.file), helperFiles.filter((file) => file.endsWith(".ts")));
+      assert.deepEqual(
+        helperTypeSources.map((source) => source.file),
+        helperFiles.filter((file) => file.endsWith(".ts")),
+      );
     }
     const result = spawnSync(command, args, {
       encoding: "utf8",
@@ -668,8 +882,18 @@ async function main() {
       assert.equal(seenHelpers.size, 3);
     }
     if (helperTypeSources) {
-      helperTypeDiagnostics = projectHelperTypes(result.stdout ?? "", result.stderr ?? "", helperTypeSources, {exit_code:result.status,signal:result.signal,process_error:result.error !== undefined});
-      for (const source of helperTypeSources) assert.equal(digest(read(source.file)), source.sha256);
+      helperTypeDiagnostics = projectHelperTypes(
+        result.stdout ?? "",
+        result.stderr ?? "",
+        helperTypeSources,
+        {
+          exit_code: result.status,
+          signal: result.signal,
+          process_error: result.error !== undefined,
+        },
+      );
+      for (const source of helperTypeSources)
+        assert.equal(digest(read(source.file)), source.sha256);
     }
     assert.equal(result.error, undefined);
     assert.equal(result.signal, null);
