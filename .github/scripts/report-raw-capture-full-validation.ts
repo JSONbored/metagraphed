@@ -35,7 +35,11 @@ async function main() {
   ];
   if (process.argv[2] === "selfcheck") {
     console.log(
-      JSON.stringify({ ...diagnosticControls(), ...receiptControls(), ...branchHitControls() }),
+      JSON.stringify({
+        ...diagnosticControls(),
+        ...receiptControls(),
+        ...branchHitControls(),
+      }),
     );
     return;
   }
@@ -446,22 +450,55 @@ async function main() {
   function branchHitControls() {
     let controls = 0;
     const accepted: [string, number][] = [
-      ["-", 0], ["0", 0], ["1", 1], ["-1", -1], ["-42", -42],
+      ["-", 0],
+      ["0", 0],
+      ["1", 1],
+      ["-1", -1],
+      ["-42", -42],
       ["9007199254740991", Number.MAX_SAFE_INTEGER],
       ["-9007199254740991", Number.MIN_SAFE_INTEGER],
     ];
     for (const [value, expected] of accepted) {
-      assert.equal(branchHits(value), expected); controls++;
+      assert.equal(branchHits(value), expected);
+      controls++;
     }
-    for (const value of ["", "1.5", "1e2", " 1", "1 ", "+1", "--1", "NaN", "Infinity", "9007199254740992", "-9007199254740992"]) {
-      assert.throws(() => branchHits(value)); controls++;
+    for (const value of [
+      "",
+      "1.5",
+      "1e2",
+      " 1",
+      "1 ",
+      "+1",
+      "--1",
+      "NaN",
+      "Infinity",
+      "9007199254740992",
+      "-9007199254740992",
+    ]) {
+      assert.throws(() => branchHits(value));
+      controls++;
     }
-    assert.throws(() => integer("-1")); controls++;
-    const fixture = new Map([["src/raw-capture-d1.ts", {
-      lines: new Map([[1, 1]]), branches: new Map([["1,0,0", branchHits("-42")], ["1,0,1", branchHits("0")], ["1,0,2", branchHits("1")]]),
-    }]]);
+    assert.throws(() => integer("-1"));
+    controls++;
+    const fixture = new Map([
+      [
+        "src/raw-capture-d1.ts",
+        {
+          lines: new Map([[1, 1]]),
+          branches: new Map([
+            ["1,0,0", branchHits("-42")],
+            ["1,0,1", branchHits("0")],
+            ["1,0,2", branchHits("1")],
+          ]),
+        },
+      ],
+    ]);
     const normalized = normalizeLcov(fixture);
-    assert.equal(normalized, "SF:src/raw-capture-d1.ts\nDA:1,1\nBRDA:1,0,0,-42\nBRDA:1,0,1,0\nBRDA:1,0,2,1\nLF:1\nLH:1\nBRF:3\nBRH:1\nend_of_record\n"); controls++;
+    assert.equal(
+      normalized,
+      "SF:src/raw-capture-d1.ts\nDA:1,1\nBRDA:1,0,0,-42\nBRDA:1,0,1,0\nBRDA:1,0,2,1\nLF:1\nLH:1\nBRF:3\nBRH:1\nend_of_record\n",
+    );
+    controls++;
     assert.equal(controls, 20);
     return { lcov_branch_controls_passed: controls };
   }
