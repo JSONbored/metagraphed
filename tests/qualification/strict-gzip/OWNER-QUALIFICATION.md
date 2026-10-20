@@ -4,8 +4,11 @@ Status: the first reviewed snapshot was published to draft PR #12862 at
 `ca94ffb327199b1e3ba90ad9c67b4b8ab5bd6052`. Hosted run
 [39477904356](https://github.com/JSONbored/metagraphed/actions/runs/39477904356)
 started the isolated PostgreSQL service and native tests but failed owner
-qualification. All 490 baseline assertions passed. The diagnostics update has
-passed local pure/static checks and awaits its reviewed hosted rerun.
+qualification. All 490 baseline assertions passed. The diagnostics rerun
+[39480601007](https://github.com/JSONbored/metagraphed/actions/runs/39480601007)
+also failed owner qualification while preserving all 490 baseline passes. It
+located a rejected raw build import and an incorrect inspector URL assumption.
+The current local correction awaits independent review and a hosted rerun.
 
 ## Immutable baseline and test split
 
@@ -128,3 +131,11 @@ and up to five numeric source positions per owner (ten across both owners).
 Paths are represented by a fixed allowlist index. Titles, errors, stacks, source
 text and arbitrary paths are never copied. These diagnostics cannot satisfy or
 alter any acceptance validator; missing evidence still prevents qualification.
+
+Pinned Miniflare returns a websocket inspector origin. The observer now validates
+that exact `ws://127.0.0.1:<port>/` shape and derives the HTTP `/json/list` endpoint
+on the same numeric-loopback port. Alternate hosts, schemes, credentials, paths,
+queries and fragments remain refused. The raw build still accepts only Node and
+Cloudflare builtin external imports; new fixed refusal labels distinguish three
+known optional package names from `other` without publishing a raw target. No
+additional module is permitted on the strength of an inferred failure cause.

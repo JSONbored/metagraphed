@@ -3,6 +3,39 @@
 import assert from "node:assert/strict";
 import type { ExpectedOwnerIdentity } from "./owner-build-evidence.ts";
 
+// Pinned Miniflare exposes a websocket origin, while discovery is local HTTP.
+// Accept no alternate scheme, host, credentials, query, fragment or base path.
+export function ownerInspectorListingURL(inspector: URL): URL {
+  assert.equal(inspector.protocol, "ws:");
+  assert.equal(inspector.hostname, "127.0.0.1");
+  assert.equal(inspector.pathname, "/");
+  assert.equal(
+    inspector.username + inspector.password + inspector.search + inspector.hash,
+    "",
+  );
+  assert.match(inspector.port, /^[1-9][0-9]{0,4}$/);
+  assert.ok(Number(inspector.port) <= 65535);
+  return new URL(`http://127.0.0.1:${inspector.port}/json/list`);
+}
+
+export const OWNER_REFUSED_IMPORTS = Object.freeze([
+  "pg-native",
+  "bufferutil",
+  "utf-8-validate",
+  "other",
+] as const);
+/** Identical allow decision, with fixed refusal labels instead of raw targets. */
+export function assertOwnerExternalImport(value: unknown): void {
+  if (typeof value === "string" && /^(?:node:|cloudflare:)/.test(value)) return;
+  const label =
+    value === "pg-native" ||
+    value === "bufferutil" ||
+    value === "utf-8-validate"
+      ? value
+      : "other";
+  throw new Error(`[owner-import-refused:${label}]`);
+}
+
 export const OWNER_SCENARIOS = {
   raw: {
     worker: "qualification-raw-owner",

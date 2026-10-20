@@ -1,3 +1,4 @@
+import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
 // Synthetic inputs and host-side verification for the unwrapped API owner.
 // Nothing here runs captureTick, changes production source, or forwards D1.
 import assert from "node:assert/strict";
@@ -191,7 +192,7 @@ export async function buildRawOwner(root: string, output: string) {
   for (const [file, value] of outputs) {
     for (const dependency of value.imports) {
       if (dependency.external) {
-        assert.match(dependency.path, /^(?:node:|cloudflare:)/);
+        assertOwnerExternalImport(dependency.path);
         continue;
       }
       const candidates = [

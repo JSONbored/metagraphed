@@ -1,3 +1,4 @@
+import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
 import { OWNER_PG_SOURCES, assertOwnerPgSource } from "./owner-pg-identity.ts";
 // Private build evidence is never uploaded. Only validated hashes/counts escape.
 import assert from "node:assert/strict";
@@ -583,7 +584,7 @@ async function validateBuildAssociation(
     assert.ok(Array.isArray(info.imports));
     for (const dependency of info.imports) {
       if (dependency.external) {
-        assert.match(dependency.path, /^(?:node:|cloudflare:)/);
+        assertOwnerExternalImport(dependency.path);
         continue;
       }
       const candidates = [

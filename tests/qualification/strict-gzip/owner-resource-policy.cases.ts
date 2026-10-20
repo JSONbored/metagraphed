@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   publicOwnerProof,
+  ownerInspectorListingURL,
+  assertOwnerExternalImport,
   OWNER_SCENARIOS,
   type OwnerProof,
   type Owner,
@@ -159,3 +161,53 @@ test("public output drops arbitrary titles paths URLs and query data", () => {
       !text.includes("ab123"),
   );
 });
+
+test("derives only local HTTP discovery from the pinned websocket inspector origin", () => {
+  const input = new URL("ws://127.0.0.1:41873/");
+  assert.equal(
+    ownerInspectorListingURL(input).href,
+    "http://127.0.0.1:41873/json/list",
+  );
+  assert.equal(input.href, "ws://127.0.0.1:41873/");
+});
+for (const value of [
+  "http://127.0.0.1:41873/",
+  "wss://127.0.0.1:41873/",
+  "ws://localhost:41873/",
+  "ws://0.0.0.0:41873/",
+  "ws://203.0.113.1:41873/",
+  "ws://[::1]:41873/",
+  "ws://127.0.0.1/",
+  "ws://127.0.0.1:0/",
+  "ws://127.0.0.1:41873/worker",
+  "ws://user@127.0.0.1:41873/",
+  "ws://127.0.0.1:41873/?secret",
+  "ws://127.0.0.1:41873/#secret",
+])
+  test("rejects an unreviewed inspector origin shape", () => {
+    assert.throws(() => ownerInspectorListingURL(new URL(value)));
+  });
+for (const value of ["node:fs", "node:stream/web", "cloudflare:sockets"])
+  test("retains the existing builtin-only external-import allowance", () =>
+    assertOwnerExternalImport(value));
+for (const [value, label] of [
+  ["pg-native", "pg-native"],
+  ["bufferutil", "bufferutil"],
+  ["utf-8-validate", "utf-8-validate"],
+  ["https://secret.invalid/token", "other"],
+  ["./module.wasm", "other"],
+  ["arbitrary-package", "other"],
+  [
+    {
+      toString() {
+        throw new Error("never inspect");
+      },
+    },
+    "other",
+  ],
+] as const)
+  test("refuses other imports with only fixed diagnostics", () => {
+    assert.throws(() => assertOwnerExternalImport(value), {
+      message: `[owner-import-refused:${label}]`,
+    });
+  });

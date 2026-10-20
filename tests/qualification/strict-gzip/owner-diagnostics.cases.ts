@@ -124,3 +124,35 @@ test("over-budget message array emits no frames", () => {
   );
   assert.deepEqual(publicOwnerProgress(v, root)[0]!.frames, []);
 });
+
+test("publishes only unique fixed refused import classifications", () => {
+  const v = fixture();
+  v.testResults[0]!.assertionResults[0]!.failureMessages = [
+    `${secret} [owner-import-refused:pg-native] [owner-import-refused:pg-native]`,
+    "[owner-import-refused:bufferutil] [owner-import-refused:utf-8-validate] [owner-import-refused:other]",
+  ];
+  const result = publicOwnerProgress(v, root);
+  assert.deepEqual(result[0]!.refusedBuildImports, [
+    "pg-native",
+    "bufferutil",
+    "utf-8-validate",
+    "other",
+  ]);
+  assert.ok(!JSON.stringify(result).includes(secret));
+});
+test("unknown or oversized refused import diagnostics cannot escape", () => {
+  const v = fixture();
+  v.testResults[0]!.assertionResults[0]!.failureMessages = [
+    `[owner-import-refused:${secret}]`,
+    "x".repeat(65537) + "[owner-import-refused:pg-native]",
+  ];
+  assert.deepEqual(publicOwnerProgress(v, root)[0]!.refusedBuildImports, []);
+});
+test("passed owner never publishes stale refused import labels", () => {
+  const v = fixture(),
+    s = v.testResults[0]!;
+  s.status = "passed";
+  s.assertionResults[0]!.status = "passed";
+  s.assertionResults[0]!.failureMessages = ["[owner-import-refused:pg-native]"];
+  assert.deepEqual(publicOwnerProgress(v, root)[0]!.refusedBuildImports, []);
+});

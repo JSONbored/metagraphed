@@ -1,3 +1,4 @@
+import { OWNER_REFUSED_IMPORTS } from "./owner-resource-policy.ts";
 // Optional bounded diagnostics only. Never participates in acceptance decisions.
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -15,6 +16,17 @@ export const OWNER_FRAME_PATHS = [
   "tests/qualification/strict-gzip/owner-pg-identity.ts",
   "tests/qualification/strict-gzip/owner-deadline.ts",
 ] as const;
+function refusedBuildImports(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 20) return [];
+  return OWNER_REFUSED_IMPORTS.filter((label) =>
+    value.some(
+      (message) =>
+        typeof message === "string" &&
+        message.length <= 65536 &&
+        message.includes(`[owner-import-refused:${label}]`),
+    ),
+  );
+}
 function frames(value: unknown, root: string) {
   const result: { fileIndex: number; line: number; column: number }[] = [];
   if (!Array.isArray(value) || value.length > 20) return result;
@@ -84,6 +96,7 @@ export function publicOwnerProgress(input: unknown, root: string) {
         skipped: 0,
         requiredCase: "missing",
         frames: [],
+        refusedBuildImports: [],
       };
     assert.ok(
       ["passed", "failed", "pending", "skipped"].includes(suite.status),
@@ -142,6 +155,8 @@ export function publicOwnerProgress(input: unknown, root: string) {
       skipped,
       requiredCase,
       frames: status === "passed" ? [] : frames(diagnosticMessages, root),
+      refusedBuildImports:
+        status === "passed" ? [] : refusedBuildImports(diagnosticMessages),
     };
   });
 }

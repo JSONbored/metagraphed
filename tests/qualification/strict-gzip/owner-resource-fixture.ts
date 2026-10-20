@@ -36,6 +36,7 @@ import {
   type Phase,
   publicOwnerProof,
   OWNER_SCENARIOS,
+  ownerInspectorListingURL,
 } from "./owner-resource-policy.ts";
 
 export const OWNER_RECEIPT_FILES = {
@@ -236,16 +237,10 @@ export async function observeOwner(
   assert.ok(Object.values(OWNER_SCENARIOS).some((row) => row.worker === name));
   const processIdentity = actualRuntime();
   const inspector = await runtime.getInspectorURL();
-  assert.equal(inspector.protocol, "http:");
-  assert.equal(inspector.hostname, "127.0.0.1");
-  assert.equal(
-    inspector.username + inspector.password + inspector.search + inspector.hash,
-    "",
-  );
-  assert.ok(Number(inspector.port) > 0);
+  const listingURL = ownerInspectorListingURL(inspector);
   const listing = JSON.parse(
     await boundedText(
-      await fetch(new URL("/json/list", inspector), {
+      await fetch(listingURL, {
         redirect: "error",
         signal: AbortSignal.timeout(3000),
       }),

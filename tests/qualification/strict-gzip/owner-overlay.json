@@ -24,8 +24,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
-      "sha256": "5f59c6b62ef1904d46e9b342a749e3d6f6b9caab510d6064714013ecac97d919",
-      "bytes": 22707
+      "sha256": "7008e67d0133713d4f252db166a778cc0a8558c050cbdd4113566bc3d06c3067",
+      "bytes": 22766
     },
     {
       "path": "tests/qualification/strict-gzip/owner-deadline.ts",
@@ -34,13 +34,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-diagnostics.cases.ts",
-      "sha256": "42cbfc780982498ad226f37c6443eb5a04076bbe6d2629a57d373e7f82baf8ee",
-      "bytes": 4805
+      "sha256": "65c29ccb152d69b0c891afde2b546b1f8e65f05444d7672f258cb369a38087ea",
+      "bytes": 6098
     },
     {
       "path": "tests/qualification/strict-gzip/owner-diagnostics.ts",
-      "sha256": "492a81148742c7ce4335905ef190247f208db69496dd5a21eb58bd3876fc30c2",
-      "bytes": 4941
+      "sha256": "b79fc1dd814f42c0e5672e258253aad0dc9ca7ef1188e64f5f19e1f347a3fe57",
+      "bytes": 5496
     },
     {
       "path": "tests/qualification/strict-gzip/owner-evidence.ts",
@@ -94,18 +94,18 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-resource-fixture.ts",
-      "sha256": "b0860b3fb195bde9c29dff2fcdc29c1d3ecb730a400950f2f27cb4471e6e8cf8",
-      "bytes": 11764
+      "sha256": "dcc86bdd9c609eac6ee1e094c8bac07a665c5bba6f2ce40f7e494c0e0c2683e9",
+      "bytes": 11583
     },
     {
       "path": "tests/qualification/strict-gzip/owner-resource-policy.cases.ts",
-      "sha256": "47cff4d822979f5f76bdf1ae5ef6abdf67f50730b73d52a4d7ca4be126a91f8a",
-      "bytes": 6644
+      "sha256": "1205ff6e1e515eb9899bc3274f32875197b25d468db5b0f4c457fcc901e64439",
+      "bytes": 8244
     },
     {
       "path": "tests/qualification/strict-gzip/owner-resource-policy.ts",
-      "sha256": "4ba4c28c84fcd08e0f7cde4834251c7523f5a78672f60757f37f2c1a070a2f54",
-      "bytes": 8794
+      "sha256": "22e9d95443d84ba57c7e33dc3758b7435942a3686df7fff87281cc7c0859ebb5",
+      "bytes": 9980
     },
     {
       "path": "tests/qualification/strict-gzip/owner-service.cases.ts",
@@ -159,8 +159,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-fixture.ts",
-      "sha256": "bc16be1ca3562866ad4dca47a174da26b26c0aedb8e5f99aee9b23799acc2f3b",
-      "bytes": 26031
+      "sha256": "fd2883975a7b2a54aa44aea4533d18b34357aec9e57b23e1dc218bff30e94e7d",
+      "bytes": 26090
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-resource.test.ts",
