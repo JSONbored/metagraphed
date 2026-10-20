@@ -1,0 +1,348 @@
+import assert from "node:assert/strict";
+import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { afterAll, beforeAll, beforeEach, test } from "vitest";
+import { Miniflare } from "miniflare";
+import { createChainDetailD1Stage, discardChainDetailD1Stage } from "../src/chain-detail-d1-staging.ts";
+import { captureUpsertStatements } from "../src/capture-family-d1.ts";
+import { CHAIN_DETAIL_MIRROR_PLANS, type ChainDetailMirrorInput } from "../src/chain-detail-neon-write.ts";
+import { storeChainDetailPayloads, restoreChainDetailPayloads } from "../src/chain-detail-payloads.ts";
+import { createD1Store, type D1StoreBinding } from "../src/d1-store.ts";
+import { historySha256 } from "../src/history-sha256.ts";
+import { writeNativePayload } from "../src/chain-detail-native-payloads.ts";
+import { createChainDetailPayloadSpool } from "../src/chain-detail-payload-spool.ts";
+import type { ProducerStatement, ProducerStore } from "../src/producer-store.ts";
+
+const runtime = new Miniflare({ modules: true, script: "export default {fetch(){return new Response('test')}}", compatibilityDate: "2026-06-06", d1Databases: ["DB"], r2Buckets: ["R2"] });
+let db: D1Database;
+const stamp = 1790000000000;
+const block = 6100001;
+const business = CHAIN_DETAIL_MIRROR_PLANS.map((plan) => plan.table);
+const privateTables = ["chain_detail_ingest_stage_apply", "chain_detail_ingest_stage_fragments", "chain_detail_ingest_stage_sessions", "chain_detail_ingest_stage_checks"];
+type Entry = { family: number; statement: ProducerStatement };
+
+function input(value: string | null = null, number = block): ChainDetailMirrorInput {
+  return {
+    blockRows: [{ block_number: number, block_hash: "0x" + "ab".repeat(32), spec_version: 441, extrinsic_count: 1, chain_event_count: 1, account_event_count: 1, observed_at: stamp, synced_at: stamp, native_transfer_tao: "0", stake_flow_tao: "0", economic_activity_tao: "0", fee_tao: "0", tip_tao: "0", issuance_tao: "0", subnet_ids: "[]", economics_complete: 1 }],
+    extrinsicRows: [{ block_number: number, extrinsic_index: 0, extrinsic_hash: "0x" + "cd".repeat(32), signer: null, call_module: "System", call_function: "remark", success: null, fee_tao: null, tip_tao: null, call_args: value, observed_at: stamp }],
+    chainEventRows: [{ block_number: number, event_index: 0, pallet: "System", method: "Remarked", args: value, phase: "ApplyExtrinsic", extrinsic_index: 0, observed_at: stamp }],
+    accountEventRows: [{ block_number: number, event_index: 0, extrinsic_index: 0, event_kind: "Transfer", hotkey: "h", coldkey: "c", netuid: null, uid: null, amount_tao: "1", alpha_amount: null, observed_at: stamp }],
+  };
+}
+async function entries(rows: ChainDetailMirrorInput): Promise<Entry[]> {
+  const families = [rows.extrinsicRows, rows.chainEventRows, rows.accountEventRows, rows.blockRows];
+  const chunks: Entry[] = [], captures: Entry[] = [];
+  for (const [family, plan] of CHAIN_DETAIL_MIRROR_PLANS.entries()) {
+    const pending: ProducerStatement[] = [];
+    const prepared = await storeChainDetailPayloads({ D1_STATE: db }, families[family]!, pending);
+    chunks.push(...pending.map((statement) => ({ family, statement })));
+    if (prepared.length) captures.push(...captureUpsertStatements(plan, prepared).map((statement) => ({ family, statement })));
+  }
+  return [...chunks, ...captures];
+}
+async function prepare(plan: Iterable<Entry>, store: ProducerStore = createD1Store(db)) {
+  const stage = await createChainDetailD1Stage(db, store, stamp);
+  for (const row of plan) await stage.append(row.family, row.statement);
+  await stage.seal();
+  return stage;
+}
+async function count(table: string) { return db.prepare(`SELECT COUNT(*) n FROM ${table}`).first<number>("n"); }
+async function snapshot() {
+  const out: Record<string, unknown[]> = {};
+  for (const table of [...business, "chain_detail_payload_chunks"])
+    out[table] = (await db.prepare(`SELECT * FROM ${table} ORDER BY ${table === "chain_detail_payload_chunks" ? "sha256,part" : CHAIN_DETAIL_MIRROR_PLANS.find((plan) => plan.table === table)!.conflict.join(",")}`).all()).results;
+  return out;
+}
+async function clearBusiness() {
+  for (const table of [...business, "chain_detail_payload_chunks", "archive_export_revisions"])
+    await db.prepare(`DELETE FROM ${table}`).run();
+}
+beforeAll(async () => {
+  db = await runtime.getD1Database("DB");
+  for (const file of ["./fixtures/chain-detail-d1-canonical.sql", "./fixtures/chain-detail-d1-staging.sql"])
+    for (const sql of readFileSync(new URL(file, import.meta.url), "utf8").split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+});
+afterAll(async () => runtime.dispose());
+beforeEach(async () => {
+  for (const table of privateTables) await db.prepare(`DELETE FROM ${table}`).run();
+  await clearBusiness();
+});
+
+test("staged execution equals the original mixed-family plan, nullable cells, chunks and exact hydration", async () => {
+  const value = JSON.stringify({ bytes: randomBytes(200000).toString("base64") });
+  const plan = await entries(input(value));
+  assert.ok(plan.filter((row) => row.statement.text.includes("payload_chunks")).length >= 4);
+  await createD1Store(db).transaction(plan.map((row) => row.statement));
+  const expected = await snapshot();
+  await clearBusiness();
+  const stage = await prepare(plan);
+  assert.equal(await count("chain_detail_blocks"), 0);
+  assert.equal(await count("chain_detail_payload_chunks"), 0);
+  await stage.commit();
+  assert.equal(await count("chain_detail_ingest_stage_sessions"), 1);
+  await stage.discard();
+  assert.deepEqual(await snapshot(), expected);
+  for (const table of privateTables) assert.equal(await count(table), 0);
+  const rows = (await db.prepare("SELECT call_args FROM chain_detail_extrinsics").all<Record<string, unknown>>()).results;
+  assert.equal((await restoreChainDetailPayloads({ D1_STATE: db }, rows))[0]!.call_args, value);
+});
+
+test("original statement occurrence and duplicate row order survive staging and family ordering", async () => {
+  const rows = input();
+  const event = rows.chainEventRows[0]!;
+  const plan: Entry[] = [];
+  for (const pallet of ["first", "second", "third"])
+    plan.push({ family: 1, statement: captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, [{ ...event, pallet }])[0]! });
+  plan.push({ family: 3, statement: captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[3]!, rows.blockRows)[0]! });
+  const stage = await prepare(plan);
+  await stage.commit();
+  assert.equal(await db.prepare("SELECT pallet FROM chain_detail_chain_events").first<string>("pallet"), "third");
+  assert.equal(await count("chain_detail_blocks"), 1);
+});
+
+test("wire order does not replace canonical family and row positions", async () => {
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  const rows = input();
+  await stage.append(3, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[3]!, rows.blockRows)[0]!, { row: 0, field: 0, part: 0 });
+  for (const [index, pallet] of [[2, "third"], [0, "first"], [1, "second"]] as const)
+    await stage.append(1, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, [{ ...rows.chainEventRows[0], pallet }])[0]!, { row: index, field: 0, part: 0 });
+  await stage.seal();
+  await stage.commit();
+  assert.equal(await db.prepare("SELECT pallet FROM chain_detail_chain_events").first<string>("pallet"), "third");
+  await stage.discard();
+});
+
+test("missing sealed fragment aborts inside the final batch before any business write", async () => {
+  const stage = await prepare(await entries(input()));
+  await db.prepare("DELETE FROM chain_detail_ingest_stage_fragments WHERE token=? AND ordinal=0").bind(stage.token).run();
+  await assert.rejects(stage.commit());
+  for (const table of [...business, "chain_detail_payload_chunks"]) assert.equal(await count(table), 0);
+  await stage.discard();
+  for (const table of privateTables) assert.equal(await count(table), 0);
+});
+
+test("caller-owned attempt token recovers session creation after its committed response is lost", async () => {
+  const token = randomUUID();
+  const port: D1StoreBinding = {
+    prepare(text) {
+      const statement = db.prepare(text);
+      return new Proxy(statement, { get(target, key) {
+        if (key === "bind") return (...values: unknown[]) => {
+          const bound = target.bind(...values);
+          return new Proxy(bound, { get(value, member) {
+            if (member === "run") return async () => { await value.run(); throw new Error("lost session creation response"); };
+            const property: unknown = Reflect.get(value, member, value);
+            return typeof property === "function" ? property.bind(value) : property;
+          } });
+        };
+        const value: unknown = Reflect.get(target, key, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      } });
+    },
+    batch<T>(statements: D1PreparedStatement[]) { return db.batch<T>(statements); },
+  };
+  await assert.rejects(createChainDetailD1Stage(port, createD1Store(port), stamp, token), /lost session creation/);
+  assert.equal(await count("chain_detail_ingest_stage_sessions"), 1);
+  await discardChainDetailD1Stage(db, token);
+  assert.equal(await count("chain_detail_ingest_stage_sessions"), 0);
+  assert.equal(await count("chain_detail_blocks"), 0);
+});
+
+test("sealed fragment and manifest updates are rejected; failed cleanup cannot become an empty successful commit", async () => {
+  const stage = await prepare(await entries(input()));
+  await assert.rejects(db.prepare("UPDATE chain_detail_ingest_stage_fragments SET body='[]' WHERE token=?").bind(stage.token).run());
+  await assert.rejects(db.prepare("UPDATE chain_detail_ingest_stage_sessions SET manifest=? WHERE token=?").bind("0".repeat(64), stage.token).run());
+  await discardChainDetailD1Stage(db, stage.token);
+  await assert.rejects(stage.commit());
+  assert.equal(await count("chain_detail_blocks"), 0);
+});
+
+test("later business constraint failure rolls back every staged native chunk and family", async () => {
+  const rows = input(JSON.stringify({ bytes: randomBytes(200000).toString("base64") }));
+  rows.blockRows[0]!.block_hash = null;
+  const stage = await prepare(await entries(rows));
+  await assert.rejects(stage.commit());
+  for (const table of [...business, "chain_detail_payload_chunks"]) assert.equal(await count(table), 0);
+  assert.ok((await count("chain_detail_ingest_stage_fragments"))! > 0);
+  await stage.discard();
+});
+
+test("immutable chunk conflict and extra-part guards remain in the original atomic application", async () => {
+  const plan = await entries(input(JSON.stringify({ bytes: randomBytes(200000).toString("base64") })));
+  const first = plan.find((row) => row.statement.text.includes("VALUES (?,?,?)"))!;
+  assert.ok(first);
+  for (const extra of [false, true]) {
+    await clearBusiness();
+    const stage = await prepare(plan);
+    const values = first.statement.values!;
+    await db.prepare("INSERT INTO chain_detail_payload_chunks(sha256,part,data) VALUES (?,?,?)")
+      .bind(values[0], extra ? 11 : values[1], extra ? "AA==" : "wrong").run();
+    await assert.rejects(stage.commit());
+    for (const table of business) assert.equal(await count(table), 0);
+    assert.equal(await count("chain_detail_payload_chunks"), 1);
+    await stage.discard();
+  }
+});
+
+test("lost committed acknowledgement replays business and export revision without exactly-once shortcut", async () => {
+  let lose = true;
+  const port: D1StoreBinding = {
+    prepare: (text) => db.prepare(text),
+    async batch<T>(statements: D1PreparedStatement[]) {
+      const result = await db.batch<T>(statements);
+      if (lose) { lose = false; throw new Error("lost committed acknowledgement"); }
+      return result;
+    },
+  };
+  const store = createD1Store(port, ["chain_detail_blocks"]);
+  const plan = await entries(input());
+  const first = await prepare(plan, store);
+  await assert.rejects(first.commit(), /lost committed/);
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await db.prepare("SELECT state FROM chain_detail_ingest_stage_sessions WHERE token=?").bind(first.token).first<string>("state"), "applied");
+  assert.equal(await db.prepare("SELECT revision FROM archive_export_revisions").first<number>("revision"), 1);
+  const second = await prepare(plan, store);
+  assert.notEqual(second.token, first.token);
+  await second.commit();
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await db.prepare("SELECT revision FROM archive_export_revisions").first<number>("revision"), 2);
+});
+
+test("overlapping attempt sessions isolate one late failure from the successful atomic capture", async () => {
+  const good = input(null, block), bad = input(null, block + 1);
+  bad.blockRows[0]!.block_hash = null;
+  const stages = await Promise.all([good, bad].map(async (rows) => prepare(await entries(rows))));
+  const outcomes = await Promise.allSettled(stages.map((stage) => stage.commit()));
+  assert.deepEqual(outcomes.map((row) => row.status), ["fulfilled", "rejected"]);
+  assert.equal(await count("chain_detail_blocks"), 1);
+  assert.equal(await db.prepare("SELECT block_number FROM chain_detail_blocks").first<number>("block_number"), block);
+  await stages[1]!.discard();
+});
+
+test("all 900 original command occurrences remain admitted with bounded batched staging calls", async () => {
+  let prepares = 0;
+  const port: D1StoreBinding = {
+    prepare(text) { prepares++; return db.prepare(text); },
+    batch<T>(statements: D1PreparedStatement[]) { return db.batch<T>(statements); },
+  };
+  const stage = await createChainDetailD1Stage(port, createD1Store(port));
+  const event = input().chainEventRows[0]!;
+  for (let i = 0; i < 899; i++)
+    await stage.append(1, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, [{ ...event, event_index: i }])[0]!);
+  await stage.append(3, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[3]!, input().blockRows)[0]!);
+  await stage.seal();
+  await stage.commit();
+  assert.equal(await count("chain_detail_chain_events"), 899);
+  assert.equal(await count("chain_detail_blocks"), 1);
+  // Includes open/seal, all stage statements and the six final statements.
+  assert.equal(prepares, 2 + Math.ceil(900 / 10) + 6);
+  assert.ok(prepares < 1000);
+});
+
+test("two maximal native chunks share one bounded multi-row stage put without a 2-MB binding", async () => {
+  let prepares = 0;
+  const port: D1StoreBinding = { prepare(text) { prepares++; return db.prepare(text); }, batch<T>(statements: D1PreparedStatement[]) { return db.batch<T>(statements); } };
+  const bytes = new Uint8Array(2 * 1_490_000).fill(65);
+  const chunks: ProducerStatement[] = [];
+  const reference = await writeNativePayload({ D1_STATE: db }, historySha256(bytes), bytes.length, bytes, "raw", chunks);
+  assert.equal(chunks.length, 3);
+  const stage = await createChainDetailD1Stage(port, createD1Store(port));
+  for (const [part, statement] of chunks.entries()) await stage.append(0, statement, { row: 0, field: 0, part });
+  const rows = input(reference);
+  await stage.append(0, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[0]!, rows.extrinsicRows)[0]!);
+  await stage.append(3, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[3]!, rows.blockRows)[0]!);
+  await stage.seal();
+  await stage.commit();
+  assert.equal(prepares, 2 + 1 + 6);
+  assert.equal(await count("chain_detail_payload_chunks"), 2);
+  assert.equal(await count("chain_detail_blocks"), 1);
+  const restored = await restoreChainDetailPayloads({ D1_STATE: db }, [{ call_args: reference }]);
+  assert.equal(historySha256(restored[0]!.call_args as string), historySha256(bytes));
+  await stage.discard();
+});
+
+test("applied session retains multipart custody until R2 cleanup succeeds", async () => {
+  const archive = await runtime.getR2Bucket("R2") as unknown as R2Bucket;
+  let rejectDelete = true;
+  const port = new Proxy(archive, {
+    get(target, key) {
+      if (key === "delete") return async (name: string | string[]) => {
+        if (rejectDelete) { rejectDelete = false; throw new Error("private cleanup unavailable"); }
+        await target.delete(name);
+      };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  const spool = createChainDetailPayloadSpool(port, stage.token, stage.spoolJournal);
+  await spool.append("events:0", "gzip", 0, new Uint8Array([1, 2, 3]));
+  await spool.finish();
+  for (const row of await entries(input())) await stage.append(row.family, row.statement);
+  await stage.seal();
+  await stage.commit();
+  await assert.rejects(spool.discard(), /cleanup unavailable/);
+  const custody = await db.prepare("SELECT state,spool_key,spool_upload,spool_size,spool_etag FROM chain_detail_ingest_stage_sessions WHERE token=?").bind(stage.token).first<{ state: string; spool_key: string; spool_upload: string; spool_size: number; spool_etag: string }>();
+  assert.ok(custody);
+  assert.equal(custody.state, "applied");
+  assert.equal(custody.spool_size, 3);
+  assert.ok(custody.spool_key && custody.spool_upload && custody.spool_etag);
+  assert.equal(await count("chain_detail_blocks"), 1);
+  await spool.discard();
+  await stage.discard();
+  assert.equal(await count("chain_detail_ingest_stage_sessions"), 0);
+  assert.equal(await count("chain_detail_blocks"), 1);
+});
+
+test("901st original command refuses before business application and owned discard removes only its staging", async () => {
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  const statement = captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, input().chainEventRows)[0]!;
+  for (let i = 0; i < 900; i++) await stage.append(1, statement);
+  await assert.rejects(stage.append(1, statement), /atomic statement budget/);
+  await assert.rejects(stage.commit(), /lifecycle/);
+  assert.equal(await count("chain_detail_chain_events"), 0);
+  await stage.discard();
+  for (const table of privateTables) assert.equal(await count(table), 0);
+});
+
+test("legal 140 large TEXT rows stage incrementally and commit exact values without a resident full binding plan", async () => {
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  const event = input().chainEventRows[0]!;
+  for (let i = 0; i < 140; i++) {
+    const pallet = `P${String(i).padStart(3, "0")}:` + "A".repeat(1 + 2031 * 258);
+    await stage.append(1, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, [{ ...event, event_index: i, pallet, args: null, phase: "Initialization", extrinsic_index: null }])[0]!);
+  }
+  await stage.append(3, captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[3]!, input().blockRows)[0]!);
+  await stage.seal();
+  assert.equal(await count("chain_detail_chain_events"), 0);
+  await stage.commit();
+  assert.equal(await count("chain_detail_chain_events"), 140);
+  for (let i = 0; i < 140; i++) {
+    const value = await db.prepare("SELECT pallet FROM chain_detail_chain_events WHERE event_index=?").bind(i).first<string>("pallet");
+    assert.ok(value);
+    assert.equal(historySha256(value), historySha256(`P${String(i).padStart(3, "0")}:` + "A".repeat(1 + 2031 * 258)));
+  }
+  await stage.discard();
+  for (const table of privateTables) assert.equal(await count(table), 0);
+}, 120_000);
+
+test("invalid command source cannot seal a partial preparation", async () => {
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  await assert.rejects(stage.append(0, { text: "DELETE FROM chain_detail_blocks", values: [] }), /exact chain detail/);
+  await assert.rejects(stage.seal(), /lifecycle/);
+  await stage.discard();
+  assert.equal(await count("chain_detail_blocks"), 0);
+});
+
+test("overlapping append calls reject protocol misuse without poisoning the valid owner", async () => {
+  const stage = await createChainDetailD1Stage(db, createD1Store(db));
+  const statement = captureUpsertStatements(CHAIN_DETAIL_MIRROR_PLANS[1]!, input().chainEventRows)[0]!;
+  const first = stage.append(1, statement);
+  await assert.rejects(stage.append(1, statement), /lifecycle/);
+  await first;
+  await stage.seal();
+  await stage.commit();
+  assert.equal(await count("chain_detail_chain_events"), 1);
+  await stage.discard();
+});

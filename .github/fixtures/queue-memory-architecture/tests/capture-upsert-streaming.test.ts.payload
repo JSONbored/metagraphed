@@ -1,0 +1,78 @@
+import { describe, expect, it, vi } from "vitest";
+import { createCaptureUpsertBuilder, captureUpsertStatements } from "../src/capture-family-d1.ts";
+import { legacyCaptureUpsertStatements } from "./fixtures/capture-upsert-canonical0a65.ts";
+import { CHAIN_DETAIL_MIRROR_PLANS } from "../src/chain-detail-neon-write.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
+
+describe("stateful canonical capture groups", () => {
+  it.each([0, 1, 99, 100, 101, 201])("preserves every original plan boundary with %i rows", (count) => {
+    for (const plan of CHAIN_DETAIL_MIRROR_PLANS) {
+      const rows = Array.from({ length: count }, (_, index) => Object.fromEntries(plan.columns.map((name, column) => [name, column % 4 === 0 ? index : column % 4 === 1 ? "😀\ud800\\\n" + index : column % 4 === 2 ? null : !!index])));
+      const builder = createCaptureUpsertBuilder(plan);
+      const actual: ProducerStatement[] = [];
+      for (const row of rows) {
+        const statement = builder.append(row);
+        if (statement) actual.push(statement);
+      }
+      actual.push(builder.finish());
+      expect(actual).toEqual(legacyCaptureUpsertStatements(plan, rows));
+      expect(captureUpsertStatements(plan, rows)).toEqual(actual);
+    }
+  });
+
+  it("retains byte boundaries, filters, conflict guards and bigint serialization", () => {
+    const plan = { table: "fixed_table", columns: ["id", "value"], conflict: ["id"] };
+    const rows = Array.from({ length: 23 }, (_, id) => ({ id: BigInt(id), value: "λ\u0000😀".repeat(7_000 + id) }));
+    const builder = createCaptureUpsertBuilder(plan, "fixed_table.id < excluded.id", "json_extract(value,'$[0]') IS NOT NULL");
+    const actual: ProducerStatement[] = [];
+    for (const row of rows) {
+      const previous = builder.append(row);
+      if (previous) actual.push(previous);
+    }
+    actual.push(builder.finish());
+    expect(actual).toEqual(legacyCaptureUpsertStatements(plan, rows, "fixed_table.id < excluded.id", "json_extract(value,'$[0]') IS NOT NULL"));
+    expect(actual.length).toBeGreaterThan(1);
+  });
+
+  it.each([NaN, Infinity, -Infinity, {}, [], () => 1, Symbol("x")])("preserves scalar refusal before emitting the pending prefix", (value) => {
+    const plan = { table: "fixed_table", columns: ["id", "value"], conflict: ["id"] };
+    const builder = createCaptureUpsertBuilder(plan);
+    builder.append({ id: 0, value: "pending" });
+    expect(() => builder.append({ id: 1, value })).toThrow("finite scalars");
+    expect(() => legacyCaptureUpsertStatements(plan, [{ id: 0, value: "pending" }, { id: 1, value }])).toThrow("finite scalars");
+  });
+
+  it("refuses a single oversized serialized row under the original byte rule", () => {
+    const plan = { table: "fixed_table", columns: ["value"], conflict: ["value"] };
+    for (const value of ["x".repeat(512 * 1024), "\u0000".repeat(100_000), "😀".repeat(150_000)]) {
+      expect(() => createCaptureUpsertBuilder(plan).append({ value })).toThrow("512 KiB");
+      expect(() => legacyCaptureUpsertStatements(plan, [{ value }])).toThrow("512 KiB");
+    }
+  });
+
+  it("bounds multi-column control-character rejection and preserves scalar-error precedence", () => {
+    const columns = Array.from({ length: 16 }, (_, index) => "field_" + index);
+    const plan = { table: "fixed_table", columns, conflict: [columns[0]!] };
+    const row = Object.fromEntries(columns.map((column) => [column, "\u0000".repeat(512 * 1024)]));
+    const encode = TextEncoder.prototype.encode;
+    let maximumEncodedInput = 0;
+    const observed = vi.spyOn(TextEncoder.prototype, "encode").mockImplementation(function(this: TextEncoder, input) {
+      maximumEncodedInput = Math.max(maximumEncodedInput, input?.length ?? 0);
+      return encode.call(this, input);
+    });
+    try {
+      expect(() => createCaptureUpsertBuilder(plan).append(row)).toThrow("512 KiB");
+      expect(maximumEncodedInput).toBeLessThanOrEqual(512 * 1024);
+    } finally { observed.mockRestore(); }
+    row[columns.at(-1)!] = {} as never;
+    expect(() => createCaptureUpsertBuilder(plan).append(row)).toThrow(TypeError);
+    expect(() => legacyCaptureUpsertStatements(plan, [row])).toThrow(TypeError);
+  });
+
+  it("retains exact Unicode bytes at encoder-window and serialized-row boundaries", () => {
+    const plan = { table: "fixed_table", columns: ["value"], conflict: ["value"] };
+    for (const value of ["a".repeat(8191) + "😀" + "b".repeat(8192), "a".repeat(8191) + "\ud800" + "b", "a".repeat(8191) + "\ud800\ud800", "a".repeat(524281)])
+      expect(captureUpsertStatements(plan, [{ value }])).toEqual(legacyCaptureUpsertStatements(plan, [{ value }]));
+  });
+
+});

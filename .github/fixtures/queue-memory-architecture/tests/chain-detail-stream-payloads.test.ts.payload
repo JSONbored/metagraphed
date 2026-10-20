@@ -1,0 +1,171 @@
+import { describe, expect, it, vi } from "vitest";
+import { gzipSync } from "node:zlib";
+import { createHash } from "node:crypto";
+import { NATIVE_PAYLOAD_PREFIX } from "../src/chain-detail-native-payloads.ts";
+import { storeChainDetailPayloads } from "../src/chain-detail-payloads.ts";
+import { createStreamedPayloadFamily, emitStreamedPayloadChunks, STREAM_PAYLOAD_PART_BYTES } from "../src/chain-detail-stream-payloads.ts";
+import type { ChainDetailPayloadSpool, PayloadPosition } from "../src/chain-detail-stream-payloads.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
+
+class MemorySpool implements ChainDetailPayloadSpool {
+  readonly records = new Map<string, Uint8Array[]>();
+  scans = 0;
+  finishes = 0;
+  appendError: unknown;
+  corrupt = false;
+  truncate = false;
+  async append(id: string, representation: "raw" | "gzip", part: number, bytes: Uint8Array) {
+    if (this.appendError) throw this.appendError;
+    expect(representation).toBe("gzip");
+    expect(bytes.byteLength).toBeLessThanOrEqual(STREAM_PAYLOAD_PART_BYTES);
+    const prior = this.records.get(id) ?? [];
+    expect(part).toBe(prior.length);
+    prior.push(bytes.slice());
+    this.records.set(id, prior);
+  }
+  async finish() { this.finishes++; }
+  async *scan(representation: "raw" | "gzip") {
+    this.scans++;
+    expect(representation).toBe("gzip");
+    for (const [valueId, parts] of this.records) {
+      const copy = parts.map((part) => part.slice());
+      if (this.corrupt && copy[0]?.length) copy[0]![0]! ^= 1;
+      if (this.truncate) copy.pop();
+      yield { valueId, parts: (async function*() { yield* copy; })() };
+    }
+  }
+}
+function entropy(length: number) {
+  let value = "";
+  for (let i = 0; value.length < length; i++)
+    value += createHash("sha256").update(String(i)).digest("base64");
+  return value.slice(0, length);
+}
+async function field(context: ReturnType<typeof createStreamedPayloadFamily>, value: string, position: PayloadPosition, split = 4093) {
+  const stream = context.start(position);
+  for (let at = 0; at < value.length; at += split) await stream.write(value.slice(at, at + split));
+  return stream.finish();
+}
+async function legacy(value: string, field = "call_args") {
+  const chunks: ProducerStatement[] = [];
+  const rows = await storeChainDetailPayloads({}, [{ [field]: value }], chunks);
+  return { reference: rows[0]![field], chunks };
+}
+
+describe("bounded chain-detail payload preparation", () => {
+  it.each(["", "plain", "😀a\ud800b\udc00", "a".repeat(128 * 1024), "é".repeat(65_536)])("preserves ordinary strings and exact surrogate semantics", async (value) => {
+    const spool = new MemorySpool();
+    const context = createStreamedPayloadFamily(spool, "extrinsic_rows");
+    expect(await field(context, value, { row: 0, field: "call_args" }, 1)).toBe((await legacy(value)).reference);
+    expect([...context.nativePayloads()]).toEqual([]);
+    expect(spool.records.size).toBe(0);
+  });
+
+  it("keeps highly compressible references inline without any persistent payload cache", async () => {
+    const value = "λ😀\ud800".repeat(80_000);
+    const spool = new MemorySpool();
+    const context = createStreamedPayloadFamily(spool, "extrinsic_rows");
+    const expected = await legacy(value);
+    const first = await field(context, value, { row: 5, field: "args" }, 8191);
+    const second = await field(context, value, { row: 0, field: "call_args" }, 73);
+    expect(first).toBe(expected.reference);
+    expect(second).toBe(first);
+    expect(expected.chunks).toEqual([]);
+    expect(spool.records.size).toBe(0);
+    expect([...context.nativePayloads()]).toEqual([]);
+  });
+
+  it("emits exact canonical native chunks from one global scan with duplicate and wire-order reconciliation", async () => {
+    const value = entropy(2_200_000);
+    const expected = await legacy(value);
+    expect(expected.chunks.length).toBeGreaterThan(1);
+    const spool = new MemorySpool();
+    const extrinsics = createStreamedPayloadFamily(spool, "extrinsic_rows");
+    const events = createStreamedPayloadFamily(spool, "chain_event_rows");
+    expect(await field(events, value, { row: 7, field: "args" })).toBe(expected.reference);
+    expect(await field(extrinsics, value, { row: 9, field: "args" })).toBe(expected.reference);
+    expect(await field(extrinsics, value, { row: 0, field: "call_args" }, 13_001)).toBe(expected.reference);
+    const emitted: { family: string; statement: ProducerStatement; position: PayloadPosition; part: number }[] = [];
+    await emitStreamedPayloadChunks(spool, { extrinsics, events }, async (family, statement, position, part) => { emitted.push({ family, statement, position, part }); });
+    expect(spool.scans).toBe(1);
+    expect(spool.finishes).toBe(1);
+    expect(emitted.filter((item) => item.family === "extrinsics").map((item) => item.statement)).toEqual(expected.chunks);
+    expect(emitted.filter((item) => item.family === "events").map((item) => item.statement)).toEqual(expected.chunks);
+    expect(emitted.filter((item) => item.family === "extrinsics").every((item) => item.position.row === 0 && item.position.field === "call_args")).toBe(true);
+  });
+
+  it("reconstructs exact raw-selected bytes from a valid stored-block gzip candidate", async () => {
+    // RFC1952 level-zero gzip is a genuine larger-than-raw candidate. This
+    // independent codec fixture exercises the retained raw branch without
+    // depending on a particular compressor's choice for valid UTF-8 text.
+    class StoredCompression {
+      readonly readable: ReadableStream<Uint8Array>;
+      readonly writable: WritableStream<Uint8Array>;
+      constructor() {
+        const chunks: Uint8Array[] = [];
+        const stream = new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk) { chunks.push(chunk.slice()); },
+          flush(controller) { controller.enqueue(new Uint8Array(gzipSync(Buffer.concat(chunks), { level: 0 }))); },
+        });
+        this.readable = stream.readable;
+        this.writable = stream.writable;
+      }
+    }
+    vi.stubGlobal("CompressionStream", StoredCompression);
+    try {
+      const value = entropy(200_000);
+      const expected = await legacy(value);
+      expect(expected.reference).toContain(":raw:d1");
+      const spool = new MemorySpool();
+      const context = createStreamedPayloadFamily(spool, "events");
+      expect(await field(context, value, { row: 0, field: "args" })).toBe(expected.reference);
+      const actual: ProducerStatement[] = [];
+      await emitStreamedPayloadChunks(spool, { context }, async (_family, statement) => { actual.push(statement); });
+      expect(actual).toEqual(expected.chunks);
+      expect(spool.scans).toBe(1);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it.each(["\0metagraphed:r2:forged", NATIVE_PAYLOAD_PREFIX + "forged"])("rejects reserved references while they are split across writes", async (value) => {
+    const spool = new MemorySpool();
+    const context = createStreamedPayloadFamily(spool, "blocks");
+    const expected = legacy(value);
+    await expect(expected).rejects.toThrow("Reserved chain detail payload reference");
+    await expect(field(context, value, { row: 0, field: "args" }, 1)).rejects.toThrow("Reserved chain detail payload reference");
+    context.cancel(new Error("done"));
+  });
+
+  it("preserves original spool failure identity and releases active compression", async () => {
+    const spool = new MemorySpool();
+    const failure = new Error("private persistence failed");
+    spool.appendError = failure;
+    const context = createStreamedPayloadFamily(spool, "events");
+    await expect(field(context, entropy(300_000), { row: 0, field: "args" })).rejects.toBe(failure);
+    context.cancel(failure);
+    expect(() => context.assertFinished()).not.toThrow();
+  });
+
+  it.each(["corrupt", "truncate"] as const)("refuses %s persistent preparation before a business commit", async (mode) => {
+    const spool = new MemorySpool();
+    const context = createStreamedPayloadFamily(spool, "events");
+    await field(context, entropy(300_000), { row: 0, field: "args" });
+    spool[mode] = true;
+    await expect(emitStreamedPayloadChunks(spool, { context }, async () => undefined)).rejects.toThrow();
+  });
+
+  it("refuses unfinished strings and preserves the original family byte accounting", async () => {
+    const spool = new MemorySpool();
+    const context = createStreamedPayloadFamily(spool, "events");
+    const pending = context.start({ row: 0, field: "args" });
+    await expect(emitStreamedPayloadChunks(spool, { context }, async () => undefined)).rejects.toThrow("unfinished");
+    pending.cancel(new Error("stop"));
+    context.cancel(new Error("stop"));
+    expect(() => createStreamedPayloadFamily(spool, "bad:namespace")).toThrow(TypeError);
+    expect(() => context.start({ row: -1, field: "args" })).toThrow(TypeError);
+    const large = "z".repeat(16 * 1024 * 1024);
+    await field(context, large, { row: 0, field: "args" });
+    await field(context, large, { row: 1, field: "args" });
+    await expect(field(context, "x", { row: 2, field: "call_args" })).rejects.toThrow("byte budget");
+    context.cancel(new Error("done"));
+  });
+});

@@ -1,0 +1,464 @@
+import assert from "node:assert/strict";
+import { gzipSync } from "node:zlib";
+import { afterEach, describe, test, vi } from "vitest";
+import {
+  inspectProjectedChainDetail,
+  type ProjectedChainDetailPlan,
+  type ProjectedChainDetailVisitor,
+} from "../src/sync-batch-projected-chain-detail.ts";
+import {
+  decompressSyncBatchMessage,
+  SyncBatchExpansionError,
+} from "../src/sync-batch-compress.ts";
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "../src/sync-batch-limits.ts";
+import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
+
+const fields = {
+  blockRows: ["block_number", "block_hash", "observed_at", "subnet_ids"],
+  extrinsicRows: ["block_number", "call_module", "call_args"],
+  chainEventRows: ["block_number", "args", "phase"],
+  accountEventRows: ["block_number", "hotkey", "amount_tao"],
+};
+const compressed = (text: string) => new Uint8Array(gzipSync(text));
+const envelope = (row: string, family = "blockRows") =>
+  `{"lane":"chain-detail","captured_at":1,"families":{"${family}":[${row}]}}`;
+async function planFor(text: string): Promise<ProjectedChainDetailPlan> {
+  const result = await inspectProjectedChainDetail(compressed(text), fields);
+  assert.equal(result.kind, "projected");
+  assert.ok(result.kind === "projected");
+  return result.plan;
+}
+const idleVisitor = (): ProjectedChainDetailVisitor => ({
+  rowStart() {}, value() {}, stringStart() {}, stringChunk() {}, stringEnd() {}, rowEnd() {},
+});
+async function collect(plan: ProjectedChainDetailPlan) {
+  const rows = new Map<string, { array: boolean; values: Map<string, unknown> }>();
+  const events: string[] = [];
+  const key = (field: { family: string; index: number }) => `${field.family}:${field.index}`;
+  await plan.visit({
+    rowStart(row) {
+      rows.set(key(row), { array: row.array, values: new Map() });
+      events.push(`start:${key(row)}`);
+    },
+    value(field, value) {
+      rows.get(key(field))!.values.set(field.field,
+        value.kind === "object" || value.kind === "array" ? { kind: value.kind } : value.value);
+      events.push(`value:${key(field)}:${field.field}`);
+    },
+    stringStart(field) {
+      rows.get(key(field))!.values.set(field.field, "");
+      events.push(`string:${key(field)}:${field.field}`);
+    },
+    stringChunk(field, chunk) {
+      const row = rows.get(key(field))!;
+      const prior = row.values.get(field.field);
+      assert.equal(typeof prior, "string");
+      row.values.set(field.field, String(prior) + chunk);
+    },
+    stringEnd(field) { events.push(`stringEnd:${key(field)}:${field.field}`); },
+    rowEnd(row) { events.push(`end:${key(row)}`); },
+  });
+  return { rows, events };
+}
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+describe("projected chain-detail compatibility", () => {
+  test("last envelope, family and escaped row members win without touching superseded rows", async () => {
+    const text = `{"lane":"bad","captured_at":0,"pass_total":0,
+      "families":{"unknown":[null]},"captured_at":1,"pass_total":2,"lane":"chain-detail",
+      "families":{"blockRows":[null],"blockRows":[{"block_hash":"old","block_number":1,
+      "block_ha\\u0073h":"new","block_number":2,"unknown":{"block_hash":"nested"}},[]]}}`;
+    const old = await decompressSyncBatchMessage(compressed(text));
+    assert.equal(validSyncBatchMessage(old), true);
+    const plan = await planFor(text);
+    assert.equal(plan.capturedAt, 1);
+    assert.equal(plan.passTotal, 2);
+    assert.equal(plan.rowCount, 2);
+    const { rows, events } = await collect(plan);
+    assert.deepEqual([...rows.get("blockRows:0")!.values], [["block_hash", "new"], ["block_number", 2]]);
+    assert.deepEqual(rows.get("blockRows:1"), { array: true, values: new Map() });
+    assert.deepEqual(events, [
+      "start:blockRows:0", "string:blockRows:0:block_hash", "stringEnd:blockRows:0:block_hash",
+      "value:blockRows:0:block_number", "end:blockRows:0", "start:blockRows:1", "end:blockRows:1",
+    ]);
+  });
+
+  test("emits effective families in wire order and retains empty family metadata", async () => {
+    const plan = await planFor(`{"lane":"chain-detail","captured_at":4,"families":{
+      "accountEventRows":[{"hotkey":"a","args":"payload on every family"}],
+      "blockRows":[],"extrinsicRows":[{"call_module":"Balances"}],
+      "chainEventRows":[{"phase":false,"call_args":null}]}}`);
+    assert.equal(plan.passTotal, undefined);
+    assert.equal(plan.rowCount, 3);
+    assert.equal(plan.families.find((family) => family.name === "blockRows")!.count, 0);
+    const { rows, events } = await collect(plan);
+    assert.deepEqual([...rows.keys()], ["accountEventRows:0", "extrinsicRows:0", "chainEventRows:0"]);
+    assert.equal(rows.get("accountEventRows:0")!.values.get("args"), "payload on every family");
+    assert.equal(rows.get("chainEventRows:0")!.values.get("phase"), false);
+    assert.equal(rows.get("chainEventRows:0")!.values.get("call_args"), null);
+    assert.equal(events.at(-1), "end:chainEventRows:0");
+  });
+
+  test("selected nested values are rejection markers, not reconstructed objects", async () => {
+    const { rows } = await collect(await planFor(envelope(
+      '{"block_number":{"deep":[{"ignored":"x"}]},"block_hash":[],"observed_at":null}',
+    )));
+    assert.deepEqual([...rows.get("blockRows:0")!.values], [
+      ["block_number", { kind: "object" }], ["block_hash", { kind: "array" }], ["observed_at", null],
+    ]);
+  });
+
+  test("ordinary object deliveries and non-family/lane messages retain the old dispatcher path", async () => {
+    for (const body of [null, 7, "text", {}, { lane: "chain-detail", rows: [] }])
+      assert.deepEqual(await inspectProjectedChainDetail(body, fields), { kind: "fallback" });
+    for (const text of [
+      '{"lane":"hotkey-alpha","captured_at":1,"rows":[{}]}',
+      '{"lane":"chain-detail","captured_at":1,"rows":[{}]}',
+    ]) assert.deepEqual(await inspectProjectedChainDetail(compressed(text), fields), { kind: "fallback" });
+  });
+
+  test("owns a stable input snapshot across all inflation passes", async () => {
+    const wire = compressed(envelope('{"block_hash":"stable"}'));
+    const padded = new Uint8Array(wire.length + 12);
+    padded.set(wire, 6);
+    const view = padded.subarray(6, 6 + wire.length);
+    const inspected = await inspectProjectedChainDetail(view, fields);
+    assert.ok(inspected.kind === "projected");
+    padded.fill(0);
+    assert.equal((await collect(inspected.plan)).rows.get("blockRows:0")!.values.get("block_hash"), "stable");
+    const buffer = compressed(envelope('{"block_number":2}')).buffer;
+    const fromBuffer = await inspectProjectedChainDetail(buffer, fields);
+    assert.ok(fromBuffer.kind === "projected");
+    new Uint8Array(buffer).fill(0);
+    assert.equal((await collect(fromBuffer.plan)).rows.get("blockRows:0")!.values.get("block_number"), 2);
+  });
+
+  test("UTF-8 replacement and initial BOM semantics match the existing decoder", async () => {
+    // Construct the actual envelope explicitly around invalid UTF-8 in a value.
+    const before = new TextEncoder().encode('\ufeff{"lane":"chain-detail","captured_at":1,"families":{"blockRows":[{"block_hash":"');
+    const after = new TextEncoder().encode('"}]}}');
+    const bytes = new Uint8Array(before.length + 4 + after.length);
+    bytes.set(before); bytes.set([0xff, 0xe2, 0x82, 0x61], before.length); bytes.set(after, before.length + 4);
+    const wire = new Uint8Array(gzipSync(bytes));
+    const old = await decompressSyncBatchMessage(wire);
+    assert.equal(validSyncBatchMessage(old), true);
+    const result = await inspectProjectedChainDetail(wire, fields);
+    assert.ok(result.kind === "projected");
+    assert.equal((await collect(result.plan)).rows.get("blockRows:0")!.values.get("block_hash"), "\ufffd\ufffda");
+    assert.deepEqual(await inspectProjectedChainDetail(compressed(envelope('{"block_number":1}') + '\ufeff'), fields), { kind: "invalid" });
+  });
+});
+
+describe("complete grammar and existing admission", () => {
+  const invalidJson = [
+    "", " ", "null", "true", "1", "[]", "{}", "[}", "{]", "{", "[", "[1", '{"a"',
+    '{"a" 1}', '{"a":}', '{"a":1,}', "[1,]", "[1,,2]", "{}{}", "true false",
+    '{"a":01}', '{"a":-}', '{"a":1.}', '{"a":1e}', '{"a":1e+}', '{"a":1e-}',
+    '{"a":+1}', '{"a":NaN}', '{"a":Infinity}', '{"a":tru}', '{"a":falsE}', '{"a":nul}',
+    '{"a":"unterminated}', '{"a":"\\x00"}', '{"a":"\\u123x"}', '{"a":"\\u12"}',
+    '{"a":"\u0000"}', '{"a":"\n"}', '{"a":"\\"}',
+  ];
+  test.each(invalidJson)("rejects malformed or non-envelope JSON: %s", async (text) => {
+    assert.deepEqual(await inspectProjectedChainDetail(compressed(text), fields), { kind: "invalid" });
+  });
+
+  const invalidMessages = [
+    '{"lane":"other","captured_at":1,"families":{"blockRows":[{}]}}',
+    ...["0", "-1", "1.5", "null", "true", '"1"', "{}", "[]", "1e999"].map((value) =>
+      `{"lane":"chain-detail","captured_at":${value},"families":{"blockRows":[{}]}}`),
+    ...["0", "-1", "1.5", "null", "true", '"1"', "{}", "[]", "1e999"].map((value) =>
+      `{"lane":"chain-detail","captured_at":1,"pass_total":${value},"families":{"blockRows":[{}]}}`),
+    ...["null", "[]", "1", "true", '"x"', "{}", '{"unknown":[]}', '{"blockRows":{}}',
+      '{"blockRows":[null]}', '{"blockRows":[1]}', '{"blockRows":["x"]}', '{"blockRows":[false]}',
+      '{"blockRows":[]}', '{"blockRows":[{}],"unknown":[]}', '{"blockRows":[{}],"blockRows":null}',
+    ].map((value) => `{"lane":"chain-detail","captured_at":1,"families":${value}}`),
+    '{"lane":"chain-detail","families":{"blockRows":[{}]}}',
+    '{"lane":"chain-detail","captured_at":1,"rows":null,"families":{"blockRows":[{}]}}',
+    '{"lane":"chain-detail","captured_at":1,"pass_total":1,"families":{"blockRows":[{},{}]}}',
+  ];
+  test.each(invalidMessages)("matches validator rejection: %s", async (text) => {
+    assert.equal(validSyncBatchMessage(await decompressSyncBatchMessage(compressed(text))), false);
+    assert.deepEqual(await inspectProjectedChainDetail(compressed(text), fields), { kind: "invalid" });
+  });
+
+  const passTotalBase = '"lane":"chain-detail","captured_at":1,"families":{"blockRows":[{},{}]}';
+  const invalidPassTotals = [
+    { name: "empty object", token: "{}" },
+    { name: "nonempty object", token: '{"pass_total":2,"nested":[{}]}' },
+    { name: "empty array", token: "[]" },
+    { name: "nonempty array", token: '[2,{"pass_total":2}]' },
+    { name: "null", token: "null" },
+    { name: "true", token: "true" },
+    { name: "false", token: "false" },
+    { name: "empty string", token: '""' },
+    { name: "integer string", token: '"2"' },
+    { name: "other string", token: '"not a total"' },
+    { name: "long string", token: JSON.stringify("2".repeat(65)) },
+    { name: "zero", token: "0" },
+    { name: "negative zero", token: "-0" },
+    { name: "negative integer", token: "-2" },
+    { name: "positive fraction", token: "2.5" },
+    { name: "negative fraction", token: "-2.5" },
+    { name: "positive infinity", token: "1e999" },
+    { name: "negative infinity", token: "-1e999" },
+    { name: "positive underflow", token: "1e-999" },
+    { name: "negative underflow", token: "-1e-999" },
+    { name: "integer below row count", token: "1" },
+  ];
+  test.each(invalidPassTotals)("final pass_total $name agrees with canonical rejection", async ({ token }) => {
+    for (const members of [
+      `"pass_total":${token}`,
+      `"pass_total":2,"pass_total":${token}`,
+      `"pass_total":2,"pass_\\u0074otal":${token}`,
+    ]) {
+      const wire = compressed(`{${passTotalBase},${members}}`);
+      assert.equal(validSyncBatchMessage(await decompressSyncBatchMessage(wire)), false);
+      assert.deepEqual(await inspectProjectedChainDetail(wire, fields), { kind: "invalid" });
+    }
+  });
+  test.each(invalidPassTotals)("superseded pass_total $name does not poison a final valid total", async ({ token }) => {
+    for (const key of ['"pass_total"', '"pass_\\u0074otal"']) {
+      const wire = compressed(`{${passTotalBase},"pass_total":${token},${key}:2}`);
+      const canonical = await decompressSyncBatchMessage(wire);
+      assert.ok(validSyncBatchMessage(canonical));
+      const result = await inspectProjectedChainDetail(wire, fields);
+      assert.ok(result.kind === "projected");
+      assert.equal(result.plan.passTotal, canonical.pass_total);
+      assert.equal(result.plan.rowCount, 2);
+    }
+  });
+  test.each(["2", "2.0", "2e0", "3", "9007199254740992", "1e100"])(
+    "final valid numeric pass_total %s preserves canonical admission", async (token) => {
+      const wire = compressed(`{${passTotalBase},"pass_total":{},"pass_total":${token}}`);
+      const canonical = await decompressSyncBatchMessage(wire);
+      assert.ok(validSyncBatchMessage(canonical));
+      const result = await inspectProjectedChainDetail(wire, fields);
+      assert.ok(result.kind === "projected");
+      assert.equal(result.plan.passTotal, canonical.pass_total);
+    },
+  );
+
+  test("the 5,000-row limit is shared across families; superseded arrays do not spend it", async () => {
+    const full = "{},".repeat(4999) + "{}";
+    const text = `{"lane":"chain-detail","captured_at":1,"pass_total":5000,
+      "families":{"blockRows":[${full},{}],"blockRows":[${full}],"chainEventRows":[]}}`;
+    assert.equal((await planFor(text)).rowCount, 5000);
+    assert.deepEqual(await inspectProjectedChainDetail(compressed(
+      `{"lane":"chain-detail","captured_at":1,"families":{"blockRows":[${full}],"chainEventRows":[{}]}}`,
+    ), fields), { kind: "invalid" });
+  });
+
+  test("rejects bad gzip and never mistakes malformed bytes for fallback object deliveries", async () => {
+    for (const wire of [new Uint8Array(), new Uint8Array([1, 2]), new Uint8Array([0x1f, 0x8b, 0])])
+      assert.deepEqual(await inspectProjectedChainDetail(wire, fields), { kind: "invalid" });
+    const wire = compressed(envelope("{}"));
+    wire[wire.length - 5] = wire[wire.length - 5]! ^ 0xff;
+    assert.deepEqual(await inspectProjectedChainDetail(wire, fields), { kind: "invalid" });
+  });
+
+  test("configuration errors remain programmer failures", async () => {
+    for (const specification of [{}, { ...fields, blockRows: ["bad-name"] },
+      { ...fields, blockRows: Array.from({ length: 63 }, () => "block_number") }])
+      await assert.rejects(inspectProjectedChainDetail(compressed(envelope("{}")), specification), TypeError);
+  });
+});
+
+describe("bounded projection of arbitrary tokens", () => {
+  test("skips huge unknown strings, keys and nested values without JSON.parse or a recursion stack", async () => {
+    const depth = 170_000; // Crosses a second packed-state chunk; no recursive JS frames.
+    const text = envelope(`{"${"x".repeat(70_000)}":"${"y".repeat(1_000_000)}",` +
+      `"unknown":${"[".repeat(depth)}0${"]".repeat(depth)},"block_number":7}`);
+    const wire = compressed(text);
+    const parse = vi.spyOn(JSON, "parse").mockImplementation(() => { throw new Error("whole JSON parse forbidden"); });
+    const result = await inspectProjectedChainDetail(wire, fields);
+    assert.ok(result.kind === "projected");
+    assert.deepEqual([...(await collect(result.plan)).rows.get("blockRows:0")!.values], [["block_number", 7]]);
+    assert.equal(parse.mock.calls.length, 0);
+  });
+
+  test("large selected strings remain streamed, including escaped and unpaired surrogate boundaries", async () => {
+    const value = "a".repeat(8191) + "\ud83d\ude03" + "b".repeat(8190) + "\ud800x\udc00" +
+      '\b\f\n\r\t/\\"' + "z".repeat(1_000_000);
+    const plan = await planFor(envelope(JSON.stringify({ block_hash: value })));
+    let reconstructed = "", chunks = 0;
+    const visitor = idleVisitor();
+    visitor.stringChunk = (_field, chunk) => {
+      assert.ok(chunk.length <= 8193);
+      if (reconstructed.length) {
+        const prior = reconstructed.charCodeAt(reconstructed.length - 1);
+        const next = chunk.charCodeAt(0);
+        assert.equal(prior >= 0xd800 && prior <= 0xdbff && next >= 0xdc00 && next <= 0xdfff, false);
+      }
+      reconstructed += chunk; chunks++;
+    };
+    await plan.visit(visitor);
+    assert.equal(reconstructed, value);
+    assert.ok(chunks > 100);
+  });
+
+  const numericTokens = [
+    "0", "-0", "0.0", "-0.000e+0000", "1", "-1", "12.345", "1E+3", "1e-3",
+    "9007199254740991", "9007199254740992", "9007199254740993", "-9007199254740993",
+    "1.7976931348623157e308", "1.7976931348623158e308", "1.7976931348623159e308",
+    "2.2250738585072014e-308", "2.2250738585072011e-308", "5e-324", "2.4703282292062327e-324",
+    "2.4703282292062328e-324", "1e-99999999999999999999999999", "1e99999999999999999999999999",
+    "0e99999999999999999999999999", "-0e-99999999999999999999999999",
+    "1" + "0".repeat(20_000) + "e-20000", "9".repeat(20_000) + "e-20000",
+    "0." + "0".repeat(20_000) + "1e20001",
+    "1." + "0".repeat(20_000) + "1", "-1." + "0".repeat(20_000) + "1",
+    // Exact binary64 midpoint at 1, its lower side and its upper side after a long zero tail.
+    "1.00000000000000011102230246251565404236316680908203125" + "0".repeat(20_000),
+    "1.00000000000000011102230246251565404236316680908203125" + "0".repeat(20_000) + "1",
+    "1.00000000000000011102230246251565404236316680908203124" + "9".repeat(20_000),
+    // 2^-1075 is the tie between zero and the least positive subnormal.
+    `${5n ** 1075n}e-1075`, `${5n ** 1075n}` + "0".repeat(2000) + "1e-3076",
+    `${5n ** 1075n - 1n}` + "9".repeat(2000) + "e-3075",
+  ];
+  test.each(numericTokens.map((token, index) => ({ token, index })))(
+    "compact conversion matches JSON.parse and signed zero, case $index", async ({ token }) => {
+      const { rows } = await collect(await planFor(envelope(`{"block_number":${token}}`)));
+      assert.ok(Object.is(rows.get("blockRows:0")!.values.get("block_number"), JSON.parse(token)), token.slice(0, 100));
+    },
+  );
+
+  test("deterministic long decimal/exponent corpus agrees with native rounding", async () => {
+    let state = 912_367;
+    const next = () => { state = (state * 48271) % 2147483647; return state; };
+    const tokens: string[] = [];
+    for (let index = 0; index < 80; index++) {
+      const length = 1150 + next() % 600;
+      let digits = String(1 + next() % 9);
+      while (digits.length < length) digits += String(next() % 10);
+      const exponent = (next() % 700) - 350 - length;
+      tokens.push(`${index % 2 ? "-" : ""}${digits}e${exponent}`);
+    }
+    const { rows } = await collect(await planFor(envelope(tokens.map((token) => `{"block_number":${token}}`).join(","))));
+    for (const [index, token] of tokens.entries())
+      assert.ok(Object.is(rows.get(`blockRows:${index}`)!.values.get("block_number"), JSON.parse(token)), `case ${index}`);
+  });
+});
+
+/** Supply real byte chunks at the decompressor boundary. These tests exercise
+ * decoded accounting/cancellation without allocating an 80 MB fixture string. */
+function decompressedChunks(factory: () => Iterable<Uint8Array>, cancel?: () => Promise<void>) {
+  vi.stubGlobal("DecompressionStream", class {
+    readable: ReadableStream<Uint8Array>;
+    writable = new WritableStream<Uint8Array>();
+    constructor() {
+      const chunks = factory()[Symbol.iterator]();
+      this.readable = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          const next = chunks.next();
+          if (next.done) controller.close(); else controller.enqueue(next.value);
+        },
+        cancel,
+      });
+    }
+  });
+}
+const gzipMarker = new Uint8Array([0x1f, 0x8b]);
+describe("resource refusal and asynchronous callback boundaries", () => {
+  test("late expansion wins over early malformed JSON and cancellation never holds the retry", async () => {
+    let cancelled = 0;
+    decompressedChunks(function* () {
+      yield new TextEncoder().encode("!");
+      const bytes = new Uint8Array(8192);
+      let remaining = SYNC_BATCH_MAX_DECODED_BYTES;
+      while (remaining) {
+        const length = Math.min(remaining, bytes.length);
+        yield bytes.subarray(0, length); remaining -= length;
+      }
+      // Leave the readable open so refusal exercises a pending cancel.
+      for (;;) yield bytes;
+    }, () => { cancelled++; return new Promise<void>(() => {}); });
+    await assert.rejects(inspectProjectedChainDetail(gzipMarker, fields), SyncBatchExpansionError);
+    assert.equal(cancelled, 1);
+  });
+
+  test("a malformed delivery at the exact decoded ceiling remains invalid, not a resource refusal", async () => {
+    decompressedChunks(function* () {
+      const bytes = new Uint8Array(8192);
+      let remaining = SYNC_BATCH_MAX_DECODED_BYTES;
+      while (remaining) {
+        const length = Math.min(remaining, bytes.length);
+        yield bytes.subarray(0, length); remaining -= length;
+      }
+    }, async () => { throw new Error("cancel rejected"); });
+    assert.deepEqual(await inspectProjectedChainDetail(gzipMarker, fields), { kind: "invalid" });
+  });
+
+  test("arbitrary decoded byte boundaries preserve escapes, UTF-8 and number tokens", async () => {
+    const text = envelope('{"block_hash":"x\\uD83D\\uDE03é\\n","block_number":-12.34E-2}');
+    const bytes = new TextEncoder().encode(text);
+    decompressedChunks(function* () { for (const byte of bytes) yield new Uint8Array([byte]); });
+    const result = await inspectProjectedChainDetail(gzipMarker, fields);
+    assert.ok(result.kind === "projected");
+    assert.deepEqual([...(await collect(result.plan)).rows.get("blockRows:0")!.values], [
+      ["block_hash", "x😃é\n"], ["block_number", -0.1234],
+    ]);
+  });
+
+  test("a decoder failure is invalid on the inspection pass and retryable on a snapshot replay", async () => {
+    const bytes = new TextEncoder().encode(envelope('{"block_hash":"kept"}'));
+    for (const failedPass of [1, 2, 3]) {
+      let pass = 0;
+      decompressedChunks(function* () {
+        if (++pass === failedPass) throw new Error("decoder stream failed");
+        yield bytes;
+      });
+      if (failedPass === 1)
+        assert.deepEqual(await inspectProjectedChainDetail(gzipMarker, fields), { kind: "invalid" });
+      else if (failedPass === 2)
+        await assert.rejects(inspectProjectedChainDetail(gzipMarker, fields), /Projection snapshot replay failed/);
+      else {
+        const result = await inspectProjectedChainDetail(gzipMarker, fields);
+        assert.ok(result.kind === "projected");
+        await assert.rejects(result.plan.visit(idleVisitor()), /Projection snapshot replay failed/);
+      }
+    }
+  });
+
+  test.each(["rowStart", "value", "stringStart", "stringChunk", "stringEnd", "rowEnd"] as const)(
+    "%s failures retain retry disposition", async (callback) => {
+      const plan = await planFor(envelope('{"block_number":1,"block_hash":"value"}'));
+      const failure = new Error(`${callback} staging failed`);
+      const visitor = idleVisitor();
+      visitor[callback] = async () => { throw failure; };
+      await assert.rejects(plan.visit(visitor), (error) => error === failure);
+    },
+  );
+
+  test("stage failures propagate, visitor backpressure is awaited and visits cannot overlap", async () => {
+    const plan = await planFor(envelope('{"block_hash":"' + "x".repeat(40_000) + '"}'));
+    const failure = new Error("stage is unavailable; retry the original delivery");
+    const failed = idleVisitor();
+    failed.stringChunk = () => { throw failure; };
+    await assert.rejects(plan.visit(failed), (error) => error === failure);
+    let release: (() => void) | undefined;
+    let started: (() => void) | undefined;
+    const observed = new Promise<void>((resolve) => { started = resolve; });
+    const wait = new Promise<void>((resolve) => { release = resolve; });
+    let chunks = 0;
+    const visitor = idleVisitor();
+    visitor.stringChunk = async () => { if (++chunks === 1) { started!(); await wait; } };
+    const visit = plan.visit(visitor);
+    await observed;
+    assert.equal(chunks, 1);
+    await assert.rejects(plan.visit(idleVisitor()), /Concurrent projection visit/);
+    release!(); await visit;
+    assert.ok(chunks > 1);
+    // A failed visitor does not poison immutable replay state.
+    assert.equal((await collect(plan)).rows.get("blockRows:0")!.values.get("block_hash"), "x".repeat(40_000));
+  });
+
+  test("inspection completes the full grammar before a plan can cause staging I/O", async () => {
+    for (const text of [envelope('{"block_hash":"valid prefix"}') + "!",
+      envelope('{"block_hash":"valid prefix"}').slice(0, -1)]) {
+      const write = vi.fn();
+      const result = await inspectProjectedChainDetail(compressed(text), fields);
+      if (result.kind === "projected") await result.plan.visit({ ...idleVisitor(), rowStart: write });
+      assert.equal(result.kind, "invalid");
+      assert.equal(write.mock.calls.length, 0);
+    }
+  });
+});

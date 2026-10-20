@@ -1,0 +1,171 @@
+import { randomUUID } from "node:crypto";
+import { createCaptureUpsertBuilder } from "./capture-family-d1.ts";
+import { createChainDetailD1Stage, discardChainDetailD1Stage } from "./chain-detail-d1-staging.ts";
+import type { ChainDetailD1Stage } from "./chain-detail-d1-staging.ts";
+import { createChainDetailPayloadSpool } from "./chain-detail-payload-spool.ts";
+import type { ChainDetailPayloadSpool } from "./chain-detail-payload-spool.ts";
+import { CHAIN_DETAIL_MIRROR_PLANS } from "./chain-detail-neon-write.ts";
+import { createStreamedPayloadFamily, emitStreamedPayloadChunks } from "./chain-detail-stream-payloads.ts";
+import type { StreamedPayloadString } from "./chain-detail-stream-payloads.ts";
+import type { D1StoreBinding } from "./d1-store.ts";
+import type { ProducerStore } from "./producer-store.ts";
+import type { NeonWriteResult } from "./neon-write.ts";
+import type { ProjectedChainDetailPlan, ProjectedChainDetailField } from "./sync-batch-projected-chain-detail.ts";
+
+const FAMILY_NAMES = ["extrinsicRows", "chainEventRows", "accountEventRows", "blockRows"] as const;
+const PAYLOAD_FIELDS = ["call_args", "args"] as const;
+/** Projection columns derive from the canonical plans. Both payload field names
+ * remain selected for every family because their old budgets apply even when
+ * that family does not store the corresponding business column. */
+export const PROJECTED_CHAIN_DETAIL_FIELDS: Readonly<Record<string, readonly string[]>> =
+  Object.fromEntries(CHAIN_DETAIL_MIRROR_PLANS.map((plan, index) => [
+    FAMILY_NAMES[index]!, [...new Set([...plan.columns, ...PAYLOAD_FIELDS])],
+  ]));
+
+export function chainDetailStreamingEnabled(env: unknown): boolean {
+  return !!env && typeof env === "object" &&
+    (env as { SYNC_CHAIN_DETAIL_STREAMING?: unknown }).SYNC_CHAIN_DETAIL_STREAMING === "enabled";
+}
+
+function nativeBucket(value: unknown): R2Bucket {
+  if (!value || typeof value !== "object") throw new Error("Private chain detail spool is unbound");
+  const bucket = value as Partial<R2Bucket>;
+  if (typeof bucket.createMultipartUpload !== "function" ||
+      typeof bucket.resumeMultipartUpload !== "function" ||
+      typeof bucket.get !== "function" || typeof bucket.delete !== "function")
+    throw new Error("Private chain detail spool requires the native R2 binding");
+  return value as R2Bucket;
+}
+
+/** A caller-owned token also covers an INSERT whose committed response is lost.
+ * R2 cleanup precedes journal removal, and cleanup cannot replace the primary
+ * preparation/commit error. No completed attempt is used as a replay shortcut. */
+async function withPrivatePreparation<T>(
+  db: D1StoreBinding,
+  store: ProducerStore,
+  bucket: R2Bucket,
+  nowMs: number,
+  action: (stage: ChainDetailD1Stage, spool: ChainDetailPayloadSpool) => Promise<T>,
+): Promise<T> {
+  const token = randomUUID();
+  let stage: ChainDetailD1Stage | undefined;
+  let spool: ChainDetailPayloadSpool | undefined;
+  let failed = false;
+  try {
+    stage = await createChainDetailD1Stage(db, store, nowMs, token);
+    spool = createChainDetailPayloadSpool(bucket, token, stage.spoolJournal);
+    return await action(stage, spool);
+  } catch (error) { failed = true; throw error; }
+  finally {
+    try {
+      if (spool) await spool.discard();
+      if (stage) await stage.discard();
+      else await discardChainDetailD1Stage(db, token);
+    } catch (cleanup) { if (!failed) throw cleanup; }
+  }
+}
+
+/** Source-only architecture candidate. Enabling requires the private staging
+ * schema, raw R2 ownership/custody, exact native correctness and measured whole
+ * isolate resource acceptance. No destination or ordinary fallback is moved. */
+export async function writeProjectedChainDetailD1(
+  inspection: ProjectedChainDetailPlan,
+  db: D1StoreBinding,
+  store: ProducerStore,
+  rawArchive: unknown,
+  nowMs = Date.now(),
+): Promise<Record<string, NeonWriteResult>> {
+  const results: Record<string, NeonWriteResult> = {};
+  try {
+    const bucket = nativeBucket(rawArchive);
+    await withPrivatePreparation(db, store, bucket, nowMs, async (stage, spool) => {
+    const families = Object.fromEntries(FAMILY_NAMES.map((name) => [name, createStreamedPayloadFamily(spool, name.toLowerCase())]));
+    const builders = CHAIN_DETAIL_MIRROR_PLANS.map((plan) => createCaptureUpsertBuilder(plan));
+    const statementCounts = CHAIN_DETAIL_MIRROR_PLANS.map(() => 0);
+    const rowCounts = CHAIN_DETAIL_MIRROR_PLANS.map(() => 0);
+    let row: Record<string, unknown> | undefined;
+    let rowFamily = -1;
+    let text = "";
+    let payload: StreamedPayloadString | undefined;
+    const indexFor = (family: string): number => {
+      const index = FAMILY_NAMES.findIndex((name) => name === family);
+      if (index < 0) throw new Error("Unknown projected chain detail family");
+      return index;
+    };
+    const selected = (field: ProjectedChainDetailField) =>
+      CHAIN_DETAIL_MIRROR_PLANS[rowFamily]!.columns.includes(field.field);
+    try {
+      await inspection.visit({
+        rowStart(info) {
+          if (row) throw new Error("Overlapping projected rows");
+          rowFamily = indexFor(info.family);
+          row = Object.create(null) as Record<string, unknown>;
+        },
+        value(field, value) {
+          if (!row || rowFamily !== indexFor(field.family)) throw new Error("Projected row mismatch");
+          if (!selected(field)) return;
+          if (value.kind === "object" || value.kind === "array")
+            throw new TypeError("Capture values must be finite scalars or serialized JSON");
+          row[field.field] = value.value;
+        },
+        stringStart(field) {
+          if (!row || payload) throw new Error("Projected string lifecycle mismatch");
+          text = "";
+          if (field.field === "call_args" || field.field === "args")
+            payload = families[field.family]!.start({ row: field.index, field: field.field });
+        },
+        async stringChunk(field, chunk) {
+          if (payload) { await payload.write(chunk); return; }
+          if (selected(field)) {
+            // JSON's UTF-8 encoding needs at least one byte per UTF-16 unit.
+            // A larger cell cannot fit the unchanged 512-KiB serialized row.
+            if (text.length + chunk.length > 512 * 1024)
+              throw new RangeError("Capture row exceeds 512 KiB");
+            text += chunk;
+          }
+        },
+        async stringEnd(field) {
+          const value = payload ? await payload.finish() : text;
+          if (selected(field)) row![field.field] = value;
+          payload = undefined;
+          text = "";
+        },
+        async rowEnd(info) {
+          if (!row || payload || rowFamily !== indexFor(info.family))
+            throw new Error("Projected row lifecycle mismatch");
+          const previous = builders[rowFamily]!.append(row);
+          row = undefined;
+          rowCounts[rowFamily]!++;
+          if (previous) {
+            await stage.append(rowFamily, previous, { row: statementCounts[rowFamily]!, field: 0, part: 0 });
+            statementCounts[rowFamily]!++;
+          }
+        },
+      });
+      if (row || payload) throw new Error("Unfinished projected row");
+      for (let family = 0; family < builders.length; family++) {
+        if (rowCounts[family]) {
+          await stage.append(family, builders[family]!.finish(), { row: statementCounts[family]!, field: 0, part: 0 });
+          statementCounts[family]!++;
+        }
+      }
+      await emitStreamedPayloadChunks(spool, families, async (name, statement, position, part) => {
+        await stage.append(indexFor(name), statement, { row: position.row, field: position.field === "call_args" ? 0 : 1, part });
+      });
+      await stage.seal();
+      await stage.commit();
+      for (let family = 0; family < CHAIN_DETAIL_MIRROR_PLANS.length; family++)
+        results[CHAIN_DETAIL_MIRROR_PLANS[family]!.table] = {
+          ok: true, rows: rowCounts[family]!, statements: statementCounts[family]!,
+        };
+    } catch (error) {
+      for (const family of Object.values(families)) family.cancel(error);
+      throw error;
+    }
+    });
+  } catch (error) {
+    for (const plan of CHAIN_DETAIL_MIRROR_PLANS)
+      results[plan.table] = { ok: false, rows: 0, statements: 0, reason: String(error) };
+  }
+  return results;
+}

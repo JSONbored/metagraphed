@@ -1,0 +1,99 @@
+name: Queue memory architecture initial diagnostics
+
+on:
+  push:
+    branches:
+      - ci/queue-memory-architecture-initial-20261020
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queue-memory-architecture-initial-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/ci/queue-memory-architecture-initial-20261020'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout exact source carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup existing Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install existing locked workspace dependencies
+        uses: ./.github/actions/install-deps
+      - name: Verify canonical Git tree and apply exact pinned source only in runner
+        id: overlay
+        run: node .github/scripts/check-queue-memory-architecture.ts apply
+      - name: Verify bounded diagnostic projection controls
+        id: controls
+        run: node .github/scripts/check-queue-memory-architecture.ts controls
+      - name: Obtain actual native formatting
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts format
+      - name: Lint exact source and carrier helpers
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts lint
+      - name: Cold canonical workspace typecheck
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts types
+      - name: Typecheck the diagnostic helper with inherited strict options
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts helper_types
+      - name: Validate unchanged canonical boundary-cast policy
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts boundary
+      - name: Validate unchanged workflow policy
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts workflow
+      - name: Run six focused native Vitest files
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts tests
+      - name: Require every initial diagnostic phase before success
+        if: always() && steps.overlay.outcome == 'success' && steps.controls.outcome == 'success'
+        run: node .github/scripts/check-queue-memory-architecture.ts summary
+      - name: Retain exact public formatted source and bounded curated receipts
+        if: always() && steps.overlay.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: queue-memory-architecture-initial-${{ github.run_attempt }}-${{ job.status }}-source
+          path: |
+            src/capture-family-d1.ts
+            src/chain-detail-d1-staging.ts
+            src/chain-detail-payload-spool.ts
+            src/chain-detail-projected-write.ts
+            src/chain-detail-stream-payloads.ts
+            src/sync-batch-projected-chain-detail.ts
+            tests/capture-upsert-streaming.test.ts
+            tests/chain-detail-d1-staging.test.ts
+            tests/chain-detail-payload-spool.test.ts
+            tests/chain-detail-projected-write.test.ts
+            tests/chain-detail-stream-payloads.test.ts
+            tests/fixtures/capture-upsert-canonical0a65.ts
+            tests/fixtures/chain-detail-d1-canonical.sql
+            tests/fixtures/chain-detail-d1-staging.sql
+            tests/sync-batch-projected-chain-detail.test.ts
+            workers/data-api.ts
+            .github/scripts/check-queue-memory-architecture.ts
+            .github/tsconfig.queue-memory-architecture.json
+            .github/vitest.queue-memory-architecture.config.ts
+            .github/fixtures/queue-memory-architecture/manifest.json
+            .github/workflows/queue-memory-architecture-initial.yml
+            queue-architecture-reports/*-receipt.json
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+

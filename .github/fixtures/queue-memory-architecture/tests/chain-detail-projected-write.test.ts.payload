@@ -1,0 +1,146 @@
+import { readFileSync } from "node:fs";
+import { Miniflare } from "miniflare";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { compressSyncBatchMessage } from "../src/sync-batch-compress.ts";
+import { inspectProjectedChainDetail } from "../src/sync-batch-projected-chain-detail.ts";
+import { chainDetailStreamingEnabled, PROJECTED_CHAIN_DETAIL_FIELDS, writeProjectedChainDetailD1 } from "../src/chain-detail-projected-write.ts";
+import { CHAIN_DETAIL_MIRROR_PLANS } from "../src/chain-detail-neon-write.ts";
+import { writeChainDetailD1 } from "../src/chain-detail-d1-write.ts";
+import { createD1Store } from "../src/d1-store.ts";
+import type { D1StoreBinding } from "../src/d1-store.ts";
+import type { ChainDetailMirrorInput } from "../src/chain-detail-neon-write.ts";
+import type { SyncBatchMessage } from "../src/sync-batch-queue.ts";
+
+const runtime = new Miniflare({ modules: true, script: "export default {fetch(){return new Response('test')}}", compatibilityDate: "2026-06-06", d1Databases: ["DB"], r2Buckets: ["R2"] });
+let db: D1Database;
+let bucket: R2Bucket;
+const tables = [...CHAIN_DETAIL_MIRROR_PLANS.map((plan) => plan.table), "chain_detail_payload_chunks", "archive_export_revisions"];
+const privateTables = ["chain_detail_ingest_stage_apply", "chain_detail_ingest_stage_fragments", "chain_detail_ingest_stage_checks", "chain_detail_ingest_stage_sessions"];
+function families(value = "small"): ChainDetailMirrorInput {
+  return {
+    extrinsicRows: [{ block_number: 42, extrinsic_index: 0, extrinsic_hash: "0xabc", signer: null, call_module: "System", call_function: "remark", success: null, fee_tao: null, tip_tao: null, call_args: value, observed_at: 1 }],
+    chainEventRows: [{ block_number: 42, event_index: 0, pallet: "System", method: "Remarked", args: value, phase: "ApplyExtrinsic", extrinsic_index: 0, observed_at: 1 }],
+    accountEventRows: [{ block_number: 42, event_index: 0, extrinsic_index: 0, event_kind: "Transfer", hotkey: "h", coldkey: "c", netuid: null, uid: null, amount_tao: "1", alpha_amount: null, observed_at: 1 }],
+    blockRows: [{ block_number: 42, block_hash: "0xabc", spec_version: 1, extrinsic_count: 1, chain_event_count: 1, account_event_count: 1, observed_at: 1, synced_at: 1, native_transfer_tao: "0", stake_flow_tao: "0", economic_activity_tao: "0", fee_tao: "0", tip_tao: "0", issuance_tao: "0", subnet_ids: "[]", economics_complete: true }],
+  };
+}
+function message(input: ChainDetailMirrorInput): SyncBatchMessage {
+  // Deliberately reverse family order. The writer must restore canonical order.
+  return { lane: "chain-detail", captured_at: 1, pass_total: Object.values(input).reduce((sum, rows) => sum + rows.length, 0), families: { blockRows: input.blockRows, accountEventRows: input.accountEventRows, chainEventRows: input.chainEventRows, extrinsicRows: input.extrinsicRows } } as SyncBatchMessage;
+}
+async function inspect(input: ChainDetailMirrorInput) {
+  const result = await inspectProjectedChainDetail(await compressSyncBatchMessage(message(input)), PROJECTED_CHAIN_DETAIL_FIELDS);
+  if (result.kind !== "projected") throw new Error("Fixture did not project");
+  return result.plan;
+}
+async function snapshot() {
+  return Object.fromEntries(await Promise.all(tables.map(async (table) => {
+    const order = table === "archive_export_revisions" ? "table_name" : table === "chain_detail_payload_chunks" ? "sha256,part" : CHAIN_DETAIL_MIRROR_PLANS.find((plan) => plan.table === table)!.conflict.join(",");
+    return [table, (await db.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all()).results];
+  })));
+}
+async function clear() { for (const table of [...privateTables, ...tables]) await db.prepare(`DELETE FROM ${table}`).run(); }
+beforeAll(async () => {
+  db = await runtime.getD1Database("DB");
+  bucket = await runtime.getR2Bucket("R2") as unknown as R2Bucket;
+  for (const file of ["./fixtures/chain-detail-d1-canonical.sql", "./fixtures/chain-detail-d1-staging.sql"])
+    for (const sql of readFileSync(new URL(file, import.meta.url), "utf8").split("-- statement-breakpoint"))
+      if (sql.trim()) await db.prepare(sql).run();
+});
+afterAll(async () => runtime.dispose());
+beforeEach(clear);
+
+describe("projected chain-detail D1 integration", () => {
+  it.each(["small", "λ😀".repeat(100_000)])("matches the complete original atomic write and revision behavior", async (value) => {
+    const rows = families(value);
+    const revisions = CHAIN_DETAIL_MIRROR_PLANS.map((plan) => plan.table);
+    const old = await writeChainDetailD1(createD1Store(db, revisions), { D1_STATE: db }, rows);
+    expect(Object.values(old).every((result) => result.ok)).toBe(true);
+    const expected = await snapshot();
+    await clear();
+    const result = await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db, revisions), bucket);
+    expect(result).toEqual(old);
+    expect(await snapshot()).toEqual(expected);
+    for (const table of privateTables) expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first("n")).toBe(0);
+    // Replay performs the same upserts and revision update again.
+    await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db, revisions), bucket);
+    expect((await db.prepare("SELECT revision FROM archive_export_revisions").all<{ revision: number }>()).results.every((row) => row.revision === 2)).toBe(true);
+  });
+
+  it("rolls back every business member and revision on a late coverage-row failure", async () => {
+    const rows = families();
+    rows.blockRows[0]!.block_hash = null;
+    const result = await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db, CHAIN_DETAIL_MIRROR_PLANS.map((plan) => plan.table)), bucket);
+    expect(Object.values(result).every((row) => !row.ok)).toBe(true);
+    for (const table of tables) expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first("n")).toBe(0);
+  });
+
+  it("preserves scalar and serialized-row refusals before any business commit", async () => {
+    for (const value of [{ nested: "refused" }, "x".repeat(512 * 1024)]) {
+      const rows = families();
+      rows.extrinsicRows[0]!.call_module = value;
+      const old = await writeChainDetailD1(createD1Store(db), { D1_STATE: db }, rows);
+      const result = await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db), bucket);
+      expect(result).toEqual(old);
+      for (const table of tables) expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first("n")).toBe(0);
+    }
+  });
+
+  it("keeps retry/no-commit semantics when multiple invalid families select a different first diagnostic", async () => {
+    const rows = families();
+    rows.extrinsicRows[0]!.call_module = {};
+    rows.blockRows[0]!.args = "\0metagraphed:r2:x";
+    const old = await writeChainDetailD1(createD1Store(db), { D1_STATE: db }, rows);
+    const result = await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db), bucket);
+    expect(Object.values(old).every((row) => !row.ok && row.reason?.includes("finite scalars"))).toBe(true);
+    expect(Object.values(result).every((row) => !row.ok && row.reason?.includes("Reserved chain detail payload reference"))).toBe(true);
+    for (const table of [...tables, ...privateTables]) expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first("n")).toBe(0);
+  });
+
+  it("cleans an owned session when its committed creation response is lost", async () => {
+    const failure = new Error("lost stage creation reply");
+    const binding = new Proxy(db, { get(target, key) {
+      if (key !== "prepare") { const value = Reflect.get(target, key); return typeof value === "function" ? value.bind(target) : value; }
+      return (sql: string) => {
+        const statement = target.prepare(sql);
+        if (!sql.startsWith("INSERT INTO chain_detail_ingest_stage_sessions")) return statement;
+        return new Proxy(statement, { get(member, name) {
+          if (name !== "bind") { const value = Reflect.get(member, name); return typeof value === "function" ? value.bind(member) : value; }
+          return (...values: unknown[]) => {
+            const bound = member.bind(...values);
+            return new Proxy(bound, { get(item, method) {
+              if (method === "run") return async () => { await item.run(); throw failure; };
+              const value = Reflect.get(item, method); return typeof value === "function" ? value.bind(item) : value;
+            } });
+          };
+        } });
+      };
+    } }) as D1StoreBinding;
+    const result = await writeProjectedChainDetailD1(await inspect(families()), binding, createD1Store(db), bucket);
+    expect(Object.values(result).every((row) => row.reason === String(failure))).toBe(true);
+    expect(await db.prepare("SELECT COUNT(*) n FROM chain_detail_ingest_stage_sessions").first("n")).toBe(0);
+  });
+
+  it("leaves ordinary, unbound and adapted-read ports activation-safe", async () => {
+    expect(chainDetailStreamingEnabled(undefined)).toBe(false);
+    expect(chainDetailStreamingEnabled({})).toBe(false);
+    expect(chainDetailStreamingEnabled({ SYNC_CHAIN_DETAIL_STREAMING: "enabled" })).toBe(true);
+    const readPort = { get: bucket.get.bind(bucket), head: bucket.head.bind(bucket) };
+    const result = await writeProjectedChainDetailD1(await inspect(families()), db, createD1Store(db), readPort);
+    expect(Object.values(result).every((row) => row.reason?.includes("native R2 binding"))).toBe(true);
+    expect(await db.prepare("SELECT COUNT(*) n FROM chain_detail_ingest_stage_sessions").first("n")).toBe(0);
+  });
+
+  it("accepts the existing legal 140 near-limit TEXT rows without materializing a whole decoded body or final binding plan", async () => {
+    const rows = families();
+    const base = rows.extrinsicRows[0]!;
+    const text = "x".repeat(512 * 1024 - 1024);
+    rows.extrinsicRows = Array.from({ length: 140 }, (_, index) => ({ ...base, extrinsic_index: index, call_module: text }));
+    rows.blockRows[0]!.extrinsic_count = 140;
+    const result = await writeProjectedChainDetailD1(await inspect(rows), db, createD1Store(db), bucket);
+    expect(Object.values(result).every((row) => row.ok)).toBe(true);
+    expect(await db.prepare("SELECT COUNT(*) n FROM chain_detail_extrinsics").first("n")).toBe(140);
+    expect(await db.prepare("SELECT SUM(length(call_module)) n FROM chain_detail_extrinsics").first("n")).toBe(140 * text.length);
+    for (const table of privateTables) expect(await db.prepare(`SELECT COUNT(*) n FROM ${table}`).first("n")).toBe(0);
+  }, 120_000);
+});

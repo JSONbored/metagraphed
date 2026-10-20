@@ -1,0 +1,337 @@
+import { createHash } from "node:crypto";
+import { NATIVE_PAYLOAD_PREFIX } from "./chain-detail-native-payloads.ts";
+import type { ProducerStatement } from "./producer-store.ts";
+
+const INLINE_BYTES = 128 * 1024;
+const MAX_VALUE_BYTES = 16 * 1024 * 1024;
+const MAX_FAMILY_BYTES = 32 * 1024 * 1024;
+const INLINE_PACKED_BYTES = 98_304;
+const NATIVE_CHUNK_BYTES = 1_490_000;
+/** Internal transfer windows do not change admitted-value limits. */
+export const STREAM_PAYLOAD_PART_BYTES = 384 * 1024;
+const LEGACY_PREFIX = "\0metagraphed:r2:";
+type Representation = "raw" | "gzip";
+
+/** Attempt-scoped, private preparation. append consumes bytes before returning;
+ * scan provides ordered owned parts, and each record must be fully drained. */
+export interface ChainDetailPayloadSpool {
+  append(valueId: string, representation: Representation, part: number, bytes: Uint8Array): Promise<void>;
+  finish(): Promise<void>;
+  scan(representation: Representation): AsyncIterable<{ valueId: string; parts: AsyncIterable<Uint8Array> }>;
+}
+export interface PayloadPosition { row: number; field: "call_args" | "args" }
+interface PreparedPayload {
+  valueId: string;
+  hash: string;
+  rawBytes: number;
+  storedBytes: number;
+  zippedBytes: number;
+  zippedSha256: string;
+  representation: Representation;
+  reference: string;
+  position: PayloadPosition;
+}
+export interface StreamedPayloadString {
+  write(value: string): Promise<void>;
+  finish(): Promise<string>;
+  cancel(reason: unknown): void;
+}
+export interface StreamedPayloadFamily {
+  start(position: PayloadPosition): StreamedPayloadString;
+  nativePayloads(): Iterable<PreparedPayload>;
+  assertFinished(): void;
+  cancel(reason: unknown): void;
+}
+
+function encode(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(binary);
+}
+function rank(position: PayloadPosition): number {
+  return position.row * 2 + (position.field === "call_args" ? 0 : 1);
+}
+function partsWriter(spool: ChainDetailPayloadSpool, id: string) {
+  let buffer: Uint8Array | undefined;
+  let length = 0, part = 0;
+  const flush = async () => {
+    if (!length) return;
+    await spool.append(id, "gzip", part++, buffer!.slice(0, length));
+    length = 0;
+  };
+  return {
+    async write(bytes: Uint8Array) {
+      buffer ??= new Uint8Array(STREAM_PAYLOAD_PART_BYTES);
+      for (let offset = 0; offset < bytes.length;) {
+        const take = Math.min(bytes.length - offset, buffer.length - length);
+        buffer.set(bytes.subarray(offset, offset + take), length);
+        length += take;
+        offset += take;
+        if (length === buffer.length) await flush();
+      }
+    },
+    finish: flush,
+  };
+}
+
+/** Both payload fields count for every original family, even when a table's
+ * projection ignores one. Repeated fields count toward the same old budgets. */
+export function createStreamedPayloadFamily(spool: ChainDetailPayloadSpool, namespace: string): StreamedPayloadFamily {
+  if (!/^[a-z_]{1,64}$/.test(namespace)) throw new TypeError("Invalid payload namespace");
+  let total = 0, nextId = 0;
+  const prepared = new Map<string, PreparedPayload>();
+  const active = new Set<StreamedPayloadString>();
+  return {
+    start(position): StreamedPayloadString {
+      if (!Number.isSafeInteger(position.row) || position.row < 0)
+        throw new TypeError("Invalid payload row position");
+      const id = namespace + ":" + nextId++;
+      const digest = createHash("sha256");
+      const compressedDigest = createHash("sha256");
+      const encoder = new TextEncoder();
+      const zippedWriter = partsWriter(spool, id);
+      let rawBytes = 0, zippedBytes = 0, inlineLength = 0;
+      let inline: Uint8Array | undefined;
+      let spilled = false;
+      let small = "", prefix = "", pendingSurrogate = "";
+      let writer: WritableStreamDefaultWriter<Uint8Array> | undefined;
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let drained: Promise<void> | undefined;
+      let drainFailure: unknown;
+      let drainFailed = false, finished = false, cancelled = false;
+      const cancel = (reason: unknown) => {
+        cancelled = true;
+        if (writer) void writer.abort(reason).catch(() => undefined);
+        if (reader) void reader.cancel(reason).catch(() => undefined);
+      };
+      const beginCompression = () => {
+        const compressed = new CompressionStream("gzip");
+        writer = compressed.writable.getWriter();
+        reader = compressed.readable.getReader();
+        drained = (async () => {
+          try {
+            for (;;) {
+              const next = await reader!.read();
+              if (next.done) break;
+              zippedBytes += next.value.byteLength;
+              compressedDigest.update(next.value);
+              if (!spilled && zippedBytes <= INLINE_PACKED_BYTES) {
+                inline ??= new Uint8Array(INLINE_PACKED_BYTES);
+                inline.set(next.value, inlineLength);
+                inlineLength += next.value.byteLength;
+              } else {
+                if (!spilled) {
+                  spilled = true;
+                  if (inlineLength) await zippedWriter.write(inline!.subarray(0, inlineLength));
+                  inline = undefined;
+                  inlineLength = 0;
+                }
+                await zippedWriter.write(next.value);
+              }
+            }
+            if (spilled) await zippedWriter.finish();
+          } catch (error) {
+            drainFailed = true;
+            drainFailure = error;
+            if (writer) void writer.abort(error).catch(() => undefined);
+          } finally {
+            reader!.releaseLock();
+          }
+        })();
+      };
+      const putBytes = async (bytes: Uint8Array) => {
+        if (drainFailed) throw drainFailure;
+        try { await writer!.write(bytes); }
+        catch (error) { throw drainFailed ? drainFailure : error; }
+        if (drainFailed) throw drainFailure;
+      };
+      const consume = async (text: string) => {
+        if (!text) return;
+        const prefixLength = Math.max(LEGACY_PREFIX.length, NATIVE_PAYLOAD_PREFIX.length);
+        if (prefix.length < prefixLength) prefix += text.slice(0, prefixLength - prefix.length);
+        if (prefix.startsWith(LEGACY_PREFIX) || prefix.startsWith(NATIVE_PAYLOAD_PREFIX))
+          throw new Error("Reserved chain detail payload reference");
+        const bytes = encoder.encode(text);
+        rawBytes += bytes.byteLength;
+        total += bytes.byteLength;
+        if (rawBytes > MAX_VALUE_BYTES || total > MAX_FAMILY_BYTES)
+          throw new RangeError("Chain detail payload exceeds byte budget");
+        digest.update(bytes);
+        if (!writer && rawBytes <= INLINE_BYTES) { small += text; return; }
+        if (!writer) {
+          beginCompression();
+          const prior = encoder.encode(small);
+          small = "";
+          await putBytes(prior);
+        }
+        await putBytes(bytes);
+      };
+      const stream: StreamedPayloadString = {
+        async write(value) {
+          if (finished || cancelled) throw new Error("Payload stream is closed");
+          for (let start = 0; start < value.length; start += 8192) {
+            let text = pendingSurrogate + value.slice(start, start + 8192);
+            pendingSurrogate = "";
+            const last = text.charCodeAt(text.length - 1);
+            if (last >= 0xd800 && last <= 0xdbff) {
+              pendingSurrogate = text.slice(-1);
+              text = text.slice(0, -1);
+            }
+            try { await consume(text); }
+            catch (error) { cancel(error); throw error; }
+          }
+        },
+        async finish() {
+          if (finished || cancelled) throw new Error("Payload stream is closed");
+          finished = true;
+          try {
+            await consume(pendingSurrogate);
+            pendingSurrogate = "";
+            if (!writer) return small;
+            try { await writer.close(); }
+            catch (error) { throw drainFailed ? drainFailure : error; }
+            await drained;
+            if (drainFailed) throw drainFailure;
+            writer.releaseLock();
+            const hash = digest.digest("hex");
+            const prior = prepared.get(hash);
+            if (prior) {
+              if (rank(position) < rank(prior.position)) prior.position = { ...position };
+              return prior.reference;
+            }
+            const representation = zippedBytes < rawBytes ? "gzip" : "raw";
+            const storedBytes = representation === "gzip" ? zippedBytes : rawBytes;
+            const zippedSha256 = compressedDigest.digest("hex");
+            // A raw-selected value exceeds 128 KiB, hence cannot be inline.
+            if (!spilled) {
+              if (representation !== "gzip" || inlineLength !== storedBytes)
+                throw new Error("Invalid private inline payload");
+              // Do not retain up to 128 KiB of base64 in a family-wide cache.
+              // Duplicate inline values regenerate the exact same reference.
+              return `${NATIVE_PAYLOAD_PREFIX}${hash}:${rawBytes}:${storedBytes}:gzip:inline:${encode(inline!.subarray(0, inlineLength))}`;
+            }
+            const reference = `${NATIVE_PAYLOAD_PREFIX}${hash}:${rawBytes}:${storedBytes}:${representation}:d1`;
+            prepared.set(hash, { valueId: id, hash, rawBytes, storedBytes, zippedBytes, zippedSha256, representation, reference, position: { ...position } });
+            return reference;
+          } catch (error) { cancel(error); throw error; }
+          finally { active.delete(stream); }
+        },
+        cancel,
+      };
+      active.add(stream);
+      return stream;
+    },
+    nativePayloads: () => prepared.values(),
+    assertFinished() { if (active.size) throw new Error("Payload stream remains unfinished"); },
+    cancel(reason) {
+      for (const stream of active) stream.cancel(reason);
+      active.clear();
+    },
+  };
+}
+
+/** Backpressure keeps one compressed transfer window in flight. Feeding small
+ * slices also bounds native inflate input while recovering raw-selected bytes. */
+function inflate(parts: AsyncIterable<Uint8Array>): ReadableStream<Uint8Array> {
+  const iterator = parts[Symbol.asyncIterator]();
+  let current: Uint8Array | undefined, at = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (!current || at === current.byteLength) {
+        const next = await iterator.next();
+        if (next.done) { controller.close(); return; }
+        current = next.value;
+        at = 0;
+      }
+      const end = Math.min(at + 4096, current.byteLength);
+      controller.enqueue(current.subarray(at, end));
+      at = end;
+    },
+    cancel(reason) { void iterator.return?.(reason).catch(() => undefined); },
+  }, { highWaterMark: 0 }).pipeThrough(new DecompressionStream("gzip"));
+}
+
+/** One ordered GET scan for all four families, irrespective of JSON wire order.
+ * Only private staged statements are emitted; hash/length failure prevents the
+ * final business transaction. Duplicate and unused gzip records are drained. */
+export async function emitStreamedPayloadChunks(
+  spool: ChainDetailPayloadSpool,
+  families: Readonly<Record<string, StreamedPayloadFamily>>,
+  emit: (family: string, statement: ProducerStatement, position: PayloadPosition, part: number) => Promise<void>,
+): Promise<void> {
+  const byId = new Map<string, { family: string; item: PreparedPayload }>();
+  for (const [family, context] of Object.entries(families)) {
+    context.assertFinished();
+    for (const item of context.nativePayloads()) {
+      if (byId.has(item.valueId)) throw new Error("Duplicate private payload ID");
+      byId.set(item.valueId, { family, item });
+    }
+  }
+  await spool.finish();
+  for await (const record of spool.scan("gzip")) {
+    const selected = byId.get(record.valueId);
+    if (!selected) { for await (const _part of record.parts) { /* drain */ } continue; }
+    byId.delete(record.valueId);
+    const { family, item } = selected;
+    let zippedBytes = 0;
+    const zippedDigest = createHash("sha256");
+    async function* checkedParts() {
+      for await (const input of record.parts) {
+        if (input.byteLength > STREAM_PAYLOAD_PART_BYTES || zippedBytes + input.byteLength > item.zippedBytes)
+          throw new Error("Invalid private payload spool length");
+        zippedBytes += input.byteLength;
+        zippedDigest.update(input);
+        yield input;
+      }
+      if (zippedBytes !== item.zippedBytes) throw new Error("Truncated private payload spool");
+      if (zippedDigest.digest("hex") !== item.zippedSha256) throw new Error("Corrupt private payload spool");
+    }
+    const bytes = new Uint8Array(NATIVE_CHUNK_BYTES);
+    const observedDigest = createHash("sha256");
+    let at = 0, observed = 0, part = 0;
+    const flush = async () => {
+      if (!at) return;
+      await emit(family, {
+        text: "INSERT INTO chain_detail_payload_chunks (sha256,part,data) VALUES (?,?,?) ON CONFLICT (sha256,part) DO UPDATE SET data=CASE WHEN chain_detail_payload_chunks.data=excluded.data THEN chain_detail_payload_chunks.data ELSE NULL END",
+        values: [item.hash, part, encode(bytes.subarray(0, at))],
+      }, item.position, part++);
+      at = 0;
+    };
+    const consume = async (input: Uint8Array) => {
+      if (observed + input.byteLength > item.storedBytes) throw new Error("Invalid private payload spool length");
+      observed += input.byteLength;
+      observedDigest.update(input);
+      for (let offset = 0; offset < input.length;) {
+        const take = Math.min(input.length - offset, bytes.length - at);
+        bytes.set(input.subarray(offset, offset + take), at);
+        at += take; offset += take;
+        if (at === bytes.length) await flush();
+      }
+    };
+    if (item.representation === "gzip") {
+      for await (const input of checkedParts()) await consume(input);
+    } else {
+      const reader = inflate(checkedParts()).getReader();
+      try {
+        for (;;) {
+          const next = await reader.read();
+          if (next.done) break;
+          await consume(next.value);
+        }
+      } finally {
+        void reader.cancel().catch(() => undefined);
+        reader.releaseLock();
+      }
+    }
+    if (observed !== item.storedBytes) throw new Error("Truncated private payload spool");
+    const expectedDigest = item.representation === "gzip" ? item.zippedSha256 : item.hash;
+    if (observedDigest.digest("hex") !== expectedDigest) throw new Error("Corrupt private payload spool");
+    await flush();
+    await emit(family, {
+      text: "INSERT INTO chain_detail_payload_chunks (sha256,part,data) SELECT ?,-1,'' WHERE EXISTS (SELECT 1 FROM chain_detail_payload_chunks WHERE sha256=? AND part>=?)",
+      values: [item.hash, item.hash, Math.ceil(item.storedBytes / NATIVE_CHUNK_BYTES)],
+    }, item.position, part);
+  }
+  if (byId.size) throw new Error("Missing private payload spool record");
+}
