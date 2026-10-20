@@ -268,3 +268,33 @@ test("rejects same-length altered module even with self-consistent manifest", as
       validateOwnerBuild(directory, "raw", root, "a".repeat(64)),
     );
   }));
+
+for (const nativePath of [
+  "pg-native",
+  "pg/node_modules/pg-native",
+  "pg/lib/node_modules/pg-native",
+  "pg/lib/native/node_modules/pg-native",
+])
+  test("refuses a supplied optional native package without reading or loading it", async () =>
+    fixture(async ({ root, directory }) => {
+      mkdirSync(path.join(root, "node_modules", nativePath), {
+        recursive: true,
+      });
+      await assert.rejects(() =>
+        validateOwnerBuild(directory, "raw", root, "a".repeat(64)),
+      );
+    }));
+test("refuses any host force-native value without mutating it", async () =>
+  fixture(async ({ root, directory }) => {
+    const previous = process.env.NODE_PG_FORCE_NATIVE;
+    try {
+      process.env.NODE_PG_FORCE_NATIVE = "synthetic-force-value";
+      await assert.rejects(() =>
+        validateOwnerBuild(directory, "raw", root, "a".repeat(64)),
+      );
+      assert.equal(process.env.NODE_PG_FORCE_NATIVE, "synthetic-force-value");
+    } finally {
+      if (previous === undefined) delete process.env.NODE_PG_FORCE_NATIVE;
+      else process.env.NODE_PG_FORCE_NATIVE = previous;
+    }
+  }));

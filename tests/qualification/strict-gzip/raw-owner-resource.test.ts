@@ -45,6 +45,7 @@ test("the complete API scheduled owner commits both 25-block lanes with native D
     ],
   );
   assert.equal(process.version, "v22.23.2");
+  assert.equal(Object.hasOwn(process.env, "NODE_PG_FORCE_NATIVE"), false);
   const scratch = await mkdtemp(
     path.join(tmpdir(), "raw-owner-qualification-"),
   );
@@ -110,6 +111,14 @@ test("the complete API scheduled owner commits both 25-block lanes with native D
     assert.ok(config.triggers.crons.includes(RAW_CAPTURE_CRON));
     assert.equal(config.limits?.cpu_ms, undefined);
     assert.equal(config.usage_model, undefined);
+    const bindings = {
+      RAW_CAPTURE_ENABLED: "true",
+      RAW_CAPTURE_STORAGE: "d1",
+      D1_STATE_TABLES: "raw_capture_state",
+      CHAIN_HEAD_RPC_URL: RAW_RPC_URLS.mainnet,
+      TESTNET_CHAIN_HEAD_RPC_URL: RAW_RPC_URLS.testnet,
+    };
+    assert.equal(Object.hasOwn(bindings, "NODE_PG_FORCE_NATIVE"), false);
     runtime = new Miniflare({
       name: RAW_OWNER_NAME,
       modules: built.modules,
@@ -128,13 +137,7 @@ test("the complete API scheduled owner commits both 25-block lanes with native D
       },
       d1Databases: ["D1_STATE"],
       r2Buckets: ["METAGRAPH_ARCHIVE"],
-      bindings: {
-        RAW_CAPTURE_ENABLED: "true",
-        RAW_CAPTURE_STORAGE: "d1",
-        D1_STATE_TABLES: "raw_capture_state",
-        CHAIN_HEAD_RPC_URL: RAW_RPC_URLS.mainnet,
-        TESTNET_CHAIN_HEAD_RPC_URL: RAW_RPC_URLS.testnet,
-      },
+      bindings,
       async outboundService(request) {
         const lane = lanes.find(
           (lane) => request.url === RAW_RPC_URLS[lane.network],

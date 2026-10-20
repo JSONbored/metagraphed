@@ -1,3 +1,7 @@
+import {
+  optionalPgBuildAssociation,
+  boundedBuildFile,
+} from "./owner-build-evidence.ts";
 import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
 // Synthetic inputs and host-side verification for the unwrapped API owner.
 // Nothing here runs captureTick, changes production source, or forwards D1.
@@ -185,13 +189,39 @@ export async function buildRawOwner(root: string, output: string) {
       sha256: rawDigest(bytes),
     });
   }
+  const optionalPg = optionalPgBuildAssociation(
+    root,
+    outputRoot,
+    meta,
+    Object.keys(meta.outputs)
+      .filter((key) => key.endsWith(".js"))
+      .map((key) => ({
+        metafilePath: key,
+        bytes: boundedBuildFile(path.resolve(root, key), 32 * 1024 * 1024),
+        sourceMap: {
+          metafilePath: key + ".map",
+          bytes: boundedBuildFile(
+            path.resolve(root, key + ".map"),
+            64 * 1024 * 1024,
+          ),
+        },
+      })),
+    modules.map((module) => path.relative(outputRoot, module.path)),
+  );
   const entry = path.join(outputRoot, "api.entry.js");
   assert.ok(outputs.has(entry));
   assert.deepEqual([...outputs.get(entry)!.exports].sort(), DO_EXPORTS);
   const edges: { from: number; to: number; dynamic: boolean }[] = [];
-  for (const [file, value] of outputs) {
-    for (const dependency of value.imports) {
+  for (const [metafilePath, value] of Object.entries(meta.outputs)) {
+    const file = path.resolve(root, metafilePath);
+    for (const [importIndex, dependency] of value.imports.entries()) {
       if (dependency.external) {
+        if (
+          optionalPg &&
+          optionalPg.admitted.output === metafilePath &&
+          optionalPg.admitted.importIndex === importIndex
+        )
+          continue;
         assertOwnerExternalImport(dependency.path);
         continue;
       }

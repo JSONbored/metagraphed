@@ -1,3 +1,9 @@
+import {
+  OPTIONAL_PG_SOURCE_PINS,
+  validateOptionalPgNativeImport,
+  type OptionalPgMetafile,
+  type PreservedOptionalPgOutput,
+} from "./optional-pg-import.ts";
 import { assertOwnerExternalImport } from "./owner-resource-policy.ts";
 import { OWNER_PG_SOURCES, assertOwnerPgSource } from "./owner-pg-identity.ts";
 // Private build evidence is never uploaded. Only validated hashes/counts escape.
@@ -31,6 +37,54 @@ function sourceFile(root: string, relative: string): string {
   assert.ok(canonical.startsWith(allowed + path.sep));
   return file;
 }
+// Read-only adapter for the single source-proven unresolved optional require.
+// It never resolves/imports a package and never changes any environment value.
+export function optionalPgBuildAssociation(
+  root: string,
+  outputRoot: string,
+  metafile: OptionalPgMetafile,
+  outputs: PreservedOptionalPgOutput[],
+  registeredModuleNames: string[],
+) {
+  assert.equal(Object.hasOwn(process.env, "NODE_PG_FORCE_NATIVE"), false);
+  const dependencyRoot = realpathSync(path.join(root, "node_modules"));
+  for (const relative of [
+    "pg-native",
+    "pg/node_modules/pg-native",
+    "pg/lib/node_modules/pg-native",
+    "pg/lib/native/node_modules/pg-native",
+  ]) {
+    let absent = false;
+    try {
+      lstatSync(path.join(dependencyRoot, relative));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      absent = true;
+    }
+    assert.ok(absent, "No optional native package may be supplied");
+  }
+  const needsProof = Object.values(metafile.outputs).some((output) =>
+    output.imports.some((dependency) => dependency.path === "pg-native"),
+  );
+  const sources = needsProof
+    ? Object.fromEntries(
+        Object.keys(OPTIONAL_PG_SOURCE_PINS).map((relative) => [
+          relative,
+          boundedBuildFile(sourceFile(root, relative), 64 * 1024),
+        ]),
+      )
+    : {};
+  return validateOptionalPgNativeImport({
+    sourceRoot: realpathSync(root),
+    dependencyRoot,
+    outputRoot,
+    metafile,
+    sources,
+    outputs,
+    registeredModuleNames,
+  });
+}
+
 export function boundedBuildFile(file: string, maximum: number): Buffer {
   assert.ok(
     Number.isSafeInteger(maximum) &&
@@ -542,6 +596,36 @@ async function validateBuildAssociation(
       decoded.length,
     );
   }
+  const optionalPg = optionalPgBuildAssociation(
+    root,
+    association.outputRoot,
+    meta,
+    association.outputs
+      .filter((output: { type: string }) => output.type === "ESModule")
+      .map(
+        (output: {
+          name: string;
+          metafilePath: string;
+          sourceMapName: string;
+        }) => {
+          const map = association.sourceMaps.find(
+            (row: { name: string }) => row.name === output.sourceMapName,
+          );
+          assert.ok(map);
+          const mapPath = outputNames.get(output.sourceMapName);
+          assert.ok(mapPath);
+          return {
+            metafilePath: output.metafilePath,
+            bytes: moduleBytes(output.name),
+            sourceMap: {
+              metafilePath: mapPath,
+              bytes: Buffer.from(map.base64, "base64"),
+            },
+          };
+        },
+      ),
+    manifest.modules.map((module) => module.name),
+  );
   const seen = new Set<string>(),
     edges: { from: string; to: string; dynamic: boolean }[] = [];
   for (const output of association.outputs) {
@@ -582,8 +666,14 @@ async function validateBuildAssociation(
       );
     }
     assert.ok(Array.isArray(info.imports));
-    for (const dependency of info.imports) {
+    for (const [importIndex, dependency] of info.imports.entries()) {
       if (dependency.external) {
+        if (
+          optionalPg &&
+          optionalPg.admitted.output === output.metafilePath &&
+          optionalPg.admitted.importIndex === importIndex
+        )
+          continue;
         assertOwnerExternalImport(dependency.path);
         continue;
       }

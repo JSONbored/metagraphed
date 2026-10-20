@@ -8,7 +8,7 @@ qualification. All 490 baseline assertions passed. The diagnostics rerun
 [39480601007](https://github.com/JSONbored/metagraphed/actions/runs/39480601007)
 also failed owner qualification while preserving all 490 baseline passes. It
 located a rejected raw build import and an incorrect inspector URL assumption.
-The current local correction awaits independent review and a hosted rerun.
+The inspector correction advanced the next hosted attempt, described below.
 
 ## Immutable baseline and test split
 
@@ -139,3 +139,59 @@ queries and fragments remain refused. The raw build still accepts only Node and
 Cloudflare builtin external imports; new fixed refusal labels distinguish three
 known optional package names from `other` without publishing a raw target. No
 additional module is permitted on the strength of an inferred failure cause.
+
+## Source-bound optional CommonJS record
+
+Run [39482215203](https://github.com/JSONbored/metagraphed/actions/runs/39482215203)
+passed the real queue-owner assertion and all 490 baseline assertions, with zero
+guard denials. The queue assertion validates the real overlap, 80-row readback,
+session drain, private build/source identity and actual native exit before it
+passes. Combined qualification still failed because the raw build identified
+`pg-native` as its refused external import.
+
+The proposed exception recognizes one unresolved optional CommonJS require from
+[pg 8.22 source](https://github.com/brianc/node-postgres/tree/b617619f9fb6fbd231731823e2732a2927ded4be/packages/pg).
+It requires exact release-source bytes for the ESM facade, main entry, native
+entry and native client; exact metadata edges and require-call kind; positive
+output contribution and actual source-map mappings, including the require line;
+and association with the exact registered output/map bytes. Only the proven
+output/import tuple is recognized. All other package imports remain refused.
+
+No pg-native package, native addon, alias or force-native environment/binding is
+supplied. The genuine builder and output bytes are unchanged. Pinned esbuild
+retains this unresolved try/catch require behind its callable runtime shim; it
+does not become an eager ESM import. This is not a universally closed graph or
+proof that every optional pg mode works. Any successful raw run will establish
+only that the optional branch was non-fatal for that exact scenario. No launch,
+network, native addon or provider permission is added. Actual output and raw-owner
+acceptance remain dependent on the exact hosted rerun.
+
+## Third-party fixture notice
+
+The inert source strings in owner-pg-source-fixtures.json and
+optional-pg-source-fixtures.json come from node-postgres at the pinned release
+commit above. Its original notice is preserved here:
+
+```text
+MIT License
+
+Copyright (c) 2010 - 2021 Brian Carlson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

@@ -18,14 +18,29 @@
       "bytes": 23035
     },
     {
+      "path": "tests/qualification/strict-gzip/optional-pg-import.cases.ts",
+      "sha256": "6fa817652ab09ef4bff546ff1a98aa31783109cea248ebd901a8639c4d8a2f99",
+      "bytes": 15007
+    },
+    {
+      "path": "tests/qualification/strict-gzip/optional-pg-import.ts",
+      "sha256": "b90f28a9e234bcd53a82da7a5879d27bac730c97570c2d20cbd0c28f886a0e41",
+      "bytes": 19543
+    },
+    {
+      "path": "tests/qualification/strict-gzip/optional-pg-source-fixtures.json",
+      "sha256": "02c76f482bed41bcdb888ff6f84906ea656dffc0b751ec2d6e9ab32a4175ee8a",
+      "bytes": 11735
+    },
+    {
       "path": "tests/qualification/strict-gzip/owner-build-evidence.cases.ts",
       "sha256": "262059c153a49e625ebf975b6364b20d1bd71ff119b1dd7ee17c0a3154762299",
       "bytes": 9339
     },
     {
       "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
-      "sha256": "7008e67d0133713d4f252db166a778cc0a8558c050cbdd4113566bc3d06c3067",
-      "bytes": 22766
+      "sha256": "a5684fb7431af7bd0004845408eaadb053483bc30d4fce7a256c38fa8017db75",
+      "bytes": 25591
     },
     {
       "path": "tests/qualification/strict-gzip/owner-deadline.ts",
@@ -89,8 +104,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/owner-raw-build.cases.ts",
-      "sha256": "79c59ddd9034a0566d28b8ecfc57e83e4cfb76e0a8ae2b5706b2b99f487b789b",
-      "bytes": 9226
+      "sha256": "a62cc33449c088837eb2211544120ea088dfe1f6c9a6fa9f06c0899c427a593e",
+      "bytes": 10336
     },
     {
       "path": "tests/qualification/strict-gzip/owner-resource-fixture.ts",
@@ -159,13 +174,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-fixture.ts",
-      "sha256": "fd2883975a7b2a54aa44aea4533d18b34357aec9e57b23e1dc218bff30e94e7d",
-      "bytes": 26090
+      "sha256": "f8af48eb0364399c126e0516b02e4629f95346527cb69a05c2f163ab33790379",
+      "bytes": 27036
     },
     {
       "path": "tests/qualification/strict-gzip/raw-owner-resource.test.ts",
-      "sha256": "cfe47d46254c7e3b3d0097b9102a9b21285879fd7e328b1ec04fcc9c6f2ae067",
-      "bytes": 14507
+      "sha256": "9ce654292a25090f0e9c1bcc45ecd89a17655cc8ea55e88ca25224fef9114e21",
+      "bytes": 14665
     },
     {
       "path": "tests/qualification/strict-gzip/receipt-files.ts",
