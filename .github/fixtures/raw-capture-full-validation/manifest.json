@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "status": "isolated native-base64 profile proposal; full native validation and release acceptance pending",
+  "payload_version": "native-base64-v1-native-39348420082",
+  "base_commit": "0a65fcffd51b0a6a2b9757905be02c1d8b859e6c",
+  "base_tree": "9aea5cbaf18389b490ca92a946186767086dea5d",
+  "canonical_subtrees": {
+    "src": "c678538f168e63696113dc1f8d599c4ca3e1547e",
+    "tests": "8c19c8235ae71b0f596825104c62bd44eb44787d",
+    "workers": "a46dd43fac421449d16afbe520f1aaf6ab32f872"
+  },
+  "qualified_predecessor": {
+    "native_run": 39348420082,
+    "native_artifact": 12231943160,
+    "native_cases": 81,
+    "workerd_equivalence_cases": 9,
+    "resource_run": 39349095973,
+    "resource_artifacts": [
+      12232557004,
+      12232197254
+    ],
+    "scope": "focused predecessor evidence only; actual executable identity was proved in the resource pair, not inferred from top-level native workerd package; no full release, Codecov or production-memory acceptance"
+  },
+  "maximum_total_payload_bytes": 524288,
+  "files": [
+    {
+      "path": "src/chain-detail-native-payloads.ts",
+      "sha256": "eb44b1d611b17455f7a6634d946b180e1104ee389834a08422bdc50c25a4f2c7",
+      "git_blob_sha": "d82402cd13cab7e79f3d11a4282688dab59effe5",
+      "bytes": 4600,
+      "expected_base_blob_sha": "f6c7a59928fc39ba9c402040393d34d37a4e2744",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/src/chain-detail-native-payloads.ts.payload"
+    },
+    {
+      "path": "tests/chain-detail-native-payloads.test.ts",
+      "sha256": "6794e21ec693d0083e1ceac744f8c6cdb3c4e1de9df489f8724842f50819655f",
+      "git_blob_sha": "79996b79308dacfb6689c899df985fa45064e1b6",
+      "bytes": 14965,
+      "expected_base_blob_sha": "7900bc7eb225cd605d3201851c454d81d6ffafe2",
+      "payload_path": ".github/fixtures/raw-capture-full-validation/candidate/tests/chain-detail-native-payloads.test.ts.payload"
+    }
+  ]
+}
