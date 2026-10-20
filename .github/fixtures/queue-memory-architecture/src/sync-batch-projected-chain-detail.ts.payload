@@ -1,0 +1,925 @@
+import {
+  MULTI_FAMILY_LANE_ROW_FAMILIES,
+  SYNC_BATCH_LANES,
+  SYNC_BATCH_MAX_ROWS,
+} from "./sync-batch-queue.ts";
+import {
+  isCompressedSyncBatchBody,
+  SyncBatchExpansionError,
+} from "./sync-batch-compress.ts";
+import { SYNC_BATCH_MAX_DECODED_BYTES } from "./sync-batch-limits.ts";
+
+/** These coordinates belong to the immutable compressed snapshot, not to a
+ * caller-owned message object. Row indices are local to their named family. */
+export interface ProjectedChainDetailRow {
+  readonly family: string;
+  readonly index: number;
+  readonly array: boolean;
+}
+export interface ProjectedChainDetailField extends ProjectedChainDetailRow {
+  readonly field: string;
+  readonly fieldIndex: number;
+}
+export type ProjectedChainDetailValue =
+  | { readonly kind: "null"; readonly value: null }
+  | { readonly kind: "boolean"; readonly value: boolean }
+  | { readonly kind: "number"; readonly value: number }
+  | { readonly kind: "object" }
+  | { readonly kind: "array" };
+type Completion = void | Promise<void>;
+export interface ProjectedChainDetailVisitor {
+  rowStart(row: ProjectedChainDetailRow): Completion;
+  value(
+    field: ProjectedChainDetailField,
+    value: ProjectedChainDetailValue,
+  ): Completion;
+  stringStart(field: ProjectedChainDetailField): Completion;
+  /** Decoded UTF-16; a valid surrogate pair never crosses a chunk boundary. */
+  stringChunk(field: ProjectedChainDetailField, chunk: string): Completion;
+  stringEnd(field: ProjectedChainDetailField): Completion;
+  rowEnd(row: ProjectedChainDetailRow): Completion;
+}
+export interface ProjectedChainDetailPlan {
+  readonly capturedAt: number;
+  readonly passTotal: number | undefined;
+  readonly rowCount: number;
+  readonly families: readonly {
+    readonly name: string;
+    readonly count: number;
+    readonly fields: readonly string[];
+  }[];
+  /** Callbacks follow wire order. The staged writer must restore canonical
+   * chunk/family/row/field order before the one business commit. */
+  visit(visitor: ProjectedChainDetailVisitor): Promise<void>;
+}
+export type ProjectedChainDetailInspection =
+  | { readonly kind: "invalid" }
+  | { readonly kind: "fallback" }
+  | { readonly kind: "projected"; readonly plan: ProjectedChainDetailPlan };
+
+type Kind = "object" | "array" | "string" | "number" | "boolean" | "null";
+type Scalar = string | number | boolean | null;
+interface Observer {
+  start(kind: Kind, at: number, depth: number): void;
+  key(value: string | null, depth: number): void;
+  end(
+    kind: Kind,
+    from: number,
+    to: number,
+    depth: number,
+    value?: Scalar,
+  ): void;
+  stringStart?(at: number, depth: number): boolean;
+  stringChunk?(value: string): void;
+  flush?(): Promise<void>;
+}
+class JsonSyntaxError extends Error {}
+const STRING_ESCAPES: Readonly<Record<string, string>> = {
+  '"': '"',
+  "\\": "\\",
+  "/": "/",
+  b: "\b",
+  f: "\f",
+  n: "\n",
+  r: "\r",
+  t: "\t",
+};
+
+/** Eight grammar states need three bits. Ten states share one Uint32 word;
+ * no JavaScript frame/object is retained per level of untrusted nesting. */
+class GrammarStack {
+  private readonly chunks: Uint32Array[] = [];
+  length = 0;
+  peek(): number {
+    const index = this.length - 1;
+    const word = Math.floor(index / 10);
+    return (
+      (this.chunks[word >>> 14]![word & 16383]! >>> ((index % 10) * 3)) & 7
+    );
+  }
+  set(value: number): void {
+    const index = this.length - 1;
+    const word = Math.floor(index / 10),
+      offset = word & 16383,
+      shift = (index % 10) * 3;
+    const chunk = this.chunks[word >>> 14]!;
+    chunk[offset] = (chunk[offset]! & ~(7 << shift)) | (value << shift);
+  }
+  push(value: number): void {
+    const index = this.length++;
+    const word = Math.floor(index / 10),
+      offset = word & 16383,
+      shift = (index % 10) * 3;
+    const owner = word >>> 14;
+    if (!this.chunks[owner]) this.chunks.push(new Uint32Array(16384));
+    const chunk = this.chunks[owner]!;
+    chunk[offset] = (chunk[offset]! & ~(7 << shift)) | (value << shift);
+  }
+  pop(): void {
+    this.length--;
+  }
+  reset(): void {
+    this.length = 0;
+  }
+  release(): void {
+    this.length = 0;
+    this.chunks.length = 0;
+  }
+}
+
+/** Every finite binary64 rounding midpoint is dyadic with denominator at most
+ * 2^1075; its terminating decimal has fewer than 770 significant digits.
+ * Retaining 1100 digits therefore distinguishes every rounding boundary. If
+ * discarded digits contain a nonzero, a final sticky 1 preserves the side of
+ * that boundary. Native Number does the final correctly-rounded conversion.
+ * Counters are bounded by the existing decoded ceiling, never by token text. */
+class JsonNumber {
+  private negative = false;
+  private fraction = false;
+  private exponent = false;
+  private exponentNegative = false;
+  private exponentValue = 0;
+  private fractionDigits = 0;
+  private significantDigits = 0;
+  private prefix = "";
+  private sticky = false;
+  reset(): void {
+    this.negative =
+      this.fraction =
+      this.exponent =
+      this.exponentNegative =
+      this.sticky =
+        false;
+    this.exponentValue = this.fractionDigits = this.significantDigits = 0;
+    this.prefix = "";
+  }
+  add(character: string): void {
+    if (character === "-") {
+      if (this.exponent) this.exponentNegative = true;
+      else this.negative = true;
+    } else if (character === ".") this.fraction = true;
+    else if (character === "e" || character === "E") this.exponent = true;
+    else if (character !== "+") {
+      const digit = character.charCodeAt(0) - 48;
+      if (this.exponent) {
+        this.exponentValue = Math.min(
+          1_000_000_000,
+          this.exponentValue * 10 + digit,
+        );
+      } else {
+        if (this.fraction) this.fractionDigits++;
+        if (this.significantDigits || digit !== 0) {
+          this.significantDigits++;
+          if (this.prefix.length < 1100) this.prefix += character;
+          else if (digit !== 0) this.sticky = true;
+        }
+      }
+    }
+  }
+  value(): number {
+    if (!this.significantDigits) return this.negative ? -0 : 0;
+    const exponent =
+      (this.exponentNegative ? -this.exponentValue : this.exponentValue) -
+      this.fractionDigits +
+      this.significantDigits -
+      this.prefix.length;
+    return Number(
+      (this.negative ? "-" : "") +
+        this.prefix +
+        (this.sticky ? "1" : "") +
+        "e" +
+        (exponent - Number(this.sticky)),
+    );
+  }
+}
+
+/** Object: initial-key, required-key, colon, value, after-value (0..4).
+ * Array: initial-value, required-value, after-value (5..7). */
+class JsonScanner {
+  private at = 0;
+  private done = false;
+  private mode: "syntax" | "string" | "number" | "literal" = "syntax";
+  private tokenAt = 0;
+  private tokenDepth = 0;
+  private keyToken = false;
+  private short = "";
+  private shortOverflow = false;
+  private escape = 0;
+  private unicode = 0;
+  private unicodeDigits = 0;
+  private stringSelected = false;
+  private stringPart = "";
+  private numberState = 0;
+  private number = new JsonNumber();
+  private literal = "";
+  private literalAt = 0;
+  private literalValue: boolean | null = null;
+  private readonly starts = [0, 0, 0, 0, 0];
+  constructor(
+    private readonly stack: GrammarStack,
+    private readonly observer: Observer,
+  ) {
+    stack.reset();
+  }
+  private fail(): never {
+    throw new JsonSyntaxError("Invalid projected JSON");
+  }
+  private valueStart(kind: Kind): void {
+    const depth = this.stack.length;
+    if (depth <= 4) this.starts[depth] = this.at;
+    if (depth === 0) {
+      if (this.done) this.fail();
+    } else {
+      const state = this.stack.peek();
+      if (state === 3) this.stack.set(4);
+      else if (state === 5 || state === 6) this.stack.set(7);
+      else this.fail();
+    }
+    this.observer.start(kind, this.at, depth);
+    this.tokenAt = this.at;
+    this.tokenDepth = depth;
+  }
+  private finishScalar(kind: Kind, value: Scalar): void {
+    this.observer.end(kind, this.tokenAt, this.at, this.tokenDepth, value);
+    if (this.tokenDepth === 0) this.done = true;
+    this.mode = "syntax";
+  }
+  private append(character: string): void {
+    if (!this.shortOverflow) {
+      if (this.short.length + character.length <= 64) this.short += character;
+      else {
+        this.short = "";
+        this.shortOverflow = true;
+      }
+    }
+    if (this.stringSelected) {
+      this.stringPart += character;
+      if (this.stringPart.length >= 8192) this.emitString(false);
+    }
+  }
+  private emitString(final: boolean): void {
+    let length = this.stringPart.length;
+    if (!final && length) {
+      const last = this.stringPart.charCodeAt(length - 1);
+      if (last >= 0xd800 && last <= 0xdbff) length--;
+    }
+    if (length) {
+      this.observer.stringChunk?.(this.stringPart.slice(0, length));
+      this.stringPart = this.stringPart.slice(length);
+    }
+  }
+  private string(character: string): void {
+    if (this.escape === 2) {
+      const digit = character.charCodeAt(0);
+      const value =
+        digit >= 48 && digit <= 57
+          ? digit - 48
+          : digit >= 65 && digit <= 70
+            ? digit - 55
+            : digit >= 97 && digit <= 102
+              ? digit - 87
+              : -1;
+      if (value < 0) this.fail();
+      this.unicode = this.unicode * 16 + value;
+      if (++this.unicodeDigits === 4) {
+        this.append(String.fromCharCode(this.unicode));
+        this.escape = 0;
+      }
+    } else if (this.escape === 1) {
+      if (character === "u") {
+        this.escape = 2;
+        this.unicode = 0;
+        this.unicodeDigits = 0;
+      } else {
+        const value = STRING_ESCAPES[character];
+        if (value === undefined) this.fail();
+        this.append(value);
+        this.escape = 0;
+      }
+    } else if (character === '"') {
+      this.emitString(true);
+      if (this.keyToken) {
+        this.observer.key(
+          this.shortOverflow ? null : this.short,
+          this.stack.length - 1,
+        );
+        this.stack.set(2);
+        this.mode = "syntax";
+      } else this.finishScalar("string", this.shortOverflow ? "" : this.short);
+    } else if (character === "\\") this.escape = 1;
+    else {
+      if (character.charCodeAt(0) < 32) this.fail();
+      this.append(character);
+    }
+  }
+  private beginString(key: boolean): void {
+    this.keyToken = key;
+    this.short = "";
+    this.shortOverflow = false;
+    this.escape = 0;
+    this.stringPart = "";
+    if (!key) this.valueStart("string");
+    this.stringSelected =
+      !key &&
+      (this.observer.stringStart?.(this.at, this.stack.length) ?? false);
+    this.mode = "string";
+  }
+  feed(text: string): void {
+    for (let index = 0; index < text.length; index++) {
+      const character = text[index]!;
+      if (this.mode === "string") {
+        this.at++;
+        this.string(character);
+        continue;
+      }
+      if (this.mode === "literal") {
+        if (character !== this.literal[this.literalAt++]) this.fail();
+        this.at++;
+        if (this.literalAt === this.literal.length)
+          this.finishScalar(
+            this.literalValue === null ? "null" : "boolean",
+            this.literalValue,
+          );
+        continue;
+      }
+      if (this.mode === "number") {
+        let next = -1;
+        const digit = character >= "0" && character <= "9";
+        if (this.numberState === 0 && digit) next = character === "0" ? 1 : 2;
+        else if (this.numberState === 2 && digit) next = 2;
+        else if (
+          (this.numberState === 1 || this.numberState === 2) &&
+          character === "."
+        )
+          next = 3;
+        else if ((this.numberState === 3 || this.numberState === 4) && digit)
+          next = 4;
+        else if (
+          (this.numberState === 1 ||
+            this.numberState === 2 ||
+            this.numberState === 4) &&
+          (character === "e" || character === "E")
+        )
+          next = 5;
+        else if (
+          this.numberState === 5 &&
+          (character === "+" || character === "-")
+        )
+          next = 6;
+        else if (
+          (this.numberState === 5 ||
+            this.numberState === 6 ||
+            this.numberState === 7) &&
+          digit
+        )
+          next = 7;
+        if (next >= 0) {
+          this.numberState = next;
+          this.number.add(character);
+          this.at++;
+          continue;
+        }
+        if (!(
+          this.numberState === 1 ||
+          this.numberState === 2 ||
+          this.numberState === 4 ||
+          this.numberState === 7
+        ))
+          this.fail();
+        this.finishScalar("number", this.number.value());
+      }
+      if (
+        character === " " ||
+        character === "\t" ||
+        character === "\r" ||
+        character === "\n"
+      ) {
+        this.at++;
+        continue;
+      }
+      const state = this.stack.length ? this.stack.peek() : -1;
+      if (state === 0 || state === 1) {
+        if (character === '"') {
+          this.beginString(true);
+          this.at++;
+          continue;
+        }
+        if (state !== 0 || character !== "}") this.fail();
+      } else if (state === 2) {
+        if (character !== ":") this.fail();
+        this.stack.set(3);
+        this.at++;
+        continue;
+      } else if (state === 4 || state === 7) {
+        if (character === ",") {
+          this.stack.set(state === 4 ? 1 : 6);
+          this.at++;
+          continue;
+        }
+        if (character !== (state === 4 ? "}" : "]")) this.fail();
+      }
+      if (character === "}" || character === "]") {
+        if (
+          !this.stack.length ||
+          (character === "}"
+            ? state !== 0 && state !== 4
+            : state !== 5 && state !== 7)
+        )
+          this.fail();
+        const depth = this.stack.length - 1;
+        this.stack.pop();
+        this.at++;
+        this.observer.end(
+          character === "}" ? "object" : "array",
+          this.starts[depth] ?? 0,
+          this.at,
+          depth,
+        );
+        if (!depth) this.done = true;
+      } else if (character === "{" || character === "[") {
+        this.valueStart(character === "{" ? "object" : "array");
+        // Every open container still needs an ASCII closing byte. Once that
+        // cannot fit under the existing decoded ceiling, no valid admitted
+        // completion exists. Keep draining for expansion-error precedence.
+        if (this.stack.length + 1 > SYNC_BATCH_MAX_DECODED_BYTES - this.at - 1)
+          this.fail();
+        this.stack.push(character === "{" ? 0 : 5);
+        this.at++;
+      } else if (character === '"') {
+        this.beginString(false);
+        this.at++;
+      } else if (character === "-" || (character >= "0" && character <= "9")) {
+        this.valueStart("number");
+        this.number.reset();
+        this.number.add(character);
+        this.numberState = character === "-" ? 0 : character === "0" ? 1 : 2;
+        this.mode = "number";
+        this.at++;
+      } else if (character === "t" || character === "f" || character === "n") {
+        this.valueStart(character === "n" ? "null" : "boolean");
+        this.literal =
+          character === "t" ? "true" : character === "f" ? "false" : "null";
+        this.literalValue =
+          character === "t" ? true : character === "f" ? false : null;
+        this.literalAt = 1;
+        this.mode = "literal";
+        this.at++;
+      } else this.fail();
+    }
+  }
+  finish(): void {
+    if (
+      this.mode === "number" &&
+      (this.numberState === 1 ||
+        this.numberState === 2 ||
+        this.numberState === 4 ||
+        this.numberState === 7)
+    )
+      this.finishScalar("number", this.number.value());
+    if (this.mode !== "syntax" || this.stack.length || !this.done) this.fail();
+  }
+}
+
+async function scan(
+  owned: Uint8Array,
+  observer: Observer,
+  stack: GrammarStack,
+): Promise<boolean> {
+  const reader = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(owned);
+      controller.close();
+    },
+  })
+    .pipeThrough(new DecompressionStream("gzip"))
+    .getReader();
+  const decoder = new TextDecoder();
+  const scanner = new JsonScanner(stack, observer);
+  let total = 0,
+    invalid = false;
+  const feed = async (text: string) => {
+    if (!invalid) {
+      try {
+        scanner.feed(text);
+      } catch (error) {
+        if (!(error instanceof JsonSyntaxError)) throw error;
+        invalid = true;
+      }
+      await observer.flush?.();
+    }
+  };
+  try {
+    for (;;) {
+      let next: ReadableStreamReadResult<Uint8Array>;
+      try {
+        next = await reader.read();
+      } catch {
+        return false;
+      }
+      if (next.done) break;
+      if (next.value.byteLength > SYNC_BATCH_MAX_DECODED_BYTES - total)
+        throw new SyncBatchExpansionError();
+      total += next.value.byteLength;
+      // The native chunk need not itself be small; never decode it into one
+      // whole-message string. Subarray is an owned read-only view.
+      for (let at = 0; at < next.value.byteLength; at += 8192)
+        await feed(
+          decoder.decode(next.value.subarray(at, at + 8192), { stream: true }),
+        );
+    }
+    await feed(decoder.decode());
+    if (invalid) return false;
+    try {
+      scanner.finish();
+    } catch (error) {
+      if (!(error instanceof JsonSyntaxError)) throw error;
+      return false;
+    }
+    await observer.flush?.();
+    return true;
+  } finally {
+    void reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+}
+
+interface FamilyRange {
+  start: number;
+  end: number;
+  count: number;
+  valid: boolean;
+}
+class Envelope implements Observer {
+  lane: Scalar | undefined;
+  capturedAt: Scalar | undefined;
+  passTotal: Scalar | undefined;
+  rowsPresent = false;
+  familiesPresent = false;
+  familiesObject = false;
+  unknownFamily = false;
+  rootObject = false;
+  readonly ranges: (FamilyRange | null)[];
+  private rootKey: string | null = null;
+  private familyKey = -1;
+  private inFamilies = false;
+  private activeFamily = -1;
+  constructor(private readonly names: readonly string[]) {
+    this.ranges = names.map(() => null);
+  }
+  key(value: string | null, depth: number): void {
+    if (depth === 0) this.rootKey = value;
+    if (depth === 1 && this.inFamilies) {
+      this.familyKey = value === null ? -1 : this.names.indexOf(value);
+      if (this.familyKey < 0) this.unknownFamily = true;
+    }
+  }
+  start(kind: Kind, at: number, depth: number): void {
+    if (!depth) this.rootObject = kind === "object";
+    if (depth === 1 && this.rootObject) {
+      if (this.rootKey === "lane") this.lane = undefined;
+      if (this.rootKey === "captured_at") this.capturedAt = undefined;
+      // A present container must stay invalid, rather than becoming an omitted total.
+      if (this.rootKey === "pass_total") this.passTotal = null;
+      if (this.rootKey === "rows") this.rowsPresent = true;
+      if (this.rootKey === "families") {
+        this.familiesPresent = true;
+        this.familiesObject = kind === "object";
+        this.inFamilies = this.familiesObject;
+        this.unknownFamily = false;
+        this.ranges.fill(null);
+        this.familyKey = -1;
+      }
+    }
+    if (depth === 2 && this.inFamilies && this.familyKey >= 0) {
+      this.ranges[this.familyKey] = {
+        start: at,
+        end: 0,
+        count: 0,
+        valid: kind === "array",
+      };
+      this.activeFamily = kind === "array" ? this.familyKey : -1;
+    }
+    if (depth === 3 && this.activeFamily >= 0) {
+      const range = this.ranges[this.activeFamily]!;
+      range.count = Math.min(SYNC_BATCH_MAX_ROWS + 1, range.count + 1);
+      if (kind !== "object" && kind !== "array") range.valid = false;
+    }
+  }
+  end(
+    kind: Kind,
+    _from: number,
+    to: number,
+    depth: number,
+    value?: Scalar,
+  ): void {
+    if (depth === 1 && kind !== "object" && kind !== "array") {
+      if (this.rootKey === "lane") this.lane = value;
+      if (this.rootKey === "captured_at") this.capturedAt = value;
+      if (this.rootKey === "pass_total") this.passTotal = value;
+    }
+    if (depth === 2 && this.inFamilies && this.activeFamily >= 0) {
+      this.ranges[this.activeFamily]!.end = to;
+      this.activeFamily = -1;
+    }
+    if (depth === 1 && this.rootKey === "families") this.inFamilies = false;
+  }
+}
+
+interface FamilyMetadata {
+  name: string;
+  range: FamilyRange;
+  fields: readonly string[];
+  base: number;
+  rowBase: number;
+}
+class FieldSpans implements Observer {
+  readonly starts: Uint32Array;
+  readonly ends: Uint32Array;
+  readonly rowArrays: Uint8Array;
+  private family = -1;
+  private row = -1;
+  private field = -1;
+  private rowObject = false;
+  constructor(
+    readonly families: readonly FamilyMetadata[],
+    slots: number,
+    rows: number,
+  ) {
+    this.starts = new Uint32Array(slots);
+    this.ends = new Uint32Array(slots);
+    this.rowArrays = new Uint8Array(rows);
+  }
+  key(value: string | null, depth: number): void {
+    if (depth === 3 && this.family >= 0 && this.rowObject)
+      this.field =
+        value === null ? -1 : this.families[this.family]!.fields.indexOf(value);
+  }
+  start(kind: Kind, at: number, depth: number): void {
+    if (depth === 2) {
+      this.family = this.families.findIndex(
+        (family) => family.range.start === at,
+      );
+      this.row = -1;
+    } else if (depth === 3 && this.family >= 0) {
+      this.row++;
+      this.field = -1;
+      this.rowObject = kind === "object";
+      const family = this.families[this.family]!;
+      this.rowArrays[family.rowBase + this.row] = Number(kind === "array");
+    } else if (
+      depth === 4 &&
+      this.family >= 0 &&
+      this.rowObject &&
+      this.field >= 0
+    ) {
+      const family = this.families[this.family]!;
+      const slot = family.base + this.row * family.fields.length + this.field;
+      this.starts[slot] = at;
+      this.ends[slot] = 0;
+    }
+  }
+  end(_kind: Kind, _from: number, to: number, depth: number): void {
+    if (depth === 4 && this.family >= 0 && this.rowObject && this.field >= 0) {
+      const family = this.families[this.family]!;
+      this.ends[family.base + this.row * family.fields.length + this.field] =
+        to;
+    }
+    if (depth === 3) this.rowObject = false;
+    if (depth === 2) this.family = -1;
+  }
+}
+
+type Event =
+  | { type: "rowStart"; row: ProjectedChainDetailRow }
+  | { type: "rowEnd"; row: ProjectedChainDetailRow }
+  | {
+      type: "value";
+      field: ProjectedChainDetailField;
+      value: ProjectedChainDetailValue;
+    }
+  | { type: "stringStart"; field: ProjectedChainDetailField }
+  | { type: "stringEnd"; field: ProjectedChainDetailField }
+  | { type: "stringChunk"; field: ProjectedChainDetailField; chunk: string };
+class EmitProjection implements Observer {
+  private readonly order: Uint32Array;
+  private next = 0;
+  private family = -1;
+  private row = -1;
+  private selected: ProjectedChainDetailField | null = null;
+  private readonly events: Event[] = [];
+  constructor(
+    private readonly spans: FieldSpans,
+    private readonly visitor: ProjectedChainDetailVisitor,
+  ) {
+    const order = new Uint32Array(spans.starts.length);
+    let length = 0;
+    for (let slot = 0; slot < spans.starts.length; slot++)
+      if (spans.ends[slot]) order[length++] = slot;
+    this.order = order
+      .subarray(0, length)
+      .sort((a, b) => spans.starts[a]! - spans.starts[b]!);
+  }
+  key(): void {}
+  private rowInfo(): ProjectedChainDetailRow {
+    const family = this.spans.families[this.family]!;
+    return {
+      family: family.name,
+      index: this.row,
+      array: Boolean(this.spans.rowArrays[family.rowBase + this.row]),
+    };
+  }
+  start(kind: Kind, at: number, depth: number): void {
+    if (depth === 2) {
+      this.family = this.spans.families.findIndex(
+        (family) => family.range.start === at,
+      );
+      this.row = -1;
+    } else if (depth === 3 && this.family >= 0) {
+      this.row++;
+      this.events.push({ type: "rowStart", row: this.rowInfo() });
+    }
+    const slot = this.order[this.next];
+    if (slot === undefined || this.spans.starts[slot] !== at) return;
+    const family = this.spans.families[this.family]!;
+    const fieldIndex = slot - family.base - this.row * family.fields.length;
+    this.selected = {
+      ...this.rowInfo(),
+      field: family.fields[fieldIndex]!,
+      fieldIndex,
+    };
+    this.next++;
+    if (kind === "object" || kind === "array") {
+      this.events.push({
+        type: "value",
+        field: this.selected,
+        value: { kind },
+      });
+      this.selected = null;
+    } else if (kind === "string")
+      this.events.push({ type: "stringStart", field: this.selected });
+  }
+  stringStart(): boolean {
+    return this.selected !== null;
+  }
+  stringChunk(chunk: string): void {
+    if (this.selected)
+      this.events.push({ type: "stringChunk", field: this.selected, chunk });
+  }
+  end(
+    kind: Kind,
+    _from: number,
+    _to: number,
+    depth: number,
+    value?: Scalar,
+  ): void {
+    if (this.selected && depth === 4) {
+      if (kind === "string")
+        this.events.push({ type: "stringEnd", field: this.selected });
+      else if (kind === "number" && typeof value === "number")
+        this.events.push({
+          type: "value",
+          field: this.selected,
+          value: { kind, value },
+        });
+      else if (kind === "boolean" && typeof value === "boolean")
+        this.events.push({
+          type: "value",
+          field: this.selected,
+          value: { kind, value },
+        });
+      else if (kind === "null")
+        this.events.push({
+          type: "value",
+          field: this.selected,
+          value: { kind, value: null },
+        });
+      this.selected = null;
+    }
+    if (depth === 3 && this.family >= 0)
+      this.events.push({ type: "rowEnd", row: this.rowInfo() });
+    if (depth === 2) this.family = -1;
+  }
+  async flush(): Promise<void> {
+    for (const event of this.events) {
+      if (event.type === "rowStart") await this.visitor.rowStart(event.row);
+      else if (event.type === "rowEnd") await this.visitor.rowEnd(event.row);
+      else if (event.type === "value")
+        await this.visitor.value(event.field, event.value);
+      else if (event.type === "stringStart")
+        await this.visitor.stringStart(event.field);
+      else if (event.type === "stringEnd")
+        await this.visitor.stringEnd(event.field);
+      else await this.visitor.stringChunk(event.field, event.chunk);
+    }
+    this.events.length = 0;
+  }
+}
+
+/** Inspect without external I/O. Only the complete valid chain-detail family
+ * shape uses this path; ordinary lanes/object messages retain their old path.
+ * Caller-supplied field lists come from the canonical writer plans. */
+export async function inspectProjectedChainDetail(
+  body: unknown,
+  fieldsByFamily: Readonly<Record<string, readonly string[]>>,
+): Promise<ProjectedChainDetailInspection> {
+  if (!isCompressedSyncBatchBody(body)) return { kind: "fallback" };
+  const input = body instanceof Uint8Array ? body : new Uint8Array(body);
+  if (input.length < 2 || input[0] !== 0x1f || input[1] !== 0x8b)
+    return { kind: "invalid" };
+  const owned = new Uint8Array(input);
+  const names = MULTI_FAMILY_LANE_ROW_FAMILIES["chain-detail"]!;
+  const fields = names.map((name) => {
+    const list = fieldsByFamily[name];
+    if (
+      !list ||
+      list.length > 62 ||
+      !list.every((field) => /^[a-z][a-z0-9_]{0,63}$/.test(field))
+    )
+      throw new TypeError("Projection requires canonical writer fields");
+    return [...new Set([...list, "call_args", "args"])];
+  });
+  const stack = new GrammarStack();
+  const envelope = new Envelope(names);
+  try {
+    if (
+      !(await scan(owned, envelope, stack)) ||
+      !envelope.rootObject ||
+      typeof envelope.lane !== "string" ||
+      !SYNC_BATCH_LANES.some((lane) => lane === envelope.lane)
+    )
+      return { kind: "invalid" };
+    if (envelope.lane !== "chain-detail" || !envelope.familiesPresent)
+      return { kind: "fallback" };
+    const count = envelope.ranges.reduce(
+      (sum, range) => sum + (range?.count ?? 0),
+      0,
+    );
+    if (
+      !envelope.familiesObject ||
+      envelope.unknownFamily ||
+      envelope.rowsPresent ||
+      !envelope.ranges.some((range) => range !== null) ||
+      envelope.ranges.some((range) => range && !range.valid) ||
+      !count ||
+      count > SYNC_BATCH_MAX_ROWS ||
+      typeof envelope.capturedAt !== "number" ||
+      !Number.isInteger(envelope.capturedAt) ||
+      envelope.capturedAt <= 0 ||
+      (envelope.passTotal !== undefined &&
+        (typeof envelope.passTotal !== "number" ||
+          !Number.isInteger(envelope.passTotal) ||
+          envelope.passTotal <= 0 ||
+          envelope.passTotal < count))
+    )
+      return { kind: "invalid" };
+    const families: FamilyMetadata[] = [];
+    let slots = 0,
+      rows = 0;
+    for (const [index, name] of names.entries()) {
+      const range = envelope.ranges[index];
+      if (!range) continue;
+      families.push({
+        name,
+        range,
+        fields: fields[index]!,
+        base: slots,
+        rowBase: rows,
+      });
+      slots += range.count * fields[index]!.length;
+      rows += range.count;
+    }
+    const spans = new FieldSpans(families, slots, rows);
+    if (!(await scan(owned, spans, stack)))
+      throw new Error("Projection snapshot replay failed");
+    let visiting = false;
+    return {
+      kind: "projected",
+      plan: {
+        capturedAt: envelope.capturedAt,
+        passTotal:
+          typeof envelope.passTotal === "number"
+            ? envelope.passTotal
+            : undefined,
+        rowCount: count,
+        families: families.map((family) => ({
+          name: family.name,
+          count: family.range.count,
+          fields: family.fields,
+        })),
+        async visit(visitor) {
+          if (visiting) throw new Error("Concurrent projection visit");
+          visiting = true;
+          try {
+            if (!(await scan(owned, new EmitProjection(spans, visitor), stack)))
+              throw new Error("Projection snapshot replay failed");
+          } finally {
+            stack.release();
+            visiting = false;
+          }
+        },
+      },
+    };
+  } finally {
+    stack.release();
+  }
+}
