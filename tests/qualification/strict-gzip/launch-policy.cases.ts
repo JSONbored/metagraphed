@@ -1009,3 +1009,88 @@ test("all recognized and unknown worker constructor attempts still synchronously
   }
   assert.equal(denied, 4);
 });
+
+// Opt-in owner observation. No process or socket is created in these cases.
+test("owner inspector permits only exact nested runtime ephemeral numeric loopback", () => {
+  const ctx = context("test-worker");
+  ctx.ownerInspector = true;
+  const call = workerdCall(ctx);
+  (call[1] as string[]).push("--inspector-addr=127.0.0.1:0");
+  assert.equal(authorizeLaunch(ctx, "spawn", call).role, "workerd");
+  assert.equal(authorizeLaunch(ctx, "spawn", workerdCall(ctx)).role, "workerd");
+});
+for (const flag of [undefined, false])
+  test(`baseline inspector remains refused with flag ${flag}`, () => {
+    const ctx = context("test-worker");
+    ctx.ownerInspector = flag;
+    const call = workerdCall(ctx);
+    (call[1] as string[]).push("--inspector-addr=127.0.0.1:0");
+    rejects(ctx, "spawn", call);
+  });
+for (const role of [
+  "coordinator",
+  "wrangler-bin",
+  "wrangler-cli",
+] as HostRole[])
+  test(`owner inspector refused from ${role}`, () => {
+    const ctx = context(role);
+    ctx.ownerInspector = true;
+    const call = workerdCall(ctx);
+    (call[1] as string[]).push("--inspector-addr=127.0.0.1:0");
+    rejects(ctx, "spawn", call);
+  });
+for (const option of [
+  "--inspector-addr=0.0.0.0:0",
+  "--inspector-addr=localhost:0",
+  "--inspector-addr=127.0.0.1:9229",
+  "--inspector-addr=[::1]:0",
+  "--inspector-addr=203.0.113.1:0",
+  "--inspector-addr=127.0.0.1:0 --help",
+  "--inspect",
+])
+  test(`owner inspector refuses altered fixed option ${option}`, () => {
+    const ctx = context("test-worker");
+    ctx.ownerInspector = true;
+    const call = workerdCall(ctx);
+    (call[1] as string[]).push(option);
+    rejects(ctx, "spawn", call);
+  });
+test("owner inspector refuses root runtime identity and extra arguments", () => {
+  const ctx = context("test-worker");
+  ctx.ownerInspector = true;
+  const call = workerdCall(ctx);
+  (call[1] as string[]).push("--inspector-addr=127.0.0.1:0");
+  ctx.native[1]!.packagePath = "node_modules/@cloudflare/workerd-linux-64";
+  rejects(ctx, "spawn", call);
+  ctx.native[1]!.packagePath =
+    "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64";
+  ctx.native[1]!.version = "1.20260907.1";
+  rejects(ctx, "spawn", call);
+  ctx.native[1]!.version = "1.20260730.1";
+  (call[1] as string[]).push("--help");
+  rejects(ctx, "spawn", call);
+});
+
+for (const value of ["true", 1, {}, null])
+  test(`owner inspector refuses nonboolean gate ${typeof value}`, () => {
+    const ctx = context("test-worker");
+    ctx.ownerInspector = value as never;
+    const call = workerdCall(ctx);
+    (call[1] as string[]).push("--inspector-addr=127.0.0.1:0");
+    rejects(ctx, "spawn", call);
+  });
+test("owner inspector refuses reordered and duplicate fixed flags", () => {
+  const ctx = context("test-worker");
+  ctx.ownerInspector = true;
+  for (const position of [0, 3, 6]) {
+    const call = workerdCall(ctx);
+    (call[1] as string[]).splice(position, 0, "--inspector-addr=127.0.0.1:0");
+    rejects(ctx, "spawn", call);
+  }
+  const call = workerdCall(ctx);
+  (call[1] as string[]).push(
+    "--inspector-addr=127.0.0.1:0",
+    "--inspector-addr=127.0.0.1:0",
+  );
+  rejects(ctx, "spawn", call);
+});

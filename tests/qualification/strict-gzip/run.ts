@@ -1,5 +1,8 @@
 // Validation-only runner. Execution launches the focused host/native suites.
 import assert from "node:assert/strict";
+import { validateServiceReceipt } from "./owner-service.ts";
+import { splitOwnerTests, OWNER_TESTS } from "./owner-test-evidence.ts";
+import { validateOwnerReceipts } from "./owner-evidence.ts";
 import { spawn } from "node:child_process";
 import {
   closeSync,
@@ -97,6 +100,17 @@ assert.ok(
 mkdirSync(receiptRoot, { recursive: true });
 const run = mkdtempSync(path.join(receiptRoot, "native-"));
 const home = mkdtempSync(path.join(tmpdir(), "decoder-qualification-home-"));
+const serviceReceiptPath = process.env.OWNER_SERVICE_RECEIPT;
+assert.ok(serviceReceiptPath && path.isAbsolute(serviceReceiptPath));
+const serviceReceipt = JSON.parse(
+  boundedFile(serviceReceiptPath, 65536).toString(),
+);
+validateServiceReceipt(serviceReceipt);
+writeFileSync(
+  path.join(run, "owner-service.json"),
+  JSON.stringify(serviceReceipt) + "\n",
+  { flag: "wx", mode: 0o600 },
+);
 const eventsPath = path.join(run, "network-events.ndjson");
 const resultPath = path.join(run, "vitest-results.json");
 const configPath = path.join(run, "guard-config.json");
@@ -165,6 +179,7 @@ writeFileSync(
   JSON.stringify(
     {
       version: 1,
+      ownerInspector: true,
       root,
       home,
       events: eventsPath,
@@ -184,6 +199,7 @@ const manifest = {
   base,
   expected,
   focusedTests: FOCUSED_TESTS,
+  ownerTests: OWNER_TESTS,
   coverageScope: ["src/strict-gzip-reader.ts", "src/sync-batch-compress.ts"],
   allowedNativeExecutables,
   wranglerSources: {
@@ -334,9 +350,12 @@ try {
 let completionEvidence = false;
 try {
   validateCompletionEvidence(
-    JSON.parse(
-      boundedFile(resultPath, RAW_LIMITS["vitest-results.json"]).toString(),
-    ),
+    splitOwnerTests(
+      JSON.parse(
+        boundedFile(resultPath, RAW_LIMITS["vitest-results.json"]).toString(),
+      ),
+      root,
+    ).focused,
     JSON.parse(
       boundedFile(
         path.join(run, "coverage/coverage-summary.json"),
@@ -353,6 +372,13 @@ try {
 } catch {
   // Exit zero without all named tests and coverage is not qualification.
 }
+let ownerEvidence = false;
+try {
+  await validateOwnerReceipts(run, root);
+  ownerEvidence = true;
+} catch {
+  /* Incomplete owner proof cannot pass. */
+}
 const guardRecordingFailed = existsSync(`${eventsPath}.failed`);
 const passed =
   code === 0 &&
@@ -365,10 +391,11 @@ const passed =
   wranglerCliGuard &&
   everyNodeChildGuarded &&
   threads.everyThreadGuarded &&
-  interceptedWrangler === 1 &&
+  interceptedWrangler === 2 &&
   unchangedFixture &&
   unchangedCandidate &&
   completionEvidence &&
+  ownerEvidence &&
   !guardRecordingFailed &&
   !outputLimitExceeded;
 writeFileSync(
@@ -394,6 +421,7 @@ writeFileSync(
       unchangedFixture,
       unchangedCandidate,
       completionEvidence,
+      ownerEvidence,
       guardRecordingFailed,
       outputLimitExceeded,
       outputBytes,

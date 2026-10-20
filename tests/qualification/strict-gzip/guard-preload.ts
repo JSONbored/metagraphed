@@ -95,6 +95,7 @@ const preloadUrl = new URL(import.meta.url);
 const configPath = preloadUrl.searchParams.get("config");
 assert.ok(configPath && path.isAbsolute(configPath), "Missing guard config");
 interface GuardConfig {
+  ownerInspector?: boolean;
   version: number;
   root: string;
   home: string;
@@ -106,6 +107,10 @@ interface GuardConfig {
 }
 const config = JSON.parse(readFileSync(configPath, "utf8")) as GuardConfig;
 assert.equal(config.version, 1);
+assert.ok(
+  config.ownerInspector === undefined ||
+    typeof config.ownerInspector === "boolean",
+);
 for (const key of ["root", "home", "events"] as const)
   assert.ok(path.isAbsolute(config[key]), `Invalid guard ${key}`);
 assert.equal(process.env.HOME, config.home, "Guard requires isolated HOME");
@@ -275,6 +280,7 @@ const roles = new Map<string, HostRole>([
 const role = mainThread ? roles.get(realEntry) : THREAD_ROLE;
 assert.ok(role, "Unreviewed guarded host entrypoint");
 const context: PolicyContext = {
+  ownerInspector: config.ownerInspector === true,
   root: config.root,
   home: config.home,
   preload: preloadUrl.href,

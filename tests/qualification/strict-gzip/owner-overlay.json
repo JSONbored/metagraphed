@@ -1,0 +1,201 @@
+{
+  "baseCommit": "6b8422966b1411dff6d7c486f4e9a549acecc761",
+  "qualificationHead": "88b3cededcf01ddf82c86c10ca80c4e5284bb3b3",
+  "files": [
+    {
+      "path": "tests/qualification/strict-gzip/guard-preload.ts",
+      "sha256": "2ac68e3ff9c73c027d8e764508c56c9c5f3321c81157118dbe03a6a2eb54ed34",
+      "bytes": 27879
+    },
+    {
+      "path": "tests/qualification/strict-gzip/launch-policy.cases.ts",
+      "sha256": "27161c9421ba7b3d3d3a2aa8130cadba7f97d5cb9fc0336f7d485951d37fd6da",
+      "bytes": 35451
+    },
+    {
+      "path": "tests/qualification/strict-gzip/launch-policy.ts",
+      "sha256": "c9abaa533e06339570c3625ac14baccfaa085815fa10dcf8534ff354aadb9c57",
+      "bytes": 23035
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-build-evidence.cases.ts",
+      "sha256": "262059c153a49e625ebf975b6364b20d1bd71ff119b1dd7ee17c0a3154762299",
+      "bytes": 9339
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
+      "sha256": "5f59c6b62ef1904d46e9b342a749e3d6f6b9caab510d6064714013ecac97d919",
+      "bytes": 22707
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-deadline.ts",
+      "sha256": "7ce5ade26a96dd8e2d32a062a2f23a0dde54a1a60eca39f6301a14752a8b0db1",
+      "bytes": 784
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-evidence.ts",
+      "sha256": "e486563bec956a172d121d606f5cc69db3f29e7ea6a96c1578e73e9d1e430196",
+      "bytes": 4382
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-native-evidence.cases.ts",
+      "sha256": "414d417bb3020595d930e4047532fb0a4718c5f765b331af3c3607b8e874c059",
+      "bytes": 3617
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-native-evidence.ts",
+      "sha256": "d50ed59840e6213a30cdd88a5346580131e2051c29990071c46cb704064aa478",
+      "bytes": 3480
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-overlay.cases.ts",
+      "sha256": "6fc746a38771e1f77d057be818d0dc03fa0fd117efdaaaef65b5694a34d6611f",
+      "bytes": 2850
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-overlay.ts",
+      "sha256": "97b5c1796f4c7666b065f1112281f243cf780fdcb91007e06a68faddbb73506c",
+      "bytes": 4060
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-pg-identity.cases.ts",
+      "sha256": "0201fe95048637770d0c809972c2aa6918b1224f33e206348cb0a56d6e5b5c0b",
+      "bytes": 1159
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-pg-identity.ts",
+      "sha256": "1d5bc2c823211349b2744f054b14fc0d77f04fa7c60537b959dfc01ba25d9498",
+      "bytes": 1091
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-pg-source-fixtures.json",
+      "sha256": "e7dbc7e8acbbbe26ad2e4d28811c094011dcd40bd88fca7b854564a540a588b5",
+      "bytes": 51317
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-public-receipts.ts",
+      "sha256": "f2e10a5e7433ef6f4e8c2da7d20c949056026e1a46830cb4878a0d26d88fe702",
+      "bytes": 6766
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-raw-build.cases.ts",
+      "sha256": "79c59ddd9034a0566d28b8ecfc57e83e4cfb76e0a8ae2b5706b2b99f487b789b",
+      "bytes": 9226
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-resource-fixture.ts",
+      "sha256": "b0860b3fb195bde9c29dff2fcdc29c1d3ecb730a400950f2f27cb4471e6e8cf8",
+      "bytes": 11764
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-resource-policy.cases.ts",
+      "sha256": "47cff4d822979f5f76bdf1ae5ef6abdf67f50730b73d52a4d7ca4be126a91f8a",
+      "bytes": 6644
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-resource-policy.ts",
+      "sha256": "4ba4c28c84fcd08e0f7cde4834251c7523f5a78672f60757f37f2c1a070a2f54",
+      "bytes": 8794
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-service.cases.ts",
+      "sha256": "6dbd481c293e237f1aec4309d2dfcfb8f96e037ef3d7af67aa7a09ec05d1efe3",
+      "bytes": 6555
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-service.ts",
+      "sha256": "881e0ec1b0fe0fd1750fd8e30e6f2e27e45d1c3d2df79291d4969aebfff0a847",
+      "bytes": 6918
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-test-evidence.cases.ts",
+      "sha256": "a1acd130da52cdf26871134c8ac9e599b6c4aafd01ef900cc696a5c24faee3a4",
+      "bytes": 2964
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-test-evidence.ts",
+      "sha256": "bc3fba4d6c021f3e68defc94d83aaf360cfa028a18dda73b9394ae8e7b62b753",
+      "bytes": 2373
+    },
+    {
+      "path": "tests/qualification/strict-gzip/postgres-owner-fixture.ts",
+      "sha256": "9275f4f9f1a36b9248d25db2fff9cef11e9aedc6262934274875f900c2be8ce0",
+      "bytes": 21133
+    },
+    {
+      "path": "tests/qualification/strict-gzip/postgres-owner-policy.cases.ts",
+      "sha256": "f11ef2236e72714035857e1d5f57d9bb2b3084b50fff00bddbe70dae69119e3d",
+      "bytes": 6329
+    },
+    {
+      "path": "tests/qualification/strict-gzip/public-receipts.ts",
+      "sha256": "a5ce9ca8e4c83e6896e24b816e9a5c3375f93528ad0dcb95f5eb31c64fc87ea2",
+      "bytes": 5260
+    },
+    {
+      "path": "tests/qualification/strict-gzip/queue-owner-bundle.ts",
+      "sha256": "d7dd9bcde057323cfbf788c1a2ddde0cb565e18950a26d02843b08bc93371278",
+      "bytes": 7455
+    },
+    {
+      "path": "tests/qualification/strict-gzip/queue-owner-resource.test.ts",
+      "sha256": "4ac6cf7a5f3a0c9fc0b98ed11ac219880b65dbe7bc72e625b5359dba4c12ba3b",
+      "bytes": 11709
+    },
+    {
+      "path": "tests/qualification/strict-gzip/raw-owner-fixture.cases.ts",
+      "sha256": "2e7992303d1092532f9486ec9b2e36d37bf8fb5b50b8ac78e0d69c9dc89fbb4f",
+      "bytes": 9072
+    },
+    {
+      "path": "tests/qualification/strict-gzip/raw-owner-fixture.ts",
+      "sha256": "bc16be1ca3562866ad4dca47a174da26b26c0aedb8e5f99aee9b23799acc2f3b",
+      "bytes": 26031
+    },
+    {
+      "path": "tests/qualification/strict-gzip/raw-owner-resource.test.ts",
+      "sha256": "cfe47d46254c7e3b3d0097b9102a9b21285879fd7e328b1ec04fcc9c6f2ae067",
+      "bytes": 14507
+    },
+    {
+      "path": "tests/qualification/strict-gzip/receipt-files.ts",
+      "sha256": "e274859786451455e10eb11b384bc3f4a16c613888ed7827bff1673256f8dab4",
+      "bytes": 3504
+    },
+    {
+      "path": "tests/qualification/strict-gzip/receipt-policy.cases.ts",
+      "sha256": "520fc958f240b043daa95c04ae14429d6bdda44fc6044382f6ad663ebbb1a9fd",
+      "bytes": 37586
+    },
+    {
+      "path": "tests/qualification/strict-gzip/receipt-policy.ts",
+      "sha256": "08ee7e937d4a1e51eb6305e1150899edabe7f8d392f3777ed4d8cbaac63bac93",
+      "bytes": 22239
+    },
+    {
+      "path": "tests/qualification/strict-gzip/run.ts",
+      "sha256": "068a584ece0973faaec79d33fd0ba873e2d853fc9f8947d92dd6d2a8b58ab236",
+      "bytes": 12848
+    },
+    {
+      "path": "tests/qualification/strict-gzip/thread-policy.cases.ts",
+      "sha256": "41176623e6d8565cc2cb66f211822e5113d02a9b8ff0d02f2c752e7d877ca3fc",
+      "bytes": 69539
+    },
+    {
+      "path": "tests/qualification/strict-gzip/thread-policy.ts",
+      "sha256": "e3597a0f7fdfd637b57fdfb9209da3ee3287dafad3e687a28b7c4d8a8241cd45",
+      "bytes": 14619
+    },
+    {
+      "path": "tests/qualification/strict-gzip/verify-candidate.ts",
+      "sha256": "b37ecf98512404f496b4cf7a1065afe8761178185a4860a904dbdf2bf33d9c6b",
+      "bytes": 8896
+    },
+    {
+      "path": "tests/qualification/strict-gzip/vitest.config.ts",
+      "sha256": "9d24da0ee5dd742bec54f77d313a059e1b63fa3ee7dbb7326c0cd7be2f858bd0",
+      "bytes": 1828
+    }
+  ]
+}

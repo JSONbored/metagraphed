@@ -225,6 +225,7 @@ export interface NativeExecutable {
   packagePath: string;
 }
 export interface PolicyContext {
+  ownerInspector?: boolean;
   root: string;
   home: string;
   preload: string;
@@ -657,7 +658,15 @@ export function authorizeLaunch(
     "workerd-identity",
   );
   need(api === "spawn", "workerd-api");
-  need(args.length === 7, "workerd-argument-count");
+  const ownerInspector =
+    args.length === 8 &&
+    context.ownerInspector === true &&
+    context.role === "test-worker" &&
+    native.version === "1.20260730.1" &&
+    native.packagePath ===
+      "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64" &&
+    args[7] === "--inspector-addr=127.0.0.1:0";
+  need(args.length === 7 || ownerInspector, "workerd-argument-count");
   equal(
     args.slice(0, 3),
     ["serve", "--binary", "--experimental"],
@@ -673,7 +682,7 @@ export function authorizeLaunch(
       loopbackAddress(args[4]!.slice("--external-addr=loopback=".length)),
     "workerd-loopback-address",
   );
-  equal(args.slice(5), ["--control-fd=3", "-"], "workerd-input");
+  equal(args.slice(5, 7), ["--control-fd=3", "-"], "workerd-input");
   keys(options, ["stdio", "windowsHide", "env"]);
   need(options.windowsHide === true, "workerd-options");
   equal(options.stdio, ["pipe", "pipe", "pipe", "pipe"], "workerd-stdio");

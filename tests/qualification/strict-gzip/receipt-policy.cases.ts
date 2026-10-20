@@ -1227,3 +1227,21 @@ test("positive-thread-ID events cannot impersonate native child launches or exit
   assert.equal(nativeUnobservedExitCount([{ ...child, threadId: 7 }]), 0);
   assert.equal(nativeUnobservedExitCount([{ ...child, threadId: 7 }, exit]), 0);
 });
+
+// The owner extension must not broaden the baseline command-count gate.
+test("baseline and owner Wrangler counts are exact independent gates", () => {
+  assert.equal(publicRunSummary(receipt()).interceptedWrangler, 1);
+  assert.equal(
+    publicRunSummary({ ...receipt(), interceptedWrangler: 2 }, 2)
+      .interceptedWrangler,
+    2,
+  );
+  for (const count of [0, 1, 3])
+    assert.throws(() =>
+      publicRunSummary({ ...receipt(), interceptedWrangler: count }, 2),
+    );
+  for (const count of [0, 2, 3])
+    assert.throws(() =>
+      publicRunSummary({ ...receipt(), interceptedWrangler: count }),
+    );
+});

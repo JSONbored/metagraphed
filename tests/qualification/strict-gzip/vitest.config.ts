@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { OWNER_TESTS } from "./owner-test-evidence.ts";
 import { FOCUSED_TESTS } from "./verify-candidate.ts";
 
 const root = process.env.DECODER_QUALIFICATION_ROOT;
@@ -29,7 +30,7 @@ export default {
   server: { ...base.server, host: "127.0.0.1" },
   test: {
     ...base.test,
-    include: [...FOCUSED_TESTS],
+    include: [...FOCUSED_TESTS, ...OWNER_TESTS],
     pool: "forks",
     maxWorkers: 1,
     fileParallelism: false,

@@ -1,5 +1,19 @@
 # Validation-only strict gzip queue qualification
 
+## Current local extension status
+
+The ten-suite baseline passed 490 tests at draft qualification head
+`88b3cededcf01ddf82c86c10ca80c4e5284bb3b3` in
+[dedicated run 39468628892](https://github.com/JSONbored/metagraphed/actions/runs/39468628892).
+That evidence remains separate from full repository CI and production resource
+acceptance. The current local extension adds two whole-owner tests; its service,
+native execution and publication are pending independent review and authorization.
+See [OWNER-QUALIFICATION.md](./OWNER-QUALIFICATION.md) for the current invocation,
+service boundary and separate acceptance fields. The historical baseline details
+below describe the original ten-suite harness; the owner workflow additionally
+requires the exact overlay, service receipt, two owner tests and private build proof.
+
+
 Draft validation proposal. Production `src/**`, `workers/**`, Wrangler config,
 package manifests, and existing workflows/gates are unchanged in the proposed
 repository diff. The integration exists only as `integration.patch`; the job
@@ -10,17 +24,17 @@ applies it to a disposable archive of base
 source/test files. The primitive remains byte-identical to commit
 `1c4518f8b4b6837f8978222bcab83c7a41ec9f7d`, SHA-256
 `5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec`.
-No passing qualification, provider result, or production activation is claimed.
+No provider result or production activation is claimed. The following attempt
+was superseded by the successful baseline run linked above.
 The [diagnostic hosted attempt](https://github.com/JSONbored/metagraphed/actions/runs/39465272507)
 passed 485 assertions, including 200 native primitive cases and four of five
 required main-entrypoint cases. It failed full qualification: native bundle
 custody was blocked by four exact Miniflare sync-fetch thread refusals, and valid
 input parity compared unequal lane-health memo state. The parity fixture now
 resets its existing memo hook between representations while retaining the fixed
-clock and exact complete SQL/parameter comparison. The next hosted result must
-verify this source-supported cause.
+clock and exact complete SQL/parameter comparison. The successful baseline rerun verified the corrected parity and custody cases.
 
-## Invocation
+## Historical baseline invocation (owner extension uses linked instructions)
 
 After reviewing the complete proposal, installing the full base lockfile with
 `npm ci --include=dev --ignore-scripts --no-audit --no-fund`, and

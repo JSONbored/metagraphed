@@ -566,7 +566,8 @@ const CHECK_NAMES = [
 ] as const;
 
 /** No arbitrary error text, arguments, URLs, environment values or log text escapes. */
-export function publicRunSummary(value: unknown) {
+export function publicRunSummary(value: unknown, expectedWrangler: 1 | 2 = 1) {
+  requireValue(expectedWrangler === 1 || expectedWrangler === 2);
   const input = object(value);
   requireValue(input.status === "passed" || input.status === "failed");
   const checks: Record<string, boolean> = {};
@@ -601,7 +602,7 @@ export function publicRunSummary(value: unknown) {
     requireValue(Object.values(checks).every(Boolean));
     requireValue(
       deniedAttempts === 0 &&
-        interceptedWrangler === 1 &&
+        interceptedWrangler === expectedWrangler &&
         !outputLimitExceeded &&
         !guardRecordingFailed,
     );

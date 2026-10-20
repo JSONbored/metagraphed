@@ -23,6 +23,25 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    # Proposed disposable local fixture. No provider binding or production data.
+    # The exact official amd64 digest and fixed mapping require review before run.
+    services:
+      postgres:
+        image: docker.io/library/postgres@sha256:66aafa11cf15800a3c94763f7e11d1e7b2e37e5e84bc4ce027cb6e1e4bfaf4df
+        env:
+          POSTGRES_DB: whole_owner_fixture
+          POSTGRES_USER: qualification_admin
+          POSTGRES_PASSWORD: synthetic-qualification-admin-only
+          POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=268435456
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U qualification_admin -d whole_owner_fixture"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+          --health-start-period 10s
     steps:
       - name: Check out qualification harness
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,6 +71,16 @@ jobs:
           env -i PATH="$PATH" CI=true node "$harness/launch-policy.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/receipt-policy.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/thread-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/raw-owner-fixture.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/postgres-owner-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-resource-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-build-evidence.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-raw-build.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-pg-identity.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-overlay.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-native-evidence.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-test-evidence.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/owner-service.cases.ts"
 
       - name: Install the full pinned base lockfile without lifecycle scripts
         working-directory: qualification-base
@@ -78,6 +107,7 @@ jobs:
           ln -s "$base/node_modules" "$candidate/node_modules"
           git -C "$candidate" apply --check "$harness/integration.patch"
           git -C "$candidate" apply "$harness/integration.patch"
+          env -i PATH="$PATH" CI=true node "$harness/owner-overlay.ts" "$candidate"
           git -C "$base" diff --exit-code
 
       # Genuine source-bundle construction remains Wrangler deploy --dry-run.
@@ -86,13 +116,23 @@ jobs:
       # Every Node child shape is allowlisted and receives the guard; native
       # compiler/runtime paths and digests are checked at every launch.
       # The Node API preload is not native-socket/kernel containment.
+      - name: Verify the Actions-owned local PostgreSQL service identity
+        shell: bash
+        env:
+          OWNER_SERVICE_ID: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          env -i PATH="$PATH" CI=true node \
+            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/owner-service.ts" \
+            "$OWNER_SERVICE_ID" "$RUNNER_TEMP/whole-owner-service.json"
+
       - name: Verify pinned sources and run guarded focused host/native tests
         shell: bash
         env:
           DECODER_QUALIFICATION_RECEIPTS: ${{ runner.temp }}/strict-gzip-receipts
         run: |
           set -euo pipefail
-          env -i PATH="$PATH" CI=true DECODER_QUALIFICATION_RECEIPTS="$DECODER_QUALIFICATION_RECEIPTS" \
+          env -i PATH="$PATH" CI=true DECODER_QUALIFICATION_RECEIPTS="$DECODER_QUALIFICATION_RECEIPTS" OWNER_SERVICE_RECEIPT="$RUNNER_TEMP/whole-owner-service.json" \
             node "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/run.ts" \
             "$RUNNER_TEMP/strict-gzip-candidate" \
             "$GITHUB_WORKSPACE/qualification-base"
@@ -104,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
           env -i PATH="$PATH" CI=true node \
-            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/public-receipts.ts" \
+            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/owner-public-receipts.ts" \
             "$RUNNER_TEMP/strict-gzip-receipts" \
             "$RUNNER_TEMP/strict-gzip-public-receipts" \
             "$RUNNER_TEMP/strict-gzip-candidate"

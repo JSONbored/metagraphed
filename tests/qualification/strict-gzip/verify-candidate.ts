@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { verifyOwnerOverlay } from "./owner-overlay.ts";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -210,6 +211,7 @@ export function verifyCandidate(
   }
   // Do not follow links. Only the installed dependency tree is excluded before
   // execution; known temporary runtime directories may appear afterward.
+  const overlayPaths = verifyOwnerOverlay(root);
   const ignored = new Set([
     "node_modules",
     ...(afterRun ? [".wrangler", ".mf", ".miniflare"] : []),
@@ -222,7 +224,9 @@ export function verifyCandidate(
       if (entry.isDirectory()) inspectDirectory(target, relative);
       else {
         assert.ok(
-          baseline.has(relative) || patchPaths.has(relative),
+          baseline.has(relative) ||
+            patchPaths.has(relative) ||
+            overlayPaths.has(relative),
           `Extra unlisted candidate file: ${relative}`,
         );
         if (!baseline.has(relative)) {
