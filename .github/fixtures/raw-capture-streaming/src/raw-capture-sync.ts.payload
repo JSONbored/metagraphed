@@ -590,7 +590,9 @@ async function runLane(
       // missing event bytes. Keep the cursor pinned until a host supplies them.
       requireEvents: true,
       store,
-      ...(ctx.preparedCapture ? { preparedCapture: { bulkLease: rawCaptureBulkLease } } : {}),
+      ...(ctx.preparedCapture
+        ? { preparedCapture: { bulkLease: rawCaptureBulkLease } }
+        : {}),
       // THE TABLE IS THE WATERMARK, so this store is the whole write path.
       watermark: neonWatermark(ctx.env, ctx.waitUntil, lane.network, now),
       genesisFloor: lane.genesisFloor,

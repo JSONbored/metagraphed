@@ -30,8 +30,12 @@ describe("raw capture bulk ownership", () => {
     const owner = createRawCaptureBulkLease();
     const first = await owner.acquire("mainnet");
     const other = owner.acquire("testnet");
-    await expect(owner.acquire("mainnet")).rejects.toMatchObject({ code: "raw_capture_bulk_busy" });
-    await expect(owner.acquire("testnet")).rejects.toMatchObject({ code: "raw_capture_bulk_waiter_exists" });
+    await expect(owner.acquire("mainnet")).rejects.toMatchObject({
+      code: "raw_capture_bulk_busy",
+    });
+    await expect(owner.acquire("testnet")).rejects.toMatchObject({
+      code: "raw_capture_bulk_waiter_exists",
+    });
     expect(owner.snapshot()).toEqual({ active: "mainnet", waiting: "testnet" });
     first.release();
     const second = await other;
@@ -47,8 +51,12 @@ describe("raw capture bulk ownership", () => {
     const active = await owner.acquire("mainnet");
     const controller = new AbortController();
     const waiting = owner.acquire("testnet", controller.signal);
-    const refusal = expect(waiting).rejects.toEqual(new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"));
-    controller.abort(new Error("untrusted reason must not become a lease error"));
+    const refusal = expect(waiting).rejects.toEqual(
+      new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"),
+    );
+    controller.abort(
+      new Error("untrusted reason must not become a lease error"),
+    );
     await refusal;
     expect(owner.snapshot()).toEqual({ active: "mainnet", waiting: null });
     const replacement = owner.acquire("testnet");
@@ -78,7 +86,9 @@ describe("raw capture bulk ownership", () => {
     const owner = createRawCaptureBulkLease();
     const controller = new AbortController();
     controller.abort();
-    await expect(owner.acquire("mainnet", controller.signal)).rejects.toMatchObject({ code: "raw_capture_bulk_aborted" });
+    await expect(
+      owner.acquire("mainnet", controller.signal),
+    ).rejects.toMatchObject({ code: "raw_capture_bulk_aborted" });
     expect(owner.snapshot()).toEqual({ active: null, waiting: null });
   });
 
@@ -87,7 +97,11 @@ describe("raw capture bulk ownership", () => {
     const lease = await owner.acquire("mainnet");
     const failure = new Error("synthetic RPC failure");
     const operation = async () => {
-      try { throw failure; } finally { lease.release(); }
+      try {
+        throw failure;
+      } finally {
+        lease.release();
+      }
     };
     await expect(operation()).rejects.toBe(failure);
     const next = await owner.acquire("testnet");

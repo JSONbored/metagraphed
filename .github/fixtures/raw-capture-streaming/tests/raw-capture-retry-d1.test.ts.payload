@@ -268,27 +268,37 @@ afterAll(async () => {
 });
 
 function captureRows(at = 1000, body = "0x00"): RawBlockCapture[] {
-  return [{
-    block_number: 10,
-    block_hash: "0x123",
-    parent_hash: "0x122",
-    header: { digest: { logs: [] } },
-    extrinsics: [body],
-    events: null,
-    captured_at: at,
-  }];
+  return [
+    {
+      block_number: 10,
+      block_hash: "0x123",
+      parent_hash: "0x122",
+      header: { digest: { logs: [] } },
+      extrinsics: [body],
+      events: null,
+      captured_at: at,
+    },
+  ];
 }
 
 test("owned prepared rows publish the identical legacy descriptor and stored bytes", async () => {
   const expected = prepareRawCapture(key, value());
   const store = rawCaptureD1(adapter());
   const receipt = await store.putRows(key, captureRows());
-  const selected = await native.prepare("SELECT * FROM raw_capture_batches").first<Record<string, unknown>>();
+  const selected = await native
+    .prepare("SELECT * FROM raw_capture_batches")
+    .first<Record<string, unknown>>();
   assert(selected);
-  for (const [field, value] of Object.entries(expected.descriptor)) assert.equal(selected[field], value);
-  assert.equal(gunzipSync(await compressed(expected.descriptor.sha256)).toString(), value());
+  for (const [field, value] of Object.entries(expected.descriptor))
+    assert.equal(selected[field], value);
+  assert.equal(
+    gunzipSync(await compressed(expected.descriptor.sha256)).toString(),
+    value(),
+  );
   assert.equal(await control(), encodeRawCaptureIntent(expected));
-  await native.prepare("UPDATE raw_capture_state SET last_contiguous_block=10").run();
+  await native
+    .prepare("UPDATE raw_capture_state SET last_contiguous_block=10")
+    .run();
   await store.acknowledgeWatermark!(key, receipt);
   assert.equal(await control(), null);
 });
@@ -298,37 +308,78 @@ test("owned partial failure and recreated producer preserve original provenance 
   const original = prepareRawCapture(key, value(1000, body));
   let windows = 0;
   const fault = new Error("synthetic owned second window");
-  await assert.rejects(rawCaptureD1(adapter((sql) => {
-    if (sql.startsWith("INSERT INTO raw_capture_chunks") && ++windows === 2) throw fault;
-  })).putRows(key, captureRows(1000, body)), (error: unknown) => error === fault);
+  await assert.rejects(
+    rawCaptureD1(
+      adapter((sql) => {
+        if (sql.startsWith("INSERT INTO raw_capture_chunks") && ++windows === 2)
+          throw fault;
+      }),
+    ).putRows(key, captureRows(1000, body)),
+    (error: unknown) => error === fault,
+  );
   assert.equal(windows, 2);
   assert.equal(await count("raw_capture_chunks"), 8);
   const pinned = await control();
   assert.equal(pinned, encodeRawCaptureIntent(original));
-  const prefix = await native.prepare("SELECT part,hex(data) AS data FROM raw_capture_chunks ORDER BY part").all();
+  const prefix = await native
+    .prepare(
+      "SELECT part,hex(data) AS data FROM raw_capture_chunks ORDER BY part",
+    )
+    .all();
   const store = rawCaptureD1(adapter());
   const receipt = await store.putRows(key, captureRows(2000, body));
   assert.equal(await control(), pinned);
   assert.equal(await count("raw_capture_batches"), 1);
-  assert.equal(await native.prepare("SELECT objects FROM raw_capture_budget").first<number>("objects"), 1);
-  const resumedPrefix = await native.prepare("SELECT part,hex(data) AS data FROM raw_capture_chunks WHERE part<8 ORDER BY part").all();
+  assert.equal(
+    await native
+      .prepare("SELECT objects FROM raw_capture_budget")
+      .first<number>("objects"),
+    1,
+  );
+  const resumedPrefix = await native
+    .prepare(
+      "SELECT part,hex(data) AS data FROM raw_capture_chunks WHERE part<8 ORDER BY part",
+    )
+    .all();
   assert.deepEqual(resumedPrefix.results, prefix.results);
-  assert.deepEqual(await compressed(original.descriptor.sha256), original.compressed);
-  await native.prepare("UPDATE raw_capture_state SET last_contiguous_block=10").run();
+  assert.deepEqual(
+    await compressed(original.descriptor.sha256),
+    original.compressed,
+  );
+  await native
+    .prepare("UPDATE raw_capture_state SET last_contiguous_block=10")
+    .run();
   await store.acknowledgeWatermark!(key, receipt);
   assert.equal(await control(), null);
 });
 
 test("owned preparation refuses a changed payload while preserving the pending intent and capacity", async () => {
   const fault = new Error("synthetic before owned chunks");
-  await assert.rejects(rawCaptureD1(adapter((sql) => {
-    if (sql.startsWith("INSERT INTO raw_capture_chunks")) throw fault;
-  })).putRows(key, captureRows()), (error: unknown) => error === fault);
+  await assert.rejects(
+    rawCaptureD1(
+      adapter((sql) => {
+        if (sql.startsWith("INSERT INTO raw_capture_chunks")) throw fault;
+      }),
+    ).putRows(key, captureRows()),
+    (error: unknown) => error === fault,
+  );
   const pinned = await control();
-  const budget = await native.prepare("SELECT objects,bytes FROM raw_capture_budget").first();
-  await assert.rejects(rawCaptureD1(adapter()).putRows(key, captureRows(2000, "different-finalized-bytes")));
+  const budget = await native
+    .prepare("SELECT objects,bytes FROM raw_capture_budget")
+    .first();
+  await assert.rejects(
+    rawCaptureD1(adapter()).putRows(
+      key,
+      captureRows(2000, "different-finalized-bytes"),
+    ),
+  );
   assert.equal(await control(), pinned);
-  assert.deepEqual(await native.prepare("SELECT objects,bytes FROM raw_capture_budget").first(), budget);
+  assert.deepEqual(
+    await native
+      .prepare("SELECT objects,bytes FROM raw_capture_budget")
+      .first(),
+    budget,
+  );
   assert.equal(await count("raw_capture_batches"), 1);
   assert.equal(await count("raw_capture_chunks"), 0);
 });
@@ -336,18 +387,30 @@ test("owned preparation refuses a changed payload while preserving the pending i
 test("a competing intent acquired during owned preparation is not replaced or charged", async () => {
   const competing = encodeRawCaptureIntent(prepareRawCapture(key, value(1500)));
   let raced = false;
-  const store = rawCaptureD1(adapter(async (sql) => {
-    if (!raced && sql.startsWith("WITH staging AS")) {
-      raced = true;
-      await native.prepare("INSERT INTO generated_artifacts(key,payload) VALUES(?,?)")
-        .bind(rawCaptureIntentKey("mainnet"), competing).run();
-    }
-  }));
-  await assert.rejects(store.putRows(key, captureRows()), /owned retry identity differs/);
+  const store = rawCaptureD1(
+    adapter(async (sql) => {
+      if (!raced && sql.startsWith("WITH staging AS")) {
+        raced = true;
+        await native
+          .prepare("INSERT INTO generated_artifacts(key,payload) VALUES(?,?)")
+          .bind(rawCaptureIntentKey("mainnet"), competing)
+          .run();
+      }
+    }),
+  );
+  await assert.rejects(
+    store.putRows(key, captureRows()),
+    /owned retry identity differs/,
+  );
   assert(raced);
   assert.equal(await control(), competing);
   assert.equal(await count("raw_capture_batches"), 0);
-  assert.equal(await native.prepare("SELECT objects FROM raw_capture_budget").first<number>("objects"), 0);
+  assert.equal(
+    await native
+      .prepare("SELECT objects FROM raw_capture_budget")
+      .first<number>("objects"),
+    0,
+  );
   await rawCaptureD1(adapter()).putRows(key, captureRows(3000));
   assert.equal(await control(), competing);
   assert.equal(await count("raw_capture_batches"), 1);
@@ -359,60 +422,118 @@ test("prepared artifacts are factory owned and consumed once even on a storage f
   assert.equal(await count("raw_capture_batches"), 0);
   const prepared = await prepareRawCaptureStream(key, captureRows());
   const fault = new Error("synthetic owned storage failure");
-  await assert.rejects(rawCaptureD1(adapter(() => { throw fault; })).putPrepared(prepared),
-    (error: unknown) => error === fault);
+  await assert.rejects(
+    rawCaptureD1(
+      adapter(() => {
+        throw fault;
+      }),
+    ).putPrepared(prepared),
+    (error: unknown) => error === fault,
+  );
   await assert.rejects(store.putPrepared(prepared));
   assert.equal(await count("raw_capture_batches"), 0);
 });
 
 test("the new intent hint and immutable persistence share one total transient retry", async () => {
-  let hintFailures = 0, chunkAttempts = 0;
+  let hintFailures = 0,
+    chunkAttempts = 0;
   const failure = new Error("Network connection lost.");
-  const store = rawCaptureD1(adapter((sql) => {
-    if (sql.startsWith("SELECT CASE WHEN length(CAST(payload AS BLOB))") && hintFailures === 0) {
-      hintFailures++; throw failure;
-    }
-    if (sql.startsWith("INSERT INTO raw_capture_chunks")) {
-      chunkAttempts++; throw failure;
-    }
-  }));
-  await assert.rejects(store.putRows(key, captureRows()), (error: unknown) => error === failure);
+  const store = rawCaptureD1(
+    adapter((sql) => {
+      if (
+        sql.startsWith("SELECT CASE WHEN length(CAST(payload AS BLOB))") &&
+        hintFailures === 0
+      ) {
+        hintFailures++;
+        throw failure;
+      }
+      if (sql.startsWith("INSERT INTO raw_capture_chunks")) {
+        chunkAttempts++;
+        throw failure;
+      }
+    }),
+  );
+  await assert.rejects(
+    store.putRows(key, captureRows()),
+    (error: unknown) => error === failure,
+  );
   assert.equal(hintFailures, 1);
   assert.equal(chunkAttempts, 1);
   assert.equal(await count("raw_capture_batches"), 1);
   assert.equal(await count("raw_capture_chunks"), 0);
-  assert.equal(await native.prepare("SELECT objects FROM raw_capture_budget").first<number>("objects"), 1);
-  assert.equal(await control(), encodeRawCaptureIntent(prepareRawCapture(key, value())));
+  assert.equal(
+    await native
+      .prepare("SELECT objects FROM raw_capture_budget")
+      .first<number>("objects"),
+    1,
+  );
+  assert.equal(
+    await control(),
+    encodeRawCaptureIntent(prepareRawCapture(key, value())),
+  );
   await rawCaptureD1(adapter()).putRows(key, captureRows(2000));
   assert.equal(await count("raw_capture_batches"), 1);
-  assert.equal(await native.prepare("SELECT objects FROM raw_capture_budget").first<number>("objects"), 1);
+  assert.equal(
+    await native
+      .prepare("SELECT objects FROM raw_capture_budget")
+      .first<number>("objects"),
+    1,
+  );
 });
 
 test("an exact late old replay preserves a newer pending range while fresh provenance refuses", async () => {
   const store = rawCaptureD1(adapter());
   const original = prepareRawCapture(key, value());
   const receipt = await store.putRows(key, captureRows());
-  await native.prepare("UPDATE raw_capture_state SET last_contiguous_block=10").run();
+  await native
+    .prepare("UPDATE raw_capture_state SET last_contiguous_block=10")
+    .run();
   await store.acknowledgeWatermark!(key, receipt);
   const nextKey = "chain/raw/blocks/000000000011-000000000011.ndjson";
   const nextRows = captureRows().map((row) => ({ ...row, block_number: 11 }));
   const fault = new Error("synthetic next range reservation");
-  await assert.rejects(rawCaptureD1(adapter((sql) => {
-    if (sql.startsWith("INSERT INTO raw_capture_batches")) throw fault;
-  })).putRows(nextKey, nextRows), (error: unknown) => error === fault);
+  await assert.rejects(
+    rawCaptureD1(
+      adapter((sql) => {
+        if (sql.startsWith("INSERT INTO raw_capture_batches")) throw fault;
+      }),
+    ).putRows(nextKey, nextRows),
+    (error: unknown) => error === fault,
+  );
   const newer = await control();
-  assert.equal(newer, encodeRawCaptureIntent(prepareRawCapture(nextKey, value(1000, "0x00", 11))));
-  const budget = await native.prepare("SELECT objects,bytes FROM raw_capture_budget").first();
+  assert.equal(
+    newer,
+    encodeRawCaptureIntent(prepareRawCapture(nextKey, value(1000, "0x00", 11))),
+  );
+  const budget = await native
+    .prepare("SELECT objects,bytes FROM raw_capture_budget")
+    .first();
   assert.equal(await count("raw_capture_batches"), 1);
   const oldReceipt = await store.putRows(key, captureRows());
   assert.equal(await control(), newer);
-  assert.deepEqual(await native.prepare("SELECT objects,bytes FROM raw_capture_budget").first(), budget);
-  assert.deepEqual(await compressed(original.descriptor.sha256), original.compressed);
+  assert.deepEqual(
+    await native
+      .prepare("SELECT objects,bytes FROM raw_capture_budget")
+      .first(),
+    budget,
+  );
+  assert.deepEqual(
+    await compressed(original.descriptor.sha256),
+    original.compressed,
+  );
   await store.acknowledgeWatermark!(key, oldReceipt);
   assert.equal(await control(), newer);
-  await assert.rejects(store.putRows(key, captureRows(2000)), /acknowledged by another identity/);
+  await assert.rejects(
+    store.putRows(key, captureRows(2000)),
+    /acknowledged by another identity/,
+  );
   assert.equal(await control(), newer);
-  assert.deepEqual(await native.prepare("SELECT objects,bytes FROM raw_capture_budget").first(), budget);
+  assert.deepEqual(
+    await native
+      .prepare("SELECT objects,bytes FROM raw_capture_budget")
+      .first(),
+    budget,
+  );
   assert.equal(await count("raw_capture_batches"), 1);
 });
 

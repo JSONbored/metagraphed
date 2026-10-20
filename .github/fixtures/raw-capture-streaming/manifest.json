@@ -7,15 +7,15 @@
     {
       "path": "src/raw-capture-bulk-lease.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-bulk-lease.ts.payload",
-      "bytes": 4017,
-      "sha256": "c3d9a7175b3a5d6bcc88685af5b7049b78a95212cd58385ab6e5cc3a2076693a",
+      "bytes": 4080,
+      "sha256": "8e269085ef736747d78a535d7bdb32c80b035873e0980fb009e27081b3252d76",
       "expected_base_blob_sha": null
     },
     {
       "path": "src/raw-capture-d1.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-d1.ts.payload",
-      "bytes": 11893,
-      "sha256": "08ea89c2e7c79d022b3378afd754e2aebc62decaeeb5fb10fe8304a43b679ac5",
+      "bytes": 11785,
+      "sha256": "a74bbdecc66b3a37970aa8430dd566d3ef46f18666aec861d34bc0838dd18635",
       "expected_base_blob_sha": "a2117ac28687f6e83b1c0c9f63d3c7996702cde1"
     },
     {
@@ -28,43 +28,43 @@
     {
       "path": "src/raw-capture-retry-store.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-retry-store.ts.payload",
-      "bytes": 13956,
-      "sha256": "5dfd6366e9ac6279630970a17c627d8bb66f5590144d947a0f03ad5797dcd1b3",
+      "bytes": 13936,
+      "sha256": "d0e538e408d347626481e4ebe5f42d27b778209969457812cf5bb74c2743021a",
       "expected_base_blob_sha": null
     },
     {
       "path": "src/raw-capture-rpc-policy.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-rpc-policy.ts.payload",
-      "bytes": 8587,
-      "sha256": "09cd8b00ce69e57ffbc5c8063ad89f0c7c20d651c2d513fba3fd4a734b3d5e26",
+      "bytes": 8858,
+      "sha256": "ea26025f62e6f3efa7634cbe72f534074f1d86af2549b48ee425c7d1a76a51ed",
       "expected_base_blob_sha": null
     },
     {
       "path": "src/raw-capture-stream-prepare.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-stream-prepare.ts.payload",
-      "bytes": 13685,
-      "sha256": "ae8d5004bcada1d24b6d0be5e8306c3f05f1ed60a339c3ed033843deb2f61c3d",
+      "bytes": 14489,
+      "sha256": "3cf64b18401a9621d62891957a760095101b8f8911cc5ad8bb7bd41980805b70",
       "expected_base_blob_sha": null
     },
     {
       "path": "src/raw-capture-sync.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-capture-sync.ts.payload",
-      "bytes": 30127,
-      "sha256": "ec9ba57bfe54b4903d41c7a95931c9ccaca7988b04a0d72ae87c6aee9b7cc6df",
+      "bytes": 30143,
+      "sha256": "5334f65d83c95a7a43901478a49e3bb187faeae1702ce29c3293d0e1851acf09",
       "expected_base_blob_sha": "2b7919e346e991d130ec91d3c1c76f3fae8f26c5"
     },
     {
       "path": "src/raw-chain-capture.ts",
       "payload": ".github/fixtures/raw-capture-streaming/src/raw-chain-capture.ts.payload",
-      "bytes": 30872,
-      "sha256": "c26c2ee3caf04375c12ef5ff73c6dd71e4b598a24c9fc013187d1f4fc4566fe7",
+      "bytes": 31210,
+      "sha256": "33e5ea162d66edcb468ab5c11dc1fce91badbd40df34b5aa9954f8d659823eb1",
       "expected_base_blob_sha": "ba70a0a49d560f013b5468cf022038f00dd58948"
     },
     {
       "path": "tests/raw-capture-bulk-lease.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-bulk-lease.test.ts.payload",
-      "bytes": 4012,
-      "sha256": "149da7ec14d798e72b53d1f384579af5ee229f9431c9a3d5dbc317ffcc7a0323",
+      "bytes": 4101,
+      "sha256": "e4add7a77e2840b9ea585c664dad33fb233257aebd0ed00594c0b7cbb4d2ab43",
       "expected_base_blob_sha": null
     },
     {
@@ -91,15 +91,15 @@
     {
       "path": "tests/raw-capture-prepared-producer.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-prepared-producer.test.ts.payload",
-      "bytes": 9895,
-      "sha256": "053798e70c067df492ebf8cc99272a9b41895c36908a8f13d5fd315221eeeacb",
+      "bytes": 11221,
+      "sha256": "69b774eb09eee6955cce327926cacde29480f5be713deb2bdd785e6c82bad92a",
       "expected_base_blob_sha": null
     },
     {
       "path": "tests/raw-capture-retry-d1.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-retry-d1.test.ts.payload",
-      "bytes": 25195,
-      "sha256": "a130bd0d3a4f34d12e4de085b27704d8f5ecd7ea0b09b348ddd0440989280976",
+      "bytes": 25909,
+      "sha256": "cc360cec67b898db2e6e8bc057787af179e00297ba72298a1bc637bd275cf1aa",
       "expected_base_blob_sha": null
     },
     {
@@ -112,8 +112,8 @@
     {
       "path": "tests/raw-capture-rpc-policy.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-rpc-policy.test.ts.payload",
-      "bytes": 12452,
-      "sha256": "43ba5224ab1cc9db73b988cb55b403a0ef1f0af20ae68d5aefe10fbd03360528",
+      "bytes": 13585,
+      "sha256": "82cf43687b679893b9f74f13221720934e7f53beac890a5dab3d784a86cb67aa",
       "expected_base_blob_sha": null
     },
     {
@@ -126,15 +126,15 @@
     {
       "path": "tests/raw-capture-stream-native.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-native.test.ts.payload",
-      "bytes": 6049,
-      "sha256": "7fcdbd57135379fb3c4eee0b6641d0ff41cfcd26df3dc997af77e9b8ab17dbac",
+      "bytes": 6387,
+      "sha256": "9b14702578ab3e7ad9641d7da818604333487a76c96cc9b4b27a99ccce3b913b",
       "expected_base_blob_sha": null
     },
     {
       "path": "tests/raw-capture-stream-prepare.test.ts",
       "payload": ".github/fixtures/raw-capture-streaming/tests/raw-capture-stream-prepare.test.ts.payload",
-      "bytes": 18818,
-      "sha256": "ebfda947731c26b08ab617303aa2751a6a2916a141322de860c5923a2debfed6",
+      "bytes": 20629,
+      "sha256": "333641189bdfb89d105401997afc24c7ba89321cad0c5958924c2ad87da5b368",
       "expected_base_blob_sha": null
     },
     {

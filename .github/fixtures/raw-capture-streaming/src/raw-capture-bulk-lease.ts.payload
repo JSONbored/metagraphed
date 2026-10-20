@@ -72,12 +72,18 @@ export function createRawCaptureBulkLease(): RawCaptureBulkLease {
       if (network !== "mainnet" && network !== "testnet")
         return Promise.reject(new TypeError("Invalid raw capture bulk lane"));
       if (signal?.aborted)
-        return Promise.reject(new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"));
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_aborted"),
+        );
       if (!active) return Promise.resolve(grant(network));
       if (active.network === network)
-        return Promise.reject(new RawCaptureBulkLeaseError("raw_capture_bulk_busy"));
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_busy"),
+        );
       if (waiting)
-        return Promise.reject(new RawCaptureBulkLeaseError("raw_capture_bulk_waiter_exists"));
+        return Promise.reject(
+          new RawCaptureBulkLeaseError("raw_capture_bulk_waiter_exists"),
+        );
       return new Promise<RawCaptureBulkHandle>((resolve, reject) => {
         const waiter = {
           network,

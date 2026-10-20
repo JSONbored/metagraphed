@@ -3,20 +3,27 @@ import { createHash, randomBytes } from "node:crypto";
 import { build } from "esbuild";
 import { afterAll, beforeAll, test } from "vitest";
 import { Miniflare, NoOpLog } from "miniflare";
-import { prepareRawCapture, decodeRawCaptureIntent, encodeRawCaptureIntent } from "../src/raw-capture-retry-intent.ts";
+import {
+  prepareRawCapture,
+  decodeRawCaptureIntent,
+  encodeRawCaptureIntent,
+} from "../src/raw-capture-retry-intent.ts";
 import type { RawBlockCapture } from "../src/raw-chain-capture.ts";
 
 let runtime: Miniflare | undefined;
 const key = "chain/raw/blocks/000000000001-000000000001.ndjson";
 const bytes = Buffer.from("bounded native response bytes ".repeat(4000));
 let outbound = 0;
-const hash = (value: Uint8Array) => createHash("sha256").update(value).digest("hex");
+const hash = (value: Uint8Array) =>
+  createHash("sha256").update(value).digest("hex");
 
 beforeAll(async () => {
   // This is a small native codec/reader probe, not the production Worker graph
   // or a memory test. Exact production compatibility flags are retained.
-  const bundle = await build({ stdin: { resolveDir: process.cwd(),
-    contents: `
+  const bundle = await build({
+    stdin: {
+      resolveDir: process.cwd(),
+      contents: `
       import { createHash } from "node:crypto";
       import { prepareRawCaptureStream, claimRawCapturePrepared } from "./src/raw-capture-stream-prepare.ts";
       import { readRawCaptureRpcBody, RAW_CAPTURE_RPC_POLICY_PROPOSAL } from "./src/raw-capture-rpc-policy.ts";
@@ -44,10 +51,21 @@ beforeAll(async () => {
             ? error.name : "unclassified";
           return Response.json({failureClass:name},{status:500});
         }
-      }};`, loader: "ts" }, bundle: true, write: false, format: "esm",
-    platform: "browser", target: "es2022", external: ["node:*"], logLevel: "silent" });
+      }};`,
+      loader: "ts",
+    },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "browser",
+    target: "es2022",
+    external: ["node:*"],
+    logLevel: "silent",
+  });
   assert.equal(bundle.outputFiles.length, 1);
-  runtime = new Miniflare({ log: new NoOpLog(), modules: true,
+  runtime = new Miniflare({
+    log: new NoOpLog(),
+    modules: true,
     script: bundle.outputFiles[0]!.text,
     compatibilityDate: "2026-06-06",
     compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
@@ -58,54 +76,102 @@ beforeAll(async () => {
     },
   });
 });
-afterAll(async () => { await runtime?.dispose(); });
+afterAll(async () => {
+  await runtime?.dispose();
+});
 
 function row(events: string): RawBlockCapture {
-  return { block_number: 1, block_hash: "0x1", parent_hash: "0x0",
-    header: JSON.parse('{"10":10,"2":2,"duplicate":1,"duplicate":2,"nested":{"emoji":"😀","lone":"\\ud800"}}'),
-    extrinsics: ["0x00"], events, captured_at: 1000 };
+  return {
+    block_number: 1,
+    block_hash: "0x1",
+    parent_hash: "0x0",
+    header: JSON.parse(
+      '{"10":10,"2":2,"duplicate":1,"duplicate":2,"nested":{"emoji":"😀","lone":"\\ud800"}}',
+    ),
+    extrinsics: ["0x00"],
+    events,
+    captured_at: 1000,
+  };
 }
-test.each(["unicode", "incompressible"])("native workerd level6 streaming gzip matches the existing bytes (%s)", async (kind) => {
-  assert(runtime);
-  const value = row(kind === "unicode"
-    ? "x".repeat(65500) + "😀\ud800" + "\0".repeat(9000)
-    : randomBytes(400_000).toString("base64"));
-  const expected = prepareRawCapture(key, JSON.stringify(value) + "\n");
-  const response = await runtime.dispatchFetch("https://worker.fixture.invalid/prepare", {
-    method: "POST", body: JSON.stringify({ key, rows: [value] }),
-  });
-  assert.equal(response.status, 200);
-  const result = await response.json() as { descriptor: unknown; provenance: unknown; parts: string[] };
-  assert.deepEqual(result.descriptor, expected.descriptor);
-  assert.deepEqual(result.provenance, expected.provenance);
-  assert.deepEqual(Buffer.concat(result.parts.map((part) => Buffer.from(part, "hex"))), expected.compressed);
-});
+test.each(["unicode", "incompressible"])(
+  "native workerd level6 streaming gzip matches the existing bytes (%s)",
+  async (kind) => {
+    assert(runtime);
+    const value = row(
+      kind === "unicode"
+        ? "x".repeat(65500) + "😀\ud800" + "\0".repeat(9000)
+        : randomBytes(400_000).toString("base64"),
+    );
+    const expected = prepareRawCapture(key, JSON.stringify(value) + "\n");
+    const response = await runtime.dispatchFetch(
+      "https://worker.fixture.invalid/prepare",
+      {
+        method: "POST",
+        body: JSON.stringify({ key, rows: [value] }),
+      },
+    );
+    assert.equal(response.status, 200);
+    const result = (await response.json()) as {
+      descriptor: unknown;
+      provenance: unknown;
+      parts: string[];
+    };
+    assert.deepEqual(result.descriptor, expected.descriptor);
+    assert.deepEqual(result.provenance, expected.provenance);
+    assert.deepEqual(
+      Buffer.concat(result.parts.map((part) => Buffer.from(part, "hex"))),
+      expected.compressed,
+    );
+  },
+);
 
 test("native pending preparation restores original numeric lexemes before accepting the artifact", async () => {
   assert(runtime);
   const value = row("body");
-  const original = (JSON.stringify(value) + "\n").replace('"captured_at":1000', '"captured_at":1.000e3');
+  const original = (JSON.stringify(value) + "\n").replace(
+    '"captured_at":1000',
+    '"captured_at":1.000e3',
+  );
   const expected = prepareRawCapture(key, original);
   const intent = decodeRawCaptureIntent(encodeRawCaptureIntent(expected));
   value.captured_at = 9000;
-  const response = await runtime.dispatchFetch("https://worker.fixture.invalid/prepare", {
-    method: "POST", body: JSON.stringify({ key, rows: [value], intent }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker.fixture.invalid/prepare",
+    {
+      method: "POST",
+      body: JSON.stringify({ key, rows: [value], intent }),
+    },
+  );
   assert.equal(response.status, 200);
-  const result = await response.json() as { descriptor: unknown; provenance: unknown; parts: string[] };
+  const result = (await response.json()) as {
+    descriptor: unknown;
+    provenance: unknown;
+    parts: string[];
+  };
   assert.deepEqual(result.descriptor, expected.descriptor);
   assert.deepEqual(result.provenance, ["1.000e3"]);
-  assert.deepEqual(Buffer.concat(result.parts.map((part) => Buffer.from(part, "hex"))), expected.compressed);
+  assert.deepEqual(
+    Buffer.concat(result.parts.map((part) => Buffer.from(part, "hex"))),
+    expected.compressed,
+  );
 });
 
 test("native controlled Fetch response supports the mandatory BYOB bounded read port", async () => {
   assert(runtime);
   const before = outbound;
-  const response = await runtime.dispatchFetch("https://worker.fixture.invalid/reader", {
-    method: "POST", body: JSON.stringify({ mode: "reader" }),
-  });
+  const response = await runtime.dispatchFetch(
+    "https://worker.fixture.invalid/reader",
+    {
+      method: "POST",
+      body: JSON.stringify({ mode: "reader" }),
+    },
+  );
   assert.equal(response.status, 200);
-  const result = await response.json() as { bytes: number; maximum: number; sha256: string };
+  const result = (await response.json()) as {
+    bytes: number;
+    maximum: number;
+    sha256: string;
+  };
   assert.equal(result.bytes, bytes.length);
   assert(result.maximum > 0 && result.maximum <= 65536);
   assert.equal(result.sha256, hash(bytes));
