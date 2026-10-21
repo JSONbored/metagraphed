@@ -586,3 +586,85 @@ test("publisher refuses a baseline pass made only of booleans", async (t) => {
   await assert.rejects(() => publish(paths));
   assert.equal(existsSync(paths.output), false);
 });
+
+for (const [label, diagnostic] of [
+  ["absent", undefined],
+  [
+    "fixed code",
+    [
+      {
+        boundary: "auth-unfixed-control",
+        family: "failure-replay",
+        code: "fla-check-045",
+      },
+    ],
+  ],
+  ["malformed", { privateError: "must never become proof" }],
+  [
+    "forged pass",
+    [{ status: "passed", evidenceValidated: true, code: "unknown" }],
+  ],
+] as const) {
+  test(`native diagnostics ${label} cannot alter completion acceptance`, () => {
+    const fixture = completionFixture();
+    const expected = assertFailureCompletion(fixture.baseline, fixture.phases);
+    for (const phase of fixture.phases)
+      phase.failureNativeDiagnostics = diagnostic;
+    assert.deepEqual(
+      assertFailureCompletion(fixture.baseline, fixture.phases),
+      expected,
+    );
+    fixture.phases[2].status = "failed";
+    fixture.phases[2].evidenceValidated = false;
+    assert.throws(() =>
+      assertFailureCompletion(fixture.baseline, fixture.phases),
+    );
+    assert.equal(fixture.phases[2].status, "failed");
+    assert.equal(fixture.phases[2].evidenceValidated, false);
+  });
+}
+
+test("native diagnostic projection requires failed status and successful source verification", () => {
+  const source = readFileSync(
+    new URL("./failure-public-receipts.ts", import.meta.url),
+    "utf8",
+  );
+  const matches = [
+    ...source.matchAll(
+      /if\s*\(\s*(receipt\.status\s*===\s*"failed"\s*&&\s*nativeDiagnosticSourceVerified)\s*\)\s+state\.failureNativeDiagnostics = readFailureNativeTestDiagnostics\(/g,
+    ),
+  ];
+  assert.equal(matches.length, 1);
+  // Only this exact fixed boolean expression is evaluated; no source module,
+  // imports, proof function or native operation is loaded by this regression.
+  assert.equal(
+    matches[0]![1]!.replace(/\s+/g, " ").trim(),
+    'receipt.status === "failed" && nativeDiagnosticSourceVerified',
+  );
+  const gate = new Function(
+    "receipt",
+    "nativeDiagnosticSourceVerified",
+    `return (${matches[0]![1]});`,
+  ) as (receipt: { status: string }, verified: boolean) => boolean;
+  assert.equal(gate({ status: "failed" }, true), true);
+  assert.equal(gate({ status: "failed" }, false), false);
+  assert.equal(gate({ status: "passed" }, true), false);
+  assert.equal(gate({ status: "passed" }, false), false);
+  assert.equal(gate({ status: "missing" }, true), false);
+  assert.equal(
+    (source.match(/let nativeDiagnosticSourceVerified = false;/g) ?? []).length,
+    1,
+  );
+  assert.equal(
+    (source.match(/nativeDiagnosticSourceVerified = true;/g) ?? []).length,
+    1,
+  );
+  const verification = source.indexOf(
+    "verifyFailureVariant(reference, variant, base, phase, true);",
+  );
+  const marked = source.indexOf("nativeDiagnosticSourceVerified = true;");
+  const proof = source.indexOf(
+    "state.proof = await validateFailurePhaseEvidence(run, variant, phase);",
+  );
+  assert.ok(verification >= 0 && verification < marked && marked < proof);
+});

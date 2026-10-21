@@ -33,6 +33,16 @@
       "bytes": 15152
     },
     {
+      "path": "tests/qualification/strict-gzip/failure-native-diagnostics.ts",
+      "sha256": "8e42cdb17c530eec9b1b1883495f038ae768c1a48116e370f29e6a2fa099efe8",
+      "bytes": 15169
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-native-reason-codes.ts",
+      "sha256": "24b022d769f004902b1a5e4bbac2c051a8aa268af774ce5ad2ae01846bb0ac23",
+      "bytes": 50376
+    },
+    {
       "path": "tests/qualification/strict-gzip/failure-phase.json",
       "sha256": "88c1b7b93b2ac05a93876d9e4e5f520438a5089a2238f43884856b88acffc990",
       "bytes": 27
@@ -59,8 +69,13 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-replay-reason-codes.ts",
-      "sha256": "eabbde31e3dd3b35fb8538091f8454251fee3c573c2cf0ecfa4d4eb0f48b6536",
-      "bytes": 152686
+      "sha256": "2cad4b8f07c18c985b27276f732d06cfbf113d38ca70282311b47b2a12848895",
+      "bytes": 152692
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-test-evidence.ts",
+      "sha256": "4f8d55e0a609d3e058d1850b2fcf8e27b88cdc6d07dca011f90aa2c5bd1988ad",
+      "bytes": 5411
     },
     {
       "path": "tests/qualification/strict-gzip/guard-preload.ts",
@@ -184,8 +199,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/queue-owner-failure.test.ts",
-      "sha256": "c9e8cdd1a2662a40dd8a0c9c1eb79d4d49e3e65970552369548249f7f014c3b4",
-      "bytes": 27402
+      "sha256": "3bd15270b8abe9fcc1ee1d403e57f7e36d570786cbbc3a162da49d4d56551946",
+      "bytes": 61830
     },
     {
       "path": "tests/qualification/strict-gzip/queue-owner-resource.test.ts",

@@ -3,6 +3,7 @@ import {
   withFailureReplayReason,
   withFailureReplayReasonAsync,
 } from "./failure-replay-diagnostics.ts";
+import { publicFailureNativeDiagnostics } from "./failure-native-diagnostics.ts";
 import {
   failureReplayDiagnostic,
   projectFailureReplayDiagnostics,
@@ -118,6 +119,29 @@ async function replayFailureDiagnostics(
     validateFailurePhaseEvidence(run, variant, phase),
   );
   return diagnostics;
+}
+// Failure-only diagnostics never participate in phase acceptance.
+function readFailureNativeTestDiagnostics(
+  run: string,
+  root: string,
+  phase: string,
+  status: unknown,
+) {
+  try {
+    return publicFailureNativeDiagnostics(
+      JSON.parse(
+        boundedFile(
+          path.join(run, "vitest-results.json"),
+          RAW_LIMITS["vitest-results.json"],
+        ).toString(),
+      ),
+      root,
+      phase,
+      status,
+    );
+  } catch {
+    return [];
+  }
 }
 export async function publishFailureQualification(
   raw: string,
@@ -262,9 +286,11 @@ export async function publishFailureQualification(
         const receipt = publicRunSummary(rawReceipt, 1);
         state.run = receipt;
         state.status = receipt.status;
+        let nativeDiagnosticSourceVerified = false;
         try {
           const variant = path.join(variantsRoot, phase);
           verifyFailureVariant(reference, variant, base, phase, true);
+          nativeDiagnosticSourceVerified = true;
           state.proof = await validateFailurePhaseEvidence(run, variant, phase);
           state.evidenceValidated = true;
         } catch {
@@ -282,6 +308,13 @@ export async function publishFailureQualification(
               base,
               phase,
             ),
+            receipt.status,
+          );
+        if (receipt.status === "failed" && nativeDiagnosticSourceVerified)
+          state.failureNativeDiagnostics = readFailureNativeTestDiagnostics(
+            run,
+            path.join(variantsRoot, phase),
+            phase,
             receipt.status,
           );
         if (receipt.status !== "passed" || state.evidenceValidated !== true)
