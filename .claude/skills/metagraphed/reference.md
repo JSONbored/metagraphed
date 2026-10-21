@@ -127,7 +127,9 @@ python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the 
   `NO_API_ROUTES` instead. The two structural exemptions (`SPECIMEN_ROUTES`, `PROSE_ROUTES`) are
   themselves asserted to name only routes that exist and are swept, so an exemption cannot outlive
   its subject. Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` **or**
-  `^packages/ui-kit/` in the diff — `packages/client` and `packages/ui-kit` are both required, not
+  `^packages/ui-kit/`, plus exact root `package.json` / `package-lock.json` changes in the diff.
+  The root manifest and lockfile control the installed UI dependency graph and select browser
+  tests too, including lockfile-only transitive fixes. `packages/client` and `packages/ui-kit` are both required, not
   optional: each is the only place that verifies its own committed `dist/index.js`/`index.cjs` still
   matches a fresh build, so a `packages/client`- or `packages/ui-kit`-only PR must also trip this
   job or stale/tampered committed runtime code could merge unverified) via the same per-step guard
