@@ -316,7 +316,7 @@ jobs:
     # every push before anyone marked it ready. Job-level skip is safe here: this repo has ZERO
     # required status contexts on main (verified via branches/main/protection), and the review
     # pipeline's fetchLiveCiAggregate buckets skipped identically to success.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') || (github.event.pull_request.number == 12878 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/publish-notification-reporting-20261021') }}
     env:
       # The docs fast lane + narrow validator skips, unchanged from the old `checks` job -- see the
       # `changes` job comment above for what each flag proves. Still per-STEP guards (not job-level):
@@ -856,7 +856,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft != true || (github.event.pull_request.number == 12798 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/bundle-d1-physical-fixtures-20261018') || (github.event.pull_request.number == 12878 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/publish-notification-reporting-20261021') }}
     strategy:
       # One red leg must not cancel the others: a shard-specific failure is
       # exactly the thing you want the other shards' results for.
@@ -1168,7 +1168,7 @@ jobs:
     # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
     # python/**, scripts/**.py and scripts lock/project manifests. Draft
     # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
+    if: ${{ github.event_name != 'pull_request' || ((github.event.pull_request.draft != true || (github.event.pull_request.number == 12878 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/publish-notification-reporting-20261021')) && needs.changes.outputs.run_python_validation == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # locked dependency qualification and hermetic suites
     steps:
@@ -1224,7 +1224,7 @@ jobs:
   ui:
     name: ui
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_ui_validation == 'true') }}
+    if: ${{ github.event_name != 'pull_request' || ((github.event.pull_request.draft != true || (github.event.pull_request.number == 12878 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/publish-notification-reporting-20261021')) && needs.changes.outputs.run_ui_validation == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30 # workspace install, drift-check builds, typecheck/test, and the Playwright e2e pass
     steps:
