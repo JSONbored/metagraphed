@@ -163,9 +163,8 @@ export function judgeDeploy(input: {
             "missing, expired, or lacks Workers Scripts read. Only a " +
             "maintainer can change repo secrets or token scope"
           : input.failure === "no-commit-message"
-            ? "the live deployment carries no commit SHA in its message, so " +
-              "it was not deployed by Workers Builds -- a hand-run " +
-              "`wrangler deploy` looks exactly like this"
+            ? "the newest deployment carries no commit SHA in its message; " +
+              "its source revision cannot be established from that record"
             : "the deployment record could not be read",
     };
   }
@@ -243,6 +242,93 @@ export function classifyDeployReadError(stderr: string): DeployReadFailure {
   return AUTH_PATTERN.test(stderr) ? "auth" : "unreadable";
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const DEPLOY_TIMESTAMP =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
+/** Bound both the CLI capture and the pure parser before decoding its input. */
+export const MAX_DEPLOYMENT_JSON_BYTES = 1024 * 1024;
+/** Defensive local cap: reject oversized histories before inspecting records. */
+export const MAX_DEPLOYMENT_RECORDS = 100;
+
+/**
+ * Read only the newest deployment's own message, never an older matching SHA.
+ * Wrangler's text output mixes deployment and version messages, and filtering
+ * for SHA-shaped messages before choosing the latest can hide a newer record
+ * with an absent/custom message. JSON keeps those boundaries explicit.
+ *
+ * A single deployment annotation is not a per-version traffic attestation.
+ * Until version identities are resolved separately, split traffic or records
+ * whose ordering/shape is ambiguous must remain unknown.
+ */
+export function newestDeploymentSha(
+  json: string,
+): { sha: string } | { failure: "unreadable" | "no-commit-message" } {
+  if (Buffer.byteLength(json, "utf8") > MAX_DEPLOYMENT_JSON_BYTES) {
+    return { failure: "unreadable" };
+  }
+  let records: unknown;
+  try {
+    records = JSON.parse(json);
+  } catch {
+    return { failure: "unreadable" };
+  }
+  if (
+    !Array.isArray(records) ||
+    records.length === 0 ||
+    records.length > MAX_DEPLOYMENT_RECORDS
+  ) {
+    return { failure: "unreadable" };
+  }
+  const dated: { record: Record<string, unknown>; time: number }[] = [];
+  for (const record of records) {
+    if (
+      !isRecord(record) ||
+      typeof record.created_on !== "string" ||
+      !DEPLOY_TIMESTAMP.test(record.created_on)
+    ) {
+      return { failure: "unreadable" };
+    }
+    // Date.parse alone accepts timezone-less dates and normalizes impossible
+    // calendar values. Validate the written components before applying offset.
+    const components = record.created_on.slice(0, 19);
+    const wallTime = new Date(`${components}Z`);
+    if (
+      !Number.isFinite(wallTime.getTime()) ||
+      wallTime.toISOString().slice(0, 19) !== components
+    ) {
+      return { failure: "unreadable" };
+    }
+    const time = Date.parse(record.created_on);
+    if (!Number.isFinite(time)) return { failure: "unreadable" };
+    dated.push({ record, time });
+  }
+  const newestTime = dated.reduce(
+    (latest, { time }) => Math.max(latest, time),
+    -Infinity,
+  );
+  const newest = dated.filter(({ time }) => time === newestTime);
+  if (newest.length !== 1) return { failure: "unreadable" };
+  const { versions, annotations } = newest[0]!.record;
+  if (
+    !Array.isArray(versions) ||
+    versions.length !== 1 ||
+    !isRecord(versions[0]) ||
+    typeof versions[0].version_id !== "string" ||
+    versions[0].version_id.trim().length === 0 ||
+    versions[0].percentage !== 100
+  ) {
+    return { failure: "unreadable" };
+  }
+  const message = isRecord(annotations) ? annotations["workers/message"] : null;
+  const sha = typeof message === "string" ? message.trim() : "";
+  return /^[0-9a-f]{7,40}$/.test(sha)
+    ? { sha }
+    : { failure: "no-commit-message" };
+}
+
 /**
  * The commit SHA Cloudflare recorded for the live deployment.
  *
@@ -257,8 +343,13 @@ function deployedSha(
   try {
     out = execFileSync(
       "npx",
-      ["wrangler", "deployments", "list", "--config", config],
-      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ["wrangler", "deployments", "list", "--json", "--config", config],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: MAX_DEPLOYMENT_JSON_BYTES,
+      },
     );
   } catch (error) {
     const stderr = String(
@@ -266,9 +357,8 @@ function deployedSha(
     );
     return { failure: classifyDeployReadError(stderr), stderr };
   }
-  const messages = [...out.matchAll(/^Message:\s+([0-9a-f]{7,40})\s*$/gm)];
-  const sha = messages.length ? messages[messages.length - 1]![1] : undefined;
-  return sha ? { sha } : { failure: "no-commit-message", stderr: "" };
+  const read = newestDeploymentSha(out);
+  return "sha" in read ? read : { ...read, stderr: "" };
 }
 
 const git = (args: string[]) =>
