@@ -24,8 +24,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-lifecycle-assertions.ts",
-      "sha256": "56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",
-      "bytes": 12099
+      "sha256": "54de88045626ee500d29ce1385a693da01fb40f56d373df325e49e591c768220",
+      "bytes": 26584
     },
     {
       "path": "tests/qualification/strict-gzip/failure-lifecycle-observer.ts",
@@ -44,13 +44,23 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-postgres-policy.ts",
-      "sha256": "4fa7100b334b800858c1162edfa981d1545f047d1dbb562b2b69f6c711e193fd",
-      "bytes": 19668
+      "sha256": "34c0bdb4ecd820bc755f4505efcccdfa89812e538ada078c2da3e33cc82c3930",
+      "bytes": 37673
     },
     {
       "path": "tests/qualification/strict-gzip/failure-postgres-private.ts",
-      "sha256": "8b47767003bda73cc0bde76e29d6b2bd1050c19e0e8d284f53984c6060ee7b81",
-      "bytes": 15194
+      "sha256": "984e23e16643b87fa63c13879623b0708724286b7d5bdf1ceea1625fb971318a",
+      "bytes": 26644
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-replay-diagnostics.ts",
+      "sha256": "37f481a2d4c2f1e04d62be04e4f56d0ccb8f9a99a21729b6330ad14b6c7e04cd",
+      "bytes": 7560
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-replay-reason-codes.ts",
+      "sha256": "e1d1c0109db6413b774054c8fd296c570763a0a7efe4c9708f37d1f1064437c5",
+      "bytes": 152686
     },
     {
       "path": "tests/qualification/strict-gzip/guard-preload.ts",

@@ -257,6 +257,11 @@ function guardedEvents(): Event[] {
     targetThreadId: 7,
     threadLaunchId: "123:thread:1",
   };
+  const threadWriter = {
+    threadId: 7,
+    entry: "[worker eval]",
+    realEntry: "",
+  };
   const native = {
     ...worker,
     launchId: "123:2",
@@ -325,8 +330,8 @@ function guardedEvents(): Event[] {
       ...exits,
     },
     { ...thread, kind: "thread-launch" },
-    { ...thread, kind: "thread-guard-start", threadId: 7 },
-    { ...thread, kind: "thread-ready", threadId: 7 },
+    { ...thread, kind: "thread-guard-start", ...threadWriter },
+    { ...thread, kind: "thread-ready", ...threadWriter },
     { ...thread, kind: "thread-handshake" },
     { ...native, kind: "native-child" },
     { ...native, kind: "native-child-exit", ...exits },
@@ -679,3 +684,381 @@ for (const orphan of [
 ])
   test(`orphan ${orphan.kind} cannot disappear from replay`, () =>
     assert.throws(() => checkGuards([...guardedEvents(), orphan])));
+
+// Source-shaped optional generic exit: the preload records only writer identity
+// and counters here, never the launch metadata carried by thread-* records.
+function withThreadGuardExit(events = guardedEvents(), threadId = 7) {
+  const start = events.find(
+    (event) =>
+      event.kind === "thread-guard-start" && event.threadId === threadId,
+  )!;
+  const exit = {
+    kind: "guard-exit",
+    pid: start.pid,
+    ppid: start.ppid,
+    threadId: start.threadId,
+    entry: start.entry,
+    realEntry: start.realEntry,
+    denied: 0,
+    threadFailed: false,
+    unobservedNativeExits: 0,
+  };
+  const actualExit = events.findIndex(
+    (event) =>
+      event.kind === "thread-exit" &&
+      event.threadLaunchId === start.threadLaunchId,
+  );
+  events.splice(actualExit, 0, exit);
+  return { events, exit };
+}
+
+function additionalThreads(events: Event[], count: number) {
+  const first = events.filter((event) => event.kind.startsWith("thread-"));
+  for (let index = 1; index < count; index++) {
+    const thread = first.map((event) => ({
+      ...event,
+      targetThreadId: 7 + index,
+      threadLaunchId: `123:thread:${index + 1}`,
+      threadId: event.threadId === 7 ? 7 + index : 0,
+    }));
+    events.splice(events.length - 3, 0, ...thread);
+  }
+  return events;
+}
+
+for (const count of [1, 2, 4])
+  for (const genericCount of new Set([0, 1, count]))
+    test(`failure guard replay accepts ${count} actual threads with ${genericCount} optional generic exits`, () => {
+      const events = additionalThreads(guardedEvents(), count);
+      for (let index = 0; index < genericCount; index++)
+        withThreadGuardExit(events, 7 + index);
+      const before = structuredClone(events);
+      const result = checkGuards(events);
+      assert.equal(result.acceptedThreads, count);
+      assert.equal(result.completedThreads, count);
+      assert.equal(result.everyThreadGuarded, true);
+      assert.equal(result.threadFailures, 0);
+      assert.equal(result.unobservedNativeExits, 0);
+      assert.equal(
+        events.filter((event) => event.kind === "guard-start").length,
+        4,
+      );
+      assert.equal(
+        events.filter(
+          (event) => event.kind === "guard-exit" && event.threadId === 0,
+        ).length,
+        4,
+      );
+      assert.equal(
+        events.filter((event) => event.kind === "node-child-exit").length,
+        3,
+      );
+      assert.deepEqual(events, before);
+    });
+
+test("optional natural thread exit can precede the parent handshake but never its actual exit", () => {
+  const { events, exit } = withThreadGuardExit();
+  events.splice(events.indexOf(exit), 1);
+  events.splice(
+    events.findIndex((event) => event.kind === "thread-handshake"),
+    0,
+    exit,
+  );
+  events.splice(
+    events.findIndex((event) => event.kind === "thread-terminate-request"),
+    1,
+  );
+  events.find((event) => event.kind === "thread-exit")!.code = 0;
+  assert.equal(checkGuards(events).completedThreads, 1);
+});
+
+test("same thread ID in different process identities is independently paired", () => {
+  const { events } = withThreadGuardExit();
+  const first = events.filter((event) => event.kind.startsWith("thread-"));
+  const second: Event[] = first.map((event) => ({
+    ...event,
+    pid: 125,
+    ppid: 124,
+    ownerPid: 125,
+    threadLaunchId: "125:thread:1",
+    ...(event.threadId === 0
+      ? { entry: guardContext.wranglerCli, realEntry: guardContext.wranglerCli }
+      : {}),
+  }));
+  const cliExit = events.findIndex(
+    (event) => event.kind === "guard-exit" && event.pid === 125,
+  );
+  events.splice(cliExit, 0, ...second);
+  // Select the new process explicitly; no PID-free thread-ID matching.
+  const start = second.find((event) => event.kind === "thread-guard-start")!;
+  const actualExit = second.find((event) => event.kind === "thread-exit")!;
+  events.splice(events.indexOf(actualExit), 0, {
+    kind: "guard-exit",
+    pid: start.pid,
+    ppid: start.ppid,
+    threadId: start.threadId,
+    entry: start.entry,
+    realEntry: "",
+    denied: 0,
+    threadFailed: false,
+    unobservedNativeExits: 0,
+  });
+  assert.equal(checkGuards(events).completedThreads, 2);
+});
+
+for (const [name, value] of [
+  ["missing", undefined],
+  ["null", null],
+  ["negative", -1],
+  ["fractional", 7.5],
+  ["string", "7"],
+  ["NaN", NaN],
+  ["infinite", Infinity],
+  ["too large", 2_147_483_648],
+  ["unsafe", Number.MAX_SAFE_INTEGER + 1],
+  ["process-spoof zero", 0],
+] as const)
+  test(`optional thread generic exit refuses ${name} thread ID`, () => {
+    const { events, exit } = withThreadGuardExit();
+    (exit as Event).threadId = value;
+    assert.throws(() => checkGuards(events));
+  });
+
+for (const [name, mutate] of Object.entries({
+  "orphan PID": (_events: Event[], exit: Event) => {
+    exit.pid = 999;
+  },
+  "orphan thread ID": (_events: Event[], exit: Event) => {
+    exit.threadId = 8;
+  },
+  "other process PID with same thread ID": (_events: Event[], exit: Event) => {
+    exit.pid = 125;
+  },
+  "missing PID": (_events: Event[], exit: Event) => {
+    delete exit.pid;
+  },
+  "duplicate generic exit": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 0, { ...exit });
+  },
+  "host-spoof entry": (_events: Event[], exit: Event) => {
+    exit.entry = guardContext.worker;
+  },
+  "missing entry": (_events: Event[], exit: Event) => {
+    delete exit.entry;
+  },
+  "nonempty real entry": (_events: Event[], exit: Event) => {
+    exit.realEntry = guardContext.worker;
+  },
+  "missing real entry": (_events: Event[], exit: Event) => {
+    delete exit.realEntry;
+  },
+  "nonempty start and exit real entry": (events: Event[], exit: Event) => {
+    events.find((event) => event.kind === "thread-guard-start")!.realEntry =
+      guardContext.worker;
+    exit.realEntry = guardContext.worker;
+  },
+  "wrong parent PID": (_events: Event[], exit: Event) => {
+    exit.ppid = 90;
+  },
+  "missing parent PID": (_events: Event[], exit: Event) => {
+    delete exit.ppid;
+  },
+  "missing parent PID in both records": (events: Event[], exit: Event) => {
+    delete events.find((event) => event.kind === "thread-guard-start")!.ppid;
+    delete exit.ppid;
+  },
+  "denied operation": (_events: Event[], exit: Event) => {
+    exit.denied = 1;
+  },
+  "missing denial counter": (_events: Event[], exit: Event) => {
+    delete exit.denied;
+  },
+  "negative denial counter": (_events: Event[], exit: Event) => {
+    exit.denied = -1;
+  },
+  "thread failure": (_events: Event[], exit: Event) => {
+    exit.threadFailed = true;
+  },
+  "missing thread failure flag": (_events: Event[], exit: Event) => {
+    delete exit.threadFailed;
+  },
+  "native child leakage counter": (_events: Event[], exit: Event) => {
+    exit.unobservedNativeExits = 1;
+  },
+  "missing native counter": (_events: Event[], exit: Event) => {
+    delete exit.unobservedNativeExits;
+  },
+  "negative native counter": (_events: Event[], exit: Event) => {
+    exit.unobservedNativeExits = -1;
+  },
+  "exit before thread start": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 1);
+    events.splice(
+      events.findIndex((event) => event.kind === "thread-guard-start"),
+      0,
+      exit,
+    );
+  },
+  "exit before thread ready": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 1);
+    events.splice(
+      events.findIndex((event) => event.kind === "thread-ready"),
+      0,
+      exit,
+    );
+  },
+  "exit after actual parent exit": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 1);
+    events.splice(
+      events.findIndex((event) => event.kind === "thread-exit") + 1,
+      0,
+      exit,
+    );
+  },
+  "missing actual parent exit": (events: Event[]) => {
+    events.splice(
+      events.findIndex((event) => event.kind === "thread-exit"),
+      1,
+    );
+  },
+  "generic exit substituted for actual parent exit": (
+    events: Event[],
+    exit: Event,
+  ) => {
+    Object.assign(
+      events.find((event) => event.kind === "thread-exit")!,
+      exit,
+    );
+    events.splice(events.indexOf(exit), 1);
+  },
+  "actual parent exit claims failure": (events: Event[]) => {
+    events.find((event) => event.kind === "thread-exit")!.failed = true;
+  },
+  "actual parent exit claims wrong thread": (events: Event[]) => {
+    events.find((event) => event.kind === "thread-exit")!.targetThreadId = 8;
+  },
+  "actual parent exit claims wrong writer": (events: Event[]) => {
+    events.find((event) => event.kind === "thread-exit")!.threadId = 7;
+  },
+  "actual parent exit claims wrong process": (events: Event[]) => {
+    events.find((event) => event.kind === "thread-exit")!.pid = 125;
+  },
+  "actual parent exit has wrong launch": (events: Event[]) => {
+    events.find((event) => event.kind === "thread-exit")!.threadLaunchId =
+      "123:thread:2";
+  },
+  "unrequested nonzero actual exit": (events: Event[]) => {
+    events.splice(
+      events.findIndex((event) => event.kind === "thread-terminate-request"),
+      1,
+    );
+  },
+  "thread error hidden by generic exit": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 0, {
+      ...events.find((event) => event.kind === "thread-launch")!,
+      kind: "thread-error",
+    });
+  },
+  "duplicate actual thread exit": (events: Event[], exit: Event) => {
+    events.splice(events.indexOf(exit), 0, {
+      ...events.find((event) => event.kind === "thread-exit")!,
+    });
+  },
+  "missing real Node child exit": (events: Event[]) => {
+    events.splice(
+      events.findIndex((event) => event.kind === "node-child-exit"),
+      1,
+    );
+  },
+  "extra real Node child exit": (events: Event[]) => {
+    events.push({
+      ...events.find((event) => event.kind === "node-child-exit")!,
+    });
+  },
+  "duplicate process start": (events: Event[]) => {
+    events.push({ ...events.find((event) => event.kind === "guard-start")! });
+  },
+  "duplicate process exit": (events: Event[]) => {
+    events.push({
+      ...events.find(
+        (event) => event.kind === "guard-exit" && event.threadId === 0,
+      )!,
+    });
+  },
+}))
+  test(`optional thread generic exit refuses ${name}`, () => {
+    const { events, exit } = withThreadGuardExit();
+    mutate(events, exit);
+    assert.throws(() => checkGuards(events));
+  });
+
+for (const kind of [
+  "thread-launch",
+  "thread-guard-start",
+  "thread-ready",
+  "thread-handshake",
+])
+  test(`optional generic exit cannot replace missing ${kind}`, () => {
+    const { events } = withThreadGuardExit();
+    assert.throws(() =>
+      checkGuards(events.filter((event) => event.kind !== kind)),
+    );
+  });
+
+for (const role of [
+  "coordinator",
+  "test-worker",
+  "wrangler-bin",
+  "wrangler-cli",
+])
+  for (const kind of ["guard-start", "guard-exit"])
+    test(`optional thread exit never substitutes for ${role} ${kind}`, () => {
+      const { events } = withThreadGuardExit();
+      const process = events.find(
+        (event) => event.kind === "guard-start" && event.role === role,
+      )!;
+      assert.throws(() =>
+        checkGuards(
+          events.filter(
+            (event) =>
+              !(
+                event.kind === kind &&
+                event.threadId === 0 &&
+                event.pid === process.pid
+              ),
+          ),
+        ),
+      );
+    });
+
+for (const generic of [false, true])
+  for (const kind of [
+    "native-child",
+    "native-child-exit",
+    "native-child-close",
+    "complete native pair",
+  ])
+    test(`thread ${kind} cannot leak through replay with optional generic exit ${generic}`, () => {
+      const events = generic ? withThreadGuardExit().events : guardedEvents();
+      const launch = events.find((event) => event.kind === "native-child")!;
+      const exit = events.find((event) => event.kind === "native-child-exit")!;
+      const threadRows =
+        kind === "complete native pair"
+          ? [
+              { ...launch, threadId: 7 },
+              { ...exit, threadId: 7 },
+            ]
+          : [
+              {
+                ...(kind === "native-child" ? launch : exit),
+                kind,
+                threadId: 7,
+              },
+            ];
+      events.splice(
+        events.findIndex((event) => event.kind === "thread-exit"),
+        0,
+        ...threadRows,
+      );
+      assert.throws(() => checkGuards(events));
+    });

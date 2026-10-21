@@ -100,6 +100,7 @@ jobs:
           env -i PATH="$PATH" CI=true node "$harness/failure-test-evidence.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-evidence.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-publication.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-replay-diagnostics.cases.ts"
 
       - name: Install the full pinned base lockfile without lifecycle scripts
         working-directory: qualification-base

@@ -1,6 +1,16 @@
 # Additional failure, replay and cleanup qualification
 
-Status: local implementation and pure checks only. Native/service execution and draft publication are held for independent integrated review and the parent publication decision. The prior green result remains immutable: PR #12862 head `3e0545ee7f5cdadbd73157f37fc73564cae57536`, run `39510174099`, 492 assertions. This document does not report a new native result.
+Status: the first failure-slice attempt at draft PR #12862 head `b9229ae6d9bf024781a9df5fd8a0d1695073c63e`, run `39526016509`, failed private phase-proof replay. Its baseline requalified all 492 assertions with 100% two-source coverage. All three uninstrumented named tests completed with exit zero, zero denials and four completed guarded threads, but that phase did not qualify. Instrumented and genuine unfixed phases did not run. Service identity, bounded publication and terminal container cleanup succeeded. The prior green result remains immutable: head `3e0545ee7f5cdadbd73157f37fc73564cae57536`, run `39510174099`.
+
+## Replay correction under review
+
+The unchanged preload records a generic guard-exit observation from Worker threads as well as host processes. The first replay validator incorrectly counted every generic exit as one of its four required process exits. A pure differential reproduces this source-level incompatibility; the first sanitized artifact does not establish it as the exact hosted refusal.
+
+The local successor preserves exactly four process starts/exits and three real Node child exits. Optional generic thread exits must match an already complete, guarded thread lifecycle by identity, entry and parent, occur after thread readiness and before the actual parent-observed exit, and contain clean counters. They cannot replace actual thread exits. Orphan, duplicate, spoofed, failed or native-launching thread records remain refused. Parent-written handshake ordering may race a thread's exit observation and is not used as an extra ordering requirement.
+
+Fixed, source-bound replay reason codes cover the additional phase predicates and operation/type boundaries. Diagnostics preserve the original error privately, retain the deepest recognized failure, and independently revalidate before bounded public projection. They do not satisfy a proof, alter a predicate, or copy arbitrary errors, SQL, paths or lifecycle records. Existing deeper build-proof codes remain a separately validated fixed family. This successor is local and awaiting exact-snapshot review and a separate draft CI publication decision.
+
+The first failed artifact is `12313706914`, ZIP SHA-256 `5858beaa98381e7b6ada0fb5a4718551040859f3a5476a171df80aea87fe7413`. Its summary and unchanged redacted LCOV are preserved separately from the original green artifact.
 
 ## Exact source transition
 
