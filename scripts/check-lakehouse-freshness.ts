@@ -379,7 +379,7 @@ export async function checkLakehouseFreshness(
     counts: null,
     notificationAttempted: false,
   };
-  const report = async (status: FreshnessReport["status"]) => {
+  const report = async (status: FreshnessReport["status"], error?: unknown) => {
     if (options.onReport)
       await options.onReport(
         createFreshnessReport({
@@ -389,6 +389,7 @@ export async function checkLakehouseFreshness(
           sourceSha: process.env.GITHUB_SHA,
           nodeVersion: process.version,
           finishedAt: new Date().toISOString(),
+          error,
         }),
       );
   };
@@ -396,7 +397,7 @@ export async function checkLakehouseFreshness(
   try {
     status = await runLakehouseFreshness(checkOnly, state);
   } catch (error) {
-    await report("error");
+    await report("error", error);
     throw error;
   }
   await report(status);
@@ -609,6 +610,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           sourceSha: process.env.GITHUB_SHA,
           nodeVersion: process.version,
           finishedAt: new Date().toISOString(),
+          error: new Error("Invalid lakehouse freshness arguments"),
         }),
       );
       throw new Error("Invalid lakehouse freshness arguments");

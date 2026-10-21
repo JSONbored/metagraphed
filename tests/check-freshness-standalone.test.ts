@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
+import { createFreshnessReport } from "../scripts/lib/freshness-report.ts";
 
 const sourceRoot = fileURLToPath(new URL("..", import.meta.url));
 const freshnessEntry = "scripts/check-lakehouse-freshness.ts";
@@ -56,7 +57,9 @@ interface FreshnessReport {
   phase: "arguments" | "catalog" | "evidence" | "evaluation";
   counts: FreshnessCounts | null;
   notification: { mode: "suppressed" | "enabled"; attempted: boolean };
-  error_code: "check_failed" | null;
+  error_code: ReturnType<typeof createFreshnessReport>["error_code"];
+  http_status: number | null;
+  cloudflare_code: 10000 | null;
 }
 
 // The scheduled checks run with Node alone. A normal installed test process
@@ -93,6 +96,9 @@ function runStandalone(
       "empty-lanes": 1,
       "missing-inventory": 1,
       malformed: 1,
+      "transport-failure": 1,
+      "http-failure": 1,
+      "response-failure": 1,
     };
     const expectedReads = options.expectedReads ?? earlyReads[scenario] ?? 2;
     const notificationFailures = [
@@ -137,6 +143,19 @@ function runStandalone(
         const { batch } = JSON.parse(init.body);
         assert.ok(batch.every(({ sql }) => sql.startsWith("SELECT ")));
         requests.push(batch);
+        if (scenario === "transport-failure") {
+          // Reject outside the fixture assertion catch: this is the intended fault.
+          return Promise.reject(new Error(${JSON.stringify(fixtureRawRecord)}));
+        }
+        if (scenario === "http-failure") {
+          return Response.json({
+            success: false,
+            errors: [{ code: 10000, message: ${JSON.stringify(fixtureRawRecord)} }],
+            result: ${JSON.stringify(fixtureRawRecord)},
+          }, { status: 401, statusText: ${JSON.stringify(fixtureRawRecord)} });
+        }
+        if (scenario === "response-failure")
+          return new Response(${JSON.stringify(fixtureRawRecord)});
         if (scenario === "empty-lanes") {
           assert.equal(calls, 1);
           assert.equal(batch.length, 1);
@@ -304,9 +323,11 @@ function readReport(
   assert.ok(Buffer.byteLength(text, "utf8") <= 4096);
   const report = JSON.parse(text) as FreshnessReport;
   assert.deepEqual(Object.keys(report).sort(), [
+    "cloudflare_code",
     "counts",
     "error_code",
     "finished_at",
+    "http_status",
     "mode",
     "node_version",
     "notification",
@@ -316,7 +337,7 @@ function readReport(
     "started_at",
     "status",
   ]);
-  assert.equal(report.schema_version, 1);
+  assert.equal(report.schema_version, 2);
   assert.equal(report.source_sha, sourceSha);
   if (report.source_sha !== null)
     assert.match(report.source_sha, /^[a-fA-F0-9]{40}$/);
@@ -331,6 +352,10 @@ function readReport(
   ]);
   assert.equal(report.notification.mode, checkOnly ? "suppressed" : "enabled");
   assert.equal(report.notification.attempted, result.alerts > 0);
+  if (report.error_code !== "d1_http") {
+    assert.equal(report.http_status, null);
+    assert.equal(report.cloudflare_code, null);
+  }
   if (checkOnly) assert.equal(result.alerts, 0);
   if (report.counts !== null) {
     assert.deepEqual(Object.keys(report.counts).sort(), [
@@ -412,9 +437,16 @@ test.each(failedSweeps)("check-only rejects %s", (scenario, expected) => {
   assert.deepEqual(report.counts, expected);
 });
 
-test.each(["missing-inventory", "malformed", "credential-failure"])(
+test.each([
+  ["missing-inventory", "catalog_inventory"],
+  ["malformed", "catalog_metadata"],
+  ["credential-failure", "d1_credentials"],
+  ["transport-failure", "d1_transport"],
+  ["http-failure", "d1_http"],
+  ["response-failure", "d1_response"],
+])(
   "check-only sanitizes %s errors without inventing completed counts",
-  (scenario) => {
+  (scenario, code) => {
     const result = runStandalone(freshnessEntry, scenario, {
       checkOnly: true,
       report: true,
@@ -424,7 +456,14 @@ test.each(["missing-inventory", "malformed", "credential-failure"])(
     assert.equal(report.status, "error");
     assert.equal(report.phase, "catalog");
     assert.equal(report.counts, null);
-    assert.equal(report.error_code, "check_failed");
+    assert.equal(report.error_code, code);
+    assert.equal(report.http_status, scenario === "http-failure" ? 401 : null);
+    assert.equal(
+      report.cloudflare_code,
+      scenario === "http-failure" ? 10000 : null,
+    );
+    assert.equal(result.alerts, 0);
+    assert.equal(result.stderr, "lakehouse-freshness: check failed.\n");
   },
 );
 
@@ -464,7 +503,7 @@ test.each([
   assert.equal(report.status, "error");
   assert.equal(report.phase, "arguments");
   assert.equal(report.counts, null);
-  assert.equal(report.error_code, "check_failed");
+  assert.equal(report.error_code, "invalid_arguments");
 });
 
 test("a missing report argument fails before any read", () => {
@@ -501,6 +540,112 @@ test.each([null, fixtureWebhook, fixtureAccount])(
   },
 );
 
+function reportFailure(error: unknown): FreshnessReport {
+  const report = createFreshnessReport({
+    state: {
+      startedAt: new Date(0).toISOString(),
+      phase: "catalog",
+      counts: null,
+      notificationAttempted: false,
+    },
+    status: "error",
+    checkOnly: true,
+    sourceSha: fixtureSource,
+    nodeVersion: process.version,
+    finishedAt: new Date(1).toISOString(),
+    error,
+  });
+  return readReport(
+    { reportText: JSON.stringify(report), stderr: "", alerts: 0 },
+    true,
+  );
+}
+
+test("freshness diagnostics accept only exact internal failure messages", () => {
+  const cases = [
+    ["Invalid lakehouse freshness arguments", "invalid_arguments"],
+    ["D1 maintenance response exceeds 4 MiB", "d1_response"],
+    [
+      "D1 maintenance batch failed or returned an invalid result",
+      "d1_response",
+    ],
+    [
+      "Catalog metadata inventory is empty or exceeds its bound",
+      "catalog_inventory",
+    ],
+    ["Catalog metadata inventory repeats a table", "catalog_inventory"],
+    ["Catalog table inventory is unavailable: chain", "catalog_inventory"],
+    ["Catalog metadata row is invalid", "catalog_metadata"],
+    ["Catalog schema or freshness metadata is incomplete", "catalog_metadata"],
+  ];
+  for (const [message, code] of cases) {
+    assert.equal(reportFailure(new Error(message)).error_code, code);
+    assert.equal(
+      reportFailure(new Error(`${message}; ${fixtureRawRecord}`)).error_code,
+      "check_failed",
+    );
+  }
+});
+
+test("freshness diagnostics retain only allowlisted HTTP status and authentication code", () => {
+  for (const status of [
+    204, 400, 401, 403, 404, 408, 409, 413, 422, 429, 500, 502, 503, 504,
+  ]) {
+    for (const code of [false, true]) {
+      const message =
+        `D1 maintenance request failed with HTTP ${status}` +
+        (code ? "; Cloudflare error codes: 10000" : "");
+      const report = reportFailure(new Error(message));
+      assert.equal(report.error_code, "d1_http");
+      assert.equal(report.http_status, status);
+      assert.equal(report.cloudflare_code, code ? 10000 : null);
+    }
+  }
+});
+
+test("freshness diagnostics reject hostile errors without serializing raw details", () => {
+  const hostileAccessor = new Error();
+  Object.defineProperty(hostileAccessor, "message", {
+    get() {
+      throw new Error(fixtureRawRecord);
+    },
+  });
+  const messages = [
+    fixtureRawRecord,
+    fixtureRawRecord.repeat(20),
+    `D1 maintenance request failed with HTTP 401; ${fixtureRawRecord}`,
+    "D1 maintenance request failed with HTTP 401; Cloudflare error codes: 9109",
+    "D1 maintenance request failed with HTTP 401; Cloudflare error codes: 10000\n",
+    "D1 maintenance request failed with HTTP 777",
+    "D1 maintenance request failed with HTTP 418",
+    "Catalog table inventory is unavailable: private_table",
+  ];
+  for (const error of [
+    ...messages.map(
+      (message) => new Error(message, { cause: fixtureRawRecord }),
+    ),
+    fixtureRawRecord,
+    {
+      message: "D1 maintenance request failed with HTTP 401",
+      token: fixtureRawRecord,
+    },
+    Object.assign(new Error(), { message: { secret: fixtureRawRecord } }),
+    hostileAccessor,
+    null,
+    undefined,
+  ]) {
+    const report = reportFailure(error);
+    assert.equal(report.error_code, "check_failed");
+    assert.equal(report.http_status, null);
+    assert.equal(report.cloudflare_code, null);
+  }
+  const known = new Error("D1 maintenance request failed with HTTP 401", {
+    cause: fixtureRawRecord,
+  });
+  Object.assign(known, { stack: fixtureRawRecord, token: fixtureRawRecord });
+  assert.equal(reportFailure(known).http_status, 401);
+});
+
 test.each(["error", "stale"] as const)(
   "the report builder excludes raw fields for a late %s outcome",
   async (status) => {
@@ -521,6 +666,7 @@ test.each(["error", "stale"] as const)(
       sourceSha: fixtureSource,
       nodeVersion: process.version,
       finishedAt: new Date(1).toISOString(),
+      error: new Error(fixtureRawRecord),
     });
     readReport(
       { reportText: JSON.stringify(report), stderr: "", alerts: 0 },
