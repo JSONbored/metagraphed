@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -98,21 +98,23 @@ function capturePausedPipes(command: string, env: NodeJS.ProcessEnv) {
   });
 }
 
-async function runFixture(failAt?: string, original = false) {
-  const directory = mkdtempSync(path.join(tmpdir(), "pipeline-emission-"));
-  const bin = path.join(directory, "bin");
-  const callsFile = path.join(directory, "calls.ndjson");
-  try {
-    mkdirSync(bin);
-    writeFileSync(path.join(bin, "package.json"), '{"type":"commonjs"}\n');
-    // Only this child receives synthetic npm children. The harness does not
-    // execute project command gates or claim native project-command acceptance.
-    writeFileSync(
-      path.join(bin, "npm"),
-      `#!/usr/bin/env node
+function writeNpmFixture(bin: string) {
+  mkdirSync(bin);
+  writeFileSync(path.join(bin, "package.json"), '{"type":"commonjs"}\n');
+  // Only this child receives synthetic npm children. The harness does not
+  // execute project command gates or claim native project-command acceptance.
+  writeFileSync(
+    path.join(bin, "npm"),
+    `#!/usr/bin/env node
 const { appendFileSync } = require("node:fs");
 const [verb, script, ...extra] = process.argv.slice(2);
-if (process.execPath !== process.env.PIPELINE_FIXTURE_NODE || verb !== "run" || !script || extra.length) {
+// The declared-tables gate validates the proposed native schema offline.
+// Every other command must still have no extra arguments.
+const expectedExtra = script === "validate:declared-tables-exist"
+  ? ["--", "--proposed-native"]
+  : [];
+if (process.execPath !== process.env.PIPELINE_FIXTURE_NODE || verb !== "run" || !script ||
+    extra.length !== expectedExtra.length || extra.some((arg, index) => arg !== expectedExtra[index])) {
   process.exitCode = 91;
 } else {
   appendFileSync(process.env.PIPELINE_FIXTURE_CALLS, JSON.stringify({verb, script}) + "\\n");
@@ -123,8 +125,16 @@ if (process.execPath !== process.env.PIPELINE_FIXTURE_NODE || verb !== "run" || 
   }
 }
 `,
-      { mode: 0o755 },
-    );
+    { mode: 0o755 },
+  );
+}
+
+async function runFixture(failAt?: string, original = false) {
+  const directory = mkdtempSync(path.join(tmpdir(), "pipeline-emission-"));
+  const bin = path.join(directory, "bin");
+  const callsFile = path.join(directory, "calls.ndjson");
+  try {
+    writeNpmFixture(bin);
     let entrypoint = pipeline;
     if (original) {
       const bytes = readFileSync(
@@ -167,6 +177,44 @@ if (process.execPath !== process.env.PIPELINE_FIXTURE_NODE || verb !== "run" || 
 describe.skipIf(process.platform === "win32")(
   "pipeline POSIX pipe emission",
   () => {
+    it.each([
+      ["validate:declared-tables-exist", []],
+      ["validate:declared-tables-exist", ["--proposed-native"]],
+      ["validate:declared-tables-exist", ["--", "--live-native"]],
+      [
+        "validate:declared-tables-exist",
+        ["--", "--proposed-native", "--write"],
+      ],
+      ["artifacts:prepare-local", ["--", "--proposed-native"]],
+    ])("rejects unexpected fixture arguments for %s: %j", (script, args) => {
+      const directory = mkdtempSync(path.join(tmpdir(), "pipeline-arguments-"));
+      const bin = path.join(directory, "bin");
+      const callsFile = path.join(directory, "calls.ndjson");
+      try {
+        writeNpmFixture(bin);
+        const result = spawnSync(
+          process.execPath,
+          [path.join(bin, "npm"), "run", script, ...args],
+          {
+            encoding: "utf8",
+            env: {
+              ...process.env,
+              PIPELINE_FIXTURE_NODE: process.execPath,
+              PIPELINE_FIXTURE_CALLS: callsFile,
+            },
+          },
+        );
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(91);
+        expect(result.signal).toBeNull();
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toBe("");
+        expect(existsSync(callsFile)).toBe(false);
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    });
+
     for (const prefix of [
       ["artifacts:prepare-local"],
       ["artifacts:prepare-local", "sync:subnets:dry-run"],
