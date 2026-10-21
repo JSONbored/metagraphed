@@ -18,7 +18,7 @@ export interface FreshnessReportState {
 }
 
 export interface FreshnessReport {
-  schema_version: 1;
+  schema_version: 2;
   source_sha: string | null;
   node_version: string;
   started_at: string;
@@ -28,7 +28,77 @@ export interface FreshnessReport {
   phase: FreshnessPhase;
   counts: FreshnessCounts | null;
   notification: { mode: "suppressed" | "enabled"; attempted: boolean };
-  error_code: "check_failed" | null;
+  error_code:
+    | "check_failed"
+    | "invalid_arguments"
+    | "d1_credentials"
+    | "d1_transport"
+    | "d1_http"
+    | "d1_response"
+    | "catalog_inventory"
+    | "catalog_metadata"
+    | null;
+  http_status: number | null;
+  cloudflare_code: 10000 | null;
+}
+
+/** Exact internal messages only; never serialize an exception or provider text. */
+function failureDiagnostic(
+  error: unknown,
+): Pick<FreshnessReport, "error_code" | "http_status" | "cloudflare_code"> {
+  let code: FreshnessReport["error_code"] = "check_failed";
+  try {
+    if (error instanceof Error) {
+      const message = error.message;
+      if (typeof message !== "string" || message.length > 256)
+        return { error_code: code, http_status: null, cloudflare_code: null };
+      const http =
+        /^D1 maintenance request failed with HTTP (\d{3})(; Cloudflare error codes: 10000)?$/.exec(
+          message,
+        );
+      if (
+        http &&
+        http[0] === message &&
+        [
+          204, 400, 401, 403, 404, 408, 409, 413, 422, 429, 500, 502, 503, 504,
+        ].includes(Number(http[1]))
+      )
+        return {
+          error_code: "d1_http",
+          http_status: Number(http[1]),
+          cloudflare_code: http[2] ? 10000 : null,
+        };
+      switch (message) {
+        case "Invalid lakehouse freshness arguments":
+          code = "invalid_arguments";
+          break;
+        case "CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID and CLOUDFLARE_API_TOKEN are required for D1 maintenance":
+          code = "d1_credentials";
+          break;
+        case "D1 maintenance request failed; verify state before retrying a write":
+          code = "d1_transport";
+          break;
+        case "D1 maintenance response exceeds 4 MiB":
+        case "D1 maintenance response is not valid JSON":
+        case "D1 maintenance batch failed or returned an invalid result":
+          code = "d1_response";
+          break;
+        case "Catalog metadata inventory is empty or exceeds its bound":
+        case "Catalog metadata inventory repeats a table":
+        case "Catalog table inventory is unavailable: chain":
+        case "Catalog table inventory is unavailable: chain_testnet":
+          code = "catalog_inventory";
+          break;
+        case "Catalog metadata row is invalid":
+        case "Catalog metadata summary is invalid JSON":
+        case "Catalog schema or freshness metadata is incomplete":
+          code = "catalog_metadata";
+      }
+    }
+  } catch {
+    // Even a hostile error object's accessors must not prevent the safe report.
+  }
+  return { error_code: code, http_status: null, cloudflare_code: null };
 }
 
 export function parseFreshnessArgs(argv: readonly string[]): {
@@ -62,7 +132,7 @@ export function parseFreshnessArgs(argv: readonly string[]): {
   return { checkOnly, reportPath, valid };
 }
 
-/** Only control-flow fields and completed counts cross into the artifact. */
+/** Only control flow, completed counts and allowlisted diagnostics are retained. */
 export function createFreshnessReport({
   state,
   status,
@@ -70,6 +140,7 @@ export function createFreshnessReport({
   sourceSha,
   nodeVersion,
   finishedAt,
+  error,
 }: {
   state: FreshnessReportState;
   status: FreshnessReport["status"];
@@ -77,10 +148,11 @@ export function createFreshnessReport({
   sourceSha: string | undefined;
   nodeVersion: string;
   finishedAt: string;
+  error?: unknown;
 }): FreshnessReport {
   const counts = status === "error" ? null : state.counts;
   return {
-    schema_version: 1,
+    schema_version: 2,
     source_sha:
       sourceSha && /^[a-fA-F0-9]{40}$/.test(sourceSha) ? sourceSha : null,
     node_version: nodeVersion,
@@ -106,6 +178,8 @@ export function createFreshnessReport({
       mode: checkOnly ? "suppressed" : "enabled",
       attempted: state.notificationAttempted,
     },
-    error_code: status === "error" ? "check_failed" : null,
+    ...(status === "error"
+      ? failureDiagnostic(error)
+      : { error_code: null, http_status: null, cloudflare_code: null }),
   };
 }
