@@ -12,7 +12,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const BASE_COMMIT = "6b8422966b1411dff6d7c486f4e9a549acecc761";
+export const BASE_COMMIT = "ea18c9e309063fb339cd8c8109e2e179c70f3289";
 export const PRIMITIVE_COMMIT = "1c4518f8b4b6837f8978222bcab83c7a41ec9f7d";
 export const WRANGLER_BIN_SOURCE = {
   repository: "cloudflare/workers-sdk",

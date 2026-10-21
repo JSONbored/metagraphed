@@ -1,3 +1,5 @@
+> Current local successor: see FAILURE-QUALIFICATION.md for the explicitly pinned cleanup-source transition and pending four-phase failure qualification. The results below describe the preserved prior green milestone.
+
 # Validation-only strict gzip queue qualification
 
 ## Current local extension status

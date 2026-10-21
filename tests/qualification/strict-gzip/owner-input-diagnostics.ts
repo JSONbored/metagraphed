@@ -21,7 +21,7 @@ import {
 } from "./chain-summary-workspace-probe.ts";
 
 export const OWNER_PUBLIC_SOURCE_INDEX_SHA256 =
-  "925030f85772dc33c2ef3557b3b092b2801e59f9f82304a152112b01623e9b80";
+  "6ad383fa2e9e12240af06fd2e60ed35f586c7e56565a07bd2117a1fa2388bdec";
 const indexFile = fileURLToPath(
   new URL("./owner-public-source-index.json", import.meta.url),
 );
@@ -42,7 +42,7 @@ export function publicInputSourcePins(): readonly PublicSourcePin[] {
     "patchSha256",
     "sources",
   ]);
-  assert.equal(index.baseCommit, "6b8422966b1411dff6d7c486f4e9a549acecc761");
+  assert.equal(index.baseCommit, "ea18c9e309063fb339cd8c8109e2e179c70f3289");
   assert.equal(
     index.patchSha256,
     "67938c85de4f8e34b673cabfded73ad765fa183ee94fab0b325930ce5d6fcf72",

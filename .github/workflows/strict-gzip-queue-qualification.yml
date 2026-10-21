@@ -53,7 +53,8 @@ jobs:
       - name: Check out immutable base source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 6b8422966b1411dff6d7c486f4e9a549acecc761
+          ref: ea18c9e309063fb339cd8c8109e2e179c70f3289
+          fetch-depth: 2 # Exact sole parent supplies the genuine unfixed control.
           path: qualification-base
           persist-credentials: false
 
@@ -90,13 +91,22 @@ jobs:
           env -i PATH="$PATH" CI=true node "$harness/owner-proof-reasons.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/chain-summary-workspace-probe.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/chain-summary-workspace-custody.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-lifecycle-observer.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-lifecycle-source.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-postgres-policy.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-postgres-private.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-variants.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-overlay.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-test-evidence.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-evidence.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-publication.cases.ts"
 
       - name: Install the full pinned base lockfile without lifecycle scripts
         working-directory: qualification-base
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 6b8422966b1411dff6d7c486f4e9a549acecc761
+          test "$(git rev-parse HEAD)" = ea18c9e309063fb339cd8c8109e2e179c70f3289
           install_home="$RUNNER_TEMP/strict-gzip-install-home"
           mkdir -p "$install_home"
           env -i PATH="$PATH" HOME="$install_home" CI=true \
@@ -112,12 +122,18 @@ jobs:
           candidate="$RUNNER_TEMP/strict-gzip-candidate"
           harness="$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip"
           mkdir "$candidate"
-          git -C "$base" archive 6b8422966b1411dff6d7c486f4e9a549acecc761 | tar -x -C "$candidate"
+          git -C "$base" archive ea18c9e309063fb339cd8c8109e2e179c70f3289 | tar -x -C "$candidate"
           ln -s "$base/node_modules" "$candidate/node_modules"
           git -C "$candidate" apply --check "$harness/integration.patch"
           git -C "$candidate" apply "$harness/integration.patch"
           env -i PATH="$PATH" CI=true node "$harness/owner-overlay.ts" "$candidate"
           git -C "$base" diff --exit-code
+          variants="$RUNNER_TEMP/strict-gzip-failure-variants"
+          mkdir "$variants"
+          for phase in uninstrumented instrumented unfixed-instrumented; do
+            env -i PATH="$PATH" CI=true node "$harness/failure-variants.ts" \
+              "$candidate" "$variants/$phase" "$base" "$phase"
+          done
 
       # Genuine source-bundle construction remains Wrangler deploy --dry-run.
       # No Worker is selected/uploaded/deployed. No provider credentials are
@@ -138,13 +154,28 @@ jobs:
       - name: Verify pinned sources and run guarded focused host/native tests
         shell: bash
         env:
-          DECODER_QUALIFICATION_RECEIPTS: ${{ runner.temp }}/strict-gzip-receipts
+          DECODER_QUALIFICATION_RECEIPTS: ${{ runner.temp }}/strict-gzip-receipts/baseline
         run: |
           set -euo pipefail
           env -i PATH="$PATH" CI=true DECODER_QUALIFICATION_RECEIPTS="$DECODER_QUALIFICATION_RECEIPTS" OWNER_SERVICE_RECEIPT="$RUNNER_TEMP/whole-owner-service.json" \
             node "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/run.ts" \
             "$RUNNER_TEMP/strict-gzip-candidate" \
             "$GITHUB_WORKSPACE/qualification-base"
+
+      - name: Run separate fixed-source and genuine unfixed failure phases
+        shell: bash
+        run: |
+          set -euo pipefail
+          harness="$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip"
+          for phase in uninstrumented instrumented unfixed-instrumented; do
+            env -i PATH="$PATH" CI=true \
+              DECODER_QUALIFICATION_RECEIPTS="$RUNNER_TEMP/strict-gzip-receipts/$phase" \
+              OWNER_SERVICE_RECEIPT="$RUNNER_TEMP/whole-owner-service.json" \
+              node "$harness/failure-run.ts" \
+              "$RUNNER_TEMP/strict-gzip-failure-variants/$phase" \
+              "$RUNNER_TEMP/strict-gzip-candidate" \
+              "$GITHUB_WORKSPACE/qualification-base" "$phase"
+          done
 
       - name: Validate and redact publication artifacts
         id: public_receipts
@@ -153,10 +184,12 @@ jobs:
         run: |
           set -euo pipefail
           env -i PATH="$PATH" CI=true node \
-            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/owner-public-receipts.ts" \
+            "$GITHUB_WORKSPACE/qualification-harness/tests/qualification/strict-gzip/failure-public-receipts.ts" \
             "$RUNNER_TEMP/strict-gzip-receipts" \
             "$RUNNER_TEMP/strict-gzip-public-receipts" \
-            "$RUNNER_TEMP/strict-gzip-candidate"
+            "$RUNNER_TEMP/strict-gzip-candidate" \
+            "$GITHUB_WORKSPACE/qualification-base" \
+            "$RUNNER_TEMP/strict-gzip-failure-variants"
 
       - name: Retain only bounded sanitized qualification artifacts
         if: always() && steps.public_receipts.outcome == 'success'

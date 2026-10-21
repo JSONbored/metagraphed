@@ -24,10 +24,10 @@ export function ownerOverlayFiles(): OwnerOverlayFile[] {
   const manifest = JSON.parse(
     boundedFile(path.join(here, "owner-overlay.json"), 64 * 1024).toString(),
   );
-  assert.equal(manifest.baseCommit, "6b8422966b1411dff6d7c486f4e9a549acecc761");
+  assert.equal(manifest.baseCommit, "ea18c9e309063fb339cd8c8109e2e179c70f3289");
   assert.equal(
     manifest.qualificationHead,
-    "88b3cededcf01ddf82c86c10ca80c4e5284bb3b3",
+    "3e0545ee7f5cdadbd73157f37fc73564cae57536",
   );
   assert.ok(
     Array.isArray(manifest.files) &&

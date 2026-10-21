@@ -17,7 +17,7 @@ function fixture(owner: Owner = "queue"): OwnerProof {
   return {
     owner,
     scenario: spec.scenario,
-    baseCommit: "6b8422966b1411dff6d7c486f4e9a549acecc761",
+    baseCommit: "ea18c9e309063fb339cd8c8109e2e179c70f3289",
     primitiveSha256:
       "5b7e858b87ab29fef86dc374c48a5ee105bb7c4d3af3a5f1fa603f46a4fd6dec",
     modules: structuredClone(modules),
