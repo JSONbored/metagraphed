@@ -14,7 +14,10 @@ import { describe, test } from "vitest";
 import {
   BUILD_TARGET_SEARCH_DEPTH,
   DEPLOY_GRACE_MS,
+  MAX_DEPLOYMENT_JSON_BYTES,
+  MAX_DEPLOYMENT_RECORDS,
   newestCommitWithBuild,
+  newestDeploymentSha,
   WORKER_CONFIGS,
   classifyDeployReadError,
   judgeDeploy,
@@ -144,10 +147,10 @@ describe("an unreadable deployment names WHICH kind of unreadable (#10357)", () 
     assert.match(v.detail, /maintainer/);
   });
 
-  test("a deployment with no SHA says it was not deployed by Workers Builds", () => {
+  test("a deployment with no SHA leaves the source revision unknown", () => {
     const v = judgeDeploy({ ...unread, failure: "no-commit-message" });
     assert.equal(v.verdict, "unknown");
-    assert.match(v.detail, /wrangler deploy/);
+    assert.match(v.detail, /newest deployment carries no commit SHA/);
     assert.doesNotMatch(v.detail, /CLOUDFLARE_API_TOKEN/);
   });
 
@@ -163,6 +166,169 @@ describe("an unreadable deployment names WHICH kind of unreadable (#10357)", () 
     // is a verdict claiming the Worker is current.
     const v = judgeDeploy(unread);
     assert.equal(v.verdict, "unknown");
+  });
+});
+
+describe("the newest structured deployment record", () => {
+  const oldSha = "a".repeat(40);
+  const newSha = "b".repeat(40);
+  const older = {
+    created_on: "2026-01-01T00:00:00.000Z",
+    annotations: { "workers/message": oldSha },
+    versions: [{ version_id: "synthetic-old-version", percentage: 100 }],
+  };
+  const newer = {
+    created_on: "2026-01-01T01:00:00.000Z",
+    annotations: { "workers/message": newSha },
+    versions: [{ version_id: "synthetic-new-version", percentage: 100 }],
+  };
+  const parse = (records: unknown) =>
+    newestDeploymentSha(JSON.stringify(records));
+
+  test("chooses the newest record in either output order", () => {
+    assert.deepEqual(parse([older, newer]), { sha: newSha });
+    assert.deepEqual(parse([newer, older]), { sha: newSha });
+  });
+
+  test("orders explicit timezone offsets as instants", () => {
+    assert.deepEqual(
+      parse([older, { ...newer, created_on: "2026-01-01T02:00:00+01:00" }]),
+      { sha: newSha },
+    );
+    assert.deepEqual(
+      parse([newer, { ...newer, created_on: "2026-01-01T02:00:00+01:00" }]),
+      { failure: "unreadable" },
+    );
+  });
+
+  test.each([
+    "2026-02-30T01:00:00Z",
+    "2026-01-01T01:00:00",
+    "2026-01-01",
+    "1",
+    "2026-01-01T24:00:00Z",
+    "2026-01-01T01:60:00Z",
+    "2026-01-01T01:00:00+25:00",
+  ])(
+    "does not normalize malformed or timezone-ambiguous timestamps: %s",
+    (created_on) =>
+      assert.deepEqual(parse([older, { ...newer, created_on }]), {
+        failure: "unreadable",
+      }),
+  );
+
+  test.each([
+    undefined,
+    null,
+    {},
+    { "workers/message": "" },
+    { "workers/message": "-" },
+    { "workers/message": "manual release" },
+    { "workers/message": 123 },
+  ])(
+    "never falls back when the newest message is absent or not a SHA: %j",
+    (annotations) => {
+      assert.deepEqual(parse([older, { ...newer, annotations }]), {
+        failure: "no-commit-message",
+      });
+    },
+  );
+
+  test("does not borrow a nested version message", () => {
+    assert.deepEqual(
+      parse([
+        older,
+        {
+          ...newer,
+          annotations: {},
+          versions: [
+            {
+              ...newer.versions[0],
+              annotations: { "workers/message": newSha },
+            },
+          ],
+        },
+      ]),
+      { failure: "no-commit-message" },
+    );
+  });
+
+  test.each([
+    null,
+    {},
+    [],
+    [null],
+    [{ ...newer, created_on: "invalid" }],
+    [older, { ...newer, created_on: undefined }],
+    [newer, { ...newer, annotations: older.annotations }],
+  ])(
+    "cannot infer identity from malformed or ambiguously ordered records: %j",
+    (records) => assert.deepEqual(parse(records), { failure: "unreadable" }),
+  );
+
+  test.each([
+    undefined,
+    [],
+    [
+      { version_id: "synthetic-new-version", percentage: 50 },
+      { version_id: "synthetic-other-version", percentage: 50 },
+    ],
+    [{ version_id: "synthetic-new-version", percentage: 99 }],
+    [{ version_id: "", percentage: 100 }],
+    [{ version_id: "   ", percentage: 100 }],
+    [null],
+  ])(
+    "does not treat malformed or split traffic as a single source revision: %j",
+    (versions) =>
+      assert.deepEqual(parse([older, { ...newer, versions }]), {
+        failure: "unreadable",
+      }),
+  );
+
+  test("malformed JSON is unreadable without retaining its body", () => {
+    assert.deepEqual(newestDeploymentSha("not-json"), {
+      failure: "unreadable",
+    });
+  });
+
+  test("bounds JSON bytes before decoding and record count before ordering", () => {
+    assert.deepEqual(
+      newestDeploymentSha("x".repeat(MAX_DEPLOYMENT_JSON_BYTES + 1)),
+      { failure: "unreadable" },
+    );
+    assert.deepEqual(
+      parse([
+        ...Array.from({ length: MAX_DEPLOYMENT_RECORDS }, () => older),
+        newer,
+      ]),
+      { failure: "unreadable" },
+    );
+    assert.deepEqual(
+      parse([
+        ...Array.from({ length: MAX_DEPLOYMENT_RECORDS - 1 }, () => older),
+        newer,
+      ]),
+      { sha: newSha },
+    );
+    const padded = JSON.stringify([
+      { ...newer, ignored: "x".repeat(MAX_DEPLOYMENT_JSON_BYTES) },
+    ]);
+    assert.deepEqual(newestDeploymentSha(padded), { failure: "unreadable" });
+  });
+
+  test("an absent current identity remains UNKNOWN regardless of lag", () => {
+    const read = parse([older, { ...newer, annotations: {} }]);
+    assert.ok("failure" in read);
+    assert.equal(
+      judgeDeploy({
+        ...base,
+        deployed: null,
+        behind: 10,
+        undeployedAgeMs: 90 * MIN,
+        failure: read.failure,
+      }).verdict,
+      "unknown",
+    );
   });
 });
 
