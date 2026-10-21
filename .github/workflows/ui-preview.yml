@@ -33,8 +33,11 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     # Matches validate.yml's own `run_ui_validation` path filter reasoning: apps/ui consumes
     # packages/client and packages/ui-kit as live workspace links, whose committed dist/ bundles are
-    # what actually ends up in the built output.
+    # what actually ends up in the built output. The root dependency files also
+    # control this build, including UI-only transitive lockfile changes.
     paths:
+      - "package.json"
+      - "package-lock.json"
       - "apps/ui/**"
       - "packages/client/**"
       - "packages/ui-kit/**"

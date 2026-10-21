@@ -119,9 +119,9 @@ jobs:
   # packages/contract/index.d.ts (caught fresh by `checks`' own
   # validate:contract-drift) without anyone rebuilding+committing
   # packages/client/dist to match, and that drift would only ever be caught
-  # here. None of these three directories' validation touches anything outside
-  # themselves, so this flag isn't registry-adjacent either, same reasoning as
-  # the two flags above.
+  # here. The root package.json and package-lock.json also select this job:
+  # npm ci installs the one workspace dependency graph, and root overrides or
+  # lockfile-only transitive updates can change apps/ui without a UI path diff.
   changes:
     name: changes
     runs-on: ubuntu-latest
@@ -198,13 +198,15 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
+          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
           fi
           # The Playwright overflow check renders pages in a browser, so only a
           # change that can alter RENDERED OUTPUT can alter its result (#8929).
+          # The root manifest/lockfile can replace rendered runtime dependencies
+          # or the Vite build toolchain, so both must select browser tests too.
           # packages/contract is types-only -- its whole published surface is
           # index.d.ts ("files": ["index.d.ts"], no "main"), and TypeScript types
           # are erased at runtime -- so a contract-only diff cannot move a pixel.
@@ -213,7 +215,7 @@ jobs:
           # chain-summaries/ui-kit-only diffs, which have their own suites here.
           # packages/client IS included: its committed dist is real runtime code
           # apps/ui executes, so it can change what renders.
-          if grep -qE '^apps/ui/|^packages/client/' changed-files.txt; then
+          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/client/' changed-files.txt; then
             echo "run_ui_e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_e2e=false" >> "$GITHUB_OUTPUT"
