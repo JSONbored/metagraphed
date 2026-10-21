@@ -202,3 +202,158 @@ test("the workflow validator rejects missing or moved guards and notification af
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+const notifications = [steps, publishSteps].map((jobSteps) => {
+  const notification = jobSteps.find(
+    (step) => step.name === "Notify on failure",
+  );
+  assert.ok(notification?.run);
+  return notification;
+});
+
+const fixtureWebhook = "https://fixture.invalid/notification";
+
+// Execute both live notification blocks with a shell function replacing curl.
+// The isolated environment has no credentials or executable search path, and
+// the function never performs a request. Body/error sentinels catch log leaks.
+function notificationResult(
+  step: Step,
+  httpStatus: string,
+  curlExit = 0,
+  webhook = fixtureWebhook,
+) {
+  const directory = mkdtempSync(
+    path.join(tmpdir(), "publication-notification-"),
+  );
+  const argumentsPath = path.join(directory, "arguments");
+  const env: Record<string, string | undefined> = {
+    PATH: directory,
+    ALERT_WEBHOOK_URL: webhook,
+    FIXTURE_ARGS: argumentsPath,
+    FIXTURE_HTTP_STATUS: httpStatus,
+    FIXTURE_CURL_EXIT: String(curlExit),
+    GITHUB_SERVER_URL: "https://github.com",
+    GITHUB_REPOSITORY: "fixture/repository",
+    GITHUB_RUN_ID: "123",
+  };
+  try {
+    const result = spawnSync(
+      "/bin/bash",
+      [
+        "--noprofile",
+        "--norc",
+        "-eo",
+        "pipefail",
+        "-c",
+        `curl() {
+          printf '%s\\n' "$@" > "$FIXTURE_ARGS"
+          local output='' format=''
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              -o|--output) output="$2"; shift ;;
+              -w|--write-out) format="$2"; shift ;;
+            esac
+            shift
+          done
+          if [ -n "$output" ]; then
+            printf '%s' 'fixture-provider-response-body' > "$output"
+          else
+            printf '%s' 'fixture-provider-response-body'
+          fi
+          printf '%s' 'fixture-provider-error-with-secret-url' >&2
+          if [ "$format" = '%{http_code}' ]; then
+            printf '%s' "$FIXTURE_HTTP_STATUS"
+          fi
+          return "$FIXTURE_CURL_EXIT"
+        }
+        ${step.run}`,
+      ],
+      {
+        cwd: directory,
+        encoding: "utf8",
+        timeout: 5_000,
+        env: env as NodeJS.ProcessEnv,
+      },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(
+      (result.stdout + result.stderr).includes(fixtureWebhook),
+      false,
+    );
+    return {
+      status: result.status,
+      output: result.stdout + result.stderr,
+      args: existsSync(argumentsPath)
+        ? readFileSync(argumentsPath, "utf8").trimEnd().split("\n")
+        : [],
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+test("publish failure notifications remain opt-in and preserve the primary failure", () => {
+  assert.equal(notifications.length, 2);
+  for (const step of notifications) {
+    assert.match(step.if ?? "", /^failure\(\)/);
+    assert.equal("continue-on-error" in step, false);
+    assert.equal(
+      step.env?.ALERT_WEBHOOK_URL,
+      "${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}",
+    );
+    const result = notificationResult(step, "204", 0, "");
+    assert.equal(result.status, 0, result.output);
+    assert.deepEqual(result.args, []);
+    assert.match(result.output, /skipping alert/);
+  }
+  const smoke = publishSteps.find((step) => step.name === "Smoke live API");
+  assert.ok(smoke);
+  assert.equal("continue-on-error" in smoke, false);
+  assert.match(smoke.run ?? "", /exit 1\s*$/);
+  assert.ok(
+    publishSteps.indexOf(smoke) < publishSteps.indexOf(notifications[1]!),
+  );
+});
+
+test("publish failure notifications accept successful HTTP responses without logging provider data", () => {
+  for (const step of notifications) {
+    for (const status of ["200", "204"]) {
+      const result = notificationResult(step, status);
+      assert.equal(result.status, 0, result.output);
+      assert.doesNotMatch(result.output, /fixture-|::error::/);
+      assert.equal(result.args[result.args.indexOf("-m") + 1], "15");
+      assert.equal(result.args[result.args.indexOf("-o") + 1], "/dev/null");
+      assert.equal(result.args[result.args.indexOf("-w") + 1], "%{http_code}");
+      assert.equal(result.args[result.args.indexOf("-X") + 1], "POST");
+      const payload = JSON.parse(result.args[result.args.indexOf("-d") + 1]!);
+      assert.match(payload.content, /production publish FAILED/);
+      assert.match(
+        payload.content,
+        /https:\/\/github.com\/fixture\/repository\/actions\/runs\/123/,
+      );
+    }
+  }
+});
+
+test("publish failure notifications fail visibly for rejected HTTP responses", () => {
+  for (const step of notifications) {
+    for (const status of ["302", "400", "404", "429", "500"]) {
+      const result = notificationResult(step, status);
+      assert.equal(result.status, 1, `${status}: ${result.output}`);
+      assert.match(result.output, /::error::.*notification/);
+      assert.match(result.output, new RegExp(`HTTP ${status}`));
+      assert.doesNotMatch(result.output, /fixture-/);
+    }
+  }
+});
+
+test("publish failure notifications fail visibly for transport errors without leaking diagnostics", () => {
+  for (const step of notifications) {
+    for (const exit of [6, 28]) {
+      const result = notificationResult(step, "000", exit);
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /::error::.*notification.*transport/);
+      assert.doesNotMatch(result.output, /fixture-/);
+    }
+  }
+});
