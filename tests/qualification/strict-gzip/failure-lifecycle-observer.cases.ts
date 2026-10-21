@@ -3,6 +3,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
+import {
+  failureReplayDiagnostic,
+  failureReplayFailure,
+} from "./failure-replay-diagnostics.ts";
+import type { FailureLifecycleSnapshot } from "./failure-lifecycle-observer.ts";
 import {
   assertFailureAuthLifecycle,
   assertFailureUnfixedAuthControl,
@@ -609,4 +616,522 @@ test("successful-control oracle requires actual connect/query/end success and an
       "decoder-refusal",
     ),
   );
+});
+
+// Reviewed unfixed-control boundary only. These additions leave every existing
+// fixed-source fixture, assertion and mutation above unchanged.
+const unfixedClosureStates = [
+  [false, 0, 0],
+  [true, 0, 1],
+  [true, 1, 1],
+] as const;
+async function unfixedClosureFixture([
+  clientEnded,
+  endEvents,
+  streamCloseEvents,
+]: readonly [boolean, number, number]) {
+  const observer = await fresh();
+  observer.beginFailureLifecycle("auth-rejection");
+  observer.observeFailureMessage("unfixed-control", new Uint8Array([1, 2, 3]));
+  observer.observeFailureWriter("unfixed-control");
+  const client = new SyntheticMethods();
+  client.connectResult = Promise.reject(
+    Object.assign(new Error("private synthetic auth detail"), {
+      code: "28P01",
+    }),
+  );
+  observer.observeFailurePgClient(client, SyntheticMethods, "createPgSql");
+  await client.connect().catch(() => undefined);
+  client._ended = clientEnded;
+  for (let index = 0; index < streamCloseEvents; index++)
+    for (const close of client.streamClose) close();
+  for (let index = 0; index < endEvents; index++) client.emit("end");
+  observer.finishFailureLifecycle();
+  await flush();
+  return { observer, client, snapshot: observer.readFailureLifecycle() };
+}
+function assertReplayRefusal(action: () => unknown, expectedCode: string) {
+  assert.throws(action, (error: unknown) => {
+    assert.equal(
+      failureReplayDiagnostic(error, "test-evidence")!.code,
+      expectedCode,
+    );
+    return true;
+  });
+}
+for (const state of unfixedClosureStates)
+  test(`unfixed control accepts only missing ownership at observed closure state ${state.join(",")}`, async () => {
+    const { snapshot, client } = await unfixedClosureFixture(state);
+    const before = structuredClone(snapshot);
+    assert.deepEqual(assertFailureUnfixedAuthControl(snapshot), {
+      clients: 1,
+      rejectedConnects: 1,
+      observedEndCalls: 0,
+      fixedLifecycleOracle: "rejected-missing-end",
+    });
+    assert.deepEqual(snapshot, before);
+    assert.deepEqual(
+      client.calls.map((call) => call.method),
+      ["connect"],
+    );
+    assert.throws(
+      () => assertFailureAuthLifecycle(snapshot),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(
+          error.message,
+          /Each actual constructed client must receive exactly one end call/,
+        );
+        assert.equal(
+          failureReplayDiagnostic(error, "test-evidence")!.code,
+          "fla-check-024",
+        );
+        return true;
+      },
+    );
+    assert.deepEqual(snapshot, before);
+  });
+
+test("unfixed snapshot remains unchanged when later synthetic transport events arrive", async () => {
+  const { observer, client, snapshot } = await unfixedClosureFixture([
+    false,
+    0,
+    0,
+  ]);
+  const before = structuredClone(snapshot);
+  assertFailureUnfixedAuthControl(snapshot);
+  client._ended = true;
+  for (const close of client.streamClose) close();
+  const closed = observer.readFailureLifecycle();
+  assertFailureUnfixedAuthControl(closed);
+  client.emit("end");
+  const ended = observer.readFailureLifecycle();
+  assertFailureUnfixedAuthControl(ended);
+  assert.deepEqual(snapshot, before);
+  assert.deepEqual(
+    [
+      closed.clients[0].clientEnded,
+      closed.clients[0].endEvents,
+      closed.clients[0].streamCloseEvents,
+    ],
+    [true, 0, 1],
+  );
+  assert.deepEqual(
+    [
+      ended.clients[0].clientEnded,
+      ended.clients[0].endEvents,
+      ended.clients[0].streamCloseEvents,
+    ],
+    [true, 1, 1],
+  );
+  assert.deepEqual(
+    client.calls.map((call) => call.method),
+    ["connect"],
+  );
+});
+
+const invalidUnfixedClosureStates: readonly (readonly [
+  unknown,
+  unknown,
+  unknown,
+])[] = [
+  [false, 0, 1],
+  [false, 1, 0],
+  [false, 1, 1],
+  [true, 0, 0],
+  [true, 1, 0],
+  [false, 2, 0],
+  [true, 2, 1],
+  [true, 1, 2],
+  [true, 2, 2],
+  [true, -1, 1],
+  [true, 0.5, 1],
+  [true, 1, -1],
+  [true, 1, 0.5],
+  [true, NaN, 1],
+  [true, 1, NaN],
+  [true, Infinity, 1],
+  [true, 1, Infinity],
+  [0, 0, 0],
+  [1, 1, 1],
+  ["false", 0, 0],
+  ["true", 1, 1],
+  [null, 0, 0],
+  [undefined, 0, 0],
+  [{}, 0, 0],
+  [false, "0", 0],
+  [false, 0, "0"],
+  [true, "1", 1],
+  [true, 1, "1"],
+  [false, false, 0],
+  [false, 0, false],
+  [true, true, 1],
+  [true, 1, true],
+  [false, null, 0],
+  [false, 0, null],
+  [false, undefined, 0],
+  [false, 0, undefined],
+  [false, 0n, 0],
+  [false, 0, 0n],
+  [true, 1n, 1],
+  [true, 1, 1n],
+];
+for (const [
+  index,
+  [clientEnded, endEvents, streamCloseEvents],
+] of invalidUnfixedClosureStates.entries())
+  test(`unfixed control rejects inconsistent, duplicate or non-typed closure tuple ${index + 1}`, async () => {
+    const { snapshot } = await unfixedClosureFixture([false, 0, 0]);
+    Object.assign(snapshot.clients[0], {
+      clientEnded,
+      endEvents,
+      streamCloseEvents,
+    });
+    const before = structuredClone(snapshot);
+    assertReplayRefusal(
+      () => assertFailureUnfixedAuthControl(snapshot),
+      "fla-check-095",
+    );
+    assert.deepEqual(snapshot, before);
+  });
+
+const unfixedMutations: Record<
+  string,
+  {
+    code: string;
+    edit: (snapshot: FailureLifecycleSnapshot) => void;
+  }
+> = {
+  "wrong snapshot kind": {
+    code: "fla-check-001",
+    edit: (s) => {
+      Object.assign(s, { kind: "other" });
+    },
+  },
+  "wrong scenario": {
+    code: "fla-check-002",
+    edit: (s) => {
+      s.scenario = "query-cancellation";
+    },
+  },
+  "observer violation": {
+    code: "fla-check-003",
+    edit: (s) => {
+      s.violations.push("changed-source");
+    },
+  },
+  "no owner dispatch": {
+    code: "fla-check-004",
+    edit: (s) => {
+      s.dispatches = [];
+    },
+  },
+  "wrong owner ordinal": {
+    code: "fla-check-005",
+    edit: (s) => {
+      s.dispatches[0].ordinal = 2;
+    },
+  },
+  "unfinished owner": {
+    code: "fla-check-006",
+    edit: (s) => {
+      s.dispatches[0].finished = false;
+    },
+  },
+  "duplicate message identity": {
+    code: "fla-check-008",
+    edit: (s) => {
+      s.dispatches[0].messages.push(
+        structuredClone(s.dispatches[0].messages[0]),
+      );
+    },
+  },
+  "wrong client identity": {
+    code: "fla-check-011",
+    edit: (s) => {
+      s.clients[0].id = 2;
+    },
+  },
+  "unproven client message attribution": {
+    code: "fla-check-012",
+    edit: (s) => {
+      Object.assign(s.clients[0], { messageId: "unfixed-control" });
+    },
+  },
+  "unproven client owner attribution": {
+    code: "fla-check-013",
+    edit: (s) => {
+      Object.assign(s.clients[0], { dispatch: 1 });
+    },
+  },
+  "unknown source helper": {
+    code: "fla-check-014",
+    edit: (s) => {
+      s.clients[0].helper = "other";
+    },
+  },
+  "missing connect": {
+    code: "fla-check-015",
+    edit: (s) => {
+      s.clients[0].operations = [];
+    },
+  },
+  "pending connect": {
+    code: "fla-check-017",
+    edit: (s) => {
+      s.clients[0].operations[0].status = "pending";
+    },
+  },
+  "unobserved connect settlement": {
+    code: "fla-check-018",
+    edit: (s) => {
+      s.clients[0].operations[0].settlement = null;
+    },
+  },
+  "out of bound settlement": {
+    code: "fla-check-018",
+    edit: (s) => {
+      s.clients[0].operations[0].settlement = s.sequence + 1;
+    },
+  },
+  "duplicate sequence": {
+    code: "fla-check-019",
+    edit: (s) => {
+      s.clients[0].operations[0].settlement = s.clients[0].operations[0].call;
+    },
+  },
+  "reversed call and settlement": {
+    code: "fla-check-020",
+    edit: (s) => {
+      Object.assign(s.clients[0].operations[0], { call: 2, settlement: 1 });
+    },
+  },
+  "connection refusal": {
+    code: "fla-check-021",
+    edit: (s) => {
+      s.clients[0].operations[0].sqlstate = "ECONNREFUSED";
+    },
+  },
+  "second owner dispatch": {
+    code: "fla-check-038",
+    edit: (s) => {
+      s.dispatches.push({ ordinal: 2, finished: true, messages: [] });
+    },
+  },
+  "no constructed client": {
+    code: "fla-check-039",
+    edit: (s) => {
+      s.clients = [];
+    },
+  },
+  "missing createPgSql witness": {
+    code: "fla-check-040",
+    edit: (s) => {
+      s.clients[0].helper = "pgReadStore";
+    },
+  },
+  "extra query": {
+    code: "fla-check-041",
+    edit: (s) => {
+      s.clients[0].operations.push({
+        ...s.clients[0].operations[0],
+        method: "query",
+        call: 3,
+        settlement: 4,
+      });
+      s.sequence = 4;
+    },
+  },
+  "extra explicit end": {
+    code: "fla-check-041",
+    edit: (s) => {
+      s.clients[0].operations.push({
+        ...s.clients[0].operations[0],
+        method: "end",
+        call: 3,
+        settlement: 4,
+      });
+      s.sequence = 4;
+    },
+  },
+  "query instead of connect": {
+    code: "fla-check-042",
+    edit: (s) => {
+      s.clients[0].operations[0].method = "query";
+    },
+  },
+  "end instead of connect": {
+    code: "fla-check-042",
+    edit: (s) => {
+      s.clients[0].operations[0].method = "end";
+    },
+  },
+  "fulfilled connect": {
+    code: "fla-check-043",
+    edit: (s) => {
+      s.clients[0].operations[0].status = "fulfilled";
+    },
+  },
+  "wrong SQLSTATE": {
+    code: "fla-check-044",
+    edit: (s) => {
+      s.clients[0].operations[0].sqlstate = "08006";
+    },
+  },
+  "missing SQLSTATE": {
+    code: "fla-check-044",
+    edit: (s) => {
+      s.clients[0].operations[0].sqlstate = null;
+    },
+  },
+};
+for (const [name, { code, edit }] of Object.entries(unfixedMutations))
+  test(`unfixed control retains original ownership and auth rejection: ${name}`, async () => {
+    const { snapshot } = await unfixedClosureFixture([false, 0, 0]);
+    edit(snapshot);
+    const before = structuredClone(snapshot);
+    assertReplayRefusal(() => assertFailureUnfixedAuthControl(snapshot), code);
+    assert.deepEqual(snapshot, before);
+  });
+
+test("unfixed control checks every constructed client before accepting the missing-end witness", async () => {
+  const { snapshot } = await unfixedClosureFixture([false, 0, 0]);
+  const second = structuredClone(snapshot.clients[0]);
+  second.id = 2;
+  second.helper = "pgLaneHealthDb";
+  Object.assign(second.operations[0], { call: 3, settlement: 4 });
+  Object.assign(second, {
+    clientEnded: true,
+    endEvents: 1,
+    streamCloseEvents: 1,
+  });
+  snapshot.clients.push(second);
+  snapshot.sequence = 4;
+  assert.equal(assertFailureUnfixedAuthControl(snapshot).clients, 2);
+  second.streamCloseEvents = 2;
+  assertReplayRefusal(
+    () => assertFailureUnfixedAuthControl(snapshot),
+    "fla-check-095",
+  );
+  second.streamCloseEvents = 1;
+  second.operations[0].sqlstate = "08006";
+  assertReplayRefusal(
+    () => assertFailureUnfixedAuthControl(snapshot),
+    "fla-check-044",
+  );
+});
+
+// Exercise the exact live unfixed function with deliberately substituted fixed
+// oracle outcomes. No production function, source file or snapshot is changed.
+function unfixedWithSyntheticFixedOracle(
+  fixedOracle: (snapshot: FailureLifecycleSnapshot) => unknown,
+) {
+  const source = readFileSync(
+    new URL("failure-lifecycle-assertions.ts", import.meta.url),
+    "utf8",
+  );
+  const baseStart = source.indexOf("function base(");
+  const baseEnd = source.indexOf("function teardown(", baseStart);
+  const controlStart = source.indexOf(
+    "export function assertFailureUnfixedAuthControl(",
+  );
+  const controlEnd = source.indexOf(
+    "export function assertFailureQueryLifecycle(",
+    controlStart,
+  );
+  assert.ok(
+    baseStart >= 0 &&
+      baseEnd > baseStart &&
+      controlStart > baseEnd &&
+      controlEnd > controlStart,
+  );
+  const extracted =
+    source.slice(baseStart, baseEnd) +
+    source.slice(controlStart + "export ".length, controlEnd);
+  const compiled = new Function(
+    "assert",
+    "assertFailureAuthLifecycle",
+    "failureReplayFailure",
+    "failureReplayDiagnostic",
+    stripTypeScriptTypes(extracted, { mode: "strip" }) +
+      "\nreturn assertFailureUnfixedAuthControl;",
+  );
+  return compiled(
+    assert,
+    fixedOracle,
+    failureReplayFailure,
+    failureReplayDiagnostic,
+  ) as (snapshot: FailureLifecycleSnapshot) => unknown;
+}
+const missingEndMessage =
+  "Each actual constructed client must receive exactly one end call";
+for (const [name, result, expectedCode] of [
+  ["no rejection", () => undefined, "fla-check-048"],
+  [
+    "generic rejection",
+    () => {
+      throw new Error("generic failure");
+    },
+    "fla-check-048",
+  ],
+  [
+    "closure rejection",
+    () => {
+      throw failureReplayFailure(
+        new Error("Actual pg connection end has not settled"),
+        "fla-check-027",
+      );
+    },
+    "fla-check-048",
+  ],
+  [
+    "missing private reason",
+    () => {
+      throw new Error(missingEndMessage);
+    },
+    "fla-check-096",
+  ],
+  [
+    "forged public reason",
+    () => {
+      throw Object.assign(new Error(missingEndMessage), {
+        code: "fla-check-024",
+      });
+    },
+    "fla-check-096",
+  ],
+  [
+    "wrong private reason with matching message",
+    () => {
+      throw failureReplayFailure(new Error(missingEndMessage), "fla-check-027");
+    },
+    "fla-check-096",
+  ],
+  [
+    "right private reason with wrong message",
+    () => {
+      throw failureReplayFailure(new Error("generic failure"), "fla-check-024");
+    },
+    "fla-check-048",
+  ],
+] as const)
+  test(`unfixed control refuses a substituted fixed oracle: ${name}`, async () => {
+    const { snapshot } = await unfixedClosureFixture([false, 0, 0]);
+    const before = structuredClone(snapshot);
+    let observed: FailureLifecycleSnapshot | undefined;
+    const oracle = unfixedWithSyntheticFixedOracle((actual) => {
+      observed = actual;
+      return result();
+    });
+    assertReplayRefusal(() => oracle(snapshot), expectedCode);
+    assert.equal(observed, snapshot);
+    assert.deepEqual(snapshot, before);
+  });
+
+test("exact private missing-end reason plus original assertion message satisfies the unfixed check", async () => {
+  const { snapshot } = await unfixedClosureFixture([false, 0, 0]);
+  const oracle = unfixedWithSyntheticFixedOracle((actual) =>
+    assertFailureAuthLifecycle(actual),
+  );
+  assert.deepEqual(oracle(snapshot), assertFailureUnfixedAuthControl(snapshot));
 });

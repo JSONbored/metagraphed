@@ -24,8 +24,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-lifecycle-assertions.ts",
-      "sha256": "54de88045626ee500d29ce1385a693da01fb40f56d373df325e49e591c768220",
-      "bytes": 26584
+      "sha256": "f6e6fbc4c6529270f1cfbe4d814efd93688f030090eb219c978c144fe896279e",
+      "bytes": 27523
     },
     {
       "path": "tests/qualification/strict-gzip/failure-lifecycle-observer.ts",
@@ -39,8 +39,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-native-reason-codes.ts",
-      "sha256": "24b022d769f004902b1a5e4bbac2c051a8aa268af774ce5ad2ae01846bb0ac23",
-      "bytes": 50376
+      "sha256": "65ee7efa800fe986c677fa7a66542d1023f3dfdba2f2f018fbfbfb1c0c83e612",
+      "bytes": 51210
     },
     {
       "path": "tests/qualification/strict-gzip/failure-phase.json",
@@ -59,8 +59,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-postgres-private.ts",
-      "sha256": "984e23e16643b87fa63c13879623b0708724286b7d5bdf1ceea1625fb971318a",
-      "bytes": 26644
+      "sha256": "a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",
+      "bytes": 28225
     },
     {
       "path": "tests/qualification/strict-gzip/failure-replay-diagnostics.ts",
@@ -69,8 +69,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-replay-reason-codes.ts",
-      "sha256": "2cad4b8f07c18c985b27276f732d06cfbf113d38ca70282311b47b2a12848895",
-      "bytes": 152692
+      "sha256": "c158f103c19c2c11c03e70bff2ad3fbf3b07a1574803643ffbb2f4767b5928e5",
+      "bytes": 155106
     },
     {
       "path": "tests/qualification/strict-gzip/failure-test-evidence.ts",
@@ -199,8 +199,8 @@
     },
     {
       "path": "tests/qualification/strict-gzip/queue-owner-failure.test.ts",
-      "sha256": "3bd15270b8abe9fcc1ee1d403e57f7e36d570786cbbc3a162da49d4d56551946",
-      "bytes": 61830
+      "sha256": "bb75fce23981863738cf747c67fac4a92dbe6d362e9c213ac67805b7012b58b6",
+      "bytes": 63002
     },
     {
       "path": "tests/qualification/strict-gzip/queue-owner-resource.test.ts",

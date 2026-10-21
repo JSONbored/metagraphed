@@ -249,9 +249,6 @@ const rows = [
 ["fla-check-042","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",156,5,"check","95c633dd12c4c1175c935c60ec0b9aa41c74058980554d0f7c8355a46278c74a","Existing assert.equal predicate"],
 ["fla-check-043","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",157,5,"check","1e181747b09f2ae8a34f63a0166ad935ef9ec6ff9900f1301731990ead1a71ef","Existing assert.equal predicate"],
 ["fla-check-044","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",158,5,"check","04e2d1d1626bf2a47a143ebe917a42d68e6efbaf730a5ef7392681ad697198dd","Existing assert.equal predicate"],
-["fla-check-045","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",159,5,"check","90b8680ca0a1ae4f798744b0691d8924a0263b26d516b12f75ec8e552802ee6f","Existing assert.equal predicate"],
-["fla-check-046","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",160,5,"check","4f95d476feb85d93bda44bb53b166bb72ab01ecc83e62bfd1bd94b6c8402010c","Existing assert.equal predicate"],
-["fla-check-047","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",161,5,"check","bfa1bb0b673e50aec31e52234517fc6918f986b0fa3e5987cf993bfb0a6f3e57","Existing assert.equal predicate"],
 ["fla-check-048","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",163,3,"check","eab700054fe212be804155c0a14d3f1e98821eb2721cffe7351bc039f67832e6","Existing assert.throws predicate"],
 ["fla-stage-005","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",174,1,"stage","1558f04d98e1a7612ae9f1e66ae235965380fbcea302b6fa17c8db5ccb75bf90","Operation/type failure in assertFailureQueryLifecycle"],
 ["fla-check-049","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",179,3,"check","6f2cd4e2c46290aff04ac13861b6f069fd9cd06febae7665cb2e4e1f55a1f6d8","Existing assert.match predicate"],
@@ -587,6 +584,12 @@ const rows = [
 ["fpu-io-015","tests/qualification/strict-gzip/failure-public-receipts.ts","277fd01102119b8626ca83d201219474ffcf9ba651ccdd7de5858fbdd8563e78",167,9,"io","ecec6742567567facbb63b49ddab6dcad59dbfc3e13dab551a27cc24a28eaf81","Fixed boundedFile operation"],
 ["fpu-check-010","tests/qualification/strict-gzip/failure-public-receipts.ts","277fd01102119b8626ca83d201219474ffcf9ba651ccdd7de5858fbdd8563e78",211,3,"check","0440cff4caeaa303f19ef1c0b25cf12b14895d3a6ec118a5cb2cd91b7a3c8fd1","Existing assert.ok predicate"],
 ["fpu-check-011","tests/qualification/strict-gzip/failure-public-receipts.ts","277fd01102119b8626ca83d201219474ffcf9ba651ccdd7de5858fbdd8563e78",230,5,"check","92176169f43ee9f4bb2943cb86134c1193bdc62c065be8c09922501f66dd36f1","Existing assert.equal predicate"],
+["fla-check-095","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","f6e6fbc4c6529270f1cfbe4d814efd93688f030090eb219c978c144fe896279e",371,9,"check","3db021af085e83df67d299379dbb36c7be5a43a6e55d5b835b8fe56c66962205","Unfixed no-end snapshot must preserve one of three strictly typed, source-consistent transport closure tuples"],
+["fla-check-096","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","f6e6fbc4c6529270f1cfbe4d814efd93688f030090eb219c978c144fe896279e",401,7,"check","67967b904fb4a2a614a1dbeac17947685b915d5d320d91b63fdd2206890ad9f8","Unchanged fixed auth oracle must reject with private failure-replay fla-check-024 missing-end diagnostic"],
+["fpr-check-071","tests/qualification/strict-gzip/failure-postgres-private.ts","a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",554,11,"check","57248af409d861cd41c1a2c26ca5da4962abc52372eefb1e8a5f7fd40af0c27b","Require own postExitDrain exactly for unfixed-instrumented phase"],
+["fpr-check-072","tests/qualification/strict-gzip/failure-postgres-private.ts","a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",578,13,"check","da9e3860b8e674d6757b4e75db5421517782e016036a462f4ab2a892f17a56dc","Require after-observed-native-exit boundary"],
+["fpr-check-073","tests/qualification/strict-gzip/failure-postgres-private.ts","a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",583,13,"check","627354badfca849dc66c03760aa3aeea5d427bc9183d6d56242c4cfa1d5dc21c","Require exactly numeric zero post-exit writer sessions"],
+["fpr-check-074","tests/qualification/strict-gzip/failure-postgres-private.ts","a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",588,13,"check","261cd6e4d60142710b4dfa8a5d6e6963917e63667db7a92c97f9720b2a1eb130","Require exactly two post-exit stable zero samples"],
 ] as const;
 export type FailureReplayReasonCode = (typeof rows)[number][0];
 export const FAILURE_REPLAY_REASON_CODES = Object.freeze(
@@ -603,6 +606,30 @@ export const FAILURE_REPLAY_REASON_REGISTRY = Object.freeze(
       checkKind: row[5],
       expressionSha256: row[6],
       description: row[7],
+    }),
+  ),
+);
+
+// Retired only for the source-backed two-boundary negative control.
+// These historical origins remain inspectable but cannot brand active failures.
+// prettier-ignore
+const retiredRows = [
+["fla-check-045","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",159,5,"check","90b8680ca0a1ae4f798744b0691d8924a0263b26d516b12f75ec8e552802ee6f","Existing assert.equal predicate"],
+["fla-check-046","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",160,5,"check","4f95d476feb85d93bda44bb53b166bb72ab01ecc83e62bfd1bd94b6c8402010c","Existing assert.equal predicate"],
+["fla-check-047","tests/qualification/strict-gzip/failure-lifecycle-assertions.ts","56873d4fc009bf5f10b08f700b4d36504ff328ffdc99bac5662d2a99d6ead78e",161,5,"check","bfa1bb0b673e50aec31e52234517fc6918f986b0fa3e5987cf993bfb0a6f3e57","Existing assert.equal predicate"],
+] as const;
+export const FAILURE_REPLAY_RETIRED_REASONS = Object.freeze(
+  retiredRows.map((row) =>
+    Object.freeze({
+      code: row[0],
+      file: row[1],
+      baselineSha256: row[2],
+      line: row[3],
+      column: row[4],
+      checkKind: row[5],
+      expressionSha256: row[6],
+      description: row[7],
+      retirement: "unsupported-pre-disposal-closure" as const,
     }),
   ),
 );

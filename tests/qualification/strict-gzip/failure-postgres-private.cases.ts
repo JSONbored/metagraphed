@@ -16,6 +16,8 @@ import {
   sha256,
 } from "./postgres-owner-fixture.ts";
 import { OWNER_SCENARIOS } from "./owner-resource-policy.ts";
+import { validateOwnerNativeEvents } from "./owner-native-evidence.ts";
+import { failureReplayDiagnostic } from "./failure-replay-diagnostics.ts";
 const sha = "a".repeat(64);
 const sourceNames = [
   "workers/data-api.ts",
@@ -136,9 +138,9 @@ function lifecycle(
         messageId: null,
         dispatch: null,
         operations,
-        endEvents: 1,
-        streamCloseEvents: 1,
-        clientEnded: true,
+        endEvents: unfixed ? 0 : 1,
+        streamCloseEvents: unfixed ? 0 : 1,
+        clientEnded: !unfixed,
         streamDestroyed: false,
       },
     ],
@@ -244,6 +246,15 @@ function pair(phase = "uninstrumented"): { safe: any; private: any } {
       private: {
         observation,
         lifecycleSnapshots: phase === "uninstrumented" ? [] : snapshots,
+        ...(phase === "unfixed-instrumented"
+          ? {
+              postExitDrain: {
+                boundary: "after-observed-native-exit",
+                remainingWriterSessions: 0,
+                stableZeroSamples: 2,
+              },
+            }
+          : {}),
       },
     };
   };
@@ -532,3 +543,359 @@ for (const [name, edit] of [
       validateFailurePrivateEvidence(fixture.private, fixture.safe),
     );
   });
+
+for (const [clientEnded, endEvents, streamCloseEvents] of [
+  [false, 0, 0],
+  [true, 0, 1],
+  [true, 1, 1],
+] as const)
+  test(`negative replay preserves observed closure tuple ${clientEnded}/${endEvents}/${streamCloseEvents}`, () => {
+    const fixture = pair("unfixed-instrumented");
+    const client =
+      fixture.private.cases[0].runtimes[0].lifecycleSnapshots[0].snapshot
+        .clients[0];
+    Object.assign(client, { clientEnded, endEvents, streamCloseEvents });
+    const original = structuredClone(fixture);
+    const observations = validateFailurePrivateEvidence(
+      fixture.private,
+      fixture.safe,
+    );
+    assert.equal(observations.length, 1);
+    assert.deepEqual(fixture, original);
+    assert.equal(Object.hasOwn(observations[0]!, "postExitDrain"), false);
+    assert.equal(
+      Object.hasOwn(fixture.safe.cases[0].runtimes[0], "postExitDrain"),
+      false,
+    );
+  });
+
+for (const [name, edit, code] of [
+  ["missing marker", (r: any) => delete r.postExitDrain, "fpr-check-071"],
+  [
+    "undefined marker",
+    (r: any) => (r.postExitDrain = undefined),
+    "fpr-check-001",
+  ],
+  ["null marker", (r: any) => (r.postExitDrain = null), "fpr-check-001"],
+  ["array marker", (r: any) => (r.postExitDrain = []), "fpr-check-001"],
+  [
+    "string marker",
+    (r: any) => (r.postExitDrain = "after-observed-native-exit"),
+    "fpr-check-001",
+  ],
+  [
+    "wrong boundary",
+    (r: any) => (r.postExitDrain.boundary = "before-disposal"),
+    "fpr-check-072",
+  ],
+  [
+    "wrong boundary type",
+    (r: any) => (r.postExitDrain.boundary = 1),
+    "fpr-check-072",
+  ],
+  [
+    "missing boundary",
+    (r: any) => delete r.postExitDrain.boundary,
+    "fpr-check-003",
+  ],
+  [
+    "missing writer count",
+    (r: any) => delete r.postExitDrain.remainingWriterSessions,
+    "fpr-check-003",
+  ],
+  [
+    "missing sample count",
+    (r: any) => delete r.postExitDrain.stableZeroSamples,
+    "fpr-check-003",
+  ],
+  ["extra key", (r: any) => (r.postExitDrain.disposed = true), "fpr-check-003"],
+  [
+    "nonzero writers",
+    (r: any) => (r.postExitDrain.remainingWriterSessions = 1),
+    "fpr-check-073",
+  ],
+  [
+    "negative writers",
+    (r: any) => (r.postExitDrain.remainingWriterSessions = -1),
+    "fpr-check-073",
+  ],
+  [
+    "writer string",
+    (r: any) => (r.postExitDrain.remainingWriterSessions = "0"),
+    "fpr-check-073",
+  ],
+  [
+    "writer boolean",
+    (r: any) => (r.postExitDrain.remainingWriterSessions = false),
+    "fpr-check-073",
+  ],
+  [
+    "writer NaN",
+    (r: any) => (r.postExitDrain.remainingWriterSessions = NaN),
+    "fpr-check-073",
+  ],
+  [
+    "only one zero sample",
+    (r: any) => (r.postExitDrain.stableZeroSamples = 1),
+    "fpr-check-074",
+  ],
+  [
+    "extra zero sample",
+    (r: any) => (r.postExitDrain.stableZeroSamples = 3),
+    "fpr-check-074",
+  ],
+  [
+    "sample string",
+    (r: any) => (r.postExitDrain.stableZeroSamples = "2"),
+    "fpr-check-074",
+  ],
+  [
+    "sample boolean",
+    (r: any) => (r.postExitDrain.stableZeroSamples = true),
+    "fpr-check-074",
+  ],
+  [
+    "sample NaN",
+    (r: any) => (r.postExitDrain.stableZeroSamples = NaN),
+    "fpr-check-074",
+  ],
+  [
+    "inherited marker fields",
+    (r: any) => (r.postExitDrain = Object.create(r.postExitDrain)),
+    "fpr-check-002",
+  ],
+  [
+    "non-enumerable marker field",
+    (r: any) =>
+      Object.defineProperty(r.postExitDrain, "boundary", { enumerable: false }),
+    "fpr-check-004",
+  ],
+] as const)
+  test(`negative replay rejects post-exit ${name}`, () => {
+    const fixture = pair("unfixed-instrumented");
+    edit(fixture.private.cases[0].runtimes[0]);
+    assert.throws(
+      () => validateFailurePrivateEvidence(fixture.private, fixture.safe),
+      (error: unknown) => {
+        assert.equal(
+          failureReplayDiagnostic(error, "owner-evidence")!.code,
+          code,
+        );
+        return true;
+      },
+    );
+  });
+
+test("negative replay rejects marker accessors without evaluating them", () => {
+  for (const field of ["postExitDrain", "boundary"]) {
+    const fixture = pair("unfixed-instrumented");
+    const runtime = fixture.private.cases[0].runtimes[0];
+    let reads = 0;
+    Object.defineProperty(
+      field === "postExitDrain" ? runtime : runtime.postExitDrain,
+      field,
+      {
+        enumerable: true,
+        get() {
+          reads++;
+          throw new Error("must not invoke marker accessor");
+        },
+      },
+    );
+    assert.throws(() =>
+      validateFailurePrivateEvidence(fixture.private, fixture.safe),
+    );
+    assert.equal(reads, 0);
+  }
+});
+
+for (const phase of ["uninstrumented", "instrumented"])
+  test(`fixed ${phase} replay rejects even a valid or undefined post-exit marker`, () => {
+    for (const marker of [
+      pair("unfixed-instrumented").private.cases[0].runtimes[0].postExitDrain,
+      undefined,
+    ]) {
+      const fixture = pair(phase);
+      fixture.private.cases[0].runtimes[0].postExitDrain = marker;
+      assert.throws(
+        () => validateFailurePrivateEvidence(fixture.private, fixture.safe),
+        (error: unknown) => {
+          assert.equal(
+            failureReplayDiagnostic(error, "owner-evidence")!.code,
+            "fpr-check-071",
+          );
+          return true;
+        },
+      );
+    }
+  });
+
+test("pre-disposal drain counts and drained resource sample cannot replace post-exit evidence", () => {
+  const fixture = pair("unfixed-instrumented");
+  const runtime = fixture.private.cases[0].runtimes[0];
+  const publicRuntime = fixture.safe.cases[0].runtimes[0];
+  assert.equal(publicRuntime.remainingWriterSessions, 0);
+  assert.equal(publicRuntime.stableZeroSamples, 2);
+  assert.equal(runtime.observation.samples.at(-1).phase, "drained");
+  delete runtime.postExitDrain;
+  assert.throws(() =>
+    validateFailurePrivateEvidence(fixture.private, fixture.safe),
+  );
+  runtime.postExitDrain = {
+    remainingWriterSessions: publicRuntime.remainingWriterSessions,
+    stableZeroSamples: publicRuntime.stableZeroSamples,
+  };
+  assert.throws(() =>
+    validateFailurePrivateEvidence(fixture.private, fixture.safe),
+  );
+});
+
+for (const [name, edit] of [
+  [
+    "wrong native hash",
+    (p: any) => (p.observation.runtimeSha256 = "b".repeat(64)),
+  ],
+  [
+    "wrong native version",
+    (p: any) => (p.observation.runtimeVersion = "1.0.0"),
+  ],
+  ["hidden restart", (p: any) => (p.observation.runtimeRestarts = 1)],
+  ["wrong owner", (p: any) => (p.observation.owner = "another-worker")],
+  [
+    "wrong message",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.dispatches[0].messages[0].id =
+        "failure-auth"),
+  ],
+  [
+    "wrong body",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.dispatches[0].messages[0].wireSha256 =
+        "b".repeat(64)),
+  ],
+  [
+    "missing writer custody",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.dispatches[0].messages[0].writerCalls = 0),
+  ],
+  [
+    "unfinished handler",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.dispatches[0].finished = false),
+  ],
+  [
+    "wrong SQLSTATE",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].operations[0].sqlstate =
+        "08006"),
+  ],
+  [
+    "pending connect",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].operations[0].status =
+        "pending"),
+  ],
+  [
+    "query substitution",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].operations[0].method =
+        "query"),
+  ],
+  [
+    "end substitution",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].operations[0].method =
+        "end"),
+  ],
+  [
+    "duplicate close events",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].streamCloseEvents = 2),
+  ],
+  [
+    "inconsistent closure tuple",
+    (p: any) =>
+      (p.lifecycleSnapshots[0].snapshot.clients[0].clientEnded = true),
+  ],
+] as const)
+  test(`valid post-exit marker cannot excuse ${name}`, () => {
+    const fixture = pair("unfixed-instrumented");
+    edit(fixture.private.cases[0].runtimes[0]);
+    assert.throws(() =>
+      validateFailurePrivateEvidence(fixture.private, fixture.safe),
+    );
+  });
+
+for (const [name, edit] of [
+  ["missing native exit count", (r: any) => (r.observedNativeExits = 0)],
+  ["nonzero pre-disposal writers", (r: any) => (r.remainingWriterSessions = 1)],
+  ["insufficient pre-disposal samples", (r: any) => (r.stableZeroSamples = 1)],
+] as const)
+  test(`post-exit marker preserves public rejection of ${name}`, () => {
+    const fixture = pair("unfixed-instrumented");
+    edit(fixture.safe.cases[0].runtimes[0]);
+    assert.throws(() =>
+      validateFailurePrivateEvidence(fixture.private, fixture.safe),
+    );
+  });
+
+test("correct post-exit schema does not substitute for independent guarded native exit validation", () => {
+  const fixture = pair("unfixed-instrumented");
+  const [identity] = validateFailurePrivateEvidence(
+    fixture.private,
+    fixture.safe,
+  );
+  assert.ok(identity);
+  const pin = {
+    path: identity.runtimeExecutablePath,
+    sha256: identity.runtimeSha256,
+    version: identity.runtimeVersion,
+    packagePath:
+      "node_modules/miniflare/node_modules/@cloudflare/workerd-linux-64",
+  };
+  const launch = {
+    kind: "native-child",
+    pid: identity.hostPid,
+    threadId: 0,
+    role: "workerd",
+    childPid: identity.runtimePid,
+    synchronous: false,
+    launchId: `${identity.hostPid}:1`,
+  };
+  const events: any[] = [
+    {
+      kind: "guard-start",
+      pid: identity.hostPid,
+      threadId: 0,
+      entry: "/synthetic/node_modules/vitest/dist/workers/forks.js",
+    },
+    launch,
+    {
+      ...launch,
+      kind: "native-child-exit",
+      observation: "exit-event",
+      code: null,
+      signal: "SIGKILL",
+    },
+  ];
+  assert.equal(
+    validateOwnerNativeEvents(events, identity, pin).observedNativeExits,
+    1,
+  );
+  for (const edit of [
+    (rows: any[]) => rows.pop(),
+    (rows: any[]) => (rows[2].launchId = `${identity.hostPid}:2`),
+    (rows: any[]) => (rows[2].childPid = identity.runtimePid + 1),
+    (rows: any[]) => (rows[2].pid = identity.hostPid + 1),
+    (rows: any[]) => (rows[2].observation = "resolved-promise"),
+    (rows: any[]) => ([rows[1], rows[2]] = [rows[2], rows[1]]),
+  ]) {
+    const rows = structuredClone(events);
+    edit(rows);
+    assert.throws(() => validateOwnerNativeEvents(rows, identity, pin));
+  }
+  for (const field of ["path", "sha256", "version"])
+    assert.throws(() =>
+      validateOwnerNativeEvents(events, identity, { ...pin, [field]: "wrong" }),
+    );
+});

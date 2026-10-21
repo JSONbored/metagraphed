@@ -183,6 +183,9 @@ const rows = [
 ["qnf-check-070","tests/qualification/strict-gzip/queue-owner-failure.test.ts","c9e8cdd1a2662a40dd8a0c9c1eb79d4d49e3e65970552369548249f7f014c3b4",776,3,"check","fd0bf6934999c5e88e369ecfa35b4f93238bc87e12da18267f7804ac8196090b","Existing assert.ok predicate"],
 ["qnf-operation-083","tests/qualification/strict-gzip/queue-owner-failure.test.ts","c9e8cdd1a2662a40dd8a0c9c1eb79d4d49e3e65970552369548249f7f014c3b4",777,3,"operation","c72c5c415bdfe8d5ab2d225b575590e60a72baed983e8df0176d481527903582","Existing writeFileSync operation"],
 ["qnf-operation-084","tests/qualification/strict-gzip/queue-owner-failure.test.ts","c9e8cdd1a2662a40dd8a0c9c1eb79d4d49e3e65970552369548249f7f014c3b4",782,3,"operation","b8846b36996d3b90f440e0a4c59a4aeac83f25a79b382504ff15d0bca2075061","Existing writeFileSync operation"],
+["qnf-operation-085","tests/qualification/strict-gzip/queue-owner-failure.test.ts","bb75fce23981863738cf747c67fac4a92dbe6d362e9c213ac67805b7012b58b6",641,13,"operation","26215473524ee474b85fb73ee9018908550915354b49ab973160f658e94c3648","Bounded post-exit drain and health operation"],
+["qnf-operation-086","tests/qualification/strict-gzip/queue-owner-failure.test.ts","bb75fce23981863738cf747c67fac4a92dbe6d362e9c213ac67805b7012b58b6",645,25,"operation","4f8b8891bd3df2a7d30e5b62505eeadd3abe916fcc5bd9e3ace8c693c2511628","Post-exit fixture drain operation"],
+["qnf-operation-087","tests/qualification/strict-gzip/queue-owner-failure.test.ts","bb75fce23981863738cf747c67fac4a92dbe6d362e9c213ac67805b7012b58b6",648,19,"operation","fa855821a3fa171e827a53b2e56739dafcfa794cb3b2d5985c4c6cfce6f2b051","Post-exit fixture health operation"],
 ] as const;
 const fixed = [
   "qnf-runtime-primary",

@@ -5,6 +5,7 @@ import { test } from "node:test";
 import {
   FAILURE_REPLAY_REASON_CODES,
   FAILURE_REPLAY_REASON_REGISTRY,
+  FAILURE_REPLAY_RETIRED_REASONS,
 } from "./failure-replay-reason-codes.ts";
 import {
   FAILURE_REPLAY_STAGE_CODES,
@@ -47,7 +48,7 @@ test("fixed registry is deeply frozen, unique, source-bound and covers all nine 
     new Set(FAILURE_REPLAY_REASON_CODES).size,
     FAILURE_REPLAY_REASON_CODES.length,
   );
-  assert.equal(FAILURE_REPLAY_REASON_REGISTRY.length, 586);
+  assert.equal(FAILURE_REPLAY_REASON_REGISTRY.length, 589);
   const sources = new Map<string, string>();
   for (const row of FAILURE_REPLAY_REASON_REGISTRY) {
     assert.ok(Object.isFrozen(row));
@@ -66,7 +67,20 @@ test("fixed registry is deeply frozen, unique, source-bound and covers all nine 
       sources.get(basename) ??
       readFileSync(new URL(basename, import.meta.url), "utf8");
     sources.set(basename, source);
-    assert.equal(source.split('"' + row.code + '"').length - 1, 1);
+    // Only a diagnostic-producing call is an origin. The negative control also
+    // compares the private fixed-oracle code as data, which is not an origin.
+    const origin = new RegExp(
+      '(?:failureReplayFailure\\(\\s*failureReplayError,\\s*|withFailureReplayReason(?:Async)?\\(\\s*)"' +
+        row.code +
+        '"',
+      "g",
+    );
+    assert.equal([...source.matchAll(origin)].length, 1, row.code);
+    assert.equal(
+      source.split('"' + row.code + '"').length - 1,
+      row.code === "fla-check-024" ? 2 : 1,
+      row.code,
+    );
   }
   assert.equal(sources.size, 9);
 });
@@ -360,5 +374,34 @@ test("real nested replay oracles retain specific source-bound reason families", 
     );
     failureReplayFailure(error, second);
     assert.equal(failureReplayDiagnostic(error, "owner-evidence")!.code, code);
+  }
+});
+
+test("only unsupported negative-control closure origins are retired", () => {
+  assert.ok(Object.isFrozen(FAILURE_REPLAY_RETIRED_REASONS));
+  assert.deepEqual(
+    FAILURE_REPLAY_RETIRED_REASONS.map((row) => row.code),
+    ["fla-check-045", "fla-check-046", "fla-check-047"],
+  );
+  const source = readFileSync(
+    new URL("failure-lifecycle-assertions.ts", import.meta.url),
+    "utf8",
+  );
+  for (const row of FAILURE_REPLAY_RETIRED_REASONS) {
+    assert.ok(Object.isFrozen(row));
+    assert.equal(row.retirement, "unsupported-pre-disposal-closure");
+    assert.equal(
+      new Set<string>(FAILURE_REPLAY_REASON_CODES).has(row.code),
+      false,
+    );
+    assert.equal(source.includes('"' + row.code + '"'), false);
+    assert.match(row.baselineSha256, /^[a-f0-9]{64}$/);
+    assert.match(row.expressionSha256, /^[a-f0-9]{64}$/);
+    assert.equal(
+      parseFailureReplayDiagnostics([
+        { stage: "test-evidence", family: "failure-replay", code: row.code },
+      ]),
+      null,
+    );
   }
 });

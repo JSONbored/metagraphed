@@ -632,6 +632,34 @@ async function usingRuntime(
       const custody = withFailureNativeReason("qnf-operation-036", () =>
         readOwnerNativeEvidence(path.dirname(resultFile), observed),
       );
+      // The negative example owns no client.end(). Prove final owner cleanup
+      // separately, only after the actual native exit has been correlated.
+      if (phase === "unfixed-instrumented") {
+        const postExitDrain = await withFailureNativeReasonAsync(
+          "qnf-operation-085",
+          () =>
+            withinOwnerDeadline(
+              (async () => {
+                const drained = await withFailureNativeReasonAsync(
+                  "qnf-operation-086",
+                  () => fixture.drain(),
+                );
+                await withFailureNativeReasonAsync("qnf-operation-087", () =>
+                  fixture.healthy(),
+                );
+                return drained;
+              })(),
+              10_000,
+            ),
+        );
+        // Keep this assignment outside the raced promise: a late settlement
+        // after deadline failure must never create successful evidence.
+        privateRuntime.postExitDrain = {
+          boundary: "after-observed-native-exit",
+          remainingWriterSessions: postExitDrain.remainingWriterSessions,
+          stableZeroSamples: postExitDrain.stableZeroSamples,
+        };
+      }
       result = {
         mappingSha256: transport.mappingSha256,
         serviceSha256: transport.serviceSha256,

@@ -1,4 +1,5 @@
 import {
+  failureReplayDiagnostic,
   failureReplayFailure,
   withFailureReplayReason,
   withFailureReplayReasonAsync,
@@ -363,29 +364,51 @@ export function assertFailureUnfixedAuthControl(
       } catch (failureReplayError) {
         throw failureReplayFailure(failureReplayError, "fla-check-044");
       }
+      // Transport closure may follow connect rejection independently of
+      // application ownership. Preserve the sampled fields; only these three
+      // strictly typed stages are consistent with the pinned non-TLS source.
       try {
-        assert.equal(client.clientEnded, true);
+        assert.ok(
+          (client.clientEnded === false &&
+            client.endEvents === 0 &&
+            client.streamCloseEvents === 0) ||
+            (client.clientEnded === true &&
+              client.endEvents === 0 &&
+              client.streamCloseEvents === 1) ||
+            (client.clientEnded === true &&
+              client.endEvents === 1 &&
+              client.streamCloseEvents === 1),
+          "Unfixed control has an inconsistent transport-closure observation",
+        );
       } catch (failureReplayError) {
-        throw failureReplayFailure(failureReplayError, "fla-check-045");
-      }
-      try {
-        assert.equal(client.endEvents, 1);
-      } catch (failureReplayError) {
-        throw failureReplayFailure(failureReplayError, "fla-check-046");
-      }
-      try {
-        assert.equal(client.streamCloseEvents, 1);
-      } catch (failureReplayError) {
-        throw failureReplayFailure(failureReplayError, "fla-check-047");
+        throw failureReplayFailure(failureReplayError, "fla-check-095");
       }
     }
+    let fixedLifecycleFailure: unknown;
     try {
-      assert.throws(
-        () => assertFailureAuthLifecycle(snapshot),
-        /Each actual constructed client must receive exactly one end call/,
-      );
+      assert.throws(() => {
+        try {
+          assertFailureAuthLifecycle(snapshot);
+        } catch (error) {
+          fixedLifecycleFailure = error;
+          throw error;
+        }
+      }, /Each actual constructed client must receive exactly one end call/);
     } catch (failureReplayError) {
       throw failureReplayFailure(failureReplayError, "fla-check-048");
+    }
+    try {
+      assert.deepEqual(
+        failureReplayDiagnostic(fixedLifecycleFailure, "test-evidence"),
+        {
+          stage: "test-evidence",
+          family: "failure-replay",
+          code: "fla-check-024",
+        },
+        "Fixed lifecycle oracle must reject specifically for missing client.end",
+      );
+    } catch (failureReplayError) {
+      throw failureReplayFailure(failureReplayError, "fla-check-096");
     }
     return {
       clients: snapshot.clients.length,

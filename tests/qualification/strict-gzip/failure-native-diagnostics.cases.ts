@@ -162,9 +162,9 @@ test("revoked proxies and primitives remain uninspected and become fixed fallbac
 test("existing replay and owner reasons remain deeper than native source locations", () => {
   for (const [error, family, code] of [
     [
-      failureReplayFailure(new Error(), "fla-check-045"),
+      failureReplayFailure(new Error(), "fla-check-024"),
       "failure-replay",
-      "fla-check-045",
+      "fla-check-024",
     ],
     [
       ownerProofFailure(new Error(), OWNER_PROOF_REASON_CODES[0]),
@@ -179,7 +179,7 @@ test("existing replay and owner reasons remain deeper than native source locatio
 });
 test("nested aggregates preserve primary and every captured cleanup reason without walking errors", () => {
   const primary = failureNativeFailure(
-    failureReplayFailure(new Error(), "fla-check-045"),
+    failureReplayFailure(new Error(), "fla-check-024"),
     location,
   );
   const cleanup = failureNativeFailure(new Error(), "qnf-runtime-cleanup");
@@ -209,7 +209,7 @@ test("nested aggregates preserve primary and every captured cleanup reason witho
     rows.map((row) => row.role),
     ["primary", "cleanup", "cleanup"],
   );
-  assert.equal(rows[0].code, "fla-check-045");
+  assert.equal(rows[0].code, "fla-check-024");
 });
 test("overflow has a fixed explicit truncation reason and never leaks excess values", () => {
   const raw = new AggregateError([], "private");
@@ -371,13 +371,30 @@ test("safe boundary keeps falsy throws failing without changing inner truthiness
         error instanceof Error && !!parseFailureNativeMarker(error.message),
     );
 });
-test("negative control lifecycle predicates are byte-identical to the qualified subset candidate", () => {
-  const bytes = readFileSync(
+test("reviewed two-boundary oracle and unchanged fixed-oracle regions are pinned", () => {
+  const source = readFileSync(
     new URL("./failure-lifecycle-assertions.ts", import.meta.url),
+    "utf8",
   );
   assert.equal(
-    createHash("sha256").update(bytes).digest("hex"),
-    "54de88045626ee500d29ce1385a693da01fb40f56d373df325e49e591c768220",
+    createHash("sha256").update(source).digest("hex"),
+    "f6e6fbc4c6529270f1cfbe4d814efd93688f030090eb219c978c144fe896279e",
+  );
+  const start = source.indexOf(
+    "export function assertFailureUnfixedAuthControl(",
+  );
+  const end = source.indexOf(
+    "export function assertFailureQueryLifecycle(",
+    start,
+  );
+  assert.ok(start > 0 && end > start);
+  const unchanged = (source.slice(0, start) + source.slice(end)).replace(
+    "  failureReplayDiagnostic,\n",
+    "",
+  );
+  assert.equal(
+    createHash("sha256").update(unchanged).digest("hex"),
+    "2c4007548503ae17b74b660817e89bbed30fa2d17244c1b10beec75990068d1a",
   );
 });
 

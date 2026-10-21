@@ -95,6 +95,7 @@ jobs:
           env -i PATH="$PATH" CI=true node "$harness/failure-lifecycle-source.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-postgres-policy.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-postgres-private.cases.ts"
+          env -i PATH="$PATH" CI=true node "$harness/failure-post-exit.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-variants.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-overlay.cases.ts"
           env -i PATH="$PATH" CI=true node "$harness/failure-test-evidence.cases.ts"

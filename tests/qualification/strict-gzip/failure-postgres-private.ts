@@ -30,6 +30,11 @@ import {
 export const FAILURE_PRIVATE_MAX_BYTES = 2 * 1024 * 1024;
 export interface FailurePrivateRuntime {
   observation: OwnerObservations | null;
+  postExitDrain?: {
+    boundary: "after-observed-native-exit";
+    remainingWriterSessions: 0;
+    stableZeroSamples: 2;
+  };
   lifecycleSnapshots: {
     checkpoint: string;
     snapshot: FailureLifecycleSnapshot;
@@ -545,7 +550,46 @@ export function validateFailurePrivateEvidence(
           throw failureReplayFailure(failureReplayError, "fpr-check-048");
         }
       for (const [runtimeIndex, runtime] of item.runtimes.entries()) {
-        keys(runtime, ["observation", "lifecycleSnapshots"]);
+        try {
+          assert.equal(
+            Object.hasOwn(runtime, "postExitDrain"),
+            receipt.phase === "unfixed-instrumented",
+          );
+        } catch (failureReplayError) {
+          throw failureReplayFailure(failureReplayError, "fpr-check-071");
+        }
+        keys(runtime, [
+          "observation",
+          "lifecycleSnapshots",
+          ...(receipt.phase === "unfixed-instrumented"
+            ? ["postExitDrain"]
+            : []),
+        ]);
+        if (receipt.phase === "unfixed-instrumented") {
+          const drain = runtime.postExitDrain!;
+          keys(drain, [
+            "boundary",
+            "remainingWriterSessions",
+            "stableZeroSamples",
+          ]);
+          // This schema is not proof of exit or ordering. The pinned live test
+          // records it after observed exit; the caller revalidates native events.
+          try {
+            assert.equal(drain.boundary, "after-observed-native-exit");
+          } catch (failureReplayError) {
+            throw failureReplayFailure(failureReplayError, "fpr-check-072");
+          }
+          try {
+            assert.equal(drain.remainingWriterSessions, 0);
+          } catch (failureReplayError) {
+            throw failureReplayFailure(failureReplayError, "fpr-check-073");
+          }
+          try {
+            assert.equal(drain.stableZeroSamples, 2);
+          } catch (failureReplayError) {
+            throw failureReplayFailure(failureReplayError, "fpr-check-074");
+          }
+        }
         try {
           assert.ok(runtime.observation);
         } catch (failureReplayError) {
