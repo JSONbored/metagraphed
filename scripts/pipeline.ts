@@ -21,6 +21,7 @@ const startedAt = new Date().toISOString();
 const refreshTimestamp = process.env.METAGRAPH_BUILD_TIMESTAMP || startedAt;
 const commands = check ? checkCommands() : refreshCommands(refreshTimestamp);
 const results: StepResult[] = [];
+let failed = false;
 
 for (const command of commands) {
   const started = performance.now();
@@ -51,19 +52,25 @@ for (const command of commands) {
         results,
       }),
     );
-    process.exit(result.status || 1);
+    // POSIX pipes can still have output queued. Preserve the native failure
+    // status and let Node drain both streams before the process exits.
+    process.exitCode = result.status || 1;
+    failed = true;
+    break;
   }
 }
 
-console.log(
-  stableStringify({
-    mode: check ? "check" : "refresh",
-    started_at: startedAt,
-    finished_at: new Date().toISOString(),
-    result_count: results.length,
-    results,
-  }),
-);
+if (!failed) {
+  console.log(
+    stableStringify({
+      mode: check ? "check" : "refresh",
+      started_at: startedAt,
+      finished_at: new Date().toISOString(),
+      result_count: results.length,
+      results,
+    }),
+  );
+}
 
 function checkCommands(): Step[] {
   return [

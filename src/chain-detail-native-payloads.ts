@@ -1,6 +1,8 @@
+import { Buffer } from "node:buffer";
 // Exact compressed bytes live with the hot D1 data. Common calls compress into
 // their own row; exceptional values use immutable chunks below D1's 2 MB limit.
 import type { D1StoreBinding } from "./d1-store.ts";
+import type { ProducerStatement } from "./producer-store.ts";
 
 export const NATIVE_PAYLOAD_PREFIX = "\0metagraphed:payload:v1:";
 const INLINE_ENCODED_BYTES = 128 * 1024;
@@ -12,10 +14,10 @@ function database(env: unknown): D1StoreBinding {
   return db;
 }
 function encode(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 8192)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  return btoa(binary);
+  if (bytes.byteLength === 0) return "";
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString(
+    "base64",
+  );
 }
 function decode(encoded: string, size: number): Uint8Array {
   if (encoded.length !== 4 * Math.ceil(size / 3))
@@ -59,18 +61,40 @@ export async function readNativePayload(
   return bytes;
 }
 
-/** Finish and verify all chunks before publishing a row reference. A failed
- * row transaction can leave only unreferenced immutable chunks. */
+/** A supplied statement plan keeps chunks inside the business transaction.
+ * Standalone preparation retains its existing readback contract; production
+ * chain-detail publication always supplies the atomic plan. */
 export async function writeNativePayload(
   env: unknown,
   hash: string,
   rawBytes: number,
   bytes: Uint8Array,
   encoding: "gzip" | "raw",
+  plan?: ProducerStatement[],
 ): Promise<string> {
   const prefix = `${NATIVE_PAYLOAD_PREFIX}${hash}:${rawBytes}:${bytes.length}:${encoding}:`;
   if (4 * Math.ceil(bytes.length / 3) <= INLINE_ENCODED_BYTES)
     return prefix + "inline:" + encode(bytes);
+  if (plan) {
+    // Conflicting or extra immutable parts abort the business transaction.
+    // Replaying existing exact bytes never replaces them with a new value.
+    for (let part = 0; part * CHUNK_BYTES < bytes.length; part++) {
+      plan.push({
+        text: "INSERT INTO chain_detail_payload_chunks (sha256,part,data) VALUES (?,?,?) ON CONFLICT (sha256,part) DO UPDATE SET data=CASE WHEN chain_detail_payload_chunks.data=excluded.data THEN chain_detail_payload_chunks.data ELSE NULL END",
+        values: [
+          hash,
+          part,
+          encode(bytes.subarray(part * CHUNK_BYTES, (part + 1) * CHUNK_BYTES)),
+        ],
+      });
+    }
+    // Extra parts must not make an apparently complete reference unreadable.
+    plan.push({
+      text: "INSERT INTO chain_detail_payload_chunks (sha256,part,data) SELECT ?,-1,'' WHERE EXISTS (SELECT 1 FROM chain_detail_payload_chunks WHERE sha256=? AND part>=?)",
+      values: [hash, hash, Math.ceil(bytes.length / CHUNK_BYTES)],
+    });
+    return prefix + "d1";
+  }
   const db = database(env);
   const statements = [];
   for (let i = 0; i * CHUNK_BYTES < bytes.length; i++)

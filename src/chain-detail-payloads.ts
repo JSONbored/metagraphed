@@ -1,11 +1,11 @@
 import { historySha256 as digest } from "./history-sha256.ts";
-// Large decoded calls retain exact logical bytes in compressed inline values
-// or immutable D1 chunks. R2 references remain readable during retirement.
+// Exact native payloads; legacy R2 references remain readable.
 import {
   NATIVE_PAYLOAD_PREFIX,
   readNativePayload,
   writeNativePayload,
 } from "./chain-detail-native-payloads.ts";
+import type { ProducerStatement } from "./producer-store.ts";
 const PREFIX = "\0metagraphed:r2:";
 const INLINE_BYTES = 128 * 1024;
 const MAX_VALUE_BYTES = 16 * 1024 * 1024;
@@ -23,10 +23,11 @@ function objectKey(hash: string, compressed: boolean): string {
   return `metagraph/d1-chain-payloads/v1/${hash}.json${compressed ? ".gz" : ""}`;
 }
 
-/** Prepare exact payloads before committing their chain-detail references. */
+/** Exact payloads precede their references. */
 export async function storeChainDetailPayloads(
   env: unknown,
   rows: Row[],
+  plan?: ProducerStatement[],
 ): Promise<Row[]> {
   const output: Row[] = [];
   const prepared = new Map<string, string>();
@@ -51,7 +52,12 @@ export async function storeChainDetailPayloads(
       }
       const zipped = new Uint8Array(
         await new Response(
-          new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip")),
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(raw);
+              controller.close();
+            },
+          }).pipeThrough(new CompressionStream("gzip")),
         ).arrayBuffer(),
       );
       const compressed = zipped.byteLength < raw.byteLength;
@@ -62,6 +68,7 @@ export async function storeChainDetailPayloads(
         raw.byteLength,
         bytes,
         compressed ? "gzip" : "raw",
+        plan,
       );
       prepared.set(hash, next[field] as string);
     }

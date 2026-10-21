@@ -109,6 +109,95 @@ describe("the Postgres handle", () => {
     assert.deepEqual(client.calls.at(-1), "end");
   });
 
+  for (const method of ["query", "first"] as const) {
+    test(`${method} closes a failed connection before rejecting`, async () => {
+      const failure = new Error("handshake failed");
+      const client = fakeClient();
+      client.connect = async () => {
+        client.calls.push("connect");
+        throw failure;
+      };
+      let release!: () => void;
+      const ended = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      client.end = async () => {
+        client.calls.push("end");
+        await ended;
+      };
+      const db = pgReadStore("postgresql://x/y", {
+        clientFactory: () => client,
+      });
+      let settled = false;
+      const operation = db[method]("SELECT 1").finally(() => {
+        settled = true;
+      });
+      const rejected = assert.rejects(operation, (error) => error === failure);
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.deepEqual(client.calls, ["connect", "end"]);
+        assert.equal(settled, false, "ctx-less operations await teardown");
+      } finally {
+        release();
+        await rejected;
+      }
+      assert.equal(settled, true);
+    });
+  }
+
+  for (const stage of ["connect", "query"] as const) {
+    test(`failed teardown preserves the original ${stage} error`, async () => {
+      const failure = new Error(`${stage} failed`);
+      const client = fakeClient();
+      client[stage] = async () => {
+        client.calls.push(stage);
+        throw failure;
+      };
+      client.end = async () => {
+        client.calls.push("end");
+        throw new Error("teardown failed");
+      };
+      const db = pgReadStore("postgresql://x/y", {
+        clientFactory: () => client,
+      });
+      await assert.rejects(db.query("SELECT 1"), (error) => error === failure);
+      assert.equal(client.calls.at(-1), "end");
+    });
+  }
+
+  test("failed teardown does not replace successful rows", async () => {
+    const client = fakeClient([{ a: 1 }]);
+    client.end = async () => {
+      throw new Error("teardown failed");
+    };
+    const db = pgReadStore("postgresql://x/y", { clientFactory: () => client });
+    assert.deepEqual(await db.query("SELECT 1"), [{ a: 1 }]);
+  });
+
+  test("the selected store closes a failed attempt before a fresh read", async () => {
+    const clients: ReturnType<typeof fakeClient>[] = [];
+    const failure = new Error("handshake failed");
+    const db = readStore({ HYPERDRIVE }, ["blocks_head"], undefined, {
+      clientFactory: () => {
+        const client = fakeClient([{ head: 9 }]);
+        if (clients.length === 0) {
+          client.connect = async () => {
+            client.calls.push("connect");
+            throw failure;
+          };
+        }
+        clients.push(client);
+        return client;
+      },
+    });
+    assert.ok(db);
+    await assert.rejects(db.first("SELECT 1"), (error) => error === failure);
+    assert.deepEqual(await db.first("SELECT 1"), { head: 9 });
+    assert.equal(clients.length, 2);
+    assert.deepEqual(clients[0]!.calls, ["connect", "end"]);
+    assert.equal(clients[1]!.calls.at(-1), "end");
+  });
+
   test("opens one connection per operation, not one per handle", async () => {
     const clients: ReturnType<typeof fakeClient>[] = [];
     const db = pgReadStore("postgresql://x/y", {

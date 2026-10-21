@@ -425,6 +425,68 @@ writer traffic before switching the existing archive jobs to the D1 endpoint.
 Keep the previous immutable archive and its version/day receipts throughout the
 cutover. This change adds no database or compute service.
 
+### Lossless portable application projections
+
+The same endpoint accepts `encoding: "lossless-v1"` on `schema`, `rows` and
+`revision` requests for the fixed `D1_EXPORT_TABLES`. This is an approved
+application projection, not a physical database backup. It retains existing view
+semantics and filters, including the exclusion of invalidated lifecycle events.
+Private columns, credentials, pass/control tables and other unlisted state need
+their own preservation plan; possession of the export token does not authorize
+their disclosure. Completed basket captures and native history use the separate
+protocols below and in `src/native-history-export.ts`.
+
+Read `schema` first. Its response identifies the table and encoding, the scope
+`approved-application-projection`, ordered columns, effective keys, source
+revision, row count and `projection_sha256`. Columns include their logical type,
+SQLite type, nullability and primary-key position. The digest binds the approved
+projection, serving codec/filter and source definitions. A deployment can change
+it without changing column names or the data revision; requalify a pinned plan
+when it changes. The bounded census refuses more than 2,000,000 rows with HTTP
+413 rather than certifying an incomplete snapshot.
+
+Request every approved column in schema order. Lossless mode rejects partial
+projections, day filters and incremental watermarks. Each cell is
+`{ storage, value }`: `null` has a null value; `integer`, `real`, `text` and `blob`
+have string values. Integers cross the JavaScript boundary as decimal text,
+finite reals use SQLite's round-trip decimal representation, and blobs use hex.
+Do not convert these cells through JavaScript numbers or substitute an analytics
+type-compatibility check for exact recovery. `tests/fixtures/lossless-state-export-v1.json`
+is the shared typed recovery corpus.
+
+Each page returns typed `row_keys` separately from its cells, preserving nullable
+source cells even when an effective key uses `coalesce(netuid,-1)`. Pass the
+returned string cursor unchanged with the expected revision. The existing
+2,000-row and 2 MiB page budgets apply; an oversized first row or a cursor that
+cannot fit the bounded request fails explicitly. A null cursor ends traversal,
+but does not alone acknowledge a snapshot. Before publication, require the same
+table, encoding, projection digest and revision throughout, exact row-count and
+key coverage, and a final `revision` check. Reject or discard a changed or partial
+attempt; do not advance its checkpoint. These checks do not make untracked
+writers safe: the writer deployment/drain prerequisite above still applies.
+
+### Finite service parity acceptance
+
+Destination-independent preparation preserves the current public origins,
+canonical registry ownership and published REST, GraphQL, MCP and artifact
+contracts. The existing native gates check route/query/schema/type parity,
+pagination and CSV declarations, MCP discovery and authentication, and truthful
+degraded responses. Authenticated free MCP access follows
+[`0027-mcp-access-model.md`](adr/0027-mcp-access-model.md); REST retains its own
+existing access policy. Retain quotas, account blocks, revocation and credential
+ownership boundaries when moving a service.
+
+Source CI is a reusable baseline, not a receipt for a destination. After choosing
+the migration scope and owners, compare the required readers, writers, jobs,
+queue acknowledgments and sessions against that baseline, including precision,
+nulls, ordering, pagination, freshness, true-empty versus failed reads, and
+restart/replay behavior. Rehearse the final writer boundary and rollback with
+writes accepted after that boundary accounted for. Target identity, adapters,
+capacity, restore time and service measurements depend on that choice; a target
+does not need to be provisioned to finish source preparation. Existing retained
+data and uncertainty must be preserved faithfully. New capture features,
+historical enrichment and old-platform capacity repairs are separate decisions.
+
 ### Completed root-basket captures
 
 The same authenticated endpoint accepts `kind: "basket"` with `ceiling`,

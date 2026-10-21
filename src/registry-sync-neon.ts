@@ -160,7 +160,14 @@ export async function applyRegistrySyncToNeon(
     deps.clientFactory?.(connectionString) ?? new Client({ connectionString });
   const newId = deps.newId ?? (() => crypto.randomUUID());
 
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (error) {
+    // A failed handshake can still own a socket. Close it without entering the
+    // transaction catch: ROLLBACK must not queue on an unconnected client.
+    await client.end().catch(() => undefined);
+    throw error;
+  }
   try {
     await client.query("BEGIN");
 

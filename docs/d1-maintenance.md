@@ -1,8 +1,14 @@
 # D1 maintenance
 
 Operational state is owned by D1. Apply tracked migrations with
-`npm run migrate:d1 -- --remote`. The D1 maintenance workflow applies pending
-migrations on relevant main-branch changes and verifies schema drift weekly.
+`npm run migrate:d1 -- --remote`. The existing D1 maintenance workflow applies
+pending migrations on main-branch pushes that change tracked migration SQL.
+Changes to maintenance helpers, verification scripts, committed schema snapshots
+or the workflow itself only verify the recorded ledger and physical schema.
+The push comparison covers the full before/after range, including a migration
+changed before the last commit; an unavailable comparison fails without applying.
+Weekly runs and manual dispatches are also verify-only unless a maintainer
+explicitly enables the manual `apply_migrations` input, which defaults to false.
 It uses the existing Cloudflare account secret and a dedicated
 `CLOUDFLARE_D1_API_TOKEN` repository secret with only account-scoped D1 Write
 permission, plus the `CLOUDFLARE_D1_DATABASE_ID` repository variable. It does not
@@ -14,6 +20,14 @@ Review both artifacts in the same PR as a migration. Without `--write`, the
 command only checks for drift. Set `CLOUDFLARE_ACCOUNT_ID`,
 `CLOUDFLARE_D1_DATABASE_ID` and `CLOUDFLARE_API_TOKEN` in the maintainer's protected
 environment; never place a token in a command argument or tracked file.
+
+In GitHub Actions, verification failures publish the existing fixed failure
+classification as an error annotation. The exact allowlisted provider code
+`10000` also survives when the complete helper error has its known fixed shape;
+all other suffixes are discarded. This makes an HTTP or ledger failure class
+and that safe provider diagnostic available without a complete job-log download. Provider text, SQL,
+identifiers and credentials never enter the annotation. An unclassified error
+remains unclassified; this is not a substitute for authorized live diagnosis.
 
 The retained `generated/db/schema.json` remains the logical row/type contract
 used by generated TypeScript types and archive exports. It is not a live Neon

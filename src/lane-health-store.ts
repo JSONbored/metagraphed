@@ -58,8 +58,8 @@ export function pgLaneHealthDb(
     const client =
       deps.clientFactory?.(connectionString) ??
       new Client({ connectionString });
-    await client.connect();
     try {
+      await client.connect();
       const result = await client.query(toPositionalPlaceholders(text), values);
       return (result?.rows ?? []) as Record<string, unknown>[];
     } finally {

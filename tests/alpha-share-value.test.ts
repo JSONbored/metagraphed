@@ -299,6 +299,33 @@ test("legacy whole-plus-fraction normalization preserves exact originals and fra
   }
 });
 
+test("display fractions round once without premature underflow or losing exact rao", () => {
+  const cases = [
+    [0n, -21, 0, "0"],
+    [125000000000000000000n, -21, 0.125, "125000000"],
+    [300000000000000000000n, -21, 0.3, "300000000"],
+    [333333333333333333333n, -21, 1 / 3, "333333333"],
+    [500000000000000000000n, -21, 0.5, "500000000"],
+    [999999999999999999999n, -21, 1, "999999999"],
+    [1000000000000000000000n, -21, 1, "1000000000"],
+    [1000000000000000000000n, -329, 1e-308, "0"],
+    [500000000000000000000n, -344, Number.MIN_VALUE, "0"],
+    [1000000000000000000000n, -345, 0, "0"],
+  ] as const;
+  for (const version of [454, 478, 479] as const) {
+    for (const [mantissa, exponent, fraction, alphaRao] of cases) {
+      const evidence = {
+        ...base(),
+        share: { legacy_bits: null, v2: safe(mantissa, exponent) },
+      };
+      const quote = quoteAlphaPool(evidence, version);
+      assert.equal(quote.shareFraction, fraction);
+      assert.equal(quote.alphaRao, alphaRao);
+      assert.deepEqual(quote.evidence, evidence);
+    }
+  }
+});
+
 test("zero denominator originals bypass division and never fabricate a nonzero pool value", () => {
   for (const denominator of [
     { legacy_bits: "0", v2: safe(1000000000000000000000n) },

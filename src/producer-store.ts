@@ -96,13 +96,18 @@ export function createProducerStore(
   deps: ProducerStoreDeps = {},
 ): ProducerStore {
   let client: ProducerStoreClient | null = null;
+  let opening: Promise<ProducerStoreClient> | null = null;
   const open = async (): Promise<ProducerStoreClient> => {
-    if (client) return client;
-    client =
+    if (opening) return opening;
+    const c =
       deps.clientFactory?.(connectionString) ??
       new Client({ connectionString });
-    await client.connect();
-    return client;
+    client = c;
+    opening = (async () => {
+      await c.connect();
+      return c;
+    })();
+    return opening;
   };
 
   const exec = async (text: string, values: unknown[] = []) => {
@@ -154,6 +159,7 @@ export function createProducerStore(
       if (!client) return;
       const c = client;
       client = null;
+      opening = null;
       await c.end().catch(() => undefined);
     },
   };

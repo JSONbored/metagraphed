@@ -8,6 +8,10 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { decompressSyncBatchMessage } from "../src/sync-batch-compress.ts";
+import * as syncBatchQueue from "../src/sync-batch-queue.ts";
+const { SYNC_BATCH_MAX_ROWS, syncBatchRowCount, validSyncBatchMessage } =
+  syncBatchQueue;
 
 // One store since #10179. Both halves of this route -- the batch write through
 // mirrorChainDetailToNeon and the head read through readStore -- build their
@@ -172,6 +176,168 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     ]);
   });
 
+  function rowBoundaryBody(total: number) {
+    const original = body().blocks[0]!;
+    return body({
+      chain_events: Array.from({ length: total - 3 }, (_, event_index) => ({
+        ...original.chain_events[0]!,
+        event_index,
+      })),
+      account_events: [
+        {
+          block_number: BLOCK,
+          event_index: 0,
+          extrinsic_index: 0,
+          event_kind: "StakeAdded",
+          hotkey: null,
+          coldkey: "5A",
+          netuid: 1,
+          uid: null,
+          amount_tao: "1",
+          alpha_amount: null,
+          observed_at: 1_785_799_000_000,
+        },
+      ],
+    });
+  }
+
+  function queueEnv(sent: unknown[]) {
+    return {
+      CHAIN_DETAIL_SYNC_SECRET: SECRET,
+      ...pgMockEnv(),
+      SYNC_QUEUE_LANES: "chain-detail",
+      SYNC_BATCHES: {
+        send: async (message: unknown) => void sent.push(message),
+      },
+    } as never;
+  }
+
+  async function queuedPost(payload: unknown, sent: unknown[]) {
+    // Chain-detail remains excluded in production. Qualify the dormant enqueue
+    // branch explicitly, without changing that independent activation guard.
+    const eligibility = vi
+      .spyOn(syncBatchQueue, "syncLaneUsesQueue")
+      .mockReturnValue(true);
+    try {
+      return await dataApi.fetch(
+        new Request("https://d/api/v1/internal/chain-detail-sync", {
+          method: "POST",
+          headers: { "content-type": "application/json", [HEADER]: SECRET },
+          body: JSON.stringify(payload),
+        }),
+        queueEnv(sent),
+        CTX,
+      );
+    } finally {
+      eligibility.mockRestore();
+    }
+  }
+
+  test("the existing exclusion keeps a queue-flagged batch on direct writes", async () => {
+    const sent: unknown[] = [];
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", [HEADER]: SECRET },
+        body: JSON.stringify(rowBoundaryBody(SYNC_BATCH_MAX_ROWS + 1)),
+      }),
+      queueEnv(sent),
+      CTX,
+    );
+    assert.equal(response.status, 200);
+    const result = (await response.json()) as {
+      stores: string[];
+      head: number;
+    };
+    assert.deepEqual(result.stores, ["neon"]);
+    assert.equal(result.head, BLOCK);
+    assert.equal(sent.length, 0);
+    assert.deepEqual([...new Set(insertedTables())].sort(), [
+      "chain_detail_account_events",
+      "chain_detail_blocks",
+      "chain_detail_chain_events",
+      "chain_detail_extrinsics",
+    ]);
+  });
+
+  test("qualified queue refusal cannot acknowledge a batch above its row ceiling", async () => {
+    const sent: unknown[] = [];
+    const response = await queuedPost(
+      rowBoundaryBody(SYNC_BATCH_MAX_ROWS + 1),
+      sent,
+    );
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: "enqueue failed" });
+    assert.equal(sent.length, 0, "consumer-rejected rows reached the queue");
+    assert.equal(insertedTables().length, 0, "refusal wrote a partial family");
+  });
+
+  test("the qualified row boundary reaches the queue consumer intact", async () => {
+    const sent: unknown[] = [];
+    const response = await queuedPost(
+      rowBoundaryBody(SYNC_BATCH_MAX_ROWS),
+      sent,
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      blocks_written: 1,
+      extrinsics_written: 1,
+      chain_events_written: SYNC_BATCH_MAX_ROWS - 3,
+      account_events_written: 1,
+      head: BLOCK,
+      stores: ["queue"],
+    });
+    assert.equal(sent.length, 1);
+    const decoded = await decompressSyncBatchMessage(sent[0]);
+    assert.ok(validSyncBatchMessage(decoded));
+    assert.equal(syncBatchRowCount(decoded), SYNC_BATCH_MAX_ROWS);
+    assert.equal(insertedTables().length, 0, "enqueue also wrote directly");
+    let acknowledged = 0;
+    let retried = 0;
+    await dataApi.queue(
+      {
+        queue: "metagraphed-sync-batches",
+        messages: [
+          {
+            body: sent[0],
+            ack: () => acknowledged++,
+            retry: () => retried++,
+          },
+        ],
+      } as never,
+      env,
+      CTX,
+    );
+    assert.equal(acknowledged, 1);
+    assert.equal(retried, 0);
+    assert.deepEqual([...new Set(insertedTables())].sort(), [
+      "chain_detail_account_events",
+      "chain_detail_blocks",
+      "chain_detail_chain_events",
+      "chain_detail_extrinsics",
+    ]);
+  });
+
+  test("direct writes keep their existing larger HTTP row admission", async () => {
+    const response = await post(rowBoundaryBody(SYNC_BATCH_MAX_ROWS + 1), {
+      secret: SECRET,
+    });
+    assert.equal(response.status, 200);
+    const result = (await response.json()) as {
+      stores: string[];
+      head: number;
+    };
+    assert.deepEqual(result.stores, ["neon"]);
+    assert.equal(result.head, BLOCK);
+    assert.deepEqual([...new Set(insertedTables())].sort(), [
+      "chain_detail_account_events",
+      "chain_detail_blocks",
+      "chain_detail_chain_events",
+      "chain_detail_extrinsics",
+    ]);
+  });
+
   test("an unprovisioned deployment is 503, a bad token is 401", async () => {
     const unprovisioned = await dataApi.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {
@@ -218,6 +384,72 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
       secret: SECRET,
     });
     assert.equal(badRow.status, 400);
+  });
+
+  test("refuses an oversized prefix without draining its tail or writing any family", async () => {
+    let reads = 0;
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reads += 1;
+          if (reads === 1)
+            controller.enqueue(
+              new TextEncoder().encode("x".repeat(16_000_001)),
+            );
+          else controller.close();
+        },
+        cancel() {
+          cancelled = true;
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: SECRET },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+      env,
+      CTX,
+    );
+    assert.equal(response.status, 413);
+    assert.deepEqual(await response.json(), {
+      error: "body exceeds 16000000 bytes",
+    });
+    assert.equal(reads, 1, "admission read past the oversized prefix");
+    assert.equal(cancelled, true);
+    assert.equal(stream.locked, false);
+    assert.equal(insertedTables().length, 0);
+  });
+
+  test("keeps authorization before streaming body admission", async () => {
+    let reads = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reads += 1;
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: "wrong" },
+        body: stream,
+        duplex: "half",
+      } as RequestInit),
+      env,
+      CTX,
+    );
+    assert.equal(response.status, 401);
+    assert.equal(reads, 0);
+    assert.equal(stream.locked, false);
+    assert.equal(insertedTables().length, 0);
   });
 
   test("a valid batch with no store bound is 503, not a silent success", async () => {

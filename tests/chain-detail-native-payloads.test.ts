@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { test, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
+import { createD1Store, type D1StoreBinding } from "../src/d1-store.ts";
+import type { ProducerStatement } from "../src/producer-store.ts";
 import {
   NATIVE_PAYLOAD_PREFIX as prefix,
   readNativePayload,
@@ -252,5 +254,256 @@ test("inline native writes preserve BOM and replay without any storage binding",
   await assert.rejects(
     storeChainDetailPayloads(env, [{ args: prefix + "bad" }]),
     /Reserved/,
+  );
+});
+
+test("planned native chunks remain unpublished until the enclosing transaction commits", async () => {
+  const f = fixture(),
+    bytes = new Uint8Array(1_490_001).fill(7),
+    h = hash(bytes);
+  const plan: ProducerStatement[] = [];
+  try {
+    const ref = await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      bytes,
+      "raw",
+      plan,
+    );
+    assert.match(ref, /:raw:d1$/);
+    assert.equal(plan.length, 3);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      0,
+    );
+    const store = createD1Store(f.db as unknown as D1StoreBinding);
+    await store.transaction(plan);
+    assert.deepEqual(
+      await readNativePayload(f.env, h, bytes.length, "d1"),
+      bytes,
+    );
+    const replay: ProducerStatement[] = [];
+    assert.equal(
+      await writeNativePayload(null, h, bytes.length, bytes, "raw", replay),
+      ref,
+    );
+    await store.transaction(replay);
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM chain_detail_payload_chunks").get()!
+        .n,
+      2,
+    );
+    const inline: ProducerStatement[] = [];
+    assert.match(
+      await writeNativePayload(
+        null,
+        hash(new Uint8Array([1])),
+        1,
+        new Uint8Array([1]),
+        "raw",
+        inline,
+      ),
+      /inline:AQ==$/,
+    );
+    assert.deepEqual(inline, []);
+  } finally {
+    f.sql.close();
+  }
+});
+
+test("conflicting planned chunk bytes abort the complete enclosing transaction", async () => {
+  const f = fixture(),
+    bytes = new Uint8Array(140000),
+    h = hash(bytes);
+  try {
+    await writeNativePayload(f.env, h, bytes.length, bytes, "raw");
+    const before = f.sql
+      .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+      .all();
+    f.sql.exec("CREATE TABLE business_marker(value TEXT NOT NULL)");
+    const plan: ProducerStatement[] = [];
+    await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      new Uint8Array(140000).fill(1),
+      "raw",
+      plan,
+    );
+    plan.unshift({
+      text: "INSERT INTO business_marker VALUES (?)",
+      values: ["must rollback"],
+    });
+    await assert.rejects(
+      createD1Store(f.db as unknown as D1StoreBinding).transaction(plan),
+      /NOT NULL/,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n,
+      0,
+    );
+    assert.deepEqual(
+      f.sql
+        .prepare("SELECT sha256,part,data FROM chain_detail_payload_chunks")
+        .all(),
+      before,
+    );
+  } finally {
+    f.sql.close();
+  }
+});
+
+test("extra stored parts abort planned publication without modifying original chunks", async () => {
+  const f = fixture(),
+    bytes = new Uint8Array(140000),
+    h = hash(bytes);
+  try {
+    await writeNativePayload(f.env, h, bytes.length, bytes, "raw");
+    f.sql
+      .prepare("INSERT INTO chain_detail_payload_chunks VALUES (?,1,'AA==')")
+      .run(h);
+    const before = f.sql
+      .prepare(
+        "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part",
+      )
+      .all();
+    f.sql.exec("CREATE TABLE business_marker(value TEXT NOT NULL)");
+    const plan: ProducerStatement[] = [];
+    await writeNativePayload(null, h, bytes.length, bytes, "raw", plan);
+    plan.unshift({
+      text: "INSERT INTO business_marker VALUES (?)",
+      values: ["must rollback"],
+    });
+    await assert.rejects(
+      createD1Store(f.db as unknown as D1StoreBinding).transaction(plan),
+      /CHECK/,
+    );
+    assert.equal(
+      f.sql.prepare("SELECT count(*) n FROM business_marker").get()!.n,
+      0,
+    );
+    assert.deepEqual(
+      f.sql
+        .prepare(
+          "SELECT sha256,part,data FROM chain_detail_payload_chunks ORDER BY part",
+        )
+        .all(),
+      before,
+    );
+  } finally {
+    f.sql.close();
+  }
+});
+
+test("native encoding preserves golden base64 padding and view offsets", async () => {
+  const cases: [number[], string][] = [
+    [[], ""],
+    [[0], "AA=="],
+    [[0, 255], "AP8="],
+    [[0, 255, 128], "AP+A"],
+    [[0, 255, 128, 127], "AP+Afw=="],
+    [[0, 255, 128, 127, 1], "AP+AfwE="],
+  ];
+  for (const [values, encoded] of cases) {
+    const parent = Uint8Array.from([19, 23, ...values, 29, 31]);
+    const original = parent.slice();
+    const bytes = new Uint8Array(parent.buffer, 2, values.length);
+    const h = hash(bytes);
+    const reference = await writeNativePayload(
+      null,
+      h,
+      bytes.length,
+      bytes,
+      "raw",
+    );
+    assert.equal(
+      reference,
+      `${prefix}${h}:${bytes.length}:${bytes.length}:raw:inline:${encoded}`,
+    );
+    assert.deepEqual(
+      await readNativePayload(null, h, bytes.length, "inline:" + encoded),
+      bytes,
+    );
+    assert.deepEqual(parent, original);
+  }
+});
+
+test("native inline encoding preserves every octet in a nested byte view", async () => {
+  const parent = new Uint8Array(300).fill(239);
+  const view = parent.subarray(17, 290).subarray(9, 265);
+  view.set(Uint8Array.from({ length: 256 }, (_, index) => index));
+  const original = parent.slice();
+  const expected = btoa(
+    Array.from(view, (byte) => String.fromCharCode(byte)).join(""),
+  );
+  const reference = await writeNativePayload(
+    null,
+    hash(view),
+    view.length,
+    view,
+    "raw",
+  );
+  assert.equal(reference.slice(reference.indexOf("inline:") + 7), expected);
+  assert.deepEqual(
+    await readNativePayload(
+      null,
+      hash(view),
+      view.length,
+      "inline:" + expected,
+    ),
+    view,
+  );
+  assert.deepEqual(parent, original);
+});
+
+test("planned chunk encoding preserves sliced bytes across the fixed boundary", async () => {
+  const f = fixture();
+  const size = 1_490_002;
+  const parent = new Uint8Array(size + 37).fill(239);
+  const bytes = new Uint8Array(parent.buffer, 17, size);
+  for (let index = 0; index < size; index++) bytes[index] = index % 256;
+  const original = parent.slice();
+  const h = hash(bytes);
+  try {
+    const plan: ProducerStatement[] = [];
+    assert.equal(
+      await writeNativePayload(null, h, size, bytes, "raw", plan),
+      `${prefix}${h}:${size}:${size}:raw:d1`,
+    );
+    assert.equal(
+      plan.length,
+      3,
+      "two immutable parts and the existing extra-part guard",
+    );
+    assert.deepEqual(
+      plan.slice(0, 2).map((statement) => statement.values!.slice(0, 2)),
+      [
+        [h, 0],
+        [h, 1],
+      ],
+    );
+    assert.equal((plan[0].values![2] as string).length, 1_986_668);
+    assert.equal(
+      plan[1].values![2],
+      btoa(String.fromCharCode(...bytes.subarray(1_490_000))),
+    );
+    await createD1Store(f.db as unknown as D1StoreBinding).transaction(plan);
+    assert.deepEqual(await readNativePayload(f.env, h, size, "d1"), bytes);
+    assert.deepEqual(parent, original);
+  } finally {
+    f.sql.close();
+  }
+});
+
+test("native encoding retains the empty encoding of an already detached view", async () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  structuredClone(bytes.buffer, { transfer: [bytes.buffer] });
+  assert.equal(bytes.byteLength, 0);
+  const h = hash(new Uint8Array());
+  assert.equal(
+    await writeNativePayload(null, h, 0, bytes, "raw"),
+    `${prefix}${h}:0:0:raw:inline:`,
   );
 });

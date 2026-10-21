@@ -242,12 +242,11 @@ Before eventual activation, the coordinating owner must:
    Exact historical resume requires retained historical state; a receiver receipt
    does not spool every producer packet.
 
-Deployment also enables the existing chain-detail-prune cron to advance eligible
-account-event backlog under the unchanged selected-history retention policy.
-Coordinate applicable retirement/custody acceptance before deployment. Its
-120-height per-family run and 10-height transaction bounds report attempted
-account ranges, not cleared prefixes, freed bytes or usable migration capacity.
-No cleanup or capacity qualification is performed by this source change.
+Current main already supports independent account-event backlog progress and
+advertised-child protection. This receiver preparation preserves main's pruning
+implementation and retention tests unchanged; it adds no cleanup behavior or
+attempted-range reporting. No cleanup or capacity qualification is performed by
+this source change. Existing custody and deployment approval requirements remain.
 
 Keep the compatible exporter after DDL. Before any runtime rollback, fence
 producers and retain all accepted originals, receipts and canonical selectors.

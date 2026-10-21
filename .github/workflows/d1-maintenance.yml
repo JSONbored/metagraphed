@@ -37,12 +37,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Detect changed migration files
+        id: migrations
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          git diff --name-only "$BEFORE_SHA" "$PUSH_SHA" -- 'migrations/d1/*.sql' > "$RUNNER_TEMP/d1-migration-changes.txt"
+          if [ -s "$RUNNER_TEMP/d1-migration-changes.txt" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22.23.2
       - run: npm ci --ignore-scripts
       - name: Apply tracked D1 migrations
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.apply_migrations)
+        if: (github.event_name == 'push' && steps.migrations.outputs.changed == 'true') || (github.event_name == 'workflow_dispatch' && inputs.apply_migrations)
         run: npm run migrate:d1 -- --remote
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

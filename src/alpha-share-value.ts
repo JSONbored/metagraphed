@@ -150,7 +150,9 @@ export function quoteAlphaPool(value: unknown, specVersion: 454 | 478 | 479) {
     if (result) amount = integer(result);
     if (specVersion !== 454 && amount > total) amount = total;
     const ratio = divide(share, denominator);
-    if (ratio) fraction = Number(ratio.mantissa) * 10 ** Number(ratio.exponent);
+    // Convert the complete decimal once; separate floating-point scaling
+    // adds rounding error and can underflow before the product is formed.
+    if (ratio) fraction = Number(`${ratio.mantissa}e${ratio.exponent}`);
     if (specVersion !== 454) fraction = Math.min(1, fraction);
   }
   const unavailable =

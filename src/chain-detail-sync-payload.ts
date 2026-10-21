@@ -24,6 +24,15 @@
 // than accepting null anywhere and letting the read path guess.
 
 import { summarizeBlockEconomics } from "./block-economics.ts";
+import {
+  CHAIN_DETAIL_SYNC_MAX_BLOCKS,
+  CHAIN_DETAIL_SYNC_MAX_ROWS,
+} from "./sync-batch-limits.ts";
+export {
+  CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
+  CHAIN_DETAIL_SYNC_MAX_BLOCKS,
+  CHAIN_DETAIL_SYNC_MAX_ROWS,
+} from "./sync-batch-limits.ts";
 
 type Row = Record<string, unknown>;
 
@@ -41,16 +50,6 @@ export const CHAIN_EVENT_PHASES = new Set([
   "Initialization",
 ]);
 
-/** ~662 KiB for the producer's 2-block batch, measured; 16 MiB is generous
- * headroom over that without inviting a pathological body. */
-export const CHAIN_DETAIL_SYNC_MAX_BODY_BYTES = 16_000_000;
-/** The producer batches 2. A cap of 16 tolerates a catch-up burst after a
- * restart while bounding one request's write to something the store can hold in a
- * single transaction. */
-export const CHAIN_DETAIL_SYNC_MAX_BLOCKS = 16;
-/** Real blocks carry up to ~1,300 rows across the three families; 16 blocks at
- * 4x that headroom still fits the binding's statement budget comfortably. */
-export const CHAIN_DETAIL_SYNC_MAX_ROWS = 80_000;
 /** 0x + 64 hex, the only block-hash shape finney produces. */
 const BLOCK_HASH = /^0x[0-9a-f]{64}$/i;
 /** An exact decimal, as a string. No exponent form: the producer emits plain

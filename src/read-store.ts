@@ -329,8 +329,8 @@ export function pgReadStore(
     const client =
       deps.clientFactory?.(connectionString) ??
       new Client({ connectionString });
-    await client.connect();
     try {
+      await client.connect();
       const result = await client.query(toPositionalPlaceholders(text), values);
       // ALWAYS an array. `rows` is the driver's, and a driver that answers
       // something else (a mock, a future client) would otherwise put a

@@ -6,6 +6,7 @@ import { API_ROUTES } from "../src/contracts.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { HISTORY_READ_TIMEOUT_MS } from "../src/history-readers.ts";
 import { X402_VERSION, x402RequiresPayment } from "../src/x402.ts";
+import { assertLiveApiStatus } from "./live-smoke-status.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
 // every field below is read for assertion/reporting only, and an unexpected
@@ -108,7 +109,7 @@ async function runLiveSmoke(): Promise<void> {
         });
         continue;
       }
-      assert.equal(result.status, 200, `${check.route}: expected HTTP 200`);
+      assertLiveApiStatus(result);
       assertHeader(result, "access-control-allow-origin", "*", check.route);
       // AN ETAG IS REQUIRED OF CACHEABLE RESPONSES, not of all of them. A
       // route that answers `cache-control: no-store` is telling every cache not
