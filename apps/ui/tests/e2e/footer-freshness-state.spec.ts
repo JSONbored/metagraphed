@@ -48,16 +48,21 @@ test.describe("Footer company attribution", () => {
         });
         expect(contrast).toBeGreaterThanOrEqual(4.5);
         const mutedColor = await attribution.evaluate((element) => getComputedStyle(element).color);
-        for (const name of [
-          "GitHub repository",
-          "Discord community",
-          "Registry changes RSS feed",
-        ]) {
+        for (const name of ["GitHub repository", "Discord community"]) {
           await expect(page.getByRole("contentinfo").getByRole("link", { name })).toHaveCSS(
             "color",
             mutedColor,
           );
         }
+        // The local fixture API URL is intentionally rejected by ExternalLink,
+        // which renders the RSS icon in a safe span rather than a link.
+        const rssFallback = page
+          .getByRole("contentinfo")
+          .locator("span")
+          .filter({ has: page.locator("svg.lucide-rss") });
+        await expect(rssFallback).toHaveCount(1);
+        await expect(rssFallback).not.toHaveAttribute("href");
+        await expect(rssFallback).toHaveCSS("color", mutedColor);
         await page.screenshot({
           path: testInfo.outputPath(`footer-after-${viewport.width}-${theme}.png`),
         });
@@ -68,11 +73,17 @@ test.describe("Footer company attribution", () => {
   for (const route of ["/about", "/docs", "/this-page-does-not-exist"]) {
     test(`appears in the shared footer on ${route}`, async ({ page }) => {
       await gotoThroughRestart(page, route);
+      await page.waitForFunction(() => window.__MG_HYDRATED__ === true);
+      if (route === "/this-page-does-not-exist") {
+        await expect(page.getByRole("heading", { name: "Nothing at this URL" })).toBeVisible();
+      }
       const attribution = page
         .getByRole("contentinfo")
         .getByText("Operated by carbonZERO LLC", { exact: true });
+      await expect(attribution).toHaveCount(1);
       await attribution.scrollIntoViewIfNeeded();
       await expect(attribution).toBeVisible();
+      await expect(attribution).toBeInViewport();
     });
   }
 
