@@ -19,6 +19,8 @@ import {
   validateFailurePhaseEvidence,
   validateFailureReceiptDirectory,
 } from "./failure-evidence.ts";
+import { authorizeLaunch, type PolicyContext } from "./launch-policy.ts";
+import { failureReplayDiagnostic } from "./failure-replay-diagnostics.ts";
 import { FAILURE_PRIVATE_MAX_BYTES } from "./failure-postgres-private.ts";
 import { OWNER_BUILD_LIMITS } from "./owner-build-evidence.ts";
 import { RAW_LIMITS } from "./receipt-policy.ts";
@@ -288,7 +290,7 @@ function guardedEvents(): Event[] {
       kind: "node-child",
       childPid: 123,
       launchId: "100:1",
-      role: "test-worker",
+      role: "vitest-worker",
       synchronous: false,
     },
     { ...worker, kind: "guard-start", role: "test-worker", node: "v22.23.2" },
@@ -343,7 +345,7 @@ function guardedEvents(): Event[] {
       kind: "node-child-exit",
       childPid: 123,
       launchId: "100:1",
-      role: "test-worker",
+      role: "vitest-worker",
       ...exits,
     },
     { ...coordinator, kind: "guard-exit", ...stopped },
@@ -351,6 +353,141 @@ function guardedEvents(): Event[] {
 }
 const checkGuards = (events: Event[]) =>
   validateFailureGuardEvidence(events, guardContext);
+
+function sourceWorkerLaunchRole() {
+  const context: PolicyContext = {
+    root: "/synthetic",
+    home: "/synthetic-home",
+    preload: "file:///synthetic/guard-preload.ts?config=fixture",
+    node: "/synthetic/node",
+    vitestEntry: guardContext.vitest,
+    vitestWorker: guardContext.worker,
+    vitestSuppress: "/synthetic/node_modules/vitest/suppress-warnings.cjs",
+    wranglerBin: guardContext.wranglerBin,
+    wranglerCli: guardContext.wranglerCli,
+    role: "coordinator",
+    baseEnv: {},
+    inheritedEnv: {},
+    processArgs: [],
+    native: [],
+    resolve: (file) => (file === guardContext.worker ? file : null),
+    digest: () => assert.fail("No native digest is needed for a Node fork"),
+    isEmptyFile: () => assert.fail("No build file is needed for a Node fork"),
+  };
+  context.baseEnv = {
+    PATH: "/usr/bin",
+    HOME: context.home,
+    XDG_CONFIG_HOME: `${context.home}/config`,
+    XDG_CACHE_HOME: `${context.home}/cache`,
+    CI: "true",
+    NODE_ENV: "test",
+    CLOUDFLARE_CF_FETCH_ENABLED: "false",
+    CLOUDFLARE_AUTH_USE_KEYRING: "false",
+    WRANGLER_SEND_METRICS: "false",
+    DECODER_QUALIFICATION_ROOT: context.root,
+    DECODER_QUALIFICATION_PRELOAD: context.preload,
+    DECODER_QUALIFICATION_RESULT: "/synthetic-receipts/result.json",
+  };
+  context.inheritedEnv = { ...context.baseEnv };
+  // Classify a synthetic call only. No launch adapter or child API is invoked.
+  return authorizeLaunch(context, "fork", [
+    context.vitestWorker,
+    [],
+    {
+      env: { ...context.baseEnv },
+      execArgv: [
+        "--experimental-import-meta-resolve",
+        "--require",
+        context.vitestSuppress,
+        "--conditions",
+        "node",
+        "--conditions",
+        "development",
+        "--import",
+        context.preload,
+      ],
+      stdio: "pipe",
+      serialization: "advanced",
+    },
+  ]).role;
+}
+
+test("failure guard replay separates source-derived launch and child host roles", () => {
+  const events = guardedEvents();
+  const launchRole = sourceWorkerLaunchRole();
+  assert.equal(launchRole, "vitest-worker");
+  const launch = events.find(
+    (event) => event.kind === "node-child" && event.childPid === 123,
+  )!;
+  const exit = events.find(
+    (event) => event.kind === "node-child-exit" && event.childPid === 123,
+  )!;
+  const child = events.find(
+    (event) => event.kind === "guard-start" && event.pid === 123,
+  )!;
+  assert.equal(launch.role, launchRole);
+  assert.equal(exit.role, launchRole);
+  assert.equal(child.role, "test-worker");
+  assert.equal(launch.pid, 100);
+  assert.equal(child.ppid, launch.pid);
+  assert.equal(child.realEntry, guardContext.worker);
+  assert.equal(checkGuards(events).everyThreadGuarded, true);
+});
+
+function refusesWithCode(events: Event[], code: string) {
+  assert.throws(
+    () => checkGuards(events),
+    (error) => failureReplayDiagnostic(error, "owner-evidence")?.code === code,
+  );
+}
+
+for (const role of [
+  "test-worker",
+  "coordinator",
+  "wrangler-bin",
+  "wrangler-cli",
+  "workerd",
+  "unreviewed",
+  undefined,
+])
+  test(`worker launch refuses ${String(role)} even with matching actual exit role`, () => {
+    const events = guardedEvents();
+    for (const event of events)
+      if (
+        ["node-child", "node-child-exit"].includes(event.kind) &&
+        event.childPid === 123
+      )
+        event.role = role;
+    refusesWithCode(events, "fev-check-039");
+  });
+
+test("child guard-start cannot reuse the correct launch role", () => {
+  const events = guardedEvents();
+  events.find(
+    (event) => event.kind === "guard-start" && event.pid === 123,
+  )!.role = "vitest-worker";
+  refusesWithCode(events, "fev-check-030");
+});
+
+test("worker actual exit cannot reuse the child host role", () => {
+  const events = guardedEvents();
+  events.find(
+    (event) => event.kind === "node-child-exit" && event.childPid === 123,
+  )!.role = "test-worker";
+  refusesWithCode(events, "fev-check-044");
+});
+
+for (const childPid of [124, 125])
+  test(`Wrangler child ${childPid} cannot reuse the Vitest launch classification`, () => {
+    const events = guardedEvents();
+    for (const event of events)
+      if (
+        ["node-child", "node-child-exit"].includes(event.kind) &&
+        event.childPid === childPid
+      )
+        event.role = "vitest-worker";
+    refusesWithCode(events, "fev-check-039");
+  });
 
 test("failure guard replay accepts one observed Wrangler build and one paired actual-shaped thread", () => {
   const events = guardedEvents(),
@@ -600,7 +737,7 @@ test("failure guard replay refuses duplicate or relative expected entrypoint ide
   );
 });
 
-for (const role of ["wrangler-bin", "wrangler-cli", "test-worker"])
+for (const role of ["wrangler-bin", "wrangler-cli", "vitest-worker"])
   test(`nonzero ${role} exit cannot qualify`, () => {
     const events = guardedEvents();
     events.find((e) => e.kind === "node-child-exit" && e.role === role)!.code =
@@ -610,7 +747,7 @@ for (const role of ["wrangler-bin", "wrangler-cli", "test-worker"])
 test("worker 143 requires the actual matching SIGTERM observation", () => {
   const events = guardedEvents();
   const exit = events.find(
-    (e) => e.kind === "node-child-exit" && e.role === "test-worker",
+    (e) => e.kind === "node-child-exit" && e.role === "vitest-worker",
   )!;
   exit.code = 143;
   assert.throws(() => checkGuards(events));
@@ -631,7 +768,7 @@ test("worker 143 requires the actual matching SIGTERM observation", () => {
 test("Node exit signal and spoofed worker signal are refused", () => {
   const events = guardedEvents();
   const exit = events.find(
-    (e) => e.kind === "node-child-exit" && e.role === "test-worker",
+    (e) => e.kind === "node-child-exit" && e.role === "vitest-worker",
   )!;
   exit.signal = "SIGTERM";
   assert.throws(() => checkGuards(events));

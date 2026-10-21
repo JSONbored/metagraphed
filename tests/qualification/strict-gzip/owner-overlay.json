@@ -59,7 +59,7 @@
     },
     {
       "path": "tests/qualification/strict-gzip/failure-replay-reason-codes.ts",
-      "sha256": "e1d1c0109db6413b774054c8fd296c570763a0a7efe4c9708f37d1f1064437c5",
+      "sha256": "eabbde31e3dd3b35fb8538091f8454251fee3c573c2cf0ecfa4d4eb0f48b6536",
       "bytes": 152686
     },
     {

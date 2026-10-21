@@ -336,10 +336,17 @@ export function validateFailureGuardEvidence(
           event.threadId === 0 &&
           event.realEntry === entry,
       );
-    for (const [parentEntry, childEntry, role] of [
-      [context.vitest, context.worker, "test-worker"],
-      [context.worker, context.wranglerBin, "wrangler-bin"],
-      [context.wranglerBin, context.wranglerCli, "wrangler-cli"],
+    // Launch receipts use authorizeLaunch's child classification. The child
+    // guard-start independently uses the host entrypoint role checked above.
+    for (const [parentEntry, childEntry, role, launchRole] of [
+      [context.vitest, context.worker, "test-worker", "vitest-worker"],
+      [context.worker, context.wranglerBin, "wrangler-bin", "wrangler-bin"],
+      [
+        context.wranglerBin,
+        context.wranglerCli,
+        "wrangler-cli",
+        "wrangler-cli",
+      ],
     ]) {
       const parent = startFor(parentEntry!),
         child = startFor(childEntry!);
@@ -361,7 +368,7 @@ export function validateFailureGuardEvidence(
         throw failureReplayFailure(failureReplayError, "fev-check-038");
       }
       try {
-        assert.equal(launch.role, role);
+        assert.equal(launch.role, launchRole);
       } catch (failureReplayError) {
         throw failureReplayFailure(failureReplayError, "fev-check-039");
       }
@@ -458,7 +465,7 @@ export function validateFailureGuardEvidence(
 
     const workerExit = events.find(
       (event) =>
-        event.kind === "node-child-exit" && event.role === "test-worker",
+        event.kind === "node-child-exit" && event.role === "vitest-worker",
     );
     try {
       assert.equal(
