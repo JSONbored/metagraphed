@@ -126,16 +126,18 @@ python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the 
   `NOT_SWEPT` with a reason. A route that fetches nothing needs no fixture — list it in
   `NO_API_ROUTES` instead. The two structural exemptions (`SPECIMEN_ROUTES`, `PROSE_ROUTES`) are
   themselves asserted to name only routes that exist and are swept, so an exemption cannot outlive
-  its subject. Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` **or**
-  `^packages/ui-kit/`, plus exact root `package.json` / `package-lock.json` changes in the diff.
+  its subject. The `ui` job is gated on `run_ui_validation`: paths under
+  `apps/ui/`, `packages/client/`, `packages/contract/`, `packages/chain-summaries/`,
+  or `packages/ui-kit/`, plus exact root `package.json` / `package-lock.json` changes.
   The root manifest and lockfile control the installed UI dependency graph and select browser
-  tests too, including lockfile-only transitive fixes. `packages/client` and `packages/ui-kit` are both required, not
-  optional: each is the only place that verifies its own committed `dist/index.js`/`index.cjs` still
-  matches a fresh build, so a `packages/client`- or `packages/ui-kit`-only PR must also trip this
-  job or stale/tampered committed runtime code could merge unverified) via the same per-step guard
-  pattern `checks` uses for its docs fast lane — never a job-level skip. Entirely independent of the
-  backend's own lint/test/build; a backend-only PR touching neither directory doesn't build or
-  install `apps/ui`'s tree at all, and vice versa. Not part of the Gittensory contributor gate —
+  tests too, including lockfile-only transitive fixes. `packages/client` and `packages/ui-kit`
+  are both required: this job verifies that their committed `dist/index.js`/`index.cjs`
+  still match a fresh build, so package-only changes must not bypass their drift checks.
+  Draft PRs and PRs outside those paths skip the UI job; pushes and manual dispatches run it.
+  Browser tests have a separate step guard covering root dependency files, `apps/ui/`,
+  and `packages/client/`. Backend validation is independent; a backend-only diff that
+  changes none of these paths skips the UI job, although root `npm ci` still installs
+  the shared workspace dependency tree. Not part of the Gittensory contributor gate —
   both `apps/ui/**` and `packages/**` are `blockedPaths` entries in `.gittensory.yml`, maintainer-only.
 
 **The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc

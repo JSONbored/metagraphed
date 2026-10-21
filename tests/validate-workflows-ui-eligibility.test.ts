@@ -126,7 +126,10 @@ test("UI draft and browser-step guards remain intact", () => {
 
 test("preview root dependency paths retain the same-repo and fork draft guards", () => {
   const preview = parse(
-    readFileSync(path.join(repoRoot, ".github/workflows/ui-preview.yml"), "utf8"),
+    readFileSync(
+      path.join(repoRoot, ".github/workflows/ui-preview.yml"),
+      "utf8",
+    ),
   ) as {
     on: { pull_request: { paths: string[] } };
     permissions: Record<string, string>;
