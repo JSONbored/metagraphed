@@ -1,6 +1,106 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
+test.describe("Footer company attribution", () => {
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ]) {
+    for (const theme of ["light", "dark"]) {
+      test(`stays visible at ${viewport.width}px in ${theme} mode`, async ({ page }, testInfo) => {
+        await page.setViewportSize(viewport);
+        await page.addInitScript((value) => localStorage.setItem("mg-theme", value), theme);
+        await gotoThroughRestart(page, "/");
+
+        const attribution = page
+          .getByRole("contentinfo")
+          .getByText("Operated by carbonZERO LLC", { exact: true });
+        await expect(attribution).toHaveCount(1);
+        await attribution.scrollIntoViewIfNeeded();
+        await expect(attribution).toBeVisible();
+        await expect(attribution).toBeInViewport();
+
+        const bounds = await attribution.boundingBox();
+        expect(bounds).not.toBeNull();
+        expect(bounds!.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+          viewport.width,
+        );
+        const contrast = await attribution.evaluate((element) => {
+          const luminance = (color: string) => {
+            const channels = color
+              .match(/[\d.]+/g)!
+              .slice(0, 3)
+              .map(Number);
+            const linear = channels.map((channel) => {
+              const value = channel / 255;
+              return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+            });
+            return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+          };
+          const foreground = luminance(getComputedStyle(element).color);
+          const background = luminance(getComputedStyle(document.body).backgroundColor);
+          return (
+            (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+          );
+        });
+        expect(contrast).toBeGreaterThanOrEqual(4.5);
+        const mutedColor = await attribution.evaluate((element) => getComputedStyle(element).color);
+        for (const name of [
+          "GitHub repository",
+          "Discord community",
+          "Registry changes RSS feed",
+        ]) {
+          await expect(page.getByRole("contentinfo").getByRole("link", { name })).toHaveCSS(
+            "color",
+            mutedColor,
+          );
+        }
+        await page.screenshot({
+          path: testInfo.outputPath(`footer-after-${viewport.width}-${theme}.png`),
+        });
+      });
+    }
+  }
+
+  for (const route of ["/about", "/docs", "/this-page-does-not-exist"]) {
+    test(`appears in the shared footer on ${route}`, async ({ page }) => {
+      await gotoThroughRestart(page, route);
+      const attribution = page
+        .getByRole("contentinfo")
+        .getByText("Operated by carbonZERO LLC", { exact: true });
+      await attribution.scrollIntoViewIfNeeded();
+      await expect(attribution).toBeVisible();
+    });
+  }
+
+  for (const theme of ["light", "dark"]) {
+    test(`remains readable at 200% zoom on mobile in ${theme} mode`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.addInitScript((value) => localStorage.setItem("mg-theme", value), theme);
+      await gotoThroughRestart(page, "/about");
+      await page.evaluate(() => {
+        document.documentElement.style.zoom = "2";
+      });
+      const attribution = page
+        .getByRole("contentinfo")
+        .getByText("Operated by carbonZERO LLC", { exact: true });
+      await attribution.scrollIntoViewIfNeeded();
+      await expect(attribution).toBeVisible();
+      await expect(attribution).toBeInViewport();
+      const bounds = await attribution.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
+      await page.screenshot({
+        path: testInfo.outputPath(`footer-after-mobile-${theme}-200pct.png`),
+      });
+    });
+  }
+});
+
 test.describe("Deferred footer freshness", () => {
   test("keeps source provenance unknown until its lazy reading settles", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });

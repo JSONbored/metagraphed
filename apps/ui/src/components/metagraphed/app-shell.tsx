@@ -384,7 +384,7 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
               href={GITHUB_HREF}
               ariaLabel="GitHub repository"
               title="Open source on GitHub"
-              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-layer transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 hover:text-ink-strong hover:bg-layer transition-colors"
             >
               <Github className="size-4" aria-hidden="true" />
             </ExternalLink>
@@ -393,7 +393,7 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
               href={DISCORD_HREF}
               ariaLabel="Discord community"
               title="Join us on Discord"
-              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-layer transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 hover:text-ink-strong hover:bg-layer transition-colors"
             >
               <DiscordIcon className="size-4" />
             </ExternalLink>
@@ -402,7 +402,7 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
               href={`${API_BASE}/api/v1/feeds/registry.rss`}
               ariaLabel="Registry changes RSS feed"
               title="Subscribe to the registry-changes feed (RSS)"
-              className="inline-flex items-center justify-center rounded size-8 text-ink-muted hover:text-ink-strong hover:bg-layer transition-colors"
+              className="inline-flex items-center justify-center rounded size-8 hover:text-ink-strong hover:bg-layer transition-colors"
             >
               <Rss className="size-4" aria-hidden="true" />
             </ExternalLink>
@@ -453,6 +453,7 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
             </span>
             {chromeOnly ? null : <DeferredSourcesLine />}
           </div>
+          <p>Operated by carbonZERO LLC</p>
         </div>
       </div>
     </footer>
