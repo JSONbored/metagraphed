@@ -28,9 +28,10 @@ document with bounded response size, timeout and a short cache. It offers only
 the exact-v2 networks supported by that public lane. Solana's `feePayer`, when
 needed, comes from this response rather than a committed signer address.
 
-Solana mainnet USDC support is prepared, but `X402_SOLANA_ENABLED=false` keeps
-it out of quotes and discovery until the merchant's native-USDC associated
-token account exists. PayAI does not create the receiving token account. The
+The selected rollout is Base mainnet only. Solana mainnet USDC support is
+prepared, but `X402_SOLANA_ENABLED=false` keeps it out of quotes and discovery.
+A future Solana rollout requires the merchant's native-USDC associated token
+account to exist. PayAI does not create the receiving token account. The
 existing Solana recipient was observed without a USDC token account during
 preparation. Enabling Solana requires the wallet owner to initialize that
 account or approve a different recipient, followed by a finalized readback and

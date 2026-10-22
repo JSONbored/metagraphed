@@ -1278,6 +1278,12 @@
     "sql": "CREATE TABLE watch_push_subscriptions (\n  id           INTEGER PRIMARY KEY AUTOINCREMENT,\n  address      TEXT    NOT NULL,\n  endpoint     TEXT    NOT NULL UNIQUE,\n  p256dh       TEXT    NOT NULL,\n  auth         TEXT    NOT NULL,\n  user_agent   TEXT,\n  created_at   INTEGER NOT NULL,\n  last_used_at INTEGER\n)"
   },
   {
+    "type": "table",
+    "name": "x402_payment_attempts",
+    "tbl_name": "x402_payment_attempts",
+    "sql": "CREATE TABLE x402_payment_attempts (\n  identity_key TEXT NOT NULL PRIMARY KEY,\n  request_fingerprint TEXT NOT NULL CHECK (\n    length(CAST(request_fingerprint AS BLOB)) = 64\n    AND request_fingerprint NOT GLOB '*[^0-9a-f]*'\n  ),\n  facilitator_url TEXT NOT NULL,\n  envelope TEXT,\n  payer TEXT NOT NULL,\n  state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'consumed')),\n  receipt TEXT,\n  CHECK (\n    (state = 'pending' AND envelope IS NOT NULL AND receipt IS NULL)\n    OR (state = 'consumed' AND envelope IS NULL AND receipt IS NOT NULL)\n  )\n) WITHOUT ROWID"
+  },
+  {
     "type": "trigger",
     "name": "account_position_daily_documents_closed_day_delete",
     "tbl_name": "account_position_daily_documents",
