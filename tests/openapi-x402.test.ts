@@ -174,15 +174,13 @@ describe("canonical x402 OpenAPI contract", () => {
       facilitatorUrl: "https://facilitator.example",
       legs: [
         {
-          kind: "evm",
           network: "eip155:8453",
           networkLabel: "Base",
           asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
           payTo: "0x1111111111111111111111111111111111111111",
-          extra: { name: "USDC", version: "2" },
+          extra: { name: "USD Coin", version: "2" },
         },
         {
-          kind: "svm",
           network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
           networkLabel: "Solana",
           asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
