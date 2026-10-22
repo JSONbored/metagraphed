@@ -108,19 +108,25 @@ upstream ID-JAG identity assertions or the older `verified_email` identity type.
 3. Poll `POST https://api.metagraph.sh/oauth/token` using
    `application/x-www-form-urlencoded` with
    `grant_type=urn:workos:agent-auth:grant-type:claim` and `claim_token`.
+   Set `resource=https://api.metagraph.sh/mcp` or
+   `resource=https://api.metagraph.sh/mcp/core` to select the access token's audience.
+   Omitting `resource` defaults to `https://api.metagraph.sh/mcp`.
    Wait at least the advertised interval. Handle `authorization_pending`,
    `slow_down`, `access_denied` and `expired_token` without creating a new
    registration on every poll. Claims expire after ten minutes.
 4. After approval, the claim grant returns an opaque `access_token` and a
    service-signed `identity_assertion`. Send the access token as
-   `Authorization: Bearer <access_token>` to `https://api.metagraph.sh/mcp` or its
-   `/mcp/core` mount. These tokens resolve to the approving GitHub account
+   `Authorization: Bearer <access_token>` only to the MCP audience selected
+   in step 3. Each access token is bound to that one audience.
+   These tokens resolve to the approving GitHub account
    and its current tier; they do not bypass the existing quotas or permissions.
 5. Within the original one-hour approval window, exchange the assertion at the
    same token endpoint using
    `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` and
    `assertion=<identity_assertion>`. Optional `resource` must be the canonical
-   `https://api.metagraph.sh/mcp` or `https://api.metagraph.sh/mcp/core` audience. Repeated exchanges never extend the original
+   `https://api.metagraph.sh/mcp` or `https://api.metagraph.sh/mcp/core` audience and defaults
+   to `https://api.metagraph.sh/mcp` when omitted. Use the returned access token only
+   at that audience. Repeated exchanges never extend the original
    approval window. The JWKS is at `https://api.metagraph.sh/oauth/jwks`.
 6. Revoke an agent access token using form-encoded
    `POST https://api.metagraph.sh/oauth/revoke` with `token=<access_token>` and

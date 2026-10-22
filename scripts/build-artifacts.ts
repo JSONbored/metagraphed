@@ -2725,19 +2725,25 @@ upstream ID-JAG identity assertions or the older \`verified_email\` identity typ
 3. Poll \`POST ${llmsApiBase}/oauth/token\` using
    \`application/x-www-form-urlencoded\` with
    \`grant_type=urn:workos:agent-auth:grant-type:claim\` and \`claim_token\`.
+   Set \`resource=${llmsApiBase}/mcp\` or
+   \`resource=${llmsApiBase}/mcp/core\` to select the access token's audience.
+   Omitting \`resource\` defaults to \`${llmsApiBase}/mcp\`.
    Wait at least the advertised interval. Handle \`authorization_pending\`,
    \`slow_down\`, \`access_denied\` and \`expired_token\` without creating a new
    registration on every poll. Claims expire after ten minutes.
 4. After approval, the claim grant returns an opaque \`access_token\` and a
    service-signed \`identity_assertion\`. Send the access token as
-   \`Authorization: Bearer <access_token>\` to \`${llmsApiBase}/mcp\` or its
-   \`/mcp/core\` mount. These tokens resolve to the approving GitHub account
+   \`Authorization: Bearer <access_token>\` only to the MCP audience selected
+   in step 3. Each access token is bound to that one audience.
+   These tokens resolve to the approving GitHub account
    and its current tier; they do not bypass the existing quotas or permissions.
 5. Within the original one-hour approval window, exchange the assertion at the
    same token endpoint using
    \`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer\` and
    \`assertion=<identity_assertion>\`. Optional \`resource\` must be the canonical
-   \`${llmsApiBase}/mcp\` or \`${llmsApiBase}/mcp/core\` audience. Repeated exchanges never extend the original
+   \`${llmsApiBase}/mcp\` or \`${llmsApiBase}/mcp/core\` audience and defaults
+   to \`${llmsApiBase}/mcp\` when omitted. Use the returned access token only
+   at that audience. Repeated exchanges never extend the original
    approval window. The JWKS is at \`${llmsApiBase}/oauth/jwks\`.
 6. Revoke an agent access token using form-encoded
    \`POST ${llmsApiBase}/oauth/revoke\` with \`token=<access_token>\` and
