@@ -48,6 +48,8 @@ assert.ok(match, "capture must remain extractable as the real inline Python");
 const captureCode = match[1];
 
 const CONTRACT_PATHS = [
+  "public/auth.md",
+  "public/.well-known/auth.md",
   "public/metagraph/openapi.json",
   "public/metagraph/contracts.json",
   "public/metagraph/api-index.json",

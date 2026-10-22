@@ -257,6 +257,7 @@ test("the compiled paid export admits browser preflights and exposes its quote",
 
 test("public OAuth discovery, registration, server card and preflight remain available", async () => {
   for (const path of [
+    "/.well-known/oauth-protected-resource",
     "/.well-known/oauth-protected-resource/mcp",
     "/.well-known/oauth-protected-resource/mcp/core",
     "/.well-known/oauth-authorization-server",
@@ -267,6 +268,27 @@ test("public OAuth discovery, registration, server card and preflight remain ava
     );
     expect(response.status).toBe(200);
     const body = await response.json();
+    if (path.startsWith("/.well-known/oauth-protected-resource")) {
+      const resourcePath = path.slice(
+        "/.well-known/oauth-protected-resource".length,
+      );
+      expect(body).toMatchObject({
+        resource: `https://api.metagraph.sh${resourcePath}`,
+        authorization_servers: ["https://api.metagraph.sh"],
+        scopes_supported: ["profile"],
+        bearer_methods_supported: ["header"],
+      });
+    }
+    if (path === "/.well-known/oauth-authorization-server") {
+      expect(body).toMatchObject({
+        issuer: "https://api.metagraph.sh",
+        registration_endpoint: "https://api.metagraph.sh/oauth/register",
+        grant_types_supported: ["authorization_code", "refresh_token"],
+        scopes_supported: ["profile"],
+        code_challenge_methods_supported: ["S256"],
+      });
+      expect(body).not.toHaveProperty("agent_auth");
+    }
     if (path.endsWith("server-card.json")) {
       expect(body).toMatchObject({
         authentication: "required",

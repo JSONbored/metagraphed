@@ -2615,7 +2615,12 @@ const AUTH_REQUIRED_TOOL_LIST = [...AUTH_REQUIRED_TOOL_NAMES]
   .map((name) => `- \`${name}\``)
   .join("\n");
 
-const authMarkdown = `# Authentication
+const authMarkdown = `# metagraphed auth.md
+
+For MCP clients and agents acting on behalf of a user, this guide documents the
+supported OAuth authorization and wallet API-key provisioning methods. The
+resource audience is the \`resource\` URL in the selected mount's protected-resource
+metadata; use that exact URL throughout OAuth authorization and token requests.
 
 The public, read-only REST API at \`${PRIMARY_DOMAIN}\` remains **public by default and
 read-only**. Authentication is optional for public REST reads and
@@ -2643,6 +2648,65 @@ authorization with no manual configuration:
   ${llmsApiBase}/.well-known/oauth-protected-resource/mcp
 - Authorization-server metadata:
   ${llmsApiBase}/.well-known/oauth-authorization-server
+
+## OAuth client registration and authorization
+
+1. Fetch protected-resource metadata for the mount you will call:
+   \`${llmsApiBase}/.well-known/oauth-protected-resource/mcp\` or
+   \`${llmsApiBase}/.well-known/oauth-protected-resource/mcp/core\`.
+   The root discovery document is at
+   \`${llmsApiBase}/.well-known/oauth-protected-resource\`.
+   Read \`resource\`, \`authorization_servers\`, \`scopes_supported\` and
+   \`bearer_methods_supported\`; tokens are sent in the \`Authorization\` header.
+2. Fetch the authorization server's metadata and verify its \`issuer\` matches the
+   advertised authorization server. The supported scope is \`profile\`.
+   Prefer an HTTPS Client ID Metadata Document when the client supports it and
+   metadata advertises \`client_id_metadata_document_supported\`. Otherwise, use
+   OAuth dynamic client registration (RFC 7591): \`POST ${llmsApiBase}/oauth/register\`
+   with JSON containing \`client_name\`, your \`redirect_uris\`, and
+   \`token_endpoint_auth_method: "none"\` for a public client. Save the returned
+   \`client_id\`. Registering a client does not issue a user access token.
+3. Generate a fresh \`state\` and PKCE verifier with its S256 challenge. Open the
+   discovered \`authorization_endpoint\` (\`GET ${llmsApiBase}/authorize\`) with
+   \`response_type=code\`, \`client_id\`, \`redirect_uri\`, \`scope=profile\`,
+   \`resource\`, \`state\`, \`code_challenge\`, and \`code_challenge_method=S256\`.
+   The user approves access and signs in with GitHub. Verify the returned
+   \`state\` before using the authorization code.
+4. Exchange the code at \`POST ${llmsApiBase}/oauth/token\` using
+   \`application/x-www-form-urlencoded\`: \`grant_type=authorization_code\`,
+   \`client_id\`, \`code\`, \`redirect_uri\`, \`code_verifier\`, and the same \`resource\`.
+   Send the returned \`access_token\` as \`Authorization: Bearer <access_token>\`
+   to the selected MCP mount. Respect \`expires_in\`; when a \`refresh_token\` is
+   issued, refresh at the same token endpoint with \`grant_type=refresh_token\`,
+   \`client_id\`, \`refresh_token\`, and the same \`resource\`.
+5. To revoke an OAuth token, use the discovered \`revocation_endpoint\`
+   (\`POST ${llmsApiBase}/oauth/token\`) with a form-encoded \`token\`, omitting
+   \`grant_type\`. A public client (\`token_endpoint_auth_method: "none"\`) must
+   also send \`client_id\`; confidential clients use their registered
+   authentication method. Keep credentials out of URLs.
+
+## Wallet API-key provisioning
+
+1. With the wallet owner's approval, request \`POST ${llmsApiBase}/api/v1/auth/wallet/challenge\`
+   with JSON \`{ "ss58": "<owner's Bittensor address>" }\`. Have the owner's
+   sr25519 wallet sign the returned \`message\`; never request the wallet seed.
+2. Submit \`POST ${llmsApiBase}/api/v1/auth/wallet/verify\` with JSON containing
+   the same \`ss58\` and its \`signature\`. The returned \`session_token\` is valid
+   for \`expires_in_seconds\`. This session authorizes key management, not MCP.
+3. Call \`POST ${llmsApiBase}/api/v1/keys\` with
+   \`Authorization: Bearer <session_token>\`. Save the returned \`key\` securely;
+   the full \`mg_...\` value is returned only once. Use that value as
+   \`Authorization: Bearer mg_...\` for MCP or authenticated API calls.
+4. List keys with \`GET ${llmsApiBase}/api/v1/keys\` and revoke a key with
+   \`DELETE ${llmsApiBase}/api/v1/keys/<key_id>\`, using the wallet session.
+
+These are the supported provisioning methods. The Auth.md agent registration
+protocol's ID-JAG, \`verified_email\`, anonymous credential issuance and claim
+ceremony are not implemented. OAuth client registration is not an agent-account
+registration endpoint, so authorization-server metadata does not advertise
+\`agent_auth\`. Agents use user-approved OAuth or an owner-provisioned API key.
+
+## Credential use and authentication failures
 
 A Bearer token that cannot be validated gets \`401\` with a
 \`WWW-Authenticate\` challenge pointing at the metadata above.
