@@ -12,7 +12,7 @@ const varyFields = (response: Response) =>
     ?.toLowerCase()
     .split(",")
     .map((field) => field.trim());
-const signatureFields = ["signature", "signature-input", "signature-agent"];
+const variantFields = ["signature", "signature-input", "signature-agent", "accept"];
 
 describe("signed browser analytics compatibility (#12890)", () => {
   it.each(["Signature", "sIgNaTuRe", "Signature-Input", "Signature-Agent"])(
@@ -20,7 +20,7 @@ describe("signed browser analytics compatibility (#12890)", () => {
     (name) => {
       const response = applySignedBrowserAnalyticsPolicy(html(), request({ [name]: "test" }));
       expect(response.headers.get("cache-control")).toBe("no-store, no-transform");
-      expect(varyFields(response)).toEqual(signatureFields);
+      expect(varyFields(response)).toEqual(variantFields);
     },
   );
 
@@ -30,13 +30,13 @@ describe("signed browser analytics compatibility (#12890)", () => {
   ])("prevents injection for an empty %s header that still requires CORS", (name, value) => {
     const response = applySignedBrowserAnalyticsPolicy(html(), request({ [name]: value }));
     expect(response.headers.get("cache-control")).toBe("no-store, no-transform");
-    expect(varyFields(response)).toEqual(signatureFields);
+    expect(varyFields(response)).toEqual(variantFields);
   });
 
   it("keeps ordinary visitor analytics eligible and varies both HTML variants", () => {
     const response = applySignedBrowserAnalyticsPolicy(html(), request());
     expect(response.headers.has("cache-control")).toBe(false);
-    expect(varyFields(response)).toEqual(signatureFields);
+    expect(varyFields(response)).toEqual(variantFields);
   });
 
   it("preserves ordinary cache policy and existing Vary fields", () => {
@@ -45,7 +45,7 @@ describe("signed browser analytics compatibility (#12890)", () => {
       request(),
     );
     expect(response.headers.get("cache-control")).toBe("private, max-age=30");
-    expect(varyFields(response)).toEqual(["accept-encoding", ...signatureFields]);
+    expect(varyFields(response)).toEqual(["accept-encoding", ...variantFields]);
   });
 
   it("retains signed cache directives while preventing browser and CDN storage", () => {
@@ -80,13 +80,63 @@ describe("signed browser analytics compatibility (#12890)", () => {
     expect(await response.text()).toBe("<html>Unavailable</html>");
   });
 
-  it.each(["application/json", "text/javascript", "text/plain", ""])(
+  it.each(["Signature", "Signature-Input", "Signature-Agent"])(
+    "allows native Markdown conversion for %s without permitting storage",
+    (name) => {
+      const response = applySignedBrowserAnalyticsPolicy(
+        html({ vary: "Accept-Encoding, ACCEPT" }),
+        request({ [name]: "test", accept: "text/markdown, text/html;q=0.001" }),
+      );
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(varyFields(response)).toEqual([
+        "accept-encoding",
+        "accept",
+        "signature",
+        "signature-input",
+        "signature-agent",
+      ]);
+    },
+  );
+
+  it.each([
+    "text/html;q=bad, text/markdown;q=0.5",
+    "text/html;q=0.1234, text/markdown;q=0.01",
+    "text/html;q=1;q=0, text/markdown",
+    'text/html;q="1", text/markdown;q=0.5',
+  ])("retains signed HTML protection for ambiguous Accept %j", (accept) => {
+    const response = applySignedBrowserAnalyticsPolicy(
+      html(),
+      request({ Signature: "test", accept }),
+    );
+    expect(response.headers.get("cache-control")).toBe("no-store, no-transform");
+  });
+
+  it("preserves an origin no-transform directive for a Markdown request", () => {
+    const response = applySignedBrowserAnalyticsPolicy(
+      html({ "cache-control": "private, no-transform" }),
+      request({ Signature: "test", accept: "text/markdown" }),
+    );
+    expect(response.headers.get("cache-control")).toBe("private, no-transform, no-store");
+  });
+
+  it("allows native Markdown HEAD headers without creating a response body", () => {
+    const response = applySignedBrowserAnalyticsPolicy(
+      new Response(null, { headers: { "content-type": "text/html" } }),
+      new Request("https://metagraph.sh/", {
+        method: "HEAD",
+        headers: { Signature: "test", accept: "text/markdown" },
+      }),
+    );
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.body).toBeNull();
+  });
+
+  it.each(["application/json", "text/javascript", "text/plain", "text/markdown", ""])(
     "leaves non-HTML %j responses untouched",
     (contentType) => {
       const response = new Response("data", { headers: { "content-type": contentType } });
-      expect(applySignedBrowserAnalyticsPolicy(response, request({ Signature: "test" }))).toBe(
-        response,
-      );
+      const req = request({ Signature: "test", accept: "text/markdown" });
+      expect(applySignedBrowserAnalyticsPolicy(response, req)).toBe(response);
       expect(response.headers.has("vary")).toBe(false);
     },
   );
