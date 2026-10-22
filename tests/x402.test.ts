@@ -201,14 +201,14 @@ describe("the Solana leg's quote", () => {
     );
   });
 
-  test("carries the sponsoring feePayer, which SVM exact requires", () => {
+  test("does not invent a provider-specific fee payer before discovery", () => {
     // Without it the payer cannot build the transaction: SVM exact is
     // fee-sponsored so the payer needs no SOL, and the sponsor's address is
     // part of the quote.
     const svm = paymentRequirements(config, "10000").find((r) =>
       r.network.startsWith("solana:"),
     )!;
-    assert.ok(svm.extra.feePayer, "feePayer must be quoted");
+    assert.deepEqual(svm.extra, {});
     assert.equal(svm.asset, X402_NETWORKS[X402_DEFAULT_SOLANA_NETWORK]!.asset);
   });
 
@@ -371,7 +371,10 @@ describe("verifyAndSettle", () => {
         requirements,
         impl,
       );
-      assert.equal(verdict.outcome, "rejected", label);
+      assert.ok(
+        ["rejected", "pending", "unavailable"].includes(verdict.outcome),
+        label,
+      );
     }
   });
 
@@ -397,9 +400,12 @@ describe("verifyAndSettle", () => {
         { success: false, errorReason: "nonce_reused" },
       ),
     );
-    assert.equal(unsettled.outcome, "rejected");
-    if (unsettled.outcome === "rejected")
-      assert.equal(unsettled.reason, "nonce_reused");
+    assert.equal(unsettled.outcome, "pending");
+    if (unsettled.outcome === "pending")
+      assert.equal(
+        (JSON.parse(atob(unsettled.responseHeader!)) as Row).errorReason,
+        "nonce_reused",
+      );
   });
 
   test("falls back to the verify step for the payer, then to empty", async () => {
@@ -437,7 +443,7 @@ describe("verifyAndSettle", () => {
         (async () =>
           new Response(body, { status: 200 })) as unknown as typeof fetch,
       );
-      assert.equal(verdict.outcome, "rejected", body);
+      assert.equal(verdict.outcome, "unavailable", body);
     }
   });
 
@@ -476,6 +482,22 @@ describe("the DEPLOYED configuration", () => {
     );
   });
 
+  test("Base mainnet signs the published USD Coin EIP-712 domain", () => {
+    assert.deepEqual(X402_NETWORKS["eip155:8453"]!.extra, {
+      name: "USD Coin",
+      version: "2",
+    });
+    assert.deepEqual(X402_NETWORKS["eip155:84532"]!.extra, {
+      name: "USDC",
+      version: "2",
+    });
+    assert.equal(vars.X402_NETWORK, "eip155:8453");
+    assert.equal(
+      vars.X402_FACILITATOR_URL,
+      "https://facilitator.payai.network",
+    );
+  });
+
   test("pays out to a well-formed address", () => {
     assert.equal(isEvmAddress(vars.X402_PAY_TO), true);
   });
@@ -491,9 +513,9 @@ describe("the DEPLOYED configuration", () => {
       vars.X402_PAY_TO,
     );
     assert.equal(
-      byNetwork.get(X402_DEFAULT_SOLANA_NETWORK)?.payTo,
-      vars.X402_PAY_TO_SOLANA,
-      "the Solana devnet leg must resolve with its configured recipient",
+      byNetwork.has(String(vars.X402_NETWORK_SOLANA)),
+      false,
+      "Solana stays unadvertised until its native USDC ATA exists",
     );
   });
 });

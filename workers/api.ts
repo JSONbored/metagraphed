@@ -27,6 +27,8 @@ import {
   x402PriceFor,
   x402RequiresPayment,
 } from "../src/x402.ts";
+import { resolveX402SupportedConfig } from "../src/x402-supported.ts";
+import { createX402AttemptStore } from "../src/x402-attempt-store.ts";
 import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
 import {
@@ -6324,14 +6326,24 @@ async function dispatchRequest(
   // payability a deployment cannot honour is the same dishonesty #11175
   // refused for an A2A card with no endpoint behind it.
   if (url.pathname === "/.well-known/x402") {
-    const manifest = x402Manifest(resolveX402Config(env), url.origin);
-    if (!manifest) {
+    const configured = resolveX402Config(env);
+    if (!configured) {
       return errorResponse(
         "not_found",
         "This deployment does not accept x402 payments.",
         404,
       );
     }
+    const store = paymentAttemptStore(env);
+    try {
+      if (!store) return x402UnavailableResponse();
+      await store.get("0".repeat(64));
+    } catch {
+      return x402UnavailableResponse();
+    }
+    const supported = await resolveX402SupportedConfig(configured);
+    if (!supported) return x402UnavailableResponse();
+    const manifest = x402Manifest(supported, url.origin);
     return new Response(JSON.stringify(manifest), {
       status: 200,
       headers: {
@@ -8650,66 +8662,115 @@ async function enforceX402(
   const price = x402PriceFor(pathname);
   if (!price) return null;
 
-  const requirements = paymentRequirements(config, price.atomicAmount);
-  const verdict = await verifyAndSettle(config, request, requirements);
+  if (
+    !request.headers.has("payment-signature") &&
+    !x402RequiresPayment(pathname)
+  )
+    return null;
+  const store = paymentAttemptStore(env);
+  let supported: Promise<ReturnType<typeof resolveX402Config>> | undefined;
+  const supportedConfig = () =>
+    (supported ??= resolveX402SupportedConfig(config));
+  const quote = async (reason = "") => {
+    const current = await supportedConfig();
+    return current
+      ? paymentRequiredResponse(
+          current,
+          request,
+          price.atomicAmount,
+          `metagraphed ${price.family} call${reason ? ` -- ${reason}` : ""}`,
+        )
+      : x402UnavailableResponse();
+  };
+  const verdict = await verifyAndSettle(
+    config,
+    request,
+    async () => {
+      const current = await supportedConfig();
+      return current ? paymentRequirements(current, price.atomicAmount) : null;
+    },
+    fetch,
+    store,
+  );
   switch (verdict.outcome) {
     case "settled":
-      // What the payment BUYS: this request is measured against the paid tier
-      // instead of the anonymous one, keyed to the payer's wallet. Without
-      // this the payment would settle and change nothing, which is worse than
-      // not taking it.
-      //
-      // Called UNCONDITIONALLY, including for the empty payer a facilitator
-      // may return. `markPaidCall` owns the rule that an unattributable
-      // payment gets no bucket of its own, because it owns the bucket -- and a
-      // guard repeated at the call site is one the next call site omits.
       markPaidCall(request, verdict.payer, "paid");
       return { settlementHeader: verdict.responseHeader };
     case "unpaid":
-      // THE INVARIANT, and its one deliberate exception (#11600).
-      //
-      // For every family that merely ACCEPTS payment, no payment presented
-      // means proceed exactly as today -- anonymous, rate-limited, free.
-      // Returning a 402 here is what would have broken our own site, which
-      // calls /api/v1/ask with no credential and /api/v1/blocks with a
-      // user-typed range.
-      //
-      // The `export` family is different, and it is different because it is
-      // NEW: nothing has ever been served from it for free, nothing in
-      // apps/ui calls it, and no free tier of it was withdrawn to create it.
-      // The invariant protects calls that would otherwise have succeeded;
-      // there are none here to protect.
-      return x402RequiresPayment(pathname)
-        ? {
-            reject: paymentRequiredResponse(
-              config,
-              request,
-              price.atomicAmount,
-              `metagraphed ${price.family} call`,
-            ),
-          }
-        : null;
+      try {
+        if (!store) return { reject: x402UnavailableResponse() };
+        // Do not quote until the durable owner and migration are available.
+        await store.get("0".repeat(64));
+      } catch {
+        return { reject: x402UnavailableResponse() };
+      }
+      return { reject: await quote() };
     case "malformed":
-      // 400, not 402: the caller DID present a payment and it was unreadable.
-      // Answering 402 would tell them to pay again for a request whose problem
-      // is its encoding, which is a loop they cannot exit.
       return {
         reject: errorResponse("x402_malformed_payment", verdict.reason, 400),
       };
-    default:
-      // Rejected by the facilitator, or the facilitator could not answer.
-      // Both are 402 with the quote reattached, so a caller who retries has
-      // everything they need -- and neither is ever a pass. This control fails
-      // CLOSED; see verifyAndSettle for why it is the one that does.
+    case "unavailable":
+      return { reject: x402UnavailableResponse() };
+    case "pending":
       return {
-        reject: paymentRequiredResponse(
-          config,
-          request,
-          price.atomicAmount,
-          `metagraphed ${price.family} call -- ${verdict.reason}`,
+        reject: errorResponse(
+          "x402_settlement_pending",
+          "Settlement is pending. Retry the identical request with the same PAYMENT-SIGNATURE; do not create a new payment.",
+          503,
+          { payment_status: "pending", retry: "same_payment_payload" },
+          {
+            "retry-after": "5",
+            ...(verdict.responseHeader
+              ? { [X402_RESPONSE_HEADER]: verdict.responseHeader }
+              : {}),
+          },
         ),
       };
+    case "conflict":
+      return {
+        reject: errorResponse(
+          "x402_payment_conflict",
+          "This signed payment is already bound to a different request.",
+          409,
+        ),
+      };
+    case "consumed":
+      return {
+        reject: errorResponse(
+          "x402_payment_consumed",
+          "This payment has already authorized one request.",
+          409,
+          {},
+          { [X402_RESPONSE_HEADER]: verdict.responseHeader },
+        ),
+      };
+    case "rejected":
+      return { reject: await quote(verdict.reason) };
   }
+}
+
+function paymentAttemptStore(env: Env) {
+  if (
+    !env.D1_STATE_TABLES?.split(",")
+      .map((name) => name.trim())
+      .includes("x402_payment_attempts")
+  )
+    return null;
+  try {
+    return createX402AttemptStore(env.D1_STATE);
+  } catch {
+    return null;
+  }
+}
+
+function x402UnavailableResponse(): Response {
+  return errorResponse(
+    "x402_unavailable",
+    "Payment processing is temporarily unavailable. Retry the identical request and payment payload.",
+    503,
+    {},
+    { "retry-after": "5" },
+  );
 }
 
 async function dataRouteRateLimit(

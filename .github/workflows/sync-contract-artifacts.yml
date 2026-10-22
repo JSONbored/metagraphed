@@ -49,6 +49,10 @@ on:
         description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
         type: string
         default: ""
+      d1_migrations:
+        description: Optional comma-separated migration filenames to project as EXPECTED schema with contracts
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -193,6 +197,7 @@ jobs:
           ARTIFACT_PRESET: ${{ inputs.artifact_preset }}
           REQUESTED_SHA: ${{ inputs.source_sha }}
           DISPATCH_SHA: ${{ github.sha }}
+          D1_MIGRATIONS: ${{ inputs.d1_migrations }}
         shell: bash
         run: |
           preset="${ARTIFACT_PRESET:-contracts}"
@@ -203,6 +208,13 @@ jobs:
           esac
           echo "preset=$preset" >> "$GITHUB_OUTPUT"
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          if [[ -n "$D1_MIGRATIONS" ]]; then
+            [[ "$preset" == contracts && "$D1_MIGRATIONS" =~ ^[0-9]{4}_[a-z0-9]+(_[a-z0-9]+)*\.sql(,[0-9]{4}_[a-z0-9]+(_[a-z0-9]+)*\.sql)*$ ]] || {
+              echo "D1 projection requires contracts and explicit migration filenames" >&2
+              exit 1
+            }
+          fi
+          echo "d1_migrations=$D1_MIGRATIONS" >> "$GITHUB_OUTPUT"
           source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
           [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
             echo "source_sha must be a full 40-character commit SHA" >&2
@@ -244,6 +256,12 @@ jobs:
         # probe, publishing, observability or deployment secrets are supplied.
         run: METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build
 
+      - name: Project expected D1 schema without live access
+        if: steps.source.outputs.preset == 'contracts' && steps.source.outputs.d1_migrations != ''
+        env:
+          D1_MIGRATIONS: ${{ steps.source.outputs.d1_migrations }}
+        run: node scripts/snapshot-d1-schema.ts --project-migrations "$D1_MIGRATIONS" --write > "$RUNNER_TEMP/d1-schema-projection.json"
+
       - name: Generate client bundles
         if: steps.source.outputs.preset == 'contracts'
         run: npm run build --workspace=packages/client
@@ -267,6 +285,7 @@ jobs:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           WORKFLOW_SHA: ${{ github.workflow_sha }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
+          D1_MIGRATIONS: ${{ steps.source.outputs.d1_migrations }}
         shell: bash
         run: |
           python3 - <<'PY_GENERATED_CONTRACT_RECEIPT'
@@ -310,6 +329,24 @@ jobs:
               "packages/client/dist/index.js",
               "packages/client/dist/index.cjs",
           }
+          projection = None
+          projected_migrations = os.environ.get("D1_MIGRATIONS", "")
+          schema_paths = {"db/d1-schema.sql", "generated/db/d1-schema.json"}
+          if projected_migrations:
+              migration_names = projected_migrations.split(",")
+              if preset != "contracts" or not 1 <= len(migration_names) <= 10 or migration_names != sorted(set(migration_names)) or any(not re.fullmatch(r"[0-9]{4}_[a-z0-9]+(?:_[a-z0-9]+)*\.sql", n) for n in migration_names):
+                  raise SystemExit("Invalid explicit D1 projection selection")
+              projection_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "d1-schema-projection.json"
+              projection = json.loads(projection_file.read_text())
+              if projection.get("mode") != "expected-postmigration" or projection.get("live_readback") is not False or projection.get("written") is not True:
+                  raise SystemExit("D1 projection must be labelled EXPECTED, not live readback")
+              if projection.get("migrations") != [{"name": n, "sha256": sha256(git("show", "HEAD:migrations/d1/" + n))} for n in migration_names]:
+                  raise SystemExit("D1 projection migration identity mismatch")
+              if projection.get("baseline_sha256") != {p: sha256(git("show", "HEAD:" + p)) for p in sorted(schema_paths)}:
+                  raise SystemExit("D1 projection baseline identity mismatch")
+              if projection.get("output_sha256") != {p: sha256(regular(p).read_bytes()) for p in sorted(schema_paths)}:
+                  raise SystemExit("D1 projection output identity mismatch")
+              exact |= schema_paths
           docs = "apps/ui/content/docs/api-reference/"
           excluded = {
               "public/metagraph/r2-manifest.json",
@@ -382,6 +419,8 @@ jobs:
           diffstat = git("diff", "--stat", "HEAD", "--", *selected) if selected else b""
           hashes = {p: sha256(pathlib.Path(p).read_bytes()) if pathlib.Path(p).exists() else None for p in selected}
           commands = ["npm ci", "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build", "npm run build --workspace=packages/client", "cd apps/ui && node scripts/generate-openapi-docs.ts"]
+          if projection is not None:
+              commands.insert(2, "node scripts/snapshot-d1-schema.ts --project-migrations " + projected_migrations + " --write")
           logo_receipt = {}
           if preset == "logos":
               commands = ["npm ci --ignore-scripts", "npm run build:logo-thumbnails", "npm run validate:logo-thumbnails"]
@@ -441,6 +480,7 @@ jobs:
               "changed_paths": selected,
               "patch_sha256": sha256(patch),
               "output_sha256": hashes,
+              **({"d1_schema_projection": projection} if projection is not None else {}),
               **logo_receipt,
           }
           output = pathlib.Path(os.environ["RUNNER_TEMP"]) / ("generated-" + kind + "-output")

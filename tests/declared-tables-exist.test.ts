@@ -179,5 +179,8 @@ test("CLI checks the physical D1 snapshot, including root baskets absent from th
     ["scripts/validate-declared-tables-exist.ts"],
     { encoding: "utf8" },
   );
-  assert.match(output, /every declared table exists/);
+  assert.match(
+    output,
+    /every declared table is present in the committed schema contract/,
+  );
 });

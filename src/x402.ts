@@ -57,11 +57,7 @@ import {
   X402_REQUIRED_HEADER,
   X402_SIGNATURE_HEADER,
 } from "./x402-headers.ts";
-export {
-  X402_BROWSER_RESPONSE_HEADERS,
-  X402_RESPONSE_HEADER,
-  X402_SIGNATURE_HEADER,
-} from "./x402-headers.ts";
+export { X402_RESPONSE_HEADER, X402_SIGNATURE_HEADER } from "./x402-headers.ts";
 import { X402_PAID_FAMILIES } from "./x402-pricing.ts";
 export {
   X402_ATOMIC_UNITS_PER_COST_WEIGHT,
@@ -70,6 +66,12 @@ export {
   x402PriceFor,
   x402RequiresPayment,
 } from "./x402-pricing.ts";
+import {
+  x402PaymentIdentity,
+  x402RequestFingerprint,
+} from "./x402-identity.ts";
+import type { X402AttemptStore, X402Attempt } from "./x402-attempt-store.ts";
+import { readBoundedRequestText } from "../workers/http.ts";
 
 export const X402_VERSION = 2;
 
@@ -105,7 +107,7 @@ export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
     kind: "evm",
     asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     label: "Base",
-    extra: { name: "USDC", version: "2" },
+    extra: { name: "USD Coin", version: "2" },
   },
   "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
     kind: "svm",
@@ -113,11 +115,13 @@ export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
     // https://github.com/x402-foundation/x402/blob/a9772e501f237913fecbf324c355f4e876b8c1dd/python/x402/mechanisms/svm/constants.py
     asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     label: "Solana Devnet",
-    // SVM `exact` is FEE-SPONSORED: the facilitator signs as fee payer so the
-    // payer needs no SOL. Its address is part of the quote, and this is the
-    // value the public facilitator advertised on 2026-10-22. If it rotates,
-    // settlement fails closed and this table is what gets corrected.
-    extra: { feePayer: "CKPKJWNdJEqa81x7CkZ14BVPiY6y16Sxs7owznqtWYp5" },
+    extra: {}, // resolved from this facilitator's current /supported response
+  },
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
+    kind: "svm",
+    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    label: "Solana Mainnet",
+    extra: {},
   },
 };
 
@@ -240,17 +244,22 @@ export function resolveX402Config(env: Env | undefined): X402Config | null {
   );
   if (evm) legs.push(evm);
 
-  const svm = resolveLeg(
-    env?.X402_PAY_TO_SOLANA,
-    env?.X402_NETWORK_SOLANA || X402_DEFAULT_SOLANA_NETWORK,
-    "svm",
-  );
+  const svm =
+    env?.X402_SOLANA_ENABLED === "false"
+      ? null
+      : resolveLeg(
+          env?.X402_PAY_TO_SOLANA,
+          env?.X402_NETWORK_SOLANA || X402_DEFAULT_SOLANA_NETWORK,
+          "svm",
+        );
   if (svm) legs.push(svm);
 
   if (legs.length === 0) return null;
   return {
     legs,
-    facilitatorUrl: env?.X402_FACILITATOR_URL || X402_DEFAULT_FACILITATOR,
+    facilitatorUrl: (
+      env?.X402_FACILITATOR_URL || X402_DEFAULT_FACILITATOR
+    ).replace(/\/+$/, ""),
   };
 }
 
@@ -380,114 +389,206 @@ export function paymentRequiredResponse(
 }
 
 export type X402Verdict =
-  /** No payment presented. NOT a refusal -- the caller proceeds as anonymous. */
   | { readonly outcome: "unpaid" }
-  | { readonly outcome: "malformed"; readonly reason: string }
-  | { readonly outcome: "rejected"; readonly reason: string }
+  | {
+      readonly outcome: "malformed" | "rejected" | "unavailable";
+      readonly reason: string;
+    }
+  | { readonly outcome: "conflict" }
+  | { readonly outcome: "consumed"; readonly responseHeader: string }
+  | { readonly outcome: "pending"; readonly responseHeader?: string }
   | {
       readonly outcome: "settled";
       readonly responseHeader: string;
-      /** The paying address. x402 treats the wallet as the identity, so this is
-       * what the headroom a payment buys is keyed to. */
       readonly payer: string;
     };
 
-/**
- * Verify and settle a presented payment.
- *
- * ## VERIFY THEN SETTLE, BOTH BEFORE THE WORK
- *
- * The alternative -- serve, then settle -- loses the money on any failure
- * after the response is committed, and a Worker cannot retract a stream it has
- * begun. So both facilitator calls happen first, and the caller only does the
- * work once `settled` comes back.
- *
- * ## A FACILITATOR THAT CANNOT ANSWER IS NOT A PAYMENT
- *
- * Every failure path is a refusal, never a pass. This is the one control in
- * this repo that must fail CLOSED: the rate limiter fails open because a
- * throttle outage should not deny a paying caller, but a payment outage that
- * failed open would serve paid work for free to anyone who noticed. The
- * asymmetry is deliberate and is why this does not follow the house pattern.
- */
+type OfferedRequirements =
+  | readonly PaymentRequirements[]
+  | (() => Promise<readonly PaymentRequirements[] | null>);
+
+/** Verify before binding, bind before settlement, and claim paid work once.
+ * Mainnet always requires native durable storage. Existing pending attempts
+ * replay their exact original provider/envelope before resolving current offers. */
 export async function verifyAndSettle(
   config: X402Config,
   request: Request,
-  offered: readonly PaymentRequirements[],
+  offered: OfferedRequirements,
   fetchImpl: typeof fetch = fetch,
+  attemptStore?: X402AttemptStore | null,
 ): Promise<X402Verdict> {
   const header = request.headers.get(X402_SIGNATURE_HEADER);
   if (!header) return { outcome: "unpaid" };
-
   let paymentPayload: unknown;
   try {
+    if (header.length > 32_768) throw new Error("Payment header is too large");
     paymentPayload = decodeBase64Json(header);
   } catch {
     return {
       outcome: "malformed",
-      reason: `${X402_SIGNATURE_HEADER} must be base64-encoded JSON.`,
+      reason: `${X402_SIGNATURE_HEADER} must be bounded base64-encoded JSON.`,
     };
   }
 
-  // WHICH LEG THIS PAYMENT IS FOR. The facilitator's /verify takes ONE set of
-  // requirements, so with several offered we have to say which the payer
-  // chose -- and take that from the payload rather than guessing, because
-  // verifying a Solana payment against Base requirements would compare an
-  // amount to the wrong asset on the wrong chain.
-  const requirements = selectRequirements(offered, paymentPayload);
-  if (!requirements) {
+  const guarded =
+    attemptStore !== undefined ||
+    config.legs.some(
+      (leg) =>
+        leg.network === "eip155:8453" ||
+        leg.network === "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    );
+  let identityKey = "";
+  let requestFingerprint = "";
+  if (guarded) {
+    const identity = await x402PaymentIdentity(paymentPayload);
+    const fingerprint = await x402RequestFingerprint(request);
+    if (!identity || !fingerprint)
+      return {
+        outcome: "malformed",
+        reason:
+          "The v2 payment must identify a signed transfer and a bounded request.",
+      };
+    identityKey = identity;
+    requestFingerprint = fingerprint;
+    if (!attemptStore) return unavailable();
+    try {
+      const existing = await attemptStore.get(identityKey);
+      if (existing)
+        return resumeAttempt(
+          existing,
+          requestFingerprint,
+          attemptStore,
+          fetchImpl,
+        );
+    } catch {
+      return unavailable();
+    }
+  }
+
+  let requirements: PaymentRequirements | null;
+  try {
+    const current = typeof offered === "function" ? await offered() : offered;
+    if (!current) return unavailable();
+    requirements = selectRequirements(current, paymentPayload);
+  } catch {
+    return unavailable();
+  }
+  if (!requirements)
     return {
       outcome: "rejected",
       reason:
         "the payment does not match an advertised requirement; see the accepts list on the 402",
     };
-  }
-
-  const envelope = {
+  const envelope = JSON.stringify({
     x402Version: X402_VERSION,
     paymentPayload,
     paymentRequirements: requirements,
-  };
-
+  });
   const verified = await facilitatorCall(
-    config,
+    config.facilitatorUrl,
     "/verify",
     envelope,
     fetchImpl,
   );
-  if (!verified || verified.isValid !== true) {
+  if (
+    !verified ||
+    (!verified.ok && (verified.status === 429 || verified.status >= 500))
+  )
+    return unavailable();
+  if (!verified.ok || verified.body.isValid !== true)
     return {
       outcome: "rejected",
       reason:
-        typeof verified?.invalidReason === "string"
-          ? verified.invalidReason
+        typeof verified.body.invalidReason === "string"
+          ? verified.body.invalidReason
           : "the facilitator could not verify this payment",
     };
+  const payer =
+    typeof verified.body.payer === "string" ? verified.body.payer : "";
+  if (attemptStore) {
+    try {
+      const bound = await attemptStore.bind({
+        identityKey,
+        requestFingerprint,
+        facilitatorUrl: config.facilitatorUrl,
+        envelope,
+        payer,
+      });
+      return await resumeAttempt(
+        bound,
+        requestFingerprint,
+        attemptStore,
+        fetchImpl,
+      );
+    } catch {
+      return unavailable();
+    }
   }
+  return settleEnvelope(config.facilitatorUrl, envelope, payer, fetchImpl);
+}
 
-  const settled = await facilitatorCall(config, "/settle", envelope, fetchImpl);
-  if (!settled || settled.success !== true) {
-    return {
-      outcome: "rejected",
-      reason:
-        typeof settled?.errorReason === "string"
-          ? settled.errorReason
-          : "the facilitator could not settle this payment",
-    };
+function unavailable(): X402Verdict {
+  return {
+    outcome: "unavailable",
+    reason:
+      "Payment processing is temporarily unavailable. Retry the identical request and payment payload.",
+  };
+}
+
+async function resumeAttempt(
+  attempt: X402Attempt,
+  requestFingerprint: string,
+  store: X402AttemptStore,
+  fetchImpl: typeof fetch,
+): Promise<X402Verdict> {
+  if (attempt.requestFingerprint !== requestFingerprint)
+    return { outcome: "conflict" };
+  if (attempt.state === "consumed")
+    return { outcome: "consumed", responseHeader: attempt.receipt! };
+  if (!attempt.envelope) return unavailable();
+  const verdict = await settleEnvelope(
+    attempt.facilitatorUrl,
+    attempt.envelope,
+    attempt.payer,
+    fetchImpl,
+  );
+  if (verdict.outcome !== "settled") return verdict;
+  try {
+    const claimed = await store.consume(
+      attempt.identityKey,
+      requestFingerprint,
+      verdict.responseHeader,
+    );
+    if (claimed) return verdict;
+    const winner = await store.get(attempt.identityKey);
+    if (winner?.state === "consumed")
+      return { outcome: "consumed", responseHeader: winner.receipt! };
+  } catch {
+    // Settlement may already have broadcast. Never create a fresh challenge.
   }
+  return { outcome: "pending", responseHeader: verdict.responseHeader };
+}
+
+async function settleEnvelope(
+  facilitatorUrl: string,
+  envelope: string,
+  payer: string,
+  fetchImpl: typeof fetch,
+): Promise<X402Verdict> {
+  const settled = await facilitatorCall(
+    facilitatorUrl,
+    "/settle",
+    envelope,
+    fetchImpl,
+  );
+  if (!settled) return { outcome: "pending" };
+  const responseHeader = base64Json(settled.body);
+  if (!settled.ok || settled.body.success !== true)
+    return { outcome: "pending", responseHeader };
   return {
     outcome: "settled",
-    responseHeader: base64Json(settled),
-    // The facilitator names the payer; falling back to the verify step's
-    // answer covers a settle response that omits it. Empty is possible and is
-    // handled by the caller -- an unattributable payment still settled, it
-    // simply cannot be given its own budget.
-    payer:
-      typeof settled.payer === "string"
-        ? settled.payer
-        : typeof verified.payer === "string"
-          ? verified.payer
-          : "",
+    responseHeader,
+    payer: typeof settled.body.payer === "string" ? settled.body.payer : payer,
   };
 }
 
@@ -554,25 +655,35 @@ function selectRequirements(
 }
 
 async function facilitatorCall(
-  config: X402Config,
+  facilitatorUrl: string,
   path: "/verify" | "/settle",
-  envelope: unknown,
+  envelope: string,
   fetchImpl: typeof fetch,
-): Promise<Record<string, unknown> | null> {
+): Promise<{
+  ok: boolean;
+  status: number;
+  body: Record<string, unknown>;
+} | null> {
   try {
-    const response = await fetchImpl(`${config.facilitatorUrl}${path}`, {
+    const response = await fetchImpl(`${facilitatorUrl}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(envelope),
+      body: envelope,
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return null;
-    const parsed: unknown = await response.json();
-    return parsed && typeof parsed === "object"
-      ? (parsed as Record<string, unknown>)
-      : null;
+    // Non-2xx protocol bodies can carry a pending broadcast transaction.
+    const body = await readBoundedRequestText(response, 65_536);
+    if (!body.ok) return null;
+    const parsed: unknown = JSON.parse(body.text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return null;
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: parsed as Record<string, unknown>,
+    };
   } catch {
-    // Fails CLOSED -- see verifyAndSettle's header for why this one control
-    // does not follow the house fail-open pattern.
     return null;
   }
 }

@@ -1,7 +1,8 @@
 // Exercise the compiled deploy entry in workerd, where native Node imports,
 // cloudflare:workers, WASM and deferred ESM chunks must all resolve together.
 // Source-only handler tests cannot catch a broken deployed module graph.
-import { Miniflare } from "miniflare";
+import { Miniflare, Response as MiniflareResponse } from "miniflare";
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -59,13 +60,39 @@ beforeAll(async () => {
     compatibilityDate: "2026-06-06",
     compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
     kvNamespaces: ["METAGRAPH_CONTROL", "OAUTH_KV"],
+    d1Databases: ["D1_STATE"],
+    outboundService(request) {
+      if (request.url === "https://facilitator.payai.network/supported")
+        return new MiniflareResponse(
+          JSON.stringify({
+            kinds: [
+              { x402Version: 2, scheme: "exact", network: "eip155:8453" },
+            ],
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      return new MiniflareResponse("No external calls in this fixture", {
+        status: 503,
+      });
+    },
     bindings: {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       METAGRAPH_AUDIT_RESPONSES: "enforce",
       X402_PAY_TO: "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
       X402_PAY_TO_SOLANA: "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
+      X402_NETWORK: "eip155:8453",
+      X402_NETWORK_SOLANA: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      X402_SOLANA_ENABLED: "false",
+      X402_FACILITATOR_URL: "https://facilitator.payai.network",
+      D1_STATE_TABLES: "x402_payment_attempts",
     },
   });
+  const db = await runtime.getD1Database("D1_STATE");
+  const migration = readFileSync(
+    new URL("../migrations/d1/0039_x402_payment_attempts.sql", import.meta.url),
+    "utf8",
+  ).replace(/^--.*$/gm, "");
+  await db.prepare(migration).run();
   const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
   const stamp = {
     schema_version: 1,
@@ -200,8 +227,9 @@ test("the compiled paid export admits browser preflights and exposes its quote",
     x402Version: 2,
     accepts: expect.arrayContaining([
       expect.objectContaining({
-        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-        asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        network: "eip155:8453",
+        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        extra: { name: "USD Coin", version: "2" },
       }),
     ]),
   });

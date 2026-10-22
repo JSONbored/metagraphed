@@ -55,7 +55,12 @@ import {
   CHAIN_FIREHOSE_TOPICS,
 } from "./chain-firehose-topics.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
-import { x402PriceFor } from "./x402-pricing.ts";
+import { x402PriceFor, x402RequiresPayment } from "./x402-pricing.ts";
+import {
+  X402_REQUIRED_HEADER,
+  X402_RESPONSE_HEADER,
+  X402_SIGNATURE_HEADER,
+} from "./x402-headers.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -6429,6 +6434,10 @@ export function buildOpenApiArtifact(
   const paths: Row = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path;
+    // Runtime pricing sees concrete numeric subnet IDs. Classifying the
+    // {netuid} template directly would omit payable subnet-history routes.
+    const paymentPolicyPath = entry.path.replace("{netuid}", "1");
+    const paymentPrice = x402PriceFor(paymentPolicyPath);
     const responseSchema = openApiResponseSchemaForRoute(entry);
     const successContent = {
       "application/json": {
@@ -6486,6 +6495,22 @@ export function buildOpenApiArtifact(
         description: entry.description,
         tags: entry.tags,
         parameters: [
+          ...(paymentPrice
+            ? [
+                {
+                  name: X402_SIGNATURE_HEADER,
+                  in: "header",
+                  required: false,
+                  description:
+                    "Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations.",
+                  schema: {
+                    type: "string",
+                    contentEncoding: "base64",
+                    contentMediaType: "application/json",
+                  },
+                },
+              ]
+            : []),
           ...entry.path_parameters.map((parameter) => ({
             ...withSharedPathParameterDescription(parameter),
             in: "path",
@@ -6526,7 +6551,16 @@ export function buildOpenApiArtifact(
             description: entry.csv_response
               ? csvResponseDescriptionForRoute(entry)
               : "Canonical artifact wrapped in the Metagraphed API envelope.",
-            headers: apiResponseHeaders(),
+            headers: {
+              ...apiResponseHeaders(),
+              ...(paymentPrice
+                ? {
+                    [X402_RESPONSE_HEADER]: {
+                      $ref: "#/components/headers/X402PaymentResponse",
+                    },
+                  }
+                : {}),
+            },
             content: successContent,
           },
           304: {
@@ -6534,35 +6568,77 @@ export function buildOpenApiArtifact(
           },
           // DERIVED FROM THE GATE, not from a list (infra#629, #11599).
           //
-          // x402 added a live 402 path to every route in a payable family and
-          // declared it nowhere, so the contract said 402 was impossible on
-          // routes that return it. `x402PriceFor` is the same function the
-          // gate prices with, so a family joining or leaving it moves this
-          // declaration with it -- a hand-kept list is how the two drift.
-          //
-          // Only on routes that can actually return it. Declaring 402 on all
-          // 296 would be the opposite error: telling a caller that /api/v1/
-          // subnets might demand payment, which it never will.
-          ...(x402PriceFor(entry.path)
+          // Use the gate's family policy for every operation and its network
+          // twin. A hand-kept operation list would miss new payable routes.
+          ...(paymentPrice
             ? {
                 402: {
                   description:
-                    "A payment was presented and could not be verified or settled. " +
-                    "The response carries a fresh x402 quote in the `accepts` array and " +
-                    "the PAYMENT-REQUIRED header. A request with NO payment is never " +
-                    "answered with 402 -- it is served on the anonymous tier.",
+                    (x402RequiresPayment(paymentPolicyPath)
+                      ? "Payment is required for this operation. Requests without payment and rejected payments receive a fresh x402 quote. "
+                      : "Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. ") +
+                    "The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead.",
+                  headers: {
+                    [X402_REQUIRED_HEADER]: {
+                      $ref: "#/components/headers/X402PaymentRequired",
+                    },
+                  },
                   content: {
                     "application/json": {
                       schema: {
-                        $ref: "#/components/schemas/ErrorEnvelope",
+                        $ref: "#/components/schemas/X402PaymentRequired",
                       },
+                    },
+                  },
+                },
+                409: {
+                  description:
+                    "The signed payment was already consumed or conflicts with an earlier request. " +
+                    "`x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. " +
+                    "`x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. " +
+                    "Neither error supplies a new payment quote.",
+                  headers: {
+                    [X402_RESPONSE_HEADER]: {
+                      $ref: "#/components/headers/X402PaymentResponse",
+                      description:
+                        "Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict.",
+                    },
+                  },
+                  content: {
+                    "application/json": {
+                      schema: { $ref: "#/components/schemas/ErrorEnvelope" },
+                    },
+                  },
+                },
+                503: {
+                  description:
+                    "Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; " +
+                    "the error meta carries `payment_status: pending` and `retry: same_payment_payload`. " +
+                    "After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. " +
+                    "`x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. " +
+                    "Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement.",
+                  headers: {
+                    "retry-after": {
+                      $ref: "#/components/headers/X402RetryAfter",
+                    },
+                    [X402_RESPONSE_HEADER]: {
+                      $ref: "#/components/headers/X402PaymentResponse",
+                      description:
+                        "Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed.",
+                    },
+                  },
+                  content: {
+                    "application/json": {
+                      schema: { $ref: "#/components/schemas/ErrorEnvelope" },
                     },
                   },
                 },
               }
             : {}),
           400: {
-            description: "Query parameters were malformed or unsupported.",
+            description: paymentPrice
+              ? "Query parameters or payment encoding were malformed or unsupported."
+              : "Query parameters were malformed or unsupported.",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorEnvelope" },
@@ -6824,12 +6900,14 @@ export function buildOpenApiArtifact(
       title: "Metagraphed API",
       version: CONTRACT_VERSION,
       description:
-        "Public, read-only API over canonical Metagraphed registry artifacts for " +
-        "Bittensor subnet interfaces. **No authentication** — every operation is an " +
-        "unauthenticated GET. Responses use a stable JSON envelope " +
-        "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
-        "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
-        "client. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
+        "Public API over Metagraphed registry artifacts and Bittensor chain data. " +
+        "Each operation declares its HTTP method. Anonymous access is rate-limited; " +
+        "supported operations accept optional x402 payment for additional headroom, " +
+        "and bulk exports require payment. JSON artifact responses use the stable " +
+        "envelope `{ ok, schema_version, data, meta }` (API errors: `{ ok: false, error }`). " +
+        "An x402 402 response is a direct payment quote; CSV, feeds, and streams " +
+        "use their declared media types. Cacheable responses carry `ETag` + " +
+        "`Cache-Control`. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
         "(mainnet is the default — omit it) to read testnet data, e.g. " +
         "`/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have " +
         "data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
@@ -6859,6 +6937,31 @@ export function buildOpenApiArtifact(
         ETag: { schema: { type: "string" } },
         CacheControl: { schema: { type: "string" } },
         ContractVersion: { schema: { type: "string" } },
+        X402PaymentRequired: {
+          description:
+            "Base64-encoded x402 v2 quote, identical to the direct JSON response body.",
+          schema: {
+            type: "string",
+            contentEncoding: "base64",
+            contentMediaType: "application/json",
+            contentSchema: { $ref: "#/components/schemas/X402PaymentRequired" },
+          },
+        },
+        X402PaymentResponse: {
+          description:
+            "Base64-encoded facilitator settlement result. Read the HTTP status and error code to distinguish a completed payment receipt from a pending settlement result.",
+          schema: {
+            type: "string",
+            contentEncoding: "base64",
+            contentMediaType: "application/json",
+          },
+        },
+        X402RetryAfter: {
+          description:
+            "Seconds to wait before retrying the identical HTTP request and PAYMENT-SIGNATURE. A pending settlement must be reconciled with the same payment payload.",
+          schema: { type: "integer", minimum: 1 },
+          example: 5,
+        },
       },
       // Every worked response example, once each — referenced by the media
       // types above rather than repeated into them. See the naming note on

@@ -17,14 +17,57 @@
 // decision, which is made before the handler runs and applied after it
 // returns. Asserting on a 503 body would be testing the wrong module.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import { X402_RESPONSE_HEADER, X402_SIGNATURE_HEADER } from "../src/x402.ts";
+import {
+  X402_RESPONSE_HEADER,
+  X402_SIGNATURE_HEADER,
+  paymentRequirements,
+  resolveX402Config,
+} from "../src/x402.ts";
+import { createX402Fixture } from "./x402-fixtures.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 
 const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
 const PAY_TO_SOL = "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87";
-const paid = () => mockEnv({ X402_PAY_TO: PAY_TO });
+const fixtures: ReturnType<typeof createX402Fixture>[] = [];
+const envWithDb = (values: Record<string, unknown>) => {
+  const fixture = createX402Fixture();
+  fixtures.push(fixture);
+  return mockEnv({
+    D1_STATE: fixture.db,
+    D1_STATE_TABLES: "x402_payment_attempts",
+    ...values,
+  });
+};
+const paid = () =>
+  envWithDb({
+    X402_PAY_TO: PAY_TO,
+    X402_NETWORK: "eip155:8453",
+    X402_FACILITATOR_URL: "https://facilitator.payai.network",
+  });
+const accepted = paymentRequirements(
+  resolveX402Config(
+    mockEnv({ X402_PAY_TO: PAY_TO, X402_NETWORK: "eip155:8453" }),
+  )!,
+  "10000",
+)[0];
+const payment = btoa(
+  JSON.stringify({
+    x402Version: 2,
+    accepted,
+    payload: {
+      signature: "signed",
+      authorization: {
+        from: "0x" + "a".repeat(40),
+        nonce: "0x" + "b".repeat(64),
+      },
+    },
+  }),
+);
+beforeEach(() => resetModuleState());
+afterEach(() => fixtures.splice(0).forEach((fixture) => fixture.close()));
 
 function assertPaymentHeadersReadable(response: Response) {
   const exposed = response.headers
@@ -63,6 +106,19 @@ async function withFetch(stub: typeof fetch, fn: () => Promise<Response>) {
 function facilitator(verify: Row, settle: Row) {
   return (async (url: string | URL | Request) => {
     const href = String(url);
+    if (href.endsWith("/supported"))
+      return Response.json({
+        kinds: [
+          { x402Version: 2, scheme: "exact", network: "eip155:8453" },
+          { x402Version: 2, scheme: "exact", network: "eip155:84532" },
+          {
+            x402Version: 2,
+            scheme: "exact",
+            network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            extra: { feePayer: PAY_TO_SOL },
+          },
+        ],
+      });
     if (href.includes("/verify"))
       return new Response(JSON.stringify(verify), { status: 200 });
     if (href.includes("/settle"))
@@ -96,7 +152,7 @@ describe("the invariant, through the router", () => {
     const res = await withFetch(facilitator({ isValid: false }, {}), () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/health", {
-          headers: { [X402_SIGNATURE_HEADER]: btoa("{}") },
+          headers: { [X402_SIGNATURE_HEADER]: payment },
         }),
         paid(),
       ),
@@ -113,7 +169,7 @@ describe("a presented payment", () => {
         { isValid: true, payer: "0xpayer" },
         { success: true, payer: "0xpayer", transaction: "0xtx" },
       ),
-      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: btoa("{}") }), paid()),
+      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
     );
     const receipt = res.headers.get(X402_RESPONSE_HEADER);
     assert.ok(receipt, "the settlement receipt must reach the caller");
@@ -128,7 +184,7 @@ describe("a presented payment", () => {
     // proceeds on the anonymous bucket with its receipt attached.
     const res = await withFetch(
       facilitator({ isValid: true }, { success: true, transaction: "0xtx" }),
-      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: btoa("{}") }), paid()),
+      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
     );
     assert.notEqual(res.status, 402);
     assert.ok(res.headers.get(X402_RESPONSE_HEADER));
@@ -153,14 +209,14 @@ describe("a presented payment", () => {
   test("rejected is 402 with the quote reattached, so a retry is possible", async () => {
     const res = await withFetch(
       facilitator({ isValid: false, invalidReason: "insufficient_funds" }, {}),
-      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: btoa("{}") }), paid()),
+      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
     );
     assert.equal(res.status, 402);
     assert.ok(res.headers.get("payment-required"), "the quote must come back");
     assertPaymentHeadersReadable(res);
   });
 
-  test("a facilitator outage is 402, never a free pass", async () => {
+  test("a facilitator outage is 503 without a new quote or paid work", async () => {
     // Fails CLOSED. The rate limiter fails open so an outage cannot deny a
     // paying caller; this control cannot, because failing open here serves
     // paid work free to anyone who notices the outage.
@@ -168,9 +224,10 @@ describe("a presented payment", () => {
       (async () => {
         throw new Error("facilitator unreachable");
       }) as unknown as typeof fetch,
-      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: btoa("{}") }), paid()),
+      () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
     );
-    assert.equal(res.status, 402);
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("payment-required"), null);
     assertPaymentHeadersReadable(res);
   });
 });
@@ -222,9 +279,11 @@ describe("browser payment preflights", () => {
 
 describe("GET /.well-known/x402", () => {
   const manifest = (env: Env) =>
-    handleRequest(
-      new Request("https://api.metagraph.sh/.well-known/x402"),
-      env,
+    withFetch(facilitator({}, {}), () =>
+      handleRequest(
+        new Request("https://api.metagraph.sh/.well-known/x402"),
+        env,
+      ),
     );
 
   test("404s when the deployment accepts no payments", async () => {
@@ -241,7 +300,7 @@ describe("GET /.well-known/x402", () => {
     const body = await jsonBody(res);
     const accepts = body.accepts as Row[];
     assert.equal(accepts[0]!.payTo, PAY_TO);
-    assert.equal(accepts[0]!.network, "eip155:84532");
+    assert.equal(accepts[0]!.network, "eip155:8453");
     assert.ok((body.resources as Row[]).length > 0);
     assert.match(String(body.free), /auth\.md$/);
   });
@@ -250,7 +309,7 @@ describe("GET /.well-known/x402", () => {
     // The thing the array exists for: an agent holding only SOL and one
     // holding only Base USDC must both be able to read a way to pay us.
     const res = await manifest(
-      mockEnv({ X402_PAY_TO: PAY_TO, X402_PAY_TO_SOLANA: PAY_TO_SOL }),
+      envWithDb({ X402_PAY_TO: PAY_TO, X402_PAY_TO_SOLANA: PAY_TO_SOL }),
     );
     const networks = ((await jsonBody(res)).accepts as Row[]).map((a) =>
       String(a.network),
@@ -263,7 +322,7 @@ describe("GET /.well-known/x402", () => {
   test("a Solana-only deployment still takes payments", async () => {
     // Legs resolve independently. A misconfigured EVM leg must not silently
     // take the working Solana one down with it.
-    const res = await manifest(mockEnv({ X402_PAY_TO_SOLANA: PAY_TO_SOL }));
+    const res = await manifest(envWithDb({ X402_PAY_TO_SOLANA: PAY_TO_SOL }));
     assert.equal(res.status, 200);
     const accepts = (await jsonBody(res)).accepts as Row[];
     assert.equal(accepts.length, 1);
@@ -275,4 +334,67 @@ describe("GET /.well-known/x402", () => {
     assert.match(String(res.headers.get("cache-control")), /max-age=300/);
     assert.equal(res.headers.get("access-control-allow-origin"), "*");
   });
+});
+
+test("an ambiguous broadcast returns pending with its transaction and no new payment challenge", async () => {
+  const res = await withFetch(
+    facilitator(
+      { isValid: true },
+      {
+        success: false,
+        errorReason: "settlement_pending",
+        transaction: "broadcast",
+      },
+    ),
+    () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
+  );
+  assert.equal(res.status, 503);
+  assert.equal(res.headers.get("retry-after"), "5");
+  assert.equal(res.headers.get("payment-required"), null);
+  assert.equal((await jsonBody(res)).error.code, "x402_settlement_pending");
+  assert.equal(
+    JSON.parse(atob(res.headers.get("payment-response")!)).transaction,
+    "broadcast",
+  );
+});
+
+test("durable consumption denies repeat execution and use on a different request", async () => {
+  const env = paid();
+  const first = await withFetch(
+    facilitator({ isValid: true }, { success: true }),
+    () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), env),
+  );
+  assert.ok(first.headers.get("payment-response"));
+  const replay = await withFetch(facilitator({}, {}), () =>
+    handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), env),
+  );
+  assert.equal(replay.status, 409);
+  assert.equal((await jsonBody(replay)).error.code, "x402_payment_consumed");
+  assert.ok(replay.headers.get("payment-response"));
+  assert.equal(replay.headers.get("payment-required"), null);
+  const conflict = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/ask?different=1", {
+      method: "POST",
+      headers: { "payment-signature": payment },
+      body: "{}",
+    }),
+    env,
+  );
+  assert.equal(conflict.status, 409);
+  assert.equal((await jsonBody(conflict)).error.code, "x402_payment_conflict");
+  assert.equal(conflict.headers.get("payment-required"), null);
+});
+
+test("quotes and discovery fail closed when durable payment storage is unowned or unbound", async () => {
+  for (const values of [{}, { D1_STATE_TABLES: "x402_payment_attempts" }]) {
+    const env = mockEnv({ X402_PAY_TO: PAY_TO, ...values });
+    for (const path of ["/.well-known/x402", "/api/v1/export/chain-events"]) {
+      const res = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env,
+      );
+      assert.equal(res.status, 503);
+      assert.equal(res.headers.get("payment-required"), null);
+    }
+  }
 });

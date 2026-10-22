@@ -69,6 +69,8 @@ const LOGOS = "apps/ui/public/logos";
 const MANIFEST = `${LOGOS}/display/manifest.json`;
 const IDENTITY = `${LOGOS}/display/sharing-identity.json`;
 const NEW_CONTRACT = "generated/graphql/schema.ts";
+const D1_SCHEMA_PATHS = ["db/d1-schema.sql", "generated/db/d1-schema.json"];
+const D1_MIGRATION = "0039_x402_payment_attempts.sql";
 
 interface Fixture {
   base: string;
@@ -102,6 +104,12 @@ async function fixture(): Promise<Fixture> {
   for (const name of [...CONTRACT_PATHS, ...EXCLUDED_PATHS]) {
     if (name !== NEW_CONTRACT) put(root, name, `committed ${name}\n`);
   }
+  for (const name of D1_SCHEMA_PATHS) put(root, name, `baseline ${name}\n`);
+  put(
+    root,
+    `migrations/d1/${D1_MIGRATION}`,
+    "CREATE TABLE payment_attempts(id TEXT PRIMARY KEY);\n",
+  );
   const original = await sharp({
     create: {
       width: 320,
@@ -158,7 +166,12 @@ async function fixture(): Promise<Fixture> {
   return { base, root, runner, source };
 }
 
-function execute(value: Fixture, preset?: string, source = value.source) {
+function execute(
+  value: Fixture,
+  preset?: string,
+  source = value.source,
+  migrations?: string,
+) {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     SOURCE_SHA: source,
@@ -170,7 +183,9 @@ function execute(value: Fixture, preset?: string, source = value.source) {
     RUNNER_TEMP: value.runner,
   };
   delete env.ARTIFACT_PRESET;
+  delete env.D1_MIGRATIONS;
   if (preset !== undefined) env.ARTIFACT_PRESET = preset;
+  if (migrations !== undefined) env.D1_MIGRATIONS = migrations;
   return spawnSync("python3", ["-c", captureCode], {
     cwd: value.root,
     env,
@@ -219,6 +234,7 @@ test("generation presets preserve default sync and isolate exact read-only jobs"
   const inputs = workflow.on.workflow_dispatch.inputs;
   assert.deepEqual(Object.keys(inputs).sort(), [
     "artifact_preset",
+    "d1_migrations",
     "mode",
     "source_sha",
   ]);
@@ -230,6 +246,7 @@ test("generation presets preserve default sync and isolate exact read-only jobs"
   assert.equal(inputs.mode.default, "sync");
   assert.deepEqual(inputs.artifact_preset.options, ["contracts", "logos"]);
   assert.equal(inputs.artifact_preset.default, "contracts");
+  assert.equal(inputs.d1_migrations.default, "");
   assert.deepEqual(workflow.on.push.branches, ["main"]);
   assert.deepEqual(workflow.on.schedule, [{ cron: "40 5 * * *" }]);
   assert.deepEqual(workflow.permissions, { contents: "read" });
@@ -250,6 +267,23 @@ test("generation presets preserve default sync and isolate exact read-only jobs"
     capture.env?.ARTIFACT_PRESET,
     "${{ steps.source.outputs.preset }}",
   );
+  assert.equal(
+    capture.env?.D1_MIGRATIONS,
+    "${{ steps.source.outputs.d1_migrations }}",
+  );
+  const projection = steps.find((step) =>
+    step.run?.startsWith(
+      "node scripts/snapshot-d1-schema.ts --project-migrations",
+    ),
+  );
+  assert.ok(projection);
+  assert.equal(
+    projection.if,
+    "steps.source.outputs.preset == 'contracts' && steps.source.outputs.d1_migrations != ''",
+  );
+  assert.deepEqual(projection.env, {
+    D1_MIGRATIONS: "${{ steps.source.outputs.d1_migrations }}",
+  });
   const checkout = steps.find((step) =>
     step.uses?.startsWith("actions/checkout@"),
   );
@@ -354,6 +388,100 @@ for (const preset of [undefined, "", "contracts"] as const) {
     }
   });
 }
+
+function expectedD1Projection(value: Fixture) {
+  return {
+    mode: "expected-postmigration",
+    live_readback: false,
+    written: true,
+    migrations: [
+      {
+        name: D1_MIGRATION,
+        sha256: hash(
+          git(value.root, "show", `HEAD:migrations/d1/${D1_MIGRATION}`),
+        ),
+      },
+    ],
+    baseline_sha256: Object.fromEntries(
+      D1_SCHEMA_PATHS.map((name) => [
+        name,
+        hash(git(value.root, "show", `HEAD:${name}`)),
+      ]),
+    ),
+    output_sha256: Object.fromEntries(
+      D1_SCHEMA_PATHS.map((name) => [
+        name,
+        hash(readFileSync(path.join(value.root, name))),
+      ]),
+    ),
+    changed_objects: ["payment_attempts"],
+  };
+}
+
+test("explicit expected D1 projection captures only its two schema paths with source-bound provenance", async () => {
+  const value = await fixture();
+  try {
+    for (const name of D1_SCHEMA_PATHS)
+      put(value.root, name, `expected ${name}\n`);
+    const projection = expectedD1Projection(value);
+    put(value.runner, "d1-schema-projection.json", JSON.stringify(projection));
+    const result = execute(value, "contracts", value.source, D1_MIGRATION);
+    assert.equal(result.status, 0, result.stderr);
+    const captured = output(value, "contracts");
+    assert.deepEqual(
+      captured.receipt.changed_paths,
+      D1_SCHEMA_PATHS.toSorted(),
+    );
+    assert.deepEqual(captured.receipt.d1_schema_projection, projection);
+    assert.ok(
+      captured.receipt.commands.some(
+        (entry: { command: string }) =>
+          entry.command ===
+          `node scripts/snapshot-d1-schema.ts --project-migrations ${D1_MIGRATION} --write`,
+      ),
+    );
+  } finally {
+    rmSync(value.base, { recursive: true, force: true });
+  }
+});
+
+test("D1 schema paths remain refused without an explicit projection and truthful byte-bound receipt", async () => {
+  const value = await fixture();
+  try {
+    for (const name of D1_SCHEMA_PATHS)
+      put(value.root, name, `expected ${name}\n`);
+    refused(value, "contracts", /Unexpected generation changes/);
+    const projection = expectedD1Projection(value);
+    for (const invalid of [
+      { ...projection, live_readback: true },
+      { ...projection, mode: "actual" },
+      { ...projection, written: false },
+      { ...projection, migrations: [] },
+      { ...projection, baseline_sha256: {} },
+      { ...projection, output_sha256: {} },
+    ]) {
+      put(value.runner, "d1-schema-projection.json", JSON.stringify(invalid));
+      const result = execute(value, "contracts", value.source, D1_MIGRATION);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /D1 projection/);
+      assert.equal(
+        existsSync(path.join(value.runner, "generated-contract-output")),
+        false,
+      );
+    }
+    for (const [preset, names] of [
+      ["logos", D1_MIGRATION],
+      ["contracts", "../0039_x402_payment_attempts.sql"],
+      ["contracts", `${D1_MIGRATION},${D1_MIGRATION}`],
+    ]) {
+      const result = execute(value, preset, value.source, names);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /Invalid explicit D1 projection selection/);
+    }
+  } finally {
+    rmSync(value.base, { recursive: true, force: true });
+  }
+});
 
 test("logo capture includes ignored binary additions and display deletions losslessly", async () => {
   const value = await fixture();

@@ -276,7 +276,7 @@ export function ifNoneMatchSatisfied(
  * exists twice is a body bound that disagrees with itself eventually.
  */
 export async function readBoundedRequestText(
-  request: Request,
+  request: Pick<Request, "headers" | "body">,
   maxBytes: number,
 ) {
   const contentLength = Number(request.headers.get("content-length") || 0);

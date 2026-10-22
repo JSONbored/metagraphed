@@ -10,7 +10,9 @@
 // So these tests are written in pairs. Every assertion that the export route
 // demands payment is matched by one that its free twin still does not.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import { createX402Fixture } from "./x402-fixtures.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
   X402_REQUIRED_FAMILIES,
@@ -29,7 +31,31 @@ const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
 const EXPORT = "/api/v1/export/chain-events";
 const FREE = "/api/v1/chain-events";
 
-const paidEnv = () => mockEnv({ X402_PAY_TO: PAY_TO });
+const fixtures: ReturnType<typeof createX402Fixture>[] = [];
+const paidEnv = () => {
+  const fixture = createX402Fixture();
+  fixtures.push(fixture);
+  return mockEnv({
+    X402_PAY_TO: PAY_TO,
+    D1_STATE: fixture.db,
+    D1_STATE_TABLES: "x402_payment_attempts",
+  });
+};
+beforeEach(() => {
+  resetModuleState();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:84532" }],
+      }),
+    ),
+  );
+});
+afterEach(() => {
+  fixtures.splice(0).forEach((fixture) => fixture.close());
+  vi.unstubAllGlobals();
+});
 const get = (path: string, env: Env) =>
   handleRequest(new Request(`https://api.metagraph.sh${path}?limit=5`), env);
 
