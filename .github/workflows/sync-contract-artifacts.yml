@@ -53,6 +53,10 @@ on:
         description: Optional comma-separated migration filenames to project as EXPECTED schema with contracts
         type: string
         default: ""
+      worker_types:
+        description: Optionally regenerate Worker binding types with contracts
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -198,6 +202,7 @@ jobs:
           REQUESTED_SHA: ${{ inputs.source_sha }}
           DISPATCH_SHA: ${{ github.sha }}
           D1_MIGRATIONS: ${{ inputs.d1_migrations }}
+          WORKER_TYPES: ${{ inputs.worker_types }}
         shell: bash
         run: |
           preset="${ARTIFACT_PRESET:-contracts}"
@@ -215,6 +220,16 @@ jobs:
             }
           fi
           echo "d1_migrations=$D1_MIGRATIONS" >> "$GITHUB_OUTPUT"
+          worker_types="${WORKER_TYPES:-false}"
+          case "$worker_types" in
+            true|false) ;;
+            *) echo "worker_types must be true or false" >&2; exit 1 ;;
+          esac
+          if [[ "$worker_types" == true && "$preset" != contracts ]]; then
+            echo "Worker binding types require the contracts preset" >&2
+            exit 1
+          fi
+          echo "worker_types=$worker_types" >> "$GITHUB_OUTPUT"
           source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
           [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
             echo "source_sha must be a full 40-character commit SHA" >&2
@@ -256,6 +271,10 @@ jobs:
         # probe, publishing, observability or deployment secrets are supplied.
         run: METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build
 
+      - name: Generate Worker binding types
+        if: steps.source.outputs.preset == 'contracts' && steps.source.outputs.worker_types == 'true'
+        run: npm run types:workers
+
       - name: Project expected D1 schema without live access
         if: steps.source.outputs.preset == 'contracts' && steps.source.outputs.d1_migrations != ''
         env:
@@ -286,6 +305,7 @@ jobs:
           WORKFLOW_SHA: ${{ github.workflow_sha }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
           D1_MIGRATIONS: ${{ steps.source.outputs.d1_migrations }}
+          WORKER_TYPES: ${{ steps.source.outputs.worker_types }}
         shell: bash
         run: |
           python3 - <<'PY_GENERATED_CONTRACT_RECEIPT'
@@ -315,6 +335,12 @@ jobs:
           preset = os.environ.get("ARTIFACT_PRESET") or "contracts"
           if preset not in {"contracts", "logos"}:
               raise SystemExit("Unsupported artifact preset")
+          worker_types_flag = os.environ.get("WORKER_TYPES") or "false"
+          if worker_types_flag not in {"true", "false"}:
+              raise SystemExit("worker_types must be true or false")
+          worker_types = worker_types_flag == "true"
+          if worker_types and preset != "contracts":
+              raise SystemExit("Worker binding types require the contracts preset")
           kind = "logo" if preset == "logos" else "contract"
           exact = {
               "public/metagraph/openapi.json",
@@ -329,6 +355,13 @@ jobs:
               "packages/client/dist/index.js",
               "packages/client/dist/index.cjs",
           }
+          if worker_types:
+              exact |= {
+                  "workers/worker-configuration.d.ts",
+                  "workers/data-api.worker-configuration.d.ts",
+                  "workers/registry-sync-api.worker-configuration.d.ts",
+                  "workers/wss-lb.worker-configuration.d.ts",
+              }
           projection = None
           projected_migrations = os.environ.get("D1_MIGRATIONS", "")
           schema_paths = {"db/d1-schema.sql", "generated/db/d1-schema.json"}
@@ -418,9 +451,12 @@ jobs:
           patch = git("diff", "--binary", "--no-renames", "HEAD", "--", *selected) if selected else b""
           diffstat = git("diff", "--stat", "HEAD", "--", *selected) if selected else b""
           hashes = {p: sha256(pathlib.Path(p).read_bytes()) if pathlib.Path(p).exists() else None for p in selected}
-          commands = ["npm ci", "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build", "npm run build --workspace=packages/client", "cd apps/ui && node scripts/generate-openapi-docs.ts"]
+          commands = ["npm ci", "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build"]
+          if worker_types:
+              commands.append("npm run types:workers")
           if projection is not None:
-              commands.insert(2, "node scripts/snapshot-d1-schema.ts --project-migrations " + projected_migrations + " --write")
+              commands.append("node scripts/snapshot-d1-schema.ts --project-migrations " + projected_migrations + " --write")
+          commands.extend(["npm run build --workspace=packages/client", "cd apps/ui && node scripts/generate-openapi-docs.ts"])
           logo_receipt = {}
           if preset == "logos":
               commands = ["npm ci --ignore-scripts", "npm run build:logo-thumbnails", "npm run validate:logo-thumbnails"]
@@ -463,6 +499,7 @@ jobs:
           receipt = {
               "status": "success",
               "artifact_preset": preset,
+              "worker_types": worker_types,
               "source_sha": source,
               "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
               "workflow_sha": os.environ["WORKFLOW_SHA"],
