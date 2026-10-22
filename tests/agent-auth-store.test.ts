@@ -115,6 +115,50 @@ test("registration normalizes immutable email and stores only supplied hashes", 
   assert.equal(await f.store.readClaim(hash("0"), 100), null);
 });
 
+test("corrupt stored permissions cannot become registration or token authority", async () => {
+  const pending = fixture();
+  await pending.store.createRegistration(input);
+  const active = fixture();
+  await approved(active);
+  assert.equal(await active.store.issueToken(token), true);
+  // Simulate legacy or corrupted state that the current SQL constraint rejects.
+  pending.sql.exec("PRAGMA ignore_check_constraints=ON");
+  active.sql.exec("PRAGMA ignore_check_constraints=ON");
+  let now = 120;
+  for (const permissions of [
+    "{",
+    "null",
+    "[]",
+    '["admin"]',
+    '["profile","admin"]',
+    '["profile",1]',
+    '["profile" ]',
+  ]) {
+    for (const f of [pending, active]) {
+      f.sql
+        .prepare("UPDATE agent_auth_registrations SET permissions=?")
+        .run(permissions);
+      assert.equal(await f.store.getRegistration(input.id), null);
+      assert.deepEqual(await f.store.pollClaim(input.claimTokenHash, now), {
+        status: "missing",
+      });
+    }
+    assert.equal(
+      await pending.store.readClaim(input.claimTokenHash, now),
+      null,
+    );
+    assert.equal(await active.store.resolveToken(token.tokenHash, now), null);
+    now += 5;
+  }
+  active.sql
+    .prepare("UPDATE agent_auth_registrations SET permissions=?")
+    .run('["profile"]');
+  assert.deepEqual(
+    (await active.store.resolveToken(token.tokenHash, now))?.permissions,
+    ["profile"],
+  );
+});
+
 test("no token can be issued before verified owner approval", async () => {
   const f = fixture();
   await f.store.createRegistration(input);

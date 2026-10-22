@@ -155,7 +155,10 @@ function registration(
 ): AgentAuthRegistration | null {
   if (!row) return null;
   const { permissionsJson, ...rest } = row;
-  return { ...rest, permissions: JSON.parse(permissionsJson) as string[] };
+  // The private schema permits this exact serialization and no broader scope.
+  // Reject corrupted or older state before it can become token authority.
+  if (permissionsJson !== '["profile"]') return null;
+  return { ...rest, permissions: ["profile"] };
 }
 
 // Every ceremony operation rechecks the current registration version. Rotating
@@ -324,7 +327,7 @@ export function createAgentAuthStore(
       const attempt = crypto.randomUUID();
       // D1 batch is a transaction. Only this attempt's marker can authorize the
       // second statement, so retries/replays cannot renew the approval horizon.
-      const results = await session.batch([
+      const results = await session.batch<RegistrationRow>([
         session
           .prepare(
             `UPDATE agent_auth_ceremonies SET attempts=attempts+1,
@@ -363,8 +366,7 @@ export function createAgentAuthStore(
           )
           .bind(now, stateHash, stateHash, now, stateHash, attempt),
       ]);
-      const rows = results[1]!.results as unknown as RegistrationRow[];
-      return registration(rows[0] ?? null);
+      return registration(results[1]!.results[0] ?? null);
     },
     async pollClaim(claimTokenHash, now) {
       const row = await session
@@ -386,7 +388,8 @@ export function createAgentAuthStore(
         )
         .first<RegistrationRow>();
       if (row) {
-        const approved = registration(row)!;
+        const approved = registration(row);
+        if (!approved) return { status: "missing" };
         return row.approvedAt === null
           ? { status: "pending", registration: approved }
           : {
@@ -504,7 +507,8 @@ export function createAgentAuthStore(
         >();
       if (!row) return null;
       const { tokenExpiresAt, resource, ...registered } = row;
-      return { ...registration(registered)!, tokenExpiresAt, resource };
+      const resolved = registration(registered);
+      return resolved ? { ...resolved, tokenExpiresAt, resource } : null;
     },
     async revokeToken(tokenHash) {
       await session
