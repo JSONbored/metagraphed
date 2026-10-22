@@ -67,6 +67,13 @@ describe("the agent card", () => {
     assert.equal(card.protocolVersion, "0.3.0");
     assert.equal(card.url, `https://api.metagraph.sh${A2A_ENDPOINT_PATH}`);
     assert.equal(card.preferredTransport, "JSONRPC");
+    assert.deepEqual(card.supportedInterfaces, [
+      {
+        url: card.url,
+        protocolBinding: "JSONRPC",
+        protocolVersion: "0.3",
+      },
+    ]);
     assert.equal(card.version, MCP_SERVER_VERSION);
     // ONE skill. The 240 MCP tools are tools; advertising each as an A2A
     // skill would promise a delegation interface nobody built.

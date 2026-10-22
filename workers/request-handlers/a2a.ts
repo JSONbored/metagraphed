@@ -90,6 +90,15 @@ export function buildAgentCard(serverVersion: string): Row {
       "-- this A2A skill is the conversational front door, not the catalogue.",
     url: `https://api.metagraph.sh${A2A_ENDPOINT_PATH}`,
     preferredTransport: "JSONRPC",
+    // New discovery clients select per-interface versions; the endpoint still
+    // speaks 0.3, with the legacy fields above retained for existing clients.
+    supportedInterfaces: [
+      {
+        url: `https://api.metagraph.sh${A2A_ENDPOINT_PATH}`,
+        protocolBinding: "JSONRPC",
+        protocolVersion: "0.3",
+      },
+    ],
     provider: {
       organization: "metagraphed",
       url: "https://metagraph.sh",
