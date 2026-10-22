@@ -1,7 +1,9 @@
 import { AGENT_AUTH_ASSERTION_SECONDS } from "./agent-auth-store.ts";
 
-export const AGENT_AUTH_PRUNE_MAX_CHILDREN = 1000;
-export const AGENT_AUTH_PRUNE_MAX_REGISTRATIONS = 100;
+// Hourly budgets exceed the configured 20/minute per-IP admission rate.
+// Global admission caps also bound distributed traffic and delayed cron runs.
+export const AGENT_AUTH_PRUNE_MAX_CHILDREN = 5000;
+export const AGENT_AUTH_PRUNE_MAX_REGISTRATIONS = 2000;
 
 export type AgentAuthPruneResult =
   | {

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";
-import { pruneAgentAuthState } from "../src/agent-auth-prune.ts";
+import {
+  AGENT_AUTH_PRUNE_MAX_CHILDREN,
+  AGENT_AUTH_PRUNE_MAX_REGISTRATIONS,
+  pruneAgentAuthState,
+} from "../src/agent-auth-prune.ts";
 import { createAgentAuthFixture } from "./agent-auth-fixtures.ts";
 
 const NOW = 10_000;
@@ -111,18 +115,22 @@ test("preserves active credentials, pending claims and the full assertion horizo
   assert.equal(count(f, "agent_auth_ceremonies"), 1);
 });
 
-test("a child backlog stops at 1000 per table and keeps its parent until drained", async () => {
+test("a child backlog stops at the batch bound and keeps its parent until drained", async () => {
   const f = fixture();
   const parent = registration(f, 1);
   f.sql.exec("BEGIN");
-  for (let id = 1; id <= 1001; id++) {
+  for (let id = 1; id <= AGENT_AUTH_PRUNE_MAX_CHILDREN + 1; id++) {
     token(f, id, parent);
     ceremony(f, id, parent);
   }
   f.sql.exec("COMMIT");
   assert.deepEqual(await pruneAgentAuthState(f.db, NOW), {
     status: "pruned",
-    deleted: { tokens: 1000, ceremonies: 1000, registrations: 0 },
+    deleted: {
+      tokens: AGENT_AUTH_PRUNE_MAX_CHILDREN,
+      ceremonies: AGENT_AUTH_PRUNE_MAX_CHILDREN,
+      registrations: 0,
+    },
   });
   assert.equal(count(f, "agent_auth_tokens"), 1);
   assert.equal(count(f, "agent_auth_ceremonies"), 1);
@@ -133,12 +141,17 @@ test("a child backlog stops at 1000 per table and keeps its parent until drained
   });
 });
 
-test("registration candidates stop at 100 and resume on the next tick", async () => {
+test("registration candidates stop at the batch bound and resume on the next tick", async () => {
   const f = fixture();
-  for (let id = 1; id <= 101; id++) registration(f, id);
+  for (let id = 1; id <= AGENT_AUTH_PRUNE_MAX_REGISTRATIONS + 1; id++)
+    registration(f, id);
   assert.deepEqual(await pruneAgentAuthState(f.db, NOW), {
     status: "pruned",
-    deleted: { tokens: 0, ceremonies: 0, registrations: 100 },
+    deleted: {
+      tokens: 0,
+      ceremonies: 0,
+      registrations: AGENT_AUTH_PRUNE_MAX_REGISTRATIONS,
+    },
   });
   assert.equal(count(f, "agent_auth_registrations"), 1);
   assert.deepEqual(await pruneAgentAuthState(f.db, NOW), {
@@ -223,7 +236,10 @@ test("malformed D1 batch results cannot claim a successful prune", async () => {
     { success: true, results: {} },
     {
       success: true,
-      results: Array.from({ length: 1001 }, () => ({ deleted: 1 })),
+      results: Array.from(
+        { length: AGENT_AUTH_PRUNE_MAX_CHILDREN + 1 },
+        () => ({ deleted: 1 }),
+      ),
     },
     { success: true, results: [null] },
     { success: true, results: [1] },
@@ -250,7 +266,10 @@ test("malformed D1 batch results cannot claim a successful prune", async () => {
         empty(),
         {
           success: true,
-          results: Array.from({ length: 101 }, () => ({ deleted: 1 })),
+          results: Array.from(
+            { length: AGENT_AUTH_PRUNE_MAX_REGISTRATIONS + 1 },
+            () => ({ deleted: 1 }),
+          ),
         },
       ]),
       NOW,

@@ -24,12 +24,14 @@ const GENERATED_AT = "1970-01-01T00:00:00.000Z";
 describe("canonical x402 OpenAPI contract", () => {
   let openapi: Row;
 
+  // Generate the canonical document once; parallel coverage can exceed the
+  // default 10-second hook budget while generating the full schema registry.
   beforeAll(async () => {
     openapi = buildOpenApiArtifact(
       GENERATED_AT,
       await loadOpenApiComponentSchemas(GENERATED_AT),
     );
-  });
+  }, 60_000);
 
   test("covers every payable operation and its network variants from concrete route policy", () => {
     let optional = 0;
