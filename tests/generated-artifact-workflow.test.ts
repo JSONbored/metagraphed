@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
+import type { SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -451,12 +452,16 @@ test("immutable source resolution validates the optional Worker type flag before
       };
       delete env.WORKER_TYPES;
       if (workerTypes !== undefined) env.WORKER_TYPES = workerTypes;
-      const result = spawnSync("bash", ["-c", source.run], {
-        cwd: base,
-        env,
-        encoding: "utf8",
-        timeout: 10_000,
-      });
+      const result: SpawnSyncReturns<string> = spawnSync(
+        "bash",
+        ["-c", source.run],
+        {
+          cwd: base,
+          env,
+          encoding: "utf8",
+          timeout: 10_000,
+        },
+      );
       if (typeof expected === "string") {
         assert.equal(result.status, 0, result.stderr);
         const fields = Object.fromEntries(
