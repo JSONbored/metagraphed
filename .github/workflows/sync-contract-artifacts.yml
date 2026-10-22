@@ -1,775 +1,83 @@
-name: Sync contract artifacts
-
-# Catches contract drift that NO per-PR check can see: the kind that only
-# exists once two PRs are both on main.
-#
-# The incident this exists for (2026-07-30, #8774). #8768 refreshed
-# github-signals.json, which the subnet profile/detail OpenAPI *examples* are
-# generated from. Its own pre-merge build showed a clean public/ because that
-# branch was cut before #8758 landed the 76 network-addressed route variants
-# that duplicate those examples. Separately, #8761 added networks.json to
-# R2_ONLY_PATTERNS, flipping its storage_tier in contracts.json and
-# api-index.json. Each PR was self-consistent and green. The combination left
-# main's committed artifacts stale, and validate:contract-drift then failed on
-# EVERY open PR regardless of its contents until #8775 regenerated them.
-#
-# A per-PR freshness check is structurally blind to this: it compares a build
-# of THAT PR's tree against THAT PR's committed files. Only a build of main
-# itself, after the merge, can see it. So this runs on push to main -- the
-# moment the drift can first exist -- with a daily schedule as a backstop for
-# anything that lands while a run is skipped or fails.
-#
-# Same auto-PR shape as sync-client-version.yml / sync-mcp-version.yml:
-# regenerate, open a PR only when something actually differs, stay silent
-# otherwise. (The machine-DATA lanes that used to share this shape --
-# sync-operational-surfaces, sync-schema-snapshots, sync-surface-verification,
-# sync-github-signals -- are retired: their files are now written directly by
-# Worker crons into R2 stores, see #9096. This lane stays a PR because its
-# output is COMMITTED CONTRACT -- openapi.json, generated types -- which must
-# be reviewed and versioned in git, not swapped underneath a deploy.)
+name: Auth.md formatter diagnostic
 on:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: "40 5 * * *"
   workflow_dispatch:
-    inputs:
-      mode:
-        description: Sync main, or return generated artifacts for review without writes
-        type: choice
-        options: [sync, generate-only, resolve-lock]
-        default: sync
-      artifact_preset:
-        description: Fixed output family for generate-only; contracts remains the default
-        type: choice
-        options: [contracts, logos]
-        default: contracts
-      source_sha:
-        description: Exact same-repository commit for read-only modes (empty uses dispatch SHA)
-        type: string
-        default: ""
-      d1_migrations:
-        description: Optional comma-separated migration filenames to project as EXPECTED schema with contracts
-        type: string
-        default: ""
-      worker_types:
-        description: Optionally regenerate Worker binding types with contracts
-        type: boolean
-        default: false
-
 permissions:
   contents: read
-
-concurrency:
-  # Not cancel-in-progress: a run started by an earlier merge is still checking
-  # a real state, and cancelling it could drop the only observation of a drift
-  # that the next push happens not to reintroduce.
-  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only' && format('contract-generation-{0}-{1}', github.run_id, github.run_attempt) || github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock' && format('contract-lock-resolution-{0}-{1}', github.run_id, github.run_attempt) || 'sync-contract-artifacts' }}
-  cancel-in-progress: false
-
 jobs:
-  sync:
-    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'sync' || inputs.mode == ''
-    name: Regenerate contract artifacts if stale
+  format:
+    name: Return pinned formatter output
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # runs the full build
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 22.23.2
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      # The real build, exactly as a contributor or CI runs it. It does not
-      # re-capture github-signals (the Worker cron owns that lane now -- see
-      # src/github-signals-sync.ts -- and without Cloudflare credentials in
-      # this job's env the build reads the committed seed, never the store),
-      # so this run compares generated output against the SAME committed
-      # inputs main already has -- a diff here means the committed artifacts
-      # are genuinely stale, not that upstream data moved underneath them.
-      - name: Build
-        run: npm run build
-
-      # Scoped to the contract artifacts on purpose. build.ts already
-      # auto-reverts the deploy-owned pair (r2-manifest.json,
-      # schemas/index.json, see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts), and
-      # anything else the build touches belongs to whichever sync workflow owns
-      # it -- this one must not quietly adopt their files.
-      - name: Check whether the contract artifacts changed
-        id: diff
-        run: |
-          paths=(
-            public/metagraph/openapi.json
-            public/metagraph/contracts.json
-            public/metagraph/api-index.json
-            public/metagraph/types.d.ts
-            packages/contract/index.d.ts
-          )
-          if git diff --quiet -- "${paths[@]}"; then
-            echo "contract artifacts match a fresh build of main"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "contract artifacts on main are stale:"
-            git diff --stat -- "${paths[@]}"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Summarize which artifacts drifted
-        if: steps.diff.outputs.changed == 'true'
-        id: summary
-        run: |
-          files=$(git diff --name-only -- \
-            public/metagraph/openapi.json \
-            public/metagraph/contracts.json \
-            public/metagraph/api-index.json \
-            public/metagraph/types.d.ts \
-            packages/contract/index.d.ts \
-            | xargs -n1 basename | paste -sd ", " -)
-          echo "files=$files" >> "$GITHUB_OUTPUT"
-
-      - name: Open sync PR (no-op if unchanged)
-        if: steps.diff.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
-        id: pr
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: chore/sync-contract-artifacts
-          delete-branch: true
-          add-paths: |
-            public/metagraph/openapi.json
-            public/metagraph/contracts.json
-            public/metagraph/api-index.json
-            public/metagraph/types.d.ts
-            packages/contract/index.d.ts
-          title: "chore(build): sync contract artifacts (${{ steps.summary.outputs.files }})"
-          commit-message: "chore(build): sync contract artifacts (${{ steps.summary.outputs.files }})"
-          body: |
-            A fresh `npm run build` of `main` no longer matches the committed contract artifacts. Drifted: `${{ steps.summary.outputs.files }}`.
-
-            **Merge this promptly.** While `main` is in this state, `validate:contract-drift` fails on every open PR regardless of its contents — that is what #8774 was.
-
-            This usually means two PRs were individually green and mutually inconsistent: each was built against a tree that did not yet contain the other. No per-PR check can see that, which is why this workflow builds `main` itself after every merge.
-
-            If the diff looks like more than a regeneration, check what merged just before it rather than merging this on trust.
-          labels: |
-            automation
-      # #233 interim: merge the bot PR itself once its own checks are green,
-      # replacing the daily manual merge. Deliberately the RELEASE_PLEASE_TOKEN
-      # (a real PAT) rather than GITHUB_TOKEN: a GITHUB_TOKEN merge would not
-      # trigger push-to-main workflows (the merge-triggered fast registry sync,
-      # the version-bump lanes), silently detaching everything that reacts to
-      # these merges. A failed or missing check leaves the PR open for a human
-      # and turns this run red, which is the alert.
-      - name: Auto-merge when checks are green
-        if: steps.pr.outputs.pull-request-number
-        timeout-minutes: 30
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          pr="${{ steps.pr.outputs.pull-request-number }}"
-          # Checks register within moments of the branch push; give them a
-          # beat so --watch sees the run instead of "no checks reported".
-          sleep 60
-          gh pr checks "$pr" --watch --fail-fast
-          gh pr merge "$pr" --squash
-
-  generate:
-    name: Generate a review patch at an exact source commit
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'generate-only'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - name: Resolve immutable source
-        id: source
-        env:
-          ARTIFACT_PRESET: ${{ inputs.artifact_preset }}
-          REQUESTED_SHA: ${{ inputs.source_sha }}
-          DISPATCH_SHA: ${{ github.sha }}
-          D1_MIGRATIONS: ${{ inputs.d1_migrations }}
-          WORKER_TYPES: ${{ inputs.worker_types }}
-        shell: bash
-        run: |
-          preset="${ARTIFACT_PRESET:-contracts}"
-          case "$preset" in
-            contracts) kind=contract ;;
-            logos) kind=logo ;;
-            *) echo "Unsupported artifact preset" >&2; exit 1 ;;
-          esac
-          echo "preset=$preset" >> "$GITHUB_OUTPUT"
-          echo "kind=$kind" >> "$GITHUB_OUTPUT"
-          if [[ -n "$D1_MIGRATIONS" ]]; then
-            [[ "$preset" == contracts && "$D1_MIGRATIONS" =~ ^[0-9]{4}_[a-z0-9]+(_[a-z0-9]+)*\.sql(,[0-9]{4}_[a-z0-9]+(_[a-z0-9]+)*\.sql)*$ ]] || {
-              echo "D1 projection requires contracts and explicit migration filenames" >&2
-              exit 1
-            }
-          fi
-          echo "d1_migrations=$D1_MIGRATIONS" >> "$GITHUB_OUTPUT"
-          worker_types="${WORKER_TYPES:-false}"
-          case "$worker_types" in
-            true|false) ;;
-            *) echo "worker_types must be true or false" >&2; exit 1 ;;
-          esac
-          if [[ "$worker_types" == true && "$preset" != contracts ]]; then
-            echo "Worker binding types require the contracts preset" >&2
-            exit 1
-          fi
-          echo "worker_types=$worker_types" >> "$GITHUB_OUTPUT"
-          source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
-          [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
-            echo "source_sha must be a full 40-character commit SHA" >&2
-            exit 1
-          }
-          echo "sha=${source_sha,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout generation source
+      - name: Checkout immutable source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.source.outputs.sha }}
+          ref: 541ea597a26f1c034b099e0ab5ab5d7fe9aed785
           persist-credentials: false
           fetch-depth: 1
-
-      - name: Verify source identity
-        env:
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        shell: bash
-        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-
-      - name: Setup generation Node
+      - name: Setup pinned Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22.23.2
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install generation dependencies
-        if: steps.source.outputs.preset == 'contracts'
-        run: npm ci
-
-      - name: Install logo generation dependencies without lifecycle scripts
-        if: steps.source.outputs.preset == 'logos'
-        run: npm ci --ignore-scripts
-
-      - name: Generate contracts from committed seeds
-        if: steps.source.outputs.preset == 'contracts'
-        # Inline assignment keeps this explicitly non-production; no capture,
-        # probe, publishing, observability or deployment secrets are supplied.
-        run: METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build
-
-      - name: Generate Worker binding types
-        if: steps.source.outputs.preset == 'contracts' && steps.source.outputs.worker_types == 'true'
-        run: npm run types:workers
-
-      - name: Project expected D1 schema without live access
-        if: steps.source.outputs.preset == 'contracts' && steps.source.outputs.d1_migrations != ''
-        env:
-          D1_MIGRATIONS: ${{ steps.source.outputs.d1_migrations }}
-        run: node scripts/snapshot-d1-schema.ts --project-migrations "$D1_MIGRATIONS" --write > "$RUNNER_TEMP/d1-schema-projection.json"
-
-      - name: Generate client bundles
-        if: steps.source.outputs.preset == 'contracts'
-        run: npm run build --workspace=packages/client
-
-      - name: Generate API reference
-        if: steps.source.outputs.preset == 'contracts'
-        working-directory: apps/ui
-        run: node scripts/generate-openapi-docs.ts
-
-      - name: Generate logo derivatives with the existing builder
-        if: steps.source.outputs.preset == 'logos'
-        run: npm run build:logo-thumbnails
-
-      - name: Check generated logo derivatives
-        if: steps.source.outputs.preset == 'logos'
-        run: npm run validate:logo-thumbnails
-
-      - name: Capture allowlisted patch and receipt
-        env:
-          ARTIFACT_PRESET: ${{ steps.source.outputs.preset }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          WORKFLOW_SHA: ${{ github.workflow_sha }}
-          WORKFLOW_REF: ${{ github.workflow_ref }}
-          D1_MIGRATIONS: ${{ steps.source.outputs.d1_migrations }}
-          WORKER_TYPES: ${{ steps.source.outputs.worker_types }}
+      - name: Verify immutable source inputs
         shell: bash
         run: |
-          python3 - <<'PY_GENERATED_CONTRACT_RECEIPT'
-          import hashlib, json, os, pathlib, re, stat, subprocess
-
-          def git(*args):
-              return subprocess.check_output(["git", *args])
-
-          def sha256(body):
-              return hashlib.sha256(body).hexdigest()
-
-          def names(body):
-              return {p for p in body.decode().split("\0") if p}
-
-          def regular(name):
-              path = pathlib.Path(name)
-              for parent in [path, *path.parents]:
-                  if parent.is_symlink():
-                      raise SystemExit("Symlink in generated path: " + name)
-              if path.exists() and (not stat.S_ISREG(path.stat().st_mode) or path.stat().st_mode & 0o111):
-                  raise SystemExit("Non-regular or executable generated output: " + name)
-              return path
-
-          source = os.environ["SOURCE_SHA"]
-          if git("rev-parse", "HEAD").decode().strip() != source:
-              raise SystemExit("Generation changed source HEAD")
-          preset = os.environ.get("ARTIFACT_PRESET") or "contracts"
-          if preset not in {"contracts", "logos"}:
-              raise SystemExit("Unsupported artifact preset")
-          worker_types_flag = os.environ.get("WORKER_TYPES") or "false"
-          if worker_types_flag not in {"true", "false"}:
-              raise SystemExit("worker_types must be true or false")
-          worker_types = worker_types_flag == "true"
-          if worker_types and preset != "contracts":
-              raise SystemExit("Worker binding types require the contracts preset")
-          kind = "logo" if preset == "logos" else "contract"
-          exact = {
-              "public/auth.md",
-              "public/.well-known/auth.md",
-              "public/metagraph/openapi.json",
-              "public/metagraph/contracts.json",
-              "public/metagraph/api-index.json",
-              "public/metagraph/types.d.ts",
-              "packages/contract/index.d.ts",
-              "generated/metagraphed-client.ts",
-              "generated/graphql/schema.ts",
-              "generated/graphql/types.ts",
-              "packages/client/src/metagraphed-client.ts",
-              "packages/client/dist/index.js",
-              "packages/client/dist/index.cjs",
-          }
-          if worker_types:
-              exact |= {
-                  "workers/worker-configuration.d.ts",
-                  "workers/data-api.worker-configuration.d.ts",
-                  "workers/registry-sync-api.worker-configuration.d.ts",
-                  "workers/wss-lb.worker-configuration.d.ts",
-              }
-          projection = None
-          projected_migrations = os.environ.get("D1_MIGRATIONS", "")
-          schema_paths = {"db/d1-schema.sql", "generated/db/d1-schema.json"}
-          if projected_migrations:
-              migration_names = projected_migrations.split(",")
-              if preset != "contracts" or not 1 <= len(migration_names) <= 10 or migration_names != sorted(set(migration_names)) or any(not re.fullmatch(r"[0-9]{4}_[a-z0-9]+(?:_[a-z0-9]+)*\.sql", n) for n in migration_names):
-                  raise SystemExit("Invalid explicit D1 projection selection")
-              projection_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "d1-schema-projection.json"
-              projection = json.loads(projection_file.read_text())
-              if projection.get("mode") != "expected-postmigration" or projection.get("live_readback") is not False or projection.get("written") is not True:
-                  raise SystemExit("D1 projection must be labelled EXPECTED, not live readback")
-              if projection.get("migrations") != [{"name": n, "sha256": sha256(git("show", "HEAD:migrations/d1/" + n))} for n in migration_names]:
-                  raise SystemExit("D1 projection migration identity mismatch")
-              if projection.get("baseline_sha256") != {p: sha256(git("show", "HEAD:" + p)) for p in sorted(schema_paths)}:
-                  raise SystemExit("D1 projection baseline identity mismatch")
-              if projection.get("output_sha256") != {p: sha256(regular(p).read_bytes()) for p in sorted(schema_paths)}:
-                  raise SystemExit("D1 projection output identity mismatch")
-              exact |= schema_paths
-          docs = "apps/ui/content/docs/api-reference/"
-          excluded = {
-              "public/metagraph/r2-manifest.json",
-              "public/metagraph/schemas/index.json",
-              # Probe-input seed regenerated from registry data, not a
-              # contract output. Report its drift without publishing it.
-              "public/metagraph/operational-surfaces.json",
-          }
-          logo_root = "apps/ui/public/logos/"
-          sharing_root = logo_root + "sharing/v1/"
-          manifest_path = logo_root + "display/manifest.json"
-          identity_path = logo_root + "display/sharing-identity.json"
-          sharing_path = re.compile(re.escape(sharing_root) + r"[0-9a-f]{64}-[0-9a-f]{64}\.png\Z")
-          display_path = re.compile(re.escape(logo_root + "display/") + r"(?:[a-z0-9][a-z0-9-]*/)*[a-z0-9][a-z0-9-]*\.webp\Z")
-
-          def allowed(name):
-              if preset == "logos":
-                  return name in {manifest_path, identity_path} or bool(display_path.fullmatch(name) or sharing_path.fullmatch(name))
-              return name in exact or name.startswith(docs)
-
-          if preset == "logos":
-              excluded = set()
-              candidates = set()
-              for directory in [logo_root + "display", logo_root + "sharing"]:
-                  regular_directory = pathlib.Path(directory)
-                  for parent in [regular_directory, *regular_directory.parents]:
-                      if parent.is_symlink():
-                          raise SystemExit("Symlink in generated directory: " + directory)
-                  for path in regular_directory.rglob("*"):
-                      if path.is_file() or path.is_symlink():
-                          name = str(path)
-                          if not allowed(name):
-                              raise SystemExit("Unexpected logo output path: " + name)
-                          candidates.add(name)
-          else:
-              # Include ignored client source, never whole ignored build/secret trees.
-              candidates = exact | {str(p) for p in pathlib.Path(docs).rglob("*") if p.is_file() or p.is_symlink()}
-          for name in sorted(candidates):
-              path = pathlib.Path(name)
-              if preset == "logos":
-                  path = regular(name)
-              else:
-                  for parent in [path, *path.parents]:
-                      if parent.is_symlink():
-                          raise SystemExit("Symlink in generated path: " + name)
-                  if path.exists() and not stat.S_ISREG(path.stat().st_mode):
-                      raise SystemExit("Non-file generated path: " + name)
-              if path.exists():
-                  subprocess.run(["git", "add", "--intent-to-add", "--force", "--", name], check=True)
-
-          changed = names(git("diff", "--no-renames", "--name-only", "-z", "HEAD"))
-          untracked = names(git("ls-files", "--others", "--exclude-standard", "-z"))
-          dirty = sorted(changed | untracked)
-          unexpected = [p for p in dirty if not allowed(p) and p not in excluded]
-          if unexpected:
-              raise SystemExit("Unexpected generation changes: " + repr(unexpected))
-          selected = sorted(p for p in changed if allowed(p))
-          for name in selected:
-              old = git("ls-tree", "-z", "HEAD", "--", name)
-              if old and old.split(b" ", 1)[0] != b"100644":
-                  raise SystemExit("Non-regular base mode in patch: " + name)
-              path = pathlib.Path(name)
-              if preset == "logos":
-                  if name.startswith(sharing_root) and old:
-                      raise SystemExit("Existing immutable sharing output changed: " + name)
-                  regular(name)
-              elif path.exists() and path.stat().st_mode & 0o111:
-                  raise SystemExit("Executable generated output: " + name)
-          patch = git("diff", "--binary", "--no-renames", "HEAD", "--", *selected) if selected else b""
-          diffstat = git("diff", "--stat", "HEAD", "--", *selected) if selected else b""
-          hashes = {p: sha256(pathlib.Path(p).read_bytes()) if pathlib.Path(p).exists() else None for p in selected}
-          commands = ["npm ci", "METAGRAPH_PRODUCTION_BUILD=0 METAGRAPH_PRESERVE_PROBE_HEALTH=1 npm run build"]
-          if worker_types:
-              commands.append("npm run types:workers")
-          if projection is not None:
-              commands.append("node scripts/snapshot-d1-schema.ts --project-migrations " + projected_migrations + " --write")
-          commands.extend(["npm run build --workspace=packages/client", "cd apps/ui && node scripts/generate-openapi-docs.ts"])
-          logo_receipt = {}
-          if preset == "logos":
-              commands = ["npm ci --ignore-scripts", "npm run build:logo-thumbnails", "npm run validate:logo-thumbnails"]
-              manifest = json.loads(regular(manifest_path).read_text())
-              identity = json.loads(regular(identity_path).read_text())
-              entries = manifest["entries"]
-              original_hashes = {}
-              output_hashes = {}
-              display_hashes = {}
-              for entry in entries:
-                  original = logo_root + entry["source_path"]
-                  output = logo_root + entry["sharing_path"]
-                  display = logo_root + "display/" + entry["display_path"]
-                  if not sharing_path.fullmatch(output):
-                      raise SystemExit("Unexpected manifest sharing path: " + output)
-                  if not display_path.fullmatch(display):
-                      raise SystemExit("Unexpected manifest display path: " + display)
-                  old = git("show", "HEAD:" + original)
-                  original_bytes = regular(original).read_bytes()
-                  if old != original_bytes:
-                      raise SystemExit("Original logo changed: " + original)
-                  original_hashes[original] = sha256(original_bytes)
-                  output_hashes[output] = sha256(regular(output).read_bytes())
-                  display_hashes[display] = sha256(regular(display).read_bytes())
-                  if original_hashes[original] != entry["source_sha256"] or output_hashes[output] != entry["sharing_sha256"] or display_hashes[display] != entry["display_sha256"]:
-                      raise SystemExit("Manifest byte identity mismatch: " + original)
-              if any(p.startswith(sharing_root) and p not in output_hashes for p in selected):
-                  raise SystemExit("New sharing output is not selected by the manifest")
-              logo_receipt = {
-                  "manifest_entries": len(entries),
-                  "unique_sharing_paths": len(output_hashes),
-                  "manifest_sha256": sha256(regular(manifest_path).read_bytes()),
-                  "sharing_identity": identity,
-                  "sharing_identity_sha256": sha256(regular(identity_path).read_bytes()),
-                  "original_sha256": original_hashes,
-                  "sharing_output_sha256": output_hashes,
-                  "display_output_sha256": display_hashes,
-                  "sharing_policy": manifest["sharing"],
-              }
-          receipt = {
-              "status": "success",
-              "artifact_preset": preset,
-              "worker_types": worker_types,
-              "source_sha": source,
-              "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
-              "workflow_sha": os.environ["WORKFLOW_SHA"],
-              "workflow_ref": os.environ["WORKFLOW_REF"],
-              "repository": os.environ["GITHUB_REPOSITORY"],
-              "run_id": os.environ["GITHUB_RUN_ID"],
-              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "node": subprocess.check_output(["node", "--version"]).decode().strip(),
-              "npm": subprocess.check_output(["npm", "--version"]).decode().strip(),
-              "lock_sha256": sha256(pathlib.Path("package-lock.json").read_bytes()),
-              "source_lock_sha256": sha256(git("show", "HEAD:package-lock.json")),
-              "commands": [{"command": c, "outcome": "success"} for c in commands],
-              "dirty_paths": dirty,
-              "excluded_paths": [p for p in dirty if p in excluded],
-              "changed_paths": selected,
-              "patch_sha256": sha256(patch),
-              "output_sha256": hashes,
-              **({"d1_schema_projection": projection} if projection is not None else {}),
-              **logo_receipt,
-          }
-          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / ("generated-" + kind + "-output")
-          output.mkdir()
-          (output / ("generated-" + kind + ".patch")).write_bytes(patch)
-          (output / "changed-paths.json").write_text(json.dumps(selected, indent=2) + "\n")
-          (output / "diffstat.txt").write_bytes(diffstat)
-          (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-          PY_GENERATED_CONTRACT_RECEIPT
-
-      - name: Upload review patch only
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: generated-${{ steps.source.outputs.kind }}-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/generated-${{ steps.source.outputs.kind }}-output
-          if-no-files-found: error
-          retention-days: 7
-
-  resolve:
-    name: Resolve a root lock review patch at an exact source commit
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-lock'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - name: Resolve immutable lock source
-        id: source
+          python3 - <<'PY_INPUTS'
+          import hashlib,json,pathlib,subprocess
+          expected={'source_sha': '541ea597a26f1c034b099e0ab5ab5d7fe9aed785', 'source_tree': '4806391e4bd8a7d663071ce08c90d417a0e8825a', 'lock_sha256': '0ee7606cb7c0b3cf32e0cf73781e2c05ff755fe5994f531682be741b84e24ea5', 'test_sha256': '72cc09e8022322cca755559869e795b7887d326b3222a4193aa3560f6b08f3a3', 'prettier_version': '3.9.6'}
+          def git(*args):return subprocess.check_output(['git',*args])
+          assert git('rev-parse','HEAD').decode().strip()==expected['source_sha']
+          assert git('rev-parse','HEAD^{tree}').decode().strip()==expected['source_tree']
+          assert hashlib.sha256(pathlib.Path('package-lock.json').read_bytes()).hexdigest()==expected['lock_sha256']
+          assert hashlib.sha256(pathlib.Path('tests/agent-auth-store.test.ts').read_bytes()).hexdigest()==expected['test_sha256']
+          assert not git('status','--porcelain','--untracked-files=all').strip()
+          print(json.dumps(expected,indent=2))
+          PY_INPUTS
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format exact test to runner temporary output only
         env:
-          REQUESTED_SHA: ${{ inputs.source_sha }}
-          DISPATCH_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          source_sha="${REQUESTED_SHA:-$DISPATCH_SHA}"
-          [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
-            echo "source_sha must be a full 40-character commit SHA" >&2
-            exit 1
-          }
-          echo "sha=${source_sha,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout lock source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.source.outputs.sha }}
-          persist-credentials: false
-          fetch-depth: 1
-
-      - name: Setup lock resolution Node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: 22.23.2
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Verify source and record immutable inputs
-        env:
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
           WORKFLOW_SHA: ${{ github.workflow_sha }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
         shell: bash
         run: |
-          python3 - <<'PY_LOCK_INPUTS'
-          import hashlib, json, os, pathlib, stat, subprocess
-
-          def git(*args):
-              return subprocess.check_output(["git", *args])
-
-          def names(body):
-              return [p for p in body.decode().split("\0") if p]
-
-          def regular(name):
-              path = pathlib.Path(name)
-              if path.is_absolute() or ".." in path.parts:
-                  raise SystemExit("Unsafe input path: " + name)
-              for parent in [path, *path.parents]:
-                  if parent.is_symlink():
-                      raise SystemExit("Symlink in input path: " + name)
-              if not stat.S_ISREG(path.stat().st_mode) or path.stat().st_mode & 0o111:
-                  raise SystemExit("Input must be a regular non-executable file: " + name)
-              mode = git("ls-tree", "HEAD", "--", name).split(b" ", 1)[0]
-              if mode != b"100644":
-                  raise SystemExit("Input must have tracked mode 100644: " + name)
-              return hashlib.sha256(path.read_bytes()).hexdigest()
-
-          source = os.environ["SOURCE_SHA"]
-          if git("rev-parse", "HEAD").decode().strip() != source:
-              raise SystemExit("Checkout does not match exact source")
-          if git("status", "--porcelain", "--untracked-files=all").strip():
-              raise SystemExit("Lock resolution requires a clean checkout")
-          if names(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z")):
-              raise SystemExit("Unexpected ignored files before resolution")
-          tracked = names(git("ls-files", "-z"))
-          manifests = sorted(p for p in tracked if pathlib.PurePosixPath(p).name == "package.json")
-          npmrcs = sorted(p for p in tracked if pathlib.PurePosixPath(p).name == ".npmrc")
-          if "package.json" not in manifests or ".npmrc" not in npmrcs:
-              raise SystemExit("Missing root package manifest or npmrc")
-          inputs = {p: regular(p) for p in [*manifests, *npmrcs, "package-lock.json"]}
-          node = subprocess.check_output(["node", "--version"]).decode().strip()
-          if node != "v22.23.2":
-              raise SystemExit("Unexpected Node version: " + node)
-          receipt = {
-              "status": "prepared",
-              "source_sha": source,
-              "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
-              "workflow_sha": os.environ["WORKFLOW_SHA"],
-              "workflow_ref": os.environ["WORKFLOW_REF"],
-              "repository": os.environ["GITHUB_REPOSITORY"],
-              "run_id": os.environ["GITHUB_RUN_ID"],
-              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "node": node,
-              "npm": subprocess.check_output(["npm", "--version"]).decode().strip(),
-              "input_sha256": inputs,
-          }
-          destination = pathlib.Path(os.environ["RUNNER_TEMP"]) / "lock-resolution-inputs.json"
-          destination.write_text(json.dumps(receipt, indent=2) + "\n")
-          PY_LOCK_INPUTS
-
-      - name: Resolve root lock without lifecycle scripts
-        shell: bash
-        run: |
-          python3 - <<'PY_RESOLVE_LOCK'
-          import json, os, pathlib, subprocess
-
-          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
-          receipt = json.loads((temp / "lock-resolution-inputs.json").read_text())
-          command = ["npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"]
-          result = subprocess.run(command, check=False)
-          receipt["command"] = {"argv": command, "exit_code": result.returncode}
-          receipt["status"] = "resolved" if result.returncode == 0 else "failed"
-          (temp / "lock-resolution-result.json").write_text(json.dumps(receipt, indent=2) + "\n")
-          if result.returncode:
-              diagnostics = temp / "lock-resolution-diagnostics"
-              diagnostics.mkdir()
-              (diagnostics / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-              raise SystemExit(1)
-          PY_RESOLVE_LOCK
-
-      - name: Capture root-lock-only patch and receipt
-        shell: bash
-        run: |
-          python3 - <<'PY_LOCK_RECEIPT'
-          import hashlib, json, os, pathlib, stat, subprocess
-
-          def git(*args):
-              return subprocess.check_output(["git", *args])
-
-          def names(body):
-              return [p for p in body.decode().split("\0") if p]
-
-          def sha256(body):
-              return hashlib.sha256(body).hexdigest()
-
-          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
-          receipt = json.loads((temp / "lock-resolution-result.json").read_text())
-          if receipt["status"] != "resolved" or receipt["command"]["exit_code"] != 0:
-              raise SystemExit("No successful resolver command receipt")
-          if git("rev-parse", "HEAD").decode().strip() != receipt["source_sha"]:
-              raise SystemExit("Resolution changed source HEAD")
-          if git("rev-parse", "HEAD^{tree}").decode().strip() != receipt["source_tree"]:
-              raise SystemExit("Resolution changed source tree")
-          for name, expected in receipt["input_sha256"].items():
-              if name == "package-lock.json":
-                  continue
-              path = pathlib.Path(name)
-              for parent in [path, *path.parents]:
-                  if parent.is_symlink():
-                      raise SystemExit("Symlink after resolution: " + name)
-              if not path.is_file() or path.stat().st_mode & 0o111 or sha256(path.read_bytes()) != expected:
-                  raise SystemExit("Resolution changed an immutable input: " + name)
-          changed = names(git("diff", "--no-renames", "--name-only", "-z", "HEAD"))
-          untracked = names(git("ls-files", "--others", "--exclude-standard", "-z"))
-          ignored = names(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
-          if set(changed) - {"package-lock.json"} or untracked or ignored:
-              raise SystemExit("Unexpected resolution changes: " + repr(sorted(set(changed + untracked + ignored))))
-          lock_path = pathlib.Path("package-lock.json")
-          if lock_path.is_symlink() or not stat.S_ISREG(lock_path.stat().st_mode) or lock_path.stat().st_mode & 0o111:
-              raise SystemExit("Output lock must be a regular non-executable file")
-          raw = git("diff", "--raw", "--no-abbrev", "HEAD", "--", "package-lock.json").decode()
-          if raw and not raw.startswith(":100644 100644 "):
-              raise SystemExit("Unexpected output lock mode")
-          old_bytes = git("show", "HEAD:package-lock.json")
-          if sha256(old_bytes) != receipt["input_sha256"]["package-lock.json"]:
-              raise SystemExit("Input lock identity mismatch")
-          output_bytes = lock_path.read_bytes()
-          old = json.loads(old_bytes)
-          new = json.loads(output_bytes)
-          if old.get("lockfileVersion") != 3 or new.get("lockfileVersion") != 3:
-              raise SystemExit("Expected lockfileVersion 3")
-          before = old["packages"]
-          after = new["packages"]
-          changes = [{
-              "path": name,
-              "before_version": before.get(name, {}).get("version"),
-              "after_version": after.get(name, {}).get("version"),
-              "before_integrity": before.get(name, {}).get("integrity"),
-              "after_integrity": after.get(name, {}).get("integrity"),
-          } for name in sorted(set(before) | set(after)) if before.get(name) != after.get(name)]
-          locked_paths = [{"path": name, "version": value.get("version"), "link": value.get("link", False)} for name, value in sorted(after.items()) if "node_modules/" in name]
-          summary = json.dumps({"changed_package_nodes": changes, "locked_package_paths": locked_paths}, indent=2).encode() + b"\n"
-          if len(changes) > 5000 or len(locked_paths) > 20000 or len(summary) > 2 * 1024 * 1024:
-              raise SystemExit("Resolution summary exceeds review budget")
-          patch = git("diff", "--binary", "--no-renames", "HEAD", "--", "package-lock.json")
-          diffstat = git("diff", "--stat", "HEAD", "--", "package-lock.json")
-          receipt.update({
-              "status": "success",
-              "changed_paths": sorted(changed),
-              "output_lock_sha256": sha256(output_bytes),
-              "patch_sha256": sha256(patch),
-              "version_summary_sha256": sha256(summary),
-              "changed_package_node_count": len(changes),
-              "locked_package_path_count": len(locked_paths),
-          })
-          output = temp / "resolved-lock-output"
+          python3 - <<'PY_FORMAT'
+          import difflib,hashlib,json,os,pathlib,subprocess
+          expected={'source_sha': '541ea597a26f1c034b099e0ab5ab5d7fe9aed785', 'source_tree': '4806391e4bd8a7d663071ce08c90d417a0e8825a', 'lock_sha256': '0ee7606cb7c0b3cf32e0cf73781e2c05ff755fe5994f531682be741b84e24ea5', 'test_sha256': '72cc09e8022322cca755559869e795b7887d326b3222a4193aa3560f6b08f3a3', 'prettier_version': '3.9.6'}
+          target='tests/agent-auth-store.test.ts'
+          prettier='./node_modules/.bin/prettier'
+          def git(*args):return subprocess.check_output(['git',*args])
+          def sha(body):return hashlib.sha256(body).hexdigest()
+          version=subprocess.check_output([prettier,'--version']).decode().strip()
+          assert version==expected['prettier_version']=='3.9.6',version
+          assert subprocess.check_output(['node','--version']).decode().strip()=='v22.23.2'
+          before=pathlib.Path(target).read_bytes()
+          formatted=subprocess.check_output([prettier,target])
+          assert subprocess.check_output([prettier,'--stdin-filepath',target],input=formatted)==formatted
+          assert git('rev-parse','HEAD').decode().strip()==expected['source_sha']
+          assert git('rev-parse','HEAD^{tree}').decode().strip()==expected['source_tree']
+          assert sha(pathlib.Path('package-lock.json').read_bytes())==expected['lock_sha256']
+          assert sha(before)==sha(pathlib.Path(target).read_bytes())==expected['test_sha256']
+          assert not git('status','--porcelain','--untracked-files=all').strip()
+          patch=''.join(difflib.unified_diff(before.decode().splitlines(keepends=True),formatted.decode().splitlines(keepends=True),fromfile='a/'+target,tofile='b/'+target)).encode()
+          output=pathlib.Path(os.environ['RUNNER_TEMP'])/'authmd-format-output'
           output.mkdir()
-          (output / "lock.patch").write_bytes(patch)
-          (output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-          (output / "diffstat.txt").write_bytes(diffstat)
-          (output / "versions.json").write_bytes(summary)
-          PY_LOCK_RECEIPT
-
-      - name: Upload root lock review artifact only
+          (output/'agent-auth-store.test.ts').write_bytes(formatted)
+          (output/'formatting.patch').write_bytes(patch)
+          lock=json.loads(pathlib.Path('package-lock.json').read_bytes())
+          installed=json.loads(pathlib.Path('node_modules/prettier/package.json').read_bytes())
+          assert installed['version']==version
+          receipt={**expected,'status':'success','repository':os.environ['GITHUB_REPOSITORY'],'workflow_sha':os.environ['WORKFLOW_SHA'],'workflow_ref':os.environ['WORKFLOW_REF'],'run_id':os.environ['GITHUB_RUN_ID'],'run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],'node':subprocess.check_output(['node','--version']).decode().strip(),'npm':subprocess.check_output(['npm','--version']).decode().strip(),'formatter':prettier,'formatter_version':version,'formatter_integrity':lock['packages']['node_modules/prettier']['integrity'],'test_path':target,'source_lock_sha256':sha(git('show','HEAD:package-lock.json')),'source_test_sha256':sha(git('show','HEAD:'+target)),'output_test_sha256':sha(formatted),'patch_sha256':sha(patch),'commands':[['npm','ci','--ignore-scripts','--no-audit','--no-fund'],[prettier,target],[prettier,'--stdin-filepath',target]],'dirty_paths':[]}
+          (output/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          print(json.dumps(receipt,indent=2))
+          print(patch.decode())
+          PY_FORMAT
+      - name: Upload formatter output and verification receipt
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: resolved-lock-${{ steps.source.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/resolved-lock-output
+          name: authmd-format-541ea597a26f1c034b099e0ab5ab5d7fe9aed785-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/authmd-format-output
           if-no-files-found: error
-          retention-days: 7
-
-      - name: Record failed job receipt without a lock patch
-        if: failure()
-        shell: bash
-        run: |
-          python3 - <<'PY_FAILED_LOCK_RECEIPT'
-          import json, os, pathlib
-
-          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
-          result = temp / "lock-resolution-result.json"
-          inputs = temp / "lock-resolution-inputs.json"
-          receipt = json.loads(result.read_text()) if result.exists() else json.loads(inputs.read_text()) if inputs.exists() else {}
-          receipt.update({"status": "failed", "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"], "diagnostic": "Job failed; inspect the exact-run step log. This receipt contains no lock patch."})
-          diagnostics = temp / "lock-resolution-diagnostics"
-          diagnostics.mkdir(exist_ok=True)
-          (diagnostics / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-          PY_FAILED_LOCK_RECEIPT
-
-      - name: Upload failed resolver receipt only
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: failed-lock-resolution-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/lock-resolution-diagnostics
-          if-no-files-found: ignore
           retention-days: 7
