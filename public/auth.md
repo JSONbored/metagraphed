@@ -103,8 +103,8 @@ upstream ID-JAG identity assertions or the older `verified_email` identity type.
    in with GitHub, which must report a verified email matching the original
    `login_hint`, reviews the requested `profile` scope, and explicitly
    approves the displayed registration using the code. Sign-in alone is not
-   approval. Never send the claim token to a third-party URL or ask for the
-   owner's GitHub password, wallet seed or private key.
+   approval. Never send the claim token to a third-party URL or request
+   authentication secrets from the owner.
 3. Poll `POST https://api.metagraph.sh/oauth/token` using
    `application/x-www-form-urlencoded` with
    `grant_type=urn:workos:agent-auth:grant-type:claim` and `claim_token`.
