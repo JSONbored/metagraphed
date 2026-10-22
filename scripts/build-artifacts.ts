@@ -2707,7 +2707,10 @@ Use this flow only when authorization-server metadata advertises \`agent_auth\`
 with \`service_auth\` in \`identity_types_supported\`. Discovery stays disabled
 until the dedicated signing key, rate limiter and private database migration are
 available. An unprovisioned endpoint returns \`503\`; it never issues a credential
-with missing durable state. This flow does not support anonymous issuance,
+with missing durable state. A \`503\` with \`Retry-After\` also signals temporary
+registration capacity: wait the indicated delay, then retry with the same
+unexpired claim or assertion. Do not create replacement registrations during
+capacity backoff. This flow does not support anonymous issuance,
 upstream ID-JAG identity assertions or the older \`verified_email\` identity type.
 
 1. Send \`POST ${llmsApiBase}/agent/register\` with JSON

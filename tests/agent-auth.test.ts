@@ -15,6 +15,7 @@ import {
   loadAgentAuthSigner,
   type AgentAuthSigner,
 } from "../src/agent-auth-jwt.ts";
+import { AgentAuthCapacityError } from "../src/agent-auth-store.ts";
 import { sha256Hex } from "../src/sha256-hex.ts";
 import { createAgentAuthFixture } from "./agent-auth-fixtures.ts";
 
@@ -1068,6 +1069,61 @@ test("provisioning and native rate limits fail closed without leaking credential
     ).status,
     429,
   );
+});
+
+test("capacity backoff preserves the pending claim and owner approval for a same-claim retry", async () => {
+  const f = fixture();
+  const full = async () => {
+    throw new AgentAuthCapacityError();
+  };
+  const backoff = async (response: Response | null) => {
+    assert.equal(await errorCode(response, 503), "temporarily_unavailable");
+    assert.equal(response!.headers.get("retry-after"), "60");
+    assert.equal(response!.headers.get("set-cookie"), null);
+  };
+  await backoff(
+    await f.auth(
+      "/agent/register",
+      { type: "service_auth", login_hint: "owner@example.com" },
+      {},
+      { store: { ...f.store, createRegistration: full } },
+    ),
+  );
+  const registration = await f.register();
+  await backoff(
+    await f.auth(
+      registration.claim.verification_uri.slice(AGENT_AUTH_ISSUER.length),
+      undefined,
+      {},
+      { store: { ...f.store, createCeremony: full } },
+    ),
+  );
+  const browser = await f.browser(registration);
+  assert.equal((await f.callback(browser)).status, 200);
+  f.time(110);
+  assert.equal(
+    (await f.approve(browser, registration.claim.user_code))?.status,
+    200,
+  );
+  await backoff(
+    await f.auth(
+      "/oauth/token",
+      {
+        grant_type: AGENT_AUTH_CLAIM_GRANT,
+        claim_token: registration.claim_token,
+      },
+      {},
+      { store: { ...f.store, issueToken: full } },
+    ),
+  );
+  assert.equal(
+    (await f.store.getRegistration(registration.registration_id))?.approvedAt,
+    110,
+  );
+  f.time(115);
+  const token = await parsed<Token>(await f.claim(registration));
+  assert.match(token.access_token, /^mg_agent_/);
+  assert.ok(token.identity_assertion);
 });
 
 test("store, signing, callback and resolution failures return bounded generic errors", async () => {

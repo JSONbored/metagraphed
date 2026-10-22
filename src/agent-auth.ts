@@ -1,6 +1,7 @@
 import {
   createAgentAuthStore,
   AGENT_AUTH_POLL_SECONDS,
+  AgentAuthCapacityError,
   type AgentAuthStore,
   type AgentAuthRegistration,
 } from "./agent-auth-store.ts";
@@ -762,7 +763,14 @@ export async function handleAgentAuthRequest(
       `${COOKIE}=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
     );
     return response;
-  } catch {
+  } catch (cause) {
+    if (cause instanceof AgentAuthCapacityError)
+      return error(
+        "temporarily_unavailable",
+        "Registration capacity is temporarily full. Retry the same unexpired claim or assertion after the indicated delay.",
+        503,
+        60,
+      );
     return error(
       "temporarily_unavailable",
       "Agent authentication is temporarily unavailable.",

@@ -134,6 +134,47 @@ export const AGENT_AUTH_ASSERTION_SECONDS = 3600;
 export const AGENT_AUTH_POLL_SECONDS = 5;
 export const AGENT_AUTH_MAX_POLLS = 120;
 export const AGENT_AUTH_MAX_APPROVAL_ATTEMPTS = 5;
+// Counts include expired rows and earlier claim versions until bounded pruning.
+// Admission, rather than cleanup throughput or caller IPs, bounds durable state.
+export const AGENT_AUTH_MAX_REGISTRATIONS = 10_000;
+export const AGENT_AUTH_MAX_CEREMONIES = 20_000;
+export const AGENT_AUTH_MAX_TOKENS = 20_000;
+export const AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION = 8;
+export const AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION = 128;
+
+export class AgentAuthCapacityError extends Error {
+  constructor() {
+    super("Agent authentication storage admission is temporarily full.");
+    this.name = "AgentAuthCapacityError";
+  }
+}
+
+// These predicates run inside each INSERT, where SQLite serializes writers.
+// LIMIT also bounds admission-query work against oversized legacy state.
+// Post-refusal eligibility reads classify errors only; they never permit a write.
+const registrationCapacity = `(SELECT count(*) FROM (
+  SELECT 1 FROM agent_auth_registrations LIMIT ${AGENT_AUTH_MAX_REGISTRATIONS}
+))<${AGENT_AUTH_MAX_REGISTRATIONS}`;
+const ceremonyCapacity = `(SELECT count(*) FROM (
+  SELECT 1 FROM agent_auth_ceremonies LIMIT ${AGENT_AUTH_MAX_CEREMONIES}
+))<${AGENT_AUTH_MAX_CEREMONIES} AND (SELECT count(*) FROM (
+  SELECT 1 FROM agent_auth_ceremonies WHERE registration_id=r.id
+  LIMIT ${AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION}
+))<${AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION}`;
+const tokenCapacity = `(SELECT count(*) FROM (
+  SELECT 1 FROM agent_auth_tokens LIMIT ${AGENT_AUTH_MAX_TOKENS}
+))<${AGENT_AUTH_MAX_TOKENS} AND (SELECT count(*) FROM (
+  SELECT 1 FROM agent_auth_tokens WHERE registration_id=r.id
+  LIMIT ${AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION}
+))<${AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION}`;
+
+const ceremonyEligibility = `r.id=? AND r.claim_version=?
+  AND r.revoked_at IS NULL AND r.approved_at IS NULL
+  AND r.created_at<=? AND r.expires_at>? AND ?>? AND ?<=r.expires_at`;
+const tokenEligibility = `r.id=? AND r.revoked_at IS NULL AND r.owner_kind='github'
+  AND EXISTS (SELECT 1 FROM github_accounts g WHERE CAST(g.id AS TEXT)=r.owner_id)
+  AND r.approved_at=? AND r.approved_at+?=? AND r.approved_at<=?
+  AND ?<? AND ?>? AND ?<=? AND ?<=?+?`;
 
 type RegistrationRow = Omit<AgentAuthRegistration, "permissions"> & {
   permissionsJson: string;
@@ -212,26 +253,35 @@ export function createAgentAuthStore(
       }
     },
     async createRegistration(input) {
-      return registration(
-        await session
-          .prepare(
-            `INSERT INTO agent_auth_registrations
+      const row = await session
+        .prepare(
+          `INSERT INTO agent_auth_registrations
             (id,agent_name,email_hint,permissions,claim_token_hash,user_code_hash,created_at,expires_at)
-            VALUES (?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING
+            SELECT ?,?,?,?,?,?,?,? WHERE ${registrationCapacity}
+            ON CONFLICT DO NOTHING
             RETURNING ${registrationColumns()}`,
+        )
+        .bind(
+          input.id,
+          input.agentName,
+          input.emailHint.trim().toLowerCase(),
+          JSON.stringify(input.permissions),
+          input.claimTokenHash,
+          input.userCodeHash,
+          input.createdAt,
+          input.expiresAt,
+        )
+        .first<RegistrationRow>();
+      if (!row) {
+        const conflict = await session
+          .prepare(
+            "SELECT 1 AS present FROM agent_auth_registrations WHERE id=? OR claim_token_hash=? LIMIT 1",
           )
-          .bind(
-            input.id,
-            input.agentName,
-            input.emailHint.trim().toLowerCase(),
-            JSON.stringify(input.permissions),
-            input.claimTokenHash,
-            input.userCodeHash,
-            input.createdAt,
-            input.expiresAt,
-          )
-          .first<RegistrationRow>(),
-      );
+          .bind(input.id, input.claimTokenHash)
+          .first<{ present: number }>();
+        if (!conflict) throw new AgentAuthCapacityError();
+      }
+      return registration(row);
     },
     getRegistration,
     async readClaim(claimTokenHash, now) {
@@ -246,14 +296,22 @@ export function createAgentAuthStore(
           .first<RegistrationRow>(),
       );
     },
-    createCeremony(input) {
-      return session
+    async createCeremony(input) {
+      const eligibility = [
+        input.registrationId,
+        input.claimVersion,
+        input.createdAt,
+        input.createdAt,
+        input.expiresAt,
+        input.createdAt,
+        input.expiresAt,
+      ];
+      const row = await session
         .prepare(
           `INSERT INTO agent_auth_ceremonies
           (state_hash,registration_id,claim_version,cookie_hash,csrf_hash,created_at,expires_at)
           SELECT ?,r.id,r.claim_version,?,?,?,? FROM agent_auth_registrations r
-          WHERE r.id=? AND r.claim_version=? AND r.revoked_at IS NULL AND r.approved_at IS NULL
-            AND r.created_at<=? AND r.expires_at>? AND ?>? AND ?<=r.expires_at
+          WHERE ${ceremonyEligibility} AND ${ceremonyCapacity}
           ON CONFLICT DO NOTHING RETURNING ${ceremonyColumns}`,
         )
         .bind(
@@ -262,15 +320,22 @@ export function createAgentAuthStore(
           input.csrfHash,
           input.createdAt,
           input.expiresAt,
-          input.registrationId,
-          input.claimVersion,
-          input.createdAt,
-          input.createdAt,
-          input.expiresAt,
-          input.createdAt,
-          input.expiresAt,
+          ...eligibility,
         )
         .first<AgentAuthCeremony>();
+      if (!row) {
+        const eligible = await session
+          .prepare(
+            `SELECT 1 AS present FROM agent_auth_registrations r
+            WHERE ${ceremonyEligibility} AND NOT EXISTS (
+              SELECT 1 FROM agent_auth_ceremonies WHERE state_hash=?
+            )`,
+          )
+          .bind(...eligibility, input.stateHash)
+          .first<{ present: number }>();
+        if (eligible) throw new AgentAuthCapacityError();
+      }
+      return row;
     },
     getCeremony({ stateHash, cookieHash, now }) {
       return session
@@ -455,16 +520,28 @@ export function createAgentAuthStore(
           ? AGENT_AUTH_DEFAULT_RESOURCE
           : input.resource;
       if (!AGENT_AUTH_TOKEN_RESOURCES.includes(resource)) return false;
+      const eligibility = [
+        input.registrationId,
+        input.issuedAt,
+        AGENT_AUTH_ASSERTION_SECONDS,
+        input.assertionExpiresAt,
+        input.now,
+        input.now,
+        input.assertionExpiresAt,
+        input.expiresAt,
+        input.now,
+        input.expiresAt,
+        input.assertionExpiresAt,
+        input.expiresAt,
+        input.now,
+        AGENT_AUTH_ASSERTION_SECONDS,
+      ];
       const issued = await session
         .prepare(
           `INSERT INTO agent_auth_tokens
           (token_hash,registration_id,claim_version,resource,created_at,expires_at)
-          SELECT ?,id,claim_version,?,?,? FROM agent_auth_registrations
-          WHERE id=? AND revoked_at IS NULL AND owner_kind='github'
-            AND EXISTS (SELECT 1 FROM github_accounts g
-              WHERE CAST(g.id AS TEXT)=agent_auth_registrations.owner_id)
-            AND approved_at=? AND approved_at+?=? AND approved_at<=?
-            AND ?<? AND ?>? AND ?<=? AND ?<=?+?
+          SELECT ?,r.id,r.claim_version,?,?,? FROM agent_auth_registrations r
+          WHERE ${tokenEligibility} AND ${tokenCapacity}
           ON CONFLICT DO NOTHING RETURNING token_hash`,
         )
         .bind(
@@ -472,22 +549,21 @@ export function createAgentAuthStore(
           resource,
           input.now,
           input.expiresAt,
-          input.registrationId,
-          input.issuedAt,
-          AGENT_AUTH_ASSERTION_SECONDS,
-          input.assertionExpiresAt,
-          input.now,
-          input.now,
-          input.assertionExpiresAt,
-          input.expiresAt,
-          input.now,
-          input.expiresAt,
-          input.assertionExpiresAt,
-          input.expiresAt,
-          input.now,
-          AGENT_AUTH_ASSERTION_SECONDS,
+          ...eligibility,
         )
         .first<{ token_hash: string }>();
+      if (!issued) {
+        const eligible = await session
+          .prepare(
+            `SELECT 1 AS present FROM agent_auth_registrations r
+            WHERE ${tokenEligibility} AND NOT EXISTS (
+              SELECT 1 FROM agent_auth_tokens WHERE token_hash=?
+            )`,
+          )
+          .bind(...eligibility, input.tokenHash)
+          .first<{ present: number }>();
+        if (eligible) throw new AgentAuthCapacityError();
+      }
       return issued !== null;
     },
     async resolveToken(tokenHash, now) {
