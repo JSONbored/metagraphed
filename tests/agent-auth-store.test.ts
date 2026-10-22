@@ -8,11 +8,12 @@ import {
   AGENT_AUTH_MAX_TOKENS,
   AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
   AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION,
+  AGENT_AUTH_RECLAIM_MAX_CHILDREN,
+  AGENT_AUTH_RECLAIM_MAX_REGISTRATIONS,
   AgentAuthCapacityError,
   createAgentAuthStore,
   type AgentAuthOwner,
 } from "../src/agent-auth-store.ts";
-import { pruneAgentAuthState } from "../src/agent-auth-prune.ts";
 import { createAgentAuthFixture } from "./agent-auth-fixtures.ts";
 
 const fixtures: ReturnType<typeof createAgentAuthFixture>[] = [];
@@ -70,9 +71,7 @@ const token = {
 };
 const numberedHash = (value: number) => value.toString(16).padStart(64, "0");
 type PrivateTable =
-  | "agent_auth_registrations"
-  | "agent_auth_ceremonies"
-  | "agent_auth_tokens";
+  "agent_auth_registrations" | "agent_auth_ceremonies" | "agent_auth_tokens";
 function count(f: ReturnType<typeof fixture>, table: PrivateTable) {
   return Number(
     f.sql.prepare(`SELECT count(*) AS total FROM ${table}`).get()!.total,
@@ -136,14 +135,9 @@ function seedTokens(
     .run(amount, parent);
 }
 
-test("global registration admission is atomic and one pruned row restores one slot", async () => {
+test("global registration admission is atomic and reclaims an expired pending slot", async () => {
   const f = fixture();
   seedRegistrations(f, AGENT_AUTH_MAX_REGISTRATIONS - 1);
-  f.sql
-    .prepare(
-      "UPDATE agent_auth_registrations SET expires_at=2 WHERE id='admission-registration-1'",
-    )
-    .run();
   const attempts = Array.from({ length: 12 }, (_, index) => ({
     ...input,
     id: `concurrent-registration-${index}`,
@@ -164,7 +158,7 @@ test("global registration admission is atomic and one pruned row restores one sl
   assert.equal(await f.store.createRegistration(attempts[winner]!), null);
   const next = {
     ...input,
-    id: "after-prune",
+    id: "after-reclaim",
     claimTokenHash: numberedHash(2_000_000),
     createdAt: 5000,
     expiresAt: 5600,
@@ -173,13 +167,17 @@ test("global registration admission is atomic and one pruned row restores one sl
     f.store.createRegistration(next),
     AgentAuthCapacityError,
   );
-  const pruned = await pruneAgentAuthState(f.db, 5000);
-  assert.equal(pruned.status, "pruned");
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_registrations SET expires_at=5000 WHERE id='admission-registration-1'",
+    )
+    .run();
+  assert.ok(await f.store.createRegistration(next));
+  assert.equal(await f.store.getRegistration("admission-registration-1"), null);
   assert.equal(
     count(f, "agent_auth_registrations"),
-    AGENT_AUTH_MAX_REGISTRATIONS - 1,
+    AGENT_AUTH_MAX_REGISTRATIONS,
   );
-  assert.ok(await f.store.createRegistration(next));
   await assert.rejects(
     f.store.createRegistration({
       ...next,
@@ -203,9 +201,6 @@ test("global ceremony admission cannot be amplified across registrations", async
     expiresAt: 10000,
   });
   seedCeremonies(f, filler, AGENT_AUTH_MAX_CEREMONIES - 1);
-  f.sql
-    .prepare("UPDATE agent_auth_ceremonies SET expires_at=2 WHERE state_hash=?")
-    .run(numberedHash(1));
   const attempts = Array.from({ length: 12 }, (_, index) => ({
     ...ceremony,
     stateHash: numberedHash(1_000_000 + index),
@@ -220,12 +215,13 @@ test("global ceremony admission cannot be amplified across registrations", async
   assert.equal(await f.store.createCeremony(attempts[winner]!), null);
   const next = { ...ceremony, stateHash: numberedHash(2_000_000) };
   await assert.rejects(f.store.createCeremony(next), AgentAuthCapacityError);
-  assert.equal((await pruneAgentAuthState(f.db, 100)).status, "pruned");
-  assert.equal(
-    count(f, "agent_auth_ceremonies"),
-    AGENT_AUTH_MAX_CEREMONIES - 1,
-  );
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=100 WHERE state_hash=?",
+    )
+    .run(numberedHash(1));
   assert.ok(await f.store.createCeremony(next));
+  assert.equal(count(f, "agent_auth_ceremonies"), AGENT_AUTH_MAX_CEREMONIES);
   await assert.rejects(
     f.store.createCeremony({ ...next, stateHash: numberedHash(2_000_001) }),
     AgentAuthCapacityError,
@@ -245,9 +241,6 @@ test("global token admission preserves existing tokens and resumes after one del
     expiresAt: 10000,
   });
   seedTokens(f, filler, AGENT_AUTH_MAX_TOKENS - 1);
-  f.sql
-    .prepare("UPDATE agent_auth_tokens SET expires_at=2 WHERE token_hash=?")
-    .run(numberedHash(1));
   const attempts = Array.from({ length: 12 }, (_, index) => ({
     ...token,
     tokenHash: numberedHash(1_000_000 + index),
@@ -262,9 +255,11 @@ test("global token admission preserves existing tokens and resumes after one del
   assert.equal(await f.store.issueToken(attempts[winner]!), false);
   const next = { ...token, tokenHash: numberedHash(2_000_000) };
   await assert.rejects(f.store.issueToken(next), AgentAuthCapacityError);
-  assert.equal((await pruneAgentAuthState(f.db, 120)).status, "pruned");
-  assert.equal(count(f, "agent_auth_tokens"), AGENT_AUTH_MAX_TOKENS - 1);
+  f.sql
+    .prepare("UPDATE agent_auth_tokens SET expires_at=120 WHERE token_hash=?")
+    .run(numberedHash(1));
   assert.equal(await f.store.issueToken(next), true);
+  assert.equal(count(f, "agent_auth_tokens"), AGENT_AUTH_MAX_TOKENS);
   await assert.rejects(
     f.store.issueToken({ ...next, tokenHash: numberedHash(2_000_001) }),
     AgentAuthCapacityError,
@@ -317,15 +312,9 @@ test("per-registration ceremony admission includes earlier claim versions", asyn
     stateHash: numberedHash(2_000_000),
     createdAt: 111,
   };
-  await assert.rejects(f.store.createCeremony(next), AgentAuthCapacityError);
   assert.equal(
     await f.store.createCeremony({ ...next, claimVersion: 1 }),
     null,
-  );
-  assert.equal((await pruneAgentAuthState(f.db, 111)).status, "pruned");
-  assert.equal(
-    count(f, "agent_auth_ceremonies"),
-    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION - 1,
   );
   assert.ok(await f.store.createCeremony(next));
   await assert.rejects(
@@ -374,13 +363,7 @@ test("per-registration token admission includes rotated and expired token rows",
   );
   assert.ok(await f.store.resolveToken(attempts[winner]!.tokenHash, 120));
   const next = { ...token, tokenHash: numberedHash(2_000_000), now: 121 };
-  await assert.rejects(f.store.issueToken(next), AgentAuthCapacityError);
   assert.equal(await f.store.issueToken({ ...next, issuedAt: 113 }), false);
-  assert.equal((await pruneAgentAuthState(f.db, 121)).status, "pruned");
-  assert.equal(
-    count(f, "agent_auth_tokens"),
-    AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION - 1,
-  );
   assert.equal(await f.store.issueToken(next), true);
   await assert.rejects(
     f.store.issueToken({ ...next, tokenHash: numberedHash(2_000_001) }),
@@ -389,7 +372,7 @@ test("per-registration token admission includes rotated and expired token rows",
   assert.ok(await f.store.resolveToken(attempts[winner]!.tokenHash, 121));
 });
 
-test("capacity refusal stays retryable when a deletion races its classification", async () => {
+test("admission recovers when deletion races its capacity classification", async () => {
   const f = fixture();
   await f.store.createRegistration(input);
   for (
@@ -421,13 +404,347 @@ test("capacity refusal stays retryable when a deletion races its classification"
       .run(numberedHash(1));
     deleted = true;
   });
-  await assert.rejects(f.store.createCeremony(next), AgentAuthCapacityError);
+  assert.ok(await f.store.createCeremony(next));
   assert.equal(deleted, true);
+  assert.equal(
+    count(f, "agent_auth_ceremonies"),
+    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
+  );
+});
+
+test("reclamation has fixed child and parent budgets and keeps undrained parents", async () => {
+  const f = fixture();
+  seedRegistrations(f, AGENT_AUTH_MAX_REGISTRATIONS);
+  seedCeremonies(
+    f,
+    "admission-registration-1",
+    AGENT_AUTH_RECLAIM_MAX_CHILDREN + 1,
+  );
+  seedTokens(
+    f,
+    "admission-registration-2",
+    AGENT_AUTH_RECLAIM_MAX_CHILDREN + 1,
+  );
+  f.sql.exec("UPDATE agent_auth_registrations SET expires_at=2");
+  f.sql.exec("UPDATE agent_auth_ceremonies SET expires_at=2");
+  f.sql.exec("UPDATE agent_auth_tokens SET expires_at=2");
+  assert.ok(await f.store.createRegistration(input));
+  assert.equal(count(f, "agent_auth_ceremonies"), 1);
+  assert.equal(count(f, "agent_auth_tokens"), 1);
+  assert.equal(
+    count(f, "agent_auth_registrations"),
+    AGENT_AUTH_MAX_REGISTRATIONS - AGENT_AUTH_RECLAIM_MAX_REGISTRATIONS + 1,
+  );
+  assert.ok(await f.store.getRegistration("admission-registration-1"));
+  assert.ok(await f.store.getRegistration("admission-registration-2"));
+  assert.deepEqual(f.sql.prepare("PRAGMA foreign_key_check").all(), []);
+});
+
+test("per-parent ceremony reclaim is not blocked by older global expiries", async () => {
+  const f = fixture();
+  await f.store.createRegistration(input);
+  const filler = "older-ceremonies";
+  await f.store.createRegistration({
+    ...input,
+    id: filler,
+    claimTokenHash: numberedHash(900_000),
+  });
+  seedCeremonies(f, filler, AGENT_AUTH_RECLAIM_MAX_CHILDREN + 1);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=2 WHERE registration_id=?",
+    )
+    .run(filler);
+  for (
+    let index = 0;
+    index < AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION;
+    index++
+  )
+    assert.ok(
+      await f.store.createCeremony({
+        ...ceremony,
+        stateHash: numberedHash(1_000_000 + index),
+        expiresAt: index === 0 ? 110 : 600,
+      }),
+    );
+  assert.ok(
+    await f.store.createCeremony({
+      ...ceremony,
+      stateHash: numberedHash(2_000_000),
+      createdAt: 111,
+    }),
+  );
+  assert.equal(
+    f.sql
+      .prepare(
+        "SELECT count(*) AS total FROM agent_auth_ceremonies WHERE registration_id=?",
+      )
+      .get(input.id)?.total,
+    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
+  );
+  assert.equal(
+    count(f, "agent_auth_ceremonies"),
+    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION + 1,
+  );
+});
+
+test("per-parent token reclaim is not blocked by older global expiries", async () => {
+  const f = fixture();
+  await approved(f);
+  const filler = "older-tokens";
+  await f.store.createRegistration({
+    ...input,
+    id: filler,
+    claimTokenHash: numberedHash(900_000),
+  });
+  seedTokens(f, filler, AGENT_AUTH_RECLAIM_MAX_CHILDREN + 1);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_tokens SET expires_at=2 WHERE registration_id=?",
+    )
+    .run(filler);
+  for (let index = 0; index < AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION; index++)
+    assert.equal(
+      await f.store.issueToken({
+        ...token,
+        tokenHash: numberedHash(1_000_000 + index),
+        expiresAt: index === 0 ? 121 : 3700,
+      }),
+      true,
+    );
+  assert.equal(
+    await f.store.issueToken({
+      ...token,
+      tokenHash: numberedHash(2_000_000),
+      now: 121,
+    }),
+    true,
+  );
+  assert.equal(
+    f.sql
+      .prepare(
+        "SELECT count(*) AS total FROM agent_auth_tokens WHERE registration_id=?",
+      )
+      .get(input.id)?.total,
+    AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION,
+  );
+  assert.equal(
+    count(f, "agent_auth_tokens"),
+    AGENT_AUTH_MAX_TOKENS_PER_REGISTRATION + 1,
+  );
+  assert.ok(await f.store.resolveToken(numberedHash(1_000_001), 121));
+});
+
+test("registration reclaim deletes expired children first and preserves active credentials", async () => {
+  const f = fixture();
+  await approved(f);
+  assert.equal(await f.store.issueToken(token), true);
+  seedRegistrations(f, AGENT_AUTH_MAX_REGISTRATIONS - 1);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_registrations SET expires_at=700 WHERE id='admission-registration-1'",
+    )
+    .run();
+  f.sql
+    .prepare(
+      `INSERT INTO agent_auth_ceremonies
+      (state_hash,registration_id,claim_version,cookie_hash,csrf_hash,created_at,expires_at)
+      VALUES (?,'admission-registration-1',1,?,?,100,700)`,
+    )
+    .run(numberedHash(1), hash("1"), hash("2"));
+  assert.ok(
+    await f.store.createRegistration({
+      ...input,
+      id: "replacement",
+      claimTokenHash: hash("0"),
+      createdAt: 700,
+      expiresAt: 1300,
+    }),
+  );
+  assert.equal(await f.store.getRegistration("admission-registration-1"), null);
+  assert.equal((await f.store.getRegistration(input.id))?.approvedAt, 112);
+  assert.ok(await f.store.resolveToken(token.tokenHash, 700));
+  assert.equal(count(f, "agent_auth_ceremonies"), 0);
+  assert.deepEqual(f.sql.prepare("PRAGMA foreign_key_check").all(), []);
+});
+
+test.each([
+  { now: 3711, liveChild: false, admitted: false },
+  { now: 3712, liveChild: false, admitted: true },
+  { now: 3712, liveChild: true, admitted: false },
+])(
+  "approved reclaim preserves the original assertion horizon and children at $now with liveChild=$liveChild",
+  async ({ now, liveChild, admitted }) => {
+    const f = fixture();
+    await approved(f);
+    seedRegistrations(f, AGENT_AUTH_MAX_REGISTRATIONS - 1);
+    // A legacy child may outlive the original assertion; foreign keys still apply.
+    if (liveChild) seedTokens(f, input.id, 1);
+    const next = {
+      ...input,
+      id: "replacement",
+      claimTokenHash: hash("0"),
+      createdAt: now,
+      expiresAt: now + 600,
+    };
+    if (admitted) {
+      assert.ok(await f.store.createRegistration(next));
+      assert.equal(await f.store.getRegistration(input.id), null);
+    } else {
+      await assert.rejects(
+        f.store.createRegistration(next),
+        AgentAuthCapacityError,
+      );
+      assert.equal((await f.store.getRegistration(input.id))?.approvedAt, 112);
+    }
+    assert.equal(
+      count(f, "agent_auth_registrations"),
+      AGENT_AUTH_MAX_REGISTRATIONS,
+    );
+    assert.equal(count(f, "agent_auth_tokens"), liveChild ? 1 : 0);
+    assert.deepEqual(f.sql.prepare("PRAGMA foreign_key_check").all(), []);
+  },
+);
+
+test("invalid and duplicate admissions never reclaim private state", async () => {
+  const f = fixture();
+  await f.store.createRegistration(input);
+  seedCeremonies(f, input.id, AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=110 WHERE state_hash=?",
+    )
+    .run(numberedHash(1));
+  f.before((query) => {
+    if (query.startsWith("DELETE FROM")) throw new Error("unexpected cleanup");
+  });
+  assert.equal(await f.store.createRegistration(input), null);
+  assert.equal(
+    await f.store.createCeremony({
+      ...ceremony,
+      stateHash: numberedHash(2_000_000),
+      claimVersion: 2,
+      createdAt: 111,
+    }),
+    null,
+  );
+  assert.equal(
+    await f.store.createCeremony({
+      ...ceremony,
+      stateHash: numberedHash(1),
+      createdAt: 111,
+    }),
+    null,
+  );
+  assert.equal(await f.store.issueToken(token), false);
+  assert.equal(
+    count(f, "agent_auth_ceremonies"),
+    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
+  );
+});
+
+test("claim rotation during reclamation cannot admit an obsolete browser state", async () => {
+  const f = fixture();
+  await f.store.createRegistration(input);
+  seedCeremonies(f, input.id, AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=110 WHERE state_hash=?",
+    )
+    .run(numberedHash(1));
+  let insertions = 0;
+  f.before((query) => {
+    if (query.startsWith("INSERT INTO agent_auth_ceremonies")) insertions++;
+    if (query.startsWith("DELETE FROM agent_auth_tokens"))
+      f.sql
+        .prepare("UPDATE agent_auth_registrations SET claim_version=2")
+        .run();
+  });
+  assert.equal(
+    await f.store.createCeremony({
+      ...ceremony,
+      stateHash: numberedHash(2_000_000),
+      createdAt: 111,
+    }),
+    null,
+  );
+  assert.equal(insertions, 2);
   assert.equal(
     count(f, "agent_auth_ceremonies"),
     AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION - 1,
   );
+});
+
+test("reclamation failure rolls back children and propagates without another insert", async () => {
+  const f = fixture();
+  await f.store.createRegistration(input);
+  seedCeremonies(f, input.id, AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION);
+  seedTokens(f, input.id, 1);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=110 WHERE state_hash=?",
+    )
+    .run(numberedHash(1));
+  f.sql.exec("UPDATE agent_auth_tokens SET expires_at=110");
+  let insertions = 0;
+  f.before((query) => {
+    if (query.startsWith("INSERT INTO agent_auth_ceremonies")) insertions++;
+    if (query.startsWith("DELETE FROM agent_auth_ceremonies"))
+      throw new Error("cleanup unavailable");
+  });
+  const next = {
+    ...ceremony,
+    stateHash: numberedHash(2_000_000),
+    createdAt: 111,
+  };
+  await assert.rejects(f.store.createCeremony(next), /cleanup unavailable/);
+  assert.equal(insertions, 1);
+  assert.equal(count(f, "agent_auth_tokens"), 1);
+  assert.equal(
+    count(f, "agent_auth_ceremonies"),
+    AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
+  );
+  f.before();
   assert.ok(await f.store.createCeremony(next));
+  assert.equal(count(f, "agent_auth_tokens"), 0);
+});
+
+test("a concurrent admission stealing the reclaimed slot cannot cause unbounded retries", async () => {
+  const f = fixture();
+  await f.store.createRegistration(input);
+  seedCeremonies(f, input.id, AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION);
+  f.sql
+    .prepare(
+      "UPDATE agent_auth_ceremonies SET expires_at=110 WHERE state_hash=?",
+    )
+    .run(numberedHash(1));
+  let insertions = 0;
+  f.before((query) => {
+    if (!query.startsWith("INSERT INTO agent_auth_ceremonies")) return;
+    insertions++;
+    if (insertions === 2)
+      f.sql
+        .prepare(
+          `INSERT INTO agent_auth_ceremonies
+        (state_hash,registration_id,claim_version,cookie_hash,csrf_hash,created_at,expires_at)
+        VALUES (?,?,1,?,?,111,600)`,
+        )
+        .run(
+          numberedHash(3_000_000),
+          input.id,
+          ceremony.cookieHash,
+          ceremony.csrfHash,
+        );
+  });
+  await assert.rejects(
+    f.store.createCeremony({
+      ...ceremony,
+      stateHash: numberedHash(2_000_000),
+      createdAt: 111,
+    }),
+    AgentAuthCapacityError,
+  );
+  assert.equal(insertions, 2);
   assert.equal(
     count(f, "agent_auth_ceremonies"),
     AGENT_AUTH_MAX_CEREMONIES_PER_REGISTRATION,
