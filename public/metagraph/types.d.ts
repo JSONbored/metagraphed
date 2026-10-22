@@ -1562,7 +1562,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file. */
+        /** @description Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=100, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file. */
         get: operations["chainEventsFeed"];
         put?: never;
         post?: never;
@@ -14471,6 +14471,37 @@ export interface components {
             id: string;
             url: string;
         };
+        /** @description Direct x402 v2 payment quote, also base64-encoded in PAYMENT-REQUIRED. Select an accepts entry and preserve it unchanged as the signed payload's accepted field. */
+        X402PaymentRequired: {
+            accepts: {
+                /** @description USDC amount in six-decimal atomic units. */
+                amount: string;
+                asset: string;
+                /** @description Scheme-specific signing fields, including an EVM domain or Solana fee payer. */
+                extra: {
+                    [key: string]: string;
+                };
+                maxTimeoutSeconds: number;
+                /** @description CAIP-2 identifier of the payment network. */
+                network: string;
+                payTo: string;
+                /** @constant */
+                scheme: "exact";
+            }[];
+            error: string;
+            extensions: {
+                [key: string]: unknown;
+            };
+            resource: {
+                description: string;
+                /** @constant */
+                mimeType: "application/json";
+                /** Format: uri */
+                url: string;
+            };
+            /** @constant */
+            x402Version: 2;
+        };
     };
     responses: never;
     parameters: never;
@@ -14479,6 +14510,15 @@ export interface components {
         CacheControl: string;
         ContractVersion: string;
         ETag: string;
+        /** @description Base64-encoded x402 v2 quote, identical to the direct JSON response body. */
+        X402PaymentRequired: string;
+        /** @description Base64-encoded facilitator settlement result. Read the HTTP status and error code to distinguish a completed payment receipt from a pending settlement result. */
+        X402PaymentResponse: string;
+        /**
+         * @description Seconds to wait before retrying the identical HTTP request and PAYMENT-SIGNATURE. A pending settlement must be reconciled with the same payment payload.
+         * @example 5
+         */
+        X402RetryAfter: number;
     };
     pathItems: never;
 }
@@ -15231,7 +15271,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15245,6 +15288,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -15333,7 +15377,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -15342,13 +15386,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -15369,9 +15414,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -15383,7 +15451,10 @@ export interface operations {
     blockDetailByNetwork: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15399,6 +15470,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -15484,7 +15556,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -15493,13 +15565,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -15520,9 +15593,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -15534,7 +15630,10 @@ export interface operations {
     blockChainEventsByNetwork: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15550,6 +15649,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -15610,7 +15710,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -15619,13 +15719,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -15646,9 +15747,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -15667,7 +15791,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15683,6 +15810,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -15751,7 +15879,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -15760,13 +15888,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -15787,9 +15916,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -15808,7 +15960,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15824,6 +15979,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -15902,7 +16058,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -15911,13 +16067,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -15938,9 +16095,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -15952,7 +16132,10 @@ export interface operations {
     blocksSummaryByNetwork: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -15966,6 +16149,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -16055,7 +16239,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -16064,13 +16248,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -16091,9 +16276,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -16122,7 +16330,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -16136,6 +16347,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -16203,7 +16415,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -16212,13 +16424,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -16239,9 +16452,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -16256,7 +16492,10 @@ export interface operations {
                 /** @description How many of the most recent blocks to aggregate over (1-5000). */
                 blocks?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -16270,6 +16509,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -16330,7 +16570,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -16339,13 +16579,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -16366,9 +16607,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -19639,7 +19903,10 @@ export interface operations {
                 /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -19653,6 +19920,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -19715,7 +19983,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -19724,13 +19992,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is required for this operation. Requests without payment and rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -19751,9 +20020,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -19793,7 +20085,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -19807,6 +20102,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -19884,7 +20180,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -19893,13 +20189,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -19920,9 +20217,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -19934,7 +20254,10 @@ export interface operations {
     extrinsicDetailByNetwork: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -19950,6 +20273,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -20023,7 +20347,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -20032,13 +20356,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -20059,9 +20384,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -21263,7 +21611,10 @@ export interface operations {
     subnetLeaseByNetwork: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
                 network: "finney" | "mainnet" | "test" | "testnet";
@@ -21282,6 +21633,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -21354,13 +21706,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
+            402: {
+                headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -21381,9 +21743,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -22757,7 +23142,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description An SS58-encoded account address -- a hotkey or coldkey.
@@ -22774,6 +23162,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -22842,7 +23231,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -22851,13 +23240,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -22878,9 +23268,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -23056,7 +23469,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description An SS58-encoded account address -- a hotkey or coldkey.
@@ -23073,6 +23489,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -23140,7 +23557,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -23149,13 +23566,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -23176,9 +23594,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -23710,7 +24151,10 @@ export interface operations {
     accountPositions: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description An SS58-encoded account address -- a hotkey or coldkey.
@@ -23727,6 +24171,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -23796,7 +24241,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -23805,13 +24250,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -23832,9 +24278,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -24924,7 +25393,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description An SS58-encoded account address -- a hotkey or coldkey.
@@ -24941,6 +25413,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -25010,7 +25483,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -25019,13 +25492,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -25046,9 +25520,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26169,7 +26666,10 @@ export interface operations {
     ask: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26184,6 +26684,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26249,7 +26750,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26258,13 +26759,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -26285,9 +26787,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26324,7 +26849,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -26335,6 +26863,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26423,7 +26952,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26432,13 +26961,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -26459,9 +26989,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26473,7 +27026,10 @@ export interface operations {
     blockDetail: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
@@ -26487,6 +27043,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26572,7 +27129,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26581,13 +27138,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -26608,9 +27166,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26622,7 +27203,10 @@ export interface operations {
     blockChainEvents: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
@@ -26636,6 +27220,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26696,7 +27281,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26705,13 +27290,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -26732,9 +27318,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26753,7 +27362,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
@@ -26767,6 +27379,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26835,7 +27448,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26844,13 +27457,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -26871,9 +27485,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -26892,7 +27529,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description A block reference: either a decimal block number or a 0x-prefixed block hash. */
                 ref: string;
@@ -26906,6 +27546,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -26984,7 +27625,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -26993,13 +27634,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -27020,9 +27662,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -27034,7 +27699,10 @@ export interface operations {
     blocksSummary: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27045,6 +27713,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -27134,7 +27803,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -27143,13 +27812,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -27170,9 +27840,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -27538,7 +28231,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27549,6 +28245,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -27616,7 +28313,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -27625,13 +28322,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -27652,9 +28350,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -27669,7 +28390,10 @@ export interface operations {
                 /** @description How many of the most recent blocks to aggregate over (1-5000). */
                 blocks?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -27680,6 +28404,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -27740,7 +28465,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -27749,13 +28474,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -27776,9 +28502,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -35539,7 +36288,10 @@ export interface operations {
                 /** @description Maximum number of rows to return in one page (at most 25000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 5000. */
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -35550,6 +36302,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -35612,7 +36365,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -35621,13 +36374,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is required for this operation. Requests without payment and rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -35648,9 +36402,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -35690,7 +36467,10 @@ export interface operations {
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -35701,6 +36481,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -35778,7 +36559,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -35787,13 +36568,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -35814,9 +36596,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -35828,7 +36633,10 @@ export interface operations {
     extrinsicDetail: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /** @description An extrinsic reference: either a 0x-prefixed extrinsic hash or the composite `<block_number>-<extrinsic_index>` id, which is the identifier guaranteed to be present. */
                 hash: string;
@@ -35842,6 +36650,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -35915,7 +36724,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -35924,13 +36733,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -35951,9 +36761,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -43228,7 +44061,10 @@ export interface operations {
                 limit?: number;
                 type?: "subnet" | "surface" | "provider";
             };
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -43239,6 +44075,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -43308,7 +44145,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -43317,13 +44154,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description A payment was presented and could not be verified or settled. The response carries a fresh x402 quote in the `accepts` array and the PAYMENT-REQUIRED header. A request with NO payment is never answered with 402 -- it is served on the anonymous tier. */
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
             402: {
                 headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -43344,9 +44182,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -45158,7 +46019,10 @@ export interface operations {
     subnetConviction: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
@@ -45175,6 +46039,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -45246,13 +46111,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
+            402: {
+                headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -45273,9 +46148,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -48287,7 +49185,10 @@ export interface operations {
     subnetLease: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
@@ -48304,6 +49205,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -48376,13 +49278,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
+            402: {
+                headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -48403,9 +49315,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -48417,7 +49352,10 @@ export interface operations {
     subnetLeaseHistory: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
@@ -48434,6 +49372,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -48499,13 +49438,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
+            402: {
+                headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -48526,9 +49475,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -50060,7 +51032,10 @@ export interface operations {
     subnetOwnershipHistory: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Base64-encoded x402 v2 signed payment payload. Copy one quote's accepts entry unchanged into accepted, then sign using the matching payment scheme. Omit this header to request a quote on required-payment operations or use anonymous limits on optional-payment operations. */
+                "payment-signature"?: string;
+            };
             path: {
                 /**
                  * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
@@ -50077,6 +51052,7 @@ export interface operations {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
                     etag: components["headers"]["ETag"];
+                    "payment-response": components["headers"]["X402PaymentResponse"];
                     "x-metagraph-contract-version": components["headers"]["ContractVersion"];
                     [name: string]: unknown;
                 };
@@ -50141,13 +51117,23 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Query parameters were malformed or unsupported. */
+            /** @description Query parameters or payment encoding were malformed or unsupported. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment is optional for this operation. Requests without payment use anonymous limits; rejected payments receive a fresh x402 quote. The direct JSON quote is also base64-encoded in PAYMENT-REQUIRED. Malformed payment encoding returns 400; replay conflicts and uncertain settlement outcomes use 409 or 503 instead. */
+            402: {
+                headers: {
+                    "payment-required": components["headers"]["X402PaymentRequired"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["X402PaymentRequired"];
                 };
             };
             /** @description Artifact or API route was not found. */
@@ -50168,9 +51154,32 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description The signed payment was already consumed or conflicts with an earlier request. `x402_payment_consumed` returns its saved settlement receipt in PAYMENT-RESPONSE without repeating the paid operation. `x402_payment_conflict` means the same signed payment identity was reused for a different HTTP method, URL, or body; no receipt is returned. Neither error supplies a new payment quote. */
+            409: {
+                headers: {
+                    /** @description Saved settlement receipt for x402_payment_consumed. Omitted for x402_payment_conflict. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Unexpected backend error. */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Payment handling is temporarily unavailable. `x402_settlement_pending` means a submitted settlement has an unresolved outcome; the error meta carries `payment_status: pending` and `retry: same_payment_payload`. After Retry-After, retry the identical HTTP request with the identical PAYMENT-SIGNATURE to reconcile that attempt; do not create a new payment. `x402_unavailable` means payment discovery, the attempt store, or a pre-settlement dependency is unavailable. Neither error supplies a fresh quote or PAYMENT-REQUIRED header. An available facilitator result may be returned in PAYMENT-RESPONSE for a pending settlement. */
+            503: {
+                headers: {
+                    /** @description Optional facilitator result for x402_settlement_pending; a transaction reference is not confirmation that settlement completed. */
+                    "payment-response": components["headers"]["X402PaymentResponse"];
+                    "retry-after": components["headers"]["X402RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {

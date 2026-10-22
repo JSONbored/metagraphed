@@ -321,6 +321,12 @@ export function markPaidCall(
   if (payer && tier) paidCalls.set(request, { payer, tier });
 }
 
+/** Preserve settled authority across an internal URL/method normalization. */
+export function copyPaidCall(source: Request, target: Request): void {
+  const paid = paidCalls.get(source);
+  if (paid) paidCalls.set(target, paid);
+}
+
 export async function applyTieredRateLimit(
   request: Request,
   env: Env,

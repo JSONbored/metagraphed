@@ -10,7 +10,9 @@
 // So these tests are written in pairs. Every assertion that the export route
 // demands payment is matched by one that its free twin still does not.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import { createX402Fixture } from "./x402-fixtures.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { handleRequest } from "../workers/api.ts";
 import {
   X402_REQUIRED_FAMILIES,
@@ -29,7 +31,31 @@ const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
 const EXPORT = "/api/v1/export/chain-events";
 const FREE = "/api/v1/chain-events";
 
-const paidEnv = () => mockEnv({ X402_PAY_TO: PAY_TO });
+const fixtures: ReturnType<typeof createX402Fixture>[] = [];
+const paidEnv = () => {
+  const fixture = createX402Fixture();
+  fixtures.push(fixture);
+  return mockEnv({
+    X402_PAY_TO: PAY_TO,
+    D1_STATE: fixture.db,
+    D1_STATE_TABLES: "x402_payment_attempts",
+  });
+};
+beforeEach(() => {
+  resetModuleState();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:84532" }],
+      }),
+    ),
+  );
+});
+afterEach(() => {
+  fixtures.splice(0).forEach((fixture) => fixture.close());
+  vi.unstubAllGlobals();
+});
 const get = (path: string, env: Env) =>
   handleRequest(new Request(`https://api.metagraph.sh${path}?limit=5`), env);
 
@@ -58,8 +84,22 @@ describe("the export route demands payment", () => {
     const res = await get(EXPORT, paidEnv());
     assert.equal(res.status, 402);
     assert.ok(res.headers.get("payment-required"), "the quote must be there");
+    assert.ok(
+      res.headers
+        .get("access-control-expose-headers")
+        ?.includes("payment-required"),
+    );
     const accepts = ((await jsonBody(res)).accepts as Row[])[0]!;
     assert.equal(accepts.payTo, PAY_TO);
+  });
+
+  test("HEAD still challenges rather than running the paid export for free", async () => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${EXPORT}`, { method: "HEAD" }),
+      paidEnv(),
+    );
+    assert.equal(res.status, 402);
+    assert.ok(res.headers.get("payment-required"));
   });
 
   test("and its FREE twin does not, in the same deployment", async () => {
@@ -82,12 +122,13 @@ describe("the export route demands payment", () => {
 });
 
 describe("a deployment that cannot collect does not pretend to", () => {
-  test("no X402_PAY_TO means the export serves like any other route", async () => {
-    // Fails OPEN here, alone in this module, and deliberately: a 402 quoting
-    // an address the deployment does not have is a bill nobody can pay. The
-    // route degrades to its normal answer instead.
+  test("an unconfigured collector cannot run the required-payment export", async () => {
     const res = await get(EXPORT, mockEnv({}));
-    assert.notEqual(res.status, 402);
+    assert.equal(res.status, 503);
+    assert.equal((await jsonBody(res)).error.code, "x402_unavailable");
+    assert.equal(res.headers.get("payment-required"), null);
+    const free = await get(FREE, mockEnv({}));
+    assert.notEqual(free.status, 402);
   });
 });
 

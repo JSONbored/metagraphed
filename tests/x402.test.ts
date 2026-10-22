@@ -189,14 +189,26 @@ describe("the two legs do not contaminate each other", () => {
 describe("the Solana leg's quote", () => {
   const config = resolveX402Config(bothEnv())!;
 
-  test("carries the sponsoring feePayer, which SVM exact requires", () => {
+  test("pairs the default devnet chain with devnet USDC", () => {
+    const svm = paymentRequirements(config, "10000").find((r) =>
+      r.network.startsWith("solana:"),
+    )!;
+    assert.equal(svm.network, "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1");
+    assert.equal(svm.asset, "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+    assert.equal(
+      config.legs.find((leg) => leg.network === svm.network)!.networkLabel,
+      "Solana Devnet",
+    );
+  });
+
+  test("does not invent a provider-specific fee payer before discovery", () => {
     // Without it the payer cannot build the transaction: SVM exact is
     // fee-sponsored so the payer needs no SOL, and the sponsor's address is
     // part of the quote.
     const svm = paymentRequirements(config, "10000").find((r) =>
       r.network.startsWith("solana:"),
     )!;
-    assert.ok(svm.extra.feePayer, "feePayer must be quoted");
+    assert.deepEqual(svm.extra, {});
     assert.equal(svm.asset, X402_NETWORKS[X402_DEFAULT_SOLANA_NETWORK]!.asset);
   });
 
@@ -275,6 +287,10 @@ describe("the 402 body is x402 v2, not v1", () => {
     assert.ok(header, "PAYMENT-REQUIRED must be set");
     const decoded = JSON.parse(atob(header!)) as Row;
     assert.equal(decoded.x402Version, X402_VERSION);
+    assert.deepEqual(
+      response.headers.get("access-control-expose-headers")?.split(", "),
+      ["payment-required", "payment-response"],
+    );
   });
 
   test("is never cached", () => {
@@ -355,7 +371,10 @@ describe("verifyAndSettle", () => {
         requirements,
         impl,
       );
-      assert.equal(verdict.outcome, "rejected", label);
+      assert.ok(
+        ["rejected", "pending", "unavailable"].includes(verdict.outcome),
+        label,
+      );
     }
   });
 
@@ -381,9 +400,12 @@ describe("verifyAndSettle", () => {
         { success: false, errorReason: "nonce_reused" },
       ),
     );
-    assert.equal(unsettled.outcome, "rejected");
-    if (unsettled.outcome === "rejected")
-      assert.equal(unsettled.reason, "nonce_reused");
+    assert.equal(unsettled.outcome, "pending");
+    if (unsettled.outcome === "pending")
+      assert.equal(
+        (JSON.parse(atob(unsettled.responseHeader!)) as Row).errorReason,
+        "nonce_reused",
+      );
   });
 
   test("falls back to the verify step for the payer, then to empty", async () => {
@@ -421,7 +443,7 @@ describe("verifyAndSettle", () => {
         (async () =>
           new Response(body, { status: 200 })) as unknown as typeof fetch,
       );
-      assert.equal(verdict.outcome, "rejected", body);
+      assert.equal(verdict.outcome, "unavailable", body);
     }
   });
 
@@ -460,6 +482,22 @@ describe("the DEPLOYED configuration", () => {
     );
   });
 
+  test("Base mainnet signs the published USD Coin EIP-712 domain", () => {
+    assert.deepEqual(X402_NETWORKS["eip155:8453"]!.extra, {
+      name: "USD Coin",
+      version: "2",
+    });
+    assert.deepEqual(X402_NETWORKS["eip155:84532"]!.extra, {
+      name: "USDC",
+      version: "2",
+    });
+    assert.equal(vars.X402_NETWORK, "eip155:8453");
+    assert.equal(
+      vars.X402_FACILITATOR_URL,
+      "https://facilitator.payai.network",
+    );
+  });
+
   test("pays out to a well-formed address", () => {
     assert.equal(isEvmAddress(vars.X402_PAY_TO), true);
   });
@@ -475,9 +513,9 @@ describe("the DEPLOYED configuration", () => {
       vars.X402_PAY_TO,
     );
     assert.equal(
-      byNetwork.get(X402_DEFAULT_SOLANA_NETWORK)?.payTo,
-      vars.X402_PAY_TO_SOLANA,
-      "the Solana leg is the one that takes real money -- it must resolve",
+      byNetwork.has(String(vars.X402_NETWORK_SOLANA)),
+      false,
+      "Solana stays unadvertised until its native USDC ATA exists",
     );
   });
 });
@@ -496,6 +534,93 @@ describe("verifyAndSettle picks the leg the payer chose", () => {
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }) as unknown as typeof fetch;
   }
+
+  test.each(offered)(
+    "selects the v2 accepted offer on $network",
+    async (accepted) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({ x402Version: 2, accepted, payload: {} }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "settled");
+      assert.deepEqual(seen[0]!.paymentRequirements, accepted);
+    },
+  );
+
+  test("the v2 offer takes precedence over a conflicting legacy network", async () => {
+    const seen: Row[] = [];
+    const accepted = offered[1]!;
+    const verdict = await verifyAndSettle(
+      both,
+      signed({ accepted, network: X402_DEFAULT_NETWORK }),
+      offered,
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "settled");
+    assert.deepEqual(seen[0]!.paymentRequirements, accepted);
+  });
+
+  const alteredOffers: Array<[string, unknown]> = [
+    ["scheme", "upto"],
+    ["network", "eip155:1"],
+    ["amount", "1"],
+    ["asset", "another-asset"],
+    ["payTo", "another-recipient"],
+    ["maxTimeoutSeconds", 600],
+    ["extra", null],
+    ["extra", []],
+    ["extra", "invalid"],
+    ["extra", { name: "USDC" }],
+    ["extra", { name: "another-token", version: "2" }],
+  ];
+  test.each(alteredOffers)(
+    "rejects an altered v2 %s before contacting the facilitator",
+    async (field, value) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({
+          accepted: { ...offered[0], [field]: value },
+          network: X402_DEFAULT_NETWORK,
+        }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "rejected");
+      assert.equal(seen.length, 0);
+    },
+  );
+
+  test.each([{ accepted: null }, { accepted: "invalid" }, { accepted: [] }])(
+    "rejects malformed v2 accepted $accepted without legacy fallback",
+    async ({ accepted }) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({ accepted, network: X402_DEFAULT_NETWORK }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "rejected");
+      assert.equal(seen.length, 0);
+    },
+  );
+
+  test("does not ignore an altered v2 offer when only one leg is configured", async () => {
+    const seen: Row[] = [];
+    const one = resolveX402Config(env())!;
+    const verdict = await verifyAndSettle(
+      one,
+      signed({ accepted: { ...offered[0], amount: "1" } }),
+      paymentRequirements(one, "10000"),
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "rejected");
+    assert.equal(seen.length, 0);
+  });
 
   test("verifies a Solana payment against the SOLANA requirements", async () => {
     // The bug this exists for: verifying a Solana payment against Base

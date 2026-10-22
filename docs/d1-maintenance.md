@@ -16,10 +16,38 @@ request a Neon branch, database URL, compute endpoint, or API key.
 
 `npm run snapshot:d1-schema -- --write` captures the physical tables, views,
 indexes and triggers into `generated/db/d1-schema.json` and `db/d1-schema.sql`.
-Review both artifacts in the same PR as a migration. Without `--write`, the
-command only checks for drift. Set `CLOUDFLARE_ACCOUNT_ID`,
+This mode reads the actual D1 catalog. Without `--write`, it only checks the
+actual catalog against the committed schema contract. Set `CLOUDFLARE_ACCOUNT_ID`,
 `CLOUDFLARE_D1_DATABASE_ID` and `CLOUDFLARE_API_TOKEN` in the maintainer's protected
 environment; never place a token in a command argument or tracked file.
+
+For an unapplied migration, prepare the **expected post-migration schema**
+without production access:
+
+```sh
+node scripts/snapshot-d1-schema.ts \
+  --project-migrations 0039_x402_payment_attempts.sql --write
+```
+
+The existing snapshot tool restores both committed physical-schema artifacts
+into an in-memory native SQLite database, applies only the explicitly named,
+ordered migration files, and serializes the resulting catalog in the same
+formats. Multiple filenames are comma-separated; omitting `--write` previews
+the receipt without changing either file. The receipt labels this
+`expected-postmigration` with `live_readback: false` and binds the baseline,
+migration bytes and expected outputs by SHA256. It does not apply D1 migrations,
+contact Cloudflare, verify production rows, or establish production ledger state.
+
+Run this preparation on a development box or with the existing `Sync contract
+artifacts` workflow's `generate-only` mode and `contracts` preset. Its optional
+`d1_migrations` input selects the exact filenames and includes only these two
+schema artifacts and the expected-schema receipt alongside normal contract
+outputs. Review the migration and both generated schema artifacts in one PR.
+The snapshot formats remain unchanged, so their contents alone are not proof
+that a migration has been deployed. After an authorized application, the native
+D1 maintenance ledger and physical-catalog checks must match these expected
+definitions. A mismatch remains a deployment failure; projection does not waive
+that check or replace actual post-apply readback evidence.
 
 In GitHub Actions, verification failures publish the existing fixed failure
 classification as an error annotation. The exact allowlisted provider code

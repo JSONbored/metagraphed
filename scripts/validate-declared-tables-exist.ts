@@ -1,7 +1,7 @@
-// Verify every declared D1 table/view against the physical snapshot checked
-// by d1-maintenance. The frozen logical column contract cannot prove that
-// deployed SQLite objects exist. A missing object must fail even if its
-// migration name was recorded as applied.
+// Verify every declared D1 table/view against the committed schema contract.
+// It may be actual readback or an explicitly projected expected catalog.
+// d1-maintenance separately proves that the deployed catalog and migration
+// ledger match it; source CI alone cannot prove that a migration was applied.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
@@ -94,20 +94,20 @@ function main(): void {
   const missing = findMissing(live, migrations, readSets);
   if (missing.length > 0) {
     console.error(
-      `${missing.length} declared table(s) do not exist in the live schema:\n` +
+      `${missing.length} declared table(s) are missing from the committed schema contract:\n` +
         missing
           .map((m) => `  - ${m.table} (declared by ${m.declaredBy})`)
           .join("\n") +
-        "\n\nEither the migration never applied -- check the d1-maintenance " +
-        "workflow, and see #9867 for how a file can be recorded as applied " +
-        "while its DDL failed -- or the table was renamed without its " +
-        "declarations following.",
+        "\n\nReview expected-schema projection or actual readback artifacts " +
+        "for the migration. The d1-maintenance ledger and physical-catalog " +
+        "checks establish deployment separately; a recorded filename alone " +
+        "cannot prove that its DDL applied.",
     );
     process.exit(1);
   }
   console.log(
-    `every declared table exists (${migrations.size} from migrations, ` +
-      `${readSets.size} named by read-store sets, ${live.size} live).`,
+    `every declared table is present in the committed schema contract (${migrations.size} from migrations, ` +
+      `${readSets.size} named by read-store sets, ${live.size} schema objects).`,
   );
 }
 

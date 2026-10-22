@@ -16,7 +16,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
-import { x402PriceFor } from "../src/x402.ts";
+import { x402PriceFor, x402RequiresPayment } from "../src/x402-pricing.ts";
 import type { Row } from "./row-type.ts";
 
 const METHODS = ["get", "post", "put", "patch", "delete"];
@@ -50,7 +50,7 @@ describe("the 402 declaration tracks the gate", () => {
     // comparison between the spec and the behaviour -- not between the spec
     // and a second list that can drift with it.
     const missing = ops
-      .filter(({ path }) => x402PriceFor(stripNetworkPrefix(path)))
+      .filter(({ path }) => x402PriceFor(paymentPolicyPath(path)))
       .filter(({ op }) => !(op.responses as Row)["402"])
       .map(({ method, path }) => `${method} ${path}`);
     assert.deepEqual(missing, []);
@@ -61,31 +61,66 @@ describe("the 402 declaration tracks the gate", () => {
     // /api/v1/subnets might demand payment.
     const spurious = ops
       .filter(({ op }) => (op.responses as Row)["402"])
-      .filter(({ path }) => !x402PriceFor(stripNetworkPrefix(path)))
+      .filter(({ path }) => !x402PriceFor(paymentPolicyPath(path)))
       .map(({ method, path }) => `${method} ${path}`);
     assert.deepEqual(spurious, []);
   });
 
-  test("at least one route declares it, so the checks above can fail", () => {
-    const declared = ops.filter(({ op }) => (op.responses as Row)["402"]);
-    assert.ok(declared.length > 0, "no 402 reached the document");
+  test("optional-payment operations preserve anonymous access in every description", () => {
+    const optional = ops.filter(({ path, op }) => {
+      const concretePath = paymentPolicyPath(path);
+      return (op.responses as Row)["402"] && !x402RequiresPayment(concretePath);
+    });
+    assert.ok(optional.length > 0, "no optional-payment operations to check");
+    for (const { method, path, op } of optional) {
+      const description = String(
+        ((op.responses as Row)["402"] as Row).description,
+      );
+      const label = `${method} ${path}`;
+      assert.match(
+        description,
+        /Payment is optional for this operation\./,
+        label,
+      );
+      assert.match(
+        description,
+        /Requests without payment use anonymous limits/,
+        label,
+      );
+      assert.doesNotMatch(description, /Payment is required/, label);
+    }
   });
 
-  test("the 402 description states that an unpaid call is NOT refused", () => {
-    // The invariant, restated where a spec reader will meet it. A caller who
-    // reads "402 Payment Required" and concludes the route needs payment
-    // would not call it at all.
-    const declared = ops.find(({ op }) => (op.responses as Row)["402"])!;
-    const description = String(
-      ((declared.op.responses as Row)["402"] as Row).description,
+  test("required-payment operations describe the unpaid quote in every description", () => {
+    const required = ops.filter(
+      ({ path, op }) =>
+        (op.responses as Row)["402"] &&
+        x402RequiresPayment(paymentPolicyPath(path)),
     );
-    assert.match(description, /NO payment is never/);
+    assert.ok(required.length > 0, "no required-payment operations to check");
+    for (const { method, path, op } of required) {
+      const description = String(
+        ((op.responses as Row)["402"] as Row).description,
+      );
+      const label = `${method} ${path}`;
+      assert.match(
+        description,
+        /Payment is required for this operation\./,
+        label,
+      );
+      assert.match(
+        description,
+        /Requests without payment and rejected payments receive a fresh x402 quote/,
+        label,
+      );
+      assert.doesNotMatch(description, /use anonymous limits/, label);
+    }
   });
 });
 
-/** `/api/v1/{network}/blocks` prices as `/api/v1/blocks`. */
-function stripNetworkPrefix(path: string): string {
-  return path.replace("/{network}", "");
+/** Price templates as runtime paths, including numeric subnet-history IDs. */
+function paymentPolicyPath(path: string): string {
+  return path.replace("/{network}", "").replace("{netuid}", "1");
 }
 
 describe("required query parameters are published as required", () => {

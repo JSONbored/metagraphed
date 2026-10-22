@@ -63,7 +63,9 @@ interface RuntimeSecretEnv {
    * means this deployment offers no Solana leg.
    */
   X402_PAY_TO_SOLANA?: string;
-  /** CAIP-2 network id for the SVM leg. Defaults to Solana MAINNET. */
+  /** Set to false until the receiving wallet's native USDC ATA is ready. */
+  X402_SOLANA_ENABLED?: string;
+  /** CAIP-2 network id for the SVM leg. Defaults to Solana devnet. */
   X402_NETWORK_SOLANA?: string;
   /** Facilitator base URL. Defaults to the public Coinbase one. */
   X402_FACILITATOR_URL?: string;

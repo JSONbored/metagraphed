@@ -79,6 +79,7 @@ import {
   ResponseMetaSchema,
   SuccessEnvelopeSchema,
 } from "./envelope.ts";
+import { X402PaymentRequiredSchema } from "./x402.ts";
 import { HealthLatestArtifactSchema } from "./artifacts/health-artifacts.ts";
 import { HealthBadgeArtifactSchema } from "./artifacts/health-artifacts.ts";
 import { OperationalSurfacesArtifactSchema } from "./artifacts/operational-surfaces.ts";
@@ -1095,6 +1096,7 @@ register(ArtifactBaseSchema, "ArtifactBase");
 register(GenericArtifactSchema, "GenericArtifact");
 register(SuccessEnvelopeSchema, "SuccessEnvelope");
 register(ErrorEnvelopeSchema, "ErrorEnvelope");
+register(X402PaymentRequiredSchema, "X402PaymentRequired");
 register(ResponseMetaSchema, "ResponseMeta");
 register(PaginationMetaSchema, "PaginationMeta");
 register(CacheProfileSchema, "CacheProfile");
@@ -1406,6 +1408,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "GenericArtifact",
   "SuccessEnvelope",
   "ErrorEnvelope",
+  "X402PaymentRequired",
   "ResponseMeta",
   "PaginationMeta",
   "CacheProfile",

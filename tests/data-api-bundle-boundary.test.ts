@@ -87,6 +87,7 @@ describe("data-api's bundle boundary", () => {
 
   for (const forbidden of [
     "src/mcp-server.ts",
+    "src/x402.ts",
     "src/projection-write-store.ts",
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",

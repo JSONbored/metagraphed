@@ -5,6 +5,7 @@
 // these without an import cycle.
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contract-constants.ts";
 import { JSON_CONTENT_TYPE } from "./config.ts";
+import { X402_BROWSER_RESPONSE_HEADERS } from "../src/x402-headers.ts";
 
 export type CacheProfile = "short" | "standard" | "static";
 
@@ -103,6 +104,7 @@ export function withNoStore(response: Response): Response {
 }
 
 const EXPOSED_RESPONSE_HEADERS = [
+  ...X402_BROWSER_RESPONSE_HEADERS,
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
   // rate-limit family: detect throttling, honour the back-off
@@ -274,7 +276,7 @@ export function ifNoneMatchSatisfied(
  * exists twice is a body bound that disagrees with itself eventually.
  */
 export async function readBoundedRequestText(
-  request: Request,
+  request: Pick<Request, "headers" | "body">,
   maxBytes: number,
 ) {
   const contentLength = Number(request.headers.get("content-length") || 0);
@@ -299,7 +301,9 @@ export async function readBoundedRequestText(
         typeof value === "string" ? new TextEncoder().encode(value) : value;
       bytes += chunk.byteLength;
       if (bytes > maxBytes) {
-        await reader.cancel();
+        // A cloned Request tees the body. Cancelling one branch may wait for
+        // the unread original branch, so do not await that shared completion.
+        void reader.cancel().catch(() => {});
         return { ok: false, text: "" };
       }
       text += decoder.decode(chunk, { stream: true });

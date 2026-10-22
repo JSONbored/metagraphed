@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   applyTieredRateLimit,
+  copyPaidCall,
+  markPaidCall,
   spendDeferredDailyQuota,
   tieredRateLimitHeaders,
   tieredRejectionResponse,
@@ -1609,6 +1611,33 @@ describe("applyTieredRateLimit — paidIdentity", () => {
     assert.equal(result.allowed, true);
     assert.equal(result.tier, "paid");
     assert.deepEqual(calls, [{ key: `test:paid:x402:${PAYER}` }]);
+  });
+
+  test("server-owned paid authority survives an internal Request clone", async () => {
+    const calls: unknown[] = [];
+    const source = anonRequest();
+    const clone = source.clone();
+    markPaidCall(source, PAYER, "paid");
+    copyPaidCall(source, clone);
+    const result = await applyTieredRateLimit(
+      clone,
+      envWithLimiter(calls),
+      TIERED_CONFIG,
+    );
+    assert.equal(result.tier, "paid");
+    assert.deepEqual(calls, [{ key: `test:paid:x402:${PAYER}` }]);
+  });
+
+  test("copying an unpaid request cannot promote a clone", async () => {
+    const source = anonRequest();
+    const clone = source.clone();
+    copyPaidCall(source, clone);
+    const result = await applyTieredRateLimit(
+      clone,
+      envWithLimiter([]),
+      TIERED_CONFIG,
+    );
+    assert.equal(result.tier, "anonymous");
   });
 
   test("the payer is NOT reported as an account id", async () => {

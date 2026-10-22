@@ -27,6 +27,8 @@ import {
   x402PriceFor,
   x402RequiresPayment,
 } from "../src/x402.ts";
+import { resolveX402SupportedConfig } from "../src/x402-supported.ts";
+import { createX402AttemptStore } from "../src/x402-attempt-store.ts";
 import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
 import {
@@ -659,6 +661,8 @@ import { runContainerLaneWatchdog } from "../src/container-lane-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
 import { isFinneySs58Address } from "../src/finney-ss58.ts";
+import { safeBlockNumber } from "../src/history-readers.ts";
+import { isU16Netuid } from "../src/subnet-recycled.ts";
 import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import { runSubnetBurnCoverageWatchdog } from "../src/subnet-burn-coverage-watchdog.ts";
 import {
@@ -696,6 +700,8 @@ import {
   aiEnabled,
   AI_TIERED_RATE_LIMIT,
   askQuestion,
+  normalizeAskInput,
+  normalizeSemanticInput,
   runEmbeddingSync,
   semanticSearch,
 } from "../src/ai-search.ts";
@@ -875,6 +881,7 @@ import {
 import {
   applyTieredRateLimit,
   markPaidCall,
+  copyPaidCall,
   tieredRejectionResponse,
   type TieredRateLimitConfig,
   type TieredRateLimitResult,
@@ -5650,6 +5657,15 @@ async function dispatchCached(
   // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
   // reach one entry instead of computing the same body under two keys.
   const { network, url: resolved } = resolveNetworkPrefix(url);
+  // Let the canonical network dispatcher answer unavailable resources before
+  // any payment or method decision. Testnet does not host mainnet-only routes,
+  // and local hosts no data; neither can sell a call that will only return 404.
+  if (
+    !network.isDefault &&
+    (network.id === "local" || isMainnetOnlyApiPath(resolved.pathname))
+  ) {
+    return dispatchRequest(request, env, ctx);
+  }
   // x402 (infra#629) is applied HERE, for the reason the limiter, the degraded
   // label and the edge cache are: one dispatch point rather than a wrapper each
   // handler's author has to remember. Two things follow that per-route wrapping
@@ -5687,7 +5703,10 @@ async function dispatchCached(
       // GET key when the builder accepts the normalized request, and a builder
       // closing over the original HEAD would seed the GET entry with an empty
       // body for every later caller.
-      (cacheRequest) => dispatchRequest(cacheRequest, env, ctx),
+      (cacheRequest) => {
+        copyPaidCall(request, cacheRequest);
+        return dispatchRequest(cacheRequest, env, ctx);
+      },
       `${resolved.pathname}${resolved.search}`,
       accountCacheStamp,
     );
@@ -5800,7 +5819,9 @@ async function dispatchRequest(
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
       url = networkRoute.url;
-      request = new Request(url.toString(), request);
+      const normalizedRequest = new Request(url.toString(), request);
+      copyPaidCall(request, normalizedRequest);
+      request = normalizedRequest;
     } else {
       return handleNetworkScopedRequest(
         request,
@@ -6324,14 +6345,24 @@ async function dispatchRequest(
   // payability a deployment cannot honour is the same dishonesty #11175
   // refused for an A2A card with no endpoint behind it.
   if (url.pathname === "/.well-known/x402") {
-    const manifest = x402Manifest(resolveX402Config(env), url.origin);
-    if (!manifest) {
+    const configured = resolveX402Config(env);
+    if (!configured) {
       return errorResponse(
         "not_found",
         "This deployment does not accept x402 payments.",
         404,
       );
     }
+    const store = paymentAttemptStore(env);
+    try {
+      if (!store) return x402UnavailableResponse();
+      await store.get("0".repeat(64));
+    } catch {
+      return x402UnavailableResponse();
+    }
+    const supported = await resolveX402SupportedConfig(configured);
+    if (!supported) return x402UnavailableResponse();
+    const manifest = x402Manifest(supported, url.origin);
     return new Response(JSON.stringify(manifest), {
       status: 200,
       headers: {
@@ -8594,28 +8625,13 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * Returns the rejection to serve, or null when the caller may proceed.
  */
 /**
- * The x402 gate: refuse-with-a-quote, or settle and let the work proceed
- * (infra#629).
+ * Validate and settle a payment before `work`, then attach its receipt.
  *
- * Runs BEFORE the handler, and both facilitator calls happen before any work.
- * Serve-then-settle would lose the money on any failure after the response is
- * committed, and a Worker cannot retract a stream it has begun.
- *
- * Returns a Response to serve INSTEAD of the route (only when a caller TRIED
- * to pay and could not), a settlement header to attach when payment succeeded,
- * or null to proceed untouched.
- *
- * Null is the overwhelmingly common case and covers three situations that are
- * deliberately indistinguishable to the caller: this deployment takes no
- * payments, this route is not one a payment buys headroom on, or the caller
- * simply did not present one. All three mean "serve it as you would today".
- */
-/**
- * Run `work` behind the x402 gate, attaching the settlement receipt.
- *
- * The receipt matters: `PAYMENT-RESPONSE` is how a payer reconciles what they
- * were charged against what they got, and dropping it turns a settled payment
- * into one the caller has no record of.
+ * Optional unpaid calls retain anonymous access. Required-payment exports and
+ * explicit payment attempts fail closed when settlement is unavailable. A
+ * pending attempt must resolve before any paid work can run or a new payment
+ * can be offered. OPTIONS only negotiates access and reaches the CORS handler.
+ * `PAYMENT-RESPONSE` lets the payer reconcile a settled charge with the answer.
  */
 async function withX402(
   request: Request,
@@ -8623,12 +8639,16 @@ async function withX402(
   pathname: string,
   work: () => Promise<Response>,
 ): Promise<Response> {
+  // A preflight asks permission to send a payment header; it does not buy the
+  // resource. Reach the CORS handler without verifying or settling anything.
+  if (request.method === "OPTIONS") return work();
   const gate = await enforceX402(request, env, pathname);
   if (gate && "reject" in gate) return gate.reject;
   const response = await work();
   if (!gate) return response;
   const headers = new Headers(response.headers);
   headers.set(X402_RESPONSE_HEADER, gate.settlementHeader);
+  exposeCustomResponseHeaders(headers);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -8641,71 +8661,234 @@ async function enforceX402(
   env: Env,
   pathname: string,
 ): Promise<{ reject: Response } | { settlementHeader: string } | null> {
-  const config = resolveX402Config(env);
-  if (!config) return null;
   const price = x402PriceFor(pathname);
   if (!price) return null;
-
-  const requirements = paymentRequirements(config, price.atomicAmount);
-  const verdict = await verifyAndSettle(config, request, requirements);
+  // Family prices cover whole prefixes, including paths that do not exist.
+  // Use the router's canonical contract matcher before quoting or charging.
+  // Live priced handlers use canonical paths, without a trailing slash.
+  const routePath =
+    contractPathForPathname(pathname) ??
+    contractPathForPathname(pathname, request.method);
+  if (!routePath) return null;
+  if (pathname.endsWith("/")) {
+    return {
+      reject: errorResponse(
+        "not_found",
+        "Use the canonical API path without a trailing slash.",
+        404,
+      ),
+    };
+  }
+  // The same declaration serves CORS and the dispatcher's method rejection.
+  // Check it before settlement: some read families dispatch before the generic
+  // method guard, and a wrong method must never buy an error or a free export.
+  const allowedMethods = allowedMethodsForPath(pathname);
+  if (!allowedMethods.split(", ").includes(request.method)) {
+    return {
+      reject: errorResponse(
+        "method_not_allowed",
+        "This resource does not support the requested method.",
+        405,
+        {},
+        { allow: allowedMethods },
+      ),
+    };
+  }
+  if (
+    !request.headers.get("payment-signature") &&
+    !x402RequiresPayment(pathname)
+  )
+    return null;
+  // Use the same value validators as the readers, after the canonical matcher
+  // has identified the parameter slots. A payment cannot buy an unusable key.
+  const params = compileRoutePattern(routePath).exec(pathname)!.groups;
+  if (params?.ss58 && !isFinneySs58Address(params.ss58)) {
+    return {
+      reject: errorResponse(
+        "invalid_ss58",
+        "ss58 address must be a valid finney SS58 account address.",
+        400,
+      ),
+    };
+  }
+  if (params?.netuid && !isU16Netuid(Number(params.netuid))) {
+    return {
+      reject: errorResponse(
+        "invalid_netuid",
+        "netuid must be an integer in the u16 range 0..65535.",
+        400,
+      ),
+    };
+  }
+  if (
+    params?.ref &&
+    !params.ref.startsWith("0x") &&
+    safeBlockNumber(params.ref) === null
+  ) {
+    return {
+      reject: errorResponse(
+        "invalid_block_ref",
+        "Block number must be a non-negative safe integer.",
+        400,
+      ),
+    };
+  }
+  if (params?.hash && !params.hash.startsWith("0x")) {
+    const [block, index] = params.hash.split("-");
+    if (safeBlockNumber(block) === null || safeBlockNumber(index) === null) {
+      return {
+        reject: errorResponse(
+          "invalid_extrinsic_ref",
+          "Extrinsic block and index must be non-negative safe integers.",
+          400,
+        ),
+      };
+    }
+  }
+  // Reject invalid GET/HEAD parameters before either asking for a payment or
+  // submitting settlement. Use the same canonical parser as dispatchRequest.
+  if (request.method === "GET" || request.method === "HEAD") {
+    const url = new URL(request.url);
+    url.pathname = pathname;
+    const query = parseRouteQuery(url);
+    if ("error" in query) return { reject: analyticsQueryError(query.error) };
+    if (routePath === "/api/v1/chain-events") {
+      const badValue = chainEventsQueryError(chainEventsQueryFromUrl(url));
+      if (badValue)
+        return {
+          reject: analyticsQueryError({
+            parameter: badValue,
+            message: `${badValue} is not a usable value for this feed.`,
+          }),
+        };
+    }
+    if (routePath === "/api/v1/search/semantic") {
+      try {
+        normalizeSemanticInput(query.query.q, {
+          limit: query.query.limit,
+          type: url.searchParams.getAll("type"),
+        });
+      } catch (error) {
+        return {
+          reject: errorResponse("invalid_query", errorMessage(error), 400),
+        };
+      }
+    }
+  }
+  const config = resolveX402Config(env);
+  if (!config) return { reject: x402UnavailableResponse() };
+  if (price.family === "ai") {
+    if (!aiEnabled(env)) return { reject: aiUnavailableResponse() };
+    if (routePath === "/api/v1/ask") {
+      // Preserve original bytes for the payment fingerprint and handler.
+      const parsed = await parseAskRequest(request.clone());
+      if ("reject" in parsed) return parsed;
+    }
+  }
+  const store = paymentAttemptStore(env);
+  let supported: Promise<ReturnType<typeof resolveX402Config>> | undefined;
+  const supportedConfig = () =>
+    (supported ??= resolveX402SupportedConfig(config));
+  const quote = async (reason = "") => {
+    const current = await supportedConfig();
+    return current
+      ? paymentRequiredResponse(
+          current,
+          request,
+          price.atomicAmount,
+          `metagraphed ${price.family} call${reason ? ` -- ${reason}` : ""}`,
+        )
+      : x402UnavailableResponse();
+  };
+  const verdict = await verifyAndSettle(
+    config,
+    request,
+    async () => {
+      const current = await supportedConfig();
+      return current ? paymentRequirements(current, price.atomicAmount) : null;
+    },
+    fetch,
+    store,
+  );
   switch (verdict.outcome) {
     case "settled":
-      // What the payment BUYS: this request is measured against the paid tier
-      // instead of the anonymous one, keyed to the payer's wallet. Without
-      // this the payment would settle and change nothing, which is worse than
-      // not taking it.
-      //
-      // Called UNCONDITIONALLY, including for the empty payer a facilitator
-      // may return. `markPaidCall` owns the rule that an unattributable
-      // payment gets no bucket of its own, because it owns the bucket -- and a
-      // guard repeated at the call site is one the next call site omits.
       markPaidCall(request, verdict.payer, "paid");
       return { settlementHeader: verdict.responseHeader };
     case "unpaid":
-      // THE INVARIANT, and its one deliberate exception (#11600).
-      //
-      // For every family that merely ACCEPTS payment, no payment presented
-      // means proceed exactly as today -- anonymous, rate-limited, free.
-      // Returning a 402 here is what would have broken our own site, which
-      // calls /api/v1/ask with no credential and /api/v1/blocks with a
-      // user-typed range.
-      //
-      // The `export` family is different, and it is different because it is
-      // NEW: nothing has ever been served from it for free, nothing in
-      // apps/ui calls it, and no free tier of it was withdrawn to create it.
-      // The invariant protects calls that would otherwise have succeeded;
-      // there are none here to protect.
-      return x402RequiresPayment(pathname)
-        ? {
-            reject: paymentRequiredResponse(
-              config,
-              request,
-              price.atomicAmount,
-              `metagraphed ${price.family} call`,
-            ),
-          }
-        : null;
+      try {
+        if (!store) return { reject: x402UnavailableResponse() };
+        // Do not quote until the durable owner and migration are available.
+        await store.get("0".repeat(64));
+      } catch {
+        return { reject: x402UnavailableResponse() };
+      }
+      return { reject: await quote() };
     case "malformed":
-      // 400, not 402: the caller DID present a payment and it was unreadable.
-      // Answering 402 would tell them to pay again for a request whose problem
-      // is its encoding, which is a loop they cannot exit.
       return {
         reject: errorResponse("x402_malformed_payment", verdict.reason, 400),
       };
-    default:
-      // Rejected by the facilitator, or the facilitator could not answer.
-      // Both are 402 with the quote reattached, so a caller who retries has
-      // everything they need -- and neither is ever a pass. This control fails
-      // CLOSED; see verifyAndSettle for why it is the one that does.
+    case "unavailable":
+      return { reject: x402UnavailableResponse() };
+    case "pending":
       return {
-        reject: paymentRequiredResponse(
-          config,
-          request,
-          price.atomicAmount,
-          `metagraphed ${price.family} call -- ${verdict.reason}`,
+        reject: errorResponse(
+          "x402_settlement_pending",
+          "Settlement is pending. Retry the identical request with the same PAYMENT-SIGNATURE; do not create a new payment.",
+          503,
+          { payment_status: "pending", retry: "same_payment_payload" },
+          {
+            "retry-after": "5",
+            ...(verdict.responseHeader
+              ? { [X402_RESPONSE_HEADER]: verdict.responseHeader }
+              : {}),
+          },
         ),
       };
+    case "conflict":
+      return {
+        reject: errorResponse(
+          "x402_payment_conflict",
+          "This signed payment is already bound to a different request.",
+          409,
+        ),
+      };
+    case "consumed":
+      return {
+        reject: errorResponse(
+          "x402_payment_consumed",
+          "This payment has already authorized one request.",
+          409,
+          {},
+          { [X402_RESPONSE_HEADER]: verdict.responseHeader },
+        ),
+      };
+    case "rejected":
+      return { reject: await quote(verdict.reason) };
   }
+}
+
+function paymentAttemptStore(env: Env) {
+  if (
+    !env.D1_STATE_TABLES?.split(",")
+      .map((name) => name.trim())
+      .includes("x402_payment_attempts")
+  )
+    return null;
+  try {
+    return createX402AttemptStore(env.D1_STATE);
+  } catch {
+    return null;
+  }
+}
+
+function x402UnavailableResponse(): Response {
+  return errorResponse(
+    "x402_unavailable",
+    "Payment processing is temporarily unavailable. Retry the identical request and payment payload.",
+    503,
+    {},
+    { "retry-after": "5" },
+  );
 }
 
 async function dataRouteRateLimit(
@@ -10808,6 +10991,40 @@ async function handleSemanticSearchRequest(
   }
 }
 
+async function parseAskRequest(
+  request: Request,
+): Promise<{ body: Row } | { reject: Response }> {
+  let body: Row | null;
+  try {
+    const bounded = await readBoundedRequestText(request, MAX_ASK_BODY_BYTES);
+    if (!bounded.ok)
+      return {
+        reject: errorResponse(
+          "payload_too_large",
+          "Ask request body exceeds the size limit.",
+          413,
+        ),
+      };
+    body = rowOf(JSON.parse(bounded.text));
+  } catch {
+    return {
+      reject: errorResponse(
+        "invalid_json",
+        "Request body must be valid JSON.",
+        400,
+      ),
+    };
+  }
+  try {
+    normalizeAskInput(body?.question, { topK: body?.topK, type: body?.type });
+  } catch (error) {
+    return {
+      reject: errorResponse("invalid_request", errorMessage(error), 400),
+    };
+  }
+  return { body: body! };
+}
+
 async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (request.method !== "POST") {
     return errorResponse(
@@ -10834,27 +11051,9 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (rateLimit.accountId) {
     recordApiKeyUsage(env, ctx, rateLimit.accountId, "ask");
   }
-  let body;
-  try {
-    const boundedBody = await readBoundedRequestText(
-      request,
-      MAX_ASK_BODY_BYTES,
-    );
-    if (!boundedBody.ok) {
-      return errorResponse(
-        "payload_too_large",
-        "Ask request body exceeds the size limit.",
-        413,
-      );
-    }
-    body = JSON.parse(boundedBody.text);
-  } catch {
-    return errorResponse(
-      "invalid_json",
-      "Request body must be valid JSON.",
-      400,
-    );
-  }
+  const parsed = await parseAskRequest(request);
+  if ("reject" in parsed) return parsed.reject;
+  const { body } = parsed;
   try {
     // Resolve live probe health once and inject it so /ask context reflects the
     // current operational status of each subnet's surfaces, not the build-time
@@ -11055,9 +11254,9 @@ async function liveHealthOverlay(
 /**
  * Which methods a path accepts.
  *
- * One declaration, two consumers: the CORS preflight below, and the read-only method
- * gate's `allow` header. They answered the same question from two copies before, which
- * is how a route could advertise one method set to a browser and another to a client.
+ * Shared by CORS, the read-only method gate and the payment preflight. These
+ * boundaries must agree on which requests can reach a handler before a caller
+ * pays for one.
  */
 function allowedMethodsForPath(pathname: string): string {
   const url = { pathname };
@@ -11110,6 +11309,7 @@ function corsPreflight(request: Request) {
     "access-control-allow-headers",
     `content-type, if-none-match, authorization, mcp-session-id, mcp-protocol-version, ` +
       `signature, signature-input, signature-agent, ` +
+      `payment-signature, ` +
       `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
       `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );

@@ -2114,17 +2114,12 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
-    // The paid export tier (#11600). This harness configures no X402_PAY_TO,
-    // so `resolveX402Config` returns null and the gate stands down -- which is
-    // the behaviour worth asserting HERE: an unconfigured deployment serves
-    // the route normally rather than 402ing on a paywall it cannot collect.
-    // The 402 itself is covered in tests/x402-export.test.ts, where the env
-    // IS configured.
+    // A paid export fails closed when this credential-free harness has no
+    // payment configuration. Configured quotes and settlement are covered by
+    // the x402 protocol and compiled Worker tests.
     "/api/v1/export/chain-events",
-    (body) => {
-      assert.equal(Array.isArray(body.data.events), true);
-      assert.equal(typeof body.data.count, "number");
-    },
+    (body) => assert.equal((body.error as Row).code, "x402_unavailable"),
+    { expect_status: 503 },
   ],
   [
     // Postgres-backed all-events tier (ADR 0013): DATA_API is mocked above; api.ts

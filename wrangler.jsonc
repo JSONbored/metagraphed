@@ -88,7 +88,7 @@
     "D1_EXPORT_REVISIONS": "enabled",
     // Retained history copied and qualified before this ownership switch.
     // Writers and readers move together; other tables keep their existing owner.
-    "D1_STATE_TABLES": "account_balances,account_balances_passes,account_identity,account_identity_history,account_position_daily,api_key_blocks,api_key_usage_daily,api_keys,api_quota_daily,api_usage_rollup,attribution_candidates,attribution_sweeps,blocks_head,chain_alert_deliveries,chain_alert_triggers,chain_concentration_daily,chain_detail_account_events,chain_detail_blocks,chain_detail_chain_events,chain_detail_extrinsics,compute_declarations,emission_flow_watch,emission_gate_param_history,github_accounts,hotkey_alpha,hotkey_alpha_passes,lane_health,neuron_daily,neurons,neurons_passes,nominator_positions,nominator_positions_passes,nominator_scan_receipts,origin_reachability,providers,raw_capture_state,revenue_observations,revenue_probe_failures,root_basket_capture_completions,root_basket_capture_pages,root_basket_captures,root_basket_current,root_basket_fund_snapshots,root_basket_holdings,root_basket_targets,rpc_accounts,self_health_checks,self_health_daily,subnet_burn_history,subnet_deregistration_daily,subnet_emission_enabled_history,subnet_hyperparams,subnet_hyperparams_history,subnet_identity,subnet_identity_history,subnet_lifecycle,subnet_ownership,subnet_ownership_history,subnet_snapshots,subnets,surface_checks,surface_failure_daily,surface_history,surface_status,surface_uptime_daily,surfaces,tao_usd_index,treasury_readings,validator_nominator_counts,validator_nominator_counts_passes,watch_push_subscriptions",
+    "D1_STATE_TABLES": "account_balances,account_balances_passes,account_identity,account_identity_history,account_position_daily,api_key_blocks,api_key_usage_daily,api_keys,api_quota_daily,api_usage_rollup,attribution_candidates,attribution_sweeps,blocks_head,chain_alert_deliveries,chain_alert_triggers,chain_concentration_daily,chain_detail_account_events,chain_detail_blocks,chain_detail_chain_events,chain_detail_extrinsics,compute_declarations,emission_flow_watch,emission_gate_param_history,github_accounts,hotkey_alpha,hotkey_alpha_passes,lane_health,neuron_daily,neurons,neurons_passes,nominator_positions,nominator_positions_passes,nominator_scan_receipts,origin_reachability,providers,raw_capture_state,revenue_observations,revenue_probe_failures,root_basket_capture_completions,root_basket_capture_pages,root_basket_captures,root_basket_current,root_basket_fund_snapshots,root_basket_holdings,root_basket_targets,rpc_accounts,self_health_checks,self_health_daily,subnet_burn_history,subnet_deregistration_daily,subnet_emission_enabled_history,subnet_hyperparams,subnet_hyperparams_history,subnet_identity,subnet_identity_history,subnet_lifecycle,subnet_ownership,subnet_ownership_history,subnet_snapshots,subnets,surface_checks,surface_failure_daily,surface_history,surface_status,surface_uptime_daily,surfaces,tao_usd_index,treasury_readings,validator_nominator_counts,validator_nominator_counts_passes,watch_push_subscriptions,x402_payment_attempts",
     // infra#629: where x402 payments settle, and on which chain.
     //
     // IN VERSION CONTROL, NOT A SECRET. The address is public by nature -- a
@@ -97,19 +97,15 @@
     // change in this repo that moves money to somebody else, so "who can change
     // it and would anyone notice" matters more than secrecy.
     //
-    // Base SEPOLIA to start: a first settlement bug should cost test funds, not
-    // real ones. Moving to mainnet is a one-line change to eip155:8453 here,
-    // which is again exactly the kind of change that should show up in a diff.
-    //
-    // Absent entirely -> src/x402.ts resolves no config and no 402 is ever
-    // emitted, which is how this shipped before an address existed.
+    // PayAI exact-v2 mainnet USDC. The durable D1 attempt owner prevents a
+    // signed transfer from authorizing more than one request.
     "X402_PAY_TO": "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
-    "X402_NETWORK": "eip155:84532",
-    // The SVM leg, and the one that takes REAL money: the public facilitator
-    // settles Solana mainnet and does not settle Base mainnet. Committed, not
-    // a secret, for the same reason as X402_PAY_TO above -- a silently
-    // redirected payTo is the one change in this repo that pays somebody else.
+    "X402_NETWORK": "eip155:8453",
+    "X402_FACILITATOR_URL": "https://facilitator.payai.network",
+    // Preserve the recipient; activate only after its native USDC ATA exists.
     "X402_PAY_TO_SOLANA": "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
+    "X402_NETWORK_SOLANA": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "X402_SOLANA_ENABLED": "false",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",

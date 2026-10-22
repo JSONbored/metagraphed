@@ -1,7 +1,8 @@
 // Exercise the compiled deploy entry in workerd, where native Node imports,
 // cloudflare:workers, WASM and deferred ESM chunks must all resolve together.
 // Source-only handler tests cannot catch a broken deployed module graph.
-import { Miniflare } from "miniflare";
+import { Miniflare, Response as MiniflareResponse } from "miniflare";
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,6 +20,7 @@ let runtime: Miniflare;
 let eagerBytes: number;
 let totalBytes: number;
 let eagerInputs: Set<string>;
+const outbound: string[] = [];
 
 beforeAll(async () => {
   outdir = await mkdtemp(path.join(tmpdir(), "api-worker-modules-"));
@@ -59,11 +61,46 @@ beforeAll(async () => {
     compatibilityDate: "2026-06-06",
     compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
     kvNamespaces: ["METAGRAPH_CONTROL", "OAUTH_KV"],
+    d1Databases: ["D1_STATE"],
+    outboundService(request) {
+      outbound.push(request.url);
+      if (request.url === "https://facilitator.payai.network/supported")
+        return new MiniflareResponse(
+          JSON.stringify({
+            kinds: [
+              { x402Version: 2, scheme: "exact", network: "eip155:8453" },
+            ],
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      return new MiniflareResponse("No external calls in this fixture", {
+        status: 503,
+      });
+    },
     bindings: {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       METAGRAPH_AUDIT_RESPONSES: "enforce",
+      X402_PAY_TO: "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
+      X402_PAY_TO_SOLANA: "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
+      X402_NETWORK: "eip155:8453",
+      X402_NETWORK_SOLANA: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      X402_SOLANA_ENABLED: "false",
+      X402_FACILITATOR_URL: "https://facilitator.payai.network",
+      D1_STATE_TABLES: "x402_payment_attempts",
     },
   });
+  const db = await runtime.getD1Database("D1_STATE");
+  const migration = readFileSync(
+    new URL("../migrations/d1/0039_x402_payment_attempts.sql", import.meta.url),
+    "utf8",
+  ).replace(/^--.*$/gm, "");
+  await db.prepare(migration).run();
+  expect(
+    await db
+      .withSession("first-primary")
+      .prepare("SELECT identity_key FROM x402_payment_attempts LIMIT 1")
+      .first(),
+  ).toBeNull();
   const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
   const stamp = {
     schema_version: 1,
@@ -166,6 +203,56 @@ test("the OAuth provider still owns bearer-token authentication", async () => {
     headers: { authorization: "Bearer invalid" },
   });
   expect(response.status).toBe(401);
+});
+
+test("the compiled paid export admits browser preflights and exposes its quote", async () => {
+  const url = "https://api.metagraph.sh/api/v1/export/chain-events?limit=1";
+  const preflight = await runtime.dispatchFetch(url, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://browser.example",
+      "access-control-request-method": "GET",
+      "access-control-request-headers": "payment-signature, signature",
+      "payment-signature": "!!!",
+    },
+  });
+  expect(preflight.status).toBe(204);
+  expect(preflight.headers.get("access-control-allow-headers")).toContain(
+    "payment-signature",
+  );
+  expect(preflight.headers.get("access-control-allow-methods")).toBe(
+    "GET, HEAD, OPTIONS",
+  );
+  expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
+  expect(preflight.headers.get("access-control-allow-credentials")).toBeNull();
+  const beforeInvalid = outbound.length;
+  const invalid = await runtime.dispatchFetch(`${url}&__invalid=1`, {
+    headers: { "payment-signature": "!!!" },
+  });
+  expect(invalid.status).toBe(400);
+  expect(await invalid.json()).toMatchObject({
+    error: { code: "invalid_query" },
+  });
+  expect(outbound).toHaveLength(beforeInvalid);
+  const unpaid = await runtime.dispatchFetch(url);
+  expect(
+    unpaid.status,
+    JSON.stringify({ body: await unpaid.clone().text(), outbound }),
+  ).toBe(402);
+  expect(unpaid.headers.get("payment-required")).toBeTruthy();
+  expect(unpaid.headers.get("access-control-expose-headers")).toContain(
+    "payment-required",
+  );
+  expect(await unpaid.json()).toMatchObject({
+    x402Version: 2,
+    accepts: expect.arrayContaining([
+      expect.objectContaining({
+        network: "eip155:8453",
+        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        extra: { name: "USD Coin", version: "2" },
+      }),
+    ]),
+  });
 });
 
 test("public OAuth discovery, registration, server card and preflight remain available", async () => {
