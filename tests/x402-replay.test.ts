@@ -324,3 +324,53 @@ test("oversized signature headers are malformed without decoding or settlement",
   });
   expect((await run(store(), facilitator(), req)).outcome).toBe("malformed");
 });
+
+test("changing the body cannot reuse a signed transfer", async () => {
+  const db = store();
+  await run(db);
+  expect(
+    (await run(db, facilitator(), request(payload, undefined, '{"other":1}')))
+      .outcome,
+  ).toBe("conflict");
+});
+
+test("a successful settlement cannot authorize work while the durable claim is unavailable", async () => {
+  const db = store();
+  vi.mocked(db.consume).mockRejectedValue(new Error("D1 write unavailable"));
+  expect((await run(db)).outcome).toBe("pending");
+  expect([...db.attempts.values()][0].state).toBe("pending");
+});
+
+test("the native mainnet guard also covers Solana with no store argument", async () => {
+  const svm = resolveX402Config(
+    mockEnv({
+      X402_PAY_TO_SOLANA: "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
+      X402_NETWORK_SOLANA: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    }),
+  )!;
+  const accepted = paymentRequirements(svm, "10000")[0];
+  const transaction = btoa(
+    String.fromCharCode(1) + "s".repeat(64) + "signed-message",
+  );
+  const fetcher = facilitator();
+  const result = await verifyAndSettle(
+    svm,
+    request({ x402Version: 2, accepted, payload: { transaction } }),
+    [accepted],
+    fetcher,
+  );
+  expect(result.outcome).toBe("unavailable");
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+test("an interrupted request body cannot reach payment verification", async () => {
+  const interrupted = request();
+  interrupted.clone = () => {
+    throw new Error("request body unavailable");
+  };
+  const fetcher = facilitator();
+  expect((await run(store(), fetcher, interrupted)).outcome).toBe(
+    "unavailable",
+  );
+  expect(fetcher).not.toHaveBeenCalled();
+});

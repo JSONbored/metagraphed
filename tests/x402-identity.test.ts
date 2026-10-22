@@ -206,7 +206,8 @@ test("fingerprinting accepts exactly 64 KiB and rejects a lying oversized body",
   const exact = post(Buffer.alloc(65_536, 0xff));
   assert.match((await x402RequestFingerprint(exact))!, /^[0-9a-f]{64}$/);
   await exact.arrayBuffer();
-  for (const headers of [{}, { "content-length": "0" }]) {
+  const headerCases: HeadersInit[] = [{}, { "content-length": "0" }];
+  for (const headers of headerCases) {
     const oversized = post(Buffer.alloc(65_537), headers);
     assert.equal(await x402RequestFingerprint(oversized), null);
     await oversized.body!.cancel();

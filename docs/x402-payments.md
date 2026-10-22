@@ -53,7 +53,10 @@ operate independently of this prerequisite.
 The API binds a verified signed-payment identity to the exact HTTP method,
 full URL including query, and body bytes in D1 before submitting settlement.
 It persists the original facilitator URL and envelope so an uncertain attempt
-can be reconciled even if current configuration or capabilities change. A
+can be reconciled after provider, enabled-network or capability changes while
+payments remain configured. Removing the final payment configuration pauses
+settlement and reconciliation with HTTP 503; required exports remain unavailable
+until payments are configured again. A
 conditional database update grants paid execution once. Consumed attempts
 retain the receipt permanently and discard the full settlement envelope.
 

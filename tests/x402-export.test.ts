@@ -122,12 +122,13 @@ describe("the export route demands payment", () => {
 });
 
 describe("a deployment that cannot collect does not pretend to", () => {
-  test("no X402_PAY_TO means the export serves like any other route", async () => {
-    // Fails OPEN here, alone in this module, and deliberately: a 402 quoting
-    // an address the deployment does not have is a bill nobody can pay. The
-    // route degrades to its normal answer instead.
+  test("an unconfigured collector cannot run the required-payment export", async () => {
     const res = await get(EXPORT, mockEnv({}));
-    assert.notEqual(res.status, 402);
+    assert.equal(res.status, 503);
+    assert.equal((await jsonBody(res)).error.code, "x402_unavailable");
+    assert.equal(res.headers.get("payment-required"), null);
+    const free = await get(FREE, mockEnv({}));
+    assert.notEqual(free.status, 402);
   });
 });
 

@@ -8657,16 +8657,15 @@ async function enforceX402(
   env: Env,
   pathname: string,
 ): Promise<{ reject: Response } | { settlementHeader: string } | null> {
-  const config = resolveX402Config(env);
-  if (!config) return null;
   const price = x402PriceFor(pathname);
   if (!price) return null;
-
   if (
-    !request.headers.has("payment-signature") &&
+    !request.headers.get("payment-signature") &&
     !x402RequiresPayment(pathname)
   )
     return null;
+  const config = resolveX402Config(env);
+  if (!config) return { reject: x402UnavailableResponse() };
   const store = paymentAttemptStore(env);
   let supported: Promise<ReturnType<typeof resolveX402Config>> | undefined;
   const supportedConfig = () =>

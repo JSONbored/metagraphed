@@ -50,8 +50,7 @@ async function supported(
   const previous = capabilities.get(facilitatorUrl);
   if (previous && Date.now() < previous.expiresAt) return previous.promise;
   if (capabilities.size >= 8) {
-    const oldest = capabilities.keys().next().value;
-    if (oldest !== undefined) capabilities.delete(oldest);
+    capabilities.delete(capabilities.keys().next().value!);
   }
   const entry: Entry = {
     expiresAt: Date.now() + 30_000,

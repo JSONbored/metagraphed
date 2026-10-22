@@ -398,3 +398,118 @@ test("quotes and discovery fail closed when durable payment storage is unowned o
     }
   }
 });
+
+test("optional free traffic does not discover capabilities or read payment state", async () => {
+  let paymentCalls = 0;
+  const response = await withFetch(
+    (async () => {
+      paymentCalls++;
+      throw new Error("payment dependencies must stay cold");
+    }) as typeof fetch,
+    () => handleRequest(ask(), mockEnv({ X402_PAY_TO: PAY_TO })),
+  );
+  assert.notEqual(response.status, 402);
+  assert.equal(paymentCalls, 0);
+});
+
+test("a failed capability lookup cannot produce a quote or discovery advertisement", async () => {
+  for (const path of ["/.well-known/x402", "/api/v1/export/chain-events"]) {
+    resetModuleState();
+    const response = await withFetch(
+      (async () => Response.json({ kinds: [] })) as typeof fetch,
+      () =>
+        handleRequest(new Request(`https://api.metagraph.sh${path}`), paid()),
+    );
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("payment-required"), null);
+  }
+});
+
+test("an unavailable migration or D1 session never advertises mainnet payment", async () => {
+  for (const db of [
+    {
+      prepare() {
+        throw new Error("missing table");
+      },
+    },
+    {
+      withSession() {
+        throw new Error("session unavailable");
+      },
+    },
+  ]) {
+    const env = mockEnv({
+      X402_PAY_TO: PAY_TO,
+      D1_STATE_TABLES: " x402_payment_attempts ",
+      D1_STATE: db,
+    });
+    for (const path of ["/.well-known/x402", "/api/v1/export/chain-events"]) {
+      const response = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env,
+      );
+      assert.equal(response.status, 503);
+      assert.equal(response.headers.get("payment-required"), null);
+    }
+  }
+});
+
+test("a lost post-submit response tells the browser to retry its original payment", async () => {
+  const delegate = facilitator({ isValid: true }, {});
+  const response = await withFetch(
+    (async (url, init) => {
+      if (String(url).endsWith("/settle"))
+        throw new Error("reply lost after broadcast");
+      return delegate(url, init);
+    }) as typeof fetch,
+    () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), paid()),
+  );
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("payment-required"), null);
+  assert.equal(response.headers.get("payment-response"), null);
+  const body = await jsonBody(response);
+  assert.equal(body.error.code, "x402_settlement_pending");
+  assert.equal(body.meta.retry, "same_payment_payload");
+});
+
+test("an unsupported selected offer is refused with the current canonical quote", async () => {
+  const selected = JSON.parse(atob(payment));
+  selected.accepted.network = "eip155:999";
+  const response = await withFetch(facilitator({}, {}), () =>
+    handleRequest(
+      ask({ [X402_SIGNATURE_HEADER]: btoa(JSON.stringify(selected)) }),
+      paid(),
+    ),
+  );
+  assert.equal(response.status, 402);
+  const body = await jsonBody(response);
+  assert.match(body.resource.description, /does not match/);
+  assert.equal(body.accepts[0].network, "eip155:8453");
+});
+
+test("an intentionally unconfigured payment rail refuses explicit payment without settling", async () => {
+  let calls = 0;
+  const response = await withFetch(
+    (async () => {
+      calls++;
+      throw new Error("settlement disabled");
+    }) as typeof fetch,
+    () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), mockEnv({})),
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await jsonBody(response)).error.code, "x402_unavailable");
+  assert.equal(response.headers.get("payment-required"), null);
+  assert.equal(calls, 0);
+});
+
+test("an empty payment header retains ordinary anonymous access", async () => {
+  const response = await handleRequest(
+    ask({ [X402_SIGNATURE_HEADER]: "" }),
+    mockEnv({ X402_PAY_TO: PAY_TO }),
+  );
+  assert.notEqual(response.status, 402);
+  assert.notEqual(
+    response.headers.get("x-metagraph-error-code"),
+    "x402_unavailable",
+  );
+});

@@ -31,13 +31,11 @@
 //
 // ## WHY IT IS INERT WITHOUT CONFIGURATION
 //
-// `resolveX402Config` returns null unless a payTo address is set, and every
-// caller treats null as "this deployment does not take payments" -- no `402`
-// is ever emitted and the routes behave exactly as they do today. That is what
-// lets the config and the deploy land in either order with no window where a
-// caller is charged for something we cannot settle, and no window where we
-// advertise payability we do not have (the same dishonesty #11175 refused for
-// an A2A card with no endpoint behind it).
+// `resolveX402Config` returns null unless a payTo address is set. Ordinary
+// anonymous requests retain their existing access. Required-payment exports
+// and explicit payment attempts return 503 while configuration is absent:
+// disabling settlement must not silently grant paid work. Discovery never
+// advertises a payment rail the deployment cannot honor.
 //
 // ## THE WIRE FORMAT IS v2, WHICH IS NOT v1 WITH A BUMP
 //
@@ -440,8 +438,14 @@ export async function verifyAndSettle(
   let identityKey = "";
   let requestFingerprint = "";
   if (guarded) {
-    const identity = await x402PaymentIdentity(paymentPayload);
-    const fingerprint = await x402RequestFingerprint(request);
+    let identity: string | null;
+    let fingerprint: string | null;
+    try {
+      identity = await x402PaymentIdentity(paymentPayload);
+      fingerprint = await x402RequestFingerprint(request);
+    } catch {
+      return unavailable();
+    }
     if (!identity || !fingerprint)
       return {
         outcome: "malformed",
