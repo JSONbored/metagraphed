@@ -343,6 +343,8 @@ jobs:
               raise SystemExit("Worker binding types require the contracts preset")
           kind = "logo" if preset == "logos" else "contract"
           exact = {
+              "public/auth.md",
+              "public/.well-known/auth.md",
               "public/metagraph/openapi.json",
               "public/metagraph/contracts.json",
               "public/metagraph/api-index.json",

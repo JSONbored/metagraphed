@@ -201,6 +201,11 @@ describe("Discovery artifacts", () => {
   // The public REST and MCP access policies are different and must be explicit.
   test("auth.md distinguishes required free MCP auth from public REST access", async () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
+    assert.match(authMd, /^# [^\n]*auth\.md[^\n]*$/m);
+    assert.match(
+      authMd,
+      /For MCP clients and agents acting on behalf of a user/,
+    );
     assert.match(authMd, /public by default and\s+read-only/i);
     // Public REST access remains available; MCP requires free sign-in.
     // Emphasis-agnostic: prettier normalizes *required* to _required_, and the
@@ -259,6 +264,68 @@ describe("Discovery artifacts", () => {
       authMd,
       "both served authentication guides are the same generated document",
     );
+  });
+
+  test("auth.md documents owner-approved registration and existing provisioning", async () => {
+    const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
+    for (const field of [
+      "resource",
+      "authorization_servers",
+      "scopes_supported",
+      "bearer_methods_supported",
+      "issuer",
+    ]) {
+      assert.ok(authMd.includes(`\`${field}\``), field);
+    }
+    for (const endpoint of [
+      "POST https://api.metagraph.sh/oauth/register",
+      "GET https://api.metagraph.sh/authorize",
+      "POST https://api.metagraph.sh/oauth/token",
+      "POST https://api.metagraph.sh/agent/register",
+      "POST https://api.metagraph.sh/agent/claim",
+      "POST https://api.metagraph.sh/agent/rotate",
+      "POST https://api.metagraph.sh/oauth/revoke",
+      "POST https://api.metagraph.sh/api/v1/auth/wallet/challenge",
+      "POST https://api.metagraph.sh/api/v1/auth/wallet/verify",
+      "POST https://api.metagraph.sh/api/v1/keys",
+      "DELETE https://api.metagraph.sh/api/v1/keys/<key_id>",
+    ]) {
+      assert.ok(authMd.includes(endpoint), endpoint);
+    }
+    assert.match(authMd, /code_challenge_method=S256/);
+    assert.match(
+      authMd,
+      /Registering a client does not issue a user access token/,
+    );
+    assert.match(authMd, /form-encoded `token`, omitting\s+`grant_type`/);
+    assert.match(
+      authMd,
+      /A public client \(`token_endpoint_auth_method: "none"`\) must\s+also send `client_id`/,
+    );
+    assert.match(authMd, /session authorizes key management, not MCP/);
+    assert.match(authMd, /Authorization: Bearer <access_token>/);
+    assert.match(authMd, /Authorization: Bearer <session_token>/);
+    assert.match(authMd, /returned only once/);
+    assert.match(
+      authMd,
+      /does not support anonymous issuance,\s+upstream ID-JAG identity assertions or the older `verified_email` identity type/,
+    );
+    assert.match(
+      authMd,
+      /Discovery stays disabled\s+until the dedicated signing key/,
+    );
+    assert.match(
+      authMd,
+      /Registration does not issue an access token or assertion/,
+    );
+    assert.match(authMd, /Sign-in alone is not\s+approval/);
+    assert.match(authMd, /urn:workos:agent-auth:grant-type:claim/);
+    assert.match(authMd, /urn:ietf:params:oauth:grant-type:jwt-bearer/);
+    assert.match(
+      authMd,
+      /Repeated exchanges never extend the original\s+approval window/,
+    );
+    assert.match(authMd, /Passive scanners must read discovery documents only/);
   });
 
   test("security.txt follows RFC 9116 (contact, expires, canonical)", async () => {

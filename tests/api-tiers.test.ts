@@ -200,6 +200,9 @@ const UNADVERTISED_BINDINGS = new Set([
   // fullnode-rpc-proxy's pre-auth guess guard; its 429 carries the TIER's
   // numbers, checked below, not this binding's.
   "FULLNODE_RPC_GUESS_RATE_LIMITER",
+  // Auth.md's pre-auth abuse guard advertises retry timing only, not a tier
+  // ceiling. Registration and claim issuance share this per-IP binding.
+  "AGENT_AUTH_RATE_LIMITER",
 ]);
 
 describe("untiered ceilings are backed by real bindings (#10180)", () => {

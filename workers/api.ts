@@ -3098,6 +3098,11 @@ async function dispatchScheduled(
     return dispatchWebhooksFromChangelog(env);
   }
   if (cron === HEALTH_PRUNE_CRON) {
+    const { pruneAgentAuthState } = await import("../src/agent-auth-prune.ts");
+    const agentAuthPrune = await pruneAgentAuthState(
+      env.D1_STATE,
+      Math.floor(Date.now() / 1000),
+    );
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
     // deleted (PR3). Skip prune when the rollup fails so raw rows are never
@@ -3133,6 +3138,7 @@ async function dispatchScheduled(
         uptime_rolled: uptimeRollup.rolled,
         snapshot,
         rpc_usage_staleness: rpcUsageStaleness,
+        agent_auth_prune: agentAuthPrune,
       };
     }
     const [pruned] = await Promise.all([
@@ -3149,7 +3155,11 @@ async function dispatchScheduled(
       }).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
-    return { ...pruned, rpc_usage_staleness: rpcUsageStaleness };
+    return {
+      ...pruned,
+      rpc_usage_staleness: rpcUsageStaleness,
+      agent_auth_prune: agentAuthPrune,
+    };
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });

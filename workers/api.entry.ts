@@ -45,12 +45,29 @@ export default {
   ): Promise<Response> {
     const directory = await handleDefaultExplorerDirectory(request, env, ctx);
     if (directory) return directory;
+    const { pathname } = new URL(request.url);
+    if (
+      pathname.startsWith("/agent/") ||
+      pathname === "/oauth/jwks" ||
+      pathname === "/oauth/revoke" ||
+      (pathname === "/oauth/token" && request.method === "POST")
+    ) {
+      const { handleAgentAuthRequest } = await import("../src/agent-auth.ts");
+      const response = await handleAgentAuthRequest(request, env, ctx);
+      if (response) return response;
+    }
     const { provider, isNonOAuthMcpRequest } = await (oauth ??= loadOAuth());
     // Bare MCP retains its anonymous path. Bearer tokens and all OAuth
     // discovery/token/registration routes remain owned by the provider.
-    return isNonOAuthMcpRequest(request)
+    const response = await (isNonOAuthMcpRequest(request)
       ? handler.fetch(request, env, ctx)
-      : provider.fetch(request, env, ctx);
+      : provider.fetch(request, env, ctx));
+    if (pathname === "/.well-known/oauth-authorization-server") {
+      const { augmentAgentAuthDiscovery } =
+        await import("../src/agent-auth-discovery.ts");
+      return augmentAgentAuthDiscovery(request, response, env);
+    }
+    return response;
   },
   async scheduled(
     controller: ScheduledController,

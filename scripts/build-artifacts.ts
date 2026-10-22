@@ -2615,7 +2615,13 @@ const AUTH_REQUIRED_TOOL_LIST = [...AUTH_REQUIRED_TOOL_NAMES]
   .map((name) => `- \`${name}\``)
   .join("\n");
 
-const authMarkdown = `# Authentication
+const authMarkdown = `# metagraphed auth.md
+
+For MCP clients and agents acting on behalf of a user, this guide documents the
+supported owner-approved Auth.md registration, OAuth authorization and wallet
+API-key provisioning methods. The
+resource audience is the \`resource\` URL in the selected mount's protected-resource
+metadata; use that exact URL throughout OAuth authorization and token requests.
 
 The public, read-only REST API at \`${PRIMARY_DOMAIN}\` remains **public by default and
 read-only**. Authentication is optional for public REST reads and
@@ -2643,6 +2649,122 @@ authorization with no manual configuration:
   ${llmsApiBase}/.well-known/oauth-protected-resource/mcp
 - Authorization-server metadata:
   ${llmsApiBase}/.well-known/oauth-authorization-server
+
+## OAuth client registration and authorization
+
+1. Fetch protected-resource metadata for the mount you will call:
+   \`${llmsApiBase}/.well-known/oauth-protected-resource/mcp\` or
+   \`${llmsApiBase}/.well-known/oauth-protected-resource/mcp/core\`.
+   The root discovery document is at
+   \`${llmsApiBase}/.well-known/oauth-protected-resource\`.
+   Read \`resource\`, \`authorization_servers\`, \`scopes_supported\` and
+   \`bearer_methods_supported\`; tokens are sent in the \`Authorization\` header.
+2. Fetch the authorization server's metadata and verify its \`issuer\` matches the
+   advertised authorization server. The supported scope is \`profile\`.
+   Prefer an HTTPS Client ID Metadata Document when the client supports it and
+   metadata advertises \`client_id_metadata_document_supported\`. Otherwise, use
+   OAuth dynamic client registration (RFC 7591): \`POST ${llmsApiBase}/oauth/register\`
+   with JSON containing \`client_name\`, your \`redirect_uris\`, and
+   \`token_endpoint_auth_method: "none"\` for a public client. Save the returned
+   \`client_id\`. Registering a client does not issue a user access token.
+3. Generate a fresh \`state\` and PKCE verifier with its S256 challenge. Open the
+   discovered \`authorization_endpoint\` (\`GET ${llmsApiBase}/authorize\`) with
+   \`response_type=code\`, \`client_id\`, \`redirect_uri\`, \`scope=profile\`,
+   \`resource\`, \`state\`, \`code_challenge\`, and \`code_challenge_method=S256\`.
+   The user approves access and signs in with GitHub. Verify the returned
+   \`state\` before using the authorization code.
+4. Exchange the code at \`POST ${llmsApiBase}/oauth/token\` using
+   \`application/x-www-form-urlencoded\`: \`grant_type=authorization_code\`,
+   \`client_id\`, \`code\`, \`redirect_uri\`, \`code_verifier\`, and the same \`resource\`.
+   Send the returned \`access_token\` as \`Authorization: Bearer <access_token>\`
+   to the selected MCP mount. Respect \`expires_in\`; when a \`refresh_token\` is
+   issued, refresh at the same token endpoint with \`grant_type=refresh_token\`,
+   \`client_id\`, \`refresh_token\`, and the same \`resource\`.
+5. To revoke an OAuth token, use the discovered \`revocation_endpoint\`
+   (\`POST ${llmsApiBase}/oauth/token\`) with a form-encoded \`token\`, omitting
+   \`grant_type\`. A public client (\`token_endpoint_auth_method: "none"\`) must
+   also send \`client_id\`; confidential clients use their registered
+   authentication method. Keep credentials out of URLs.
+
+## Wallet API-key provisioning
+
+1. With the wallet owner's approval, request \`POST ${llmsApiBase}/api/v1/auth/wallet/challenge\`
+   with JSON \`{ "ss58": "<owner's Bittensor address>" }\`. Have the owner's
+   sr25519 wallet sign the returned \`message\`; never request the wallet seed.
+2. Submit \`POST ${llmsApiBase}/api/v1/auth/wallet/verify\` with JSON containing
+   the same \`ss58\` and its \`signature\`. The returned \`session_token\` is valid
+   for \`expires_in_seconds\`. This session authorizes key management, not MCP.
+3. Call \`POST ${llmsApiBase}/api/v1/keys\` with
+   \`Authorization: Bearer <session_token>\`. Save the returned \`key\` securely;
+   the full \`mg_...\` value is returned only once. Use that value as
+   \`Authorization: Bearer mg_...\` for MCP or authenticated API calls.
+4. List keys with \`GET ${llmsApiBase}/api/v1/keys\` and revoke a key with
+   \`DELETE ${llmsApiBase}/api/v1/keys/<key_id>\`, using the wallet session.
+
+## Auth.md agent registration (service_auth)
+
+Use this flow only when authorization-server metadata advertises \`agent_auth\`
+with \`service_auth\` in \`identity_types_supported\`. Discovery stays disabled
+until the dedicated signing key, rate limiter and private database migration are
+available. An unprovisioned endpoint returns \`503\`; it never issues a credential
+with missing durable state. A \`503\` with \`Retry-After\` also signals temporary
+registration capacity: wait the indicated delay, then retry with the same
+unexpired claim or assertion. Do not create replacement registrations during
+capacity backoff. This flow does not support anonymous issuance,
+upstream ID-JAG identity assertions or the older \`verified_email\` identity type.
+
+1. Send \`POST ${llmsApiBase}/agent/register\` with JSON
+   \`{ "type": "service_auth", "login_hint": "owner@example.com" }\`.
+   Use the intended owner's email address. Save \`registration_id\` and the
+   secret \`claim_token\` securely. The response includes \`claim.user_code\`,
+   \`claim.verification_uri\`, \`claim.expires_in\` and \`claim.interval\`.
+   Registration does not issue an access token or assertion.
+2. Give the owner the verification URI and six-digit user code. The owner signs
+   in with GitHub, which must report a verified email matching the original
+   \`login_hint\`, reviews the requested \`profile\` scope, and explicitly
+   approves the displayed registration using the code. Sign-in alone is not
+   approval. Never send the claim token to a third-party URL or request
+   authentication secrets from the owner.
+3. Poll \`POST ${llmsApiBase}/oauth/token\` using
+   \`application/x-www-form-urlencoded\` with
+   \`grant_type=urn:workos:agent-auth:grant-type:claim\` and \`claim_token\`.
+   Set \`resource=${llmsApiBase}/mcp\` or
+   \`resource=${llmsApiBase}/mcp/core\` to select the access token's audience.
+   Omitting \`resource\` defaults to \`${llmsApiBase}/mcp\`.
+   Wait at least the advertised interval. Handle \`authorization_pending\`,
+   \`slow_down\`, \`access_denied\` and \`expired_token\` without creating a new
+   registration on every poll. Claims expire after ten minutes.
+4. After approval, the claim grant returns an opaque \`access_token\` and a
+   service-signed \`identity_assertion\`. Send the access token as
+   \`Authorization: Bearer <access_token>\` only to the MCP audience selected
+   in step 3. Each access token is bound to that one audience.
+   These tokens resolve to the approving GitHub account
+   and its current tier; they do not bypass the existing quotas or permissions.
+5. Within the original one-hour approval window, exchange the assertion at the
+   same token endpoint using
+   \`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer\` and
+   \`assertion=<identity_assertion>\`. Optional \`resource\` must be the canonical
+   \`${llmsApiBase}/mcp\` or \`${llmsApiBase}/mcp/core\` audience and defaults
+   to \`${llmsApiBase}/mcp\` when omitted. Use the returned access token only
+   at that audience. Repeated exchanges never extend the original
+   approval window. The JWKS is at \`${llmsApiBase}/oauth/jwks\`.
+6. Revoke an agent access token using form-encoded
+   \`POST ${llmsApiBase}/oauth/revoke\` with \`token=<access_token>\` and
+   \`token_type_hint=access_token\`. To revoke the registration and all derived
+   tokens, send \`token=<identity_assertion>\` with
+   \`token_type_hint=identity_assertion\` to the same endpoint. This prevents
+   further exchanges. Ordinary
+   OAuth clients continue to use their discovered OAuth revocation endpoint.
+
+The advertised \`claim_endpoint\` (\`POST ${llmsApiBase}/agent/claim\`) accepts
+\`claim_token\` and a matching \`email\` to start a fresh owner ceremony.
+The original intended email cannot be changed during a claim. Rotating a claim
+token at \`POST ${llmsApiBase}/agent/rotate\` invalidates the previous token and
+pending ceremonies. Keep all claim tokens, assertions and access tokens out of
+URLs and logs. Passive scanners must read discovery documents only; registration
+and claim requests create durable state.
+
+## Credential use and authentication failures
 
 A Bearer token that cannot be validated gets \`401\` with a
 \`WWW-Authenticate\` challenge pointing at the metadata above.
