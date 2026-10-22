@@ -30,6 +30,8 @@
 // anywhere.
 interface RuntimeSecretEnv {
   ACCOUNT_BALANCES_SYNC_SECRET?: string;
+  /** Dedicated ES256 private JWK for owner-approved Auth.md service assertions. */
+  AUTHMD_SIGNING_JWK?: string;
   /** Web Bot Auth signing key for the prober fleet (metagraphed-infra#562):
    * `<seed>.<public>`, both halves base64url-encoded 32 bytes. Absent means
    * probes go out unsigned, which is the local/CI state. */
