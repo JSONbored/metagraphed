@@ -250,42 +250,47 @@ describe("apex payment discovery (#12902)", () => {
   const request = (path: string, method = "GET", headers: HeadersInit = {}) =>
     server.fetch(new Request(`https://metagraph.sh${path}`, { method, headers }), {}, {});
 
-  it.each([200, 404, 503])("preserves the canonical manifest's %i status and body", async (status) => {
-    const body = JSON.stringify(status === 200 ? { x402Version: 2, accepts: [] } : { error: "paused" });
-    const fetch = vi.fn().mockResolvedValue(
-      new Response(body, {
-        status,
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "cache-control": "no-store",
-          "retry-after": "5",
-          "set-cookie": "api-session=private",
-          "content-security-policy": "default-src *",
-        },
-      }),
-    );
-    vi.stubGlobal("fetch", fetch);
+  it.each([200, 404, 503])(
+    "preserves the canonical manifest's %i status and body",
+    async (status) => {
+      const body = JSON.stringify(
+        status === 200 ? { x402Version: 2, accepts: [] } : { error: "paused" },
+      );
+      const fetch = vi.fn().mockResolvedValue(
+        new Response(body, {
+          status,
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "no-store",
+            "retry-after": "5",
+            "set-cookie": "api-session=private",
+            "content-security-policy": "default-src *",
+          },
+        }),
+      );
+      vi.stubGlobal("fetch", fetch);
 
-    const response = await request("/.well-known/x402", "GET", {
-      accept: "application/json",
-      authorization: "Bearer must-not-forward",
-      cookie: "site-session=private",
-      "payment-signature": "must-not-forward",
-    });
-    expect(fetch).toHaveBeenCalledExactlyOnceWith("https://api.metagraph.sh/.well-known/x402", {
-      method: "GET",
-      headers: { accept: "application/json" },
-    });
-    expect(response.status).toBe(status);
-    expect(await response.text()).toBe(body);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("retry-after")).toBe("5");
-    expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(response.headers.get("x-discovery-origin")).toBe("api.metagraph.sh");
-    expect(response.headers.get("set-cookie")).toBeNull();
-    expect(response.headers.get("content-security-policy")).toBeNull();
-  });
+      const response = await request("/.well-known/x402", "GET", {
+        accept: "application/json",
+        authorization: "Bearer must-not-forward",
+        cookie: "site-session=private",
+        "payment-signature": "must-not-forward",
+      });
+      expect(fetch).toHaveBeenCalledExactlyOnceWith("https://api.metagraph.sh/.well-known/x402", {
+        method: "GET",
+        headers: { accept: "application/json" },
+      });
+      expect(response.status).toBe(status);
+      expect(await response.text()).toBe(body);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("retry-after")).toBe("5");
+      expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("x-discovery-origin")).toBe("api.metagraph.sh");
+      expect(response.headers.get("set-cookie")).toBeNull();
+      expect(response.headers.get("content-security-policy")).toBeNull();
+    },
+  );
 
   it("forwards HEAD to the manifest and returns no body with its actual status", async () => {
     const fetch = vi.fn().mockResolvedValue(
@@ -307,39 +312,47 @@ describe("apex payment discovery (#12902)", () => {
   });
 
   it.each(["GET", "HEAD"])("rejects active manifest content on %s", async (method) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<script>untrusted()</script>", { headers: { "content-type": "text/html" } }),
-      ),
+    const fetch = vi.fn().mockResolvedValue(
+      new Response("<script>untrusted()</script>", {
+        headers: { "content-type": "text/html" },
+      }),
     );
+    vi.stubGlobal("fetch", fetch);
     const response = await request("/.well-known/x402", method);
     expect(response.status).toBe(502);
     expect(await response.text()).toBe(method === "HEAD" ? "" : "Bad Gateway");
     if (method === "HEAD") expect(response.body).toBeNull();
   });
 
-  it.each(["GET", "HEAD"])("301s %s /openapi.json to the fixed canonical schema", async (method) => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    const response = await request("/openapi.json?next=https://other.example/spec.json", method);
-    expect(response.status).toBe(301);
-    expect(response.headers.get("location")).toBe("https://api.metagraph.sh/metagraph/openapi.json");
-    expect(response.headers.get("cache-control")).toBe("public, max-age=3600");
-    expect(response.body).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
-  });
+  it.each(["GET", "HEAD"])(
+    "301s %s /openapi.json to the fixed canonical schema",
+    async (method) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      const response = await request("/openapi.json?next=https://other.example/spec.json", method);
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(
+        "https://api.metagraph.sh/metagraph/openapi.json",
+      );
+      expect(response.headers.get("cache-control")).toBe("public, max-age=3600");
+      expect(response.body).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 
-  it.each(["/.well-known/x402", "/openapi.json"])("rejects unsupported methods on %s", async (path) => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
-      const response = await request(path, method);
-      expect(response.status, method).toBe(405);
-      expect(response.headers.get("allow")).toBe("GET, HEAD");
-    }
-    expect(fetch).not.toHaveBeenCalled();
-  });
+  it.each(["/.well-known/x402", "/openapi.json"])(
+    "rejects unsupported methods on %s",
+    async (path) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+        const response = await request(path, method);
+        expect(response.status, method).toBe(405);
+        expect(response.headers.get("allow")).toBe("GET, HEAD");
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it("advertises canonical payment discovery while leaving pages and near-misses with SSR", async () => {
     const fetch = vi.fn();
