@@ -26,6 +26,8 @@ import {
   runEmbeddingSync,
   semanticSearch,
   askQuestion,
+  normalizeAskInput,
+  normalizeSemanticInput,
   SEMANTIC_MAX_QUERY_LENGTH,
   aiGatewayOptions,
   AI_GATEWAY_CACHE_TTL_SECONDS,
@@ -148,6 +150,17 @@ function aiWorkerEnv(overrides: Row = {}) {
     ...overrides,
   };
 }
+
+test("precharge input normalization preserves AI defaults and rejects missing inputs", () => {
+  const ask = normalizeAskInput("  valid question  ");
+  assert.equal(ask.question, "valid question");
+  assert.ok(ask.topK > 0);
+  const semantic = normalizeSemanticInput("  valid query  ");
+  assert.equal(semantic.query, "valid query");
+  assert.ok(semantic.limit > 0);
+  assert.throws(() => normalizeAskInput(null), /question.*required/);
+  assert.throws(() => normalizeSemanticInput(null), /q.*required/);
+});
 
 describe("ai-search configuration gates", () => {
   test("aiConfigured requires AI.run and VECTORIZE", () => {

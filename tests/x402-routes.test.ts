@@ -12,10 +12,9 @@
 //      than being dropped by the Response reconstruction around it.
 //   3. The manifest 404s where the deployment cannot take money.
 //
-// The handlers themselves degrade to 503 without AI bindings, which is both
-// expected and irrelevant here: every assertion below is about the GATE's
-// decision, which is made before the handler runs and applied after it
-// returns. Asserting on a 503 body would be testing the wrong module.
+// Valid payment fixtures enable the AI bindings. The fixture model deliberately
+// fails after admission: payment assertions concern the gate, while unavailable
+// bindings and invalid inputs must be rejected before any money can move.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -27,6 +26,7 @@ import {
   x402PriceFor,
 } from "../src/x402.ts";
 import { createX402Fixture } from "./x402-fixtures.ts";
+import { MAX_ASK_BODY_BYTES } from "../workers/config.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 
@@ -42,11 +42,19 @@ const envWithDb = (values: Record<string, unknown>) => {
     ...values,
   });
 };
-const paid = () =>
+const paid = (overrides: Record<string, unknown> = {}) =>
   envWithDb({
+    METAGRAPH_ENABLE_AI: "true",
+    AI: {
+      run: async () => {
+        throw new Error("fixture model unavailable");
+      },
+    },
+    VECTORIZE: { query: async () => ({ matches: [] }) },
     X402_PAY_TO: PAY_TO,
     X402_NETWORK: "eip155:8453",
     X402_FACILITATOR_URL: "https://facilitator.payai.network",
+    ...overrides,
   });
 const accepted = paymentRequirements(
   resolveX402Config(
@@ -374,6 +382,374 @@ describe("payment method preflight", () => {
   );
 });
 
+describe("payment route and input preflight", () => {
+  test.each([
+    ["/api/v1/export/not-a-route", "GET"],
+    ["/api/v1/export/not-a-route", "POST"],
+    ["/api/v1/blocks/1/not-a-route", "GET"],
+    ["/api/v1/blocks/1/not-a-route", "POST"],
+    ["/api/v1/export/chain-events/", "GET"],
+    ["/api/v1/export/chain-events/", "POST"],
+    ["/api/v1/blocks/1/", "GET"],
+    ["/api/v1/ask/", "POST"],
+    ["/api/v1/search/semantic/not-a-route", "GET"],
+  ])(
+    "never quotes or settles a missing canonical route: %s %s",
+    async (path, method) => {
+      for (const signature of [undefined, payment, "!!!"]) {
+        const env = paid();
+        const fixture = fixtures.at(-1)!;
+        const calls: string[] = [];
+        const response = await withFetch(
+          (async (url) => {
+            calls.push(String(url));
+            throw new Error("missing routes must not contact the facilitator");
+          }) as typeof fetch,
+          () =>
+            handleRequest(
+              new Request(`https://api.metagraph.sh${path}`, {
+                method,
+                headers: signature
+                  ? { [X402_SIGNATURE_HEADER]: signature }
+                  : {},
+              }),
+              env,
+            ),
+        );
+        assert.equal(response.status, 404);
+        assert.equal(response.headers.get("payment-required"), null);
+        assert.equal(response.headers.get(X402_RESPONSE_HEADER), null);
+        assert.deepEqual(calls, []);
+        assert.equal(
+          fixture.sql
+            .prepare("SELECT count(*) AS count FROM x402_payment_attempts")
+            .get()?.count,
+          0,
+        );
+      }
+    },
+  );
+
+  test.each([
+    ["malformed JSON", "{", 400, "invalid_json"],
+    ["empty body", undefined, 400, "invalid_json"],
+    ["non-object JSON", "null", 400, "invalid_request"],
+    ["missing question", "{}", 400, "invalid_request"],
+    [
+      "blank question",
+      JSON.stringify({ question: "   " }),
+      400,
+      "invalid_request",
+    ],
+    [
+      "long question",
+      JSON.stringify({ question: "x".repeat(1001) }),
+      400,
+      "invalid_request",
+    ],
+    [
+      "invalid type",
+      JSON.stringify({ question: "valid", type: "bogus" }),
+      400,
+      "invalid_request",
+    ],
+    [
+      "oversized body",
+      JSON.stringify({
+        question: "valid",
+        padding: "x".repeat(MAX_ASK_BODY_BYTES),
+      }),
+      413,
+      "payload_too_large",
+    ],
+  ] as const)(
+    "rejects %s before settlement and leaves payment reusable",
+    async (_label, body, status, code) => {
+      const env = paid();
+      const fixture = fixtures.at(-1)!;
+      const calls: string[] = [];
+      const response = await withFetch(
+        (async (url) => {
+          calls.push(String(url));
+          throw new Error("invalid input must not contact the facilitator");
+        }) as typeof fetch,
+        () =>
+          handleRequest(
+            new Request("https://api.metagraph.sh/api/v1/ask", {
+              method: "POST",
+              headers: { [X402_SIGNATURE_HEADER]: payment },
+              body,
+            }),
+            env,
+          ),
+      );
+      assert.equal(response.status, status);
+      assert.equal((await jsonBody(response)).error.code, code);
+      assert.equal(response.headers.get("payment-required"), null);
+      assert.equal(response.headers.get(X402_RESPONSE_HEADER), null);
+      assert.deepEqual(calls, []);
+      assert.equal(
+        fixture.sql
+          .prepare("SELECT count(*) AS count FROM x402_payment_attempts")
+          .get()?.count,
+        0,
+      );
+      const corrected = await withFetch(
+        facilitator({ isValid: true }, { success: true }),
+        () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: payment }), env),
+      );
+      assert.ok(corrected.headers.get(X402_RESPONSE_HEADER));
+    },
+  );
+
+  test.each([
+    [
+      "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs912/events",
+      "invalid_ss58",
+    ],
+    ["/api/v1/subnets/65536/lease", "invalid_netuid"],
+    ["/api/v1/subnets/9007199254740992/ownership-history", "invalid_netuid"],
+    ["/api/v1/blocks/9007199254740992", "invalid_block_ref"],
+    ["/api/v1/blocks/9007199254740992/events", "invalid_block_ref"],
+    ["/api/v1/extrinsics/9007199254740992-0", "invalid_extrinsic_ref"],
+    ["/api/v1/extrinsics/1-9007199254740992", "invalid_extrinsic_ref"],
+    ["/api/v1/search/semantic", "invalid_query"],
+    ["/api/v1/search/semantic?q=", "invalid_query"],
+    ["/api/v1/search/semantic?q=%20%20", "invalid_query"],
+    ["/api/v1/chain-events?pallet=bad-name", "invalid_query"],
+  ])(
+    "rejects unusable paid path/query values before settlement: %s",
+    async (path, code) => {
+      const env = paid();
+      const fixture = fixtures.at(-1)!;
+      const calls: string[] = [];
+      const response = await withFetch(
+        (async (url) => {
+          calls.push(String(url));
+          throw new Error("unusable values must not contact the facilitator");
+        }) as typeof fetch,
+        () =>
+          handleRequest(
+            new Request(`https://api.metagraph.sh${path}`, {
+              headers: { [X402_SIGNATURE_HEADER]: payment },
+            }),
+            env,
+          ),
+      );
+      assert.equal(response.status, 400);
+      assert.equal((await jsonBody(response)).error.code, code);
+      assert.equal(response.headers.get("payment-required"), null);
+      assert.equal(response.headers.get(X402_RESPONSE_HEADER), null);
+      assert.deepEqual(calls, []);
+      assert.equal(
+        fixture.sql
+          .prepare("SELECT count(*) AS count FROM x402_payment_attempts")
+          .get()?.count,
+        0,
+      );
+    },
+  );
+
+  test.each([
+    "/api/v1/blocks/1",
+    "/api/v1/blocks/0x" + "a".repeat(64),
+    "/api/v1/extrinsics/1-0",
+    "/api/v1/extrinsics/0x" + "a".repeat(64),
+    "/api/v1/subnets/1/lease/history",
+    "/api/v1/chain-events",
+    "/api/v1/search/semantic?q=valid",
+  ])("retains valid payments on %s", async (path) => {
+    const env = paid();
+    const selected = JSON.parse(atob(payment)) as Row;
+    selected.accepted = paymentRequirements(
+      resolveX402Config(env)!,
+      x402PriceFor(path)!.atomicAmount,
+    )[0];
+    const response = await withFetch(
+      facilitator({ isValid: true }, { success: true }),
+      () =>
+        handleRequest(
+          new Request(`https://api.metagraph.sh${path}`, {
+            headers: {
+              [X402_SIGNATURE_HEADER]: btoa(JSON.stringify(selected)),
+            },
+          }),
+          env,
+        ),
+    );
+    assert.ok(response.headers.get(X402_RESPONSE_HEADER));
+  });
+
+  test("refuses a declared oversized body without reading or settling it", async () => {
+    const calls: string[] = [];
+    const response = await withFetch(
+      (async (url) => {
+        calls.push(String(url));
+        throw new Error("oversized input must not contact the facilitator");
+      }) as typeof fetch,
+      () =>
+        handleRequest(
+          new Request("https://api.metagraph.sh/api/v1/ask", {
+            method: "POST",
+            headers: {
+              [X402_SIGNATURE_HEADER]: payment,
+              "content-length": String(MAX_ASK_BODY_BYTES + 1),
+            },
+            body: JSON.stringify({ question: "valid" }),
+          }),
+          paid(),
+        ),
+    );
+    assert.equal(response.status, 413);
+    assert.equal((await jsonBody(response)).error.code, "payload_too_large");
+    assert.deepEqual(calls, []);
+  });
+
+  test.each([
+    { METAGRAPH_ENABLE_AI: "false" },
+    { AI: undefined },
+    { VECTORIZE: undefined },
+  ])(
+    "refuses unavailable AI bindings before payment: %j",
+    async (overrides) => {
+      for (const path of ["/api/v1/ask", "/api/v1/search/semantic?q=subnet"]) {
+        const calls: string[] = [];
+        const response = await withFetch(
+          (async (url) => {
+            calls.push(String(url));
+            throw new Error("disabled AI must not contact the facilitator");
+          }) as typeof fetch,
+          () =>
+            handleRequest(
+              path.endsWith("/ask")
+                ? ask({ [X402_SIGNATURE_HEADER]: payment })
+                : new Request(`https://api.metagraph.sh${path}`, {
+                    headers: { [X402_SIGNATURE_HEADER]: payment },
+                  }),
+              paid(overrides),
+            ),
+        );
+        assert.equal(response.status, 503);
+        assert.equal((await jsonBody(response)).error.code, "ai_unavailable");
+        assert.equal(response.headers.get("payment-required"), null);
+        assert.equal(response.headers.get(X402_RESPONSE_HEADER), null);
+        assert.deepEqual(calls, []);
+      }
+    },
+  );
+
+  test("validates a clone while retaining exact body bytes for payment identity", async () => {
+    const env = paid();
+    const rawBody = '{ "question" : "same question" }';
+    const request = (body: string) =>
+      new Request("https://api.metagraph.sh/api/v1/ask", {
+        method: "POST",
+        headers: { [X402_SIGNATURE_HEADER]: payment },
+        body,
+      });
+    const first = await withFetch(
+      facilitator({ isValid: true }, { success: true }),
+      () => handleRequest(request(rawBody), env),
+    );
+    assert.ok(first.headers.get(X402_RESPONSE_HEADER));
+    const replay = await handleRequest(request(rawBody), env);
+    assert.equal((await jsonBody(replay)).error.code, "x402_payment_consumed");
+    const reencoded = await handleRequest(
+      request(JSON.stringify({ question: "same question" })),
+      env,
+    );
+    assert.equal(
+      (await jsonBody(reencoded)).error.code,
+      "x402_payment_conflict",
+    );
+  });
+});
+
+describe("settled headroom survives Request normalization", () => {
+  const payer = "0x" + "a".repeat(40);
+  test.each(["finney", "mainnet"])(
+    "the %s ask alias uses the paid AI bucket",
+    async (network) => {
+      const paidCalls: unknown[] = [];
+      const anonymousCalls: unknown[] = [];
+      const env = paid({
+        AI_RATE_LIMITER: {
+          limit: async (args: unknown) => {
+            anonymousCalls.push(args);
+            return { success: false };
+          },
+        },
+        AI_RATE_LIMITER_PAID: {
+          limit: async (args: unknown) => {
+            paidCalls.push(args);
+            return { success: true };
+          },
+        },
+      });
+      const response = await withFetch(
+        facilitator({ isValid: true, payer }, { success: true, payer }),
+        () =>
+          handleRequest(
+            new Request(`https://api.metagraph.sh/api/v1/${network}/ask`, {
+              method: "POST",
+              headers: { [X402_SIGNATURE_HEADER]: payment },
+              body: JSON.stringify({ question: "valid" }),
+            }),
+            env,
+          ),
+      );
+      assert.notEqual(response.status, 429);
+      assert.ok(response.headers.get(X402_RESPONSE_HEADER));
+      assert.deepEqual(anonymousCalls, []);
+      assert.deepEqual(paidCalls, [{ key: `ai:paid:x402:${payer}` }]);
+    },
+  );
+
+  test("a paid account HEAD retains its tier when the cache builds a GET", async () => {
+    const paidCalls: unknown[] = [];
+    const anonymousCalls: unknown[] = [];
+    const env = paid({
+      DATA_RATE_LIMITER: {
+        limit: async (args: unknown) => {
+          anonymousCalls.push(args);
+          return { success: false };
+        },
+      },
+      DATA_RATE_LIMITER_PAID: {
+        limit: async (args: unknown) => {
+          paidCalls.push(args);
+          return { success: true };
+        },
+      },
+    });
+    const path =
+      "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/events?limit=1";
+    const selected = JSON.parse(atob(payment)) as Row;
+    selected.accepted = paymentRequirements(
+      resolveX402Config(env)!,
+      x402PriceFor(path)!.atomicAmount,
+    )[0];
+    const response = await withFetch(
+      facilitator({ isValid: true, payer }, { success: true, payer }),
+      () =>
+        handleRequest(
+          new Request(`https://api.metagraph.sh${path}`, {
+            method: "HEAD",
+            headers: {
+              [X402_SIGNATURE_HEADER]: btoa(JSON.stringify(selected)),
+            },
+          }),
+          env,
+        ),
+    );
+    assert.notEqual(response.status, 429);
+    assert.ok(response.headers.get(X402_RESPONSE_HEADER));
+    assert.deepEqual(anonymousCalls, []);
+    assert.deepEqual(paidCalls, [{ key: `data:paid:x402:${payer}` }]);
+    assert.equal(await response.text(), "");
+  });
+});
+
 describe("GET /.well-known/x402", () => {
   const manifest = (env: Env) =>
     withFetch(facilitator({}, {}), () =>
@@ -473,7 +849,7 @@ test("durable consumption denies repeat execution and use on a different request
     new Request("https://api.metagraph.sh/api/v1/ask?different=1", {
       method: "POST",
       headers: { "payment-signature": payment },
-      body: "{}",
+      body: JSON.stringify({ question: "a different valid question" }),
     }),
     env,
   );

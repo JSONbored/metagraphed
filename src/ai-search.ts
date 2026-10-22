@@ -676,15 +676,11 @@ export interface SemanticSearchResult {
   model: string;
 }
 
-// Semantic search: embed the query, query Vectorize, project metadata. Optionally
-// scopes results to one or more record kinds (`options.type`). Throws aiInputError
-// for a blank query or an unknown type.
-export async function semanticSearch(
-  env: Env,
+/** Validate semantic input before either settlement or AI work. */
+export function normalizeSemanticInput(
   query: unknown,
   options: { limit?: unknown; type?: unknown } = {},
-  deps: AiRequestDeps = {},
-): Promise<SemanticSearchResult> {
+) {
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) throw aiInputError("Query parameter `q` is required.");
   if (q.length > SEMANTIC_MAX_QUERY_LENGTH)
@@ -697,6 +693,19 @@ export async function semanticSearch(
     SEMANTIC_MAX_LIMIT,
   );
   const types = normalizeSemanticTypes(options.type);
+  return { query: q, limit, types };
+}
+
+// Semantic search: embed the query, query Vectorize, project metadata. Optionally
+// scopes results to one or more record kinds (`options.type`). Throws aiInputError
+// for a blank query or an unknown type.
+export async function semanticSearch(
+  env: Env,
+  query: unknown,
+  options: { limit?: unknown; type?: unknown } = {},
+  deps: AiRequestDeps = {},
+): Promise<SemanticSearchResult> {
+  const { query: q, limit, types } = normalizeSemanticInput(query, options);
   const vector = await embedQuery(env, q, {
     traceName: SEMANTIC_TRACE_NAME,
     ...deps,
@@ -835,14 +844,11 @@ export interface AskQuestionResult {
   model: string;
 }
 
-// Grounded question answering (RAG): retrieve top-k registry context, prompt the
-// LLM to answer only from it with bracketed citations.
-export async function askQuestion(
-  env: Env,
+/** Validate the shared ask input before either settlement or AI work. */
+export function normalizeAskInput(
   question: unknown,
   options: { topK?: unknown; type?: unknown } = {},
-  deps: AskDeps = {},
-): Promise<AskQuestionResult> {
+) {
   const q = typeof question === "string" ? question.trim() : "";
   if (!q) throw aiInputError("Field `question` is required.");
   if (q.length > ASK_MAX_QUESTION_LENGTH) {
@@ -852,6 +858,18 @@ export async function askQuestion(
   }
   const topK = clampLimit(options.topK, ASK_CONTEXT_COUNT, ASK_CONTEXT_COUNT);
   const types = normalizeSemanticTypes(options.type);
+  return { question: q, topK, types };
+}
+
+// Grounded question answering (RAG): retrieve top-k registry context, prompt the
+// LLM to answer only from it with bracketed citations.
+export async function askQuestion(
+  env: Env,
+  question: unknown,
+  options: { topK?: unknown; type?: unknown } = {},
+  deps: AskDeps = {},
+): Promise<AskQuestionResult> {
+  const { question: q, topK, types } = normalizeAskInput(question, options);
   // #8965: one trace id spans the whole ask pipeline -- query embedding,
   // Vectorize retrieval, and the completion below -- so PostHog renders it as
   // the pipeline it is. Previously each $ai_generation minted its own id and

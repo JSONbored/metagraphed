@@ -7207,19 +7207,26 @@ export function compileRoutePattern(pathTemplate: string) {
  * templates that could both legitimately match.
  */
 const ROUTE_PATTERNS = (() => {
-  const paths = new Set<string>();
+  const paths = new Map<string, { path: string; method: string }>();
   for (const route of API_ROUTES) {
-    if (route.method !== "GET") continue;
-    paths.add(route.path);
+    paths.set(`${route.method}:${route.path}`, {
+      path: route.path,
+      method: route.method,
+    });
     // The /{network}/ twins are not their own API_ROUTES entries -- they are
     // generated from the base template, the same way buildOpenApiArtifact
     // emits them. Deriving them here keeps the two in step by construction.
     const twin = networkVariantPath(route.path);
-    if (twin) paths.add(twin);
+    if (twin)
+      paths.set(`${route.method}:${twin}`, {
+        path: twin,
+        method: route.method,
+      });
   }
-  return [...paths]
-    .map((path) => ({
+  return [...paths.values()]
+    .map(({ path, method }) => ({
       path,
+      method,
       parameters: (path.match(/\{[a-z_0-9]+\}/g) ?? []).length,
       pattern: compileRoutePattern(
         path.replace(/\{network\}/g, "__METAGRAPH_NETWORK__"),
@@ -7234,11 +7241,15 @@ const ROUTE_PATTERNS = (() => {
  *
  * A twin serves the same payload from a different store, so it declares the
  * same query parameters; callers asking "what may this request carry" want the
- * base template's answer.
+ * base template's answer. GET remains the default for query parsing; callers
+ * checking write-route existence can pass the request method explicitly.
  */
-export function contractPathForPathname(pathname: string): string | null {
+export function contractPathForPathname(
+  pathname: string,
+  method = "GET",
+): string | null {
   for (const route of ROUTE_PATTERNS) {
-    if (route.pattern.test(pathname)) {
+    if (route.method === method && route.pattern.test(pathname)) {
       return route.path.startsWith("/api/v1/{network}/")
         ? `/api/v1/${route.path.slice("/api/v1/{network}/".length)}`
         : route.path;

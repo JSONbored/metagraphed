@@ -301,7 +301,9 @@ export async function readBoundedRequestText(
         typeof value === "string" ? new TextEncoder().encode(value) : value;
       bytes += chunk.byteLength;
       if (bytes > maxBytes) {
-        await reader.cancel();
+        // A cloned Request tees the body. Cancelling one branch may wait for
+        // the unread original branch, so do not await that shared completion.
+        void reader.cancel().catch(() => {});
         return { ok: false, text: "" };
       }
       text += decoder.decode(chunk, { stream: true });

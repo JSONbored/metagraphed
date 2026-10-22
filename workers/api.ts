@@ -661,6 +661,8 @@ import { runContainerLaneWatchdog } from "../src/container-lane-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
 import { isFinneySs58Address } from "../src/finney-ss58.ts";
+import { safeBlockNumber } from "../src/history-readers.ts";
+import { isU16Netuid } from "../src/subnet-recycled.ts";
 import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import { runSubnetBurnCoverageWatchdog } from "../src/subnet-burn-coverage-watchdog.ts";
 import {
@@ -698,6 +700,8 @@ import {
   aiEnabled,
   AI_TIERED_RATE_LIMIT,
   askQuestion,
+  normalizeAskInput,
+  normalizeSemanticInput,
   runEmbeddingSync,
   semanticSearch,
 } from "../src/ai-search.ts";
@@ -877,6 +881,7 @@ import {
 import {
   applyTieredRateLimit,
   markPaidCall,
+  copyPaidCall,
   tieredRejectionResponse,
   type TieredRateLimitConfig,
   type TieredRateLimitResult,
@@ -5698,7 +5703,10 @@ async function dispatchCached(
       // GET key when the builder accepts the normalized request, and a builder
       // closing over the original HEAD would seed the GET entry with an empty
       // body for every later caller.
-      (cacheRequest) => dispatchRequest(cacheRequest, env, ctx),
+      (cacheRequest) => {
+        copyPaidCall(request, cacheRequest);
+        return dispatchRequest(cacheRequest, env, ctx);
+      },
       `${resolved.pathname}${resolved.search}`,
       accountCacheStamp,
     );
@@ -5811,7 +5819,9 @@ async function dispatchRequest(
   if (networkRoute.explicit) {
     if (networkRoute.network.isDefault) {
       url = networkRoute.url;
-      request = new Request(url.toString(), request);
+      const normalizedRequest = new Request(url.toString(), request);
+      copyPaidCall(request, normalizedRequest);
+      request = normalizedRequest;
     } else {
       return handleNetworkScopedRequest(
         request,
@@ -8653,6 +8663,22 @@ async function enforceX402(
 ): Promise<{ reject: Response } | { settlementHeader: string } | null> {
   const price = x402PriceFor(pathname);
   if (!price) return null;
+  // Family prices cover whole prefixes, including paths that do not exist.
+  // Use the router's canonical contract matcher before quoting or charging.
+  // Live priced handlers use canonical paths, without a trailing slash.
+  const routePath =
+    contractPathForPathname(pathname) ??
+    contractPathForPathname(pathname, request.method);
+  if (!routePath) return null;
+  if (pathname.endsWith("/")) {
+    return {
+      reject: errorResponse(
+        "not_found",
+        "Use the canonical API path without a trailing slash.",
+        404,
+      ),
+    };
+  }
   // The same declaration serves CORS and the dispatcher's method rejection.
   // Check it before settlement: some read families dispatch before the generic
   // method guard, and a wrong method must never buy an error or a free export.
@@ -8673,6 +8699,52 @@ async function enforceX402(
     !x402RequiresPayment(pathname)
   )
     return null;
+  // Use the same value validators as the readers, after the canonical matcher
+  // has identified the parameter slots. A payment cannot buy an unusable key.
+  const params = compileRoutePattern(routePath).exec(pathname)!.groups;
+  if (params?.ss58 && !isFinneySs58Address(params.ss58)) {
+    return {
+      reject: errorResponse(
+        "invalid_ss58",
+        "ss58 address must be a valid finney SS58 account address.",
+        400,
+      ),
+    };
+  }
+  if (params?.netuid && !isU16Netuid(Number(params.netuid))) {
+    return {
+      reject: errorResponse(
+        "invalid_netuid",
+        "netuid must be an integer in the u16 range 0..65535.",
+        400,
+      ),
+    };
+  }
+  if (
+    params?.ref &&
+    !params.ref.startsWith("0x") &&
+    safeBlockNumber(params.ref) === null
+  ) {
+    return {
+      reject: errorResponse(
+        "invalid_block_ref",
+        "Block number must be a non-negative safe integer.",
+        400,
+      ),
+    };
+  }
+  if (params?.hash && !params.hash.startsWith("0x")) {
+    const [block, index] = params.hash.split("-");
+    if (safeBlockNumber(block) === null || safeBlockNumber(index) === null) {
+      return {
+        reject: errorResponse(
+          "invalid_extrinsic_ref",
+          "Extrinsic block and index must be non-negative safe integers.",
+          400,
+        ),
+      };
+    }
+  }
   // Reject invalid GET/HEAD parameters before either asking for a payment or
   // submitting settlement. Use the same canonical parser as dispatchRequest.
   if (request.method === "GET" || request.method === "HEAD") {
@@ -8680,9 +8752,39 @@ async function enforceX402(
     url.pathname = pathname;
     const query = parseRouteQuery(url);
     if ("error" in query) return { reject: analyticsQueryError(query.error) };
+    if (routePath === "/api/v1/chain-events") {
+      const badValue = chainEventsQueryError(chainEventsQueryFromUrl(url));
+      if (badValue)
+        return {
+          reject: analyticsQueryError({
+            parameter: badValue,
+            message: `${badValue} is not a usable value for this feed.`,
+          }),
+        };
+    }
+    if (routePath === "/api/v1/search/semantic") {
+      try {
+        normalizeSemanticInput(query.query.q, {
+          limit: query.query.limit,
+          type: url.searchParams.getAll("type"),
+        });
+      } catch (error) {
+        return {
+          reject: errorResponse("invalid_query", errorMessage(error), 400),
+        };
+      }
+    }
   }
   const config = resolveX402Config(env);
   if (!config) return { reject: x402UnavailableResponse() };
+  if (price.family === "ai") {
+    if (!aiEnabled(env)) return { reject: aiUnavailableResponse() };
+    if (routePath === "/api/v1/ask" && request.method === "POST") {
+      // Preserve original bytes for the payment fingerprint and handler.
+      const parsed = await parseAskRequest(request.clone());
+      if ("reject" in parsed) return parsed;
+    }
+  }
   const store = paymentAttemptStore(env);
   let supported: Promise<ReturnType<typeof resolveX402Config>> | undefined;
   const supportedConfig = () =>
@@ -10889,6 +10991,40 @@ async function handleSemanticSearchRequest(
   }
 }
 
+async function parseAskRequest(
+  request: Request,
+): Promise<{ body: Row } | { reject: Response }> {
+  let body: Row | null;
+  try {
+    const bounded = await readBoundedRequestText(request, MAX_ASK_BODY_BYTES);
+    if (!bounded.ok)
+      return {
+        reject: errorResponse(
+          "payload_too_large",
+          "Ask request body exceeds the size limit.",
+          413,
+        ),
+      };
+    body = rowOf(JSON.parse(bounded.text));
+  } catch {
+    return {
+      reject: errorResponse(
+        "invalid_json",
+        "Request body must be valid JSON.",
+        400,
+      ),
+    };
+  }
+  try {
+    normalizeAskInput(body?.question, { topK: body?.topK, type: body?.type });
+  } catch (error) {
+    return {
+      reject: errorResponse("invalid_request", errorMessage(error), 400),
+    };
+  }
+  return { body: body! };
+}
+
 async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (request.method !== "POST") {
     return errorResponse(
@@ -10915,27 +11051,9 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
   if (rateLimit.accountId) {
     recordApiKeyUsage(env, ctx, rateLimit.accountId, "ask");
   }
-  let body;
-  try {
-    const boundedBody = await readBoundedRequestText(
-      request,
-      MAX_ASK_BODY_BYTES,
-    );
-    if (!boundedBody.ok) {
-      return errorResponse(
-        "payload_too_large",
-        "Ask request body exceeds the size limit.",
-        413,
-      );
-    }
-    body = JSON.parse(boundedBody.text);
-  } catch {
-    return errorResponse(
-      "invalid_json",
-      "Request body must be valid JSON.",
-      400,
-    );
-  }
+  const parsed = await parseAskRequest(request);
+  if ("reject" in parsed) return parsed.reject;
+  const { body } = parsed;
   try {
     // Resolve live probe health once and inject it so /ask context reflects the
     // current operational status of each subnet's surfaces, not the build-time
