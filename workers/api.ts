@@ -8623,12 +8623,16 @@ async function withX402(
   pathname: string,
   work: () => Promise<Response>,
 ): Promise<Response> {
+  // A preflight asks permission to send a payment header; it does not buy the
+  // resource. Reach the CORS handler without verifying or settling anything.
+  if (request.method === "OPTIONS") return work();
   const gate = await enforceX402(request, env, pathname);
   if (gate && "reject" in gate) return gate.reject;
   const response = await work();
   if (!gate) return response;
   const headers = new Headers(response.headers);
   headers.set(X402_RESPONSE_HEADER, gate.settlementHeader);
+  exposeCustomResponseHeaders(headers);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -11110,6 +11114,7 @@ function corsPreflight(request: Request) {
     "access-control-allow-headers",
     `content-type, if-none-match, authorization, mcp-session-id, mcp-protocol-version, ` +
       `signature, signature-input, signature-agent, ` +
+      `payment-signature, ` +
       `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
       `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );

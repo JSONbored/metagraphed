@@ -26,6 +26,14 @@ const PAY_TO = "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f";
 const PAY_TO_SOL = "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87";
 const paid = () => mockEnv({ X402_PAY_TO: PAY_TO });
 
+function assertPaymentHeadersReadable(response: Response) {
+  const exposed = response.headers
+    .get("access-control-expose-headers")
+    ?.split(", ");
+  assert.ok(exposed?.includes("payment-required"));
+  assert.ok(exposed?.includes("payment-response"));
+}
+
 function ask(headers: Record<string, string> = {}) {
   return new Request("https://api.metagraph.sh/api/v1/ask", {
     method: "POST",
@@ -110,6 +118,7 @@ describe("a presented payment", () => {
     const receipt = res.headers.get(X402_RESPONSE_HEADER);
     assert.ok(receipt, "the settlement receipt must reach the caller");
     assert.equal((JSON.parse(atob(receipt!)) as Row).transaction, "0xtx");
+    assertPaymentHeadersReadable(res);
   });
 
   test("an unattributable payment still settles, and buys nothing", async () => {
@@ -138,6 +147,7 @@ describe("a presented payment", () => {
       res.headers.get("x-metagraph-error-code"),
       "x402_malformed_payment",
     );
+    assertPaymentHeadersReadable(res);
   });
 
   test("rejected is 402 with the quote reattached, so a retry is possible", async () => {
@@ -147,6 +157,7 @@ describe("a presented payment", () => {
     );
     assert.equal(res.status, 402);
     assert.ok(res.headers.get("payment-required"), "the quote must come back");
+    assertPaymentHeadersReadable(res);
   });
 
   test("a facilitator outage is 402, never a free pass", async () => {
@@ -160,6 +171,49 @@ describe("a presented payment", () => {
       () => handleRequest(ask({ [X402_SIGNATURE_HEADER]: btoa("{}") }), paid()),
     );
     assert.equal(res.status, 402);
+    assertPaymentHeadersReadable(res);
+  });
+});
+
+describe("browser payment preflights", () => {
+  test.each([
+    ["/api/v1/export/chain-events", "GET", "GET, HEAD, OPTIONS"],
+    ["/api/v1/blocks", "GET", "GET, HEAD, OPTIONS"],
+    ["/api/v1/ask", "POST", "POST, OPTIONS"],
+  ])("does not charge OPTIONS on %s", async (path, method, allowedMethods) => {
+    const calls: string[] = [];
+    const res = await withFetch(
+      (async (url: string | URL | Request) => {
+        calls.push(String(url));
+        throw new Error("a preflight must not verify or settle a payment");
+      }) as typeof fetch,
+      () =>
+        handleRequest(
+          new Request(`https://api.metagraph.sh${path}`, {
+            method: "OPTIONS",
+            headers: {
+              origin: "https://browser.example",
+              "access-control-request-method": method,
+              "access-control-request-headers": "payment-signature, signature",
+              "payment-signature": "!!!",
+            },
+          }),
+          paid(),
+        ),
+    );
+    assert.equal(res.status, 204);
+    assert.equal(await res.text(), "");
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    assert.equal(res.headers.get("access-control-allow-methods"), allowedMethods);
+    assert.ok(
+      res.headers
+        .get("access-control-allow-headers")
+        ?.split(", ")
+        .includes("payment-signature"),
+    );
+    assert.equal(res.headers.get("access-control-allow-credentials"), null);
+    assert.deepEqual(calls, []);
+    assertPaymentHeadersReadable(res);
   });
 });
 

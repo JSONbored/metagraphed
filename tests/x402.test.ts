@@ -275,6 +275,10 @@ describe("the 402 body is x402 v2, not v1", () => {
     assert.ok(header, "PAYMENT-REQUIRED must be set");
     const decoded = JSON.parse(atob(header!)) as Row;
     assert.equal(decoded.x402Version, X402_VERSION);
+    assert.deepEqual(
+      response.headers.get("access-control-expose-headers")?.split(", "),
+      ["payment-required", "payment-response"],
+    );
   });
 
   test("is never cached", () => {
@@ -496,6 +500,93 @@ describe("verifyAndSettle picks the leg the payer chose", () => {
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }) as unknown as typeof fetch;
   }
+
+  test.each(offered)(
+    "selects the v2 accepted offer on $network",
+    async (accepted) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({ x402Version: 2, accepted, payload: {} }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "settled");
+      assert.deepEqual(seen[0]!.paymentRequirements, accepted);
+    },
+  );
+
+  test("the v2 offer takes precedence over a conflicting legacy network", async () => {
+    const seen: Row[] = [];
+    const accepted = offered[1]!;
+    const verdict = await verifyAndSettle(
+      both,
+      signed({ accepted, network: X402_DEFAULT_NETWORK }),
+      offered,
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "settled");
+    assert.deepEqual(seen[0]!.paymentRequirements, accepted);
+  });
+
+  const alteredOffers: Array<[string, unknown]> = [
+    ["scheme", "upto"],
+    ["network", "eip155:1"],
+    ["amount", "1"],
+    ["asset", "another-asset"],
+    ["payTo", "another-recipient"],
+    ["maxTimeoutSeconds", 600],
+    ["extra", null],
+    ["extra", []],
+    ["extra", "invalid"],
+    ["extra", { name: "USDC" }],
+    ["extra", { name: "another-token", version: "2" }],
+  ];
+  test.each(alteredOffers)(
+    "rejects an altered v2 %s before contacting the facilitator",
+    async (field, value) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({
+          accepted: { ...offered[0], [field]: value },
+          network: X402_DEFAULT_NETWORK,
+        }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "rejected");
+      assert.equal(seen.length, 0);
+    },
+  );
+
+  test.each([{ accepted: null }, { accepted: "invalid" }, { accepted: [] }])(
+    "rejects malformed v2 accepted $accepted without legacy fallback",
+    async ({ accepted }) => {
+      const seen: Row[] = [];
+      const verdict = await verifyAndSettle(
+        both,
+        signed({ accepted, network: X402_DEFAULT_NETWORK }),
+        offered,
+        capturing(seen),
+      );
+      assert.equal(verdict.outcome, "rejected");
+      assert.equal(seen.length, 0);
+    },
+  );
+
+  test("does not ignore an altered v2 offer when only one leg is configured", async () => {
+    const seen: Row[] = [];
+    const one = resolveX402Config(env())!;
+    const verdict = await verifyAndSettle(
+      one,
+      signed({ accepted: { ...offered[0], amount: "1" } }),
+      paymentRequirements(one, "10000"),
+      capturing(seen),
+    );
+    assert.equal(verdict.outcome, "rejected");
+    assert.equal(seen.length, 0);
+  });
 
   test("verifies a Solana payment against the SOLANA requirements", async () => {
     // The bug this exists for: verifying a Solana payment against Base

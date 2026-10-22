@@ -5,6 +5,7 @@
 // these without an import cycle.
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contract-constants.ts";
 import { JSON_CONTENT_TYPE } from "./config.ts";
+import { X402_BROWSER_RESPONSE_HEADERS } from "../src/x402.ts";
 
 export type CacheProfile = "short" | "standard" | "static";
 
@@ -103,6 +104,7 @@ export function withNoStore(response: Response): Response {
 }
 
 const EXPOSED_RESPONSE_HEADERS = [
+  ...X402_BROWSER_RESPONSE_HEADERS,
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
   // rate-limit family: detect throttling, honour the back-off

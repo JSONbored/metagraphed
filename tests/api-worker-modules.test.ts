@@ -62,6 +62,8 @@ beforeAll(async () => {
     bindings: {
       METAGRAPH_NEURONS_SOURCE: "data-api",
       METAGRAPH_AUDIT_RESPONSES: "enforce",
+      X402_PAY_TO: "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
+      X402_PAY_TO_SOLANA: "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
     },
   });
   const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
@@ -166,6 +168,42 @@ test("the OAuth provider still owns bearer-token authentication", async () => {
     headers: { authorization: "Bearer invalid" },
   });
   expect(response.status).toBe(401);
+});
+
+test("the compiled paid export admits browser preflights and exposes its quote", async () => {
+  const url = "https://api.metagraph.sh/api/v1/export/chain-events?limit=1";
+  const preflight = await runtime.dispatchFetch(url, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://browser.example",
+      "access-control-request-method": "GET",
+      "access-control-request-headers": "payment-signature, signature",
+      "payment-signature": "!!!",
+    },
+  });
+  expect(preflight.status).toBe(204);
+  expect(preflight.headers.get("access-control-allow-headers")).toContain(
+    "payment-signature",
+  );
+  expect(preflight.headers.get("access-control-allow-methods")).toBe(
+    "GET, HEAD, OPTIONS",
+  );
+  expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
+  expect(preflight.headers.get("access-control-allow-credentials")).toBeNull();
+  const unpaid = await runtime.dispatchFetch(url);
+  expect(unpaid.status).toBe(402);
+  expect(unpaid.headers.get("payment-required")).toBeTruthy();
+  expect(unpaid.headers.get("access-control-expose-headers")).toContain(
+    "payment-required",
+  );
+  expect(await unpaid.json()).toMatchObject({
+    x402Version: 2,
+    accepts: expect.arrayContaining([
+      expect.objectContaining({
+        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      }),
+    ]),
+  });
 });
 
 test("public OAuth discovery, registration, server card and preflight remain available", async () => {

@@ -68,6 +68,11 @@ const X402_REQUIRED_HEADER = "payment-required";
 export const X402_SIGNATURE_HEADER = "payment-signature";
 /** Server -> client, carrying the settlement result. */
 export const X402_RESPONSE_HEADER = "payment-response";
+/** Browser clients must be able to read the quote and settlement receipt. */
+export const X402_BROWSER_RESPONSE_HEADERS = [
+  X402_REQUIRED_HEADER,
+  X402_RESPONSE_HEADER,
+] as const;
 
 export const X402_VERSION = 2;
 
@@ -466,6 +471,7 @@ export function paymentRequiredResponse(
       [X402_REQUIRED_HEADER]: base64Json(body),
       "cache-control": "no-store",
       "access-control-allow-origin": "*",
+      "access-control-expose-headers": X402_BROWSER_RESPONSE_HEADERS.join(", "),
     },
   });
 }
@@ -530,7 +536,7 @@ export async function verifyAndSettle(
     return {
       outcome: "rejected",
       reason:
-        "the payment names a network this resource does not accept; see the accepts list on the 402",
+        "the payment does not match an advertised requirement; see the accepts list on the 402",
     };
   }
 
@@ -585,11 +591,9 @@ export async function verifyAndSettle(
 /**
  * The offered requirement the payer's payload targets.
  *
- * A single offer is used AS-IS rather than matched. A client that omits
- * `network` -- or names it somewhere this reader does not look -- is then
- * answered by the facilitator on the merits of its signature, which is the
- * behaviour before there were two legs. Matching strictly would turn a
- * previously-working client into a rejection for a field it never had to send.
+ * v2's `accepted` must match an advertised offer. Earlier clients without that
+ * field retain the single-offer and top-level-network behavior; the facilitator
+ * still verifies their payload against our own advertised requirements.
  *
  * With several offered there is no such fallback: an unmatched payload is
  * rejected rather than verified against an arbitrary leg.
@@ -598,6 +602,42 @@ function selectRequirements(
   offered: readonly PaymentRequirements[],
   payload: unknown,
 ): PaymentRequirements | null {
+  if (payload && typeof payload === "object" && "accepted" in payload) {
+    // v2 carries the selected offer under `accepted`, not at the top level.
+    // Use only our advertised requirements for the facilitator, and reject
+    // changes to the recipient, asset, amount or scheme before asking it.
+    const accepted = payload.accepted;
+    if (!accepted || typeof accepted !== "object" || Array.isArray(accepted)) {
+      return null;
+    }
+    const choice = accepted as Record<string, unknown>;
+    const requirement = offered.find(
+      (entry) => entry.network === choice.network,
+    );
+    if (!requirement) return null;
+    for (const field of [
+      "scheme",
+      "network",
+      "amount",
+      "asset",
+      "payTo",
+      "maxTimeoutSeconds",
+    ] as const) {
+      if (choice[field] !== requirement[field]) return null;
+    }
+    const extra = choice.extra;
+    if (!extra || typeof extra !== "object" || Array.isArray(extra)) return null;
+    const extraFields = extra as Record<string, unknown>;
+    if (Object.keys(extraFields).length !== Object.keys(requirement.extra).length) {
+      return null;
+    }
+    for (const [name, value] of Object.entries(requirement.extra)) {
+      if (extraFields[name] !== value) return null;
+    }
+    return requirement;
+  }
+  // Retain the earlier top-level network shape only when no v2 offer was
+  // supplied. A malformed or altered `accepted` must never use this fallback.
   if (offered.length === 1) return offered[0]!;
   const network =
     payload && typeof payload === "object"

@@ -58,8 +58,22 @@ describe("the export route demands payment", () => {
     const res = await get(EXPORT, paidEnv());
     assert.equal(res.status, 402);
     assert.ok(res.headers.get("payment-required"), "the quote must be there");
+    assert.ok(
+      res.headers
+        .get("access-control-expose-headers")
+        ?.includes("payment-required"),
+    );
     const accepts = ((await jsonBody(res)).accepts as Row[])[0]!;
     assert.equal(accepts.payTo, PAY_TO);
+  });
+
+  test("HEAD still challenges rather than running the paid export for free", async () => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${EXPORT}`, { method: "HEAD" }),
+      paidEnv(),
+    );
+    assert.equal(res.status, 402);
+    assert.ok(res.headers.get("payment-required"));
   });
 
   test("and its FREE twin does not, in the same deployment", async () => {
