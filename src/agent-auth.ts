@@ -191,7 +191,10 @@ async function body(request: Request): Promise<Body | null> {
     bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  const raw = new TextDecoder("utf-8", {
+    fatal: true,
+    ignoreBOM: false,
+  }).decode(bytes);
   const contentType = request.headers.get("content-type")?.split(";")[0].trim();
   if (contentType === "application/json") {
     const parsed: unknown = JSON.parse(raw);

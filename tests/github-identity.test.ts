@@ -352,5 +352,8 @@ test("provider external-token hook accepts only service-auth namespace and callb
     {} as Env,
   );
   assert.equal(callback.status, 503);
-  assert.equal((await callback.json()).error, "temporarily_unavailable");
+  assert.equal(
+    ((await callback.json()) as { error: string }).error,
+    "temporarily_unavailable",
+  );
 });

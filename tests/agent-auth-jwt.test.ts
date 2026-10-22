@@ -75,6 +75,12 @@ function changedSecret(changes: ObjectValue): string {
   return JSON.stringify({ ...privateJwk, ...changes });
 }
 
+async function exportJwk(key: CryptoKey): Promise<JsonWebKey> {
+  const exported = await crypto.subtle.exportKey("jwk", key);
+  assert.ok("kty" in exported);
+  return exported;
+}
+
 beforeAll(async () => {
   pair = (await crypto.subtle.generateKey(KEY_ALGORITHM, true, [
     "sign",
@@ -84,7 +90,7 @@ beforeAll(async () => {
     "sign",
     "verify",
   ])) as CryptoKeyPair;
-  privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+  privateJwk = await exportJwk(pair.privateKey);
   secret = JSON.stringify(privateJwk);
   const loaded = await loadAgentAuthSigner(secret, ISSUER);
   assert.ok(loaded);
@@ -121,9 +127,7 @@ describe("bounded signing-key cache", () => {
     resetModuleState();
     const first = await loadCachedAgentAuthSigner(secret, ISSUER);
     assert.ok(first);
-    const otherSecret = JSON.stringify(
-      await crypto.subtle.exportKey("jwk", otherPair.privateKey),
-    );
+    const otherSecret = JSON.stringify(await exportJwk(otherPair.privateKey));
     const rotated = await loadCachedAgentAuthSigner(otherSecret, ISSUER);
     assert.ok(rotated);
     assert.notEqual(
@@ -203,9 +207,7 @@ describe("bounded signing-key cache", () => {
       });
     try {
       const stale = loadCachedAgentAuthSigner(secret, ISSUER);
-      const otherSecret = JSON.stringify(
-        await crypto.subtle.exportKey("jwk", otherPair.privateKey),
-      );
+      const otherSecret = JSON.stringify(await exportJwk(otherPair.privateKey));
       const current = await loadCachedAgentAuthSigner(otherSecret, ISSUER);
       assert.ok(current);
       release();
@@ -329,7 +331,7 @@ describe("dedicated service signing key", () => {
   });
 
   test("a private key cannot publish a different public key", async () => {
-    const other = await crypto.subtle.exportKey("jwk", otherPair.privateKey);
+    const other = await exportJwk(otherPair.privateKey);
     assert.equal(
       await loadAgentAuthSigner(changedSecret({ d: other.d }), ISSUER),
       null,
@@ -603,7 +605,7 @@ describe("assertion verification", () => {
     parts[1] = encodedJson({ ...claims, sub: "reg_other_owner" });
     assert.equal(await signer.verify(parts.join("."), NOW), null);
 
-    const otherJwk = await crypto.subtle.exportKey("jwk", otherPair.privateKey);
+    const otherJwk = await exportJwk(otherPair.privateKey);
     const rotated = await loadAgentAuthSigner(JSON.stringify(otherJwk), ISSUER);
     assert.ok(rotated);
     assert.equal(await rotated.verify(token, NOW), null);

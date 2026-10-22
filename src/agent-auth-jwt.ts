@@ -37,7 +37,7 @@ const MAX_HEADER_BYTES = 512;
 const MAX_CLAIMS_BYTES = 4096;
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const encoder = new TextEncoder();
-const decoder = new TextDecoder("utf-8", { fatal: true });
+const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
 const SIGN_ALGORITHM = { name: "ECDSA", hash: "SHA-256" } as const;
 const KEY_ALGORITHM = { name: "ECDSA", namedCurve: "P-256" } as const;
 

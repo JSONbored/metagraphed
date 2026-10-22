@@ -21,11 +21,11 @@ import { createAgentAuthFixture } from "./agent-auth-fixtures.ts";
 let signer: AgentAuthSigner;
 let signingJwk: string;
 beforeAll(async () => {
-  const pair = await crypto.subtle.generateKey(
+  const pair = (await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
     ["sign", "verify"],
-  );
+  )) as CryptoKeyPair;
   signingJwk = JSON.stringify(
     await crypto.subtle.exportKey("jwk", pair.privateKey),
   );
@@ -487,7 +487,7 @@ test("browser approval requires current cookie, Origin, CSRF and explicit six-di
     approve: "yes",
     user_code: registration.claim.user_code,
   };
-  for (const h of [
+  const invalidHeaders: HeadersInit[] = [
     {},
     { cookie: b.cookie },
     { ...f.browserHeaders(b), origin: "https://attacker.example" },
@@ -501,7 +501,8 @@ test("browser approval requires current cookie, Origin, CSRF and explicit six-di
       ...f.browserHeaders(b),
       cookie: `${b.cookie.slice(0, b.cookie.lastIndexOf("~"))}~invalid`,
     },
-  ]) {
+  ];
+  for (const h of invalidHeaders) {
     assert.equal(
       await errorCode(await f.auth("/agent/approve", data, h), 403),
       "access_denied",

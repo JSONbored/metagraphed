@@ -188,9 +188,10 @@ test("missing bindings, invalid time, absent migration and malformed bindings ar
       },
     },
   ]) {
-    assert.deepEqual(await pruneAgentAuthState(db as D1Database, NOW), {
-      status: "unavailable",
-    });
+    assert.deepEqual(
+      await pruneAgentAuthState(db as unknown as D1Database, NOW),
+      { status: "unavailable" },
+    );
   }
 });
 
