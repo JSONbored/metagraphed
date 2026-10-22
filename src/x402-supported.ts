@@ -24,7 +24,7 @@ async function loadSupported(
   try {
     const response = await fetchImpl(`${facilitatorUrl}/supported`, {
       headers: { accept: "application/json" },
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(2_000),
     });
     if (!response.ok) return null;

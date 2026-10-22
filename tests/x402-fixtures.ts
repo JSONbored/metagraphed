@@ -7,7 +7,10 @@ export function createX402Fixture() {
   const sql = new DatabaseSync(":memory:");
   sql.exec(
     readFileSync(
-      new URL("../migrations/d1/0039_x402_payment_attempts.sql", import.meta.url),
+      new URL(
+        "../migrations/d1/0039_x402_payment_attempts.sql",
+        import.meta.url,
+      ),
       "utf8",
     ),
   );
@@ -24,5 +27,10 @@ export function createX402Fixture() {
     prepare,
     withSession: () => ({ prepare }),
   } as unknown as D1Database;
-  return { db, sql, store: createX402AttemptStore(db)!, close: () => sql.close() };
+  return {
+    db,
+    sql,
+    store: createX402AttemptStore(db)!,
+    close: () => sql.close(),
+  };
 }

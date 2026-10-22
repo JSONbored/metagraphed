@@ -20,6 +20,7 @@ let runtime: Miniflare;
 let eagerBytes: number;
 let totalBytes: number;
 let eagerInputs: Set<string>;
+const outbound: string[] = [];
 
 beforeAll(async () => {
   outdir = await mkdtemp(path.join(tmpdir(), "api-worker-modules-"));
@@ -62,6 +63,7 @@ beforeAll(async () => {
     kvNamespaces: ["METAGRAPH_CONTROL", "OAUTH_KV"],
     d1Databases: ["D1_STATE"],
     outboundService(request) {
+      outbound.push(request.url);
       if (request.url === "https://facilitator.payai.network/supported")
         return new MiniflareResponse(
           JSON.stringify({
@@ -93,6 +95,12 @@ beforeAll(async () => {
     "utf8",
   ).replace(/^--.*$/gm, "");
   await db.prepare(migration).run();
+  expect(
+    await db
+      .withSession("first-primary")
+      .prepare("SELECT identity_key FROM x402_payment_attempts LIMIT 1")
+      .first(),
+  ).toBeNull();
   const kv = await runtime.getKVNamespace("METAGRAPH_CONTROL");
   const stamp = {
     schema_version: 1,
@@ -217,8 +225,20 @@ test("the compiled paid export admits browser preflights and exposes its quote",
   );
   expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
   expect(preflight.headers.get("access-control-allow-credentials")).toBeNull();
+  const beforeInvalid = outbound.length;
+  const invalid = await runtime.dispatchFetch(`${url}&__invalid=1`, {
+    headers: { "payment-signature": "!!!" },
+  });
+  expect(invalid.status).toBe(400);
+  expect(await invalid.json()).toMatchObject({
+    error: { code: "invalid_query" },
+  });
+  expect(outbound).toHaveLength(beforeInvalid);
   const unpaid = await runtime.dispatchFetch(url);
-  expect(unpaid.status).toBe(402);
+  expect(
+    unpaid.status,
+    JSON.stringify({ body: await unpaid.clone().text(), outbound }),
+  ).toBe(402);
   expect(unpaid.headers.get("payment-required")).toBeTruthy();
   expect(unpaid.headers.get("access-control-expose-headers")).toContain(
     "payment-required",

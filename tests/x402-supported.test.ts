@@ -51,7 +51,7 @@ test("quotes only exact v2 supported networks and the selected provider's curren
   expect(fetcher).toHaveBeenCalledWith(
     "https://facilitator.payai.network/supported",
     expect.objectContaining({
-      redirect: "error",
+      redirect: "manual",
       headers: { accept: "application/json" },
     }),
   );
@@ -136,4 +136,17 @@ test("bounds the provider cache and isolates providers", async () => {
     fetcher,
   );
   expect(fetcher).toHaveBeenCalledTimes(10);
+});
+
+test("capability redirects are refused without following a replacement provider", async () => {
+  const fetcher = vi.fn<typeof fetch>(
+    async () =>
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://replacement.example/supported" },
+      }),
+  );
+  expect(await resolveX402SupportedConfig(config, fetcher)).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0][1]?.redirect).toBe("manual");
 });

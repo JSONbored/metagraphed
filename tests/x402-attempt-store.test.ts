@@ -29,7 +29,10 @@ function fixture(migrated = true) {
   if (migrated)
     sql.exec(
       readFileSync(
-        new URL("../migrations/d1/0039_x402_payment_attempts.sql", import.meta.url),
+        new URL(
+          "../migrations/d1/0039_x402_payment_attempts.sql",
+          import.meta.url,
+        ),
         "utf8",
       ),
     );
@@ -152,7 +155,11 @@ test("consumed attempts retain their receipt and cannot be resurrected", async (
   await f.store.bind(input);
   await f.store.consume(input.identityKey, input.requestFingerprint, receipt);
   assert.equal(
-    await f.store.consume(input.identityKey, input.requestFingerprint, "changed"),
+    await f.store.consume(
+      input.identityKey,
+      input.requestFingerprint,
+      "changed",
+    ),
     false,
   );
   const consumed = { ...pending, state: "consumed", envelope: null, receipt };
@@ -176,7 +183,11 @@ test("different payment identities have independent claims", async () => {
     identityKey: second.identityKey,
   });
   assert.equal(
-    await f.store.consume(second.identityKey, second.requestFingerprint, receipt),
+    await f.store.consume(
+      second.identityKey,
+      second.requestFingerprint,
+      receipt,
+    ),
     true,
   );
 });
@@ -190,9 +201,7 @@ test("a missing migration fails closed without initializing runtime tables", asy
     /no such table/,
   );
   assert.equal(
-    f.sql
-      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-      .get(),
+    f.sql.prepare("SELECT name FROM sqlite_master WHERE type='table'").get(),
     undefined,
   );
 });
@@ -222,28 +231,31 @@ test.each([
   ["consumed", "envelope", "receipt"],
   ["consumed", null, null],
   ["unknown", "envelope", null],
-])("the migration rejects an inconsistent %s attempt", (state, envelope, saved) => {
-  const f = fixture();
-  assert.throws(
-    () =>
-      f.sql
-        .prepare(
-          `INSERT INTO x402_payment_attempts
+])(
+  "the migration rejects an inconsistent %s attempt",
+  (state, envelope, saved) => {
+    const f = fixture();
+    assert.throws(
+      () =>
+        f.sql
+          .prepare(
+            `INSERT INTO x402_payment_attempts
           (identity_key,request_fingerprint,facilitator_url,payer,state,envelope,receipt)
           VALUES (?,?,?,?,?,?,?)`,
-        )
-        .run(
-          input.identityKey,
-          input.requestFingerprint,
-          input.facilitatorUrl,
-          input.payer,
-          state,
-          envelope,
-          saved,
-        ),
-    /CHECK constraint failed/,
-  );
-});
+          )
+          .run(
+            input.identityKey,
+            input.requestFingerprint,
+            input.facilitatorUrl,
+            input.payer,
+            state,
+            envelope,
+            saved,
+          ),
+      /CHECK constraint failed/,
+    );
+  },
+);
 
 test("a lost binding reply preserves the committed original for retry", async () => {
   const f = fixture();
@@ -302,7 +314,10 @@ test("an unacknowledged insert never reports a durable binding", async () => {
   const f = fixture();
   f.sql.exec(`CREATE TRIGGER decline_payment_attempt BEFORE INSERT
     ON x402_payment_attempts BEGIN SELECT RAISE(IGNORE); END`);
-  await assert.rejects(f.store.bind(input), /Payment attempt was not acknowledged/);
+  await assert.rejects(
+    f.store.bind(input),
+    /Payment attempt was not acknowledged/,
+  );
   assert.equal(await f.store.get(input.identityKey), null);
 });
 

@@ -673,7 +673,7 @@ async function facilitatorCall(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: envelope,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     });
     // Non-2xx protocol bodies can carry a pending broadcast transaction.

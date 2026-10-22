@@ -24,6 +24,7 @@ import {
   X402_SIGNATURE_HEADER,
   paymentRequirements,
   resolveX402Config,
+  x402PriceFor,
 } from "../src/x402.ts";
 import { createX402Fixture } from "./x402-fixtures.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
@@ -275,6 +276,73 @@ describe("browser payment preflights", () => {
     assert.deepEqual(calls, []);
     assertPaymentHeadersReadable(res);
   });
+});
+
+describe("payment method preflight", () => {
+  test.each([
+    ["/api/v1/export/chain-events", "POST", "GET, HEAD, OPTIONS"],
+    ["/finney/api/v1/export/chain-events", "POST", "GET, HEAD, OPTIONS"],
+    ["/api/v1/ask", "GET", "POST, OPTIONS"],
+    ["/finney/api/v1/ask", "GET", "POST, OPTIONS"],
+  ])("rejects %s %s before any payment work", async (path, method, allow) => {
+    const calls: string[] = [];
+    for (const signature of [undefined, payment, "!!!"]) {
+      const res = await withFetch(
+        (async (url: string | URL | Request) => {
+          calls.push(String(url));
+          throw new Error(
+            "unsupported methods must never reach the facilitator",
+          );
+        }) as typeof fetch,
+        () =>
+          handleRequest(
+            new Request(`https://api.metagraph.sh${path}`, {
+              method,
+              headers: signature ? { [X402_SIGNATURE_HEADER]: signature } : {},
+            }),
+            paid(),
+          ),
+      );
+      assert.equal(res.status, 405);
+      assert.equal((await jsonBody(res)).error.code, "method_not_allowed");
+      assert.equal(res.headers.get("allow"), allow);
+      assert.equal(res.headers.get("payment-required"), null);
+      assert.equal(res.headers.get(X402_RESPONSE_HEADER), null);
+    }
+    assert.deepEqual(calls, []);
+  });
+
+  test.each(["GET", "HEAD"])(
+    "still settles a supported export %s",
+    async (method) => {
+      const env = paid();
+      const acceptedExport = paymentRequirements(
+        resolveX402Config(env)!,
+        x402PriceFor("/api/v1/export/chain-events")!.atomicAmount,
+      )[0];
+      const exportPayment = JSON.parse(atob(payment)) as Row;
+      exportPayment.accepted = acceptedExport;
+      const res = await withFetch(
+        facilitator(
+          { isValid: true, payer: "0xpayer" },
+          { success: true, payer: "0xpayer", transaction: "0xtx" },
+        ),
+        () =>
+          handleRequest(
+            new Request("https://api.metagraph.sh/api/v1/export/chain-events", {
+              method,
+              headers: {
+                [X402_SIGNATURE_HEADER]: btoa(JSON.stringify(exportPayment)),
+              },
+            }),
+            env,
+          ),
+      );
+      const receipt = res.headers.get(X402_RESPONSE_HEADER);
+      assert.ok(receipt);
+      assert.equal((JSON.parse(atob(receipt)) as Row).transaction, "0xtx");
+    },
+  );
 });
 
 describe("GET /.well-known/x402", () => {

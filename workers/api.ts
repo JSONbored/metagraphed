@@ -8606,28 +8606,13 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * Returns the rejection to serve, or null when the caller may proceed.
  */
 /**
- * The x402 gate: refuse-with-a-quote, or settle and let the work proceed
- * (infra#629).
+ * Validate and settle a payment before `work`, then attach its receipt.
  *
- * Runs BEFORE the handler, and both facilitator calls happen before any work.
- * Serve-then-settle would lose the money on any failure after the response is
- * committed, and a Worker cannot retract a stream it has begun.
- *
- * Returns a Response to serve INSTEAD of the route (only when a caller TRIED
- * to pay and could not), a settlement header to attach when payment succeeded,
- * or null to proceed untouched.
- *
- * Null is the overwhelmingly common case and covers three situations that are
- * deliberately indistinguishable to the caller: this deployment takes no
- * payments, this route is not one a payment buys headroom on, or the caller
- * simply did not present one. All three mean "serve it as you would today".
- */
-/**
- * Run `work` behind the x402 gate, attaching the settlement receipt.
- *
- * The receipt matters: `PAYMENT-RESPONSE` is how a payer reconciles what they
- * were charged against what they got, and dropping it turns a settled payment
- * into one the caller has no record of.
+ * Optional unpaid calls retain anonymous access. Required-payment exports and
+ * explicit payment attempts fail closed when settlement is unavailable. A
+ * pending attempt must resolve before any paid work can run or a new payment
+ * can be offered. OPTIONS only negotiates access and reaches the CORS handler.
+ * `PAYMENT-RESPONSE` lets the payer reconcile a settled charge with the answer.
  */
 async function withX402(
   request: Request,
@@ -8659,11 +8644,34 @@ async function enforceX402(
 ): Promise<{ reject: Response } | { settlementHeader: string } | null> {
   const price = x402PriceFor(pathname);
   if (!price) return null;
+  // The same declaration serves CORS and the dispatcher's method rejection.
+  // Check it before settlement: some read families dispatch before the generic
+  // method guard, and a wrong method must never buy an error or a free export.
+  const allowedMethods = allowedMethodsForPath(pathname);
+  if (!allowedMethods.split(", ").includes(request.method)) {
+    return {
+      reject: errorResponse(
+        "method_not_allowed",
+        "This resource does not support the requested method.",
+        405,
+        {},
+        { allow: allowedMethods },
+      ),
+    };
+  }
   if (
     !request.headers.get("payment-signature") &&
     !x402RequiresPayment(pathname)
   )
     return null;
+  // Reject invalid GET/HEAD parameters before either asking for a payment or
+  // submitting settlement. Use the same canonical parser as dispatchRequest.
+  if (request.method === "GET" || request.method === "HEAD") {
+    const url = new URL(request.url);
+    url.pathname = pathname;
+    const query = parseRouteQuery(url);
+    if ("error" in query) return { reject: analyticsQueryError(query.error) };
+  }
   const config = resolveX402Config(env);
   if (!config) return { reject: x402UnavailableResponse() };
   const store = paymentAttemptStore(env);
@@ -11119,9 +11127,9 @@ async function liveHealthOverlay(
 /**
  * Which methods a path accepts.
  *
- * One declaration, two consumers: the CORS preflight below, and the read-only method
- * gate's `allow` header. They answered the same question from two copies before, which
- * is how a route could advertise one method set to a browser and another to a client.
+ * Shared by CORS, the read-only method gate and the payment preflight. These
+ * boundaries must agree on which requests can reach a handler before a caller
+ * pays for one.
  */
 function allowedMethodsForPath(pathname: string): string {
   const url = { pathname };

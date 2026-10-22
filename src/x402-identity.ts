@@ -34,7 +34,9 @@ function solanaMessage(transaction: string): string | null {
 }
 
 /** The signed transfer identity, excluding unsigned resource and offer metadata. */
-export async function x402PaymentIdentity(payload: unknown): Promise<string | null> {
+export async function x402PaymentIdentity(
+  payload: unknown,
+): Promise<string | null> {
   const value = record(payload);
   const accepted = record(value?.accepted);
   const payment = record(value?.payload);
@@ -71,7 +73,9 @@ export async function x402PaymentIdentity(payload: unknown): Promise<string | nu
 }
 
 /** Bind a payment to the exact route, query, method and bounded request body. */
-export async function x402RequestFingerprint(request: Request): Promise<string | null> {
+export async function x402RequestFingerprint(
+  request: Request,
+): Promise<string | null> {
   if (Number(request.headers.get("content-length")) > 65_536) return null;
   const body = request.clone().body;
   let hex = "";

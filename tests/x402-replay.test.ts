@@ -374,3 +374,32 @@ test("an interrupted request body cannot reach payment verification", async () =
   );
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+test("a verification redirect cannot follow a different provider or submit settlement", async () => {
+  const db = store();
+  const fetcher = vi.fn<typeof fetch>(async () =>
+    Response.json(
+      { isValid: true },
+      {
+        status: 307,
+        headers: { location: "https://replacement.example/verify" },
+      },
+    ),
+  );
+  expect((await run(db, fetcher)).outcome).toBe("rejected");
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0][1]?.redirect).toBe("manual");
+  expect(db.bind).not.toHaveBeenCalled();
+});
+
+test("a settlement redirect remains pending and never follows or authorizes paid work", async () => {
+  const db = store();
+  const fetcher = facilitator({ success: true, transaction: "uncertain" }, 307);
+  const result = await run(db, fetcher);
+  expect(result.outcome).toBe("pending");
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(
+    fetcher.mock.calls.every(([, init]) => init?.redirect === "manual"),
+  ).toBe(true);
+  expect(db.consume).not.toHaveBeenCalled();
+});

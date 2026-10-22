@@ -48,7 +48,11 @@ test("EVM identity is the normalized chain, token, signer and authorization nonc
     await x402PaymentIdentity({
       ...payment,
       resource: { url: "https://changed.example/another-call" },
-      accepted: { ...payment.accepted, asset: asset.toLowerCase(), amount: "999" },
+      accepted: {
+        ...payment.accepted,
+        asset: asset.toLowerCase(),
+        amount: "999",
+      },
       payload: {
         authorization: { from: from.toLowerCase(), nonce: nonce.toLowerCase() },
         signature: "a-different-serialization",
@@ -116,7 +120,13 @@ test("compact-count encodings frame the same Solana message consistently", async
   );
   assert.notEqual(
     await x402PaymentIdentity(
-      svm(Buffer.concat([Buffer.from([1]), Buffer.alloc(64), Buffer.from(message)]).toString("base64")),
+      svm(
+        Buffer.concat([
+          Buffer.from([1]),
+          Buffer.alloc(64),
+          Buffer.from(message),
+        ]).toString("base64"),
+      ),
     ),
     null,
   );
@@ -164,7 +174,12 @@ test.each([
 
 const url = "https://api.metagraph.sh/api/v1/ask?depth=1";
 function post(body: BodyInit, headers: HeadersInit = {}) {
-  return new Request(url, { method: "POST", body, headers, duplex: "half" } as RequestInit);
+  return new Request(url, {
+    method: "POST",
+    body,
+    headers,
+    duplex: "half",
+  } as RequestInit);
 }
 
 test("a request fingerprint binds method, exact URL and raw body without consuming it", async () => {
@@ -177,7 +192,10 @@ test("a request fingerprint binds method, exact URL and raw body without consumi
   assert.equal(await request.text(), '{"question":"hello"}');
   for (const changed of [
     new Request(url, { method: "PUT", body: '{"question":"hello"}' }),
-    new Request(url + "&other=true", { method: "POST", body: '{"question":"hello"}' }),
+    new Request(url + "&other=true", {
+      method: "POST",
+      body: '{"question":"hello"}',
+    }),
     post('{"question":"changed"}'),
   ]) {
     assert.notEqual(await x402RequestFingerprint(changed), fingerprint);
@@ -238,11 +256,13 @@ test("chunk boundaries do not change the request fingerprint", async () => {
 });
 
 test("interrupted body reads propagate rather than produce an execution fingerprint", async () => {
-  const request = post(new ReadableStream({
-    start(controller) {
-      controller.error(new Error("request interrupted"));
-    },
-  }));
+  const request = post(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new Error("request interrupted"));
+      },
+    }),
+  );
   await assert.rejects(x402RequestFingerprint(request), /request interrupted/);
 });
 
