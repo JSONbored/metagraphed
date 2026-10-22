@@ -27,8 +27,14 @@ describe("signed browser analytics compatibility (#12890)", () => {
   it.each([
     ["Signature", ""],
     ["Signature-Agent", "   "],
-  ])("keeps ordinary visitor analytics eligible for an empty %s header", (name, value) => {
+  ])("prevents injection for an empty %s header that still requires CORS", (name, value) => {
     const response = applySignedBrowserAnalyticsPolicy(html(), request({ [name]: value }));
+    expect(response.headers.get("cache-control")).toBe("no-store, no-transform");
+    expect(varyFields(response)).toEqual(signatureFields);
+  });
+
+  it("keeps ordinary visitor analytics eligible and varies both HTML variants", () => {
+    const response = applySignedBrowserAnalyticsPolicy(html(), request());
     expect(response.headers.has("cache-control")).toBe(false);
     expect(varyFields(response)).toEqual(signatureFields);
   });

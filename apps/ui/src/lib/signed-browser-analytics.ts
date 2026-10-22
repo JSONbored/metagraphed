@@ -30,7 +30,7 @@ export function applySignedBrowserAnalyticsPolicy(response: Response, request: R
     }
   }
 
-  if (SIGNATURE_HEADERS.some((name) => request.headers.get(name)?.trim())) {
+  if (SIGNATURE_HEADERS.some((name) => request.headers.has(name))) {
     // Cloudflare does not honor arbitrary Vary fields by default. HTML is
     // uncached there by default; do not let a signed response enter a cache.
     appendCacheDirective(headers, "cache-control", "no-store");
