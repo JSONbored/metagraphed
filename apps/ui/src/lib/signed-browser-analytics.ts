@@ -6,9 +6,7 @@
 const SIGNATURE_HEADERS = ["Signature", "Signature-Input", "Signature-Agent"] as const;
 
 function appendCacheDirective(headers: Headers, name: string, directive: string): void {
-  const existing = (headers.get(name) ?? "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase());
+  const existing = (headers.get(name) ?? "").split(",").map((value) => value.trim().toLowerCase());
   if (!existing.includes(directive)) headers.append(name, directive);
 }
 
@@ -18,9 +16,7 @@ export function applySignedBrowserAnalyticsPolicy(response: Response, request: R
 
   const headers = new Headers(response.headers);
   const vary = new Set(
-    (headers.get("vary") ?? "")
-      .split(",")
-      .map((value) => value.trim().toLowerCase()),
+    (headers.get("vary") ?? "").split(",").map((value) => value.trim().toLowerCase()),
   );
   // Both variants must declare the same inputs so a browser cannot reuse an
   // unsigned page (with the injected script) for a signed navigation.

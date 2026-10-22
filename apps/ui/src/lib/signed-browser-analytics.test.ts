@@ -58,7 +58,9 @@ describe("signed browser analytics compatibility (#12890)", () => {
       }),
       request({ Signature: "test" }),
     );
-    expect(response.headers.get("cache-control")).toBe("public, max-age=60, NO-TRANSFORM, No-Store");
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=60, NO-TRANSFORM, No-Store",
+    );
     expect(response.headers.get("cdn-cache-control")).toBe("max-age=600, no-store");
     expect(response.headers.get("cloudflare-cdn-cache-control")).toBe("max-age=900, NO-STORE");
     expect(response.headers.get("vary")).toBe("*");
