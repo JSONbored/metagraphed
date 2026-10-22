@@ -266,7 +266,7 @@ describe("Discovery artifacts", () => {
     );
   });
 
-  test("auth.md documents supported provisioning without promising agent registration", async () => {
+  test("auth.md documents owner-approved registration and existing provisioning", async () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
     for (const field of [
       "resource",
@@ -281,6 +281,10 @@ describe("Discovery artifacts", () => {
       "POST https://api.metagraph.sh/oauth/register",
       "GET https://api.metagraph.sh/authorize",
       "POST https://api.metagraph.sh/oauth/token",
+      "POST https://api.metagraph.sh/agent/register",
+      "POST https://api.metagraph.sh/agent/claim",
+      "POST https://api.metagraph.sh/agent/rotate",
+      "POST https://api.metagraph.sh/oauth/revoke",
       "POST https://api.metagraph.sh/api/v1/auth/wallet/challenge",
       "POST https://api.metagraph.sh/api/v1/auth/wallet/verify",
       "POST https://api.metagraph.sh/api/v1/keys",
@@ -304,9 +308,24 @@ describe("Discovery artifacts", () => {
     assert.match(authMd, /returned only once/);
     assert.match(
       authMd,
-      /ID-JAG, `verified_email`, anonymous credential issuance and claim\s+ceremony are not implemented/,
+      /does not support anonymous issuance,\s+upstream ID-JAG identity assertions or the older `verified_email` identity type/,
     );
-    assert.match(authMd, /metadata does not advertise\s+`agent_auth`/);
+    assert.match(
+      authMd,
+      /Discovery stays disabled\s+until the dedicated signing key/,
+    );
+    assert.match(
+      authMd,
+      /Registration does not issue an access token or assertion/,
+    );
+    assert.match(authMd, /Sign-in alone is not\s+approval/);
+    assert.match(authMd, /urn:workos:agent-auth:grant-type:claim/);
+    assert.match(authMd, /urn:ietf:params:oauth:grant-type:jwt-bearer/);
+    assert.match(
+      authMd,
+      /Repeated exchanges never extend the original\s+approval window/,
+    );
+    assert.match(authMd, /Passive scanners must read discovery documents only/);
   });
 
   test("security.txt follows RFC 9116 (contact, expires, canonical)", async () => {

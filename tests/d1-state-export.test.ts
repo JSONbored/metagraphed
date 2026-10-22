@@ -1251,6 +1251,9 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
   assert.deepEqual(blob.rows[0]![5], { storage: "blob", value: "00FF" });
   for (const table of [
     "api_keys",
+    "agent_auth_registrations",
+    "agent_auth_ceremonies",
+    "agent_auth_tokens",
     "nominator_scan_receipts",
     "archive_export_revisions",
   ])

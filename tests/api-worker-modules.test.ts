@@ -17,6 +17,7 @@ import {
 
 let outdir: string;
 let runtime: Miniflare;
+let agentRuntime: Miniflare;
 let eagerBytes: number;
 let totalBytes: number;
 let eagerInputs: Set<string>;
@@ -52,11 +53,14 @@ beforeAll(async () => {
     .sort((a, b) =>
       a === "api.entry.js" ? -1 : b === "api.entry.js" ? 1 : a.localeCompare(b),
     );
+  const modules = names.map((name) => ({
+    type: name.endsWith(".wasm")
+      ? ("CompiledWasm" as const)
+      : ("ESModule" as const),
+    path: path.join(outdir, name),
+  }));
   runtime = new Miniflare({
-    modules: names.map((name) => ({
-      type: name.endsWith(".wasm") ? "CompiledWasm" : "ESModule",
-      path: path.join(outdir, name),
-    })),
+    modules,
     modulesRoot: outdir,
     compatibilityDate: "2026-06-06",
     compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
@@ -126,10 +130,80 @@ beforeAll(async () => {
       operators: [],
     }),
   );
+  const key = (await crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign", "verify"],
+  )) as CryptoKeyPair;
+  agentRuntime = new Miniflare({
+    modules,
+    modulesRoot: outdir,
+    compatibilityDate: "2026-06-06",
+    compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
+    kvNamespaces: ["METAGRAPH_CONTROL", "OAUTH_KV"],
+    d1Databases: ["D1_STATE"],
+    ratelimits: {
+      AGENT_AUTH_RATE_LIMITER: {
+        namespace_id: "1028",
+        simple: { limit: 20, period: 60 },
+      },
+    },
+    serviceBindings: {
+      DATA_API: async (request) => {
+        const path = new URL(request.url).pathname;
+        if (path === "/api/v1/auth/github/upsert-account")
+          return MiniflareResponse.json({ id: 42 });
+        if (path === "/api/v1/internal/accounts/github/tier")
+          return MiniflareResponse.json({ found: true, tier: "free" });
+        return new MiniflareResponse("Unexpected service call", {
+          status: 503,
+        });
+      },
+    },
+    outboundService(request) {
+      const responses: Record<string, unknown> = {
+        "https://github.com/login/oauth/access_token": {
+          access_token: "synthetic-github-token",
+        },
+        "https://api.github.com/user": { id: 4200, login: "owner" },
+        "https://api.github.com/user/emails": [
+          { email: "owner@example.com", verified: true },
+        ],
+      };
+      return Object.hasOwn(responses, request.url)
+        ? MiniflareResponse.json(responses[request.url])
+        : new MiniflareResponse("Unexpected external call", { status: 503 });
+    },
+    bindings: {
+      AUTHMD_SIGNING_JWK: JSON.stringify(
+        await crypto.subtle.exportKey("jwk", key.privateKey),
+      ),
+      D1_STATE_TABLES:
+        "agent_auth_registrations,agent_auth_ceremonies,agent_auth_tokens",
+      GITHUB_OAUTH_CLIENT_ID: "synthetic-client",
+      GITHUB_OAUTH_CLIENT_SECRET: "synthetic-secret",
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "synthetic-internal-token",
+    },
+  });
+  const agentDb = await agentRuntime.getD1Database("D1_STATE");
+  for (const file of ["0005_user_state.sql", "0040_agent_auth.sql"]) {
+    const sql = readFileSync(
+      new URL(`../migrations/d1/${file}`, import.meta.url),
+      "utf8",
+    );
+    for (const statement of sql.split("-- statement-breakpoint"))
+      if (statement.trim()) await agentDb.prepare(statement).run();
+  }
+  await agentDb
+    .prepare(
+      "INSERT INTO github_accounts(id,github_user_id,github_login,created_at) VALUES(42,4200,'owner',1)",
+    )
+    .run();
 }, 60_000);
 
 afterAll(async () => {
   await runtime?.dispose();
+  await agentRuntime?.dispose();
   if (outdir) await rm(outdir, { recursive: true, force: true });
 });
 
@@ -359,4 +433,230 @@ test("an expired OAuth token is refused by the compiled provider", async () => {
     'error="invalid_token"',
   );
   expect(await response.text()).toContain("Access token expired");
+});
+
+test("unprovisioned registration declines while normal OAuth token dispatch survives", async () => {
+  const unavailable = await runtime.dispatchFetch(
+    "https://api.metagraph.sh/agent/register",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "service_auth",
+        login_hint: "owner@example.com",
+      }),
+    },
+  );
+  expect(unavailable.status).toBe(503);
+  expect(await unavailable.json()).toMatchObject({
+    error: "temporarily_unavailable",
+  });
+  const ordinary = await runtime.dispatchFetch(
+    "https://api.metagraph.sh/oauth/token",
+    {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: "grant_type=authorization_code&code=invalid&client_id=invalid",
+    },
+  );
+  expect(ordinary.status).toBe(400);
+  expect(await ordinary.json()).toHaveProperty("error");
+});
+
+test("compiled Auth.md discovery exposes a public key and registration cannot issue a preapproval credential", async () => {
+  const metadata = await agentRuntime.dispatchFetch(
+    "https://api.metagraph.sh/.well-known/oauth-authorization-server",
+  );
+  expect(metadata.status).toBe(200);
+  expect(await metadata.json()).toMatchObject({
+    issuer: "https://api.metagraph.sh",
+    jwks_uri: "https://api.metagraph.sh/oauth/jwks",
+    agent_auth: {
+      identity_endpoint: "https://api.metagraph.sh/agent/register",
+      identity_types_supported: ["service_auth"],
+    },
+  });
+  const jwks = await agentRuntime.dispatchFetch(
+    "https://api.metagraph.sh/oauth/jwks",
+  );
+  expect(jwks.status).toBe(200);
+  const keySet = (await jwks.json()) as { keys: JsonWebKey[] };
+  expect(keySet.keys).toHaveLength(1);
+  expect(keySet.keys[0]).toMatchObject({
+    kty: "EC",
+    crv: "P-256",
+    alg: "ES256",
+  });
+  expect(keySet.keys[0]).not.toHaveProperty("d");
+  const registered = await agentRuntime.dispatchFetch(
+    "https://api.metagraph.sh/agent/register",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "192.0.2.1",
+      },
+      body: JSON.stringify({
+        type: "service_auth",
+        login_hint: "owner@example.com",
+      }),
+    },
+  );
+  expect(registered.status).toBe(201);
+  const registration = (await registered.json()) as { claim_token: string };
+  expect(registration).not.toHaveProperty("access_token");
+  expect(registration).not.toHaveProperty("identity_assertion");
+  const pending = await agentRuntime.dispatchFetch(
+    "https://api.metagraph.sh/oauth/token",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "cf-connecting-ip": "192.0.2.1",
+      },
+      body: new URLSearchParams({
+        grant_type: "urn:workos:agent-auth:grant-type:claim",
+        claim_token: registration.claim_token,
+      }).toString(),
+    },
+  );
+  expect(pending.status).toBe(400);
+  expect(await pending.json()).toMatchObject({
+    error: "authorization_pending",
+  });
+});
+
+test("compiled owner approval issues provider-recognized credentials and revocation is immediate", async () => {
+  const origin = "https://api.metagraph.sh";
+  const formHeaders = {
+    "content-type": "application/x-www-form-urlencoded",
+    "cf-connecting-ip": "192.0.2.2",
+  };
+  const register = await agentRuntime.dispatchFetch(
+    `${origin}/agent/register`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "192.0.2.2",
+      },
+      body: JSON.stringify({
+        type: "service_auth",
+        login_hint: "owner@example.com",
+        client_name: "Runtime fixture",
+      }),
+    },
+  );
+  expect(register.status).toBe(201);
+  const registration = (await register.json()) as {
+    registration_id: string;
+    claim_token: string;
+    claim: { user_code: string; verification_uri: string };
+  };
+  const browser = await agentRuntime.dispatchFetch(
+    registration.claim.verification_uri,
+    { headers: { "cf-connecting-ip": "192.0.2.2" } },
+  );
+  expect(browser.status).toBe(200);
+  const cookie = browser.headers.get("set-cookie")!.split(";")[0];
+  const [state, , csrf] = cookie.slice(cookie.indexOf("=") + 1).split("~");
+  const start = await agentRuntime.dispatchFetch(`${origin}/agent/verify`, {
+    method: "POST",
+    redirect: "manual",
+    headers: { ...formHeaders, origin, cookie },
+    body: new URLSearchParams({ state, csrf }).toString(),
+  });
+  expect(start.status).toBe(302);
+  expect(
+    new URL(start.headers.get("location")!).searchParams.get("scope"),
+  ).toBe("read:user user:email");
+  const callback = await agentRuntime.dispatchFetch(
+    `${origin}/oauth/callback/github?code=synthetic-code&state=${state}`,
+    { headers: { cookie } },
+  );
+  expect(callback.status, await callback.clone().text()).toBe(200);
+  expect(await callback.text()).toContain("Approve profile access");
+  const db = await agentRuntime.getD1Database("D1_STATE");
+  expect(
+    await db
+      .prepare("SELECT approved_at FROM agent_auth_registrations WHERE id=?")
+      .bind(registration.registration_id)
+      .first("approved_at"),
+  ).toBeNull();
+  const approval = await agentRuntime.dispatchFetch(`${origin}/agent/approve`, {
+    method: "POST",
+    headers: { ...formHeaders, origin, cookie },
+    body: new URLSearchParams({
+      state,
+      csrf,
+      user_code: registration.claim.user_code,
+      approve: "yes",
+    }).toString(),
+  });
+  expect(approval.status, await approval.clone().text()).toBe(200);
+  const claim = await agentRuntime.dispatchFetch(`${origin}/oauth/token`, {
+    method: "POST",
+    headers: formHeaders,
+    body: new URLSearchParams({
+      grant_type: "urn:workos:agent-auth:grant-type:claim",
+      claim_token: registration.claim_token,
+    }).toString(),
+  });
+  expect(claim.status, await claim.clone().text()).toBe(200);
+  const credentials = (await claim.json()) as {
+    access_token: string;
+    identity_assertion: string;
+  };
+  const call = (token: string, mount = "/mcp") =>
+    agentRuntime.dispatchFetch(`${origin}${mount}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "authmd-runtime", version: "1" },
+        },
+      }),
+    });
+  const authenticated = await call(credentials.access_token);
+  expect(authenticated.status, await authenticated.clone().text()).toBe(200);
+  const exchange = await agentRuntime.dispatchFetch(`${origin}/oauth/token`, {
+    method: "POST",
+    headers: formHeaders,
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: credentials.identity_assertion,
+      resource: `${origin}/mcp/core`,
+    }).toString(),
+  });
+  expect(exchange.status, await exchange.clone().text()).toBe(200);
+  const sibling = (await exchange.json()) as { access_token: string };
+  expect((await call(sibling.access_token)).status).toBe(401);
+  expect((await call(sibling.access_token, "/mcp/core")).status).toBe(200);
+  for (const [token, hint] of [
+    [credentials.access_token, "access_token"],
+    [credentials.identity_assertion, "identity_assertion"],
+  ]) {
+    const revoked = await agentRuntime.dispatchFetch(
+      `${origin}${hint === "access_token" ? "/oauth/token" : "/oauth/revoke"}`,
+      {
+        method: "POST",
+        headers: formHeaders,
+        body: new URLSearchParams({ token, token_type_hint: hint }).toString(),
+      },
+    );
+    expect(revoked.status).toBe(200);
+    expect((await call(credentials.access_token)).status).toBe(401);
+    expect((await call(sibling.access_token, "/mcp/core")).status).toBe(
+      hint === "access_token" ? 200 : 401,
+    );
+  }
 });

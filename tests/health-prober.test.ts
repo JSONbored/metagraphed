@@ -2143,14 +2143,28 @@ describe("rollupDailyUptime (durable daily history)", () => {
         };
       },
     };
+    const privateDb = {
+      prepare(sql: string) {
+        return { bind: () => ({ sql }) };
+      },
+      async batch(statements: { sql: string }[]) {
+        order.push(...statements.map(({ sql }) => `private:${sql}`));
+        return statements.map(() => ({ success: true, results: [] }));
+      },
+    };
     const result = (await handleScheduled(
       { cron: "0 * * * *" } as unknown as ScheduledController,
-      { METAGRAPH_HEALTH_DB: orderDb } as unknown as Env,
+      { METAGRAPH_HEALTH_DB: orderDb, D1_STATE: privateDb } as unknown as Env,
       {} as unknown as ExecutionContext,
     )) as Row;
     assert.equal(result.rollup_skipped_prune, true);
     assert.equal(result.uptime_rolled, false);
     assert.equal(result.pruned, false);
+    assert.deepEqual(result.agent_auth_prune, {
+      status: "pruned",
+      deleted: { tokens: 0, ceremonies: 0, registrations: 0 },
+    });
+    assert.equal(order.filter((sql) => sql.startsWith("private:")).length, 3);
     assert.ok(
       !order.some((o) => o.includes("DELETE FROM surface_checks")),
       "raw surface_checks must not be pruned when the rollup fails",

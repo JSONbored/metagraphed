@@ -878,6 +878,22 @@ describe("isNonOAuthMcpRequest (#8643) — our own API keys must not reach OAuth
     ).toBe(false);
   });
 
+  test("routes owner-approved agent credentials through the external-token resolver", () => {
+    for (const path of ["/mcp", "/mcp/", "/mcp/core", "/mcp/core/"]) {
+      expect(
+        isNonOAuthMcpRequest(
+          new Request(`https://api.metagraph.sh${path}`, {
+            headers: { Authorization: `Bearer mg_agent_${"A".repeat(43)}` },
+          }),
+        ),
+      ).toBe(false);
+    }
+    // Malformed credentials must reach that same validator and fail there.
+    expect(
+      isNonOAuthMcpRequest(at({ Authorization: "Bearer mg_agent_invalid" })),
+    ).toBe(false);
+  });
+
   test("never diverts a non-/mcp path, whatever the credentials", () => {
     for (const url of [
       "https://api.metagraph.sh/authorize",

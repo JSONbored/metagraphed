@@ -88,10 +88,10 @@ export const UNUSED_DEFAULT_HANDLER = {
     new Response("not used outside OAuthProvider.fetch()", { status: 500 }),
 };
 
-interface DefaultHandler {
+interface DefaultHandler<Environment = Env> {
   fetch: (
     request: Request,
-    env: Env,
+    env: Environment,
     ctx: ExecutionContext,
   ) => Response | Promise<Response>;
 }
@@ -110,9 +110,11 @@ interface DefaultHandler {
  * that only need those helpers pass UNUSED_DEFAULT_HANDLER: it's
  * structurally required by the library's types but dead weight there.
  */
-export function buildOAuthProviderOptions(
-  defaultHandler: DefaultHandler,
-): OAuthProviderOptions<Env> {
+export function buildOAuthProviderOptions<
+  Environment extends GithubOwnerEnv = Env,
+>(
+  defaultHandler: DefaultHandler<Environment>,
+): OAuthProviderOptions<Environment> {
   return {
     apiRoute: MCP_API_ROUTE,
     // Authenticated /mcp gets identical behavior to anonymous /mcp today --
@@ -168,10 +170,15 @@ export function buildOAuthProviderOptions(
     // and defaulted to it.
     allowPlainPKCE: false,
     scopesSupported: ["profile"],
+    resolveExternalToken: async (input) => {
+      if (!input.token.startsWith("mg_agent_")) return null;
+      const { resolveAgentAuthExternalToken } = await import("./agent-auth.ts");
+      return resolveAgentAuthExternalToken(input);
+    },
     resourceMetadata: {
       resource_name: "metagraphed",
     },
-  } as OAuthProviderOptions<Env>;
+  } as OAuthProviderOptions<Environment>;
 }
 
 /**
@@ -269,7 +276,10 @@ export function isNonOAuthMcpRequest(request: Request): boolean {
   if (!matchesMcpApiRoute(new URL(request.url).pathname)) return false;
   const header = request.headers.get("Authorization");
   if (!header?.startsWith("Bearer ")) return true;
-  return header.slice("Bearer ".length).startsWith(MG_API_KEY_TAG);
+  const token = header.slice("Bearer ".length);
+  // Owner-approved service-auth credentials use the provider's external-token
+  // resolver, which checks their live approval and revocation state.
+  return token.startsWith(MG_API_KEY_TAG) && !token.startsWith("mg_agent_");
 }
 
 /**
@@ -305,6 +315,188 @@ interface GithubOAuthDeps {
   getHelpers?: (env: Env) => Promise<OAuthHelpers>;
   // Injectable fetch, for the GitHub API calls + DATA_API hop (tests).
   fetch?: typeof fetch;
+}
+
+export interface GithubIdentityEnv {
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  GITHUB_OAUTH_CLIENT_SECRET?: string;
+  DATA_API?: Pick<Fetcher, "fetch">;
+  API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+}
+
+export interface GithubOwnerEnv extends GithubIdentityEnv {
+  OAUTH_KV?: KVNamespace;
+}
+
+/** A registration ID alone authorizes nothing; only its human OAuth owner may revoke it. */
+export async function resolveGithubOAuthOwner(
+  request: Request,
+  env: GithubOwnerEnv,
+  getHelpers?: () => Promise<Pick<OAuthHelpers, "unwrapToken">>,
+): Promise<{ accountId: string } | null> {
+  const authorization = request.headers.get("authorization") ?? "";
+  if (!env.OAUTH_KV || !authorization.startsWith("Bearer ")) return null;
+  const token = authorization.slice(7);
+  if (!token || token.startsWith("mg_")) return null;
+  try {
+    const helpers = getHelpers
+      ? await getHelpers()
+      : (await import("@cloudflare/workers-oauth-provider")).getOAuthApi(
+          buildOAuthProviderOptions<GithubOwnerEnv>(UNUSED_DEFAULT_HANDLER),
+          env,
+        );
+    const decoded = await helpers.unwrapToken<unknown>(token);
+    if (!decoded || !decoded.scope.includes("profile")) return null;
+    const props = asJsonObject(decoded.grant.props);
+    if (
+      typeof props?.accountId !== "number" &&
+      typeof props?.accountId !== "string"
+    )
+      return null;
+    const accountId = Number(props?.accountId);
+    if (
+      !Number.isSafeInteger(accountId) ||
+      accountId <= 0 ||
+      decoded.userId !== String(accountId)
+    )
+      return null;
+    return { accountId: String(accountId) };
+  } catch {
+    return null;
+  }
+}
+
+export interface GithubIdentity {
+  githubUserId: number;
+  githubLogin: string;
+  verifiedEmails: string[];
+}
+
+/** Resolve GitHub's authenticated subject. Only /user/emails proves an email hint. */
+export async function exchangeGithubIdentity(
+  request: Request,
+  env: GithubIdentityEnv,
+  code: string,
+  doFetch: typeof fetch = globalThis.fetch,
+  requireVerifiedEmail = false,
+): Promise<{ identity: GithubIdentity } | { error: Response }> {
+  const redirectUri = new URL("/oauth/callback/github", request.url).toString();
+  const tokenResponse = await doFetch(GITHUB_TOKEN_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      client_id: env.GITHUB_OAUTH_CLIENT_ID,
+      client_secret: env.GITHUB_OAUTH_CLIENT_SECRET,
+      code,
+      redirect_uri: redirectUri,
+    }),
+  });
+  if (!tokenResponse.ok)
+    return {
+      error: new Response("github token exchange failed", { status: 502 }),
+    };
+  const tokenBody = asJsonObject(await tokenResponse.json()) ?? {};
+  const githubAccessToken = tokenBody.access_token;
+  if (typeof githubAccessToken !== "string" || !githubAccessToken)
+    return {
+      error: new Response("github token exchange returned no access_token", {
+        status: 502,
+      }),
+    };
+  const headers = {
+    authorization: `Bearer ${githubAccessToken}`,
+    "user-agent": "metagraphed-oauth",
+    accept: "application/vnd.github+json",
+  };
+  const userResponse = await doFetch(GITHUB_USER_API_URL, { headers });
+  if (!userResponse.ok)
+    return {
+      error: new Response("failed to fetch github user profile", {
+        status: 502,
+      }),
+    };
+  const user = asJsonObject(await userResponse.json()) ?? {};
+  if (
+    typeof user.id !== "number" ||
+    !Number.isSafeInteger(user.id) ||
+    user.id <= 0 ||
+    typeof user.login !== "string" ||
+    !user.login
+  )
+    return {
+      error: new Response("github user profile missing id/login", {
+        status: 502,
+      }),
+    };
+  const verifiedEmails: string[] = [];
+  if (requireVerifiedEmail) {
+    const emailsResponse = await doFetch("https://api.github.com/user/emails", {
+      headers,
+    });
+    if (!emailsResponse.ok)
+      return {
+        error: new Response("failed to verify github email", { status: 502 }),
+      };
+    const emails: unknown = await emailsResponse.json();
+    if (!Array.isArray(emails))
+      return {
+        error: new Response("invalid github email response", { status: 502 }),
+      };
+    for (const value of emails) {
+      const email = asJsonObject(value);
+      if (email?.verified === true && typeof email.email === "string")
+        verifiedEmails.push(email.email.trim().toLowerCase());
+    }
+  }
+  return {
+    identity: {
+      githubUserId: user.id,
+      githubLogin: user.login,
+      verifiedEmails,
+    },
+  };
+}
+
+/** The internal account write stays behind DATA_API's existing capability. */
+export async function upsertGithubIdentityAccount(
+  env: GithubIdentityEnv,
+  identity: GithubIdentity,
+): Promise<{ accountId: number } | { error: Response }> {
+  if (!env.DATA_API || !env.API_KEY_LOOKUP_INTERNAL_TOKEN)
+    return {
+      error: new Response(
+        "account storage is not provisioned on this deployment",
+        {
+          status: 503,
+        },
+      ),
+    };
+  const response = await env.DATA_API.fetch(
+    new Request("https://internal/api/v1/auth/github/upsert-account", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
+      },
+      body: JSON.stringify({
+        github_user_id: identity.githubUserId,
+        github_login: identity.githubLogin,
+      }),
+    }),
+  );
+  if (!response.ok)
+    return { error: new Response("account storage failed", { status: 502 }) };
+  const account = asJsonObject(await response.json()) ?? {};
+  if (typeof account.id !== "number" && typeof account.id !== "string")
+    return {
+      error: new Response("invalid stored account identity", { status: 502 }),
+    };
+  const id = Number(account.id);
+  if (!Number.isSafeInteger(id) || id <= 0)
+    return {
+      error: new Response("invalid stored account identity", { status: 502 }),
+    };
+  return { accountId: id };
 }
 
 /** GET /authorize -- parse the incoming OAuth request, stash it, hand off to GitHub. */
@@ -443,6 +635,12 @@ export async function handleGithubOAuthCallback(
   deps: GithubOAuthDeps = {},
 ): Promise<Response> {
   if (
+    new URL(request.url).searchParams.get("state")?.startsWith("agent_auth_")
+  ) {
+    const { handleAgentAuthGithubCallback } = await import("./agent-auth.ts");
+    return handleAgentAuthGithubCallback(request, env, { fetch: deps.fetch });
+  }
+  if (
     !env.OAUTH_KV ||
     !env.GITHUB_OAUTH_CLIENT_ID ||
     !env.GITHUB_OAUTH_CLIENT_SECRET
@@ -477,99 +675,20 @@ export async function handleGithubOAuthCallback(
     });
   }
 
-  const doFetch = deps.fetch ?? globalThis.fetch;
-  const redirectUri = new URL("/oauth/callback/github", request.url).toString();
-  const tokenResponse = await doFetch(GITHUB_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      client_id: env.GITHUB_OAUTH_CLIENT_ID,
-      client_secret: env.GITHUB_OAUTH_CLIENT_SECRET,
-      code,
-      redirect_uri: redirectUri,
-    }),
-  });
-  if (!tokenResponse.ok) {
-    return new Response("github token exchange failed", { status: 502 });
-  }
-  const tokenBody = asJsonObject(await tokenResponse.json()) ?? {};
-  const githubAccessToken = tokenBody?.access_token;
-  if (typeof githubAccessToken !== "string" || !githubAccessToken) {
-    return new Response("github token exchange returned no access_token", {
-      status: 502,
-    });
-  }
-
-  const userResponse = await doFetch(GITHUB_USER_API_URL, {
-    headers: {
-      authorization: `Bearer ${githubAccessToken}`,
-      "user-agent": "metagraphed-oauth",
-      accept: "application/vnd.github+json",
-    },
-  });
-  if (!userResponse.ok) {
-    return new Response("failed to fetch github user profile", {
-      status: 502,
-    });
-  }
-  const githubUser = asJsonObject(await userResponse.json()) ?? {};
-  const githubUserId = githubUser?.id;
-  const githubLogin = githubUser?.login;
-  if (
-    typeof githubUserId !== "number" ||
-    typeof githubLogin !== "string" ||
-    !githubLogin
-  ) {
-    return new Response("github user profile missing id/login", {
-      status: 502,
-    });
-  }
-
-  if (!env.DATA_API) {
-    return new Response(
-      "account storage is not provisioned on this deployment",
-      { status: 503 },
-    );
-  }
-  // #8820: the upsert route is now gated with the internal-token pair. Without
-  // the secret the request would 401; surface that as the same "not
-  // provisioned" 503 the missing-binding case above returns, so an
-  // unprovisioned deploy is diagnosable rather than a generic 502 below.
-  if (!env.API_KEY_LOOKUP_INTERNAL_TOKEN) {
-    return new Response(
-      "account storage is not provisioned on this deployment",
-      { status: 503 },
-    );
-  }
-  const upsertResponse = await env.DATA_API.fetch(
-    new Request("https://internal/api/v1/auth/github/upsert-account", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [API_KEY_LOOKUP_TOKEN_HEADER]: env.API_KEY_LOOKUP_INTERNAL_TOKEN,
-      },
-      body: JSON.stringify({
-        github_user_id: githubUserId,
-        github_login: githubLogin,
-      }),
-    }),
-  );
-  if (!upsertResponse.ok) {
-    return new Response("account storage failed", { status: 502 });
-  }
-  const account = asJsonObject(await upsertResponse.json()) ?? {};
+  const resolved = await exchangeGithubIdentity(request, env, code, deps.fetch);
+  if ("error" in resolved) return resolved.error;
+  const stored = await upsertGithubIdentityAccount(env, resolved.identity);
+  if ("error" in stored) return stored.error;
+  const { githubUserId, githubLogin } = resolved.identity;
 
   const getHelpers = deps.getHelpers ?? defaultGetOAuthHelpers;
   const helpers = await getHelpers(env);
   const { redirectTo } = await helpers.completeAuthorization({
     request: authRequest,
-    userId: String(account.id),
+    userId: String(stored.accountId),
     scope: authRequest.scope,
     metadata: { githubLogin },
-    props: { githubUserId, githubLogin, accountId: account.id },
+    props: { githubUserId, githubLogin, accountId: stored.accountId },
   });
   return Response.redirect(redirectTo, 302);
 }
