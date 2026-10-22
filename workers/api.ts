@@ -8779,7 +8779,7 @@ async function enforceX402(
   if (!config) return { reject: x402UnavailableResponse() };
   if (price.family === "ai") {
     if (!aiEnabled(env)) return { reject: aiUnavailableResponse() };
-    if (routePath === "/api/v1/ask" && request.method === "POST") {
+    if (routePath === "/api/v1/ask") {
       // Preserve original bytes for the payment fingerprint and handler.
       const parsed = await parseAskRequest(request.clone());
       if ("reject" in parsed) return parsed;
