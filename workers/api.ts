@@ -5652,6 +5652,15 @@ async function dispatchCached(
   // The RESOLVED path, so `/api/v1/accounts/…` and `/finney/api/v1/accounts/…`
   // reach one entry instead of computing the same body under two keys.
   const { network, url: resolved } = resolveNetworkPrefix(url);
+  // Let the canonical network dispatcher answer unavailable resources before
+  // any payment or method decision. Testnet does not host mainnet-only routes,
+  // and local hosts no data; neither can sell a call that will only return 404.
+  if (
+    !network.isDefault &&
+    (network.id === "local" || isMainnetOnlyApiPath(resolved.pathname))
+  ) {
+    return dispatchRequest(request, env, ctx);
+  }
   // x402 (infra#629) is applied HERE, for the reason the limiter, the degraded
   // label and the edge cache are: one dispatch point rather than a wrapper each
   // handler's author has to remember. Two things follow that per-route wrapping

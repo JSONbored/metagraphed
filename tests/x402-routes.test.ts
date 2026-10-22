@@ -281,9 +281,9 @@ describe("browser payment preflights", () => {
 describe("payment method preflight", () => {
   test.each([
     ["/api/v1/export/chain-events", "POST", "GET, HEAD, OPTIONS"],
-    ["/finney/api/v1/export/chain-events", "POST", "GET, HEAD, OPTIONS"],
+    ["/api/v1/finney/export/chain-events", "POST", "GET, HEAD, OPTIONS"],
     ["/api/v1/ask", "GET", "POST, OPTIONS"],
-    ["/finney/api/v1/ask", "GET", "POST, OPTIONS"],
+    ["/api/v1/finney/ask", "GET", "POST, OPTIONS"],
   ])("rejects %s %s before any payment work", async (path, method, allow) => {
     const calls: string[] = [];
     for (const signature of [undefined, payment, "!!!"]) {
@@ -306,6 +306,35 @@ describe("payment method preflight", () => {
       assert.equal(res.status, 405);
       assert.equal((await jsonBody(res)).error.code, "method_not_allowed");
       assert.equal(res.headers.get("allow"), allow);
+      assert.equal(res.headers.get("payment-required"), null);
+      assert.equal(res.headers.get(X402_RESPONSE_HEADER), null);
+    }
+    assert.deepEqual(calls, []);
+  });
+
+  test.each([
+    ["/api/v1/testnet/ask", "GET", 404],
+    ["/api/v1/testnet/ask", "POST", 404],
+    ["/api/v1/local/ask", "GET", 404],
+    ["/api/v1/local/ask", "POST", 405],
+  ])("keeps %s %s under network routing", async (path, method, status) => {
+    const calls: string[] = [];
+    for (const signature of [undefined, payment, "!!!"]) {
+      const res = await withFetch(
+        (async (url: string | URL | Request) => {
+          calls.push(String(url));
+          throw new Error("unavailable resources cannot accept payments");
+        }) as typeof fetch,
+        () =>
+          handleRequest(
+            new Request(`https://api.metagraph.sh${path}`, {
+              method,
+              headers: signature ? { [X402_SIGNATURE_HEADER]: signature } : {},
+            }),
+            paid(),
+          ),
+      );
+      assert.equal(res.status, status);
       assert.equal(res.headers.get("payment-required"), null);
       assert.equal(res.headers.get(X402_RESPONSE_HEADER), null);
     }
