@@ -212,6 +212,8 @@ test("public OAuth discovery, registration, server card and preflight remain ava
       headers: {
         origin: "https://client.example",
         "access-control-request-method": "POST",
+        "access-control-request-headers":
+          "authorization, signature, signature-input, signature-agent",
       },
     },
   );
@@ -219,6 +221,13 @@ test("public OAuth discovery, registration, server card and preflight remain ava
   expect(preflight.headers.get("access-control-allow-headers")).toContain(
     "authorization",
   );
+  for (const header of ["signature", "signature-input", "signature-agent"]) {
+    expect(preflight.headers.get("access-control-allow-headers")).toContain(
+      header,
+    );
+  }
+  expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
+  expect(preflight.headers.get("access-control-allow-credentials")).toBeNull();
 });
 
 test("an expired OAuth token is refused by the compiled provider", async () => {
