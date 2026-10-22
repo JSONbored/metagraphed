@@ -202,7 +202,10 @@ describe("Discovery artifacts", () => {
   test("auth.md distinguishes required free MCP auth from public REST access", async () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
     assert.match(authMd, /^# [^\n]*auth\.md[^\n]*$/m);
-    assert.match(authMd, /For MCP clients and agents acting on behalf of a user/);
+    assert.match(
+      authMd,
+      /For MCP clients and agents acting on behalf of a user/,
+    );
     assert.match(authMd, /public by default and\s+read-only/i);
     // Public REST access remains available; MCP requires free sign-in.
     // Emphasis-agnostic: prettier normalizes *required* to _required_, and the
@@ -286,7 +289,10 @@ describe("Discovery artifacts", () => {
       assert.ok(authMd.includes(endpoint), endpoint);
     }
     assert.match(authMd, /code_challenge_method=S256/);
-    assert.match(authMd, /Registering a client does not issue a user access token/);
+    assert.match(
+      authMd,
+      /Registering a client does not issue a user access token/,
+    );
     assert.match(authMd, /form-encoded `token`, omitting\s+`grant_type`/);
     assert.match(
       authMd,
