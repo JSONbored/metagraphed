@@ -52,27 +52,24 @@
 //     gone, and using it would be silently non-interoperable with every real
 //     client, which is exactly the class of bug that passes its own tests.
 
-import { routeCost } from "./route-cost-weights.ts";
-
-/**
- * Server -> client, alongside the 402 body.
- *
- * Module-private, unlike its two siblings: only `paymentRequiredResponse` sets
- * it, and tests/x402.test.ts asserts the WIRE name as a literal rather than
- * importing this. That is deliberate -- an assertion that reads the same
- * constant the code writes proves only that the file is self-consistent, which
- * is the one thing that was never in doubt.
- */
-const X402_REQUIRED_HEADER = "payment-required";
-/** Client -> server, carrying the signed payload. */
-export const X402_SIGNATURE_HEADER = "payment-signature";
-/** Server -> client, carrying the settlement result. */
-export const X402_RESPONSE_HEADER = "payment-response";
-/** Browser clients must be able to read the quote and settlement receipt. */
-export const X402_BROWSER_RESPONSE_HEADERS = [
+import {
+  X402_BROWSER_RESPONSE_HEADERS,
   X402_REQUIRED_HEADER,
+  X402_SIGNATURE_HEADER,
+} from "./x402-headers.ts";
+export {
+  X402_BROWSER_RESPONSE_HEADERS,
   X402_RESPONSE_HEADER,
-] as const;
+  X402_SIGNATURE_HEADER,
+} from "./x402-headers.ts";
+import { X402_PAID_FAMILIES } from "./x402-pricing.ts";
+export {
+  X402_ATOMIC_UNITS_PER_COST_WEIGHT,
+  X402_PAID_FAMILIES,
+  X402_REQUIRED_FAMILIES,
+  x402PriceFor,
+  x402RequiresPayment,
+} from "./x402-pricing.ts";
 
 export const X402_VERSION = 2;
 
@@ -87,23 +84,14 @@ export const X402_VERSION = 2;
  * ## KNOWING A NETWORK IS NOT BEING ABLE TO SETTLE ON IT
  *
  * The facilitator settles, and it has its own list. Measured against
- * `GET https://x402.org/facilitator/supported` on 2026-08-22, the public
- * facilitator answers for:
+ * `GET https://x402.org/facilitator/supported` on 2026-10-22, the default
+ * public facilitator supports Base Sepolia (`eip155:84532`) and Solana
+ * devnet (`solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`) for v2 `exact`.
+ * Both are test networks, so neither default leg collects real funds.
  *
- *   eip155:84532                                  Base SEPOLIA
- *   solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1       Solana MAINNET
- *   algorand / aptos / stellar:testnet / hedera:testnet / xrpl
- *
- * `eip155:8453` -- Base MAINNET -- IS NOT ON THAT LIST. Setting X402_NETWORK to
- * it would quote a price in a currency this deployment cannot collect: verify
- * rejects the unsupported network, the gate fails closed (correctly), and every
- * caller who tries to pay gets a 402 instead of their answer. Nothing would log
- * an error, because refusing an unverifiable payment is exactly what the gate
- * is for.
- *
- * So Base mainnet needs a different facilitator (Coinbase's CDP one, which
- * wants CDP API credentials) before it can be selected. Real money on the
- * public facilitator means SOLANA mainnet, not Base.
+ * Base mainnet (`eip155:8453`) needs a separately configured facilitator
+ * that supports it. Changing only the network would advertise a payment the
+ * default facilitator cannot verify or settle.
  */
 export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
   "eip155:84532": {
@@ -121,14 +109,13 @@ export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
   },
   "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
     kind: "svm",
-    // The SPL USDC mint. Confirmed against mainnet-beta on 2026-08-22:
-    // owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, 6 decimals -- the
-    // same scale as the EVM USDC above, so the atomic arithmetic is identical.
-    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    label: "Solana",
+    // Devnet USDC has six decimals, matching the EVM assets above.
+    // https://github.com/x402-foundation/x402/blob/a9772e501f237913fecbf324c355f4e876b8c1dd/python/x402/mechanisms/svm/constants.py
+    asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    label: "Solana Devnet",
     // SVM `exact` is FEE-SPONSORED: the facilitator signs as fee payer so the
     // payer needs no SOL. Its address is part of the quote, and this is the
-    // value the public facilitator advertised on 2026-08-22. If it rotates,
+    // value the public facilitator advertised on 2026-10-22. If it rotates,
     // settlement fails closed and this table is what gets corrected.
     extra: { feePayer: "CKPKJWNdJEqa81x7CkZ14BVPiY6y16Sxs7owznqtWYp5" },
   },
@@ -137,14 +124,7 @@ export const X402_NETWORKS: Readonly<Record<string, X402NetworkEntry>> = {
 /** Testnet, deliberately. A first settlement bug should cost test funds. */
 export const X402_DEFAULT_NETWORK = "eip155:84532";
 
-/**
- * The Solana network, defaulting to MAINNET -- real money, unlike the EVM leg.
- *
- * Not an inconsistency. The public facilitator settles Solana mainnet and does
- * NOT settle Base mainnet, so this is the only network on which this
- * deployment can actually collect. Defaulting the SVM leg to devnet would mean
- * shipping two legs neither of which takes real payment.
- */
+/** Solana devnet, matching the default public facilitator's supported chain. */
 export const X402_DEFAULT_SOLANA_NETWORK =
   "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
 
@@ -159,22 +139,6 @@ export const X402_DEFAULT_FACILITATOR = "https://x402.org/facilitator";
  * authorization is one where the work may already have been served.
  */
 export const X402_MAX_TIMEOUT_SECONDS = 60;
-
-/**
- * Atomic USDC units per unit of route cost weight.
- *
- * DERIVED FROM THE EXISTING COST MODEL rather than picked per route. USDC has
- * six decimals, so 400 atomic units is $0.0004. Against
- * src/route-cost-weights.ts that puts an `ask` call (weight 25) at $0.01 and a
- * deep-history read (weight 5) at $0.002 -- both inside the observed market
- * band ($0.002-0.01 for data calls, $0.01-0.05 for LLM-backed ones), and
- * neither invented.
- *
- * The point of deriving it: a route whose cost weight changes because the work
- * changed gets a price that follows, instead of a number that silently stops
- * describing what it charges for.
- */
-export const X402_ATOMIC_UNITS_PER_COST_WEIGHT = 400;
 
 export interface X402NetworkEntry {
   /** Which address format and signing scheme the network uses. */
@@ -318,67 +282,6 @@ function resolveLeg(
     asset: entry.asset,
     networkLabel: entry.label,
     extra: entry.extra,
-  };
-}
-
-/**
- * The route families a payment can buy headroom on, and nothing else.
- *
- * Being on this list does NOT make a route paid -- see the invariant in this
- * module's header. It makes a route one where a caller MAY present a payment
- * to be treated as keyed rather than anonymous.
- *
- * An allowlist rather than a cost-weight threshold, because "expensive" and
- * "worth offering headroom on" are different questions.
- */
-export const X402_PAID_FAMILIES: readonly string[] = [
-  "ai",
-  "deep-history",
-  "export",
-];
-
-/**
- * The families where a payment is REQUIRED, not merely accepted (#11600).
- *
- * Everything in X402_PAID_FAMILIES accepts a payment and gives headroom for
- * it. These additionally REFUSE without one -- an unpaid call gets a 402
- * instead of the anonymous tier.
- *
- * ## WHY THIS DOES NOT BREAK THE INVARIANT
- *
- * The invariant is that a payment never gates a call that WOULD HAVE
- * SUCCEEDED. An export call has never succeeded for anyone: the family is new,
- * nothing in apps/ui calls it, and no free tier of it was ever offered. There
- * is no behaviour here to take away.
- *
- * That is also why it is a separate family rather than a flag on the existing
- * ones. `ai` and `deep-history` are called anonymously by our own website --
- * /api/v1/ask from the Ask feature and the command palette, /api/v1/blocks and
- * /api/v1/chain-events from the block explorer, with a user-typed block range.
- * Requiring payment on either would 402 a visitor reading our own site.
- *
- * A caller who wants those for free still gets them, paginated, exactly as
- * before. What costs money is the shape that costs US money: one unpaginated
- * pass over a window the free tier does not offer.
- */
-export const X402_REQUIRED_FAMILIES: readonly string[] = ["export"];
-
-/** Does this route refuse a caller who presents no payment at all? */
-export function x402RequiresPayment(pathname: string): boolean {
-  return X402_REQUIRED_FAMILIES.includes(routeCost(pathname).family);
-}
-
-/** Can a payment buy headroom here, and what does one call cost in atomic
- * units? Null means presenting one buys nothing, so none is ever quoted. */
-export function x402PriceFor(pathname: string): {
-  family: string;
-  atomicAmount: string;
-} | null {
-  const { family, weight } = routeCost(pathname);
-  if (!X402_PAID_FAMILIES.includes(family)) return null;
-  return {
-    family,
-    atomicAmount: String(weight * X402_ATOMIC_UNITS_PER_COST_WEIGHT),
   };
 }
 
@@ -626,9 +529,12 @@ function selectRequirements(
       if (choice[field] !== requirement[field]) return null;
     }
     const extra = choice.extra;
-    if (!extra || typeof extra !== "object" || Array.isArray(extra)) return null;
+    if (!extra || typeof extra !== "object" || Array.isArray(extra))
+      return null;
     const extraFields = extra as Record<string, unknown>;
-    if (Object.keys(extraFields).length !== Object.keys(requirement.extra).length) {
+    if (
+      Object.keys(extraFields).length !== Object.keys(requirement.extra).length
+    ) {
       return null;
     }
     for (const [name, value] of Object.entries(requirement.extra)) {

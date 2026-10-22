@@ -189,6 +189,18 @@ describe("the two legs do not contaminate each other", () => {
 describe("the Solana leg's quote", () => {
   const config = resolveX402Config(bothEnv())!;
 
+  test("pairs the default devnet chain with devnet USDC", () => {
+    const svm = paymentRequirements(config, "10000").find((r) =>
+      r.network.startsWith("solana:"),
+    )!;
+    assert.equal(svm.network, "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1");
+    assert.equal(svm.asset, "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+    assert.equal(
+      config.legs.find((leg) => leg.network === svm.network)!.networkLabel,
+      "Solana Devnet",
+    );
+  });
+
   test("carries the sponsoring feePayer, which SVM exact requires", () => {
     // Without it the payer cannot build the transaction: SVM exact is
     // fee-sponsored so the payer needs no SOL, and the sponsor's address is
@@ -481,7 +493,7 @@ describe("the DEPLOYED configuration", () => {
     assert.equal(
       byNetwork.get(X402_DEFAULT_SOLANA_NETWORK)?.payTo,
       vars.X402_PAY_TO_SOLANA,
-      "the Solana leg is the one that takes real money -- it must resolve",
+      "the Solana devnet leg must resolve with its configured recipient",
     );
   });
 });

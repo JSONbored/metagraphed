@@ -201,6 +201,7 @@ test("the compiled paid export admits browser preflights and exposes its quote",
     accepts: expect.arrayContaining([
       expect.objectContaining({
         network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
       }),
     ]),
   });

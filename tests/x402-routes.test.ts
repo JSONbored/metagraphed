@@ -204,7 +204,10 @@ describe("browser payment preflights", () => {
     assert.equal(res.status, 204);
     assert.equal(await res.text(), "");
     assert.equal(res.headers.get("access-control-allow-origin"), "*");
-    assert.equal(res.headers.get("access-control-allow-methods"), allowedMethods);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      allowedMethods,
+    );
     assert.ok(
       res.headers
         .get("access-control-allow-headers")

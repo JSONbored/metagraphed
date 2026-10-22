@@ -98,17 +98,16 @@
     // it and would anyone notice" matters more than secrecy.
     //
     // Base SEPOLIA to start: a first settlement bug should cost test funds, not
-    // real ones. Moving to mainnet is a one-line change to eip155:8453 here,
-    // which is again exactly the kind of change that should show up in a diff.
+    // real ones. Mainnet also needs a facilitator that supports eip155:8453;
+    // the default public facilitator supports only test networks.
     //
     // Absent entirely -> src/x402.ts resolves no config and no 402 is ever
     // emitted, which is how this shipped before an address existed.
     "X402_PAY_TO": "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
     "X402_NETWORK": "eip155:84532",
-    // The SVM leg, and the one that takes REAL money: the public facilitator
-    // settles Solana mainnet and does not settle Base mainnet. Committed, not
-    // a secret, for the same reason as X402_PAY_TO above -- a silently
-    // redirected payTo is the one change in this repo that pays somebody else.
+    // The SVM leg uses Solana devnet, as supported by the public facilitator.
+    // Its network and USDC mint are pinned together in src/x402.ts. This is a
+    // public recipient, committed for the same reviewability as X402_PAY_TO.
     "X402_PAY_TO_SOLANA": "EQvVxQ9WShSUjSUj8rod2PFRcQfZ4Ymejx6hJLFMsx87",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",

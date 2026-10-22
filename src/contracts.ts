@@ -55,7 +55,7 @@ import {
   CHAIN_FIREHOSE_TOPICS,
 } from "./chain-firehose-topics.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
-import { x402PriceFor } from "./x402.ts";
+import { x402PriceFor } from "./x402-pricing.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,

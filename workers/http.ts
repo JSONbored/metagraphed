@@ -5,7 +5,7 @@
 // these without an import cycle.
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contract-constants.ts";
 import { JSON_CONTENT_TYPE } from "./config.ts";
-import { X402_BROWSER_RESPONSE_HEADERS } from "../src/x402.ts";
+import { X402_BROWSER_RESPONSE_HEADERS } from "../src/x402-headers.ts";
 
 export type CacheProfile = "short" | "standard" | "static";
 
