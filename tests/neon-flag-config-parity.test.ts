@@ -35,7 +35,14 @@ for (const file of CONFIGS) {
     assert.ok(config.d1_databases?.some((b) => b.binding === "D1_STATE"));
     const owners = config.vars.D1_STATE_TABLES!.split(",");
     assert.equal(new Set(owners).size, owners.length);
-    assert.equal(owners.length, file === "wrangler.registry.jsonc" ? 7 : 72);
+    assert.equal(
+      owners.length,
+      file === "wrangler.registry.jsonc"
+        ? 7
+        : file === "wrangler.jsonc"
+          ? 75
+          : 72,
+    );
     assert.equal(
       owners.includes("x402_payment_attempts"),
       file !== "wrangler.registry.jsonc",
@@ -50,12 +57,24 @@ for (const file of CONFIGS) {
       assert.equal(neonWriteBufferEnabled(config.vars, lane), false);
   });
 }
-test("both serving Workers declare the same complete D1 family ownership", () => {
+test("both serving Workers share public D1 ownership while only the API owns Auth.md state", () => {
   const configs = CONFIGS.slice(0, 2).map((file) =>
     JSON.parse(stripJsonComments(readFileSync(file, "utf8"))),
   );
+  const privateAuthTables = [
+    "agent_auth_ceremonies",
+    "agent_auth_registrations",
+    "agent_auth_tokens",
+  ];
+  const apiTables: string[] = configs[0].vars.D1_STATE_TABLES.split(",");
+  const dataTables: string[] = configs[1].vars.D1_STATE_TABLES.split(",");
   assert.deepEqual(
-    configs[0].vars.D1_STATE_TABLES.split(",").sort(),
-    configs[1].vars.D1_STATE_TABLES.split(",").sort(),
+    apiTables.filter((table) => !privateAuthTables.includes(table)).sort(),
+    dataTables.sort(),
   );
+  assert.deepEqual(
+    apiTables.filter((table) => privateAuthTables.includes(table)).sort(),
+    privateAuthTables,
+  );
+  assert.ok(dataTables.every((table) => !privateAuthTables.includes(table)));
 });

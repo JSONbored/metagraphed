@@ -459,7 +459,7 @@ test("unprovisioned registration declines while normal OAuth token dispatch surv
       body: "grant_type=authorization_code&code=invalid&client_id=invalid",
     },
   );
-  expect(ordinary.status).toBe(400);
+  expect(ordinary.status).toBe(401);
   expect(await ordinary.json()).toHaveProperty("error");
 });
 
