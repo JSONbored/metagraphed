@@ -31,6 +31,36 @@
   },
   {
     "type": "index",
+    "name": "agent_auth_ceremonies_expiry",
+    "tbl_name": "agent_auth_ceremonies",
+    "sql": "CREATE INDEX agent_auth_ceremonies_expiry ON agent_auth_ceremonies(expires_at)"
+  },
+  {
+    "type": "index",
+    "name": "agent_auth_ceremonies_registration",
+    "tbl_name": "agent_auth_ceremonies",
+    "sql": "CREATE INDEX agent_auth_ceremonies_registration ON agent_auth_ceremonies(registration_id)"
+  },
+  {
+    "type": "index",
+    "name": "agent_auth_registrations_expiry",
+    "tbl_name": "agent_auth_registrations",
+    "sql": "CREATE INDEX agent_auth_registrations_expiry ON agent_auth_registrations(expires_at)"
+  },
+  {
+    "type": "index",
+    "name": "agent_auth_tokens_expiry",
+    "tbl_name": "agent_auth_tokens",
+    "sql": "CREATE INDEX agent_auth_tokens_expiry ON agent_auth_tokens(expires_at)"
+  },
+  {
+    "type": "index",
+    "name": "agent_auth_tokens_registration",
+    "tbl_name": "agent_auth_tokens",
+    "sql": "CREATE INDEX agent_auth_tokens_registration ON agent_auth_tokens(registration_id)"
+  },
+  {
+    "type": "index",
     "name": "emission_flow_watch_item_observed_idx",
     "tbl_name": "emission_flow_watch",
     "sql": "CREATE INDEX emission_flow_watch_item_observed_idx\n  ON emission_flow_watch (item, observed_at DESC)"
@@ -760,6 +790,24 @@
     "name": "account_position_daily_members",
     "tbl_name": "account_position_daily_members",
     "sql": "CREATE TABLE account_position_daily_members (account TEXT NOT NULL,netuid INTEGER NOT NULL,snapshot_date TEXT NOT NULL,shard INTEGER NOT NULL,PRIMARY KEY(account,netuid,snapshot_date)) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "agent_auth_ceremonies",
+    "tbl_name": "agent_auth_ceremonies",
+    "sql": "CREATE TABLE agent_auth_ceremonies (\n  state_hash TEXT NOT NULL PRIMARY KEY CHECK (length(state_hash) = 64 AND state_hash NOT GLOB '*[^0-9a-f]*'),\n  registration_id TEXT NOT NULL REFERENCES agent_auth_registrations(id),\n  claim_version INTEGER NOT NULL,\n  cookie_hash TEXT NOT NULL CHECK (length(cookie_hash) = 64 AND cookie_hash NOT GLOB '*[^0-9a-f]*'),\n  csrf_hash TEXT NOT NULL CHECK (length(csrf_hash) = 64 AND csrf_hash NOT GLOB '*[^0-9a-f]*'),\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL CHECK (expires_at > created_at),\n  oauth_consumed_at INTEGER,\n  owner_kind TEXT CHECK (owner_kind IS NULL OR owner_kind = 'github'),\n  owner_id TEXT,\n  owner_email TEXT,\n  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 5),\n  consumed_by TEXT,\n  CHECK ((owner_kind IS NULL AND owner_id IS NULL AND owner_email IS NULL)\n    OR (owner_kind IS NOT NULL AND owner_kind = 'github' AND owner_id IS NOT NULL AND owner_email IS NOT NULL AND oauth_consumed_at IS NOT NULL))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "agent_auth_registrations",
+    "tbl_name": "agent_auth_registrations",
+    "sql": "CREATE TABLE agent_auth_registrations (\n  id TEXT NOT NULL PRIMARY KEY,\n  agent_name TEXT NOT NULL CHECK (length(agent_name) BETWEEN 1 AND 80),\n  email_hint TEXT NOT NULL CHECK (length(email_hint) BETWEEN 3 AND 320 AND email_hint = lower(trim(email_hint))),\n  permissions TEXT NOT NULL CHECK (permissions = '[\"profile\"]'),\n  claim_token_hash TEXT NOT NULL UNIQUE CHECK (length(claim_token_hash) = 64 AND claim_token_hash NOT GLOB '*[^0-9a-f]*'),\n  user_code_hash TEXT NOT NULL CHECK (length(user_code_hash) = 64 AND user_code_hash NOT GLOB '*[^0-9a-f]*'),\n  claim_version INTEGER NOT NULL DEFAULT 1 CHECK (claim_version > 0),\n  created_at INTEGER NOT NULL CHECK (typeof(created_at) = 'integer' AND created_at > 0),\n  expires_at INTEGER NOT NULL CHECK (typeof(expires_at) = 'integer' AND expires_at > created_at),\n  approved_at INTEGER CHECK (approved_at IS NULL OR (typeof(approved_at) = 'integer' AND approved_at >= created_at AND approved_at < expires_at)),\n  owner_kind TEXT CHECK (owner_kind IS NULL OR owner_kind = 'github'),\n  owner_id TEXT,\n  owner_email TEXT,\n  revoked_at INTEGER,\n  poll_count INTEGER NOT NULL DEFAULT 0 CHECK (poll_count >= 0),\n  next_poll_at INTEGER NOT NULL DEFAULT 0,\n  CHECK ((approved_at IS NULL AND owner_kind IS NULL AND owner_id IS NULL AND owner_email IS NULL)\n    OR (approved_at IS NOT NULL AND owner_kind IS NOT NULL AND owner_kind = 'github' AND owner_id IS NOT NULL AND owner_email IS NOT NULL AND owner_email = email_hint))\n) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "agent_auth_tokens",
+    "tbl_name": "agent_auth_tokens",
+    "sql": "CREATE TABLE agent_auth_tokens (\n  token_hash TEXT NOT NULL PRIMARY KEY CHECK (length(token_hash) = 64 AND token_hash NOT GLOB '*[^0-9a-f]*'),\n  registration_id TEXT NOT NULL REFERENCES agent_auth_registrations(id),\n  claim_version INTEGER NOT NULL,\n  resource TEXT NOT NULL DEFAULT 'https://api.metagraph.sh/mcp'\n    CHECK (resource IN ('https://api.metagraph.sh/mcp', 'https://api.metagraph.sh/mcp/core')),\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL CHECK (expires_at > created_at)\n) WITHOUT ROWID"
   },
   {
     "type": "table",
