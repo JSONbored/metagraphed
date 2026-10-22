@@ -15,6 +15,7 @@ import { SUBNETS_ALL_LIMIT } from "./lib/metagraphed/subnet-list-limit";
 import { isoTimestamp } from "./lib/metagraphed/freshness";
 import { API_DATA_ORIGIN, API_ORIGIN, SITE_ORIGIN, X_HANDLE } from "./lib/metagraphed/identity";
 import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
+import { applySignedBrowserAnalyticsPolicy } from "./lib/signed-browser-analytics";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -983,11 +984,14 @@ function injectAnalytics(response: Response, request: Request): Response {
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   headers.set("x-frame-options", "DENY");
   headers.set("permissions-policy", "geolocation=(), microphone=(), camera=()");
-  return new Response(transformed.body, {
-    status: transformed.status,
-    statusText: transformed.statusText,
-    headers,
-  });
+  return applySignedBrowserAnalyticsPolicy(
+    new Response(transformed.body, {
+      status: transformed.status,
+      statusText: transformed.statusText,
+      headers,
+    }),
+    request,
+  );
 }
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -1086,10 +1090,13 @@ export default {
       return injectAnalytics(normalized, request);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return applySignedBrowserAnalyticsPolicy(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+        request,
+      );
     }
   },
 };
