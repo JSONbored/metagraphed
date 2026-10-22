@@ -453,6 +453,84 @@ describe("handleRequest routing edges", () => {
     );
   });
 
+  test.each([
+    "/api/v1/blocks?limit=12",
+    "/api/v1/chain/activity?window=30d",
+    "/api/v1/subnets/movers?window=30d&sort=emission&limit=15",
+    "/api/v1/blocks/summary",
+    "/api/v1/health/trends",
+  ])("allows signed browser preflights on %s (#12889)", async (path) => {
+    for (const requestedHeaders of [
+      "signature, signature-input, signature-agent",
+      "Signature, Signature-Input, Signature-Agent",
+    ]) {
+      const res = await handleRequest(
+        req(path, {
+          method: "OPTIONS",
+          headers: {
+            origin: "https://metagraph.sh",
+            "access-control-request-method": "GET",
+            "access-control-request-headers": requestedHeaders,
+          },
+        }),
+        {} as Env,
+        {},
+      );
+      assert.equal(res.status, 204);
+      assert.equal(await res.text(), "");
+      assert.equal(res.headers.get("access-control-allow-origin"), "*");
+      assert.equal(
+        res.headers.get("access-control-allow-methods"),
+        "GET, HEAD, OPTIONS",
+      );
+      assert.equal(res.headers.get("access-control-max-age"), "86400");
+      assert.equal(res.headers.get("access-control-allow-credentials"), null);
+      const allowedHeaders = requiredHeader(res, "access-control-allow-headers")
+        .toLowerCase()
+        .split(",")
+        .map((header) => header.trim());
+      for (const header of [
+        "content-type",
+        "if-none-match",
+        "authorization",
+        "mcp-session-id",
+        "mcp-protocol-version",
+        "signature",
+        "signature-input",
+        "signature-agent",
+        "x-metagraph-webhook-secret",
+        "x-metagraph-webhook-subscription-token",
+        "x-alert-trigger-create-token",
+        "x-alert-trigger-owner-token",
+      ]) {
+        assert.ok(allowedHeaders.includes(header), `${header} must be allowed`);
+      }
+    }
+  });
+
+  test("signed browser preflights do not reflect arbitrary headers (#12889)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/blocks?limit=12", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://metagraph.sh",
+          "access-control-request-method": "GET",
+          "access-control-request-headers": "signature, x-unapproved-header",
+        },
+      }),
+      {} as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    const allowedHeaders = requiredHeader(res, "access-control-allow-headers")
+      .toLowerCase()
+      .split(",")
+      .map((header) => header.trim());
+    assert.ok(allowedHeaders.includes("signature"));
+    assert.ok(!allowedHeaders.includes("x-unapproved-header"));
+    assert.ok(!allowedHeaders.includes("*"));
+  });
+
   test("OPTIONS preflight on an rpc route advertises POST", async () => {
     const res = await handleRequest(
       req("/rpc/v1/finney", { method: "OPTIONS" }),

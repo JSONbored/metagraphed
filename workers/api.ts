@@ -11105,9 +11105,11 @@ function corsPreflight(request: Request) {
     "access-control-allow-methods",
     allowedMethodsForPath(url.pathname),
   );
+  // Signed agent browsers attach RFC 9421 / Web Bot Auth headers to reads too.
   headers.set(
     "access-control-allow-headers",
     `content-type, if-none-match, authorization, mcp-session-id, mcp-protocol-version, ` +
+      `signature, signature-input, signature-agent, ` +
       `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
       `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );
