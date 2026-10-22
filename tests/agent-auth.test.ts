@@ -311,11 +311,18 @@ test("owner-approved lifecycle issues no credential until a separate explicit ap
     ),
     null,
   );
-  assert.ok(
+  assert.deepEqual(
     await resolveAgentAuthExternalToken(
       { token: exchange.access_token, request: request("/mcp"), env: f.env },
       f.deps,
     ),
+    {
+      props: {
+        accountId: 42,
+        agentRegistrationId: registration.registration_id,
+      },
+      audience: [`${AGENT_AUTH_ISSUER}/mcp/core`],
+    },
   );
   assert.ok(result.identity_assertion.length > 256);
   assert.equal(
@@ -379,6 +386,14 @@ test("claim rotation preserves immutable email, invalidates old browser state, a
   );
   assert.notEqual(rotated.claim_token, registration.claim_token);
   assert.equal(rotated.claim_token_expires, registration.claim_token_expires);
+  assert.equal(
+    await errorCode(
+      await f.auth(
+        registration.claim.verification_uri.slice(AGENT_AUTH_ISSUER.length),
+      ),
+    ),
+    "invalid_request",
+  );
   assert.equal(await errorCode(await f.claim(registration)), "expired_token");
   assert.equal(
     await errorCode(await f.auth("/agent/rotate", { claim_token: "missing" })),
@@ -393,6 +408,72 @@ test("claim rotation preserves immutable email, invalidates old browser state, a
       ),
     ),
     "invalid_request",
+  );
+});
+
+test("claim rotation refuses a registration revoked after its pending claim was read", async () => {
+  const f = fixture();
+  const registration = await f.register();
+  let interleaved = false;
+  f.before((query) => {
+    if (!query.includes("SET claim_token_hash=")) return;
+    interleaved = true;
+    f.sql
+      .prepare("UPDATE agent_auth_registrations SET revoked_at=100 WHERE id=?")
+      .run(registration.registration_id);
+  });
+  assert.equal(
+    await errorCode(
+      await f.auth("/agent/rotate", { claim_token: registration.claim_token }),
+    ),
+    "invalid_grant",
+  );
+  assert.equal(interleaved, true);
+  const stored = await f.store.getRegistration(registration.registration_id);
+  assert.equal(stored?.claimVersion, 1);
+  assert.equal(stored?.revokedAt, 100);
+});
+
+test("browser verification binds the checked claim version to its atomic ceremony write", async () => {
+  const f = fixture();
+  const registration = await f.register();
+  assert.equal(
+    await errorCode(await f.auth("/agent/verify?claim_version=1")),
+    "invalid_request",
+  );
+  let interleaved = false;
+  f.before((query) => {
+    if (!query.includes("INSERT INTO agent_auth_ceremonies")) return;
+    interleaved = true;
+    f.sql
+      .prepare(
+        "UPDATE agent_auth_registrations SET claim_version=claim_version+1 WHERE id=?",
+      )
+      .run(registration.registration_id);
+  });
+  const response = await f.auth(
+    registration.claim.verification_uri.slice(AGENT_AUTH_ISSUER.length),
+  );
+  assert.equal(await errorCode(response), "invalid_request");
+  assert.equal(interleaved, true);
+  assert.equal(response?.headers.get("set-cookie"), null);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) AS total FROM agent_auth_ceremonies").get()
+      ?.total,
+    0,
+  );
+  assert.equal(
+    (await f.store.getRegistration(registration.registration_id))?.claimVersion,
+    2,
+  );
+  f.before();
+  assert.equal(
+    (
+      await f.auth(
+        `/agent/verify?registration_id=${registration.registration_id}&claim_version=2`,
+      )
+    )?.status,
+    200,
   );
 });
 
@@ -412,6 +493,14 @@ test("browser approval requires current cookie, Origin, CSRF and explicit six-di
     { ...f.browserHeaders(b), origin: "https://attacker.example" },
     { ...f.browserHeaders(b), cookie: `${b.cookie}; ${b.cookie}` },
     { ...f.browserHeaders(b), cookie: `${b.cookie}~extra` },
+    {
+      ...f.browserHeaders(b),
+      cookie: b.cookie.slice(0, b.cookie.lastIndexOf("~")),
+    },
+    {
+      ...f.browserHeaders(b),
+      cookie: `${b.cookie.slice(0, b.cookie.lastIndexOf("~"))}~invalid`,
+    },
   ]) {
     assert.equal(
       await errorCode(await f.auth("/agent/approve", data, h), 403),
@@ -865,6 +954,28 @@ test("body parsing is bounded and ordinary OAuth flows retain their request body
   assert.equal(await options?.text(), "");
   assert.equal(options?.headers.get("access-control-allow-origin"), "*");
   assert.equal((await f.auth("/oauth/jwks"))?.status, 200);
+});
+
+test("oversized authentication bodies refuse promptly even if cancellation hangs or rejects", async () => {
+  const f = fixture();
+  for (const cancel of [
+    vi.fn(() => new Promise<void>(() => {})),
+    vi.fn(() => Promise.reject(new Error("private cancellation failure"))),
+  ]) {
+    const r = request("/agent/register", {});
+    vi.spyOn(r, "clone").mockReturnValue({
+      headers: r.headers,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(8193));
+        },
+        cancel,
+      }),
+    } as Request);
+    const response = await handleAgentAuthRequest(r, f.env, undefined, f.deps);
+    assert.equal(await errorCode(response), "invalid_request");
+    assert.equal(cancel.mock.calls.length, 1);
+  }
 });
 
 test("provisioning and native rate limits fail closed without leaking credentials", async () => {

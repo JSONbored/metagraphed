@@ -64,6 +64,7 @@ export interface AgentAuthStore {
   createCeremony(input: {
     stateHash: string;
     registrationId: string;
+    claimVersion: number;
     cookieHash: string;
     csrfHash: string;
     createdAt: number;
@@ -248,7 +249,7 @@ export function createAgentAuthStore(
           `INSERT INTO agent_auth_ceremonies
           (state_hash,registration_id,claim_version,cookie_hash,csrf_hash,created_at,expires_at)
           SELECT ?,r.id,r.claim_version,?,?,?,? FROM agent_auth_registrations r
-          WHERE r.id=? AND r.revoked_at IS NULL AND r.approved_at IS NULL
+          WHERE r.id=? AND r.claim_version=? AND r.revoked_at IS NULL AND r.approved_at IS NULL
             AND r.created_at<=? AND r.expires_at>? AND ?>? AND ?<=r.expires_at
           ON CONFLICT DO NOTHING RETURNING ${ceremonyColumns}`,
         )
@@ -259,6 +260,7 @@ export function createAgentAuthStore(
           input.createdAt,
           input.expiresAt,
           input.registrationId,
+          input.claimVersion,
           input.createdAt,
           input.createdAt,
           input.expiresAt,

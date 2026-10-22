@@ -29,6 +29,7 @@ const input = {
 const ceremony = {
   stateHash: hash("c"),
   registrationId: input.id,
+  claimVersion: 1,
   cookieHash: hash("d"),
   csrfHash: hash("e"),
   createdAt: 100,
@@ -143,6 +144,10 @@ test("OAuth state and browser ceremony require current cookie, version and expir
   );
   assert.equal(
     await f.store.createCeremony({ ...ceremony, expiresAt: 100 }),
+    null,
+  );
+  assert.equal(
+    await f.store.createCeremony({ ...ceremony, claimVersion: 2 }),
     null,
   );
   assert.ok(await f.store.createCeremony(ceremony));
@@ -305,7 +310,8 @@ test("claim refresh with the same bearer replaces the user code and browser vers
       now: 112,
     }),
   );
-  assert.ok(await f.store.createCeremony(ceremony));
+  assert.equal(await f.store.createCeremony(ceremony), null);
+  assert.ok(await f.store.createCeremony({ ...ceremony, claimVersion: 2 }));
   await f.store.consumeOAuthState({ ...ceremony, now: 113 });
   await f.store.finishOAuth({ ...ceremony, owner, now: 114 });
   assert.equal(await f.store.consumeCeremony({ ...approval, now: 115 }), null);

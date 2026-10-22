@@ -180,7 +180,7 @@ async function body(request: Request): Promise<Body | null> {
     if (result.done) break;
     size += result.value.byteLength;
     if (size > MAX_BODY_BYTES) {
-      void reader.cancel();
+      void reader.cancel().catch(() => {});
       return null;
     }
     chunks.push(result.value);
@@ -673,6 +673,7 @@ export async function handleAgentAuthRequest(
       const ceremony = await ctx.store.createCeremony({
         stateHash: await sha256Hex(state.state),
         registrationId: id,
+        claimVersion: registration.claimVersion,
         cookieHash: await sha256Hex(state.cookie),
         csrfHash: await sha256Hex(state.csrf),
         createdAt: ctx.now,
