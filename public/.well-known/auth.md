@@ -1,7 +1,8 @@
 # metagraphed auth.md
 
 For MCP clients and agents acting on behalf of a user, this guide documents the
-supported OAuth authorization and wallet API-key provisioning methods. The
+supported owner-approved Auth.md registration, OAuth authorization and wallet
+API-key provisioning methods. The
 resource audience is the `resource` URL in the selected mount's protected-resource
 metadata; use that exact URL throughout OAuth authorization and token requests.
 
@@ -83,11 +84,59 @@ authorization with no manual configuration:
 4. List keys with `GET https://api.metagraph.sh/api/v1/keys` and revoke a key with
    `DELETE https://api.metagraph.sh/api/v1/keys/<key_id>`, using the wallet session.
 
-These are the supported provisioning methods. The Auth.md agent registration
-protocol's ID-JAG, `verified_email`, anonymous credential issuance and claim
-ceremony are not implemented. OAuth client registration is not an agent-account
-registration endpoint, so authorization-server metadata does not advertise
-`agent_auth`. Agents use user-approved OAuth or an owner-provisioned API key.
+## Auth.md agent registration (service_auth)
+
+Use this flow only when authorization-server metadata advertises `agent_auth`
+with `service_auth` in `identity_types_supported`. Discovery stays disabled
+until the dedicated signing key, rate limiter and private database migration are
+available. An unprovisioned endpoint returns `503`; it never issues a credential
+with missing durable state. This flow does not support anonymous issuance,
+upstream ID-JAG identity assertions or the older `verified_email` identity type.
+
+1. Send `POST https://api.metagraph.sh/agent/register` with JSON
+   `{ "type": "service_auth", "login_hint": "owner@example.com" }`.
+   Use the intended owner's email address. Save `registration_id` and the
+   secret `claim_token` securely. The response includes `claim.user_code`,
+   `claim.verification_uri`, `claim.expires_in` and `claim.interval`.
+   Registration does not issue an access token or assertion.
+2. Give the owner the verification URI and six-digit user code. The owner signs
+   in with GitHub, which must report a verified email matching the original
+   `login_hint`, reviews the requested `profile` scope, and explicitly
+   approves the displayed registration using the code. Sign-in alone is not
+   approval. Never send the claim token to a third-party URL or ask for the
+   owner's GitHub password, wallet seed or private key.
+3. Poll `POST https://api.metagraph.sh/oauth/token` using
+   `application/x-www-form-urlencoded` with
+   `grant_type=urn:workos:agent-auth:grant-type:claim` and `claim_token`.
+   Wait at least the advertised interval. Handle `authorization_pending`,
+   `slow_down`, `access_denied` and `expired_token` without creating a new
+   registration on every poll. Claims expire after ten minutes.
+4. After approval, the claim grant returns an opaque `access_token` and a
+   service-signed `identity_assertion`. Send the access token as
+   `Authorization: Bearer <access_token>` to `https://api.metagraph.sh/mcp` or its
+   `/mcp/core` mount. These tokens resolve to the approving GitHub account
+   and its current tier; they do not bypass the existing quotas or permissions.
+5. Within the original one-hour approval window, exchange the assertion at the
+   same token endpoint using
+   `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer` and
+   `assertion=<identity_assertion>`. Optional `resource` must be the canonical
+   `https://api.metagraph.sh/mcp` or `https://api.metagraph.sh/mcp/core` audience. Repeated exchanges never extend the original
+   approval window. The JWKS is at `https://api.metagraph.sh/oauth/jwks`.
+6. Revoke an agent access token using form-encoded
+   `POST https://api.metagraph.sh/oauth/revoke` with `token=<access_token>` and
+   `token_type_hint=access_token`. To revoke the registration and all derived
+   tokens, send `token=<identity_assertion>` with
+   `token_type_hint=identity_assertion` to the same endpoint. This prevents
+   further exchanges. Ordinary
+   OAuth clients continue to use their discovered OAuth revocation endpoint.
+
+The advertised `claim_endpoint` (`POST https://api.metagraph.sh/agent/claim`) accepts
+`claim_token` and a matching `email` to start a fresh owner ceremony.
+The original intended email cannot be changed during a claim. Rotating a claim
+token at `POST https://api.metagraph.sh/agent/rotate` invalidates the previous token and
+pending ceremonies. Keep all claim tokens, assertions and access tokens out of
+URLs and logs. Passive scanners must read discovery documents only; registration
+and claim requests create durable state.
 
 ## Credential use and authentication failures
 

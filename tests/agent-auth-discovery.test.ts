@@ -19,7 +19,9 @@ const document = {
   grant_types_supported: ["authorization_code", "refresh_token"],
   scopes_supported: ["profile"],
 };
-beforeEach(() => ready.mockReset().mockResolvedValue(true));
+beforeEach(() => {
+  ready.mockReset().mockResolvedValue(true);
+});
 
 test("discovery retains existing OAuth and advertises the implemented approval flow", async () => {
   const input = Response.json(document, {
