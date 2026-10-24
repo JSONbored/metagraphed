@@ -10,6 +10,7 @@
 // wrong ranking is the exact failure that shipped.
 import assert from "node:assert/strict";
 import * as nativeFlow from "../src/top-holders-native-flow.ts";
+import * as nativeHoldings from "../src/top-holders-holdings.ts";
 const nativeFlowReader = vi.spyOn(nativeFlow, "loadNativeTopHoldersFlow");
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
@@ -459,6 +460,38 @@ describe("computeTopHoldersFlow", () => {
       d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as Env,
     );
     assert.deepEqual(partial?.sorts, [...TOP_HOLDERS_FLOW_SORTS, "free_tao"]);
+  });
+  test("publishes the qualified holdings capture with its quantities and sorts", async () => {
+    const alphaCapturedAt = HOLDINGS_CAPTURED_AT + 60_000;
+    const qualified = {
+      ...holdings({
+        "5A": { free_tao: 900, delegated_tao: 100, total_tao: 1000 },
+      }),
+      alphaCapturedAt,
+    };
+    const reader = vi.spyOn(nativeHoldings, "topHoldersHoldings");
+    reader.mockResolvedValueOnce(qualified);
+    nativeFlowReader.mockResolvedValue({
+      generatedAt: GENERATED_AT,
+      rows: [
+        { coldkey: "5A", net_flow_7d: 2, net_flow_30d: 5, net_flow_90d: 9 },
+      ],
+    });
+    try {
+      const body = await computeTopHoldersFlow({} as Env);
+      assert.ok(body);
+      assert.equal(body.alpha_captured_at, alphaCapturedAt);
+      assert.deepEqual(body.sorts, TOP_HOLDERS_LIVE_SORTS);
+      const rows = body.rows as Record<string, unknown>[];
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].free_tao, 900);
+      assert.equal(rows[0].delegated_tao, 100);
+      assert.equal(rows[0].total_tao, 1000);
+      assert.equal(rows[0].holdings_captured_at, HOLDINGS_CAPTURED_AT);
+      assert.equal(rows[0].captured_at, GENERATED_AT);
+    } finally {
+      reader.mockRestore();
+    }
   });
   test("testnet never consults the mainnet balance ledger", async () => {
     nativeFlowReader.mockResolvedValue({

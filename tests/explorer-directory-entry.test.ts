@@ -20,8 +20,25 @@ import { mockEnv } from "./row-type.ts";
 
 const NOW = Date.parse("2026-09-03T01:30:00Z");
 const ACCOUNT_PATH = "/api/v1/accounts/directory";
+const OPERATOR_PATH = "/api/v1/validators/operators";
+type OperatorDirectory = ReturnType<typeof buildValidatorOperatorDirectory>;
 const request = (path = ACCOUNT_PATH, init?: RequestInit) =>
   new Request(`https://api.metagraph.sh${path}`, init);
+
+function operatorDirectory(nominatorCount: number | null) {
+  return buildValidatorOperatorDirectory({
+    captured_at: new Date(NOW - 60_000).toISOString(),
+    block_number: 8_983_000,
+    validators: [
+      {
+        hotkey: "operator-hotkey",
+        total_stake_tao: 10,
+        total_emission_tao: 1,
+        nominator_count: nominatorCount,
+      },
+    ],
+  });
+}
 
 function fixture() {
   const stamp = {
@@ -58,6 +75,7 @@ function fixture() {
     ],
   ]);
   const get = vi.fn(async (key: string) => values.get(key) ?? null);
+  const fetch = vi.fn(async () => Response.json(validators));
   const pending: Promise<unknown>[] = [];
   const ctx = {
     waitUntil: (work: Promise<unknown>) => {
@@ -68,8 +86,9 @@ function fixture() {
     METAGRAPH_NEURONS_SOURCE: "data-api",
     METAGRAPH_AUDIT_RESPONSES: "enforce",
     METAGRAPH_CONTROL: { get },
+    DATA_API: { fetch },
   });
-  return { values, accounts, validators, get, ctx, pending, env };
+  return { values, accounts, validators, get, fetch, ctx, pending, env };
 }
 
 function cacheFixture() {
@@ -80,6 +99,28 @@ function cacheFixture() {
   });
   vi.stubGlobal("caches", { default: { match, put } });
   return { values, match, put };
+}
+
+function seedOperatorCache(
+  cache: ReturnType<typeof cacheFixture>,
+  directory: OperatorDirectory,
+) {
+  const route = `validator-operator-directory${OPERATOR_PATH}`;
+  const key = [
+    "https://edge-cache.metagraph.sh/analytics",
+    encodeURIComponent(CONTRACT_VERSION),
+    encodeURIComponent(`minute:${Math.floor(NOW / 60_000)}`),
+    route,
+  ].join("/");
+  cache.values.set(
+    key,
+    Response.json({
+      ok: true,
+      schema_version: 1,
+      data: directory,
+      meta: { contract_version: CONTRACT_VERSION },
+    }),
+  );
 }
 
 beforeEach(() => {
@@ -169,7 +210,7 @@ describe("default directory entry", () => {
       [123, 0].map((capital) => ({ entry, capital })),
     ),
   )(
-    "$entry.id skips legacy capital $capital and shares the corrected cache within the minute bound",
+    "$entry.id skips legacy capital $capital and preserves its source freshness policy",
     async ({ entry, capital }) => {
       const f = fixture();
       const cache = cacheFixture();
@@ -202,22 +243,31 @@ describe("default directory entry", () => {
       expect(await first!.json()).toMatchObject({ data });
       await Promise.all(f.pending);
       const general = await api.fetch(request(entry.path), f.env, f.ctx);
-      expect(general.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(general.headers.get("x-metagraph-cache")).toBe(
+        account ? "hit" : "miss",
+      );
       expect(await general.json()).toMatchObject({ data });
       expect(await cache.values.get(legacyKey)!.json()).toEqual({
         data: legacy,
       });
-      expect(cache.match.mock.calls[0][0].url).toContain(
-        `/${entry.id}-principal-unavailable${entry.path}`,
+      if (account)
+        expect(cache.match.mock.calls[0][0].url).toContain(
+          `/${entry.id}-principal-unavailable${entry.path}`,
+        );
+      else expect(cache.match).not.toHaveBeenCalled();
+      expect(cache.put).toHaveBeenCalledTimes(account ? 1 : 0);
+      expect(f.get.mock.calls.filter(([key]) => key === kvKey)).toHaveLength(
+        account ? 1 : 0,
       );
-      expect(cache.put).toHaveBeenCalledTimes(1);
-      expect(f.get.mock.calls.filter(([key]) => key === kvKey)).toHaveLength(1);
+      expect(f.fetch).toHaveBeenCalledTimes(account ? 0 : 2);
       const advanced = {
         ...data,
         captured_at: new Date(NOW + 60_000).toISOString(),
         block_number: 8_983_010,
       };
       f.values.set(kvKey, advanced);
+      if (!account)
+        f.fetch.mockImplementation(async () => Response.json(advanced));
       vi.mocked(Date.now).mockReturnValue(NOW + 61_000);
       const next = await handleDefaultExplorerDirectory(
         request(entry.path),
@@ -226,17 +276,22 @@ describe("default directory entry", () => {
       );
       expect(next!.headers.get("x-metagraph-cache")).toBe("miss");
       expect(await next!.json()).toMatchObject({ data: advanced });
-      expect(cache.match.mock.calls[0][0].url).not.toBe(
-        cache.match.mock.calls[2][0].url,
-      );
+      if (account)
+        expect(cache.match.mock.calls[0][0].url).not.toBe(
+          cache.match.mock.calls[2][0].url,
+        );
+      else {
+        expect(cache.match).not.toHaveBeenCalled();
+        expect(f.fetch).toHaveBeenCalledTimes(3);
+      }
     },
   );
 
   test.each(EXPLORER_DIRECTORY_ENTRIES)(
-    "$id cold HEAD retains the GET body and conditional requests still return 304",
+    "$id HEAD and conditional GET preserve the source freshness policy",
     async (entry) => {
       const f = fixture();
-      cacheFixture();
+      const cache = cacheFixture();
       const head = await handleDefaultExplorerDirectory(
         request(entry.path, { method: "HEAD" }),
         f.env,
@@ -250,7 +305,9 @@ describe("default directory entry", () => {
         f.env,
         f.ctx,
       );
-      expect(get!.headers.get("x-metagraph-cache")).toBe("hit");
+      expect(get!.headers.get("x-metagraph-cache")).toBe(
+        entry.path === ACCOUNT_PATH ? "hit" : "miss",
+      );
       expect(await get!.json()).toMatchObject({
         data: entry.path === ACCOUNT_PATH ? f.accounts : f.validators,
       });
@@ -263,6 +320,15 @@ describe("default directory entry", () => {
       );
       expect(conditional!.status).toBe(304);
       expect(await conditional!.text()).toBe("");
+      expect(f.fetch).toHaveBeenCalledTimes(
+        entry.path === ACCOUNT_PATH ? 0 : 3,
+      );
+      expect(cache.put).toHaveBeenCalledTimes(
+        entry.path === ACCOUNT_PATH ? 1 : 0,
+      );
+      expect(cache.match).toHaveBeenCalledTimes(
+        entry.path === ACCOUNT_PATH ? 3 : 0,
+      );
     },
   );
 
@@ -296,6 +362,85 @@ describe("default directory entry", () => {
     expect(await response!.json()).toMatchObject({ data: f.accounts });
   });
 
+  test.each(["default", "full"] as const)(
+    "%s operator entry ignores old KV and edge counts when the neuron stamp is unchanged",
+    async (entry) => {
+      const f = fixture();
+      const cache = cacheFixture();
+      const stale = operatorDirectory(99);
+      f.values.set(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT, stale);
+      seedOperatorCache(cache, stale);
+      let current = operatorDirectory(7);
+      const fetch = vi.fn(async () => Response.json(current));
+      const env = mockEnv({ ...f.env, DATA_API: { fetch } });
+      const read =
+        entry === "default" ? handleDefaultExplorerDirectory : api.fetch;
+      let previousEtag: string | null = null;
+      for (const count of [7, null, 0, 12]) {
+        current = operatorDirectory(count);
+        let init: RequestInit | undefined;
+        if (previousEtag) {
+          init = { headers: { "if-none-match": previousEtag } };
+        }
+        const response: Response | null = await read(
+          request(OPERATOR_PATH, init),
+          env,
+          f.ctx,
+        );
+        expect(response!.status).toBe(200);
+        const body = (await response!.json()) as { data: OperatorDirectory };
+        expect(body.data).toEqual(current);
+        expect(body.data.operators[0].nominator_count).toBe(count);
+        expect(response!.headers.get("x-metagraph-cache")).toBe("miss");
+        expect(response!.headers.get("cache-control")).toBe("no-store");
+        previousEtag = response!.headers.get("etag");
+      }
+      await Promise.all(f.pending);
+      expect(fetch).toHaveBeenCalledTimes(4);
+      expect(cache.match).not.toHaveBeenCalled();
+      expect(cache.put).not.toHaveBeenCalled();
+      const operatorReads = f.get.mock.calls.filter(
+        ([key]) => key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+      );
+      expect(operatorReads).toHaveLength(0);
+      expect(Date.now()).toBe(NOW);
+    },
+  );
+
+  test.each(["default", "full"] as const)(
+    "%s operator entry cannot borrow an old positive or zero count when its source fails",
+    async (entry) => {
+      for (const count of [0, 99]) {
+        const f = fixture();
+        const cache = cacheFixture();
+        const stale = operatorDirectory(count);
+        f.values.set(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT, stale);
+        seedOperatorCache(cache, stale);
+        const fetch = vi.fn(async () => new Response(null, { status: 503 }));
+        const env = mockEnv({ ...f.env, DATA_API: { fetch } });
+        const read =
+          entry === "default" ? handleDefaultExplorerDirectory : api.fetch;
+        const response = await read(request(OPERATOR_PATH), env, f.ctx);
+        expect(response!.status).toBe(200);
+        expect(await response!.json()).toMatchObject({
+          data: buildValidatorOperatorDirectory(null),
+        });
+        expect(response!.headers.get("x-metagraph-degraded")).toBe(
+          "tier_unavailable",
+        );
+        expect(response!.headers.get("cache-control")).toBe("no-store");
+        await Promise.all(f.pending);
+        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(cache.match).not.toHaveBeenCalled();
+        expect(cache.put).not.toHaveBeenCalled();
+        const operatorReads = f.get.mock.calls.filter(
+          ([key]) => key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT,
+        );
+        expect(operatorReads).toHaveLength(0);
+      }
+    },
+  );
+
   test("invalid request error markers cannot label successful usage as a failure", async () => {
     const f = fixture();
     const record = vi
@@ -324,9 +469,12 @@ describe("default directory entry", () => {
     const record = vi
       .spyOn(telemetry, "recordUsageEvent")
       .mockResolvedValue(true);
-    const fetch = vi.fn(async (_request: Request) =>
-      Response.json({ ok: true }),
-    );
+    const fetch = vi.fn(async (request: Request) => {
+      const path = new URL(request.url).pathname;
+      return Response.json(
+        path === OPERATOR_PATH ? f.validators : { ok: true },
+      );
+    });
     const env = mockEnv({
       ...f.env,
       POSTHOG_PROJECT_TOKEN: "phc_test",
@@ -348,10 +496,11 @@ describe("default directory entry", () => {
     flushUsageRollup(mockEnv(), f.ctx);
     flushUsageRollup(mockEnv({ DATA_API: { fetch } }), f.ctx);
     expect(usageRollupBufferSize()).toBe(size + 2);
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
     flushUsageRollup(env, f.ctx);
     await Promise.all(f.pending);
-    const sent = await (fetch.mock.calls[0][0] as Request).json();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const sent = await fetch.mock.calls[1][0].json();
     expect(sent).toMatchObject({
       buckets: expect.arrayContaining([
         expect.objectContaining({ family: ACCOUNT_PATH }),

@@ -467,6 +467,7 @@ test("nominator enrichment preserves distinct permitted keys, nulls and the whol
     [],
   );
   const statements: string[] = [];
+  const bindings: unknown[][] = [];
   const actual = await readDirectoryNominatorCounts(
     unexpectedSql,
     {
@@ -474,7 +475,14 @@ test("nominator enrichment preserves distinct permitted keys, nulls and the whol
       D1_STATE: {
         prepare(sql: string) {
           statements.push(sql);
-          return db.prepare(sql);
+          const statement = db.prepare(sql);
+          return {
+            bind(...values: unknown[]) {
+              bindings.push(values);
+              return statement.bind(...values);
+            },
+            all: statement.all.bind(statement),
+          };
         },
         batch: db.batch.bind(db),
       },
@@ -488,8 +496,18 @@ test("nominator enrichment preserves distinct permitted keys, nulls and the whol
   assert.ok(actual.some((r) => r.nominator_count === 5));
   assert.ok(actual.every((r) => r.scan_at === stamp + 2000));
   assert.ok(actual.every((r) => r.hotkey !== "5Unregistered"));
-  assert.equal(statements.length, 1);
-  assert.doesNotMatch(statements[0], /FROM neurons/);
+  assert.equal(statements.length, 2);
+  assert.equal(
+    statements[0],
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='alpha_snapshot_passes'",
+  );
+  assert.doesNotMatch(statements[0], /FROM neurons|FROM alpha_snapshot_passes/);
+  assert.match(statements[1], /FROM json_each\(\?\)/);
+  assert.doesNotMatch(
+    statements[1],
+    /FROM neurons|FROM alpha_snapshot_passes|nominator_positions/,
+  );
+  assert.deepEqual(bindings, [[JSON.stringify([...new Set(keys)])]]);
   assert.deepEqual(
     await readDirectoryNominatorCounts(unexpectedSql, environment, []),
     [],

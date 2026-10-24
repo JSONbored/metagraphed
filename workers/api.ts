@@ -1,3 +1,4 @@
+import { alphaCaptureStateFromOwner } from "../src/alpha-capture-reader.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
@@ -5666,6 +5667,11 @@ async function dispatchCached(
   // bought the ANSWER, and a hit is an answer; settling only on a miss would
   // make the charge depend on cache residency, which they cannot see.
   return withX402(request, env, resolved.pathname, async () => {
+    if (ACCOUNT_POSITIONS_PATH_PATTERN.test(resolved.pathname)) {
+      const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+      if (alpha === null || alpha.available)
+        return dispatchRequest(request, env, ctx);
+    }
     const eligible = accountEdgeCacheEligible({
       method: request.method,
       isDefaultNetwork: network.isDefault,
@@ -6455,8 +6461,7 @@ async function dispatchRequest(
 
   // Website-sized validator operator directory. It has its own route so the
   // rich per-hotkey REST/MCP response remains unchanged for existing callers.
-  // Its cache key follows the newest COMPLETE neuron pass rather than the
-  // health cron, so a probe-only tick never forces this aggregation to rerun.
+  // Membership counts change independently of the neuron and health stamps.
   if (url.pathname === "/api/v1/validators/operators") {
     return withEdgeCache(
       request,
@@ -6465,16 +6470,15 @@ async function dispatchRequest(
       VALIDATOR_OPERATOR_DIRECTORY_CACHE_LABEL,
       (cacheRequest) => handleValidatorOperatorDirectory(cacheRequest, env),
       url.pathname,
-      readExplorerDirectoryCacheStamp,
+      async () => null,
     );
   }
 
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
-  // Busts on the shared health-cron last_run_at stamp like every other Postgres-tier
-  // analytics route (the neurons snapshot itself is Postgres-backed; the D1-era
-  // captured_at-based stamp this once busted on was removed in #5358, since #4772
-  // dropped the D1 neurons table it read).
+  // Nominator counts can advance or become unavailable independently of both
+  // neuron and health stamps. Keep the shared response handling but ask the
+  // source on every request, including CSV and HEAD variants.
   if (url.pathname === "/api/v1/validators") {
     const validatorsCache = canonicalGlobalValidatorsCachePath(url, request);
     if (validatorsCache.response) return validatorsCache.response;
@@ -6485,6 +6489,7 @@ async function dispatchRequest(
       "global-validators-principal-unavailable",
       (cacheRequest) => handleGlobalValidators(cacheRequest, env, url),
       validatorsCache.cachePathAndSearch,
+      async () => null,
     );
   }
 
@@ -6525,6 +6530,9 @@ async function dispatchRequest(
   if (url.pathname === "/api/v1/accounts/top-holders") {
     const topHoldersCache = canonicalTopHoldersCachePath(url, request);
     if (topHoldersCache.response) return topHoldersCache.response;
+    const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+    if (alpha === null || alpha.available)
+      return handleTopHoldersList(request, env, url);
     return withEdgeCache(
       request,
       ctx,
@@ -6815,6 +6823,14 @@ async function dispatchRequest(
       resolved.url.pathname,
     );
     if (ownerCaptureMatch) {
+      const alpha = await alphaCaptureStateFromOwner(env).catch(() => null);
+      if (alpha === null || alpha.available)
+        return handleSubnetOwnerCapture(
+          request,
+          env,
+          Number(ownerCaptureMatch[1]),
+          resolved.url,
+        );
       // Same rollup, same cron cadence, same edge-cache treatment as its
       // emission-split sibling.
       return withEdgeCache(

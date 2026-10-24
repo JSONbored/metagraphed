@@ -47,9 +47,14 @@ import {
 } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
-import { buildGlobalValidators } from "../src/metagraph-neurons.ts";
+import * as operatorDirectory from "../src/validator-operator-directory.ts";
+import {
+  buildGlobalValidators,
+  buildValidatorDetail,
+} from "../src/metagraph-neurons.ts";
 import { GlobalValidatorsArtifactSchema } from "../schemas-src/routes/global-validators.ts";
 import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
+import { ValidatorDetailArtifactSchema } from "../schemas-src/routes/validator-detail.ts";
 import { AccountsListArtifactSchema } from "../schemas-src/routes/accounts-list.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
@@ -301,6 +306,36 @@ function expectedKey(keyParts: string, pathname: string, search = "") {
   return `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
     CONTRACT_VERSION,
   )}/${encodeURIComponent(LAST_RUN_AT)}/${keyParts}${pathname}${search}`;
+}
+
+const COUNT_HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
+function validatorCountPayload(count: number | null, detail = false) {
+  const rows = [
+    {
+      netuid: 7,
+      uid: 0,
+      hotkey: COUNT_HOTKEY,
+      coldkey: "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e",
+      stake_tao: 100,
+      emission_tao: 1,
+      validator_trust: 1,
+      block_number: 100,
+      captured_at: Date.parse(LAST_RUN_AT),
+    },
+  ];
+  const priceByNetuid = new Map([[7, 1]]);
+  if (detail)
+    return buildValidatorDetail(rows, COUNT_HOTKEY, {
+      priceByNetuid,
+      nominatorCount: count,
+    });
+  const nominatorCounts = new Map<string, number>();
+  if (count !== null) nominatorCounts.set(COUNT_HOTKEY, count);
+  return buildGlobalValidators(rows, {
+    limit: 1,
+    priceByNetuid,
+    nominatorCounts,
+  });
 }
 
 const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
@@ -1520,7 +1555,7 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("HEAD /api/v1/validators reuses the GET edge cache before the Postgres tier", async () => {
+  test("HEAD /api/v1/validators checks the source on every request", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
@@ -1555,71 +1590,121 @@ describe("analytics edge cache", () => {
     assert.equal(second.status, 200);
     assert.equal(await first.text(), "");
     assert.equal(await second.text(), "");
-    assert.deepEqual(dataApiMethods, ["GET"]);
-    assert.equal(cache.matchCalls, 2);
+    assert.equal(first.headers.get("cache-control"), "no-store");
+    assert.equal(second.headers.get("cache-control"), "no-store");
+    assert.deepEqual(dataApiMethods, ["GET", "GET"]);
+    assert.equal(cache.matchCalls, 0);
+    assert.deepEqual(cache.putKeys, []);
   });
 
-  test("/api/v1/validators/operators caches within the bounded minute epoch", async () => {
+  test("/api/v1/validators/operators requalifies counts without reading old edge or KV bodies", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const paths: string[] = [];
-    const cacheStamp = `minute:${Math.floor(Date.now() / 60_000)}`;
-    const directory = {
-      schema_version: 1,
-      captured_at: new Date().toISOString(),
-      block_number: 8_950_000,
-      validator_count: 0,
-      operator_count: 0,
-      operators: [],
-    };
-    const env = {
-      ...analyticsEnv([]),
-      METAGRAPH_NEURONS_SOURCE: "data-api",
-      METAGRAPH_CONTROL: {
-        async get(key: string) {
-          if (key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT) return directory;
-          return null;
+    const now = Date.parse(LAST_RUN_AT);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      const path = "/api/v1/validators/operators";
+      const paths: string[] = [];
+      const kvReads: string[] = [];
+      const buildDirectory = operatorDirectory.buildValidatorOperatorDirectory;
+      const directory = (count: number | null) =>
+        buildDirectory({
+          captured_at: LAST_RUN_AT,
+          block_number: 8_950_000,
+          validators: [
+            {
+              hotkey: "operator-hotkey",
+              total_stake_tao: 10,
+              nominator_count: count,
+            },
+          ],
+        });
+      const stale = directory(99);
+      const cacheStamp = `minute:${Math.floor(now / 60_000)}`;
+      const key = [
+        "https://edge-cache.metagraph.sh/analytics",
+        encodeURIComponent(CONTRACT_VERSION),
+        encodeURIComponent(cacheStamp),
+        `validator-operator-directory${path}`,
+      ].join("/");
+      cache.store.set(
+        key,
+        Response.json({
+          ok: true,
+          schema_version: 1,
+          data: stale,
+          meta: { contract_version: CONTRACT_VERSION },
+        }),
+      );
+      let current = directory(7);
+      let unavailable = false;
+      const env = {
+        ...analyticsEnv([]),
+        METAGRAPH_NEURONS_SOURCE: "data-api",
+        METAGRAPH_CONTROL: {
+          async get(key: string) {
+            kvReads.push(key);
+            return key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT
+              ? stale
+              : null;
+          },
         },
-      },
-      DATA_API: {
-        async fetch(request: Request) {
-          const pathname = new URL(request.url).pathname;
-          paths.push(pathname);
-          return Response.json(directory);
+        DATA_API: {
+          async fetch(request: Request) {
+            paths.push(new URL(request.url).pathname);
+            return unavailable
+              ? new Response(null, { status: 503 })
+              : Response.json(current);
+          },
         },
-      },
-    };
-    const request = new Request(
-      "https://api.metagraph.sh/api/v1/validators/operators",
-    );
-
-    const first = await handleRequest(request, env as unknown as Env, ctx);
-    await Promise.resolve();
-    const second = await handleRequest(request, env as unknown as Env, ctx);
-    assert.equal(first.status, 200);
-    assert.equal(second.status, 200);
-    const firstBody = await parseJsonBody(
-      first,
-      successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
-    );
-    const secondBody = await parseJsonBody(
-      second,
-      successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
-    );
-    assert.deepEqual(firstBody.data, directory);
-    assert.deepEqual(secondBody.data, directory);
-    assert.deepEqual(paths, []);
-    assert.deepEqual(cache.putKeys, [
-      `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-        CONTRACT_VERSION,
-      )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory-principal-unavailable/api/v1/validators/operators`,
-    ]);
-    assert.equal(cache.matchCalls, 2);
+      };
+      const target = `https://api.metagraph.sh${path}`;
+      for (const count of [7, null, 0]) {
+        current = directory(count);
+        const response = await handleRequest(
+          new Request(target),
+          env as unknown as Env,
+          ctx,
+        );
+        assert.equal(response.status, 200);
+        const body = await parseJsonBody(
+          response,
+          successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+        );
+        assert.deepEqual(body.data, current);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+      }
+      unavailable = true;
+      const failed = await handleRequest(
+        new Request(target),
+        env as unknown as Env,
+        ctx,
+      );
+      assert.equal(failed.status, 200);
+      const failedBody = await parseJsonBody(
+        failed,
+        successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
+      );
+      assert.deepEqual(failedBody.data, buildDirectory(null));
+      assert.equal(failed.headers.get("cache-control"), "no-store");
+      assert.equal(
+        failed.headers.get(DEGRADED_HEADER),
+        DEGRADED_TIER_UNAVAILABLE,
+      );
+      assert.equal(paths.length, 5);
+      assert.ok(paths.every((value) => value === path));
+      assert.equal(cache.matchCalls, 0);
+      assert.deepEqual(cache.putKeys, []);
+      assert.ok(!kvReads.includes(KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT));
+      assert.equal(Date.now(), now);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   test.each([123, 0])(
-    "the operator directory skips legacy capital %s and shares its corrected cache with Finney",
+    "the operator directory skips legacy capital %s and requalifies Finney reads without caching counts",
     async (capital) => {
       originalCaches = globalWithCaches.caches;
       const cache = mockCaches();
@@ -1646,13 +1731,20 @@ describe("analytics edge cache", () => {
       )}/${encodeURIComponent(cacheStamp)}/validator-operator-directory${path}`;
       cache.store.set(legacyKey, Response.json({ data: legacy }));
       let sourceReads = 0;
+      let directoryKvReads = 0;
       const env = {
         ...analyticsEnv([]),
         METAGRAPH_NEURONS_SOURCE: "data-api",
+        DATA_API: {
+          async fetch() {
+            sourceReads += 1;
+            return Response.json(directory);
+          },
+        },
         METAGRAPH_CONTROL: {
           async get(key: string) {
             if (key === KV_EXPLORER_VALIDATOR_DIRECTORY_CURRENT) {
-              sourceReads += 1;
+              directoryKvReads += 1;
               return directory;
             }
             return null;
@@ -1667,6 +1759,7 @@ describe("analytics edge cache", () => {
       );
       assert.equal(first.status, 200);
       assert.equal(first.headers.get("x-metagraph-cache"), "miss");
+      assert.equal(first.headers.get("cache-control"), "no-store");
       const firstBody = await parseJsonBody(
         first,
         successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
@@ -1678,7 +1771,7 @@ describe("analytics edge cache", () => {
         env as unknown as Env,
         ctx,
       );
-      assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
+      assert.equal(repeat.headers.get("x-metagraph-cache"), "miss");
       const repeatBody = await parseJsonBody(
         repeat,
         successEnvelopeSchema(ValidatorOperatorDirectoryArtifactSchema),
@@ -1693,13 +1786,10 @@ describe("analytics edge cache", () => {
       );
       assert.equal(conditional.status, 304);
       assert.equal(await conditional.text(), "");
-      assert.equal(sourceReads, 1);
-      assert.deepEqual(cache.putKeys, [
-        legacyKey.replace(
-          "/validator-operator-directory/",
-          "/validator-operator-directory-principal-unavailable/",
-        ),
-      ]);
+      assert.equal(sourceReads, 3);
+      assert.equal(directoryKvReads, 0);
+      assert.equal(cache.matchCalls, 0);
+      assert.deepEqual(cache.putKeys, []);
       assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
         data: legacy,
       });
@@ -1707,7 +1797,7 @@ describe("analytics edge cache", () => {
   );
 
   test.each([123, 0])(
-    "global validators skip legacy capital %s at the same producer stamp through Finney aliases",
+    "global validators skip legacy capital %s and requalify counts through Finney aliases",
     async (capital) => {
       originalCaches = globalWithCaches.caches;
       const cache = mockCaches();
@@ -1758,7 +1848,7 @@ describe("analytics edge cache", () => {
         env as unknown as Env,
         ctx,
       );
-      assert.equal(repeat.headers.get("x-metagraph-cache"), "hit");
+      assert.equal(repeat.headers.get("x-metagraph-cache"), "miss");
       const repeatBody = await parseJsonBody(
         repeat,
         successEnvelopeSchema(GlobalValidatorsArtifactSchema),
@@ -1773,10 +1863,9 @@ describe("analytics edge cache", () => {
       );
       assert.equal(conditional.status, 304);
       assert.equal(await conditional.text(), "");
-      assert.equal(sourceReads, 1);
-      assert.deepEqual(cache.putKeys, [
-        expectedKey("global-validators-principal-unavailable", path, search),
-      ]);
+      assert.equal(sourceReads, 3);
+      assert.equal(cache.matchCalls, 0);
+      assert.deepEqual(cache.putKeys, []);
       assert.deepEqual(await cache.store.get(legacyKey)!.json(), {
         data: legacy,
       });
@@ -2654,46 +2743,151 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     }
   });
 
-  test("global validators canonicalizes equivalent query variants before caching, with ZERO D1 queries on the HIT", async () => {
+  test("global validator counts bypass poisoned cache across equivalent queries and unchanged stamps", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries: Row[] = [];
-    const env = analyticsEnv(queries);
+    const oldKey = expectedKey(
+      "global-validators",
+      "/api/v1/validators",
+      "?sort=subnet_count&limit=1",
+    );
+    cache.store.set(
+      oldKey,
+      Response.json({ data: validatorCountPayload(999) }),
+    );
+    let count: number | null = 7;
+    const paths: string[] = [];
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch(request: Request) {
+          paths.push(new URL(request.url).search);
+          return Response.json(validatorCountPayload(count));
+        },
+      },
+    };
+    const variants = [
+      "?limit=1",
+      "?limit=01&sort=subnet_count",
+      "?sort=subnet_count&limit=1",
+    ];
+    const observedStamps: unknown[] = [];
+    let previousEtag: string | null = null;
+    for (const [index, current] of [7, null, 8].entries()) {
+      count = current;
+      const headers = new Headers();
+      if (previousEtag) headers.set("if-none-match", previousEtag);
+      const response = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/validators${variants[index]}`,
+          { headers },
+        ),
+        mockEnv(env),
+        ctx,
+      );
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      previousEtag = response.headers.get("etag");
+      assert.ok(previousEtag);
+      const body = await parseJsonBody(
+        response,
+        successEnvelopeSchema(GlobalValidatorsArtifactSchema),
+      );
+      assert.equal(body.data.validators[0].nominator_count, current);
+      observedStamps.push(body.data.captured_at);
+    }
+    assert.equal(new Set(observedStamps).size, 1);
+    assert.deepEqual(paths, variants);
+    assert.equal(cache.matchCalls, 0);
+    assert.deepEqual(cache.putKeys, []);
+    assert.equal(cache.store.size, 1);
+  });
 
-    const first = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/validators?limit=1"),
-      mockEnv(env) as unknown as Env,
-      ctx,
-    );
-    await Promise.resolve();
-    assert.equal(first.status, 200);
-    const queriesAfterMiss = queries.length;
-
-    const hit = await handleRequest(
-      new Request(
-        "https://api.metagraph.sh/api/v1/validators?limit=01&sort=subnet_count",
-      ),
-      mockEnv(env) as unknown as Env,
-      ctx,
-    );
-    assert.equal(hit.status, 200);
-    // Before #5358 a HIT still issued one D1 query to read the neuron
-    // captured_at stamp (readNeuronsCacheStamp); the stamp is now KV-sourced,
-    // so a HIT must not touch D1 at all.
-    assert.equal(
-      queries.length,
-      queriesAfterMiss,
-      "a cache HIT must not issue any D1 query now that the stamp is KV-sourced",
-    );
-    assert.deepEqual(cache.putKeys, [
+  test("global validator CSV counts bypass old query and Accept cache variants", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    cache.store.set(
       expectedKey(
         "global-validators-principal-unavailable",
         "/api/v1/validators",
-        "?sort=subnet_count&limit=1",
+        "?sort=subnet_count&limit=1&format=csv",
       ),
-    ]);
-    assert.equal(cache.store.size, 1);
+      new Response("obsolete CSV"),
+    );
+    let count: number | null = 7;
+    let calls = 0;
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch() {
+          calls += 1;
+          return Response.json(validatorCountPayload(count));
+        },
+      },
+    };
+    for (const current of [7, null, 8]) {
+      count = current;
+      for (const acceptHeader of [false, true]) {
+        const path = acceptHeader ? "?limit=1" : "?limit=1&format=csv";
+        const request = new Request(
+          `https://api.metagraph.sh/api/v1/validators${path}`,
+          { headers: acceptHeader ? { accept: "text/csv" } : {} },
+        );
+        const response = await handleRequest(request, mockEnv(env), ctx);
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.match(response.headers.get("content-type") ?? "", /^text\/csv/);
+        const [header, row] = (await response.text()).trim().split(/\r?\n/);
+        const column = header.split(",").indexOf("nominator_count");
+        assert.ok(column >= 0);
+        assert.equal(row.split(",")[column], current?.toString() ?? "");
+      }
+    }
+    assert.equal(calls, 6);
+    assert.equal(cache.matchCalls, 0);
+    assert.deepEqual(cache.putKeys, []);
+  });
+
+  test("validator details keep count changes live under the same neuron stamp", async () => {
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    let count: number | null = 7;
+    let calls = 0;
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: {
+        async fetch() {
+          calls += 1;
+          return Response.json(validatorCountPayload(count, true));
+        },
+      },
+    };
+    for (const current of [7, null, 8]) {
+      count = current;
+      const response = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/validators/${COUNT_HOTKEY}`,
+        ),
+        mockEnv(env),
+        ctx,
+      );
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      const body = await parseJsonBody(
+        response,
+        successEnvelopeSchema(ValidatorDetailArtifactSchema),
+      );
+      assert.equal(body.data.nominator_count, current);
+    }
+    assert.equal(calls, 3);
+    assert.equal(cache.matchCalls, 0);
+    assert.deepEqual(cache.putKeys, []);
   });
 
   test("global validators rejects invalid queries before touching D1 or the cache", async () => {

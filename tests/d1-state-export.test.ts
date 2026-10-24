@@ -22,6 +22,8 @@ const runtime = new Miniflare({
     "PARTIAL_RAO",
     "PARTIAL_EVIDENCE",
     "UNKNOWN",
+    "LEGACY_SOURCE",
+    "LEGACY_RESTORED",
   ],
 });
 let db: D1Database;
@@ -136,6 +138,8 @@ test("position exports accept only complete approved generations", async () => {
             { ...env(), ...overrides },
           );
           assert.equal(response.status, 503);
+          if (name !== "UNKNOWN")
+            assert.match(await response.text(), /no snapshot was acknowledged/);
         }
       }
       continue;
@@ -213,6 +217,101 @@ test("position exports accept only complete approved generations", async () => {
   }
 });
 
+test("legacy seven-column exports restore exact cells through the combined handler", async () => {
+  type Cell = { storage: string; value: string | null };
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/lossless-state-export-v1.json", import.meta.url),
+      "utf8",
+    ),
+  ) as {
+    columns: { name: string }[];
+    rows: Cell[][];
+    row_keys: Cell[][];
+  };
+  const table = "nominator_positions";
+  const columns = fixture.columns.map((column) => column.name);
+  assert.equal(columns.length, 7);
+  assert.equal(fixture.rows.length, 6);
+  const source = await runtime.getD1Database("LEGACY_SOURCE");
+  const restored = await runtime.getD1Database("LEGACY_RESTORED");
+  const root = new URL("../migrations/d1/", import.meta.url);
+  const files = readdirSync(root)
+    .filter((file) => file.endsWith(".sql"))
+    .filter((file) => Number(file.slice(0, 4)) <= 38)
+    .sort();
+  assert.equal(files.length, 38);
+  for (const database of [source, restored]) {
+    for (const file of files) {
+      const statements = readFileSync(new URL(file, root), "utf8")
+        .split("-- statement-breakpoint")
+        .filter((sql) => sql.trim())
+        .map((sql) => database.prepare(sql));
+      if (statements.length) await database.batch(statements);
+    }
+    const physical = await database
+      .prepare("PRAGMA table_info(nominator_positions)")
+      .all<{ name: string }>();
+    const names = physical.results.map((column) => column.name);
+    assert.deepEqual(names, columns);
+  }
+  const insert = async (database: D1Database, rows: Cell[][]) => {
+    const statements = rows.map((cells) => {
+      const values = cells.map((cell) => {
+        assert.ok(["integer", "real", "text", "null"].includes(cell.storage));
+        if (cell.storage === "integer") return "CAST(? AS INTEGER)";
+        if (cell.storage === "real") return "CAST(? AS REAL)";
+        return "?";
+      });
+      const sql =
+        `INSERT INTO nominator_positions(${columns.join(",")}) ` +
+        `VALUES(${values.join(",")})`;
+      return database.prepare(sql).bind(...cells.map((cell) => cell.value));
+    });
+    await database.batch(statements);
+  };
+  const schemaBody = { table, kind: "schema", encoding: "lossless-v1" };
+  const empty = await get(schemaBody, { D1_STATE: restored });
+  assert.equal(empty.row_count, 0);
+  await insert(source, fixture.rows);
+  const schema = await get(schemaBody, { D1_STATE: source });
+  assert.deepEqual(schema.columns, fixture.columns);
+  assert.equal(schema.row_count, fixture.rows.length);
+  assert.match(schema.projection_sha256!, /^[0-9a-f]{64}$/);
+  const body = {
+    table,
+    kind: "rows",
+    encoding: "lossless-v1",
+    columns,
+    revision: schema.revision,
+  };
+  const page = await get(body, { D1_STATE: source });
+  assert.deepEqual(page.rows, fixture.rows);
+  assert.deepEqual(page.row_keys, fixture.row_keys);
+  assert.equal(page.rows.length, schema.row_count);
+  assert.equal(page.next_cursor, null);
+  assert.equal(page.revision, schema.revision);
+  assert.equal(page.projection_sha256, schema.projection_sha256);
+  const terminal = await get(schemaBody, { D1_STATE: source });
+  assert.equal(terminal.revision, schema.revision);
+  assert.equal(terminal.row_count, schema.row_count);
+  assert.equal(terminal.projection_sha256, schema.projection_sha256);
+  await insert(restored, page.rows as Cell[][]);
+  const restoredSchema = await get(schemaBody, { D1_STATE: restored });
+  assert.deepEqual(restoredSchema.columns, fixture.columns);
+  assert.equal(restoredSchema.row_count, fixture.rows.length);
+  assert.equal(restoredSchema.projection_sha256, schema.projection_sha256);
+  const restoredBody = { ...body, revision: restoredSchema.revision };
+  const actual = await get(restoredBody, { D1_STATE: restored });
+  assert.deepEqual(actual.rows, page.rows);
+  assert.deepEqual(actual.row_keys, page.row_keys);
+  assert.equal(actual.next_cursor, null);
+  assert.equal(actual.revision, restoredSchema.revision);
+  assert.equal(actual.projection_sha256, schema.projection_sha256);
+  const upgraded = await get(schemaBody);
+  assert.notEqual(upgraded.projection_sha256, schema.projection_sha256);
+});
+
 test("all 34 archive schemas and empty exports use native D1 with logical types", async () => {
   assert.equal(Object.keys(D1_EXPORT_TABLES).length, 34);
   assert.deepEqual(
@@ -223,11 +322,10 @@ test("all 34 archive schemas and empty exports use native D1 with logical types"
     const schema = await get({ table, kind: "schema" });
     assert.ok(schema.columns.length > 0);
     const names = schema.columns.map((c) => c.name);
-    const approved = D1_EXPORT_COLUMNS[table]!.split(" ");
-    // Tracked main DDL still has the original seven position columns.
-    const expected =
-      table === "nominator_positions" ? approved.slice(0, 7) : approved;
-    assert.deepEqual([...names].sort(), expected.sort());
+    assert.deepEqual(
+      [...names].sort(),
+      D1_EXPORT_COLUMNS[table]!.split(" ").sort(),
+    );
     assert.ok(names.every((name: string) => !name.startsWith("_")));
     const rows = await get({ table, kind: "rows", columns: names });
     assert.deepEqual(rows.rows, []);
@@ -1214,7 +1312,20 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
       row.map((c) => c.value),
     );
   const schema = await get({ table, kind: "schema", encoding: "lossless-v1" });
-  assert.deepEqual(schema.columns, fixture.columns);
+  // Preserve the original corpus and append the nullable receiver fields.
+  const alphaColumns = ["alpha_rao", "alpha_evidence"].map((name) => ({
+    name,
+    type: "text",
+    sqlite_type: "TEXT",
+    not_null: false,
+    primary_key: 0,
+  }));
+  assert.deepEqual(schema.columns, [...fixture.columns, ...alphaColumns]);
+  const expectedRows = fixture.rows.map((row: unknown[]) => [
+    ...row,
+    { storage: "null", value: null },
+    { storage: "null", value: null },
+  ]);
   const names = schema.columns.map((c) => c.name);
   const result = await get({
     table,
@@ -1222,7 +1333,7 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
     columns: names,
     encoding: "lossless-v1",
   });
-  assert.deepEqual(result.rows, fixture.rows);
+  assert.deepEqual(result.rows, expectedRows);
   assert.equal(result.next_cursor, null);
   assert.deepEqual(
     (result as unknown as { row_keys: unknown }).row_keys,
@@ -1238,7 +1349,7 @@ test("lossless opt-in matches the shared typed corpus without widening disclosur
     cursor: ["recovery-2", "hotkey", "2"],
     revision: result.revision,
   });
-  assert.deepEqual(after.rows, fixture.rows.slice(3));
+  assert.deepEqual(after.rows, expectedRows.slice(3));
   await store.run(
     "UPDATE nominator_positions SET shares=x'00FF' WHERE coldkey='recovery-0'",
   );

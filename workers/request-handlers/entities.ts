@@ -1366,6 +1366,7 @@ export async function handleGlobalValidators(
       "short",
       request,
       GLOBAL_VALIDATOR_CSV_COLUMNS,
+      { "cache-control": "no-store" },
     );
   }
   return envelopeResponse(
@@ -1379,6 +1380,7 @@ export async function handleGlobalValidators(
       ),
     },
     "short",
+    { "cache-control": "no-store" },
   );
 }
 
@@ -1571,6 +1573,7 @@ export async function handleValidatorDetail(
       ),
     },
     "short",
+    { "cache-control": "no-store" },
   );
 }
 

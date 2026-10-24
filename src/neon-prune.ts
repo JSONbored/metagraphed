@@ -41,7 +41,7 @@ import {
   type WaitUntilLike,
 } from "./pg-sql.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { HISTORY_RETENTION_MS } from "./health-prober.ts";
+import { HISTORY_RETENTION_MS } from "./health-history-retention.ts";
 import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history-retention.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";

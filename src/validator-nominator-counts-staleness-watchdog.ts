@@ -52,6 +52,7 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
+import { readCanonicalNominatorCountCoverage } from "./alpha-counts-reader.ts";
 
 /**
  * What this module reads from its environment, and nothing else.
@@ -325,9 +326,6 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // `all()`, so the `.first()` below threw `not a function` even when a ctx was
   // threaded in by hand. Each of those alone is silent -- the lane simply stops
   // reporting, and an absent verdict reads as health.
-  const db = readStore(env, ["validator_nominator_counts"]);
-  if (!db?.first) return { ok: false, reason: "no store bound" };
-
   const thresholdMs =
     Number(env?.VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS) ||
     VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS;
@@ -339,10 +337,18 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
     VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS;
 
   try {
-    const row = await db.first<ValidatorNominatorCountsCoverageRow>(
-      VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL,
-      [passWindowMs],
-    );
+    let row: ValidatorNominatorCountsCoverageRow | null;
+    const canonical = await readCanonicalNominatorCountCoverage(env);
+    if (canonical !== null) {
+      row = canonical;
+    } else {
+      const db = readStore(env, ["validator_nominator_counts"]);
+      if (!db?.first) return { ok: false, reason: "no store bound" };
+      row = await db.first<ValidatorNominatorCountsCoverageRow>(
+        VALIDATOR_NOMINATOR_COUNTS_COVERAGE_SQL,
+        [passWindowMs],
+      );
+    }
     const verdict = evaluateValidatorNominatorCountsStaleness({
       latestCapturedAtMs: numberOrNull(row?.latest),
       coveredRows: countOrZero(row?.covered),

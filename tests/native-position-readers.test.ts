@@ -113,7 +113,8 @@ let db: D1Database;
 const env = (bucket = archive()) => ({
   NATIVE_PROJECTIONS: "enabled",
   D1_STATE: db,
-  D1_STATE_TABLES: "nominator_positions,neurons",
+  D1_STATE_TABLES:
+    "nominator_positions,nominator_positions_passes,nominator_scan_receipts,neurons",
   NATIVE_HISTORY_FIXTURE: "cfut_test",
   METAGRAPH_ARCHIVE: bucket,
 });

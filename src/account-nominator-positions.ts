@@ -1,4 +1,4 @@
-import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
+import { round9OrNull, nonNegativeCellOrNull, raoBigToTao } from "./lib/rao.ts";
 // Nominator-side (coldkey) position reconstruction (#5233): "what does this
 // coldkey actually hold, across every hotkey/subnet it delegates to" — the
 // original feature's question, not an asset-quantity guarantee. This legacy
@@ -21,24 +21,7 @@ import { round9OrNull, nonNegativeCellOrNull } from "./lib/rao.ts";
 // consumers withhold unsupported amounts until a separately qualified source
 // establishes the quantity basis. See schemas-src/routes/account-positions.ts.
 
-export const NOMINATOR_POSITION_INSERT_COLUMNS = [
-  "coldkey",
-  "hotkey",
-  "netuid",
-  "share_fraction",
-  // The raw u128 the chain holds, added so `share_fraction` stops being the
-  // ONLY thing we keep (metagraphed-infra#414). A fraction is normalised across
-  // every row in a (hotkey, netuid) pool, so no single row can produce it --
-  // which is why the poller buffers the whole 762,577-row keyspace before it
-  // may write anything. Keeping the raw value moves that normalisation to one
-  // statement after the prune and lets the producer stream.
-  //
-  // Optional on the wire: the producer that sends it does not exist yet, and
-  // the normalisation skips a row without it. That is what makes this shippable
-  // ahead of the poller.
-  "shares",
-  "captured_at",
-];
+export { NOMINATOR_POSITION_INSERT_COLUMNS } from "./nominator-position-columns.ts";
 
 // A finite, non-negative legacy numeric cell; this does not certify TAO units.
 // Blank Postgres cells coerce via Number("") -> 0; skip those rather than
@@ -180,15 +163,34 @@ export function buildAccountPositions(
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     const netuid = nonNegativeInt(row?.netuid);
     const fraction = nullableFraction(row?.share_fraction);
-    if (!hotkey || netuid == null || fraction == null) continue;
+    if (!hotkey || netuid == null) continue;
 
-    const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
-    if (hotkeyStake == null) {
+    // Exact snapshot rows carry this column even when valuation is NULL. Its
+    // presence forbids a fallback to fractions or a different capture's pool.
+    const exact = Object.hasOwn(row, "alpha_rao");
+    const rao = row.alpha_rao;
+    if (
+      exact &&
+      (typeof rao !== "string" ||
+        !/^(0|[1-9]\d{0,19})$/.test(rao) ||
+        BigInt(rao) > (1n << 64n) - 1n ||
+        fraction === null ||
+        fraction > 1)
+    ) {
       unpriceable += 1;
       continue;
     }
-
-    const stakeTao = round9OrNull(fraction * hotkeyStake);
+    // Retired and stored-zero originals remain evidence, not current holdings.
+    if (exact && rao === "0") continue;
+    if (!exact && fraction == null) continue;
+    const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
+    if (!exact && hotkeyStake == null) {
+      unpriceable += 1;
+      continue;
+    }
+    const stakeTao = exact
+      ? raoBigToTao(BigInt(rao as string))
+      : round9OrNull(fraction! * hotkeyStake!);
     if (stakeTao == null) continue;
     totalStakeAlpha += stakeTao;
 
@@ -304,6 +306,23 @@ export function unavailableAccountPositions(
     degraded: {
       reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE,
       snapshot_captured_at: null,
+      latest_stake_event_at: null,
+    },
+  };
+}
+
+/** A canonical structural capture exists, but its quantities are unqualified. */
+export function unpriceableAccountPositions(
+  ss58: string,
+  capturedAt: number | null,
+): AccountPositionsResult {
+  const stamp = capturedAt === null ? null : toIso(capturedAt);
+  return {
+    ...buildAccountPositions([], null, ss58),
+    captured_at: stamp,
+    degraded: {
+      reason: POSITIONS_DEGRADED_UNPRICEABLE,
+      snapshot_captured_at: stamp,
       latest_stake_event_at: null,
     },
   };

@@ -205,6 +205,9 @@ export async function computeTopHoldersHoldingsRefresh(
     // a dead daily lane look alive.
     generated_at: flow.iso,
     holdings_generated_at: new Date((deps.now ?? Date.now)()).toISOString(),
+    ...(holdings.alphaCapturedAt !== undefined
+      ? { alpha_captured_at: holdings.alphaCapturedAt }
+      : {}),
     row_count: shaped.length,
     sorts: [...TOP_HOLDERS_FLOW_SORTS, ...holdings.sorts],
     rows: shaped,
