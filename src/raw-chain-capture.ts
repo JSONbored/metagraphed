@@ -362,8 +362,16 @@ export function rawBatchKey(
 
 /** The minimal slice of the R2 binding this module uses — structural so tests
  * can pass a plain object. */
+export interface RawCapturePending {
+  key: string;
+  first: number;
+  last: number;
+  receipt: unknown;
+}
 export interface RawCaptureStore {
   put(key: string, value: string): Promise<unknown>;
+  pending?(network: ChainNetworkId): Promise<RawCapturePending | null>;
+  acknowledgeWatermark?(key: string, receipt: unknown): Promise<void>;
 }
 
 /** Where the watermark lives. Structural for the same reason. */
@@ -492,6 +500,26 @@ export async function captureTick(deps: {
       ? stored
       : deps.genesisFloor - 1;
 
+  let pending = await deps.store.pending?.(
+    deps.network ?? DEFAULT_CHAIN_NETWORK,
+  );
+  if (pending) {
+    if (
+      !deps.store.acknowledgeWatermark ||
+      !Number.isSafeInteger(pending.first) ||
+      !Number.isSafeInteger(pending.last) ||
+      pending.last < pending.first ||
+      pending.last - pending.first >= MAX_CAPTURE_CHUNK_BLOCKS ||
+      pending.key !== rawBatchKey(pending.first, pending.last, deps.network)
+    )
+      throw new Error("Raw capture pending range differs");
+    if (pending.last <= lastContiguous) {
+      await deps.store.acknowledgeWatermark(pending.key, pending.receipt);
+      pending = null;
+    } else if (pending.first !== lastContiguous + 1)
+      throw new Error("Raw capture pending range conflicts with its watermark");
+  }
+
   // The head comes from whichever endpoint answers FIRST, not from a fixed one:
   // a tick must not be lost because the preferred host is down when every other
   // host could have served the whole run.
@@ -552,6 +580,13 @@ export async function captureTick(deps: {
     );
   }
   const heights = nextCaptureHeights(lastContiguous, head, deps.maxPerTick);
+  if (
+    pending &&
+    (head < pending.last || heights.length < pending.last - pending.first + 1)
+  )
+    throw new Error(
+      "Raw capture pending range exceeds its available capture budget",
+    );
   if (heights.length === 0) {
     return {
       captured: 0,
@@ -575,12 +610,16 @@ export async function captureTick(deps: {
   const flush = async (batch: RawBlockCapture[]) => {
     const first = batch[0]!.block_number;
     const last = batch[batch.length - 1]!.block_number;
-    await deps.store.put(
+    const receipt = await deps.store.put(
       rawBatchKey(first, last, deps.network),
       batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
     );
     // Only now -- the bytes are durable, so the watermark may claim them.
     await deps.watermark.write(last);
+    await deps.store.acknowledgeWatermark?.(
+      rawBatchKey(first, last, deps.network),
+      receipt,
+    );
     return last;
   };
 
@@ -592,8 +631,11 @@ export async function captureTick(deps: {
   // When the previous chunk's read STARTED, so the gap paces the cycle rather
   // than being added on top of it (see `minGapMs`).
   let previousChunkStartedAt: number | null = null;
-  for (let offset = 0; offset < heights.length; offset += flushEvery) {
-    const chunkHeights = heights.slice(offset, offset + flushEvery);
+  for (let offset = 0; offset < heights.length;) {
+    const count =
+      offset === 0 && pending ? pending.last - pending.first + 1 : flushEvery;
+    const chunkHeights = heights.slice(offset, offset + count);
+    offset += count;
     // BEFORE the read, and never before the first: the gap belongs between two
     // chunks' bursts, so pacing never delays a tick that captures one chunk.
     if (previousChunkStartedAt !== null && chunkGapMs > 0) {
@@ -615,6 +657,16 @@ export async function captureTick(deps: {
           deps.requireEvents,
           deps.admission,
         );
+        if (
+          pending &&
+          captured === 0 &&
+          got.blocks.length !== pending.last - pending.first + 1
+        ) {
+          lastError = new Error(
+            "Raw capture pending range cannot be reconstructed",
+          );
+          continue;
+        }
         chunk = got;
         if (got.blocks.length > 0) break;
         // Captured NOTHING: this host cannot serve the very next height, which
@@ -633,6 +685,12 @@ export async function captureTick(deps: {
       }
     }
     chunkIndex += 1;
+    if (
+      pending &&
+      captured === 0 &&
+      chunk?.blocks.length !== pending.last - pending.first + 1
+    )
+      throw new Error("Raw capture pending range cannot be reconstructed");
 
     if (chunk === null || chunk.blocks.length === 0) {
       // Stop at the FIRST failure and keep what earlier chunks wrote.

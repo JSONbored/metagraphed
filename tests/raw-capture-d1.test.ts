@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { gunzipSync } from "node:zlib";
 import { afterEach, test, vi } from "vitest";
+import {
+  prepareRawCapture,
+  rawCaptureIntentKey,
+  encodeRawCaptureIntent,
+} from "../src/raw-capture-retry-intent.ts";
 import { rawCaptureD1 } from "../src/raw-capture-d1.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
 
@@ -40,6 +45,31 @@ function fixture() {
       "utf8",
     ),
   );
+  sql.exec(
+    readFileSync(
+      new URL("../migrations/d1/0027_generated_artifacts.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  const physical = readFileSync(
+    new URL("../db/d1-schema.sql", import.meta.url),
+    "utf8",
+  );
+  const watermarkSchema = /CREATE TABLE raw_capture_state[\s\S]*?;/.exec(
+    physical,
+  );
+  assert(watermarkSchema);
+  sql.exec(watermarkSchema[0]);
+  sql
+    .prepare(
+      "INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES(?,9,1000)",
+    )
+    .run("mainnet");
+  sql
+    .prepare(
+      "INSERT INTO raw_capture_state(network,last_contiguous_block,updated_at) VALUES(?,9,1000)",
+    )
+    .run("testnet");
   let fail: ((text: string, params: unknown[]) => void) | undefined;
   let afterWrite: typeof fail;
   let readback: ((text: string, result: unknown) => unknown) | undefined;
@@ -134,6 +164,39 @@ function archive(f: ReturnType<typeof fixture>, objectKey = key()) {
     .run(nativeKey, "a".repeat(32), objectKey, row.sha256!);
   return row;
 }
+
+function seedLegacy(
+  f: ReturnType<typeof fixture>,
+  raw: string,
+  objectKey = key(),
+) {
+  const prepared = prepareRawCapture(objectKey, raw);
+  const d = prepared.descriptor;
+  f.sql
+    .prepare(
+      "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at,complete) VALUES(?,?,?,?,?,?,?,?,?,?,1)",
+    )
+    .run(...Object.values(d));
+  for (let part = 0; part < d.parts; part++)
+    f.sql
+      .prepare("INSERT INTO raw_capture_chunks VALUES(?,?,?,?)")
+      .run(
+        objectKey,
+        d.sha256,
+        part,
+        prepared.compressed.subarray(part * 65_536, (part + 1) * 65_536),
+      );
+  f.sql
+    .prepare(
+      "INSERT INTO raw_capture_selected VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET sha256=excluded.sha256,network=excluded.network,last_block=excluded.last_block,captured_at=excluded.captured_at",
+    )
+    .run(objectKey, d.sha256, d.network, d.last_block, d.captured_at);
+  return d;
+}
+
+const precedingKey = () => key().replaceAll("000000000010", "000000000009");
+const precedingValue = () =>
+  value().replace('"block_number":10', '"block_number":9');
 
 const transientStorageErrors = [
   "D1_ERROR: Network connection lost.",
@@ -365,12 +428,15 @@ test("archiving between selection and acknowledgement still confirms the exact c
   );
 });
 
-test("an older capture cannot displace an archived selection and newer captures retain old history", async () => {
+test("legacy archive selections retain history and refuse prospective retry adoption", async () => {
   const f = fixture();
-  await f.store.put(key(), value(2000));
+  seedLegacy(f, value(2000));
   const old = archive(f);
-  await assert.rejects(f.store.put(key(), value(1000)), /selection/);
-  await f.store.put(key(), value(3000));
+  await assert.rejects(
+    f.store.put(key(), value(1000)),
+    /intent was not acquired/,
+  );
+  seedLegacy(f, value(3000));
   const current = archive(f);
   assert.equal(
     f.sql.prepare("SELECT count(*) n FROM raw_capture_archives").get()?.n,
@@ -388,7 +454,12 @@ test("an older capture cannot displace an archived selection and newer captures 
       .get(current.sha256!)?.selected,
     1,
   );
+  f.sql.exec("UPDATE raw_capture_state SET last_contiguous_block=10");
   await assert.rejects(f.store.put(key(), value(2000)), /selection/);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM generated_artifacts").get()?.n,
+    0,
+  );
 });
 
 test("an archive with changed source metadata cannot release staging bytes", async () => {
@@ -458,21 +529,23 @@ test("chunking stays bounded and retries reuse existing immutable storage", asyn
 
 test("a partial write or corrupt readback never replaces the prior selected capture", async () => {
   const f = fixture();
-  await f.store.put(key(), value());
-  const prior = f.selected();
+  seedLegacy(f, precedingValue(), precedingKey());
+  const prior = f.selected(precedingKey());
   f.failWith((text) => {
     if (text.startsWith("INSERT INTO raw_capture_chunks"))
       throw new Error("lost connection");
   });
   await assert.rejects(f.store.put(key(), value(2000)));
-  assert.equal(f.selected(), prior);
+  assert.equal(f.selected(precedingKey()), prior);
+  assert.equal(f.selected(), undefined);
   f.failWith();
   const digest = createHash("sha256").update(value(2000)).digest("hex");
   f.sql
     .prepare("INSERT INTO raw_capture_chunks VALUES(?,?,0,?)")
     .run(key(), digest, Buffer.from("corrupt"));
   await assert.rejects(f.store.put(key(), value(2000)), /readback differs/);
-  assert.equal(f.selected(), prior);
+  assert.equal(f.selected(precedingKey()), prior);
+  assert.equal(f.selected(), undefined);
 });
 
 test("lost selection acknowledgement can be retried without duplicate reservations", async () => {
@@ -491,15 +564,16 @@ test("lost selection acknowledgement can be retried without duplicate reservatio
   );
 });
 
-test("older capture invocations cannot replace newer selected data", async () => {
+test("older provenance replays the pending winner without replacing selected data", async () => {
   const f = fixture();
   await f.store.put(key(), value(2000));
   const prior = f.selected();
-  await assert.rejects(
-    f.store.put(key(), value(1000)),
-    /selection was not acknowledged/,
-  );
+  await f.store.put(key(), value(1000));
   assert.equal(f.selected(), prior);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
 });
 
 test("a full staging budget rejects new bytes before any incomplete selection", async () => {
@@ -549,16 +623,21 @@ test("missing or mismatched reservation responses cannot publish a capture", asy
 
 test("an incomplete chunk response leaves the prior capture selected and retries safely", async () => {
   const f = fixture();
-  await f.store.put(key(), value());
-  const prior = f.selected();
+  seedLegacy(f, precedingValue(), precedingKey());
+  const prior = f.selected(precedingKey());
   f.readWith((text, result) =>
     text.startsWith("SELECT part,hex(data)") ? [] : result,
   );
   await assert.rejects(f.store.put(key(), value(2000)), /chunk census differs/);
-  assert.equal(f.selected(), prior);
+  assert.equal(f.selected(precedingKey()), prior);
+  assert.equal(f.selected(), undefined);
   f.readWith();
-  await f.store.put(key(), value(2000));
-  assert.notEqual(f.selected(), prior);
+  await f.store.put(key(), value(3000));
+  assert.equal(f.selected(precedingKey()), prior);
+  assert.equal(
+    f.selected(),
+    createHash("sha256").update(value(2000)).digest("hex"),
+  );
 });
 
 test("corrupt archive receipts cannot acknowledge a raw capture", async () => {
@@ -625,4 +704,711 @@ test("D1 selection with a missing database cannot fall through to an R2 writer",
   );
   assert.equal(result.ok, false);
   assert.equal(writes, 0);
+});
+
+const intentPayload = (f: ReturnType<typeof fixture>, network = "mainnet") =>
+  f.sql
+    .prepare("SELECT payload FROM generated_artifacts WHERE key=?")
+    .get(rawCaptureIntentKey(network as "mainnet" | "testnet"))?.payload;
+
+test("fresh capture provenance resumes one incomplete reservation after writer recreation", async () => {
+  const f = fixture();
+  const extrinsics = [randomBytes(900_000).toString("hex")];
+  const original = value(1000, extrinsics);
+  let windows = 0;
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks") && ++windows === 2)
+      throw new Error("synthetic second-window failure");
+  });
+  await assert.rejects(f.store.put(key(), original), /second-window failure/);
+  const pinned = intentPayload(f);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+    8,
+  );
+  f.failWith();
+  await rawCaptureD1(f.db).put(key(), value(2000, extrinsics));
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+  assert.equal(
+    f.sql
+      .prepare("SELECT count(*) n FROM raw_capture_batches WHERE complete=1")
+      .get()?.n,
+    1,
+  );
+  assert.equal(
+    f.selected(),
+    createHash("sha256").update(original).digest("hex"),
+  );
+  assert.equal(intentPayload(f), pinned);
+  const rows = f.sql
+    .prepare("SELECT data FROM raw_capture_chunks ORDER BY part")
+    .all() as { data: Uint8Array }[];
+  assert.equal(
+    gunzipSync(Buffer.concat(rows.map((r) => Buffer.from(r.data)))).toString(),
+    original,
+  );
+});
+
+test.each([false, true])(
+  "concurrent fresh writers share one original intent, reversed=%s",
+  async (reversed) => {
+    const f = fixture();
+    const times = reversed ? [2000, 1000] : [1000, 2000];
+    const receipts = await Promise.all(
+      times.map((time) => rawCaptureD1(f.db).put(key(), value(time))),
+    );
+    assert.deepEqual(receipts[0], receipts[1]);
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      1,
+    );
+    assert.equal(
+      f.selected(),
+      createHash("sha256").update(value(times[0]!)).digest("hex"),
+    );
+  },
+);
+
+test("a changed pending chain payload refuses without another reservation", async () => {
+  const f = fixture();
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks"))
+      throw new Error("retain original");
+  });
+  await assert.rejects(f.store.put(key(), value()), /retain original/);
+  f.failWith();
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  const pinned = intentPayload(f);
+  await assert.rejects(
+    rawCaptureD1(f.db).put(key(), value(2000, ["0xchanged"])),
+    /original bytes differ/,
+  );
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  assert.equal(intentPayload(f), pinned);
+  assert.equal(f.selected(), undefined);
+});
+
+test("a pending shorter range is returned by exact identity after recreation", async () => {
+  const f = fixture();
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks"))
+      throw new Error("retain original");
+  });
+  await assert.rejects(f.store.put(key(), value()), /retain original/);
+  const pending = await rawCaptureD1(f.db).pending!("mainnet");
+  assert.equal(pending?.key, key());
+  assert.equal(pending?.first, 10);
+  assert.equal(pending?.last, 10);
+  assert.equal(await f.store.pending!("testnet"), null);
+});
+
+test("watermark acknowledgment releases only control metadata and preserves capture bytes", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  const chunks = f.sql
+    .prepare("SELECT hex(data) bytes FROM raw_capture_chunks")
+    .all();
+  await assert.rejects(
+    f.store.acknowledgeWatermark!(key(), receipt),
+    /watermark was not acknowledged/,
+  );
+  assert(intentPayload(f));
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  await f.store.acknowledgeWatermark!(key(), receipt);
+  assert.equal(intentPayload(f), undefined);
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  assert.deepEqual(
+    f.sql.prepare("SELECT hex(data) bytes FROM raw_capture_chunks").all(),
+    chunks,
+  );
+  assert(f.selected());
+});
+
+test("same-length staging corruption cannot release an acknowledged watermark intent", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  const pinned = intentPayload(f);
+  f.sql.exec("UPDATE raw_capture_chunks SET data=zeroblob(length(data))");
+  await assert.rejects(
+    f.store.acknowledgeWatermark!(key(), receipt),
+    /compressed source differs/,
+  );
+  assert.equal(intentPayload(f), pinned);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+});
+
+test("a lost committed watermark reply is reconciled without recapturing bytes", async () => {
+  const f = fixture();
+  await f.store.put(key(), value());
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  const pending = await rawCaptureD1(f.db).pending!("mainnet");
+  assert(pending);
+  await rawCaptureD1(f.db).acknowledgeWatermark!(pending.key, pending.receipt);
+  assert.equal(await f.store.pending!("mainnet"), null);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+});
+
+test("a lost committed control release is safe to acknowledge again", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  f.failAfterWriteWith((text) => {
+    if (text.startsWith("DELETE FROM generated_artifacts"))
+      throw new Error("lost control reply");
+  });
+  await assert.rejects(
+    f.store.acknowledgeWatermark!(key(), receipt),
+    /lost control reply/,
+  );
+  assert.equal(intentPayload(f), undefined);
+  f.failAfterWriteWith();
+  await rawCaptureD1(f.db).acknowledgeWatermark!(key(), receipt);
+  assert.equal(intentPayload(f), undefined);
+});
+
+test("exact old complete replay cannot reserve bytes or remove a newer intent", async () => {
+  const f = fixture();
+  const original = value();
+  const receipt = await f.store.put(key(), original);
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  await f.store.acknowledgeWatermark!(key(), receipt);
+  const nextKey = key().replaceAll("000000000010", "000000000011");
+  const nextValue = value().replace('"block_number":10', '"block_number":11');
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_chunks"))
+      throw new Error("next pending");
+  });
+  await assert.rejects(
+    rawCaptureD1(f.db).put(nextKey, nextValue),
+    /next pending/,
+  );
+  f.failWith();
+  const next = intentPayload(f);
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  const old = await rawCaptureD1(f.db).put(key(), original);
+  await f.store.acknowledgeWatermark!(key(), old);
+  assert.equal(intentPayload(f), next);
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  await assert.rejects(f.store.put(key(), value(2000)), /already acknowledged/);
+  assert.equal(intentPayload(f), next);
+});
+
+test("conditional intent insertion refuses a watermark moved after its read", async () => {
+  const f = fixture();
+  f.failWith((text) => {
+    if (text.includes("INSERT INTO generated_artifacts"))
+      f.sql.exec(
+        "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+      );
+  });
+  await assert.rejects(f.store.put(key(), value()), /intent was not acquired/);
+  assert.equal(intentPayload(f), undefined);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("a fresh untyped watermark cannot grant an intent or reserve bytes", async () => {
+  const f = fixture();
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block='not-an-integer' WHERE network='mainnet'",
+  );
+  await assert.rejects(f.store.put(key(), value()), /intent was not acquired/);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM generated_artifacts").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("reservation refuses a watermark moved after intent acquisition", async () => {
+  const f = fixture();
+  let moved = false;
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_batches")) {
+      assert.equal(moved, false);
+      moved = true;
+      f.sql.exec(
+        "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+      );
+    }
+  });
+  await assert.rejects(
+    f.store.put(key(), value()),
+    /reservation readback differs/,
+  );
+  assert(moved);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM generated_artifacts").get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("conditional reservation refuses an intent replaced after readback", async () => {
+  const f = fixture();
+  const nextKey = key().replaceAll("000000000010", "000000000011");
+  const nextValue = value().replace('"block_number":10', '"block_number":11');
+  const next = encodeRawCaptureIntent(prepareRawCapture(nextKey, nextValue));
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_batches"))
+      f.sql
+        .prepare("UPDATE generated_artifacts SET payload=? WHERE key=?")
+        .run(next, rawCaptureIntentKey("mainnet"));
+  });
+  await assert.rejects(
+    f.store.put(key(), value()),
+    /reservation readback differs/,
+  );
+  assert.equal(intentPayload(f), next);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("an overlapping incomplete legacy range is retained and cannot become a new intent", async () => {
+  const f = fixture();
+  const legacyKey = key().replace("000000000010.ndjson", "000000000011.ndjson");
+  const legacy =
+    value() + value().replace('"block_number":10', '"block_number":11');
+  seedLegacy(f, legacy, legacyKey);
+  f.sql.exec(
+    "DELETE FROM raw_capture_selected; UPDATE raw_capture_batches SET complete=0",
+  );
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  const bytes = f.sql
+    .prepare("SELECT hex(data) data FROM raw_capture_chunks")
+    .all();
+  await assert.rejects(
+    f.store.put(key(), value(2000)),
+    /intent was not acquired/,
+  );
+  assert.equal(intentPayload(f), undefined);
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  assert.deepEqual(
+    f.sql.prepare("SELECT hex(data) data FROM raw_capture_chunks").all(),
+    bytes,
+  );
+});
+
+test.each([null, {}, { intentKey: "wrong", payload: "{}" }])(
+  "malformed acknowledgment receipt refuses without writes: %s",
+  async (bad) => {
+    const f = fixture();
+    const receipt = await f.store.put(key(), value());
+    const pinned = intentPayload(f);
+    await assert.rejects(f.store.acknowledgeWatermark!(key(), bad));
+    assert.equal(intentPayload(f), pinned);
+    await assert.rejects(
+      f.store.acknowledgeWatermark!(key(true), receipt),
+      /receipt differs/,
+    );
+    assert.equal(intentPayload(f), pinned);
+  },
+);
+
+test("an oversized stored control row refuses without returning its body", async () => {
+  const f = fixture();
+  const payload = JSON.stringify({ padding: "x".repeat(100_000) });
+  f.sql
+    .prepare("INSERT INTO generated_artifacts(key,payload) VALUES(?,?)")
+    .run(rawCaptureIntentKey("mainnet"), payload);
+  await assert.rejects(f.store.pending!("mainnet"), /metadata budget/);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test.each(["intent", "reservation", "chunks", "completion"])(
+  "a lost committed %s reply retains one exact forward identity",
+  async (phase) => {
+    const f = fixture();
+    vi.useFakeTimers();
+    let failures = 0;
+    f.failAfterWriteWith((text) => {
+      const selected =
+        phase === "intent"
+          ? text.includes("INSERT INTO generated_artifacts")
+          : phase === "reservation"
+            ? text.startsWith("INSERT INTO raw_capture_batches")
+            : phase === "chunks"
+              ? text.startsWith("INSERT INTO raw_capture_chunks")
+              : text.startsWith("UPDATE raw_capture_batches");
+      if (selected && failures++ === 0)
+        throw new Error("D1_ERROR: Network connection lost.");
+    });
+    const promise = f.store.put(key(), value());
+    await vi.runAllTimersAsync();
+    await promise;
+    assert.equal(
+      f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+      1,
+    );
+    assert.equal(
+      f.selected(),
+      createHash("sha256").update(value()).digest("hex"),
+    );
+    assert(intentPayload(f));
+  },
+);
+
+function fillLegacyStaging(
+  f: ReturnType<typeof fixture>,
+  count: number,
+  corruptCap = false,
+) {
+  if (corruptCap) f.sql.exec("DROP TRIGGER raw_capture_reserve");
+  const statement = f.sql.prepare(
+    "INSERT INTO raw_capture_batches(key,sha256,network,first_block,last_block,raw_bytes,compressed_bytes,compressed_sha256,parts,captured_at) VALUES(?,?,'testnet',?,?,1,1,?,1,1000)",
+  );
+  f.sql.exec("BEGIN");
+  try {
+    for (let i = 0; i < count; i++) {
+      const height = 100_000 + i;
+      const padded = String(height).padStart(12, "0");
+      statement.run(
+        "chain/raw/testnet/blocks/" + padded + "-" + padded + ".ndjson",
+        i.toString(16).padStart(64, "0"),
+        height,
+        height,
+        "a".repeat(64),
+      );
+    }
+    f.sql.exec("COMMIT");
+  } catch (error) {
+    f.sql.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+test("the existing 16384-object boundary stays enforced after a complete bounded staging census", async () => {
+  const f = fixture();
+  fillLegacyStaging(f, 16384);
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  const started = performance.now();
+  await assert.rejects(f.store.put(key(), value()), /CHECK constraint/);
+  assert(Number.isFinite(performance.now() - started));
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    16384,
+  );
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+  assert(intentPayload(f));
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM generated_artifacts").get()?.n,
+    1,
+  );
+});
+
+test("a source exceeding the staging census cap refuses without treating a sample as absence", async () => {
+  const f = fixture();
+  fillLegacyStaging(f, 16385, true);
+  const before = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+  await assert.rejects(f.store.put(key(), value()), /intent was not acquired/);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    16385,
+  );
+  assert.equal(intentPayload(f), undefined);
+  assert.deepEqual(
+    f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+    before,
+  );
+});
+
+test("a verified exact native archive can acknowledge its original pending intent", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  archive(f);
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  await f.store.acknowledgeWatermark!(key(), receipt);
+  assert.equal(intentPayload(f), undefined);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_archives").get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test.each(["missing", "incomplete", "changed"])(
+  "acknowledgment refuses a %s complete source and preserves its intent",
+  async (kind) => {
+    const f = fixture();
+    const receipt = await f.store.put(key(), value());
+    f.sql.exec(
+      "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+    );
+    if (kind === "missing")
+      f.sql.exec(
+        "DELETE FROM raw_capture_selected; DELETE FROM raw_capture_batches",
+      );
+    else if (kind === "incomplete")
+      f.sql.exec("UPDATE raw_capture_batches SET complete=0");
+    else f.sql.exec("UPDATE raw_capture_batches SET raw_bytes=raw_bytes+1");
+    const before = f.sql
+      .prepare("SELECT payload FROM generated_artifacts")
+      .get();
+    const budget = f.sql.prepare("SELECT * FROM raw_capture_budget").get();
+    await assert.rejects(
+      f.store.acknowledgeWatermark!(key(), receipt),
+      /complete source differs/,
+    );
+    assert.deepEqual(
+      f.sql.prepare("SELECT payload FROM generated_artifacts").get(),
+      before,
+    );
+    assert.deepEqual(
+      f.sql.prepare("SELECT * FROM raw_capture_budget").get(),
+      budget,
+    );
+  },
+);
+
+test("archive conversion during source verification acknowledges only the exact attestation", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  const chunks = f.sql
+    .prepare("SELECT data FROM raw_capture_chunks ORDER BY part")
+    .all()
+    .map((row) => Buffer.from(row.data as Uint8Array));
+  assert.equal(gunzipSync(Buffer.concat(chunks)).toString(), value());
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  let converted = false;
+  f.failWith((text) => {
+    if (
+      text.startsWith("SELECT part,hex(data)") &&
+      text.includes("storage_type")
+    ) {
+      assert.equal(converted, false);
+      converted = true;
+      archive(f);
+    }
+  });
+  await f.store.acknowledgeWatermark!(key(), receipt);
+  assert(converted);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM generated_artifacts").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_archives").get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT bytes FROM raw_capture_budget").get()?.bytes,
+    0,
+  );
+});
+
+test("a vanished selection cannot acknowledge publication and exact retry repairs its pointer", async () => {
+  const f = fixture();
+  let removed = false;
+  f.failAfterWriteWith((text) => {
+    if (text.startsWith("UPDATE raw_capture_batches") && !removed) {
+      removed = true;
+      f.sql.exec("DELETE FROM raw_capture_selected");
+    }
+  });
+  await assert.rejects(
+    f.store.put(key(), value()),
+    /selection was not acknowledged/,
+  );
+  assert(removed);
+  assert.equal(
+    f.sql.prepare("SELECT complete FROM raw_capture_batches").get()?.complete,
+    1,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+  assert.equal(f.selected(), undefined);
+  f.failAfterWriteWith();
+  await f.store.put(key(), value(2000));
+  assert.equal(
+    f.selected(),
+    prepareRawCapture(key(), value()).descriptor.sha256,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+});
+
+test.each(["missing", "extra", "type"])(
+  "invalid staging chunk %s cannot release the intent",
+  async (mode) => {
+    const f = fixture();
+    const receipt = await f.store.put(key(), value());
+    f.sql.exec(
+      "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+    );
+    if (mode === "missing") f.sql.exec("DELETE FROM raw_capture_chunks");
+    else if (mode === "extra") {
+      const sha = f.selected()!;
+      f.sql
+        .prepare("INSERT INTO raw_capture_chunks VALUES(?,?,1,?)")
+        .run(key(), sha, Buffer.from("extra"));
+    } else f.sql.exec("UPDATE raw_capture_chunks SET data=CAST(data AS TEXT)");
+    const pinned = intentPayload(f);
+    await assert.rejects(f.store.acknowledgeWatermark!(key(), receipt));
+    assert.equal(intentPayload(f), pinned);
+  },
+);
+
+test("an archive attestation with changed identity cannot release a pending intent", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  archive(f);
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'; UPDATE raw_capture_archives SET native_key='wrong'",
+  );
+  const pinned = intentPayload(f);
+  await assert.rejects(
+    f.store.acknowledgeWatermark!(key(), receipt),
+    /archive identity differs/,
+  );
+  assert.equal(intentPayload(f), pinned);
+});
+
+test("network slots reject a different network's otherwise valid control identity", async () => {
+  const f = fixture();
+  const payload = encodeRawCaptureIntent(prepareRawCapture(key(true), value()));
+  f.sql
+    .prepare("INSERT INTO generated_artifacts(key,payload) VALUES(?,?)")
+    .run(rawCaptureIntentKey("mainnet"), payload);
+  await assert.rejects(f.store.pending!("mainnet"), /network differs/);
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    0,
+  );
+});
+
+test("an untyped watermark cannot grant or release a capture intent", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block='not-a-height' WHERE network='mainnet'",
+  );
+  const pinned = intentPayload(f);
+  await assert.rejects(
+    f.store.acknowledgeWatermark!(key(), receipt),
+    /watermark was not acknowledged/,
+  );
+  assert.equal(intentPayload(f), pinned);
+});
+
+test("a missing bootstrap watermark is admitted only at the declared network floor", async () => {
+  const f = fixture();
+  f.sql.exec("DELETE FROM raw_capture_state WHERE network='mainnet'");
+  await assert.rejects(f.store.put(key(), value()), /intent was not acquired/);
+  const height = 8_756_635;
+  const padded = String(height).padStart(12, "0");
+  const objectKey = "chain/raw/blocks/" + padded + "-" + padded + ".ndjson";
+  const raw = value().replace('"block_number":10', '"block_number":' + height);
+  const receipt = await f.store.put(objectKey, raw);
+  assert(receipt);
+  assert.equal(
+    f.selected(objectKey),
+    createHash("sha256").update(raw).digest("hex"),
+  );
+  assert.equal(
+    f.sql.prepare("SELECT objects FROM raw_capture_budget").get()?.objects,
+    1,
+  );
+});
+
+test("archive conversion before reservation cannot recreate released staging", async () => {
+  const f = fixture();
+  const receipt = await f.store.put(key(), value());
+  const pending = intentPayload(f);
+  let converted = false;
+  f.failWith((text) => {
+    if (text.startsWith("INSERT INTO raw_capture_batches")) {
+      assert.equal(converted, false);
+      converted = true;
+      archive(f);
+    }
+  });
+  await assert.rejects(
+    f.store.put(key(), value(2000)),
+    /reservation readback differs/,
+  );
+  assert(converted);
+  assert.equal(intentPayload(f), pending);
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_batches").get()?.n,
+    0,
+  );
+  assert.equal(
+    f.sql.prepare("SELECT count(*) n FROM raw_capture_chunks").get()?.n,
+    0,
+  );
+  assert.deepEqual(
+    { ...f.sql.prepare("SELECT bytes,objects FROM raw_capture_budget").get() },
+    { bytes: 0, objects: 0 },
+  );
+  f.failWith();
+  assert.deepEqual(await f.store.put(key(), value(3000)), receipt);
+  f.sql.exec(
+    "UPDATE raw_capture_state SET last_contiguous_block=10 WHERE network='mainnet'",
+  );
+  await f.store.acknowledgeWatermark!(key(), receipt);
+  assert.equal(intentPayload(f), undefined);
 });
