@@ -679,6 +679,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 103,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn103:hyperparam:9332024:subnet_is_active",
+            "chain:sn103:hyperparam:9321606:min_burn_tao",
+            "chain:sn103:hyperparam:9321606:subnet_is_active",
+            "chain:sn103:hyperparam:9319806:min_burn_tao"
+          ],
+          "text": "Subnet 103 recorded four hyperparameter changes between 19 October and 21 October."
+        }
+      ],
+      "slug": "2026-w43",
+      "sources": [
+        {
+          "id": "chain:sn103:hyperparam:9332024:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9332024.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-21T13:06:30.641Z",
+          "title": "Subnet 103: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9332024"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9321606:min_burn_tao",
+          "summary": "Minimum burn changed from 0.000022222 to 0.0005 at block #9321606.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-20T02:05:49.068Z",
+          "title": "Subnet 103: Minimum burn 0.000022222 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9321606"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9321606:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9321606.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-20T02:05:49.068Z",
+          "title": "Subnet 103: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9321606"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9319806:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.000022222 at block #9319806.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-19T20:05:49.545Z",
+          "title": "Subnet 103: Minimum burn 1 → 0.000022222",
+          "url": "https://metagraph.sh/blocks/9319806"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 43,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 104,
       "schema_version": 1,
       "sentences": [
