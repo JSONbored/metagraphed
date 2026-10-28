@@ -222,7 +222,7 @@
     "workers-og": "^0.0.27",
     "yaml": "^2.9.0",
     "zod": "4.4.3",
-    "dompurify": "3.4.16"
+    "dompurify": "3.4.17"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260907.1",
@@ -264,7 +264,7 @@
       "undici": "7.30.1"
     },
     "@tanstack/start-server-core": "1.169.40",
-    "dompurify": "3.4.16",
+    "dompurify": "3.4.17",
     "fast-uri": "3.1.8",
     "ip-address": "10.7.4",
     "proxy-addr": "2.0.8",
