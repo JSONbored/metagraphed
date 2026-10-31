@@ -9,6 +9,53 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [1.5.0](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.2...ui-v1.5.0) (2026-10-31)
+
+
+### Features
+
+* **api:** add bounded subnet price-share composition ([#11550](https://github.com/JSONbored/metagraphed/issues/11550)) ([#12797](https://github.com/JSONbored/metagraphed/issues/12797)) ([7ec447d](https://github.com/JSONbored/metagraphed/commit/7ec447d8634e3330593c531272e08c867dd77957))
+* **mcp:** align OAuth consent with the website design ([7aad268](https://github.com/JSONbored/metagraphed/commit/7aad268f9175fec5662a005ffb4fff3fb3289232))
+* **mcp:** align OAuth consent with the website design ([26a26e7](https://github.com/JSONbored/metagraphed/commit/26a26e71512e259afccea81a19480f9c01976739))
+* **ui:** add discreet company attribution to footer ([#12871](https://github.com/JSONbored/metagraphed/issues/12871)) ([6da9a63](https://github.com/JSONbored/metagraphed/commit/6da9a633c6dedea1ca3b5c382f4796ce90f5bb27)), closes [#12870](https://github.com/JSONbored/metagraphed/issues/12870)
+
+
+### Bug Fixes
+
+* **api:** complete checked catalog pagination across consumers ([#12791](https://github.com/JSONbored/metagraphed/issues/12791)) ([66fd71e](https://github.com/JSONbored/metagraphed/commit/66fd71ece20344c5956798bdc0ab8e99c62d20ed))
+* **api:** correct emission-share semantics and provenance ([#12770](https://github.com/JSONbored/metagraphed/issues/12770)) ([3d4bf1c](https://github.com/JSONbored/metagraphed/commit/3d4bf1cac0b1c5ec347a1781cf18ed3d09a01d09))
+* **catalog:** guard pagination and complete CSV walks ([#12772](https://github.com/JSONbored/metagraphed/issues/12772)) ([76d857e](https://github.com/JSONbored/metagraphed/commit/76d857e3b3b3b759734c6d3b904c51380845db68))
+* **ci:** qualify Vite and editor security updates with UI checks ([#12886](https://github.com/JSONbored/metagraphed/issues/12886)) ([69583af](https://github.com/JSONbored/metagraphed/commit/69583af0fd83492569b6ac59a5766ee50adc40ea))
+* **data:** withhold unproven account and validator capital ([#12775](https://github.com/JSONbored/metagraphed/issues/12775)) ([53cff85](https://github.com/JSONbored/metagraphed/commit/53cff852a5e3dd999fd7926290738859bb8cbcb6))
+* **deps:** align patched Vite 7 and Wrangler runtimes ([#12760](https://github.com/JSONbored/metagraphed/issues/12760)) ([54ac44e](https://github.com/JSONbored/metagraphed/commit/54ac44ecda22306e7384af3c98b645ad9fc1c732))
+* **deps:** bound serialized input and indexed source maps ([#12695](https://github.com/JSONbored/metagraphed/issues/12695)) ([c31193d](https://github.com/JSONbored/metagraphed/commit/c31193d04bfb2b03449cd271f4266b5510789149))
+* **deps:** remediate vulnerable workspace and worker dependencies ([#12380](https://github.com/JSONbored/metagraphed/issues/12380)) ([f7e1cd8](https://github.com/JSONbored/metagraphed/commit/f7e1cd84a4cbbb3d80caff4f321f0499a3febbda))
+* **docs:** generate whitespace-clean API tag indexes ([#12779](https://github.com/JSONbored/metagraphed/issues/12779)) ([14c8082](https://github.com/JSONbored/metagraphed/commit/14c8082be15fbbcf964db6d974994e4a0846cf67))
+* **mcp:** handle consent scope and IPv6 edge cases ([#12573](https://github.com/JSONbored/metagraphed/issues/12573)) ([a0cc0c7](https://github.com/JSONbored/metagraphed/commit/a0cc0c728dd57c7690135f928034e9fb559aaf44))
+* **og:** normalize logo artwork and bind caches to content ([#12781](https://github.com/JSONbored/metagraphed/issues/12781)) ([e16679b](https://github.com/JSONbored/metagraphed/commit/e16679b8913f5103d45af4ef28a467c868f895fb))
+* **recovery:** preserve exact exports and nullable serving contracts ([#12731](https://github.com/JSONbored/metagraphed/issues/12731)) ([9455f54](https://github.com/JSONbored/metagraphed/commit/9455f54d5c4de673d4dd1ada34f5761a30e81704))
+* **recovery:** qualify restored serving and bounded cursors ([f70b867](https://github.com/JSONbored/metagraphed/commit/f70b86735c5c1ae455d96898320a0c0d606a7f3c))
+* **ui:** bound rejected requests and preserve cancellation ([#12469](https://github.com/JSONbored/metagraphed/issues/12469)) ([8af6f33](https://github.com/JSONbored/metagraphed/commit/8af6f339026d31cf04a6f7ef1abee9b59bcfb765))
+* **ui:** coalesce sticky header resize publication ([#12468](https://github.com/JSONbored/metagraphed/issues/12468)) ([3d2a47e](https://github.com/JSONbored/metagraphed/commit/3d2a47ef8433eda3f056222027400f40e9e1bb41))
+* **ui:** disclose failed position refreshes ([#12808](https://github.com/JSONbored/metagraphed/issues/12808)) ([4d2caeb](https://github.com/JSONbored/metagraphed/commit/4d2caeb09623ce02b0310fd44017d4cb399c2a29)), closes [#12112](https://github.com/JSONbored/metagraphed/issues/12112)
+* **ui:** establish deferred health error prerequisites ([#12801](https://github.com/JSONbored/metagraphed/issues/12801)) ([7f161ac](https://github.com/JSONbored/metagraphed/commit/7f161acb1e39e063eb860e4b77cb6920b24204a9))
+* **ui:** exclude identified native browser bridge rejection ([#12477](https://github.com/JSONbored/metagraphed/issues/12477)) ([d24dbe6](https://github.com/JSONbored/metagraphed/commit/d24dbe65b4172570be2f30456802373f54aeabe7))
+* **ui:** preserve restored null block counts ([f05b67d](https://github.com/JSONbored/metagraphed/commit/f05b67d33f83f1c0b8a246ebc1329089eeed34f8))
+* **ui:** preserve Root claim compatibility records ([fd46056](https://github.com/JSONbored/metagraphed/commit/fd4605673fe6c61eb57ffdd5f958287afcac3d9c))
+* **ui:** preserve Root claim compatibility records ([348a91f](https://github.com/JSONbored/metagraphed/commit/348a91fdaa367cfe2f05eff9e5fad6dd0580f554))
+* **ui:** show independent position observation clocks ([#12810](https://github.com/JSONbored/metagraphed/issues/12810)) ([712f19e](https://github.com/JSONbored/metagraphed/commit/712f19e88bd259f7158bd57e6ba5f8cab80fbb7b)), closes [#12112](https://github.com/JSONbored/metagraphed/issues/12112)
+* **ui:** skip incompatible beacon injection for signed browsers ([#12892](https://github.com/JSONbored/metagraphed/issues/12892)) ([fd75330](https://github.com/JSONbored/metagraphed/commit/fd75330c99d0f2f5855bc24656f7ad2f4958e0fc)), closes [#12890](https://github.com/JSONbored/metagraphed/issues/12890)
+* **ui:** stabilize hydration timestamps and rapid endpoint search ([#12454](https://github.com/JSONbored/metagraphed/issues/12454)) ([59461f3](https://github.com/JSONbored/metagraphed/commit/59461f32712f88e622bb662b2649dab39de50b77))
+* **ui:** update PostHog browser SDK patch ([#12555](https://github.com/JSONbored/metagraphed/issues/12555)) ([c4ead44](https://github.com/JSONbored/metagraphed/commit/c4ead442fd884e0617cfb9a2c645d99fc65ad9dd))
+* **ui:** use recommended MCP discovery for setup ([#12546](https://github.com/JSONbored/metagraphed/issues/12546)) ([331defa](https://github.com/JSONbored/metagraphed/commit/331defa0af3872f9bd4e07ba24828fa01d338f3a))
+
+
+### Documentation
+
+* **accounts:** reconcile position quantity comments and root coverage ([#12823](https://github.com/JSONbored/metagraphed/issues/12823)) ([ab5d25c](https://github.com/JSONbored/metagraphed/commit/ab5d25cb06c2159be2e782204396dc3a4682ff7c))
+* **ui:** explain required free MCP authentication ([#12593](https://github.com/JSONbored/metagraphed/issues/12593)) ([208bb9b](https://github.com/JSONbored/metagraphed/commit/208bb9bbd4829aec0996970f0af2b929a0debaca))
+* **ui:** recommend bounded MCP discovery for chat clients ([#12580](https://github.com/JSONbored/metagraphed/issues/12580)) ([1787f86](https://github.com/JSONbored/metagraphed/commit/1787f8624a9f8e4e9c39feabea28a2e62fea60d2))
+
 ## [1.4.2](https://github.com/JSONbored/metagraphed/compare/ui-v1.4.1...ui-v1.4.2) (2026-09-05)
 
 
