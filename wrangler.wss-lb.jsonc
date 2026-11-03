@@ -9,20 +9,24 @@
     "binding": "CF_VERSION_METADATA",
   },
   "upload_source_maps": true,
-  // This is the only signal left once the box-side Prometheus/Alertmanager pair
-  // goes away with the indexer host, so it is on at full sampling: a WSS proxy
-  // that stops finding upstreams is otherwise indistinguishable from an idle one.
+  // Disable Cloudflare telemetry ingestion; direct PostHog capture is independent.
+  "logpush": false,
+  "tail_consumers": [],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1,
+    "enabled": false,
+    "head_sampling_rate": 0,
     "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "invocation_logs": false,
+      "persist": false,
+      "destinations": [],
     },
     "traces": {
-      "enabled": true,
-      "head_sampling_rate": 1,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "persist": false,
+      "destinations": [],
     },
   },
   // WHY A FOURTH WORKER RATHER THAN A ROUTE ON `metagraphed`.

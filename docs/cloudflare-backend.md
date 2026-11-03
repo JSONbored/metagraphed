@@ -47,6 +47,12 @@ Worker responses include CORS, cache-control, ETags, and `x-metagraph-contract-v
 
 ## Cloudflare Resources
 
+Cloudflare Workers logs, traces, invocation logs, persistence, Logpush and
+telemetry export destinations are disabled in every deployment configuration,
+including UI previews. `cloudflare:verify:dry-run` checks that policy before a
+deployment can restore chargeable ingestion. Direct PostHog capture and the
+Analytics Engine dataset used by RPC usage are separate controls.
+
 - Worker name: `metagraphed`
 - Static assets binding: `ASSETS`
 - Registry and live-tier KV binding: `METAGRAPH_CONTROL`

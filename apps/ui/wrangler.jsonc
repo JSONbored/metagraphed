@@ -69,19 +69,24 @@
   // Run the SSR Worker in the Cloudflare PoP nearest the data it talks to
   // (api.metagraph.sh), not nearest the visitor — lowers SSR fetch latency.
   "placement": { "mode": "smart" },
-  // Full observability: logs (with per-invocation logs) + traces at 100% head
-  // sampling, matching the metagraphed backend Worker.
+  // Disable Cloudflare telemetry ingestion; direct PostHog capture is independent.
+  "logpush": false,
+  "tail_consumers": [],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1,
+    "enabled": false,
+    "head_sampling_rate": 0,
     "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "invocation_logs": false,
+      "persist": false,
+      "destinations": [],
     },
     "traces": {
-      "enabled": true,
-      "head_sampling_rate": 1,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "persist": false,
+      "destinations": [],
     },
   },
 }
