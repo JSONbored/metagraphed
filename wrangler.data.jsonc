@@ -419,18 +419,24 @@
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
   // not at the nearest edge to the client.
   "placement": { "mode": "smart" },
-  // Full observability — logs AND traces (matches the main Worker).
+  // Disable Cloudflare telemetry ingestion; direct PostHog capture is independent.
+  "logpush": false,
+  "tail_consumers": [],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1,
+    "enabled": false,
+    "head_sampling_rate": 0,
     "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "invocation_logs": false,
+      "persist": false,
+      "destinations": [],
     },
     "traces": {
-      "enabled": true,
-      "head_sampling_rate": 1,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "persist": false,
+      "destinations": [],
     },
   },
   // #8600: the TAO/USD index tick (ADR 0025 decision 5's 60-second cadence,
