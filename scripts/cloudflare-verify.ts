@@ -99,7 +99,9 @@ for (const configFile of [
   "apps/ui/wrangler.jsonc",
 ]) {
   const workerConfig: Row = JSON.parse(
-    stripJsonComments(await fs.readFile(path.join(repoRoot, configFile), "utf8")),
+    stripJsonComments(
+      await fs.readFile(path.join(repoRoot, configFile), "utf8"),
+    ),
   );
   errors.push(
     ...cloudflareObservabilityErrors(workerConfig).map(
