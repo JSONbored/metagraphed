@@ -7,6 +7,7 @@ export interface HistoryReadEnv extends TelemetryEnv {
   D1_RETAINED_BLOCKS?: import("./d1-store.ts").D1StoreBinding;
   RETAINED_BLOCKS_NETWORKS?: string;
   RETAINED_BLOCKS_STORE?: import("./retained-blocks-store.ts").RetainedBlocksStore;
+  NEURON_HISTORY_STORE?: import("./neuron-history-store.ts").NeuronHistoryStore;
 }
 /** Explicit offline/producer query seam; there is no request-time transport. */
 export type HistoricalQueryReader = (

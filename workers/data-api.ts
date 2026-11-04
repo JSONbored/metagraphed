@@ -21,6 +21,7 @@ import { selectedDailyQuotaStore } from "../src/daily-quota-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
+import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,
@@ -8959,6 +8960,56 @@ async function readNativeSubnetSnapshot(
   }
 }
 
+async function readNativeDailyHistory(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const neuron = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
+  );
+  const account = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/subnets\/(\d+)\/history$/,
+  );
+  if (!neuron && !account) return null;
+  try {
+    const store = selectedNeuronHistoryStore(env);
+    if (!store) return null;
+    const range = {
+      lo: windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+      hi: null,
+    };
+    const window = windowLabelFor(
+      url,
+      HISTORY_WINDOW_DAYS,
+      DEFAULT_HISTORY_WINDOW,
+    );
+    if (neuron) {
+      const netuid = Number(neuron[1]),
+        uid = Number(neuron[2]);
+      const rows = await store.neuronRows(
+        netuid,
+        uid,
+        range,
+        MAX_HISTORY_POINTS,
+      );
+      return json(buildNeuronHistory(rows, netuid, uid, { window }));
+    }
+    const ss58 = decodeURIComponent(account![1]),
+      netuid = Number(account![2]);
+    const rows = await store.accountRows(
+      ss58,
+      netuid,
+      range,
+      MAX_HISTORY_POINTS,
+    );
+    return json(buildAccountPositionHistory(rows, ss58, netuid, { window }));
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -9265,6 +9316,8 @@ async function dispatchDataApiRequest(
     // capture + an opaque 502 that never leaks DB detail.
     const nativeSnapshot = await readNativeSubnetSnapshot(url, env);
     if (nativeSnapshot) return nativeSnapshot;
+    const nativeHistory = await readNativeDailyHistory(url, env);
+    if (nativeHistory) return nativeHistory;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);

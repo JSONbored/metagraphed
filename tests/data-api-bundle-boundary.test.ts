@@ -94,6 +94,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-rate-limits.ts",
     "src/pg-daily-quota.ts",
     "src/native-auth-controls.ts",
+    "src/pg-neuron-history.ts",
     "src/archive-catalog-pg.ts",
     "src/archive-content-fs.ts",
     "src/mcp-server.ts",
