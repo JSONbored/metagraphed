@@ -357,6 +357,8 @@ foreign keys. It then attaches reservation, release, archive-source verification
 and archive-release effects. Shared statement locks establish ordering before
 tuple and foreign-key locks across those writes. An archive commit releases only
 its matching selected source and chunks, and adjusts the same budget atomically.
+Writes require `READ COMMITTED` isolation so cross-table validation observes the
+preceding writer after waiting for that lock.
 [Activation](../migrations/postgres/0019_raw_capture_activate.sql)
 
 The native fixture compares source metadata and transition effects, checks

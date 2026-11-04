@@ -76,6 +76,9 @@ LANGUAGE plpgsql SET search_path = pg_catalog AS $$
 BEGIN
     -- The statement boundary precedes tuple and foreign-key locks, including
     -- a first reservation or an archive whose release cascades to its chunks.
+    IF current_setting('transaction_isolation') <> 'read committed' THEN
+        RAISE EXCEPTION 'raw capture writes require read committed isolation' USING ERRCODE = '25000';
+    END IF;
     PERFORM pg_advisory_xact_lock(1297306, 0);
     RETURN NULL;
 END;

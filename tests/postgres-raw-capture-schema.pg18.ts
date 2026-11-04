@@ -384,6 +384,25 @@ describe(
       await compareSource();
     });
 
+    it("rejects fixed-snapshot writes before changing the source budget", async () => {
+      await activate();
+      for (const isolation of ["REPEATABLE READ", "SERIALIZABLE"]) {
+        await control.query(`BEGIN ISOLATION LEVEL ${isolation}`);
+        try {
+          await assert.rejects(
+            control.query(
+              toPositionalPlaceholders(batchSql),
+              batchValues("fixed-snapshot"),
+            ),
+            { code: "25000" },
+          );
+        } finally {
+          await control.query("ROLLBACK");
+        }
+      }
+      await compareSource();
+    });
+
     it("serializes concurrent reservations so only one can cross the remaining budget", async () => {
       await activate();
       for (let index = 0; index < 15; index++)
