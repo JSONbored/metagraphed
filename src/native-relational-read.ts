@@ -19,7 +19,10 @@ const healthIntegers = [
   "last_checked",
   "last_ok",
   "consecutive_failures",
-];
+] as const;
+type HealthIntegerValues = Partial<
+  Record<(typeof healthIntegers)[number], number | string | null>
+>;
 
 /** Only these relational handlers have a qualified native SQL shape. A native
  * selection never gives the document-view families a legacy fallback. */
@@ -75,17 +78,18 @@ export function selectedNativeRelationalSql(
         values = [Buffer.from(parameters[0]), ...parameters.slice(1)];
       }
     }
-    const rows = await store.query<Record<string, unknown>>(statement, values);
-    if (!/\bFROM surface_status\b/.test(statement)) return rows as Row[];
+    const rows = await store.query<Row>(statement, values);
+    if (!/\bFROM surface_status\b/.test(statement)) return rows;
     // This route returns raw integer fields; D1 rounds int64 at its JSON wire
     // boundary while pg keeps out-of-safe-range integers as decimal strings.
     return rows.map((row) => {
-      const result = { ...row };
+      const converted: HealthIntegerValues = {};
       for (const name of healthIntegers) {
-        if (result[name] != null) result[name] = Number(result[name]);
+        const value = (row as HealthIntegerValues)[name];
+        if (value != null) converted[name] = Number(value);
       }
-      return result;
-    }) as Row[];
+      return { ...row, ...converted };
+    });
   };
   return Object.assign(
     <Row>(strings: TemplateStringsArray, ...values: unknown[]) =>
