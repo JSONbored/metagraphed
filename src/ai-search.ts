@@ -28,6 +28,7 @@ import {
 import { EmbedManifestSchema } from "../schemas-src/internal-wire.ts";
 import { recordOrNull, recordsOrEmpty } from "./read-store.ts";
 import type { overlayCatalogIndex } from "./health-serving.ts";
+import { selectedSemanticIndex } from "./semantic-index.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -148,7 +149,10 @@ export function aiInputError(message: string): AiInputError {
 // The AI bindings exist (independent of the kill-switch). Used by the cron,
 // which should run whenever the bindings are present.
 export function aiConfigured(env: Env): boolean {
-  return typeof env?.AI?.run === "function" && Boolean(env?.VECTORIZE);
+  return (
+    typeof env?.AI?.run === "function" &&
+    Boolean(selectedSemanticIndex(env) ?? env?.VECTORIZE)
+  );
 }
 
 // AI request handling is permitted: bindings present AND the kill-switch is on.
@@ -478,7 +482,7 @@ export async function runEmbeddingSync(
       }
     }
     if (valid.length === 0) continue;
-    await env.VECTORIZE.upsert(
+    await (selectedSemanticIndex(env) ?? env.VECTORIZE).upsert(
       valid.map(({ entry, values }) => ({
         id: entry.id,
         values,
@@ -494,7 +498,8 @@ export async function runEmbeddingSync(
     for (const { entry } of valid) next[entry.id] = entry.hash;
     embedded += valid.length;
   }
-  if (removed.length && typeof env.VECTORIZE.deleteByIds === "function") {
+  const indexStore = selectedSemanticIndex(env) ?? env.VECTORIZE;
+  if (removed.length && typeof indexStore.deleteByIds === "function") {
     // CHUNKED, like the upsert above. Vectorize caps deleteByIds at 100 ids and
     // rejects the whole call past it -- observed in production as
     // `VECTOR_DELETE_ERROR (code = 40007): too many ids in payload; max id
@@ -507,7 +512,7 @@ export async function runEmbeddingSync(
     // returning documents the registry no longer has, and the manifest is
     // written as though the delete succeeded.
     for (const ids of chunk(removed, EMBED_BATCH_SIZE)) {
-      await env.VECTORIZE.deleteByIds(ids);
+      await indexStore.deleteByIds(ids);
     }
   }
   if (env?.METAGRAPH_CONTROL?.put) {
@@ -629,12 +634,15 @@ async function queryVectorize(
   topK: number,
   filter?: VectorizeVectorMetadataFilter,
 ): Promise<VectorizeMatch[]> {
-  const result = await env.VECTORIZE.query(vector, {
-    topK,
-    returnMetadata: "all",
-    returnValues: false,
-    ...(filter ? { filter } : {}),
-  });
+  const result = await (selectedSemanticIndex(env) ?? env.VECTORIZE).query(
+    vector,
+    {
+      topK,
+      returnMetadata: "all",
+      returnValues: false,
+      ...(filter ? { filter } : {}),
+    },
+  );
   return result?.matches || [];
 }
 
