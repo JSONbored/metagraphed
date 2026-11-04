@@ -130,7 +130,7 @@ test("queued neuron delivery acknowledges native success and retries a failed co
     body:{lane:"neurons",captured_at:row.captured_at,key_complete:true,pass_total:1,rows:[row]},
     ack(){calls.push("ack");},retry(){calls.push("retry");},
   };
-  const batch={queue:"sync-batches",messages:[message],ackAll(){},retryAll(){}};
+  const batch={queue:"sync-batches",metadata:{metrics:{backlogCount:1,backlogBytes:100}},messages:[message],ackAll(){},retryAll(){}};
   const ctx={waitUntil(){}} as unknown as ExecutionContext;
   await worker.queue!(batch,dataApiEnv(overrides),ctx);
   assert.deepEqual(calls,["ack"]);

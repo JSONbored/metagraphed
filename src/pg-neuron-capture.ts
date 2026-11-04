@@ -307,7 +307,7 @@ export function createPgNeuronCaptureStore(
                         identities.add(identity);
                         batch.push(member);
                       }
-                      if (batch.length) await writeMembers(batch);
+                  await writeMembers(batch);
                     }
                   }
                   if (family === "neurons")
