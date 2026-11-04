@@ -239,3 +239,14 @@ trigger and verifies rollback plus waiting-writer behavior on PostgreSQL.
 This schema slice does not enable producer/read ownership. Native query and
 process composition must explicitly select these tables after complete data
 reconciliation and full API/runtime qualification.
+
+The observation runtime accepts an explicit `OBSERVATIONS_STORE`, built by
+`createPgObservations` from the process-owned pool. Probe batches, rollups and
+pruning use a callback transaction with a transaction-local `app` search path.
+The health prober's continuity reads and the observation read runner select the
+same capability. Invalid explicit capabilities throw; an absent capability
+preserves the existing selection path. SQLite differential fixtures exercise
+alias replay, whole-batch rollback, the NULL/-1 failure-key collision and
+uptime percentiles. This does not select a production writer or activate the
+separate `subnet_snapshots` family; that path also requires its complete schema
+and closed-day revision triggers.

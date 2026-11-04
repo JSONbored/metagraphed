@@ -10,16 +10,14 @@ on:
       - package-lock.json
       # Include future transitive runtime imports as well as today's closure.
       - src/**
-      - tests/pg-store-runtime.pg18.ts
-      - tests/postgres-retained-schema.pg18.ts
-      - tests/postgres-registry-schema.pg18.ts
-      - tests/retained-blocks-runtime.pg18.ts
-      - tests/generated-artifact-runtime.pg18.ts
-      - tests/pg-kv-runtime.pg18.ts
-      - tests/lane-health-runtime.pg18.ts
-      - tests/native-api-process.pg18.ts
-      - tests/helpers/pg18-fixture.ts
+      - workers/**
+      - schemas-src/**
+      - generated/db/d1-schema.json
+      - tests/*.pg18.ts
+      - tests/helpers/**
+      - tests/fixtures/**
       - migrations/postgres/**
+      - migrations/d1/**
   push:
     branches: [main]
     paths:
@@ -29,16 +27,14 @@ on:
       - package.json
       - package-lock.json
       - src/**
-      - tests/pg-store-runtime.pg18.ts
-      - tests/postgres-retained-schema.pg18.ts
-      - tests/postgres-registry-schema.pg18.ts
-      - tests/retained-blocks-runtime.pg18.ts
-      - tests/generated-artifact-runtime.pg18.ts
-      - tests/pg-kv-runtime.pg18.ts
-      - tests/lane-health-runtime.pg18.ts
-      - tests/native-api-process.pg18.ts
-      - tests/helpers/pg18-fixture.ts
+      - workers/**
+      - schemas-src/**
+      - generated/db/d1-schema.json
+      - tests/*.pg18.ts
+      - tests/helpers/**
+      - tests/fixtures/**
       - migrations/postgres/**
+      - migrations/d1/**
   workflow_dispatch:
 
 permissions:
@@ -111,7 +107,7 @@ jobs:
           docker image inspect --format '{{json .RepoDigests}}' "$PG18_IMAGE"
       - name: Exercise the real pool and store contracts
         timeout-minutes: 2
-        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/pg-store-runtime.pg18.ts tests/postgres-retained-schema.pg18.ts tests/retained-blocks-runtime.pg18.ts tests/generated-artifact-runtime.pg18.ts tests/pg-kv-runtime.pg18.ts tests/postgres-registry-schema.pg18.ts tests/lane-health-runtime.pg18.ts tests/native-api-process.pg18.ts
+        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/*.pg18.ts
       - name: Show failed fixture logs
         if: failure()
         run: timeout 10 docker logs --tail 50 "$PG18_CONTAINER" || true

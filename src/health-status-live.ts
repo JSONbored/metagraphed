@@ -1,35 +1,12 @@
-// The probe-status continuity read: every surface_status row the prober needs
-// to carry last_ok and the failure streak across runs (#9522).
-//
-// WHY THIS IS A DIRECT SERVICE-BINDING CALL AND NOT tryDataApiTier.
-//
-// Both callers used to route this through tryDataApiTier(...,
-// "METAGRAPH_HEALTH_SOURCE"), which resolved to null on every run: that flag
-// is deleted from production, and tryDataApiTier only forwards "d1" for the
-// three FORWARDABLE_TIER_FLAGS. Widening that union would have
-// fixed the read and broken something else -- the flag is shared with
-// /api/v1/health/trends, /api/v1/incidents and /api/v1/internal/compare-health,
-// none of which data-api implements, so each of those would start forwarding,
-// take a non-2xx, and emit a captureDataApiTierFallback exception on every
-// request. That is a per-flag switch being asked to do a per-route job.
-//
-// This route is internal and service-binding-only, so it does not need the
-// public proxy layer's flag gate at all -- the same argument
-// data-api's subnet-identity-sync handler already makes for calling
-// env.DATA_API.fetch() directly.
-//
-// THE FLAG STILL GATES THE READ, just not through the forwardable union. A
-// deployment that has not pointed METAGRAPH_HEALTH_SOURCE at a tier must not
-// have this reach for one -- both callers' suites pin that ("never reaches
-// Postgres when the flag is off"), and it is the right contract: an unset flag
-// means no probe-status tier exists here, not "try anyway". What changed is
-// only that "d1" now names a tier that answers.
-//
-// DEGRADES, NEVER THROWS. A flag naming no tier, no binding, a transport
-// failure, a non-2xx, an unparseable body, or a body without a rows array all
-// yield an empty array -- which is exactly the state that existed before this
-// route answered. A prober run that cannot read prior state should still
-// probe; it just cannot carry continuity forward that run.
+// Probe continuity carries measured last_ok and failure streaks across runs.
+// An explicit native capability owns this read; malformed capabilities throw.
+// Otherwise METAGRAPH_HEALTH_SOURCE must name the data-api binding. Use its
+// direct internal route: widening tryDataApiTier's shared flags would also
+// forward health routes that data-api does not implement (#9522).
+// Transport, body and unavailable-tier failures yield no rows so the prober
+// can still run without carrying previous continuity forward.
+
+import { selectedObservationsStore } from "./observations-neon.ts";
 
 type Row = Record<string, unknown>;
 
@@ -52,6 +29,18 @@ export async function readLiveSurfaceStatus(
   sinceMs: number,
 ): Promise<Row[]> {
   if (!env) return [];
+  const native = selectedObservationsStore(env);
+  if (native) {
+    try {
+      const rows = await native.unsafe(
+        "SELECT * FROM surface_status WHERE last_checked >= $1",
+        [Number.isFinite(sinceMs) && sinceMs > 0 ? Math.floor(sinceMs) : 0],
+      );
+      return Array.isArray(rows) ? (rows as Row[]) : [];
+    } catch {
+      return [];
+    }
+  }
   if (!TIERS_THAT_ANSWER.has(String(env.METAGRAPH_HEALTH_SOURCE))) return [];
   // Not cast to reach it: `Env` declares DATA_API. The runtime check stays --
   // a wrangler config without the service binding is a real state, and a

@@ -1,42 +1,16 @@
-// The observation family, against Neon (#10069).
+// Observation writes for native PostgreSQL, D1 and legacy Neon.
+// The four probe tables move together: rollups aggregate the same raw checks.
+// Subnet snapshots additionally require their complete schema/revision port.
 //
-// FIVE TABLES, ONE UNIT. Two of these writes are `INSERT ... SELECT FROM
-// surface_checks` -- they aggregate INSIDE the store. So the moment
-// surface_checks stops being written to D1, both rollups aggregate an empty
-// table unless they move with it. There is no table-at-a-time path here, which
-// is why this file covers the whole family rather than one lane.
+// PostgreSQL uses ceil(q*N) for nearest-rank percentiles: SQLite's integer
+// cast truncates, whereas PostgreSQL's numeric cast rounds and cannot add a
+// boolean carry. PostgreSQL also uses boolean ok values and rounds ratios as
+// numeric before converting to float. OK_LATENCY is shared with the readers.
 //
-// Every statement below was checked against the live database rather than
-// translated by eye. The three that do not survive a naive port:
-//
-// 1. `CAST(x AS INTEGER)` TRUNCATES in SQLite and ROUNDS in Postgres --
-//    CAST(1.7) is 1 there and 2 here, CAST(2.5) is 2 and 3. latencyStatColumns
-//    picks p50/p95/p99 by nearest rank with
-//      `CAST(q*n AS INTEGER) + (q*n > CAST(q*n AS INTEGER))`
-//    which is SQLite's ceil written as trunc-plus-carry, because SQLite has no
-//    ceil. In Postgres that breaks twice: the CAST rounds, AND `(a > b)` is a
-//    boolean Postgres will not add to an integer. The second half errors; the
-//    FIRST HALF WOULD NOT -- it would return a confidently wrong percentile.
-//    Postgres has the function SQLite lacked, so the port is simpler than the
-//    original: `ceil(q * lat_cnt)::int`, verified identical to the SQLite
-//    expression at lat_cnt = 1, 3, 7, 20 and 100 for all three quantiles.
-//
-// 2. `surface_checks.ok` is INTEGER 0/1 in the store and BOOLEAN in Neon, so `SUM(ok)`
-//    and `ok = 1` are both type errors. Counting moves to
-//    `COUNT(*) FILTER (WHERE ok)`, which is also what it always meant.
-//
-// 3. `ROUND(x, 4)` has no double-precision overload in Postgres, so the ratio
-//    is rounded as numeric and cast back.
-//
-// `ifnull(netuid, -1)` needs no translation at all: Neon's
-// ux_surface_failure_daily_key is already `(day, netuid, kind, classification)
-// NULLS NOT DISTINCT`, the native form of the expression-index trick D1 needed
-// because SQLite treats NULLs as distinct in a unique constraint.
-// OK_LATENCY is shared with the store readers rather than restated here (#10086).
-// It used to be defined twice -- `ok AND ...` in this file, `ok = 1 AND ...` in
-// health-sql.ts -- which is precisely how the two stores drifted apart without
-// anything failing: each spelling was correct for the store its own file
-// targeted, and neither could run against the other.
+// Native PostgreSQL keeps the source expression index (NULL aliases -1).
+// Legacy Neon instead has a NULLS NOT DISTINCT plain-column conflict target.
+// Native batches run in one callback transaction; existing D1 delegation and
+// legacy query behavior remain available when no native capability is selected.
 import { OK_LATENCY } from "./health-sql.ts";
 import { hyperdriveConnectionString } from "./read-store.ts";
 import type { ProducerStore } from "./producer-store.ts";
@@ -52,7 +26,36 @@ import {
  * so this module depends on the SHAPE and not on another lane's file. */
 export interface ObservationsSql {
   nativeD1?: ProducerStore;
+  /** Uses the migrated source schema and its attached alias trigger. */
+  nativePostgres?: true;
+  transaction?(
+    run: (sql: ObservationsSql) => Promise<unknown>,
+  ): Promise<unknown>;
+  /** Transaction-scoped native expression-index rollup. */
+  nativeFailureRollup?(
+    days: { date: string; start: number; end: number }[],
+    runAt: number,
+  ): Promise<void>;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+export function selectedObservationsStore(
+  env: unknown,
+): ObservationsSql | undefined {
+  const selected =
+    env && typeof env === "object"
+      ? (env as { OBSERVATIONS_STORE?: ObservationsSql }).OBSERVATIONS_STORE
+      : undefined;
+  if (selected === undefined) return undefined;
+  if (
+    !selected ||
+    typeof selected.unsafe !== "function" ||
+    typeof selected.transaction !== "function" ||
+    selected.nativePostgres !== true
+  ) {
+    throw new TypeError("Selected observation store is invalid");
+  }
+  return selected;
 }
 
 type Row = Record<string, unknown>;
@@ -130,16 +133,16 @@ const LATENCY_COLUMNS = [
 
 async function attempt(
   sql: ObservationsSql,
-  run: () => Promise<unknown>,
+  run: (sql: ObservationsSql) => Promise<unknown>,
   label: string,
 ): Promise<ObservationWrite> {
   try {
-    await run();
+    if (sql.transaction) await sql.transaction(run);
+    else await run(sql);
     return { ok: true };
   } catch (error) {
     const reason = String((error as Error)?.message ?? error);
     console.error(`[${label}]`, reason);
-    void sql;
     return { ok: false, reason };
   }
 }
@@ -167,9 +170,9 @@ export async function persistProbesToNeon(
   if (sql.nativeD1) return persistProbesD1(sql.nativeD1, probed, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const row of probed) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO surface_checks
              (surface_id, surface_key, netuid, kind, status, classification,
               latency_ms, status_code, ok, checked_at)
@@ -189,9 +192,9 @@ export async function persistProbesToNeon(
           ],
         );
         const keyed = Boolean(row.surface_key);
-        await sql.unsafe(
+        await active.unsafe(
           `${
-            keyed
+            keyed && !active.nativePostgres
               ? `WITH alias_conflict AS (
              SELECT surface_id, surface_key FROM surface_status
              WHERE surface_id = $1 AND surface_key IS DISTINCT FROM $2
@@ -221,7 +224,7 @@ export async function persistProbesToNeon(
               consecutive_failures, updated_at)
            SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
            ${
-             keyed
+             keyed && !active.nativePostgres
                ? `FROM (SELECT COUNT(*) FROM displaced_alias) displaced
              CROSS JOIN (SELECT COUNT(*) FROM displaced_keyless) legacy
              WHERE NOT EXISTS (
@@ -271,9 +274,8 @@ export async function persistProbesToNeon(
 /**
  * The failure-REASON rollup: one row per (day, netuid, kind, classification).
  *
- * The conflict target is the plain column list, NOT an expression: Neon's
- * unique index is NULLS NOT DISTINCT, so a NULL netuid collides with itself
- * the way D1 needed `ifnull(netuid, -1)` to arrange.
+ * Neon uses a plain-column NULLS NOT DISTINCT index. The native source port
+ * retains D1's expression index, including the collision of NULL with -1.
  */
 export async function rollupFailureReasonsToNeon(
   sql: ObservationsSql,
@@ -283,9 +285,15 @@ export async function rollupFailureReasonsToNeon(
   if (sql.nativeD1) return rollupFailuresD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
+      if (active.nativePostgres) {
+        if (!active.nativeFailureRollup)
+          throw new TypeError("Native failure rollup is unavailable");
+        await active.nativeFailureRollup(days, runAt);
+        return;
+      }
       for (const { date, start, end } of days) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO surface_failure_daily
              (day, netuid, kind, classification, checks, updated_at)
            SELECT $1, netuid, kind, classification, COUNT(*), $2
@@ -319,9 +327,9 @@ export async function rollupUptimeDailyToNeon(
   if (sql.nativeD1) return rollupUptimeD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const { date, start, end } of days) {
-        await sql.unsafe(
+        await active.unsafe(
           // Today and yesterday are recomputed from the retained raw window.
           // Replace the day's aliases atomically, including alias swaps; an
           // upsert cannot arbitrate both (display id, day) and (stable key, day).
@@ -376,8 +384,10 @@ export async function pruneChecksNeon(
   if (sql.nativeD1) return pruneChecksD1(sql.nativeD1, cutoff);
   return attempt(
     sql,
-    () =>
-      sql.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [cutoff]),
+    (active) =>
+      active.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [
+        cutoff,
+      ]),
     "pruneChecksNeon",
   );
 }
@@ -398,9 +408,9 @@ export async function upsertSubnetSnapshotsToNeon(
   const toBool = (v: unknown) => (v == null ? null : Boolean(v));
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const row of rows) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO subnet_snapshots
              (netuid, snapshot_date, completeness_score, surface_count,
               endpoint_count, monitored_count, candidate_count, captured_at,

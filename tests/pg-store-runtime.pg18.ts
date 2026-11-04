@@ -294,6 +294,13 @@ describe("pooled store against PostgreSQL 18.6", { concurrency: false }, () => {
         );
       }
     }
+    // Pool.end waits for client socket closure; PostgreSQL may remove the
+    // backend from pg_stat_activity a moment after receiving termination.
+    // Keep the same zero-backend assertion with a bounded server readback.
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if ((await connections(applicationName)) === 0) break;
+      await delay(10);
+    }
     assert.equal(await connections(applicationName), 0);
     assert.deepEqual(idleErrors, []);
   });
