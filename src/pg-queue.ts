@@ -64,6 +64,12 @@ const policyValues = {
   "webhook-deliveries-dlq": [100, 30, 0, 1, 0, null],
   "sync-batches-dlq": [100, 30, 100, 1, 600, null],
 } as const;
+/** Worker counts use the same reviewed concurrency as durable queue custody. */
+export const PG_QUEUE_CONCURRENCY = Object.freeze(
+  Object.fromEntries(
+    PG_QUEUE_NAMES.map((name) => [name, policyValues[name][3]]),
+  ) as Record<PgQueueName, number>,
+);
 const emptyResult = (status: PgQueueRunResult["status"]): PgQueueRunResult => ({
   status,
   acknowledged: 0,
