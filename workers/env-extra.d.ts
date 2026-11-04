@@ -369,8 +369,13 @@ interface ArchiveObjectEnv {
 // `undefined` (#10186, #11339).
 
 /** The main API Worker (wrangler.jsonc) carries every concern. */
+interface NativeRealtimeEnv {
+  SUBNET_STATUS_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
+}
+
 interface Env
   extends
+    NativeRealtimeEnv,
     RuntimeSecretEnv,
     ArchiveObjectEnv,
     LegacyStoreFixtureEnv,

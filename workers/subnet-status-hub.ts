@@ -33,6 +33,14 @@ import {
   HubSubnetSessionBodySchema,
 } from "../schemas-src/internal-wire.ts";
 import type { SubnetStatusHubState } from "./do-state.ts";
+import type { TelemetryEnv } from "../src/usage-telemetry.ts";
+import { subnetStatusNotifier } from "../src/subnet-status-service.ts";
+import { mapLimit } from "../src/health-probe-core.ts";
+
+export interface SubnetStatusHubEnv extends TelemetryEnv {
+  MCP_SESSION_HUB?: Pick<DurableObjectNamespace, "get" | "idFromName">;
+  SUBNET_STATUS_NOTIFIER?: unknown;
+}
 
 type NetuidIndex = Map<number, Set<string>>;
 type SessionIndex = Map<string, Set<number>>;
@@ -130,12 +138,12 @@ export function hydrateSubscriptionIndex(stored: unknown): {
 
 export class SubnetStatusHub implements DurableObject {
   state: SubnetStatusHubState;
-  env: Env;
+  env: SubnetStatusHubEnv;
   byNetuid: NetuidIndex;
   sessionByNetuid: SessionIndex;
   hydrated: boolean;
 
-  constructor(state: SubnetStatusHubState, env: Env) {
+  constructor(state: SubnetStatusHubState, env: SubnetStatusHubEnv) {
     this.state = state;
     this.env = env;
     this.byNetuid = new Map();
@@ -343,11 +351,40 @@ export class SubnetStatusHub implements DurableObject {
           ),
         ]
       : [];
-    if (list.length === 0 || !this.env.MCP_SESSION_HUB) {
+    const notifier = subnetStatusNotifier(this.env.SUBNET_STATUS_NOTIFIER);
+    if (list.length === 0 || (!notifier && !this.env.MCP_SESSION_HUB)) {
       return new Response(JSON.stringify({ ok: true, delivered: 0 }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
+    }
+    if (notifier) {
+      const targets = list.flatMap((netuid) =>
+        [...(this.byNetuid.get(netuid) ?? [])].map((sessionId) => ({
+          sessionId,
+          uri: buildSubnetStatusResourceUri(netuid),
+        })),
+      );
+      const results = await mapLimit(
+        targets,
+        notifier.maxConcurrent,
+        async ({ sessionId, uri }) => {
+          try {
+            request.signal.throwIfAborted();
+            await notifier.notify(sessionId, uri, request.signal);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      );
+      return new Response(
+        JSON.stringify({ ok: true, delivered: results.filter(Boolean).length }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
     }
     const tasks = [];
     for (const netuid of list) {
@@ -358,8 +395,8 @@ export class SubnetStatusHub implements DurableObject {
         tasks.push(
           (async () => {
             try {
-              const stub = this.env.MCP_SESSION_HUB.get(
-                this.env.MCP_SESSION_HUB.idFromName(sessionId),
+              const stub = this.env.MCP_SESSION_HUB!.get(
+                this.env.MCP_SESSION_HUB!.idFromName(sessionId),
               );
               await stub.fetch("https://mcp-session-hub.internal/notify", {
                 method: "POST",

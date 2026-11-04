@@ -68,6 +68,7 @@ import {
   HubSessionUriBodySchema,
 } from "../schemas-src/internal-wire.ts";
 import type { McpSessionHubState } from "./do-state.ts";
+import { subnetStatusService } from "../src/subnet-status-service.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -421,11 +422,10 @@ export class McpSessionHub implements DurableObject {
       if (!response.ok)
         throw new Error("Chain subscription registration failed");
     }
-    if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
-      const stub = this.env.SUBNET_STATUS_HUB.get(
-        this.env.SUBNET_STATUS_HUB.idFromName("global"),
-      );
-      const response = await stub.fetch(
+    const statusService =
+      statusNetuid == null ? undefined : subnetStatusService(this.env);
+    if (statusService) {
+      const response = await statusService.fetch(
         "https://subnet-status-hub.internal/mcp-subscribe",
         {
           method: "POST",
@@ -469,11 +469,10 @@ export class McpSessionHub implements DurableObject {
       );
       if (!response.ok) throw new Error("Chain unsubscription failed");
     }
-    if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
-      const stub = this.env.SUBNET_STATUS_HUB.get(
-        this.env.SUBNET_STATUS_HUB.idFromName("global"),
-      );
-      const response = await stub.fetch(
+    const statusService =
+      statusNetuid == null ? undefined : subnetStatusService(this.env);
+    if (statusService) {
+      const response = await statusService.fetch(
         "https://subnet-status-hub.internal/mcp-unsubscribe",
         {
           method: "POST",
@@ -675,11 +674,12 @@ export class McpSessionHub implements DurableObject {
         );
         if (!response.ok) throw new Error("Chain unsubscription failed");
       }
-      if (hadStatus && effectiveSessionId && this.env.SUBNET_STATUS_HUB) {
-        const stub = this.env.SUBNET_STATUS_HUB.get(
-          this.env.SUBNET_STATUS_HUB.idFromName("global"),
-        );
-        const response = await stub.fetch(
+      const statusService =
+        hadStatus && effectiveSessionId
+          ? subnetStatusService(this.env)
+          : undefined;
+      if (statusService) {
+        const response = await statusService.fetch(
           "https://subnet-status-hub.internal/mcp-unsubscribe-session",
           {
             method: "POST",

@@ -12,6 +12,11 @@
 // must not import that file, or it would cycle with McpSessionHub's import of
 // parseSubnetStatusResourceUri below.
 
+import {
+  subnetStatusService,
+  type SubnetStatusServiceEnv,
+} from "./subnet-status-service.ts";
+
 type Row = Record<string, unknown>;
 
 export const MCP_SUBNET_STATUS_URI_RE = /^metagraph:\/\/subnet\/(\d+)\/status$/;
@@ -113,10 +118,16 @@ export function diffChangedSubnetNetuids(
 // Best-effort fan-out into SubnetStatusHub. Never throws into the probe path —
 // a missing binding (local/CI) or a DO failure must not fail the health write.
 export async function notifySubnetStatusChanged(
-  env: Env,
+  env: SubnetStatusServiceEnv | null | undefined,
   netuids: unknown,
 ): Promise<Row> {
-  if (!env?.SUBNET_STATUS_HUB) {
+  let service;
+  try {
+    service = subnetStatusService(env);
+  } catch {
+    return { notified: false, reason: "fetch_failed" };
+  }
+  if (!service) {
     return { notified: false, reason: "unbound" };
   }
   const list = Array.isArray(netuids)
@@ -126,10 +137,7 @@ export async function notifySubnetStatusChanged(
     return { notified: false, reason: "no_netuids" };
   }
   try {
-    const stub = env.SUBNET_STATUS_HUB.get(
-      env.SUBNET_STATUS_HUB.idFromName("global"),
-    );
-    const upstream = await stub.fetch(
+    const upstream = await service.fetch(
       "https://subnet-status-hub.internal/notify-changed",
       {
         method: "POST",
