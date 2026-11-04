@@ -1,4 +1,7 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import {
+  generatedArtifactStore,
+  type GeneratedArtifactStore,
+} from "./generated-artifact-store.ts";
 
 export const MAX_ICON_BYTES = 256 * 1024;
 interface IconMetadata {
@@ -7,8 +10,10 @@ interface IconMetadata {
 }
 
 /** Preserve image bytes and global negative-cache windows in the existing store. */
-export function iconCacheStore(db?: Pick<D1Database, "prepare">) {
-  const store = generatedArtifactStore(db);
+export function iconCacheStore(
+  db?: Pick<D1Database, "prepare">,
+  store: GeneratedArtifactStore | undefined = generatedArtifactStore(db),
+) {
   if (!store) return undefined;
   return {
     async get(key: string) {
