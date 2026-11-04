@@ -24,6 +24,7 @@ import mdx from "fumadocs-mdx/vite";
 import { createRequire } from "node:module";
 
 const requireOptional = createRequire(import.meta.url);
+const nativeBuild = process.env.METAGRAPHED_UI_BUILD_TARGET === "node";
 // Returns a Vite/Rollup plugin -- typed as the plugin array's own element
 // so `withTolerantSourcemapUpload` still type-checks its argument.
 type PosthogRollupPlugin = (options: Record<string, unknown>) => Plugin;
@@ -275,6 +276,17 @@ export default defineConfig({
   // upstream `NitroPluginConfig` type rather than `any` so this stays
   // type-checked against Nitro's real config shape.
   nitro: {
+    ...(nativeBuild
+      ? {
+          preset: "node-server",
+          output: {
+            dir: "dist/native",
+            serverDir: "dist/native/server",
+            publicDir: "dist/native/public",
+          },
+          plugins: ["./src/native-assets.plugin.ts"],
+        }
+      : {}),
     hooks: {
       "rollup:before": (_nitro, rollupConfig) => {
         const prevExternal = rollupConfig.external;

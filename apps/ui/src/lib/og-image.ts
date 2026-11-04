@@ -1089,7 +1089,19 @@ export async function handleOgImage(
   }
 
   try {
-    const image = new ImageResponse(markup, { width: 1200, height: 630, fonts });
+    const scopes = [env, (globalThis as { __env__?: unknown }).__env__];
+    const native = scopes
+      .map(
+        (scope) =>
+          (scope as { NATIVE_OG_ELEMENT?: (html: string) => React.ReactNode } | null)
+            ?.NATIVE_OG_ELEMENT,
+      )
+      .find((value) => typeof value === "function");
+    const image = new ImageResponse(native ? native(markup) : markup, {
+      width: 1200,
+      height: 630,
+      fonts,
+    });
     const bytes = await image.arrayBuffer();
     const response = withOgHeaders(
       new Response(bytes, image),
