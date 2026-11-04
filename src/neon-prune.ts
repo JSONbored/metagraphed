@@ -45,6 +45,7 @@ import { HISTORY_RETENTION_MS } from "./health-prober.ts";
 import { BURN_HISTORY_RETENTION_MS } from "./subnet-burn-history-retention.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNativeRetentionStore } from "./native-retention-store.ts";
 
 export const NEON_PRUNE_LANE = "neon-prune";
 
@@ -205,11 +206,32 @@ export interface PruneOutcome {
   outcomes?: PruneTableOutcome[];
 }
 
+async function recordPruneResult(
+  env: NeonWriteEnv | null | undefined,
+  deps: PruneDeps,
+  at: number,
+  outcomes: PruneTableOutcome[],
+): Promise<PruneOutcome> {
+  await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+    lane: NEON_PRUNE_LANE,
+    verdict: outcomes.some((outcome) => outcome.skipped) ? "stale" : "ok",
+    age_ms: null,
+    detail: describePrune(outcomes),
+    checked_at: at,
+  });
+  return { attempted: true, outcomes };
+}
+
 export async function runNeonPrune(
   env: NeonWriteEnv | null | undefined,
   ctx: WaitUntilLike,
   deps: PruneDeps = {},
 ): Promise<PruneOutcome> {
+  const native = deps.sql ? null : selectedNativeRetentionStore(env);
+  if (native) {
+    const at = (deps.now ?? Date.now)();
+    return recordPruneResult(env, deps, at, await native.prune(at));
+  }
   // D1 owners prune in their capture/prober lanes. Validate their binding
   // before skipping them so configuration drift cannot revive a Neon copy.
   const plans = Object.values(NEON_PRUNE_PLANS).filter(
@@ -227,7 +249,6 @@ export async function runNeonPrune(
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   const sql = deps.sql ?? (hyperdrive ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   if (!sql?.unsafe) return { attempted: false };
 
@@ -235,14 +256,5 @@ export async function runNeonPrune(
   const at = now();
   for (const plan of plans) outcomes.push(await pruneNeonTable(sql, plan, at));
 
-  await recordLaneVerdict(laneDb, {
-    lane: NEON_PRUNE_LANE,
-    // A refusal is `stale`, not `ok`: it means a plan disagrees with its own
-    // table and somebody has to look. Silence would make the guard pointless.
-    verdict: outcomes.some((o) => o.skipped) ? "stale" : "ok",
-    age_ms: null,
-    detail: describePrune(outcomes),
-    checked_at: at,
-  });
-  return { attempted: true, outcomes };
+  return recordPruneResult(env, deps, at, outcomes);
 }
