@@ -1,5 +1,5 @@
 export interface GeneratedArtifactStore {
-  get(key: string): Promise<unknown>;
+  get(key: string, maxBytes?: number): Promise<unknown>;
   put(key: string, payload: string): Promise<void>;
 }
 

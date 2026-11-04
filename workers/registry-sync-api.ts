@@ -47,6 +47,7 @@ import {
   type RegistrySyncNeonDeps,
 } from "../src/registry-sync-neon.ts";
 import { selectedD1Store } from "../src/d1-store.ts";
+import { selectedRegistrySyncStore } from "../src/registry-sync-store.ts";
 import {
   applyRegistrySyncToD1,
   REGISTRY_D1_TABLES,
@@ -202,8 +203,9 @@ async function dispatchRegistrySyncRequest(
     }
     // Provisioning D1 does not select it. The full registry family moves
     // together, and a selected but unavailable store never falls back.
-    const d1 = selectedD1Store(env, REGISTRY_D1_TABLES);
-    if (!d1 && !env.HYPERDRIVE?.connectionString) {
+    const native = selectedRegistrySyncStore(env);
+    const d1 = native ? null : selectedD1Store(env, REGISTRY_D1_TABLES);
+    if (!native && !d1 && !env.HYPERDRIVE?.connectionString) {
       return json({ error: "registry database binding unavailable" }, 503);
     }
 
@@ -279,13 +281,15 @@ async function dispatchRegistrySyncRequest(
         pruneSurfaces,
         deleteSubnets,
       };
-      const summary = d1
-        ? await applyRegistrySyncToD1(d1, payload, registrySyncDeps)
-        : await applyRegistrySyncToNeon(
-            env.HYPERDRIVE!.connectionString,
-            payload,
-            registrySyncDeps,
-          );
+      const summary = native
+        ? await native.apply(payload)
+        : d1
+          ? await applyRegistrySyncToD1(d1, payload, registrySyncDeps)
+          : await applyRegistrySyncToNeon(
+              env.HYPERDRIVE!.connectionString,
+              payload,
+              registrySyncDeps,
+            );
       return json({ ok: true, store: d1 ? "d1" : "neon", ...summary });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
