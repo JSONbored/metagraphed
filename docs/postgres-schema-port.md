@@ -342,3 +342,21 @@ The native fixture compares all fifteen source column definitions and ten
 indexes, checks exact and nullable values, retains pass defaults and composite
 uniqueness, and exercises sequence reconciliation and exhaustion.
 [Integration test](../tests/postgres-account-observations-schema.pg18.ts)
+
+## Chain detail and catalog state
+
+The chain-control load schema retains the nine head/detail, dead-letter and
+Iceberg catalog tables, sixteen explicit indexes and source checks. Monetary
+amounts and event arguments remain text. Payload chunks keep their character
+bound, while dead-letter payloads keep their separate UTF-8 byte bound. Iceberg
+metadata accepts the source's JSON value range and retains its exact text.
+[Load schema](../migrations/postgres/0016_chain_control.sql)
+
+The namespace reference activates after load, validating all existing catalog
+tables before enforcing the source foreign key and restricted deletion.
+[Activation](../migrations/postgres/0017_chain_control_activate.sql)
+
+The native fixture compares source column definitions and indexes, preserves
+wide IDs and nullable flags, checks Unicode case and length behavior, exercises
+JSON value validation and proves orphan refusal and rollback.
+[Integration test](../tests/postgres-chain-control-schema.pg18.ts)
