@@ -155,6 +155,21 @@ function frontEnvironment() {
 }
 
 async function prime(binding: string, key: string, requests: number) {
+  const policy = [
+    DATA_TIERED_RATE_LIMIT,
+    MCP_TIERED_RATE_LIMIT,
+    AI_TIERED_RATE_LIMIT,
+  ]
+    .flatMap((config) => [
+      config.anonymous,
+      config.keyed,
+      ...Object.values(config.tiers ?? {}),
+    ])
+    .find((item) => item.envVar === binding)!;
+  await control.query(
+    "INSERT INTO auth.rate_limit_policies(binding,request_limit,period_seconds) VALUES ($1,$2,$3) ON CONFLICT(binding) DO NOTHING",
+    [binding, policy.limit, policy.windowSeconds],
+  );
   await control.query(
     "INSERT INTO auth.rate_limit_buckets(binding,key,bucket_second,requests,expires_at) SELECT $1,$2,floor(extract(epoch FROM clock_timestamp()))::bigint,$3,floor(extract(epoch FROM clock_timestamp()))::bigint+61",
     [binding, Buffer.from(key), requests],
@@ -219,7 +234,7 @@ describe(
     beforeEach(async () => {
       Date.now = () => stamp;
       await control.query(
-        "TRUNCATE auth.kv_entries,auth.rate_limit_buckets,app.api_quota_daily",
+        "TRUNCATE auth.kv_entries,auth.rate_limit_buckets,auth.rate_limit_policies,app.api_quota_daily",
       );
       await sourceDb.exec("DELETE FROM api_quota_daily");
       errors.length = 0;
@@ -268,6 +283,157 @@ describe(
         ).rows[0].n,
         4,
       );
+    });
+
+    it("rejects policy drift before mutation and arbitrates conflicting concurrent bootstrap", async () => {
+      const long = createPgRateLimits(
+        runtime,
+        [{ binding: "SHARED", limit: 2, period: 60 }],
+        (error) => errors.push(error),
+      );
+      const short = createPgRateLimits(
+        runtime,
+        [{ binding: "SHARED", limit: 2, period: 10 }],
+        (error) => errors.push(error),
+      );
+      assert.equal(
+        (await long.bindings.SHARED.limit({ key: "caller" })).success,
+        true,
+      );
+      await control.query(
+        "UPDATE auth.rate_limit_buckets SET bucket_second=bucket_second-20 WHERE binding='SHARED'",
+      );
+      assert.equal(
+        (await short.bindings.SHARED.limit({ key: "caller" })).success,
+        false,
+      );
+      await assert.rejects(short.pruneExpired(), /policy differs/);
+      assert.equal(
+        (
+          await control.query(
+            "SELECT sum(requests)::int AS n FROM auth.rate_limit_buckets",
+          )
+        ).rows[0].n,
+        1,
+      );
+      assert.equal(
+        (await long.bindings.SHARED.limit({ key: "caller" })).success,
+        true,
+      );
+      assert.equal(
+        (await long.bindings.SHARED.limit({ key: "caller" })).success,
+        false,
+      );
+      const differentLimit = createPgRateLimits(
+        runtime,
+        [{ binding: "SHARED", limit: 3, period: 60 }],
+        (error) => errors.push(error),
+      );
+      assert.equal(
+        (await differentLimit.bindings.SHARED.limit({ key: "another" }))
+          .success,
+        false,
+      );
+      await assert.rejects(
+        control.query(
+          "UPDATE auth.rate_limit_policies SET period_seconds=10 WHERE binding='SHARED'",
+        ),
+        /immutable/,
+      );
+      await assert.rejects(
+        control.query(
+          "DELETE FROM auth.rate_limit_policies WHERE binding='SHARED'",
+        ),
+        /immutable/,
+      );
+      const first = createPgRateLimits(
+        runtime,
+        [{ binding: "RACE", limit: 1, period: 10 }],
+        (error) => errors.push(error),
+      );
+      const second = createPgRateLimits(
+        runtime,
+        [{ binding: "RACE", limit: 1, period: 60 }],
+        (error) => errors.push(error),
+      );
+      const outcomes = await Promise.all([
+        first.bindings.RACE.limit({ key: "first" }),
+        second.bindings.RACE.limit({ key: "second" }),
+      ]);
+      assert.equal(outcomes.filter((result) => result.success).length, 1);
+      assert.equal(
+        (
+          await control.query(
+            "SELECT sum(requests)::int AS n FROM auth.rate_limit_buckets WHERE binding='RACE'",
+          )
+        ).rows[0].n,
+        1,
+      );
+      assert.equal(errors.length, 3);
+    });
+
+    it("does not hold a global policy lock while an unrelated caller key is blocked", async () => {
+      const api = createPgRateLimits(
+        runtime,
+        [{ binding: "INDEPENDENT", limit: 3, period: 60 }],
+        (error) => errors.push(error),
+      );
+      const locker = new Client({
+        connectionString,
+        connectionTimeoutMillis: 2000,
+        statement_timeout: 5000,
+      });
+      await locker.connect();
+      let pending: Promise<{ success: boolean }> | undefined;
+      let settled = false;
+      try {
+        await locker.query("BEGIN");
+        await locker.query(
+          "SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended($1,0))",
+          [
+            `metagraphed:rate:INDEPENDENT:${Buffer.from("held").toString("hex")}`,
+          ],
+        );
+        pending = api.bindings.INDEPENDENT.limit({ key: "held" }).then(
+          (value) => {
+            settled = true;
+            return value;
+          },
+        );
+        let waiting = false;
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          waiting =
+            (
+              await control.query(
+                "SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND wait_event='advisory' AND pid<>pg_backend_pid()",
+              )
+            ).rows[0].n > 0;
+          if (waiting) break;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        assert.equal(waiting, true);
+        let deadline: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const result = await Promise.race([
+            api.bindings.INDEPENDENT.limit({ key: "unrelated" }),
+            new Promise<never>((_, reject) => {
+              deadline = setTimeout(
+                () => reject(new Error("unrelated key was blocked")),
+                1000,
+              );
+            }),
+          ]);
+          assert.equal(result.success, true);
+          assert.equal(settled, false);
+        } finally {
+          clearTimeout(deadline);
+        }
+      } finally {
+        await locker.query("ROLLBACK");
+        if (pending) assert.equal((await pending).success, true);
+        await locker.end();
+      }
+      assert.deepEqual(errors, []);
     });
 
     it("retains future buckets conservatively and prunes only the bounded expired rows", async () => {

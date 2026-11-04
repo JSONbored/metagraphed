@@ -15,8 +15,18 @@ const runtime: PgKvRuntime = {
       return { changes: 7 };
     },
   },
-  async transaction() {
-    throw new Error("not used");
+  async transaction(callback) {
+    return callback({
+      async query() {
+        return [];
+      },
+      async first<Row>() {
+        return { request_limit: 20, period_seconds: 60 } as Row;
+      },
+      async run() {
+        return { changes: 7 };
+      },
+    });
   },
 };
 

@@ -13,6 +13,11 @@ const createPgRateLimits = (
 
 function fixture() {
   let now = 1000;
+  const policies = new Map<
+    string,
+    { request_limit: number; period_seconds: number }
+  >();
+  let missingPolicy = false;
   const buckets = new Map<
     string,
     {
@@ -56,6 +61,10 @@ function fixture() {
             return [];
           },
           async first<Row>(text: string, values: unknown[] = []) {
+            if (text.includes("FROM auth.rate_limit_policies"))
+              return (
+                missingPolicy ? null : (policies.get(String(values[0])) ?? null)
+              ) as Row | null;
             if (text.includes("AS second"))
               return (
                 clockMissing ? null : { second: badClock ?? String(now) }
@@ -75,6 +84,24 @@ function fixture() {
           },
           async run(text, values = []) {
             if (text.startsWith("SET")) return { changes: 0 };
+            if (text.startsWith("INSERT INTO auth.rate_limit_policies")) {
+              if (!policies.has(String(values[0])))
+                policies.set(String(values[0]), {
+                  request_limit: Number(values[1]),
+                  period_seconds: Number(values[2]),
+                });
+              return { changes: 1 };
+            }
+            if (text.startsWith("WITH expired")) {
+              let removed = 0;
+              for (const [key, bucket] of buckets) {
+                if (bucket.expires <= now && removed < Number(values[0])) {
+                  buckets.delete(key);
+                  removed += 1;
+                }
+              }
+              return { changes: removed };
+            }
             const [binding, key, second, expiry] = values;
             if (text.startsWith("DELETE")) {
               for (const [name, b] of buckets)
@@ -111,6 +138,9 @@ function fixture() {
   return {
     runtime,
     buckets,
+    missingPolicy: (value = true) => {
+      missingPolicy = value;
+    },
     time: (value: number) => {
       now = value;
     },
@@ -265,4 +295,52 @@ test("unavailable native counters deny admission even when their error reporter 
     success: false,
   });
   assert.equal(reported, 1);
+});
+
+test("persisted policy mismatches deny draws and housekeeping before changing counters", async () => {
+  const f = fixture();
+  const expected = createPgRateLimits(f.runtime, [
+    { binding: "A", limit: 1, period: 60 },
+  ]);
+  assert.deepEqual(await expected.bindings.A.limit({ key: "caller" }), {
+    success: true,
+  });
+  f.time(2000);
+  for (const changed of [
+    { binding: "A", limit: 2, period: 60 as const },
+    { binding: "A", limit: 1, period: 10 as const },
+  ]) {
+    const mismatch = createPgRateLimits(f.runtime, [changed]);
+    assert.deepEqual(await mismatch.bindings.A.limit({ key: "caller" }), {
+      success: false,
+    });
+    await assert.rejects(mismatch.pruneExpired(), /policy differs/);
+    assert.equal(f.buckets.size, 1);
+  }
+  const missing = fixture();
+  missing.missingPolicy();
+  const missingApi = createPgRateLimits(missing.runtime, [
+    { binding: "A", limit: 1, period: 60 },
+  ]);
+  assert.deepEqual(await missingApi.bindings.A.limit({ key: "caller" }), {
+    success: false,
+  });
+  assert.equal(missing.buckets.size, 0);
+  missing.missingPolicy(false);
+  assert.deepEqual(await missingApi.bindings.A.limit({ key: "caller" }), {
+    success: true,
+  });
+  missing.missingPolicy();
+  assert.deepEqual(await missingApi.bindings.A.limit({ key: "other" }), {
+    success: false,
+  });
+  const unordered = fixture();
+  assert.equal(
+    await createPgRateLimits(unordered.runtime, [
+      { binding: "C", limit: 1, period: 60 },
+      { binding: "A", limit: 1, period: 60 },
+      { binding: "B", limit: 1, period: 60 },
+    ]).pruneExpired(),
+    0,
+  );
 });

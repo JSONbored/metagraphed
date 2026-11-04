@@ -161,8 +161,15 @@ declared binding is the exact handle created by this composition. It does not
 claim that undeclared capabilities are ready or change Worker defaults.
 
 Each rate definition supplies its existing binding name, ceiling and 10- or
-60-second period. Admission serializes each binding/key with a transaction
-lock and PostgreSQL's clock. Per-second buckets retain the entire boundary
+60-second period. The first operation persists that binding's immutable ceiling
+and period; every admission and housekeeping call checks the same identity
+before touching counters. Conflicting process definitions fail closed. Policy
+creation commits in a separate short transaction before any caller-key lock;
+even a blocked first caller cannot hold that policy row across unrelated keys.
+Successful initialization is reused, but every mutation still verifies the
+immutable stored policy. Policy changes
+require an explicit migration. Admission serializes each binding/key with a
+transaction lock and PostgreSQL's clock. Per-second buckets retain the entire boundary
 second: this is a conservative rolling window that may retain traffic for up
 to one extra second, not Cloudflare's distributed approximate algorithm. A
 rejected admission spends nothing. Operational failures report through the
