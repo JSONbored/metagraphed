@@ -1,9 +1,13 @@
+import { setImmediate as yieldEventLoop } from "node:timers/promises";
+
 /** Buffer input before acquiring the membership row; no client stream holds a lock. */
 export async function bufferNativeRequest(
   request: Request,
   signal: AbortSignal,
   maxBytes: number,
 ) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+    throw new RangeError("Invalid native request byte budget");
   const chunks: Uint8Array[] = [];
   let size = 0;
   let reads = 0;
@@ -19,13 +23,16 @@ export async function bufferNativeRequest(
         const next = await reader.read();
         signal.throwIfAborted();
         if (next.done) break;
-        if (++reads > maxBytes + 1)
+        if (++reads > Math.min(maxBytes + 1, 65536))
           throw new RangeError("Native request exceeds chunk limit");
-        if (next.value.byteLength === 0) continue;
         size += next.value.byteLength;
         if (size > maxBytes)
           throw new RangeError("Native request exceeds byte limit");
-        chunks.push(next.value.slice());
+        if (reads % 128 === 0) {
+          await yieldEventLoop();
+          signal.throwIfAborted();
+        }
+        if (next.value.byteLength !== 0) chunks.push(next.value.slice());
       }
   } finally {
     signal.removeEventListener("abort", cancel);
