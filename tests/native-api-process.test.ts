@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
+import { queueDelivery } from "../src/queue-delivery.ts";
 import type { AppKv } from "../src/app-kv.ts";
 import type { PgPool, PooledPgOptions } from "../src/pg-pool.ts";
 import {
@@ -193,7 +194,7 @@ describe("native API process", () => {
     assert.deepEqual(
       f.calls.slice(1, 5).map((call) => call.text),
       [
-        "BEGIN",
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
         "SELECT pg_catalog.set_config('search_path', $1, true)",
         "SELECT value FROM items",
         "COMMIT",
@@ -298,15 +299,15 @@ describe("native API process", () => {
     assert.deepEqual(
       f.calls.slice(1).map((call) => call.text),
       [
-        "BEGIN",
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
         "SELECT pg_catalog.set_config('search_path', $1, true)",
         "SELECT $1 FROM items",
         "COMMIT",
-        "BEGIN",
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
         "SELECT pg_catalog.set_config('search_path', $1, true)",
         "UPDATE items SET value = $1",
         "COMMIT",
-        "BEGIN",
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
         "SELECT pg_catalog.set_config('search_path', $1, true)",
         "UPDATE items SET value = $1",
         "DELETE FROM items WHERE value = $1",
@@ -438,6 +439,92 @@ describe("native API process", () => {
     background.resolve();
     await Promise.all([job, closing]);
     assert.equal(f.ends(), 1);
+  });
+
+  test("queue background rejection reaches transport defaults while explicit acknowledgments survive", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    const failure = new Error("queue background failed");
+    const delivery = queueDelivery(
+      "probe-jobs",
+      ["a", "b"].map((id) => ({
+        id,
+        createdAtMs: 1,
+        attempts: 1,
+        body: { id },
+      })),
+      { backlogCount: 2, backlogBytes: 0 },
+    );
+    f.options.compose = async (providers) => {
+      const composition = await compose(providers);
+      composition.application.queue = async (_batch, _env, ctx) => {
+        delivery.batch.messages[0]!.ack();
+        ctx.waitUntil(Promise.reject(failure));
+      };
+      composition.application.scheduled = async (_event, _env, ctx) => {
+        ctx.waitUntil(Promise.reject(failure));
+      };
+      return composition;
+    };
+    const process = await f.create();
+    await assert.rejects(process.queue("first"), (error) => error === failure);
+    assert.deepEqual(delivery.finish(true), [
+      { action: "ack" },
+      { action: "retry" },
+    ]);
+    await process.scheduled("unchanged");
+    assert.equal(f.errors.length, 2);
+    await process.close();
+    assert.equal(f.ends(), 1);
+  });
+
+  test("a queue handler error remains primary after background work fails", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    const primary = new Error("handler failed");
+    f.options.compose = async (providers) => {
+      const composition = await compose(providers);
+      composition.application.queue = async (_batch, _env, ctx) => {
+        ctx.waitUntil(Promise.reject(new Error("background failed")));
+        throw primary;
+      };
+      return composition;
+    };
+    const process = await f.create();
+    await assert.rejects(process.queue("first"), (error) => error === primary);
+    assert.equal(f.errors.length, 1);
+    await process.close();
+  });
+
+  test("queue cancellation reaches the invocation signal and refuses an already-aborted dispatch", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    const entered = deferred();
+    const reason = new Error("consumer deadline");
+    let calls = 0;
+    f.options.compose = async (providers) => {
+      const composition = await compose(providers);
+      composition.application.queue = async (_batch, _env, ctx) => {
+        calls += 1;
+        entered.resolve();
+        await new Promise<void>((resolve) =>
+          ctx.signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+      };
+      return composition;
+    };
+    const process = await f.create();
+    const abort = new AbortController();
+    const running = process.queue("active", abort.signal);
+    await entered.promise;
+    abort.abort(reason);
+    await assert.rejects(running, (error) => error === reason);
+    await assert.rejects(
+      process.queue("never dispatched", abort.signal),
+      (error) => error === reason,
+    );
+    assert.equal(calls, 1);
+    await process.close();
   });
 
   test("cancels response bodies and reports rejected background work", async () => {

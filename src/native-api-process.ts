@@ -133,7 +133,7 @@ export interface NativeApiProcess<Scheduled, Queue> {
   readonly state: "ready" | "closing" | "closed";
   fetch(request: Request): Promise<Response>;
   scheduled(event: Scheduled): Promise<void>;
-  queue(batch: Queue): Promise<void>;
+  queue(batch: Queue, signal?: AbortSignal): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -283,7 +283,8 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
     }
   }
 
-  function invocation() {
+  function invocation(rejectBackground = false) {
+    let backgroundFailure: { error: unknown } | undefined;
     const background = new Set<Promise<unknown>>();
     let settle!: () => void;
     let finished = false;
@@ -302,7 +303,10 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
       signal: controller.signal,
       waitUntil(promise) {
         if (finished) throw new Error("Native invocation has finished");
-        const observed = Promise.resolve(promise).catch(reportError);
+        const observed = Promise.resolve(promise).catch((error) => {
+          backgroundFailure ??= { error };
+          reportError(error);
+        });
         background.add(observed);
         void observed.then(() => background.delete(observed));
       },
@@ -321,6 +325,8 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
           finished = true;
           active.delete(done);
           settle();
+          if (rejectBackground && backgroundFailure)
+            throw backgroundFailure.error;
         })();
         return finishing;
       },
@@ -329,15 +335,35 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
 
   async function runJob(
     operation: (ctx: NativeExecutionContext) => Promise<void>,
+    rejectBackground = false,
+    signal?: AbortSignal,
   ) {
     if (state !== "ready" || jobs >= maxJobs)
       throw new Error("Native job admission is unavailable");
     jobs += 1;
-    const task = invocation();
+    const task = invocation(rejectBackground);
+    const onAbort = () => {
+      void task.cancel(signal!.reason).catch(reportError);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
     try {
-      await operation(task.context);
+      let failure: { error: unknown } | undefined;
+      try {
+        if (signal?.aborted) throw signal.reason;
+        await operation(task.context);
+        if (signal?.aborted) throw signal.reason;
+      } catch (error) {
+        failure = { error };
+      }
+      try {
+        await task.finish();
+      } catch (error) {
+        failure ??= { error };
+      }
+      if (failure) throw failure.error;
     } finally {
-      await task.finish();
+      signal?.removeEventListener("abort", onAbort);
       jobs -= 1;
     }
   }
@@ -438,10 +464,14 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
       runJob(async (ctx) => {
         await entry.scheduled(event, composition.environment, ctx);
       }),
-    queue: (batch) =>
-      runJob(async (ctx) => {
-        await entry.queue(batch, composition.environment, ctx);
-      }),
+    queue: (batch, signal) =>
+      runJob(
+        async (ctx) => {
+          await entry.queue(batch, composition.environment, ctx);
+        },
+        true,
+        signal,
+      ),
     close() {
       if (closing) return closing;
       draining ??= (async () => {

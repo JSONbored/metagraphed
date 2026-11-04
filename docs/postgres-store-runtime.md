@@ -45,7 +45,9 @@ if the callback caught that error. A callback failure retains its original
 error while pending operations drain. A failed commit retains its uncertain
 outcome and discards the connection.
 
-The optional isolation values are `read committed` and `repeatable read`.
+The optional isolation values are `read committed` and `repeatable read`. Both
+are emitted explicitly at transaction start, so a role or database default
+cannot silently turn a requested read-committed lease into repeatable-read.
 The existing array-based `producer.transaction` uses the same transaction
 lifecycle at `read committed`. Callbacks own their business-operation deadline
 and use the provided methods for statements. The runtime owns transaction
@@ -144,3 +146,53 @@ owns tier/IP limiter selection and ordering; daily quota decisions remain in
 `workers/data-api.ts`. Managed-key identity and OAuth account-tier caches retain
 their freshness contracts. PostgreSQL OAuth storage does not replace the
 Cloudflare rate-limit algorithm or alter failure/entitlement behavior.
+
+## Queue transport
+
+`createPgQueueTransport(runtime, limits)` uses the same process-owned pool for
+bounded queue storage. The `jobs` schema keeps the six live/dead-letter policies
+from the current Wrangler declarations. Startup refuses a different policy set
+or capacity configuration. The caller supplies finite message/byte limits, a
+lease duration, an execution deadline shorter than the lease, and a bounded drain
+deadline. The database enforces the shared capacity, including parked messages. Applying its schema and running a consumer remain separate actions.
+
+The returned bindings provide `send`, `sendBatch` and `metrics` for the existing
+producer entrypoints. JSON is the default format. Text and `ArrayBuffer` payloads
+also retain their bytes; unsupported V8 bodies fail explicitly. A whole
+`sendBatch` is accepted or rejected in one transaction, with the existing
+100-message, 128 KiB/message and 256 KiB/batch transport bounds. Delays are
+bounded to 24 hours. Embedded webhook body strings are never reconstructed from
+their parsed events.
+
+`createPgQueueDispatcher(transport, { api, data })` routes sync batches and their
+DLQ to the existing data process, and probe/webhook queues and their DLQs to the
+existing main process. Its `run(queue)` performs one bounded pull without
+installing a recurring poller or background service. Each process handle supplies
+its normal `queue` method and receives the transport abort signal. The lower-level
+transport `run` also accepts a consumer directly for explicit composition and
+testing.
+
+Claims are atomic and limited by the queue's batch size and active lease count.
+An expired claim can be delivered again, so handlers retain their existing
+at-least-once contract. A stale lease cannot settle another claim's messages.
+The execution deadline aborts the consumer signal and freezes its acknowledged/retried decisions. A
+late callback cannot change settled custody; an uncooperative callback retains
+its local concurrency slot until it actually exits.
+Successful handlers default to acknowledgment; handler or queued background
+failure defaults to retry. Individual explicit decisions win over the batch
+fallback and preserve their first decision, including retry delays. Native
+queue invocations propagate background failures while retaining the existing
+HTTP and scheduled-job reporting behavior.
+
+Retry exhaustion moves the original payload, message ID and timestamp to its
+configured DLQ and records the source attempt count. A DLQ begins its own attempt
+count. If a queue without a further DLQ exhausts its budget, the original message
+is parked durably instead of silently expiring. Existing DLQ consumers still
+own acknowledgment and preservation policy. Parked custody continues to consume
+capacity until an operator explicitly resolves it.
+
+Stop admitting queue work and await `transport.close()` before closing the
+native process or its shared pool. Transport closure drains its admitted sends
+and deliveries. At the drain deadline it aborts consumers and rejects while retaining `closing` state if work
+is unfinished; a later close can observe completion. It does not close the
+database pool. No production queue binding, scheduler, fleet job or activation is supplied by this preparation layer.

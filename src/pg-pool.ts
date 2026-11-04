@@ -164,7 +164,7 @@ export function createPooledPgRuntime(
       try {
         await execute(
           isolation === "read committed"
-            ? "BEGIN"
+            ? "BEGIN ISOLATION LEVEL READ COMMITTED"
             : "BEGIN ISOLATION LEVEL REPEATABLE READ",
         );
         phase = "statements";

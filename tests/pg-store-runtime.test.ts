@@ -164,7 +164,11 @@ describe("PostgreSQL store composition", () => {
       [{ changes: 1 }, { changes: 1 }],
     );
     assert.deepEqual(f.calls.slice(2), [
-      { text: "BEGIN", values: undefined, transaction: true },
+      {
+        text: "BEGIN ISOLATION LEVEL READ COMMITTED",
+        values: undefined,
+        transaction: true,
+      },
       { text: "INSERT INTO items VALUES ($1)", values: [3], transaction: true },
       { text: "UPDATE items SET value = $1", values: [4], transaction: true },
       { text: "COMMIT", values: undefined, transaction: true },
