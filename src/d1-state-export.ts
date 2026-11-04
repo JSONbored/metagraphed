@@ -71,6 +71,7 @@ interface ExportEnv {
   D1_EXPORT_REVISIONS?: string;
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
+  ROOT_BASKET_STORE?: unknown;
   METAGRAPH_CONTROL?: Pick<KVNamespace, "get" | "list">;
 }
 // JSON and exact decimals are TEXT; exports contain no blobs.
