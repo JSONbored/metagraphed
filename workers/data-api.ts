@@ -454,6 +454,7 @@ import {
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import { createNeuronWriteReporter } from "../src/neuron-write-diagnostics.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import { selectedNeuronCaptureStore } from "../src/neuron-capture-store.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
@@ -3745,6 +3746,7 @@ export const NEURONS_SNAPSHOT_TABLES = [
 /** The selected store owns both snapshot rows and the completeness ledger.
  * The historical function name also covers D1 ownership. */
 export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
+  if (selectedNeuronCaptureStore(env)) return true;
   if (selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]))
     return true;
   // Without a D1 selection, the Postgres binding determines availability.

@@ -7,7 +7,7 @@ import type { ProducerStatement, ProducerStore } from "./producer-store.ts";
 /** A producer can resend a committed chunk after losing its reply. Its stable
  * membership identifies the chunk; its original metrics pin its contents.
  * Derived updated_at values are deliberately outside that identity. */
-export function neuronPassWrite(
+export function neuronCaptureIdentity(
   pass: PassTallyInput,
   rows: readonly Record<string, unknown>[],
 ) {
@@ -32,6 +32,14 @@ export function neuronPassWrite(
       ),
     ),
   ]);
+  return { batchId, digest };
+}
+
+export function neuronPassWrite(
+  pass: PassTallyInput,
+  rows: readonly Record<string, unknown>[],
+) {
+  const { batchId, digest } = neuronCaptureIdentity(pass, rows);
   const statements: ProducerStatement[] = [
     {
       // Preserve incomplete-pass receipts. Completed historical pass rows

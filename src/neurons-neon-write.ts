@@ -47,6 +47,7 @@ import {
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { writeNeuronDocuments } from "./neuron-documents.ts";
+import { selectedNeuronCaptureStore } from "./neuron-capture-store.ts";
 
 // ---------------------------------------------------------------------------
 // Moved here when D1 was deleted (#10179). These describe the TABLE -- its
@@ -371,7 +372,12 @@ export interface NeuronMirrorOutcome {
   /** False when the lane is not enabled, or Hyperdrive is unbound. Distinct
    * from a failed attempt: "we did not try" is not "we tried and it broke". */
   attempted: boolean;
-  writePath: "d1" | "postgres-direct" | "postgres-buffered" | "unbound";
+  writePath:
+    | "d1"
+    | "postgres-native"
+    | "postgres-direct"
+    | "postgres-buffered"
+    | "unbound";
   results: Record<string, NeonWriteResult>;
   /** The deregistration prune, kept OUT of `results` on purpose -- see the
    * write path. Absent when there were no cutoffs to prune on, or when a table
@@ -404,17 +410,22 @@ export async function mirrorNeuronSnapshotToNeon(
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
-  const d1 = selectedD1Store(env, [
-    "neurons",
-    "neuron_daily",
-    "account_position_daily",
-    "neurons_passes",
-  ]);
-  if (d1) {
+  const native = selectedNeuronCaptureStore(env);
+  const d1 = native
+    ? undefined
+    : selectedD1Store(env, [
+        "neurons",
+        "neuron_daily",
+        "account_position_daily",
+        "neurons_passes",
+      ]);
+  if (native || d1) {
     let statements = 0;
     let reason: string | undefined;
     try {
-      statements = await writeNeuronDocuments(d1, input);
+      statements = native
+        ? await native.write(input, ctx?.signal)
+        : await writeNeuronDocuments(d1!, input);
     } catch (error) {
       reason = classifyLaneHealthWriteError(error);
     }
@@ -472,7 +483,7 @@ export async function mirrorNeuronSnapshotToNeon(
     }
     return {
       attempted: true,
-      writePath: "d1",
+      writePath: native ? "postgres-native" : "d1",
       results,
       ...(prune ? { prune } : {}),
     };
