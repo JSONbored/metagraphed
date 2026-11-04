@@ -2,6 +2,7 @@ import type {
   AppExecutionContext,
   AppScheduledEvent,
 } from "./runtime-context.ts";
+import { selectedNativeProducerStore } from "../src/native-producer-store.ts";
 import {
   chainFirehoseService,
   ChainFirehoseUnavailableError,
@@ -2430,6 +2431,8 @@ export function producerStore(
   ctx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined,
   tables: readonly string[],
 ): { db: unknown; close: () => void } {
+  const native = selectedNativeProducerStore(env, tables);
+  if (native) return { db: native, close: () => undefined };
   const d1 = selectedD1Store(env, tables);
   if (d1) return { db: d1, close: () => undefined };
   if (!env.HYPERDRIVE?.connectionString) {

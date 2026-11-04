@@ -88,6 +88,7 @@ describe("data-api's bundle boundary", () => {
   for (const forbidden of [
     "src/pg-rpc-usage.ts",
     "src/pg-rpc-usage-reader.ts",
+    "src/pg-producer-store.ts",
     "src/semantic-index-pg.ts",
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",
@@ -217,11 +218,15 @@ describe("data-api's bundle boundary", () => {
     // Native canonical-view selection adds 4,984 source / 2,271 minified /
     // 515 gzip bytes over 728e0f12, for 4,858,423 source bytes. The native
     // PostgreSQL adapter and SQLite decoder remain outside this graph.
+    // Native producer selection adds 5,132 source / 1,599 minified / 318 gzip
+    // bytes over 4de15dcf, totaling 4,863,555 source bytes. Its PostgreSQL
+    // factory and all existing forbidden implementations stay out of this
+    // graph; retain 1,445 source bytes of margin for this measured change.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_859_000,
+      firstParty < 4_865_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

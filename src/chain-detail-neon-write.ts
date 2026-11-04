@@ -13,6 +13,7 @@
 // While D1 is still the store the routes read, a Neon failure costs a mirror
 // and a lane verdict and nothing else.
 import { laneHealthStore } from "./lane-health-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import {
   recordNeonWriteVerdict,
   writeRowsToNeon,
@@ -205,7 +206,11 @@ export async function mirrorChainDetailToNeon(
   input: ChainDetailMirrorInput,
   deps: ChainDetailMirrorDeps = {},
 ): Promise<ChainDetailMirrorOutcome> {
-  const d1 = deps.sql ? null : selectedD1Store(env, chainDetailTables());
+  const native = deps.sql
+    ? undefined
+    : selectedNativeWriteRunner(env, CHAIN_DETAIL_NEON_LANE);
+  const d1 =
+    deps.sql || native ? null : selectedD1Store(env, chainDetailTables());
   if (d1) {
     const results = await writeChainDetailD1(d1, env, input);
     const all = Object.values(results);
@@ -231,7 +236,9 @@ export async function mirrorChainDetailToNeon(
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
   const sql =
-    deps.sql ?? neonWriteRunner(env, ctx, CHAIN_DETAIL_NEON_LANE, hyperdrive);
+    deps.sql ??
+    native ??
+    neonWriteRunner(env, ctx, CHAIN_DETAIL_NEON_LANE, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
   // honest per-lane one. A buffered FAILURE still does: that is the enqueue
