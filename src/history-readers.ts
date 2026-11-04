@@ -6,6 +6,7 @@ export interface HistoryReadEnv extends TelemetryEnv {
   NATIVE_PROJECTIONS?: string;
   D1_RETAINED_BLOCKS?: import("./d1-store.ts").D1StoreBinding;
   RETAINED_BLOCKS_NETWORKS?: string;
+  RETAINED_BLOCKS_STORE?: import("./retained-blocks-store.ts").RetainedBlocksStore;
 }
 /** Explicit offline/producer query seam; there is no request-time transport. */
 export type HistoricalQueryReader = (

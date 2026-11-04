@@ -172,15 +172,18 @@ the established fixture database and immutable PostgreSQL 18.6 image.
 [Integration test](../tests/postgres-retained-schema.pg18.ts),
 [CI workflow](../.github/workflows/postgres-runtime-integration.yml)
 
-The next retained runtime change follows the existing normal entry points.
+The retained runtime port follows the existing normal entry points.
 `handleRetainedBlocksSync` owns begin/chunk/publish/status behavior and HTTP
 envelopes. `readRetainedBlockRows`, `readRetainedBlockObservedAt` and
 `readRetainedBlockCensus` feed block handlers and watermark reconciliation.
-Their current D1 SQL uses explicit index hints and multi-statement batches. The
-PostgreSQL port must keep descriptor conflicts, exact chunk replay, complete
-source census, monotonic publication and same-generation reads while replacing
-the SQL at those owners. The first schema tests qualify those storage/query
-primitives. Full handler parity and the complete source import remain separate
-completion gates in the active migration.
+The PostgreSQL capability keeps descriptor conflicts, exact chunk replay,
+complete source census, monotonic publication and consistent reads in leased
+transactions. Existing D1 selection remains available when the native capability
+is absent. The native height-order migration names all cursor keys explicitly,
+including null placement and physical source/ordinal ties. Its plan fixture
+checks that the index can supply that order. Full-history latency, the complete
+source import and production cutover retain their separate acceptance evidence.
 [Sync owner](../src/retained-blocks-sync.ts),
-[reader owner](../src/retained-blocks-d1.ts)
+[reader owner](../src/retained-blocks-d1.ts),
+[PostgreSQL capability](../src/retained-blocks-pg.ts),
+[cursor index](../migrations/postgres/0003_retained_feed_order.sql)

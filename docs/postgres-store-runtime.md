@@ -13,6 +13,16 @@ const rows = await runtime.sql<{
 }>`SELECT id FROM items WHERE id = ${id}`;
 await runtime.producer.transaction(statements);
 
+// Read-check-write work keeps one lease and one explicit transaction scope.
+const receipt = await runtime.transaction(async (tx) => {
+  const row = await tx.first(
+    "SELECT value FROM state WHERE id = ? FOR UPDATE",
+    [id],
+  );
+  await tx.run("UPDATE state SET value = ? WHERE id = ?", [nextValue, id]);
+  return row;
+});
+
 // After the process stops admitting requests/jobs, drain and close once.
 await runtime.close();
 ```
@@ -26,6 +36,28 @@ Only the returned runtime has `close()`. Request-scoped code receives `sql`,
 `read`, or `producer`; it cannot close the process pool through those contracts.
 Shutdown rejects new operations and waits for admitted work through the existing
 pooled runtime.
+
+The callback receives `query`, `first` and `run`. Its scope closes when the
+callback settles. Calls made afterward reject. All operations issued while the
+scope was open settle before `COMMIT` or `ROLLBACK`, including issued promises
+the callback did not await. An issued operation that fails causes rollback even
+if the callback caught that error. A callback failure retains its original
+error while pending operations drain. A failed commit retains its uncertain
+outcome and discards the connection.
+
+The optional isolation values are `read committed` and `repeatable read`.
+The existing array-based `producer.transaction` uses the same transaction
+lifecycle at `read committed`. Callbacks own their business-operation deadline
+and use the provided methods for statements. The runtime owns transaction
+terminators and connection release.
+
+`createPgRetainedBlocks(runtime)` supplies the `RETAINED_BLOCKS_STORE` capability
+used by the existing retained synchronization and read entry points. Supply
+that single capability with the existing network and synchronization-secret
+configuration so the retained family shares one owner. It uses source row locks
+for chunks, a per-network transaction lock for publication, and repeatable-read
+transactions for status, census and feed reads. The process still owns pool
+closure after request admission stops.
 
 This is an explicit composition option. It changes no Worker bindings, default
 store selection, table ownership, schema or public route. Production handoff

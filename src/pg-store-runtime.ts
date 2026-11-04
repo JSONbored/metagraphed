@@ -12,6 +12,7 @@ export interface PgStoreRuntime {
   sql: PgSql;
   read: ReadStoreDb;
   producer: PooledPgRuntime["store"];
+  transaction: PooledPgRuntime["transaction"];
   /** Only the process owner closes the pool, after request/job admission stops. */
   close(): Promise<void>;
 }
@@ -39,6 +40,7 @@ export function createPgStoreRuntime(
       first: runtime.store.first,
     },
     producer: runtime.store,
+    transaction: runtime.transaction,
     close: () => runtime.close(),
   };
 }
