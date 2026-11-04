@@ -53,7 +53,7 @@ function exactNumeric(value: number | bigint): string {
 async function applyActivation() {
   await control.query("BEGIN");
   try {
-    await control.query(migration("0023_closed_day_revisions_activate.sql"));
+    await control.query(migration("0027_closed_day_revisions_activate.sql"));
     await control.query("COMMIT");
   } catch (error) {
     await control.query("ROLLBACK");

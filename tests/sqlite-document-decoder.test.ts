@@ -62,6 +62,7 @@ test("enforces strict live JSONB, explicit audit budgets and close state", () =>
   expect(() => decoder.decode(text)).toThrow("Malformed");
   expect(decoder.decode(text, "audit")).toBe('{"a":1}');
   expect(() => decoder.decode(Buffer.from([0xff]))).toThrow("Malformed");
+  expect(() => decoder.decode(Buffer.from([0x2b, 0xff, 0xff]), "audit")).toThrow("Malformed");
   const large = blob(JSON.stringify("x".repeat(600000)));
   expect(() => decoder.decode(large)).toThrow("budget");
   expect(decoder.decode(large, "audit")).toHaveLength(600002);

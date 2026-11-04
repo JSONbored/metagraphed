@@ -479,7 +479,7 @@ describe(
       await transaction(async () => {
         await control.query(migration("0025_neuron_documents_activate.sql"));
         await control.query(
-          migration("0023_closed_day_revisions_activate.sql"),
+          migration("0027_closed_day_revisions_activate.sql"),
         );
       });
       await compareEffects();

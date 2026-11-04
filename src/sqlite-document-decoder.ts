@@ -130,7 +130,7 @@ export function createSqliteDocumentDecoder(options: {
       throw new RangeError("Document exceeds its explicit decode budget");
     // Live documents require strict JSONB; historical audit blobs have no such
     // source constraint and json_extract also accepts JSON text and JSON5.
-    if (valid.get(payload, kind === "live" ? 8 : 15)?.valid !== 1)
+    if (valid.get(payload, kind === "live" ? 8 : 11)?.valid !== 1)
       throw new TypeError("Malformed SQLite document");
   };
   return {
