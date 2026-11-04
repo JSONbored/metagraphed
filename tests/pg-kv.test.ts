@@ -299,7 +299,7 @@ test("metadata and UTF-8 limits reject values that would change silently", async
     { lost: undefined },
     { n: Infinity },
     new Date(),
-    [, 1],
+    new Array(2),
     { [Symbol("s")]: 1 },
     { toJSON: () => "changed" },
     { toJSON: () => null },

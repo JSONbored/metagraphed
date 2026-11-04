@@ -30,7 +30,7 @@ const CHALLENGE_KV_PREFIX = "wallet-challenge:";
  * `Partial`, because every read below is guarded -- a deployment with no KV
  * bound declines rather than throwing, and the suite drives that path.
  */
-export interface WalletAuthEnv extends AppKvEnv {}
+export type WalletAuthEnv = AppKvEnv;
 
 /** The challenge store, if this binding can actually write one. */
 function canIssue(kv: Partial<AppKv> | undefined): kv is Pick<AppKv, "put"> {
