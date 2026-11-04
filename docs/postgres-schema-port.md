@@ -187,3 +187,23 @@ source import and production cutover retain their separate acceptance evidence.
 [reader owner](../src/retained-blocks-d1.ts),
 [PostgreSQL capability](../src/retained-blocks-pg.ts),
 [cursor index](../migrations/postgres/0003_retained_feed_order.sql)
+
+## Registry and surface-health load schema
+
+Migrations `0007_registry_health.sql` and `0008_registry_health_activate.sql`
+port all eleven registry/probe tables and their sixteen explicit indexes.
+The four 0/1 source flags use the qualified `boolean01` codec. Source overlay
+JSON remains text. `surface_history` retains original IDs and advances above
+both its source sequence ledger and any consumed native sequence value.
+
+The load phase leaves alias maintenance detached. The explicit activation
+phase installs the source alias rule after loading. It serializes surface-status
+writes before tuple acquisition, rejects a strictly newer conflicting observation,
+moves the prior non-null alias to its history key and clears a superseded legacy
+null alias. Nullable timestamps and equal-time observations retain their source
+comparison behavior. The fixture compares this sequence with the actual SQLite
+trigger and verifies rollback plus waiting-writer behavior on PostgreSQL.
+
+This schema slice does not enable producer/read ownership. Native query and
+process composition must explicitly select these tables after complete data
+reconciliation and full API/runtime qualification.
