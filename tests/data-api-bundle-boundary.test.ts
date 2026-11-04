@@ -93,6 +93,11 @@ describe("data-api's bundle boundary", () => {
     "src/pg-subnet-status-hub.ts",
     "src/pg-rate-limits.ts",
     "src/pg-daily-quota.ts",
+    "src/account-block-pg.ts",
+    "src/account-identity-pg.ts",
+    "src/account-usage-pg.ts",
+    "src/account-usage-read-pg.ts",
+    "src/native-account-state.ts",
     "src/native-auth-controls.ts",
     "src/pg-neuron-history.ts",
     "src/pg-neuron-metrics.ts",
@@ -176,11 +181,15 @@ describe("data-api's bundle boundary", () => {
     // bytes: metrics adds 2,610 source / 972 minified / 181 gzip bytes over
     // the qualified daily-history head 4cdeb932. Native decoders and PostgreSQL
     // adapters remain forbidden; keep 2,397 source bytes of margin.
+    // Complete account-family selection adds 4,932 source / 1,398 minified /
+    // 412 gzip bytes over dbc5eaee, for 4,847,535 source bytes total. Only its
+    // selectors enter the Worker; all PostgreSQL implementations stay absent.
+    // Keep 465 source bytes of margin for this independently measured change.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_845_000,
+      firstParty < 4_848_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
