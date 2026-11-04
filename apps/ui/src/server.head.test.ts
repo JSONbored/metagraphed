@@ -49,14 +49,15 @@ function htmlResponse(body: BodyInit, init: ResponseInit = {}): Response {
 
 const addition = '<meta name="fixture" content="appended">';
 const documents = [
-  '<!doctype html><html><head><title>Registry</title></head><body>Ready</body></html>',
+  "<!doctype html><html><head><title>Registry</title></head><body>Ready</body></html>",
   '<!doctype HTML><HTML><HEAD data-name="a > b"><TITLE>Registry</TITLE></HEAD><BODY>Ready</BODY></HTML>',
   '<html><head><!-- </head> --><script>const marker = "</head>";</script><style>body::before{content:"</head>"}</style></head><body>Ready</body></html>',
-  '<html><head><title>é · 🧠 &amp; data</title></head><body>é &amp; 🧠</body></html>',
-  '\ufeff<!doctype html><html><head></head><body>Ready</body></html>',
+  "<html><head><title>é · 🧠 &amp; data</title></head><body>é &amp; 🧠</body></html>",
+  "\ufeff<!doctype html><html><head></head><body>Ready</body></html>",
   '<html><head><meta name="existing" content="yes"><body>Implied head end</body></html>',
+  '<html><head><meta name="existing" content="yes"><body>Before</head>After</body></html>',
   '<html><head><meta name="existing" content="yes">',
-  '<html><body>Head omitted</body></html>',
+  "<html><body>Head omitted</body></html>",
 ];
 
 describe("native head transform", () => {
@@ -80,7 +81,7 @@ describe("native head transform", () => {
 
   it("returns after the head closes and streams the original body bytes", async () => {
     let source!: ReadableStreamDefaultController<Uint8Array>;
-    const head = new TextEncoder().encode('<html><head><title>Ready</title></head><body>');
+    const head = new TextEncoder().encode("<html><head><title>Ready</title></head><body>");
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         source = controller;
@@ -127,7 +128,9 @@ describe("native head transform", () => {
     const cancel = vi.fn();
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode("<html><head>" + " ".repeat(MAX_HTML_HEAD_BYTES)));
+        controller.enqueue(
+          new TextEncoder().encode("<html><head>" + " ".repeat(MAX_HTML_HEAD_BYTES)),
+        );
       },
       cancel,
     });
@@ -144,27 +147,39 @@ describe("native head transform", () => {
 describe("SSR entrypoint head parity", () => {
   function captureCloudflareAppends(): string[] {
     const additions: string[] = [];
-    vi.stubGlobal("HTMLRewriter", class {
-      private element!: (value: { append(content: string): void }) => void;
-      on(_selector: string, handlers: { element: typeof this.element }) {
-        this.element = handlers.element;
-        return this;
-      }
-      transform(response: Response) {
-        this.element({ append: (content) => additions.push(content) });
-        return response;
-      }
-    });
+    vi.stubGlobal(
+      "HTMLRewriter",
+      class {
+        private element!: (value: { append(content: string): void }) => void;
+        on(
+          _selector: string,
+          handlers: { element: (value: { append(content: string): void }) => void },
+        ) {
+          this.element = handlers.element;
+          return this;
+        }
+        transform(response: Response) {
+          this.element({ append: (content) => additions.push(content) });
+          return response;
+        }
+      },
+    );
     return additions;
   }
 
   it.each(["/", "/subnets?sort=health", "/subnets/64", "/docs/economics"])(
     "preserves the Cloudflare head and route-owned cards for %s",
     async (path) => {
-      vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Unexpected origin request"); }));
-      const routeCard = path === "/subnets/64" || path === "/docs/economics"
-        ? '<meta property="og:image" content="https://fixture.invalid/entity.png">'
-        : "";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => {
+          throw new Error("Unexpected origin request");
+        }),
+      );
+      const routeCard =
+        path === "/subnets/64" || path === "/docs/economics"
+          ? '<meta property="og:image" content="https://fixture.invalid/entity.png">'
+          : "";
       const html = `<html><head><title>SSR &amp; fixture</title>${routeCard}</head><body>Ready</body></html>`;
       ssr.respond = () => htmlResponse(html);
       const request = new Request(`https://metagraph.sh${path}`);
@@ -188,16 +203,17 @@ describe("SSR entrypoint head parity", () => {
   it("escapes the request pathname in injected attributes", async () => {
     ssr.respond = () => htmlResponse(documents[0]);
     vi.stubGlobal("HTMLRewriter", undefined);
-    const response = await server.fetch(new Request('https://metagraph.sh/subnets/a&b'), {}, {});
+    const response = await server.fetch(new Request("https://metagraph.sh/subnets/a&b"), {}, {});
     expect(await response.text()).toContain('href="https://metagraph.sh/subnets/a&amp;b"');
   });
 
   it("preserves status and headers while removing the replaced content length", async () => {
-    ssr.respond = () => htmlResponse(documents[0], {
-      status: 404,
-      statusText: "Missing entity",
-      headers: { "content-length": String(documents[0].length), "x-fixture": "retained" },
-    });
+    ssr.respond = () =>
+      htmlResponse(documents[0], {
+        status: 404,
+        statusText: "Missing entity",
+        headers: { "content-length": String(documents[0].length), "x-fixture": "retained" },
+      });
     vi.stubGlobal("HTMLRewriter", undefined);
     const response = await server.fetch(new Request("https://metagraph.sh/subnets/999"), {}, {});
     expect(response.status).toBe(404);
@@ -208,7 +224,9 @@ describe("SSR entrypoint head parity", () => {
   });
 
   it("passes non-HTML responses through without consuming them", async () => {
-    const original = new Response('{"ok":true}', { headers: { "content-type": "application/json" } });
+    const original = new Response('{"ok":true}', {
+      headers: { "content-type": "application/json" },
+    });
     ssr.respond = () => original;
     const response = await server.fetch(new Request("https://metagraph.sh/"), {}, {});
     expect(response).toBe(original);
@@ -219,7 +237,11 @@ describe("SSR entrypoint head parity", () => {
     const original = htmlResponse(documents[0], { headers: { "content-length": "123" } });
     ssr.respond = () => original;
     vi.stubGlobal("HTMLRewriter", undefined);
-    const response = await server.fetch(new Request("https://metagraph.sh/", { method: "HEAD" }), {}, {});
+    const response = await server.fetch(
+      new Request("https://metagraph.sh/", { method: "HEAD" }),
+      {},
+      {},
+    );
     expect(original.bodyUsed).toBe(false);
     expect(response.headers.get("content-length")).toBe("123");
     await response.body!.cancel();

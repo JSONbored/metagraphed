@@ -8,6 +8,7 @@ export async function appendHtmlHead(response: Response, html: string): Promise<
   if (!response.body) return response;
 
   let headFinished = false;
+  let unclosedSourceHead = false;
   let insertionOffset: number | null = null;
   const parser: Parser<DefaultTreeAdapterMap> = new Parser({
     sourceCodeLocationInfo: true,
@@ -17,12 +18,44 @@ export async function appendHtmlHead(response: Response, html: string): Promise<
         if (!defaultTreeAdapter.isElementNode(node) || node.tagName !== "head") return;
         const location = node.sourceCodeLocation;
         // An implied head has no source location and no matching source tag.
-        insertionOffset = location?.endTag?.startOffset ?? location?.endOffset ?? null;
+        // HTMLRewriter keeps an explicitly opened head alive until its source
+        // end tag or the enclosing html end tag, even after the HTML tree
+        // builder has implicitly closed it. EOF alone does not append markup.
+        if (location && !location.endTag) {
+          unclosedSourceHead = true;
+          return;
+        }
+        insertionOffset = location?.endTag?.startOffset ?? null;
         headFinished = true;
         parser.tokenizer.pause();
       },
+      updateNodeSourceCodeLocation(node, location) {
+        defaultTreeAdapter.updateNodeSourceCodeLocation(node, location);
+        if (
+          unclosedSourceHead &&
+          defaultTreeAdapter.isElementNode(node) &&
+          node.tagName === "html" &&
+          location.endTag
+        ) {
+          insertionOffset = location.endTag.startOffset;
+          headFinished = true;
+          parser.tokenizer.pause();
+        }
+      },
     },
   });
+  // A late source </head> is ignored by HTML tree correction after <body>,
+  // but still closes HTMLRewriter's source element. Observe that real token
+  // after the parser processes it, retaining its raw-text/comment handling.
+  const parseEndTag = parser.onEndTag.bind(parser);
+  parser.onEndTag = (token) => {
+    parseEndTag(token);
+    if (unclosedSourceHead && token.tagName === "head" && token.location) {
+      insertionOffset = token.location.startOffset;
+      headFinished = true;
+      parser.tokenizer.pause();
+    }
+  };
 
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
