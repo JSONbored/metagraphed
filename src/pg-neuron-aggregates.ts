@@ -2,6 +2,10 @@ import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { SqliteDocumentValue } from "./sqlite-document-decoder.ts";
 import { createSqliteSum } from "./sqlite-sum.ts";
 import type { NeuronAggregateStore } from "./neuron-aggregate-store.ts";
+import {
+  compareSqliteMetric,
+  sqliteMetricWireValue,
+} from "./sqlite-metric-value.ts";
 
 interface Decoder {
   metricEntries(
@@ -29,29 +33,6 @@ function compareNumeric(left: bigint | number, right: bigint | number): number {
   // Relational BigInt/Number comparison is exact; converting the integer to a
   // Number first would change ordering above JavaScript's safe integer range.
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function compareScalar(
-  left: JsonScalar,
-  leftBytes: Uint8Array | undefined,
-  right: JsonScalar,
-  rightBytes: Uint8Array | undefined,
-): number {
-  if (left === null) return right === null ? 0 : -1;
-  if (right === null) return 1;
-  if (typeof left === "string")
-    return typeof right === "string"
-      ? Buffer.compare(leftBytes!, rightBytes!)
-      : 1;
-  if (typeof right === "string") return -1;
-  return compareNumeric(left, right);
-}
-
-function wireValue(value: SqliteDocumentValue): unknown {
-  if (typeof value === "bigint") return Number(value);
-  if (typeof value === "number")
-    return Number.isFinite(value) ? (value === 0 ? 0 : value) : null;
-  return value;
 }
 
 /** Count accepted members separately from duplicate metric entries, as the
@@ -133,7 +114,7 @@ export function createPgNeuronAggregateStore(
                 : { kind: "real", value: stake },
           );
           if (
-            compareScalar(
+            compareSqliteMetric(
               original,
               textBytes?.stake_tao,
               group.max,
@@ -151,8 +132,10 @@ export function createPgNeuronAggregateStore(
           netuid: Number(netuid),
           uid_count: group.count,
           validator_count: group.validators,
-          total_stake_alpha: wireValue(group.sum.value()?.value ?? null),
-          max_stake_alpha: wireValue(group.max),
+          total_stake_alpha: sqliteMetricWireValue(
+            group.sum.value()?.value ?? null,
+          ),
+          max_stake_alpha: sqliteMetricWireValue(group.max),
         }));
     },
   };

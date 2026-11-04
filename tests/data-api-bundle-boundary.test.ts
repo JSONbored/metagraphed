@@ -91,6 +91,8 @@ describe("data-api's bundle boundary", () => {
     "src/neuron-document-preparation.ts",
     "src/pg-neuron-snapshot.ts",
     "src/pg-neuron-capture.ts",
+    "src/pg-neuron-live.ts",
+    "src/sqlite-metric-value.ts",
     "src/pg-subnet-status-hub.ts",
     "src/pg-rate-limits.ts",
     "src/pg-daily-quota.ts",
@@ -193,6 +195,9 @@ describe("data-api's bundle boundary", () => {
     // Native capture selection adds 1,803 source / 396 minified / 186 gzip
     // bytes over f5ce2286, for 4,850,089 source bytes. Its PostgreSQL writer
     // and SQLite codec remain absent. Keep 1,911 source bytes of margin.
+    // Native live selectors add 1,169 source / 371 minified / 96 gzip bytes
+    // on the aggregate-only base. Their codec and adapters stay outside the
+    // Worker graph; preserve the existing source cap after composition.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
