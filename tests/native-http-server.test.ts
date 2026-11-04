@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { request as httpRequest } from "node:http";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import type { NativeApiProcess } from "../src/native-api-process.ts";
-import {
-  listenNativeApi,
-  type NativeHttpOptions,
-} from "../src/native-http-server.ts";
+import type { NativeHttpOptions } from "../src/native-http-server.ts";
+
+// Exercise real Node networking in a fresh registry. Worker tests replace
+// fetch globally; the shared-registry CI pass cannot qualify this boundary.
+vi.resetModules();
+const { listenNativeApi } = await import("../src/native-http-server.ts");
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => {
