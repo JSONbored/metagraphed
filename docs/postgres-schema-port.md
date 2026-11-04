@@ -250,3 +250,26 @@ alias replay, whole-batch rollback, the NULL/-1 failure-key collision and
 uptime percentiles. This does not select a production writer or activate the
 separate `subnet_snapshots` family; that path also requires its complete schema
 and closed-day revision triggers.
+
+## Account, usage and alert state
+
+The account-state load migration preserves eleven source tables and their
+fourteen explicit indexes. Account identifiers and timestamps remain signed
+`bigint` values. Opaque credential, contact, condition and subscription text
+retain their original bytes. The source `applied`, `active` and `success` flags
+use the existing `boolean01` import codec. Account-kind composite keys continue
+to distinguish RPC and GitHub accounts with the same numeric ID.
+[Load schema](../migrations/postgres/0010_account_state.sql)
+
+Delivery rows load before reference enforcement, so source export table order
+does not become an import prerequisite. The separate activation migration
+validates and adds the delivery-to-trigger foreign key with `ON DELETE CASCADE`.
+It checks all seven identity sequence floors before advancing any sequence,
+using imported rows, original `sqlite_sequence` metadata and consumed native
+sequence values. Exhaustion or orphaned deliveries abort activation.
+[Activation](../migrations/postgres/0011_account_state_activate.sql)
+
+The PostgreSQL fixture compares source columns and explicit indexes, exercises
+exact values, nullable fields, account-kind keys and partial uniqueness, and
+checks sequence floors, orphan refusal, cascade deletion and rollback.
+[Integration test](../tests/postgres-account-state-schema.pg18.ts)
