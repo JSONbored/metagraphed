@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import type { AppKv } from "./app-kv.ts";
-import type { PgStoreRuntime } from "./pg-store-runtime.ts";
+import type { PgTransaction, PgTransactionRunner } from "./pg-pool.ts";
 
 type Representation = "text" | "json" | "arrayBuffer" | "stream";
 interface StoredEntry {
@@ -19,6 +19,10 @@ export interface PgKvOptions {
   streamTimeoutMs?: number;
   /** Millisecond clock, injectable for deterministic expiry tests. */
   now?: () => number;
+}
+export interface PgKvRuntime {
+  producer: PgTransaction;
+  transaction: PgTransactionRunner;
 }
 
 const defaults = {
@@ -137,7 +141,7 @@ async function valueBytes(
 /** A bounded namespace over the process pool; every stored payload retains its
  * bytes and expiry. Authentication consumers opt into atomic consumption. */
 export function createPgKv(
-  runtime: Pick<PgStoreRuntime, "producer" | "transaction">,
+  runtime: PgKvRuntime,
   namespace: string,
   options: PgKvOptions = {},
 ): AppKv {
