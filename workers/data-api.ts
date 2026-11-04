@@ -8917,6 +8917,34 @@ function matchHyperparamsIdentityStoreRoute(
   return null;
 }
 
+// This explicit document capability does not make the SQL view routes native.
+async function readNativeSubnetSnapshot(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/metagraph$/);
+  if (!match) return null;
+  try {
+    const native = selectedNeuronSnapshotStore(env);
+    if (!native) return null;
+    const netuid = Number(match[1]);
+    const rows = await native.subnetRows(
+      netuid,
+      url.searchParams.get("validator_permit") === "true",
+    );
+    return json(
+      buildSubnetMetagraph(rows, netuid, {
+        immunityPeriod: null,
+        burnHotkey: await native.burnHotkey(netuid),
+      }),
+    );
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -9221,34 +9249,16 @@ async function dispatchDataApiRequest(
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
+    const nativeSnapshot = await readNativeSubnetSnapshot(url, env);
+    if (nativeSnapshot) return nativeSnapshot;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
-      const nativeSnapshot = /^\/api\/v1\/subnets\/\d+\/metagraph$/.test(
-        url.pathname,
-      )
-        ? selectedNeuronSnapshotStore(env)
-        : null;
-      const store = nativeSnapshot
-        ? undefined
-        : routeRunner(env, ctx, NEURON_ROUTE_TABLES);
-      if (!nativeSnapshot && !store) {
+      const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
+      if (!store) {
         return json({ error: "no store bound for this route" }, 503);
       }
       try {
-        if (nativeSnapshot) {
-          const netuid = Number(url.pathname.split("/")[4]);
-          const rows = await nativeSnapshot.subnetRows(
-            netuid,
-            url.searchParams.get("validator_permit") === "true",
-          );
-          return json(
-            buildSubnetMetagraph(rows, netuid, {
-              immunityPeriod: null,
-              burnHotkey: await nativeSnapshot.burnHotkey(netuid),
-            }),
-          );
-        }
-        return await neuronsStoreHandler(store as PgSql, env, ctx);
+        return await neuronsStoreHandler(store, env, ctx);
       } catch (err) {
         console.error("data-api neurons query failed:", err);
         await captureDataApiError(err, maskRouteParams(url.pathname), env);
