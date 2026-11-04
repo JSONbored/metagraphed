@@ -152,6 +152,9 @@ test("shared cold readers select native history and preserve failure versus empt
     await loadAccountPositionHistoryColdTier(env, account, 7, null, null, 5),
   ).toBeNull();
   expect(await loadNeuronHistoryColdTier(null, 7, 2, null, null, 5)).toBeNull();
+  expect(
+    await loadAccountPositionHistoryColdTier(null, account, 7, null, null, 5),
+  ).toBeNull();
 });
 
 test("actual REST handlers use the native capability without a SQL dispatcher", async () => {
@@ -184,4 +187,10 @@ test("actual REST handlers use the native capability without a SQL dispatcher", 
     ctx,
   );
   expect(missing.status).toBe(503);
+  const unrelated = await worker.fetch(
+    new Request("https://example.com/api/v1/subnets/7/neurons"),
+    dataApiEnv(),
+    ctx,
+  );
+  expect(unrelated.status).toBe(503);
 });
