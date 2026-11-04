@@ -324,6 +324,26 @@ INTEGER uses scale zero; integral REAL uses nonzero scale. Quota retains its
 finite-only `sqlite_numeric_typed` contract. This migration touches only `app`
 source tables and does not depend on native auth or job bootstrap.
 
+The usage [row-identity load migration](../migrations/postgres/0035_usage_row_identity.sql)
+requires the original hidden SQLite rowid in `source_row_id` for both
+`api_key_usage_daily` and `api_usage_rollup`. Import it through the qualified
+row-identity sidecar, independently of export order. Existing dashboard reads
+retain same-day source order, and shape rollups retain that order within each
+day for SQLite-compatible floating aggregation. Unique, non-null source keys
+reject incomplete or conflicting mappings before activation. This load migration
+requires the fresh target schema; it cannot reconstruct rowids after an import.
+
+The separate [usage identity activation](../migrations/postgres/0036_usage_row_identity_activate.sql)
+adds non-cycling identity defaults only after the source import is verified.
+It rejects an exhausted source maximum, then starts each default above all
+positive imported rowids. Deleted rows and sequence gaps cannot make a later
+native insert reuse an older identity. Creating the defaults, sequences and
+read-order indexes in one transaction leaves the imported rows unchanged on
+rollback. [Integration tests](../tests/postgres-usage-row-identity.pg18.ts) cover
+exact wide source identities, duplicate/missing refusal, rollback, empty and
+negative sources, deletion and the signed-int64 boundary.
+Final native grants must include `USAGE` on both new identity sequences.
+
 Delivery rows load before reference enforcement, so source export table order
 does not become an import prerequisite. The separate activation migration
 validates and adds the delivery-to-trigger foreign key with `ON DELETE CASCADE`.
