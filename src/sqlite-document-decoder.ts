@@ -136,6 +136,7 @@ export function createSqliteDocumentDecoder(options: {
   );
   const numericAffinity = db.prepare("SELECT sum(?1) AS value");
   const integerAffinity = db.prepare("SELECT CAST(?1 AS INTEGER) AS value");
+  const matchesInteger = db.prepare("SELECT CAST(?2 AS INTEGER)=?1 AS value");
   const mergeCapture = db.prepare(`SELECT jsonb_patch(?1,CASE
     WHEN (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(?2) i) > ?3
       THEN ?2
@@ -244,6 +245,10 @@ export function createSqliteDocumentDecoder(options: {
       )
         throw new RangeError("Scalar exceeds its explicit decode budget");
       return integerAffinity.get(value)!.value as bigint | null;
+    },
+    matchesInteger(value: SqliteDocumentValue, integer: bigint): boolean {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      return matchesInteger.get(value, integer)!.value === 1;
     },
     mergeCapture(
       current: Uint8Array,

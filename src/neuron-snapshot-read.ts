@@ -20,6 +20,12 @@ import {
   type NeuronDirectoryRow,
 } from "./neuron-live-store.ts";
 
+import {
+  selectedNeuronSummaryStore,
+  type DirectoryNominatorRow,
+  type NeuronDailyRollup,
+} from "./neuron-summary-store.ts";
+
 export const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
   z.tuple([z.number(), z.string().nullable(), EconomicsValuesSchema]),
@@ -283,12 +289,6 @@ export async function readNeuronDirectoryRows(
     ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`);
 }
 
-interface DirectoryNominatorRow extends Record<string, unknown> {
-  hotkey: string;
-  nominator_count: number | null;
-  scan_at: number | null;
-}
-
 // A partial pass can still exceed the lifecycle lane's netuid coverage floor.
 // Delivery counters may include retries, so require both a completed receipt
 // and exactly its expected number of distinct current memberships. Never use
@@ -296,6 +296,8 @@ interface DirectoryNominatorRow extends Record<string, unknown> {
 export async function readCompleteNeuronRows(
   env: unknown,
 ): Promise<Record<string, unknown>[] | null> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.completeRows();
   const store = selectedD1Store(env, ["neurons", "neurons_passes"]);
   if (!store) return null;
   return store.query(`WITH current AS MATERIALIZED (
@@ -328,6 +330,8 @@ export async function readDirectoryNominatorCounts(
   env: unknown,
   hotkeys: readonly string[],
 ): Promise<DirectoryNominatorRow[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.nominatorCounts(hotkeys);
   const store = selectedD1Store(env, ["neurons", "validator_nominator_counts"]);
   if (store) {
     return store.query(
@@ -356,6 +360,8 @@ export async function readNeuronDailyValidators(
   startDate: string,
   endDate: string,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.dailyValidators(startDate, endDate);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query(
@@ -371,14 +377,6 @@ export async function readNeuronDailyValidators(
   return sql`SELECT snapshot_date,netuid,hotkey,validator_permit
     FROM neuron_daily WHERE validator_permit=TRUE
       AND snapshot_date IN (${startDate},${endDate})`;
-}
-
-interface NeuronDailyRollup extends Record<string, unknown> {
-  snapshot_date: string;
-  neuron_count: string | number;
-  validator_count: string | number;
-  total_stake_tao: string | number | null;
-  total_emission_tao: string | number | null;
 }
 
 /** Preserve accepted members with missing metrics while expanding each shard once. */
@@ -481,6 +479,8 @@ export async function readNeuronDailyTotals(
   startDate: string,
   endDate: string,
 ): Promise<NeuronDailyRollup[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.dailyTotals(startDate, endDate);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query<NeuronDailyRollup>(
@@ -505,6 +505,8 @@ export async function readSubnetDailyHistory(
   limit: number,
   before: string | null = null,
 ): Promise<NeuronDailyRollup[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.subnetHistory(netuid, cutoff, limit, before);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query<NeuronDailyRollup>(
