@@ -57,7 +57,7 @@ export function createApiEntry<
         : provider.fetch(request, env, ctx);
     },
     async scheduled(event, env, ctx) {
-      await (await options.loadApplication()).scheduled(event, env, ctx);
+      return (await options.loadApplication()).scheduled(event, env, ctx);
     },
     async queue(batch, env, ctx) {
       await (await options.loadApplication()).queue(batch, env, ctx);
