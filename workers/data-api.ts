@@ -37,7 +37,9 @@ import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
 import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
 import { selectedNativeRelationalSql } from "../src/native-relational-read.ts";
 import { selectedNeuronDailyViewStore } from "../src/neuron-daily-view-store.ts";
+import { selectedNeuronLiveStore } from "../src/neuron-live-store.ts";
 import { selectedNeuronSummaryStore } from "../src/neuron-summary-store.ts";
+import { selectedValidatorEnrichmentStore } from "../src/validator-enrichment-store.ts";
 import {
   selectedNeuronViewStore,
   type NeuronViewQuery,
@@ -6814,15 +6816,24 @@ type NeuronsStoreRouteHandler = (
 // which counts root among "subnets" when root is not one. That name predates this
 // fix and renaming a published field is a contract change, not a bug fix -- so it
 // is left alone and called out rather than quietly redefined here.
+function requiredEnrichmentSql(sql: PgSql | undefined): PgSql {
+  if (!sql)
+    throw new Error("Native validator enrichment capability is required");
+  return sql;
+}
+
 async function loadSubnetTemposFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
 ): Promise<Map<number, number>> {
   try {
-    const rows = await sql<{
-      netuid: SubnetHyperparams["netuid"];
-      tempo: SubnetHyperparams["tempo"];
-    }>`SELECT netuid, tempo FROM subnet_hyperparams`;
+    const native = selectedValidatorEnrichmentStore(env);
+    const rows = native
+      ? await native.tempos()
+      : await requiredEnrichmentSql(sql)<{
+          netuid: SubnetHyperparams["netuid"];
+          tempo: SubnetHyperparams["tempo"];
+        }>`SELECT netuid, tempo FROM subnet_hyperparams`;
     return tempoByNetuid(rows as Array<Record<string, unknown>>);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
@@ -6832,16 +6843,19 @@ async function loadSubnetTemposFromStore(
 }
 
 async function loadStoreAlphaPricesByNetuid(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
 ): Promise<Map<number, number | null>> {
   try {
-    const rows = await sql<{
-      netuid: SubnetSnapshots["netuid"];
-      alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
-      tao_in_pool_tao: SubnetSnapshots["tao_in_pool_tao"];
-      alpha_in_pool: SubnetSnapshots["alpha_in_pool"];
-    }>`
+    const native = selectedValidatorEnrichmentStore(env);
+    const rows = native
+      ? await native.prices()
+      : await requiredEnrichmentSql(sql)<{
+          netuid: SubnetSnapshots["netuid"];
+          alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
+          tao_in_pool_tao: SubnetSnapshots["tao_in_pool_tao"];
+          alpha_in_pool: SubnetSnapshots["alpha_in_pool"];
+        }>`
       SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao,
         s.tao_in_pool_tao AS tao_in_pool_tao, s.alpha_in_pool AS alpha_in_pool
       FROM subnet_snapshots s
@@ -6918,7 +6932,7 @@ async function loadStoreAlphaPricesByNetuid(
 // threshold the staleness watchdog alarms on, imported rather than restated so
 // the two can never disagree about what "fresh" means.
 async function loadNominatorCountsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   hotkeys: readonly string[],
 ): Promise<Map<string, number>> {
@@ -6926,7 +6940,14 @@ async function loadNominatorCountsFromStore(
     // LEFT JOIN from the permitted set, not an inner read of the counts table:
     // the rows with no match are precisely the ones the zero-fill is about, so
     // they have to survive the query to be seen at all.
-    const rows = await readDirectoryNominatorCounts(sql, env, hotkeys);
+    const native = selectedNeuronSummaryStore(env);
+    const rows = native
+      ? await native.nominatorCounts(hotkeys)
+      : await readDirectoryNominatorCounts(
+          requiredEnrichmentSql(sql),
+          env,
+          hotkeys,
+        );
     return fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -6944,25 +6965,28 @@ async function loadNominatorCountsFromStore(
 // rule: a real row wins, absence from a FRESH scan is a confirmed zero, and
 // absence from a stale one stays null.
 async function loadNominatorCountFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   hotkeys: readonly string[],
   env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
-    const rows = await sql.unsafe<{
-      hotkey: ValidatorNominatorCounts["hotkey"];
-      nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
-      scan_at: ValidatorNominatorCounts["captured_at"] | null;
-    }>(
-      hotkeys.length === 1
-        ? "SELECT ? AS hotkey," +
-            " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
-            " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
-        : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+    const native = selectedNeuronSummaryStore(env);
+    const rows = native
+      ? await native.nominatorCounts(hotkeys)
+      : await requiredEnrichmentSql(sql).unsafe<{
+          hotkey: ValidatorNominatorCounts["hotkey"];
+          nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
+          scan_at: ValidatorNominatorCounts["captured_at"] | null;
+        }>(
+          hotkeys.length === 1
+            ? "SELECT ? AS hotkey," +
+                " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+                " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
+            : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
           SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
           LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
-      hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
-    );
+          hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
+        );
     const counts = fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -7017,26 +7041,44 @@ export async function loadSubnetSnapshotCards(
  * one read each for prices, counts, tempos and identities. Builders retain the
  * exact single-detail formatting and per-key ordering. */
 export async function loadValidatorDetailsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   hotkeys: readonly string[],
 ) {
   if (hotkeys.length < 1 || hotkeys.length > COMPARE_VALIDATORS_MAX)
     throw new RangeError("Validator detail batch exceeds its public bound");
   const unique = [...new Set(hotkeys)];
+  const native = selectedNeuronViewStore(env);
+  const enrichment = selectedValidatorEnrichmentStore(env);
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
-      sql.unsafe<NeuronColumnsRow>(
-        unique.length === 1
-          ? `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`
-          : `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey IN (${unique.map(() => "?").join(",")}) AND validator_permit = TRUE ORDER BY hotkey ASC, netuid ASC, uid ASC`,
-        unique,
-      ),
+      native
+        ? native.rows({
+            columns: [...NEURON_COLUMNS.split(", "), "netuid"],
+            hotkeys: unique,
+            validatorsOnly: true,
+            order: [
+              { column: "hotkey" },
+              { column: "netuid" },
+              { column: "uid" },
+            ],
+          })
+        : requiredEnrichmentSql(sql).unsafe<NeuronColumnsRow>(
+            unique.length === 1
+              ? `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`
+              : `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey IN (${unique.map(() => "?").join(",")}) AND validator_permit = TRUE ORDER BY hotkey ASC, netuid ASC, uid ASC`,
+            unique,
+          ),
       loadStoreAlphaPricesByNetuid(sql, env),
       loadNominatorCountFromStore(sql, unique, env),
       loadSubnetTemposFromStore(sql, env),
       loadIdentityByColdkeyMap((text, params) =>
-        sql.unsafe<AccountIdentityStoreRow>(text, params),
+        enrichment
+          ? enrichment.identities()
+          : requiredEnrichmentSql(sql).unsafe<AccountIdentityStoreRow>(
+              text,
+              params,
+            ),
       ),
     ]);
   return hotkeys.map((hotkey) =>
@@ -7207,12 +7249,13 @@ async function resolveBurnHotkey(
 }
 
 async function loadGlobalValidatorsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   sort: string,
   limit: number,
   includeAll = false,
 ) {
+  const enrichment = selectedValidatorEnrichmentStore(env);
   const memberships = readNeuronDirectoryRows(sql, env, true);
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
@@ -7227,7 +7270,12 @@ async function loadGlobalValidatorsFromStore(
       ),
       loadSubnetTemposFromStore(sql, env),
       loadIdentityByColdkeyMap((statement, parameters) =>
-        sql.unsafe<AccountIdentityStoreRow>(statement, parameters),
+        enrichment
+          ? enrichment.identities()
+          : requiredEnrichmentSql(sql).unsafe<AccountIdentityStoreRow>(
+              statement,
+              parameters,
+            ),
       ),
     ]);
   return buildGlobalValidators(rows, {
@@ -7247,9 +7295,14 @@ async function loadGlobalValidatorsFromStore(
 export { materializationFromUnknown };
 
 async function latestCompletedNeuronSnapshot(
-  sql: PgSql,
+  sql: PgSql | undefined,
+  env: DataApiEnv,
 ): Promise<number | null> {
-  const rows = await sql<{ captured_at: number | string | null }>`
+  const native = selectedValidatorEnrichmentStore(env);
+  if (native) return native.latestCompletedCapture();
+  const rows = await requiredEnrichmentSql(sql)<{
+    captured_at: number | string | null;
+  }>`
     SELECT captured_at FROM neurons_passes
     WHERE completed_at IS NOT NULL
     ORDER BY completed_at DESC
@@ -7301,8 +7354,8 @@ export async function refreshExplorerDirectoryMaterialization(
       }
     }
     const sql = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
-    if (!sql) return false;
-    const latest = await latestCompletedNeuronSnapshot(sql);
+    if (!sql && !selectedValidatorEnrichmentStore(env)) return false;
+    const latest = await latestCompletedNeuronSnapshot(sql, env);
     // Every producer chunk requests a refresh. Decline incomplete or obsolete
     // passes before scanning the full metric snapshot for its boundary stamp.
     if (latest !== capturedAt) return false;
@@ -7331,7 +7384,7 @@ export async function refreshExplorerDirectoryMaterialization(
     const validators = buildValidatorOperatorDirectory(globalValidators);
 
     // Refuse publication if a newer in-place pass began during the fold.
-    const finalLatest = await latestCompletedNeuronSnapshot(sql);
+    const finalLatest = await latestCompletedNeuronSnapshot(sql, env);
     const finalCapturedAt = await readNewestNeuronCapture(sql, env);
     if (finalLatest !== capturedAt || finalCapturedAt !== capturedAt) {
       return false;
@@ -7408,7 +7461,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // Internal freshness stamp, bounded by the latest complete pass.
   if (url.pathname === "/api/v1/internal/neurons-snapshot-stamp") {
     return async (sql, env, ctx) => {
-      const capturedAt = await latestCompletedNeuronSnapshot(sql);
+      const capturedAt = await latestCompletedNeuronSnapshot(sql, env);
       if (capturedAt === null) return json({ captured_at: null });
 
       // Keep the ready hot path to one tiny pointer read.
@@ -7705,7 +7758,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         scheduleExplorerDirectoryRefresh(
           env,
           ctx,
-          latestCompletedNeuronSnapshot(sql).then(
+          latestCompletedNeuronSnapshot(sql, env).then(
             (latest) => latest ?? materialized.captured_at,
           ),
         );
@@ -8543,7 +8596,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         scheduleExplorerDirectoryRefresh(
           env,
           ctx,
-          latestCompletedNeuronSnapshot(sql).then(
+          latestCompletedNeuronSnapshot(sql, env).then(
             (latest) => latest ?? materialized.captured_at,
           ),
         );
@@ -9073,6 +9126,152 @@ async function readNativeDailyHistory(
   } catch (err) {
     console.error("data-api neurons query failed:", err);
     await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeEnrichedRoutes(
+  url: URL,
+  env: DataApiEnv,
+  ctx: AppExecutionContext,
+): Promise<Response | null> {
+  const detail = url.pathname.match(/^\/api\/v1\/validators\/([^/]+)$/);
+  const portfolio = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/portfolio$/,
+  );
+  const validators = url.pathname === "/api/v1/validators";
+  const operators = url.pathname === "/api/v1/validators/operators";
+  const compare = url.pathname === "/api/v1/internal/validator-details";
+  const accounts = url.pathname === "/api/v1/accounts";
+  const directory = url.pathname === "/api/v1/accounts/directory";
+  const stamp = url.pathname === "/api/v1/internal/neurons-snapshot-stamp";
+  if (
+    !detail &&
+    !portfolio &&
+    !validators &&
+    !compare &&
+    !accounts &&
+    !directory &&
+    !stamp
+  )
+    return null;
+  try {
+    const view = selectedNeuronViewStore(env);
+    const live = selectedNeuronLiveStore(env);
+    const summary = selectedNeuronSummaryStore(env);
+    const enrichment = selectedValidatorEnrichmentStore(env);
+    if (!view || !live || !summary || !enrichment) return null;
+    if (compare) {
+      const hotkeys = parseCompareHotkeys(url.searchParams.get("hotkeys"));
+      return hotkeys
+        ? json({
+            details: await loadValidatorDetailsFromStore(
+              undefined,
+              env,
+              hotkeys,
+            ),
+          })
+        : json({ error: "Invalid bounded validator address list" }, 400);
+    }
+    if (detail && !operators)
+      return json(
+        (
+          await loadValidatorDetailsFromStore(undefined, env, [
+            decodeURIComponent(detail[1]),
+          ])
+        )[0],
+      );
+    if (portfolio) {
+      const hotkey = decodeURIComponent(portfolio[1]);
+      const [rows, priceByNetuid] = await Promise.all([
+        view.rows({
+          columns: [
+            "netuid",
+            "uid",
+            "stake_tao",
+            "emission_tao",
+            "rank",
+            "trust",
+            "incentive",
+            "dividends",
+            "validator_permit",
+            "active",
+            "captured_at",
+          ],
+          hotkey,
+          order: [{ column: "netuid" }],
+        }),
+        loadStoreAlphaPricesByNetuid(undefined, env),
+      ]);
+      return json(buildAccountPortfolio(rows, hotkey, { priceByNetuid }));
+    }
+    if (stamp) {
+      const capturedAt = await enrichment.latestCompletedCapture();
+      if (capturedAt === null) return json({ captured_at: null });
+      const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
+      if (pointer?.captured_at !== capturedAt || !pointer.route_values_ready)
+        scheduleExplorerDirectoryRefresh(env, ctx, capturedAt);
+      return json({ captured_at: capturedAt });
+    }
+    if (operators || directory) {
+      const materialized = await readExplorerDirectoryMaterialization(
+        env.METAGRAPH_CONTROL,
+      );
+      if (materialized) {
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          enrichment
+            .latestCompletedCapture()
+            .then((latest) => latest ?? materialized.captured_at),
+        );
+        return json(
+          operators ? materialized.validators : materialized.accounts,
+        );
+      }
+    }
+    if (validators || operators) {
+      const sortParam = url.searchParams.get("sort");
+      const sort =
+        sortParam !== null && GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+          ? sortParam
+          : DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limitParam = Number(url.searchParams.get("limit"));
+      const limit =
+        Number.isInteger(limitParam) &&
+        limitParam >= 1 &&
+        limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
+          ? limitParam
+          : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+      const result = await loadGlobalValidatorsFromStore(
+        undefined,
+        env,
+        operators ? "total_stake" : sort,
+        operators ? GLOBAL_VALIDATOR_LIMIT_MAX : limit,
+        operators,
+      );
+      return json(operators ? buildValidatorOperatorDirectory(result) : result);
+    }
+    const [rows, priceByNetuid] = await Promise.all([
+      live.directoryRows(),
+      loadStoreAlphaPricesByNetuid(undefined, env),
+    ]);
+    const rawLimit = url.searchParams.get("limit");
+    return json(
+      directory
+        ? buildAccountHolderDirectory(rows, { priceByNetuid })
+        : buildAccountsList(rows, {
+            sort: url.searchParams.get("sort") || DEFAULT_ACCOUNTS_LIST_SORT,
+            limit:
+              rawLimit == null || rawLimit === ""
+                ? ACCOUNTS_LIST_LIMIT_DEFAULT
+                : Number(rawLimit),
+            priceByNetuid,
+          }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
     return json({ error: "data query failed" }, 502);
   }
 }
@@ -9755,6 +9954,8 @@ async function dispatchDataApiRequest(
     if (nativeHistory) return nativeHistory;
     const nativeDailyViews = await readNativeDailyViewRoutes(url, env);
     if (nativeDailyViews) return nativeDailyViews;
+    const nativeEnriched = await readNativeEnrichedRoutes(url, env, ctx);
+    if (nativeEnriched) return nativeEnriched;
     const nativeMetrics = await readNativeNeuronMetrics(url, env);
     if (nativeMetrics) return nativeMetrics;
     const nativeView = await readNativeNeuronView(url, env);

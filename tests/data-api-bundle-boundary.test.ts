@@ -97,6 +97,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-neuron-live.ts",
     "src/pg-neuron-summaries.ts",
     "src/pg-neuron-view.ts",
+    "src/pg-validator-enrichment.ts",
     "src/sqlite-metric-value.ts",
     "src/pg-subnet-status-hub.ts",
     "src/pg-rate-limits.ts",
@@ -229,11 +230,14 @@ describe("data-api's bundle boundary", () => {
     // Native daily-view dispatch adds 7,542 source / 2,689 minified / 650 gzip
     // bytes over 704ed13a, for 4,875,014 source bytes. PostgreSQL daily view
     // implementation and the SQLite codec remain excluded from this graph.
+    // Native enrichment dispatch adds 8,668 source / 2,944 minified / 717 gzip
+    // bytes over a1bccf61, for 4,884,654 source bytes. The PostgreSQL
+    // enrichment implementation remains outside this graph.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_876_000,
+      firstParty < 4_885_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

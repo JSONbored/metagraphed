@@ -4,6 +4,7 @@ import type {
   SqliteDocumentValue,
 } from "./sqlite-document-decoder.ts";
 import { NEURON_COLUMNS } from "./metagraph-neurons.ts";
+import { COMPARE_VALIDATORS_MAX } from "./analytics-live.ts";
 import type { NeuronViewStore } from "./neuron-view-store.ts";
 import {
   compareSqliteMetric,
@@ -51,6 +52,12 @@ export function createPgNeuronViewStore(
             (descending !== undefined && typeof descending !== "boolean"),
         ) ||
         new Set(order.map(({ column }) => column)).size !== order.length ||
+        (query.hotkeys !== undefined &&
+          (!Array.isArray(query.hotkeys) ||
+            query.hotkeys.length < 1 ||
+            query.hotkeys.length > COMPARE_VALIDATORS_MAX ||
+            query.hotkeys.some((key) => typeof key !== "string") ||
+            query.hotkey !== undefined)) ||
         (query.limit !== undefined &&
           (!Number.isSafeInteger(query.limit) || query.limit < 1))
       )
@@ -67,11 +74,23 @@ export function createPgNeuronViewStore(
         values.push(BigInt(value).toString());
         predicates.push(`m.${name}=$${values.length}::bigint`);
       }
-      if (query.hotkey !== undefined) {
-        if (typeof query.hotkey !== "string")
+      const hotkeys =
+        query.hotkeys ??
+        (query.hotkey === undefined ? undefined : [query.hotkey]);
+      if (hotkeys !== undefined) {
+        if (hotkeys.some((key) => typeof key !== "string"))
           throw new TypeError("Invalid native neuron view hotkey");
-        values.push(Buffer.from(query.hotkey));
-        predicates.push(`convert_to(m.hotkey,'UTF8')=$${values.length}::bytea`);
+        predicates.push(
+          `(${[...new Set(hotkeys)]
+            .map((key) => {
+              const exceptional = /\0|[\uD800-\uDFFF]/u.test(key);
+              values.push(exceptional ? Buffer.from(key) : key);
+              return exceptional
+                ? `convert_to(m.hotkey,'UTF8')=$${values.length}::bytea`
+                : `m.hotkey=$${values.length}::text`;
+            })
+            .join(" OR ")})`,
+        );
       }
       if (query.excludeRoot) predicates.push("m.netuid<>0");
       const parts = await runtime.read.query<Part>(

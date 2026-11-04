@@ -106,6 +106,23 @@ test("view member paths keep first keys, missing fields and non-object values", 
   expect(f.calls[0].sql).toContain("selected AS MATERIALIZED");
 });
 
+test("bounded hotkey batches retain indexed normal keys and exact exceptional bytes", async () => {
+  const f = fixture();
+  await f.store.rows({ columns: ["uid"], hotkeys: ["a", "b\0suffix", "a"] });
+  expect(f.calls[0].params).toEqual(["a", Buffer.from("b\0suffix")]);
+  expect(f.calls[0].sql).toContain("m.hotkey=$1::text");
+  expect(f.calls[0].sql).toContain("convert_to(m.hotkey,'UTF8')=$2::bytea");
+  for (const query of [
+    { columns: ["uid"], hotkeys: [] },
+    { columns: ["uid"], hotkeys: Array(17).fill("a") },
+    { columns: ["uid"], hotkeys: [1] },
+    { columns: ["uid"], hotkeys: ["a"], hotkey: "a" },
+  ])
+    await expect(f.store.rows(query as NeuronViewQuery)).rejects.toThrow(
+      "Invalid",
+    );
+});
+
 test("view filters are typed and bind binary hotkey identity without NUL truncation", async () => {
   const f = fixture();
   await f.store.rows({

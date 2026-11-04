@@ -63,11 +63,14 @@ function fixture(
       calls.push({ sql, params });
       if (failed) throw new Error("native unavailable");
       if (sql.includes("unnest"))
-        return (params[0] as string[]).map((hotkey) => ({
-          hotkey,
-          nominator_count: hotkey === "a" ? "0" : null,
-          scan_at: stamp,
-        })) as Row[];
+        return (params[0] as (string | Buffer)[]).map((value, index) => {
+          const hotkey = typeof value === "string" ? value : value.toString();
+          return {
+            ...(sql.includes("bytea[]") ? { ordinal: index + 1 } : { hotkey }),
+            nominator_count: hotkey === "a" ? "0" : null,
+            scan_at: stamp,
+          };
+        }) as Row[];
       return [
         ...rows.filter((row) => {
           if (
@@ -252,6 +255,12 @@ test("nominator reads retain input order, confirmed zero, missing keys and whole
     { hotkey: "a", nominator_count: 0, scan_at: 9 },
   ]);
   expect(f.calls[0].params).toEqual([["missing", "a"]]);
+  expect(await f.store.nominatorCounts(["a", "b\0suffix", "\ud800"])).toEqual([
+    { hotkey: "a", nominator_count: 0, scan_at: 9 },
+    { hotkey: "b\0suffix", nominator_count: null, scan_at: 9 },
+    { hotkey: "\ud800", nominator_count: null, scan_at: 9 },
+  ]);
+  expect(f.calls[1].sql).toContain("convert_to(c.hotkey,'UTF8')");
   expect(await f.store.nominatorCounts([])).toEqual([]);
   f.clearStamp();
   expect(await f.store.nominatorCounts(["a"])).toEqual([

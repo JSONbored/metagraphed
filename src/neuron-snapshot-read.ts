@@ -84,7 +84,7 @@ export const NEWEST_NEURON_CAPTURE_QUERY = `
     AND m.shard=d.shard`;
 
 export async function readNewestNeuronCapture(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: unknown,
 ): Promise<number> {
   const native = selectedNeuronLiveStore(env);
@@ -92,9 +92,9 @@ export async function readNewestNeuronCapture(
   const store = selectedD1Store(env, ["neurons"]);
   const rows = store
     ? await store.query(NEWEST_NEURON_CAPTURE_QUERY)
-    : await sql.unsafe<{ captured_at: number | string | null }>(
-        "SELECT MAX(captured_at) AS captured_at FROM neurons",
-      );
+    : await requiredNeuronSql(sql).unsafe<{
+        captured_at: number | string | null;
+      }>("SELECT MAX(captured_at) AS captured_at FROM neurons");
   return Number(rows[0]?.captured_at);
 }
 
@@ -249,7 +249,7 @@ export function subnetNeuronRowsFromParts(
 }
 
 export async function readNeuronDirectoryRows(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: unknown,
   validatorsOnly = false,
 ): Promise<NeuronDirectoryRow[]> {
@@ -284,9 +284,15 @@ export async function readNeuronDirectoryRows(
         ${validatorsOnly ? "AND json_extract(j.value,'$.validator_permit') = TRUE" : ""}
       ORDER BY m.hotkey ASC, stake_tao DESC, m.netuid ASC, m.uid ASC`);
   }
-  return sql.unsafe(`SELECT netuid, uid, hotkey, coldkey, ${metrics.join(", ")}
+  return requiredNeuronSql(sql)
+    .unsafe(`SELECT netuid, uid, hotkey, coldkey, ${metrics.join(", ")}
     FROM neurons WHERE ${validatorsOnly ? "validator_permit = TRUE AND " : ""}hotkey IS NOT NULL
     ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`);
+}
+
+function requiredNeuronSql(sql: PgSql | undefined): PgSql {
+  if (!sql) throw new Error("Native neuron read capability is required");
+  return sql;
 }
 
 // A partial pass can still exceed the lifecycle lane's netuid coverage floor.

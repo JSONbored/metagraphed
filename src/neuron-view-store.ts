@@ -3,6 +3,7 @@ export interface NeuronViewQuery {
   netuid?: number;
   uid?: number;
   hotkey?: string;
+  hotkeys?: readonly string[];
   validatorsOnly?: boolean;
   excludeRoot?: boolean;
   order?: readonly { column: string; descending?: boolean }[];
