@@ -12,6 +12,7 @@ import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
 import { selectedNeuronSnapshotStore } from "./neuron-snapshot-store.ts";
+import { selectedNeuronMetricStore } from "./neuron-metric-store.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
@@ -382,6 +383,8 @@ export async function readNeuronPerformanceRows(
   db: Pick<ReadStoreDb, "query">,
   env: unknown,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronMetricStore(env);
+  if (native) return native.performanceRows();
   const store = selectedD1Store(env, ["neurons"]);
   if (!store)
     return db.query(`SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons`);
@@ -422,6 +425,8 @@ export async function readNeuronDailyMetricRows<Row>(
     limit < 1
   )
     throw new Error("Invalid bounded neuron history projection");
+  const native = selectedNeuronMetricStore(env);
+  if (native) return native.dailyRows<Row>(netuid, cutoff, names, limit);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (!store)
     return db.query<Row>(

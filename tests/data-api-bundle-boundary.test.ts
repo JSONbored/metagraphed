@@ -95,6 +95,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-daily-quota.ts",
     "src/native-auth-controls.ts",
     "src/pg-neuron-history.ts",
+    "src/pg-neuron-metrics.ts",
     "src/archive-catalog-pg.ts",
     "src/archive-content-fs.ts",
     "src/mcp-server.ts",
@@ -171,11 +172,15 @@ describe("data-api's bundle boundary", () => {
     // measure 4,837,225 source bytes on d69e34e2 versus 4,832,833 on 8a8ce69b:
     // +4,392 source / 950 minified / 261 gzip bytes. All forbidden native
     // implementations remain absent. Keep only 4,775 source bytes of margin.
+    // Daily history plus native metric selection measures 4,842,603 source
+    // bytes: metrics adds 2,610 source / 972 minified / 181 gzip bytes over
+    // the qualified daily-history head 4cdeb932. Native decoders and PostgreSQL
+    // adapters remain forbidden; keep 2,397 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_842_000,
+      firstParty < 4_845_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
