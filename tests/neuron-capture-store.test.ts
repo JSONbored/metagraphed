@@ -122,21 +122,45 @@ test("normal forward and backfill HTTP callers reach the selected native transac
 });
 
 test("queued neuron delivery acknowledges native success and retries a failed commit", async () => {
-  const write = vi.fn(async (_input: NeuronMirrorInput, _signal?: AbortSignal) => 9);
-  const overrides = {NEURON_CAPTURE_STORE:{write}, NEURONS_SYNC_SECRET:"fixture-secret"};
-  const calls:string[]=[];
-  const message={
-    id:"native-capture",timestamp:new Date(row.captured_at),attempts:1,
-    body:{lane:"neurons",captured_at:row.captured_at,key_complete:true,pass_total:1,rows:[row]},
-    ack(){calls.push("ack");},retry(){calls.push("retry");},
+  const write = vi.fn(
+    async (_input: NeuronMirrorInput, _signal?: AbortSignal) => 9,
+  );
+  const overrides = {
+    NEURON_CAPTURE_STORE: { write },
+    NEURONS_SYNC_SECRET: "fixture-secret",
   };
-  const batch={queue:"sync-batches",metadata:{metrics:{backlogCount:1,backlogBytes:100}},messages:[message],ackAll(){},retryAll(){}};
-  const ctx={waitUntil(){}} as unknown as ExecutionContext;
-  await worker.queue!(batch,dataApiEnv(overrides),ctx);
-  assert.deepEqual(calls,["ack"]);
-  assert.equal(write.mock.calls[0]![0].pass?.expectedRows,1);
-  calls.length=0;
+  const calls: string[] = [];
+  const message = {
+    id: "native-capture",
+    timestamp: new Date(row.captured_at),
+    attempts: 1,
+    body: {
+      lane: "neurons",
+      captured_at: row.captured_at,
+      key_complete: true,
+      pass_total: 1,
+      rows: [row],
+    },
+    ack() {
+      calls.push("ack");
+    },
+    retry() {
+      calls.push("retry");
+    },
+  };
+  const batch = {
+    queue: "sync-batches",
+    metadata: { metrics: { backlogCount: 1, backlogBytes: 100 } },
+    messages: [message],
+    ackAll() {},
+    retryAll() {},
+  };
+  const ctx = { waitUntil() {} } as unknown as ExecutionContext;
+  await worker.queue!(batch, dataApiEnv(overrides), ctx);
+  assert.deepEqual(calls, ["ack"]);
+  assert.equal(write.mock.calls[0]![0].pass?.expectedRows, 1);
+  calls.length = 0;
   write.mockRejectedValueOnce(new Error("uncertain native commit"));
-  await worker.queue!(batch,dataApiEnv(overrides),ctx);
-  assert.deepEqual(calls,["retry"]);
+  await worker.queue!(batch, dataApiEnv(overrides), ctx);
+  assert.deepEqual(calls, ["retry"]);
 });

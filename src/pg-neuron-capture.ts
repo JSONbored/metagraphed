@@ -1,7 +1,10 @@
 import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import { createNativeWorkGroup } from "./native-work-group.ts";
 import { prepareNeuronDocument } from "./neuron-document-preparation.ts";
-import { storeSqliteValue, type createSqliteDocumentDecoder } from "./sqlite-document-decoder.ts";
+import {
+  storeSqliteValue,
+  type createSqliteDocumentDecoder,
+} from "./sqlite-document-decoder.ts";
 import {
   groupNeuronDocuments,
   neuronCaptureDocumentSize,
@@ -143,7 +146,7 @@ export function createPgNeuronCaptureStore(
               family,
               docs: docs.map((doc) => {
                 const text = JSON.stringify(doc.payload);
-              bytes += neuronCaptureDocumentSize(doc);
+                bytes += neuronCaptureDocumentSize(doc);
                 if (bytes > options.maxPayloadBytes)
                   throw new RangeError(
                     "Neuron capture exceeds its payload budget",
@@ -163,7 +166,7 @@ export function createPgNeuronCaptureStore(
                 };
                 const save = async (
                   family: NeuronDocumentFamily,
-              doc: { netuid: number; day: string; shard: number | string },
+                  doc: { netuid: number; day: string; shard: number | string },
                   stamp: bigint,
                   payload: Uint8Array,
                 ) => {
@@ -254,7 +257,7 @@ export function createPgNeuronCaptureStore(
                             "uid",
                             "hotkey",
                             "coldkey",
-                      ...(daily ? ["snapshot_date", "axon"] : []),
+                            ...(daily ? ["snapshot_date", "axon"] : []),
                           ],
                           Object.keys(doc.payload),
                         )
@@ -275,12 +278,14 @@ export function createPgNeuronCaptureStore(
                             shard: doc.shard,
                             hotkey: decoder.textAffinity(values.hotkey),
                             coldkey: decoder.textAffinity(values.coldkey),
-                        axon_index: daily ? storeSqliteValue(values.axon) : null,
+                            axon_index: daily
+                              ? storeSqliteValue(values.axon)
+                              : null,
                           };
                         });
                       const writeMembers = async (batch: typeof members) =>
-                    run(
-                      `INSERT INTO app.${family}_members(netuid,uid,${daily ? "snapshot_date," : ""}hotkey,coldkey,shard${daily ? ",axon_index,axon_indexed" : ""})
+                        run(
+                          `INSERT INTO app.${family}_members(netuid,uid,${daily ? "snapshot_date," : ""}hotkey,coldkey,shard${daily ? ",axon_index,axon_indexed" : ""})
                       SELECT netuid,uid,${daily ? "day," : ""}hotkey,coldkey,shard${daily ? ",axon_index,true" : ""} FROM json_to_recordset($1::json)
                         AS incoming(netuid bigint,uid bigint,day text,hotkey text,coldkey text,shard bigint,axon_index json)
                       ON CONFLICT(netuid,uid${daily ? ",snapshot_date" : ""}) DO UPDATE SET hotkey=excluded.hotkey,coldkey=excluded.coldkey
@@ -307,7 +312,7 @@ export function createPgNeuronCaptureStore(
                         identities.add(identity);
                         batch.push(member);
                       }
-                  await writeMembers(batch);
+                      await writeMembers(batch);
                     }
                   }
                   if (family === "neurons")
@@ -345,7 +350,7 @@ export function createPgNeuronCaptureStore(
                         );
                         await save(
                           "neurons",
-                      { netuid, day: "", shard: doc.shard },
+                          { netuid, day: "", shard: doc.shard },
                           BigInt(doc.stamp),
                           pruned.payload,
                         );
@@ -412,13 +417,13 @@ export function createPgNeuronCaptureStore(
                           "SELECT expected_rows::text,received_rows::text,completed_at::text FROM app.neurons_passes WHERE captured_at=$1",
                           [pass.capturedAt],
                         );
-                    if (
-                      !complete ||
-                      complete.completed_at === null ||
-                      BigInt(complete.received_rows) <
-                        BigInt(complete.expected_rows) ||
-                      BigInt(complete.completed_at) < BigInt(pass.capturedAt)
-                    )
+                    const completed =
+                      complete !== null &&
+                      complete.completed_at !== null &&
+                      BigInt(complete.received_rows) >=
+                        BigInt(complete.expected_rows) &&
+                      BigInt(complete.completed_at) >= BigInt(pass.capturedAt);
+                    if (!completed)
                       throw new Error(
                         "Neuron capture batch was not acknowledged",
                       );

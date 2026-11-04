@@ -12,7 +12,11 @@ import {
   readSqliteValue,
 } from "../src/sqlite-document-decoder.ts";
 import { createPgNeuronCaptureStore } from "../src/pg-neuron-capture.ts";
-import { neuronDocumentStatements, groupNeuronDocuments, neuronCaptureDocumentSize } from "../src/neuron-documents.ts";
+import {
+  neuronDocumentStatements,
+  groupNeuronDocuments,
+  neuronCaptureDocumentSize,
+} from "../src/neuron-documents.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 import {
   neuronSnapshotWrite,
@@ -365,16 +369,31 @@ describe("native neuron capture transactions", { concurrency: false }, () => {
     );
   });
   it("applies the source document-wrapper byte limit before any database work", async () => {
-    const base={...rows()[0],axon:""};
-    const document=groupNeuronDocuments("neurons",[base],NEURON_INSERT_COLUMNS)[0]!;
-    const baseSize=neuronCaptureDocumentSize(document);
-    const value={...base,axon:"x".repeat(524286-baseSize)};
-    const input={rows:[value],dailyRows:[],positionRows:[]};
-    assert.doesNotThrow(()=>neuronDocumentStatements(input));
+    const base = { ...rows()[0], axon: "" };
+    const document = groupNeuronDocuments(
+      "neurons",
+      [base],
+      NEURON_INSERT_COLUMNS,
+    )[0]!;
+    const baseSize = neuronCaptureDocumentSize(document);
+    const value = { ...base, axon: "x".repeat(524286 - baseSize) };
+    const input = { rows: [value], dailyRows: [], positionRows: [] };
+    assert.doesNotThrow(() => neuronDocumentStatements(input));
     await writer.write(input);
-    const oversized={rows:[{...value,axon:value.axon+"x"}],dailyRows:[],positionRows:[]};
-    assert.throws(()=>neuronDocumentStatements(oversized),/exceeds 512 KiB/);
-    await assert.rejects(writer.write(oversized),/exceeds 512 KiB/);
-    assert.equal((await control.query("SELECT count(*)::int AS count FROM app.neurons_documents")).rows[0].count,1);
+    const oversized = {
+      rows: [{ ...value, axon: value.axon + "x" }],
+      dailyRows: [],
+      positionRows: [],
+    };
+    assert.throws(() => neuronDocumentStatements(oversized), /exceeds 512 KiB/);
+    await assert.rejects(writer.write(oversized), /exceeds 512 KiB/);
+    assert.equal(
+      (
+        await control.query(
+          "SELECT count(*)::int AS count FROM app.neurons_documents",
+        )
+      ).rows[0].count,
+      1,
+    );
   });
 });
