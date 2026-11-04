@@ -365,6 +365,10 @@ export interface StoreEnv {
   HYPERDRIVE?: { connectionString?: string };
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
+  NATIVE_READ_STORE?: {
+    tables: readonly string[];
+    store: ReadStoreDb;
+  };
 }
 
 /**
@@ -401,6 +405,25 @@ export function readStore(
   deps: ReadStoreDeps = {},
 ): ReadStoreDb | undefined {
   if (injected) return injected;
+  const native = recordOrNull(env)?.NATIVE_READ_STORE;
+  if (native !== undefined) {
+    const selection = recordOrNull(native);
+    const owned = selection?.tables;
+    const store = recordOrNull(selection?.store);
+    if (
+      !Array.isArray(owned) ||
+      !owned.every((table) => typeof table === "string") ||
+      typeof store?.query !== "function" ||
+      typeof store?.first !== "function"
+    ) {
+      throw new TypeError("Selected native read store is invalid");
+    }
+    if (tables.length === 0) return undefined;
+    if (!tables.every((table) => owned.includes(table))) {
+      throw new Error("Native read store does not own every requested table");
+    }
+    return selection!.store as ReadStoreDb;
+  }
   const d1 = selectedD1Store(env, tables);
   if (d1) return d1;
   const connectionString = hyperdriveConnectionString(env);
