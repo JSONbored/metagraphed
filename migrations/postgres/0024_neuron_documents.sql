@@ -88,12 +88,18 @@ CREATE TABLE app.neuron_document_projections (
     day text COLLATE "C" NOT NULL,
     shard bigint NOT NULL,
     payload_sha256 bytea NOT NULL CHECK (octet_length(payload_sha256) = 32),
-    payload_json text NOT NULL,
+    payload_json text,
+    decode_status text NOT NULL CHECK (decode_status IN ('complete', 'failed')),
+    decode_error text,
     axon_values json NOT NULL CHECK (json_typeof(axon_values) = 'array'),
-    decoder_version text NOT NULL CHECK (decoder_version = '3.54.1'),
+    decoder_version text NOT NULL CHECK (decoder_version = '3.53.4'),
     decoder_source_id text NOT NULL CHECK (decoder_source_id =
-        '2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76'),
+        '2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc'),
     CHECK (source_table <> '_audit_neuron_docs_20260922' OR (day = '' AND shard = 0)),
+    CHECK ((decode_status = 'complete' AND payload_json IS NOT NULL AND decode_error IS NULL)
+        OR (decode_status = 'failed' AND source_table = '_audit_neuron_docs_20260922'
+            AND payload_json IS NULL AND decode_error IS NOT NULL
+            AND decode_error IN ('invalid-json', 'invalid-utf8'))),
     PRIMARY KEY (source_table, netuid, day, shard)
 );
 

@@ -75,9 +75,9 @@ async function receipt(
 ) {
   const prepared = prepareNeuronDocument(decoder, table, payload);
   await control.query(
-    `INSERT INTO app.neuron_document_projections VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    `INSERT INTO app.neuron_document_projections VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     ON CONFLICT(source_table,netuid,day,shard) DO UPDATE SET payload_sha256=excluded.payload_sha256,
-    payload_json=excluded.payload_json,axon_values=excluded.axon_values,
+    payload_json=excluded.payload_json,decode_status=excluded.decode_status,decode_error=excluded.decode_error,axon_values=excluded.axon_values,
     decoder_version=excluded.decoder_version,decoder_source_id=excluded.decoder_source_id`,
     [
       table,
@@ -86,6 +86,8 @@ async function receipt(
       shard,
       prepared.payloadSha256,
       prepared.json,
+      prepared.decodeStatus,
+      prepared.decodeError,
       JSON.stringify(prepared.axonValues),
       prepared.decoderVersion,
       prepared.decoderSourceId,
@@ -456,6 +458,15 @@ describe(
         "UPDATE app.neuron_daily_members SET axon_index=$1,axon_indexed=true",
         [JSON.stringify(storeSqliteValue(1n))],
       );
+      const malformedAudit = Buffer.from([0xff]);
+      source
+        .prepare("INSERT INTO _audit_neuron_docs_20260922 VALUES(88,?,0)")
+        .run(malformedAudit);
+      await receipt("_audit_neuron_docs_20260922", 88, "", 0, malformedAudit);
+      await control.query(
+        "INSERT INTO app._audit_neuron_docs_20260922 VALUES(88,$1,0)",
+        [malformedAudit],
+      );
       // Import the already-produced source revision values, then install the
       // actual axon effects and all fifteen closed-day effects together.
       for (const row of source
@@ -472,6 +483,44 @@ describe(
         );
       });
       await compareEffects();
+      assert.deepEqual(
+        (
+          await control.query(
+            "SELECT decode_status,decode_error,payload_json FROM app.neuron_document_projections WHERE netuid=88",
+          )
+        ).rows,
+        [
+          {
+            decode_status: "failed",
+            decode_error: "invalid-json",
+            payload_json: null,
+          },
+        ],
+      );
+      assert.deepEqual(
+        (
+          await control.query(
+            "SELECT payload FROM app._audit_neuron_docs_20260922 WHERE netuid=88",
+          )
+        ).rows[0].payload,
+        malformedAudit,
+      );
+      assert.throws(() =>
+        projectNeuronDocument(
+          decoder,
+          { netuid: 88n, uid: 1n, hotkey: null, coldkey: null },
+          malformedAudit,
+          "audit",
+        ),
+      );
+      assert.equal(
+        (
+          await control.query(
+            "SELECT count(*)::integer AS count FROM pg_trigger WHERE tgname LIKE '%_closed_day_%' AND NOT tgisinternal",
+          )
+        ).rows[0].count,
+        15,
+      );
     });
 
     it("matches nested axon effects, numeric IS equality and all closed-day trigger families", async () => {

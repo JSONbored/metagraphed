@@ -19,7 +19,24 @@ export function prepareNeuronDocument(
   payload: Uint8Array,
 ) {
   const kind = sourceTable === "_audit_neuron_docs_20260922" ? "audit" : "live";
-  const json = decoder.decode(payload, kind);
+  let json: string | null;
+  let decodeError: "invalid-json" | "invalid-utf8" | null = null;
+  try {
+    json = decoder.decode(payload, kind);
+  } catch (error) {
+    if (kind !== "audit" || !(error instanceof TypeError)) throw error;
+    if (error.message === "Malformed SQLite document")
+      decodeError = "invalid-json";
+    else if (
+      "code" in error &&
+      error.code === "ERR_ENCODING_INVALID_ENCODED_DATA"
+    )
+      decodeError = "invalid-utf8";
+    else throw error;
+    // Historical BLOBs had no JSON validity constraint. Preserve an explicit
+    // failed decode receipt; do not invent a projection or drop the source row.
+    json = null;
+  }
   const axonValues =
     sourceTable === "neuron_daily_documents"
       ? decoder
@@ -30,6 +47,8 @@ export function prepareNeuronDocument(
     sourceTable,
     payloadSha256: createHash("sha256").update(payload).digest(),
     json,
+    decodeStatus: decodeError === null ? "complete" : "failed",
+    decodeError,
     axonValues,
     decoderVersion: decoder.identity.version,
     decoderSourceId: decoder.identity.sourceId,

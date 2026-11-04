@@ -19,17 +19,25 @@ PostgreSQL text column. Native callers use `readSqliteValue` to recover the valu
 decoder. Its connection is read-only and in memory, creates no tables, disables
 extensions and accepts only parameter values for fixed statements. PostgreSQL
 owns persistent application data. The decoder refuses any version or source
-identity other than SQLite 3.54.1, source ID
-`2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76`.
+identity other than SQLite 3.53.4, source ID
+`2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc`.
 
 Live documents require the original strict `json_valid(payload,8)` check and
 524288-byte limit. Historical decoding has a separate explicit caller budget;
 crossing it refuses preparation without truncating or dropping the original
-row. A malformed historical blob can load as original data, but cannot acquire
-a successful decode receipt. Text crosses the Node SQLite boundary as BLOB
+row. A malformed historical blob retains its original bytes and an explicit
+failed-decode receipt with nullable projection text; the historical reader
+still fails if asked to decode that row, matching the source failure. A failed
+receipt is forbidden for live documents. Text crosses the Node SQLite boundary as BLOB
 bytes to preserve embedded NUL. Decoding invalid UTF-8 or an unsupported scalar
 escape refuses conversion rather than replacing bytes. Exact `json(payload)`
 text retains duplicate keys and numeric spelling.
+
+The supported runtime is the official Node 22.23.4 distribution, whose bundled
+SQLite source identity is checked above. A distribution linked to another
+system SQLite is a different decoder and is deliberately refused. The Node
+archive checksum and bundled header are verified independently of a local
+distribution's version string.
 
 `prepareNeuronDocument` produces the SHA-256-bound receipt stored in
 `app.neuron_document_projections`: exact decoded text, original first-key axon

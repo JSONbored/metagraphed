@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 
 export const SQLITE_DOCUMENT_DECODER = Object.freeze({
-  version: "3.54.1",
+  version: "3.53.4",
   sourceId:
-    "2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76",
+    "2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc",
 } as const);
 
 export type SqliteDocumentValue = null | bigint | number | string | Uint8Array;
@@ -98,7 +98,9 @@ export function createSqliteDocumentDecoder(options: {
     identity.sourceId !== SQLITE_DOCUMENT_DECODER.sourceId
   ) {
     db.close();
-    throw new Error(`Unsupported SQLite document decoder identity: ${JSON.stringify(identity)}`);
+    throw new Error(
+      `Unsupported SQLite document decoder identity: ${JSON.stringify(identity)}`,
+    );
   }
   db.exec("PRAGMA query_only=ON; PRAGMA trusted_schema=OFF");
   const valid = db.prepare("SELECT json_valid(?1,?2) AS valid");

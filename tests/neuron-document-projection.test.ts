@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, expect, test } from "vitest";
+import { afterAll, expect, test, vi } from "vitest";
 import {
   createSqliteDocumentDecoder,
   storeSqliteValue,
@@ -141,6 +141,8 @@ test("receipts bind exact bytes, decoder identity and source first-entry axons",
     sourceTable: "neuron_daily_documents",
     payloadSha256: createHash("sha256").update(payload).digest(),
     json,
+    decodeStatus: "complete",
+    decodeError: null,
     axonValues: [
       ["1", storeSqliteValue(1n)],
       ["2", storeSqliteValue(1)],
@@ -160,4 +162,59 @@ test("receipts bind exact bytes, decoder identity and source first-entry axons",
   expect(() =>
     prepareNeuronDocument(decoder, "account_position_daily_documents", audit),
   ).toThrow("Malformed");
+});
+
+test("failed historical decode receipts preserve bytes and distinguish resource refusal", () => {
+  for (const [payload, reason] of [
+    [Buffer.from([0xff]), "invalid-json"],
+    [Buffer.from([0x17, 0xff]), "invalid-utf8"],
+  ] as const) {
+    const receipt = prepareNeuronDocument(
+      decoder,
+      "_audit_neuron_docs_20260922",
+      payload,
+    );
+    expect(receipt.json).toBeNull();
+    expect(receipt.decodeStatus).toBe("failed");
+    expect(receipt.decodeError).toBe(reason);
+    expect(receipt.payloadSha256).toEqual(
+      createHash("sha256").update(payload).digest(),
+    );
+    expect(receipt.axonValues).toEqual([]);
+    const project = () =>
+      projectNeuronDocument(
+        decoder,
+        { netuid: 1n, uid: 1n, hotkey: null, coldkey: null },
+        payload,
+        "audit",
+      );
+    if (reason === "invalid-json") expect(project).toThrow();
+    else expect(project().active).toBeNull();
+  }
+  const bounded = createSqliteDocumentDecoder({ maxAuditBytes: 1 });
+  try {
+    expect(() =>
+      prepareNeuronDocument(
+        bounded,
+        "_audit_neuron_docs_20260922",
+        Buffer.from("{}"),
+      ),
+    ).toThrow("budget");
+  } finally {
+    bounded.close();
+  }
+  const mock = vi.spyOn(decoder, "decode").mockImplementationOnce(() => {
+    throw new TypeError("unexpected");
+  });
+  try {
+    expect(() =>
+      prepareNeuronDocument(
+        decoder,
+        "_audit_neuron_docs_20260922",
+        Buffer.from("{}"),
+      ),
+    ).toThrow("unexpected");
+  } finally {
+    mock.mockRestore();
+  }
 });

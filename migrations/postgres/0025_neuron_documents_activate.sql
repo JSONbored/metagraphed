@@ -50,7 +50,8 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE SET search_path = pg_catalog, app AS $$
         WHEN right_value IS NULL OR json_typeof(right_value) = 'null' THEN false
         WHEN left_value->>0 IN ('integer', 'real') AND right_value->>0 IN ('integer', 'real')
             THEN app.sqlite_scalar_number(left_value) = app.sqlite_scalar_number(right_value)
-        ELSE left_value->>0 = right_value->>0 AND left_value->>1 = right_value->>1
+        ELSE (left_value->>0) COLLATE "C" = (right_value->>0) COLLATE "C"
+            AND (left_value->>1) COLLATE "C" = (right_value->>1) COLLATE "C"
     END
 $$;
 
@@ -128,7 +129,10 @@ CREATE FUNCTION app.neuron_document_receipt_immutable() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog AS $$
 BEGIN
     IF NEW.payload_sha256 = OLD.payload_sha256 AND (
-        NEW.payload_json <> OLD.payload_json OR NEW.axon_values::text <> OLD.axon_values::text
+        NEW.payload_json COLLATE "C" IS DISTINCT FROM OLD.payload_json COLLATE "C"
+        OR NEW.axon_values::text COLLATE "C" <> OLD.axon_values::text COLLATE "C"
+        OR NEW.decode_status COLLATE "C" <> OLD.decode_status COLLATE "C"
+        OR NEW.decode_error COLLATE "C" IS DISTINCT FROM OLD.decode_error COLLATE "C"
         OR NEW.decoder_version <> OLD.decoder_version OR NEW.decoder_source_id <> OLD.decoder_source_id
     ) THEN
         RAISE EXCEPTION 'Neuron decoder receipt changed for identical bytes' USING ERRCODE = '23514';
