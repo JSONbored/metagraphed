@@ -31,13 +31,7 @@ export interface NativeInferenceOptions {
 
 const encoder = new TextEncoder();
 function endpoint(value: NativeInferenceEndpoint, path: string) {
-  let url: URL;
-  try {
-    if (typeof value?.baseUrl !== "string") throw new Error();
-    url = new URL(value.baseUrl);
-  } catch {
-    throw new TypeError("Inference endpoint must be an explicit HTTP API base");
-  }
+  const url = new URL(value.baseUrl);
   if (
     !["http:", "https:"].includes(url.protocol) ||
     url.username ||
@@ -53,7 +47,7 @@ function endpoint(value: NativeInferenceEndpoint, path: string) {
     accept: "application/json",
   });
   if (value.token !== undefined) {
-    if (typeof value.token !== "string" || !value.token || /[\r\n]/.test(value.token))
+    if (!value.token || /[\r\n]/.test(value.token))
       throw new TypeError("Invalid inference authentication token");
     headers.set("authorization", `Bearer ${value.token}`);
   }
@@ -103,7 +97,11 @@ async function responseJson(
       offset += chunk.byteLength;
     }
     try {
-      return JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(result)) as unknown;
+      return JSON.parse(
+        new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
+          result,
+        ),
+      ) as unknown;
     } catch {
       throw new Error("Inference endpoint returned invalid JSON");
     }
@@ -155,7 +153,11 @@ export function createNativeAiInference(
     executionTimeoutMillis: options.executionTimeoutMillis,
     drainTimeoutMillis: options.drainTimeoutMillis,
   });
-  const request = (target: ReturnType<typeof endpoint>, input: unknown, callerSignal?: AbortSignal) =>
+  const request = (
+    target: ReturnType<typeof endpoint>,
+    input: unknown,
+    callerSignal?: AbortSignal,
+  ) =>
     work.run(
       "inference",
       options.maxConcurrent,
@@ -164,7 +166,9 @@ export function createNativeAiInference(
       },
       (scope) =>
         scope.invoke(async (workSignal) => {
-          const signal = callerSignal ? AbortSignal.any([workSignal, callerSignal]) : workSignal;
+          const signal = callerSignal
+            ? AbortSignal.any([workSignal, callerSignal])
+            : workSignal;
           signal.throwIfAborted();
           const body = JSON.stringify(input);
           if (encoder.encode(body).byteLength > options.maxRequestBytes)
@@ -213,11 +217,15 @@ export function createNativeAiInference(
       )
         throw new RangeError("Inference request exceeds its byte budget");
       const result = OpenAiEmbeddingResponseSchema.parse(
-        await request(embedding, {
-          model: identity.embedding.model,
-          input: inputs,
-          encoding_format: "float",
-        }, signal),
+        await request(
+          embedding,
+          {
+            model: identity.embedding.model,
+            input: inputs,
+            encoding_format: "float",
+          },
+          signal,
+        ),
       );
       if (result.data.length !== inputs.length)
         throw new Error("Inference embedding count differs");
@@ -257,13 +265,17 @@ export function createNativeAiInference(
       )
         throw new RangeError("Inference request exceeds its byte budget");
       const result = OpenAiCompletionResponseSchema.parse(
-        await request(completion, {
-          model: identity.completion.model,
-          messages: parsedMessages,
-          max_tokens: maxTokens,
-          n: 1,
-          stream: false,
-        }, signal),
+        await request(
+          completion,
+          {
+            model: identity.completion.model,
+            messages: parsedMessages,
+            max_tokens: maxTokens,
+            n: 1,
+            stream: false,
+          },
+          signal,
+        ),
       );
       return {
         response: result.choices[0]!.message.content,

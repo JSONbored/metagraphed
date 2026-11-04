@@ -9,7 +9,10 @@ export interface AiInference {
     readonly embedding: Readonly<InferenceIdentity["embedding"]>;
     readonly completion: Readonly<InferenceIdentity["completion"]>;
   };
-  embed(text: readonly string[], signal?: AbortSignal): Promise<{ data: number[][] }>;
+  embed(
+    text: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<{ data: number[][] }>;
   complete(
     messages: readonly InferenceMessage[],
     maxTokens: number,

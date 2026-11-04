@@ -305,9 +305,24 @@ test("request execution signals reach both native model operations", async () =>
   const signals: (AbortSignal | undefined)[] = [];
   const inference = {
     ...f.inference,
-    embed(text: readonly string[], signal?: AbortSignal) { signals.push(signal); return f.inference.embed(text, signal); },
-    complete(messages: Parameters<typeof f.inference.complete>[0], maxTokens: number, signal?: AbortSignal) { signals.push(signal); return f.inference.complete(messages, maxTokens, signal); },
+    embed(text: readonly string[], signal?: AbortSignal) {
+      signals.push(signal);
+      return f.inference.embed(text, signal);
+    },
+    complete(
+      messages: Parameters<typeof f.inference.complete>[0],
+      maxTokens: number,
+      signal?: AbortSignal,
+    ) {
+      signals.push(signal);
+      return f.inference.complete(messages, maxTokens, signal);
+    },
   };
-  await askQuestion(mockEnv({ ...f.env, AI_INFERENCE: inference }), "Example", {}, { executionCtx: { signal: controller.signal } });
+  await askQuestion(
+    mockEnv({ ...f.env, AI_INFERENCE: inference }),
+    "Example",
+    {},
+    { executionCtx: { signal: controller.signal } },
+  );
   assert.deepEqual(signals, [controller.signal, controller.signal]);
 });

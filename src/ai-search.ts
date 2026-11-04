@@ -229,7 +229,10 @@ export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
 
 interface AiRequestDeps {
   distinctId?: string;
-  executionCtx?: { waitUntil?: (pending: Promise<unknown>) => void; signal?: AbortSignal };
+  executionCtx?: {
+    waitUntil?: (pending: Promise<unknown>) => void;
+    signal?: AbortSignal;
+  };
 }
 
 // Preserve delivery through the request lifecycle without making PostHog a
@@ -497,7 +500,10 @@ export async function runEmbeddingSync(
     const batchStartedAt = Date.now();
     const response = await (
       native
-      ? native.embed(batch.map((entry) => embeddingText(entry.doc)), deps.signal)
+        ? native.embed(
+            batch.map((entry) => embeddingText(entry.doc)),
+            deps.signal,
+          )
         : env.AI.run(
             EMBED_MODEL,
             { text: batch.map((entry) => embeddingText(entry.doc)) },

@@ -39,6 +39,8 @@ finishes; an unsuccessful drain stays observable and can be awaited again.
 The process owns `close()` and must drain inference before releasing its other
 resources. Request handlers receive only the inference capability. The adapter
 does not alter global fetch, close a shared dispatcher or own the database pool.
+Its `state` reports local admission/drain status; it does not certify a remote
+model server's health or loaded weights.
 
 This prepares the application boundary. Production still requires pinned model
 weights, an accepted model-serving process, endpoint credentials where needed,
