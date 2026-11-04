@@ -7,21 +7,12 @@ import {
   type PgStoreRuntime,
 } from "../src/pg-store-runtime.ts";
 import { buildTaoUsdSeries, loadTaoUsdSeries } from "../src/tao-usd-series.ts";
+import { pg18FixtureUrl } from "./helpers/pg18-fixture.ts";
 
 // Real-engine qualification for #12978. This entry point requires the disposable
 // CI database. A missing
 // service or a connection string for any other database fails before connecting.
-const suppliedUrl = process.env.METAGRAPH_PG18_URL;
-assert.ok(suppliedUrl, "METAGRAPH_PG18_URL must name the CI fixture database");
-const fixtureUrl = new URL(suppliedUrl);
-assert.equal(fixtureUrl.protocol, "postgresql:");
-assert.equal(fixtureUrl.hostname, "127.0.0.1");
-assert.equal(fixtureUrl.port, "54329");
-assert.equal(fixtureUrl.pathname, "/metagraphed_pg18_fixture");
-assert.equal(fixtureUrl.username, "metagraphed_fixture");
-assert.equal(fixtureUrl.password, "fixture-only");
-assert.equal(fixtureUrl.search, "");
-assert.equal(fixtureUrl.hash, "");
+const fixtureUrl = pg18FixtureUrl();
 
 const control = new Client({
   connectionString: fixtureUrl.toString(),
