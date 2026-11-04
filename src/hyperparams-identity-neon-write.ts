@@ -21,6 +21,7 @@
 // tell that the direction had reversed. The name `mirrorFamilyToNeon` is all
 // that is left of the rung.
 import { laneHealthStore } from "./lane-health-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "./subnet-hyperparams.ts";
 import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
@@ -305,12 +306,15 @@ export async function mirrorFamilyToNeon(
   input: FamilyMirrorInput,
   deps: FamilyMirrorDeps = {},
 ): Promise<FamilyMirrorOutcome> {
+  const native = deps.sql ? undefined : selectedNativeWriteRunner(env, lane);
   const plan = FAMILY_MIRROR_PLANS[lane];
   // An unknown lane stays a no-op rather than a throw: callers name lanes in
   // code now (#10051 deleted the free-text flag), and a name this table lacks
   // is a config defect for lane_health to surface, not a crash.
   if (!plan) return { attempted: false, results: {} };
-  const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
+  const d1 = native
+    ? null
+    : selectedD1Store(env, [plan.latest.table, plan.history.table]);
   if (d1) {
     const results = await writeCaptureFamilyD1(d1, plan, input);
     await recordNeonWriteVerdict(
@@ -330,7 +334,7 @@ export async function mirrorFamilyToNeon(
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
+  const sql = deps.sql ?? native ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
   // honest per-lane one. A buffered FAILURE still does: that is the enqueue

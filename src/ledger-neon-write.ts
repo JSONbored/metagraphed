@@ -27,6 +27,7 @@
 // silent regression -- both writes would otherwise succeed.
 
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import { writeLedgerD1 } from "./ledger-d1.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
@@ -209,6 +210,7 @@ export async function mirrorLedgerToNeon(
    * so the lanes with no pass table call this exactly as before. */
   pass?: PassTallyInput | null,
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
+  const native = deps.sql ? undefined : selectedNativeWriteRunner(env, lane);
   const plan = LEDGER_MIRROR_PLANS[lane];
   // An unknown lane stays a NO-OP rather than a throw: callers name lanes in
   // code now (#10051 deleted the free-text flag), but a caller passing a name
@@ -220,11 +222,13 @@ export async function mirrorLedgerToNeon(
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
 
-  const d1 = selectedD1Store(env, [
-    plan.table,
-    PASS_TABLES[lane],
-    ...(lane === "hotkey-alpha" ? ["nominator_positions"] : []),
-  ]);
+  const d1 = native
+    ? null
+    : selectedD1Store(env, [
+        plan.table,
+        PASS_TABLES[lane],
+        ...(lane === "hotkey-alpha" ? ["nominator_positions"] : []),
+      ]);
   if (d1) {
     const result = await writeLedgerD1(d1, lane, rows, pass);
     const laneDb = laneHealthStore(env, deps.laneHealthDb);
@@ -244,7 +248,7 @@ export async function mirrorLedgerToNeon(
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
+  const sql = deps.sql ?? native ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
   // honest per-lane one. A buffered FAILURE still does: that is the enqueue

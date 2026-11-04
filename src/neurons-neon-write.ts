@@ -411,6 +411,8 @@ export async function mirrorNeuronSnapshotToNeon(
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
   const native = selectedNeuronCaptureStore(env);
+  if (!native && env?.NATIVE_WRITE_RUNNERS !== undefined)
+    throw new Error("Native neuron capture store is required");
   const d1 = native
     ? undefined
     : selectedD1Store(env, [

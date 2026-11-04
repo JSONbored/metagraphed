@@ -2,6 +2,12 @@ import type {
   AppExecutionContext,
   AppScheduledEvent,
 } from "./runtime-context.ts";
+import {
+  selectedNativeWriteRunner,
+  selectedNativeProducerSql,
+  selectedNativeProducerStore,
+} from "../src/native-producer-store.ts";
+import { safeBlockNumber } from "../src/history-readers.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
@@ -1184,14 +1190,18 @@ async function handleChainDetailSyncHead(request: Request, env: DataApiEnv) {
   if (!neonOwnsChainDetail(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
-  const d1 = selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES);
+  const native = selectedNativeProducerStore(env, CHAIN_DETAIL_HOT_TIER_TABLES);
+  const d1 = native ?? selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES);
   if (d1) {
     try {
       const row = await d1.first<{ head: number | null }>(
         "SELECT MAX(block_number) AS head FROM chain_detail_blocks",
       );
       if (!row) throw new Error("Missing chain detail resume result");
-      return writeJson({ head: row.head });
+      const head = native ? safeBlockNumber(row.head) : row.head;
+      if (native && row.head !== null && head === null)
+        throw new Error("Invalid native chain detail resume result");
+      return writeJson({ head });
     } catch {
       return writeJson({ error: "chain detail resume read failed" }, 503);
     }
@@ -3765,6 +3775,7 @@ export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
  * for hotkey-alpha. Shared writers must use the same store (#9728, #10056).
  * Lanes without a pass table select only their data table. */
 export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
+  if (selectedNativeWriteRunner(env, lane)) return true;
   const tables = [LEDGER_MIRROR_PLANS[lane]?.table, PASS_TABLES[lane]].filter(
     (t): t is string => Boolean(t),
   );
@@ -3782,6 +3793,7 @@ export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
 }
 
 export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
+  if (selectedNativeWriteRunner(env, "nominator-positions")) return true;
   if (
     selectedD1Store(env, [
       "nominator_positions",
@@ -3799,11 +3811,13 @@ export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
  * lane's writers -- #9728 is the precedent for why covering one of two is worse
  * than covering neither: the row count looks nearly right. */
 export function neonOwnsChainDetail(env: DataApiEnv): boolean {
+  if (selectedNativeWriteRunner(env, "chain-detail")) return true;
   if (selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) return true;
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
+  if (selectedNativeWriteRunner(env, lane)) return true;
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
   if (selectedD1Store(env, [plan.latest.table, plan.history.table]))
@@ -3820,6 +3834,11 @@ function captureFamilyRunner(
   lane: string,
 ): PgSql {
   const plan = FAMILY_MIRROR_PLANS[lane];
+  const native = selectedNativeProducerSql(env, [
+    plan.latest.table,
+    plan.history.table,
+  ]);
+  if (native) return native;
   const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
   return d1 ? createD1Sql(d1) : createPgSql(env.HYPERDRIVE!, ctx);
 }
@@ -9700,17 +9719,15 @@ export async function writeTaoUsdIndexRow(
   // its deferred write-behind path and requires ctx to return its connection.
   // No RETURNING (#10677): `written` reports the issued write, including a
   // duplicate. The unchanged watchdog measures actual durable freshness.
-  const d1 = selectedD1Store(env, ["tao_usd_index"]);
+  const native = selectedNativeWriteRunner(env, TAO_USD_INDEX_NEON_LANE);
+  const d1 = native ? null : selectedD1Store(env, ["tao_usd_index"]);
   if (d1) {
     await writeTaoUsdIndexD1(d1, row);
     return { written: true };
   }
-  const sql = neonWriteRunner(
-    env,
-    ctx ?? null,
-    TAO_USD_INDEX_NEON_LANE,
-    env.HYPERDRIVE,
-  );
+  const sql =
+    native ??
+    neonWriteRunner(env, ctx ?? null, TAO_USD_INDEX_NEON_LANE, env.HYPERDRIVE);
   if (!sql) {
     return { written: false, skipped: true, reason: "no store bound" };
   }

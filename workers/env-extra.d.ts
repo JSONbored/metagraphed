@@ -377,8 +377,14 @@ interface NativeRealtimeEnv {
   SUBNET_STATUS_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
 }
 
+interface NativeProducerBindingEnv {
+  NATIVE_PRODUCER_STORE?: import("../src/native-producer-store.ts").NativeProducerSelection;
+  NATIVE_WRITE_RUNNERS?: import("../src/native-producer-store.ts").NativeProducerEnv["NATIVE_WRITE_RUNNERS"];
+}
+
 interface Env
   extends
+    NativeProducerBindingEnv,
     NativeRealtimeEnv,
     RuntimeSecretEnv,
     ArchiveObjectEnv,
@@ -397,6 +403,7 @@ interface Env
 /** data-api serves the authenticated surfaces, so it holds the secrets. */
 interface DataApiEnv
   extends
+    NativeProducerBindingEnv,
     RuntimeSecretEnv,
     ArchiveObjectEnv,
     LegacyStoreFixtureEnv,

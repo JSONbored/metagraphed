@@ -25,6 +25,7 @@
 // tick -- never delete a position without having written its replacement first.
 
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import { writeNominatorPositionsD1 } from "./ledger-d1.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { normalizeShareFractionsInNeon } from "./neon-write.ts";
@@ -138,15 +139,18 @@ export async function mirrorNominatorPositionsToNeon(
 ): Promise<NominatorPositionsMirrorOutcome> {
   const lane = input.lane ?? NOMINATOR_POSITIONS_NEON_LANE;
   const source = input.source ?? POSITION_SOURCE_ALPHA;
+  const native = deps.sql ? undefined : selectedNativeWriteRunner(env, lane);
   // The dual-write gate stood here until #10051: with D1 deleted this is the
   // SOLE write to the ONLY store, so it runs unconditionally -- a flag whose
   // no-arm means "do not persist" is not a cutover control any more, it is an
   // off switch nothing should be holding.
-  const d1 = selectedD1Store(env, [
-    "nominator_positions",
-    "nominator_positions_passes",
-    "nominator_scan_receipts",
-  ]);
+  const d1 = native
+    ? null
+    : selectedD1Store(env, [
+        "nominator_positions",
+        "nominator_positions_passes",
+        "nominator_scan_receipts",
+      ]);
   if (d1) {
     const outcome = await writeNominatorPositionsD1(d1, input);
     const laneDb = laneHealthStore(env, deps.laneHealthDb);
@@ -177,7 +181,7 @@ export async function mirrorNominatorPositionsToNeon(
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
+  const sql = deps.sql ?? native ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
   // honest per-lane one. A buffered FAILURE still does: that is the enqueue

@@ -64,6 +64,10 @@ import {
 } from "./pg-sql.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
+import {
+  selectedNativeWriteRunner,
+  type NativeProducerEnv,
+} from "./native-producer-store.ts";
 
 /**
  * What this module reads from its environment, and nothing else.
@@ -91,6 +95,7 @@ import type { TelemetryEnv } from "./usage-telemetry.ts";
  * built with `as unknown as Env` (#11339).
  */
 export type NeonWriteEnv = StoreEnv &
+  NativeProducerEnv &
   TelemetryEnv & {
     NEON_WRITE_BUFFER?: unknown;
     NEON_WRITE_BUFFER_LANES?: unknown;
@@ -386,6 +391,7 @@ export function neonWriteBufferEnabled(
   env: NeonWriteBufferEnv | null | undefined,
   lane: string,
 ): boolean {
+  if (selectedNativeWriteRunner(env, lane)) return false;
   if (NEVER_BUFFER_LANES.has(lane)) return false;
   return neonWriteBufferLanes(env).has(lane);
 }
@@ -546,6 +552,8 @@ export function neonWriteRunner(
   lane: string,
   hyperdrive: HyperdriveLike | undefined,
 ): { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null {
+  const native = selectedNativeWriteRunner(env, lane);
+  if (native) return native;
   const direct =
     hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null;
   const buffer = env?.NEON_WRITE_BUFFER as NeonWriteBufferNamespace | undefined;
