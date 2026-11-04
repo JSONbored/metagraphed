@@ -3,14 +3,20 @@ import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import { createSqliteSum, sqliteAggregateNumber } from "./sqlite-sum.ts";
 import { sqliteNumberDecimal } from "./sqlite-number.ts";
 
-export type AccountUsageRow = Pick<ApiKeyUsageDaily, "day" | "route"> & {
-  request_count: number | null;
-  rejected_count: number | null;
+// These are generated storage rows crossing D1's JSON boundary, where a
+// non-finite number becomes null. Derive the keys and storage types first;
+// this mapping changes only the named numeric cells at that boundary.
+type D1JsonNumbers<Row, Numbers extends keyof Row> = {
+  [Key in keyof Row]: Key extends Numbers ? Row[Key] | null : Row[Key];
 };
-export type AccountAnomalyRow = Pick<
-  ApiKeyUsageDaily,
-  "account_id" | "day" | "route"
-> & { request_count: number | null };
+export type AccountUsageRow = D1JsonNumbers<
+  Pick<ApiKeyUsageDaily, "day" | "route" | "request_count" | "rejected_count">,
+  "request_count" | "rejected_count"
+>;
+export type AccountAnomalyRow = D1JsonNumbers<
+  Pick<ApiKeyUsageDaily, "account_id" | "day" | "route" | "request_count">,
+  "request_count"
+>;
 export interface AccountRollupRow {
   route_family?: string;
   cost_shape: string;
