@@ -28,22 +28,33 @@ export function createPgNeuronSnapshotStore(
          FROM app.neurons_members WHERE netuid=$1`,
         [netuid],
       );
-      return subnetNeuronRowsFromParts(parts.map((part) => ({
-        shard: Number(part.shard),
-        payload: part.payload === null ? null : decoder.decode(part.payload),
-        uid: part.uid === null ? null : Number(part.uid),
-        hotkey: part.hotkey,
-        coldkey: part.coldkey,
-      })), validatorsOnly);
+      return subnetNeuronRowsFromParts(
+        parts.map((part) => ({
+          shard: Number(part.shard),
+          payload: part.payload === null ? null : decoder.decode(part.payload),
+          uid: part.uid === null ? null : Number(part.uid),
+          hotkey: part.hotkey,
+          coldkey: part.coldkey,
+        })),
+        validatorsOnly,
+      );
     },
     async burnHotkey(netuid) {
       const owner = await runtime.read.first<{ owner_hotkey: string | null }>(
-        "SELECT owner_hotkey FROM app.subnet_ownership WHERE netuid=$1 ORDER BY captured_at DESC LIMIT 1", [netuid]);
+        "SELECT owner_hotkey FROM app.subnet_ownership WHERE netuid=$1 ORDER BY captured_at DESC LIMIT 1",
+        [netuid],
+      );
       if (!owner?.owner_hotkey) return null;
-      const snapshot = await runtime.read.first<{ miner_burned_fraction: number | null }>(
-        "SELECT miner_burned_fraction FROM app.subnet_snapshots WHERE netuid=$1 ORDER BY snapshot_date DESC LIMIT 1", [netuid]);
+      const snapshot = await runtime.read.first<{
+        miner_burned_fraction: number | null;
+      }>(
+        "SELECT miner_burned_fraction FROM app.subnet_snapshots WHERE netuid=$1 ORDER BY snapshot_date DESC LIMIT 1",
+        [netuid],
+      );
       const fraction = Number(snapshot?.miner_burned_fraction ?? 0);
-      return Number.isFinite(fraction) && fraction > 0 ? owner.owner_hotkey : null;
+      return Number.isFinite(fraction) && fraction > 0
+        ? owner.owner_hotkey
+        : null;
     },
   };
 }
