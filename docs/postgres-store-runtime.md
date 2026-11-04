@@ -64,3 +64,32 @@ store selection, table ownership, schema or public route. Production handoff
 still requires a dependency-closed set of readers, writers and transactions.
 These adapters preserve existing parameter and result contracts; they do not
 translate arbitrary SQLite SQL into PostgreSQL or supply schema compatibility.
+
+## Application KV
+
+`createPgKv(runtime, namespace)` stores application KV values in
+`auth.kv_entries`, separately from the imported application and retained
+schemas. The `control` and `oauth-pending` namespaces use the same table with
+independent keys. UTF-8 key bytes and raw payload bytes are preserved, including
+NUL bytes. Text reads use the platform's replacement decoding, and JSON reads
+retain ordinary parse failures.
+
+The default limits are 25 MiB per value, 512 UTF-8 bytes per key, 1 KiB of JSON
+metadata and 1,000 keys per list page. Callers may lower value, key and list
+bounds. Stream writes count bytes before storage, and lists use a bytewise
+prefix/keyset range. Their versioned cursors bind the namespace, prefix and
+last key. Expired rows are invisible to reads, listing and consumption at the
+expiry second. Absolute expiry and TTL are mutually exclusive, with the
+existing 60-second TTL floor.
+
+`CONTROL_KV_STORE` selects this capability for wallet challenges and generic
+control/registry reads. `OAUTH_PENDING_STORE` selects only GitHub's pending
+authorization state. Native callbacks use one atomic delete-and-return
+operation, so a concurrent request cannot consume the same challenge twice.
+The existing legacy bindings remain available through their selectors.
+
+The Workers OAuth provider's client, grant, code and refresh-token records have
+a separate transaction boundary. Its read-modify-write grant transitions and
+token rotation require request-level transactional qualification before native
+selection. Supplying a KV-compatible object alone does not establish that
+qualification, and this capability does not select the provider's `OAUTH_KV`.
