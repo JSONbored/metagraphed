@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 // Daily link-rot capture as a Worker cron writing D1 — the same lane shape as
 // github-signals-sync (#233 pattern): the cron captures, the artifact build
 // projects, and freshness never depends on a bot PR landing.
@@ -114,7 +114,7 @@ export async function runLinkStatusSync(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const store = generatedArtifactStore(env.D1_STATE);
+  const store = selectedGeneratedArtifactStore(env);
   if (!store) {
     return { ok: false, reason: "artifact_store_missing" };
   }

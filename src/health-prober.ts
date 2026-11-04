@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 import { latestPointer } from "../workers/storage.ts";
 import { readRegistryKv } from "./registry-kv.ts";
 import { createD1Sql, selectedD1Store } from "./d1-store.ts";
@@ -403,9 +403,7 @@ export function workerWebSocketConnector(
 export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
   // Cron store first (freshest; independent of the artifact publish).
   const generated = asJsonObject(
-    await generatedArtifactStore(env.D1_STATE)?.get(
-      OPERATIONAL_SURFACES_R2_KEY,
-    ),
+    await selectedGeneratedArtifactStore(env)?.get(OPERATIONAL_SURFACES_R2_KEY),
   );
   if (Array.isArray(generated?.surfaces) && generated.surfaces.length) {
     return generated.surfaces as Row[];
