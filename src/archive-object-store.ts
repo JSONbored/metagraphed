@@ -5,6 +5,10 @@ import { markD1SqlExecution } from "./d1-store.ts";
 import { timed, TIMING_D1 } from "./request-timing.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import type { ArtifactReadBudget } from "./artifact-read-budget.ts";
+import type {
+  ArchiveCatalogStore,
+  ArchiveContentStore,
+} from "./archive-native-store.ts";
 
 const BUCKET = "metagraphed-artifacts";
 const PREFIX = `archive-object/v1/${BUCKET}/`;
@@ -111,6 +115,8 @@ const nativeSchema = z.strictObject({
 type Database = Pick<D1Database, "prepare">;
 type ArchiveEnv = {
   ARCHIVE_OBJECT_STORAGE?: string;
+  ARCHIVE_CATALOG_STORE?: ArchiveCatalogStore;
+  ARCHIVE_CONTENT_STORE?: ArchiveContentStore;
   D1_STATE?: Database;
   METAGRAPH_ARCHIVE?: Pick<R2Bucket, "get" | "head">;
 } & Record<string, unknown>;
@@ -177,7 +183,20 @@ async function exact(
  * transitional legacy reader; tombstones and corruption never fall back. */
 export function archiveObjectStore(env: ArchiveEnv) {
   const db = env.D1_STATE;
-  if (!db?.prepare) throw new Error("Archive object database is unavailable");
+  const catalog = env.ARCHIVE_CATALOG_STORE;
+  const content = env.ARCHIVE_CONTENT_STORE;
+  if (
+    catalog !== undefined &&
+    (!catalog ||
+      typeof catalog.read !== "function" ||
+      typeof catalog.insert !== "function" ||
+      typeof catalog.replace !== "function")
+  )
+    throw new TypeError("Invalid archive catalog store");
+  if (content !== undefined && (!content || typeof content.get !== "function"))
+    throw new TypeError("Invalid archive content store");
+  if (!catalog && !db?.prepare)
+    throw new Error("Archive object database is unavailable");
   const legacy =
     env.ARCHIVE_OBJECT_STORAGE === "native-read-legacy"
       ? env.METAGRAPH_ARCHIVE
@@ -200,11 +219,13 @@ export function archiveObjectStore(env: ArchiveEnv) {
     return result.results;
   }
   async function readRows(keys: string[], budget?: ArtifactReadBudget) {
-    const rows = await query(
-      `SELECT key,payload FROM generated_artifacts WHERE key IN (${keys.map(() => "?").join(",")})`,
-      keys,
-      budget,
-    );
+    const rows = catalog
+      ? await within(budget, () => catalog.read(keys))
+      : await query(
+          `SELECT key,payload FROM generated_artifacts WHERE key IN (${keys.map(() => "?").join(",")})`,
+          keys,
+          budget,
+        );
     if (
       rows.some((row) => !keys.includes(row.key)) ||
       new Set(rows.map((row) => row.key)).size !== rows.length
@@ -313,27 +334,28 @@ export function archiveObjectStore(env: ArchiveEnv) {
         throw new Error("Archive native chunk census differs");
       const binding = env[`NATIVE_HISTORY_ASSETS_${native.partition}`] as
         Pick<Fetcher, "fetch"> | undefined;
-      if (!binding?.fetch) throw new Error("Archive native binding is missing");
+      if (!content && !binding?.fetch)
+        throw new Error("Archive native binding is missing");
       for (const [i, chunk] of native.chunks.entries()) {
         budget?.check();
         const start = partOffset + i * chunkSize;
         if (start >= offset + length || start + chunk.bytes <= offset) continue;
         const response = await within(budget, async () => {
-          const response = await binding.fetch(
-            new Request(
-              `https://history-assets.invalid/${chunk.sha256}.mgpack`,
-              {
-                headers: { "accept-encoding": "identity" },
-                redirect: "manual",
-                signal: budget
-                  ? AbortSignal.any([
-                      budget.signal,
-                      AbortSignal.timeout(10_000),
-                    ])
-                  : AbortSignal.timeout(10_000),
-              },
-            ),
-          );
+          const signal = budget
+            ? AbortSignal.any([budget.signal, AbortSignal.timeout(10_000)])
+            : AbortSignal.timeout(10_000);
+          const response = content
+            ? await content.get(chunk.sha256, signal)
+            : await binding!.fetch(
+                new Request(
+                  `https://history-assets.invalid/${chunk.sha256}.mgpack`,
+                  {
+                    headers: { "accept-encoding": "identity" },
+                    redirect: "manual",
+                    signal,
+                  },
+                ),
+              );
           try {
             budget?.check();
           } catch (error) {
@@ -624,10 +646,12 @@ export function archiveObjectStore(env: ArchiveEnv) {
             packed.subarray(i * CHUNK, (i + 1) * CHUNK),
           ).toString("base64"),
         });
-        await query(
-          "INSERT INTO generated_artifacts(key,payload) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING key",
-          [key, payload],
-        );
+        if (catalog) await catalog.insert(key, payload);
+        else
+          await query(
+            "INSERT INTO generated_artifacts(key,payload) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING key",
+            [key, payload],
+          );
         if ((await readRows([key])).get(key) !== payload)
           throw new Error("Archive immutable chunk readback differs");
       }
@@ -648,14 +672,18 @@ export function archiveObjectStore(env: ArchiveEnv) {
       id = PREFIX + key;
     const rows =
       previous.raw === undefined
-        ? await query(
-            "INSERT INTO generated_artifacts(key,payload) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING key",
-            [id, payload],
-          )
-        : await query(
-            "UPDATE generated_artifacts SET payload=?,updated_at=? WHERE key=? AND payload=? RETURNING key",
-            [payload, object.modified, id, previous.raw],
-          );
+        ? catalog
+          ? await catalog.insert(id, payload)
+          : await query(
+              "INSERT INTO generated_artifacts(key,payload) VALUES(?,?) ON CONFLICT(key) DO NOTHING RETURNING key",
+              [id, payload],
+            )
+        : catalog
+          ? await catalog.replace(id, previous.raw, payload, object.modified)
+          : await query(
+              "UPDATE generated_artifacts SET payload=?,updated_at=? WHERE key=? AND payload=? RETURNING key",
+              [payload, object.modified, id, previous.raw],
+            );
     if (rows.length === 0 && expected !== undefined) return null;
     if (rows.length !== 1 || rows[0].key !== id)
       throw new Error("Archive selection changed during write");
