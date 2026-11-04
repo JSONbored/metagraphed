@@ -222,8 +222,8 @@ describe("data-api's bundle boundary", () => {
     // bytes over 4de15dcf, totaling 4,863,555 source bytes. Its PostgreSQL
     // factory and all existing forbidden implementations stay out of this
     // graph; retain 1,445 source bytes of margin for this measured change.
-    // Native relational route selection adds 3,736 source / 1,303 minified /
-    // 526 gzip bytes over decb73ba, for 4,867,291 source bytes. The native
+    // Native relational route selection adds 3,760 source / 1,303 minified /
+    // 526 gzip bytes over decb73ba, for 4,867,315 source bytes. The native
     // implementations remain excluded; only the bounded SQL selector joins.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))

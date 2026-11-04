@@ -75,7 +75,9 @@ test("relational numeric bounds preserve int64 comparisons and health wire value
   expect(f.calls[0].values).toEqual([10.5]);
   expect(f.calls[1].values).toEqual(["1111111111111111168"]);
   for (const bound of [-1e30, 1e30]) {
-    await sql.unsafe("SELECT netuid FROM subnet_hyperparams WHERE netuid = ?", [bound]);
+    await sql.unsafe("SELECT netuid FROM subnet_hyperparams WHERE netuid = ?", [
+      bound,
+    ]);
     expect(f.calls.at(-1)?.text).toContain("$1::numeric");
     expect(f.calls.at(-1)?.values).toEqual([BigInt(bound).toString()]);
   }
@@ -111,10 +113,20 @@ test("identity equality binds original UTF-8 bytes without truncating request NU
       values: ["é", 20, 8, 4],
     },
   ]);
-  await sql.unsafe("SELECT name FROM account_identity WHERE account = ?", ["😀"]);
-  expect(f.calls.at(-1)).toEqual({ text: "SELECT name FROM account_identity WHERE account = $1", values: ["😀"] });
-  await sql.unsafe("SELECT name FROM account_identity WHERE account = ?", ["\ud800"]);
-  expect(f.calls.at(-1)).toEqual({ text: "SELECT name FROM account_identity WHERE convert_to(account,'UTF8') = $1::bytea", values: [Buffer.from("\ud800")] });
+  await sql.unsafe("SELECT name FROM account_identity WHERE account = ?", [
+    "😀",
+  ]);
+  expect(f.calls.at(-1)).toEqual({
+    text: "SELECT name FROM account_identity WHERE account = $1",
+    values: ["😀"],
+  });
+  await sql.unsafe("SELECT name FROM account_identity WHERE account = ?", [
+    "\ud800",
+  ]);
+  expect(f.calls.at(-1)).toEqual({
+    text: "SELECT name FROM account_identity WHERE convert_to(account,'UTF8') = $1::bytea",
+    values: [Buffer.from("\ud800")],
+  });
   await expect(
     sql.unsafe("SELECT name FROM account_identity WHERE account = ?", [5]),
   ).rejects.toThrow("must be text");

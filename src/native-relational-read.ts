@@ -51,8 +51,10 @@ export function selectedNativeRelationalSql(
           integer === null ? value : integer.toString(),
           ...parameters.slice(1),
         ];
-        const type = integer !== null && integer >= -(1n << 63n) && integer < 1n << 63n
-          ? "bigint" : "numeric";
+        const type =
+          integer !== null && integer >= -(1n << 63n) && integer < 1n << 63n
+            ? "bigint"
+            : "numeric";
         return `WHERE ${predicate} $1::${type}`;
       },
     );

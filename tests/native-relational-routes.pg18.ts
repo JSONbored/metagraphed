@@ -15,14 +15,17 @@ const control = new Client({
   connectionTimeoutMillis: 2000,
   statement_timeout: 5000,
 });
-const runtime = createPgStoreRuntime({
-  connectionString,
-  maxConnections: 2,
-  connectionTimeoutMillis: 2000,
-  idleTimeoutMillis: 1000,
-  statementTimeoutMillis: 5000,
-  onIdleError() {},
-}, (config) => new Pool({ ...config, options: `-c search_path=${schema}` }));
+const runtime = createPgStoreRuntime(
+  {
+    connectionString,
+    maxConnections: 2,
+    connectionTimeoutMillis: 2000,
+    idleTimeoutMillis: 1000,
+    statementTimeoutMillis: 5000,
+    onIdleError() {},
+  },
+  (config) => new Pool({ ...config, options: `-c search_path=${schema}` }),
+);
 const tables = [
   "surface_status",
   "subnet_hyperparams",
@@ -84,8 +87,14 @@ async function insert(
 
 async function compare(path: string) {
   const request = new Request(`https://example.com/api/v1/${path}`);
-  const sourceEnv = dataApiEnv({ D1_STATE: db, D1_STATE_TABLES: tables.join(",") });
-  const nativeEnv = { ...dataApiEnv(), NATIVE_READ_STORE: { tables, store: runtime.read } };
+  const sourceEnv = dataApiEnv({
+    D1_STATE: db,
+    D1_STATE_TABLES: tables.join(","),
+  });
+  const nativeEnv = {
+    ...dataApiEnv(),
+    NATIVE_READ_STORE: { tables, store: runtime.read },
+  };
   const expected = await worker.fetch(request.clone(), sourceEnv, ctx);
   const actual = await worker.fetch(request.clone(), nativeEnv, ctx);
   assert.equal(actual.status, expected.status, path);
