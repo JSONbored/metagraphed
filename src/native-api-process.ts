@@ -153,6 +153,17 @@ export interface NativeApiProcess<Scheduled, Queue> {
   close(): Promise<void>;
 }
 
+export interface NativeBackgroundApiProcess<
+  Scheduled,
+  Queue,
+> extends NativeApiProcess<Scheduled, Queue> {
+  /** Internal actor work shares the same bounded job admission and drain. */
+  background<Result>(
+    operation: (context: NativeExecutionContext) => Promise<Result>,
+    signal?: AbortSignal,
+  ): Promise<Result>;
+}
+
 /** The handler returned normally, but its awaited background work failed. */
 export class NativeScheduledBackgroundError extends Error {
   readonly result: unknown;
@@ -263,7 +274,7 @@ async function verifySources(
 export async function createNativeApiProcess<Environment, Scheduled, Queue>(
   options: NativeApiOptions<Environment, Scheduled, Queue>,
   poolFactory?: (config: PoolConfig) => PgPool,
-): Promise<NativeApiProcess<Scheduled, Queue>> {
+): Promise<NativeBackgroundApiProcess<Scheduled, Queue>> {
   const { maxRequests, maxJobs, drainTimeoutMillis } = options;
   for (const value of [maxRequests, maxJobs, drainTimeoutMillis]) {
     if (!Number.isSafeInteger(value) || value <= 0)
@@ -583,6 +594,7 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
         true,
         signal,
       ),
+    background: (operation, signal) => runJob(operation, true, signal),
     close() {
       if (closing) return closing;
       draining ??= (async () => {

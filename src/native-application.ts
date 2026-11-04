@@ -69,6 +69,7 @@ export interface NativeApplicationOptions extends Omit<
     sources: ReadonlyMap<string, NativeSource>;
     kv: NativeApiKeyValues;
     services: { data: NativeInternalService; registry: NativeInternalService };
+    onStartupCleanup(cleanup: () => Promise<void>): void;
   }): Promise<NativeApplicationBindings>;
 }
 
@@ -435,6 +436,20 @@ export async function createNativeApplication(
     fetch: (request: Request) => invoke("api", () => process.fetch(request)),
     scheduled: (event: Scheduled, signal?: AbortSignal) =>
       invoke(event.owner, () => process.scheduled(event, signal)),
+    background<Result>(
+      name: NativeCronOwner,
+      operation: (context: NativeExecutionContext) => Promise<Result>,
+      signal?: AbortSignal,
+    ): Promise<Result> {
+      if (!["api", "data", "registry"].includes(name))
+        return Promise.reject(new TypeError("Unknown native background owner"));
+      return invoke(name, () =>
+        process.background(
+          (context) => inContext(context, () => operation(context)),
+          signal,
+        ),
+      );
+    },
     owners: {
       api: owner("api"),
       data: owner("data"),
