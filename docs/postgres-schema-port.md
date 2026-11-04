@@ -220,6 +220,31 @@ PostgreSQL transaction failures retain their normal rollback semantics.
 [activation](../migrations/postgres/0005_lane_health_activate.sql),
 [differential SQLite/PostgreSQL fixture](../tests/lane-health-runtime.pg18.ts)
 
+## Root basket load and integrity
+
+Migrations `0020_root_basket.sql` and `0021_root_basket_activate.sql` preserve
+the seven Root basket tables and five explicit indexes. Capture IDs remain
+source text; unsigned and signed quantities retain their canonical decimal
+text and exact bounds, including the 128-bit limits. The source 0/1
+`provisional` flag remains an integer. The old Neon numeric/UUID schema is not
+the import target.
+
+Activation validates every imported completion against its capture digest,
+page chain and per-page/per-fund child counts, and validates current-pointer
+scope before attaching six foreign keys and all 21 source trigger effects.
+Completed observations and receipts reject even no-op updates. The original
+source may choose a different first error when two immutable-write triggers
+apply; both reject the statement atomically.
+
+Seven additional statement triggers serialize family writes before tuple and
+foreign-key locks. Native writers use `READ COMMITTED`; activation explicitly
+rejects writes under a fixed transaction snapshot, whose stale view after a
+lock wait could miss a newly committed completion. The fixture exercises both
+directions of the completion/child-write race, replay conflicts, monotonic
+current selection, failed activation rollback and decimal bounds. This is
+schema preparation; it does not select a producer or move production data.
+[Root basket integration](../tests/postgres-root-basket-schema.pg18.ts)
+
 ## Registry and surface-health load schema
 
 Migrations `0007_registry_health.sql` and `0008_registry_health_activate.sql`
