@@ -27,7 +27,12 @@ async function loadOAuth(handler: ApiFetchHandler<Env, ExecutionContext>) {
     isNonOAuthMcpRequest,
   };
 }
-export default createApiEntry<Env, ExecutionContext, ScheduledController, MessageBatch<unknown>>({
+export default createApiEntry<
+  Env,
+  ExecutionContext,
+  ScheduledController,
+  MessageBatch<unknown>
+>({
   directory: handleDefaultExplorerDirectory,
   loadApplication: async () => (await import("./api.ts")).default,
   loadAuthorization: loadOAuth,

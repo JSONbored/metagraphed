@@ -39,10 +39,7 @@ vi.mock("@cloudflare/workers-oauth-provider", () => ({
 }));
 
 async function entryHandler() {
-  return (await import("../workers/api.entry.ts")).default as Record<
-    string,
-    unknown
-  >;
+  return { ...(await import("../workers/api.entry.ts")).default };
 }
 
 async function rawHandler() {
