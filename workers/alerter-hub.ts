@@ -28,6 +28,7 @@ import {
 import {
   recordExceptionEvent,
   recordUsageEvent,
+  type TelemetryEnv,
 } from "../src/usage-telemetry.ts";
 import { buildDeregRiskSnapshot } from "../src/dereg-risk.ts";
 import {
@@ -56,6 +57,22 @@ import {
   type AlertTrigger,
 } from "../src/alert-delivery.ts";
 import { z } from "zod";
+
+export interface AlerterHubState {
+  waitUntil(promise: Promise<unknown>): void;
+}
+export interface AlerterHubEnv extends TelemetryEnv {
+  DATA_API?: {
+    fetch(input: string | Request, init?: RequestInit): Promise<Response>;
+  };
+  ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM_ADDRESS?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
+}
 
 // #6746/#6747: the empty snapshot every AlerterHub starts with and falls
 // back to whenever a metric refresh is skipped/fails -- both of
@@ -180,7 +197,7 @@ export interface AlertDeliveryOutcome {
 // shape) so the caller records a delivery failure instead of throwing into
 // ChainFirehoseHub's ingest path.
 async function loadPushSubscription(
-  env: Env,
+  env: AlerterHubEnv,
   endpoint: string,
 ): Promise<PushSubscriptionKeys | null> {
   if (!env.DATA_API || !env.ALERT_TRIGGERS_INTERNAL_TOKEN) return null;
@@ -216,7 +233,7 @@ async function loadPushSubscription(
 // forget: pruning is bookkeeping, and its failure must never turn a
 // already-recorded delivery outcome into a thrown error.
 async function prunePushSubscription(
-  env: Env,
+  env: AlerterHubEnv,
   endpoint: string,
 ): Promise<void> {
   // Asserted, not guarded. Prune only ever runs after a SUCCESSFUL
@@ -245,7 +262,7 @@ async function prunePushSubscription(
 export async function deliverAlertMatch(
   trigger: Trigger,
   payload: unknown,
-  env: Env,
+  env: AlerterHubEnv,
   fetchFn: typeof fetch = fetch,
   {
     resolveHostnames,
@@ -458,8 +475,8 @@ export async function deliverAlertMatch(
 }
 
 export class AlerterHub implements DurableObject {
-  state: DurableObjectState;
-  env: Env;
+  state: AlerterHubState;
+  env: AlerterHubEnv;
   deliver: typeof deliverAlertMatch;
   triggers: Trigger[];
   triggersLoadedAt: number;
@@ -468,8 +485,8 @@ export class AlerterHub implements DurableObject {
   lastDeliveredAt: Map<string, number>;
 
   constructor(
-    state: DurableObjectState,
-    env: Env,
+    state: AlerterHubState,
+    env: AlerterHubEnv,
     {
       deliver = deliverAlertMatch,
     }: { deliver?: typeof deliverAlertMatch } = {},

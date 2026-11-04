@@ -202,6 +202,49 @@ native control KV when supplied. Their positive/negative TTLs and fresh key
 revocation checks remain unchanged. This preparation does not enable a native
 process, migrate account rows, or activate any production binding.
 
+## Native alert evaluation preparation
+
+`createNativeAlerter(runtime, options)` wraps the existing `AlerterHub`
+evaluator. It takes explicit internal-data and notification capabilities,
+finite concurrency and body limits, an execution deadline shorter than its
+lease, a renewal interval below one third of that lease, and a bounded drain
+deadline. Migration `0037` adds the singleton ownership row in
+`realtime.alerter_owner`; the source actor has no durable storage or alarms to
+import. A fresh owner starts fresh trigger and metric caches and delivery
+reservations, as a reconstructed source actor does.
+
+Configuration caps four times the summed in-flight request and response byte
+limits across evaluation, internal-data and delivery concurrency at 64 MiB.
+This includes collection/copy headroom; it does not substitute for measuring
+the source caches and decoded-object memory during placement qualification.
+
+The owner uses short READ COMMITTED row-lock transactions for claims and
+renewals. No transaction remains open during DNS, internal HTTP or delivery.
+The local deadline conservatively subtracts the database round-trip duration.
+Each effect checks cancellation and renews ownership first; late or failed
+renewal retires the evaluator. A stale owner cannot release a successor's
+token. `close()` stops admission, cancels active work and drains before release;
+the process retains ownership of the shared PostgreSQL pool.
+
+`createNativeAlertOutbound` supplies the concrete POST transport. It validates
+all DNS answers, pins a vetted public address while preserving Host/TLS
+identity, retains authentication headers and request bytes, and does not
+follow redirects. Its finite deadline and request/response byte bounds apply
+while buffering. It rechecks the evaluator's ownership fence immediately
+before sending, then closes or destroys the per-request dispatcher.
+Native request and response collectors cap chunk counts at 65,536 and yield
+every 128 reads so tiny or empty chunks cannot prevent cancellation and lease
+timers from running. The shared request collector retains the caller's existing
+byte limit, including larger ingress limits.
+
+The shared evaluator retains attempted-delivery and rate-limit counts,
+optimistic delivery reservations and failure rollback, stale-cache behavior,
+and best-effort match/delivery writebacks. The native environment copies only
+the explicitly supported delivery secrets; it cannot enable ambient telemetry
+through unrelated environment fields. Missing optional channel credentials
+retain source behavior. This constructor opens no listener, sends no startup
+notification, and does not activate a Worker binding or production owner.
+
 ## Queue transport
 
 `createPgQueueTransport(runtime, limits)` uses the same process-owned pool for
