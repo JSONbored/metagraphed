@@ -14,9 +14,11 @@ retain duplicate entry multiplicity.
 
 Ordering compares exact integers and raw text bytes before values cross the D1
 wire boundary. Membership supplies netuid, UID and account keys. Hotkey filters
-bind UTF-8 bytes, so a request containing NUL does not become a truncated SQL
-text argument. The source import's text-admissibility checks remain required;
-this reader does not rewrite persisted identities.
+use indexed text equality for ordinary inputs and UTF-8 byte equality for
+exceptional inputs, so a request containing NUL does not become a truncated SQL
+text argument. Batches use the existing public comparison limit. The source
+import's text-admissibility checks remain required; this reader does not rewrite
+persisted identities.
 
 This capability serves point neuron details, subnet validators, subnet and chain
 concentration, performance/idle-stake/yield live views, and account subnet

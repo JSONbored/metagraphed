@@ -246,19 +246,22 @@ export function createPgNeuronSummaryStore(
         .slice(0, limit);
     },
     async nominatorCounts(hotkeys) {
+      const unique = [...new Set(hotkeys)];
+      const exceptional = unique.some((key) => /\0|[\uD800-\uDFFF]/u.test(key));
       const rows = await runtime.read.query<{
-        hotkey: string;
+        hotkey?: string;
+        ordinal?: number;
         nominator_count: string | null;
         scan_at: string | null;
       }>(
-        `SELECT k.hotkey,c.nominator_count::text,
+        `SELECT ${exceptional ? "k.ordinal::integer AS ordinal" : "k.hotkey"},c.nominator_count::text,
         (SELECT MAX(captured_at)::text FROM app.validator_nominator_counts) AS scan_at
-        FROM unnest($1::text[]) WITH ORDINALITY k(hotkey,ordinal)
-        LEFT JOIN app.validator_nominator_counts c ON c.hotkey=k.hotkey ORDER BY k.ordinal`,
-        [[...new Set(hotkeys)]],
+        FROM unnest($1::${exceptional ? "bytea" : "text"}[]) WITH ORDINALITY k(hotkey,ordinal)
+        LEFT JOIN app.validator_nominator_counts c ON ${exceptional ? "convert_to(c.hotkey,'UTF8')" : "c.hotkey"}=k.hotkey ORDER BY k.ordinal`,
+        [exceptional ? unique.map((key) => Buffer.from(key)) : unique],
       );
       return rows.map((row) => ({
-        hotkey: row.hotkey,
+        hotkey: exceptional ? unique[row.ordinal! - 1] : row.hotkey!,
         nominator_count:
           row.nominator_count === null ? null : Number(row.nominator_count),
         scan_at: row.scan_at === null ? null : Number(row.scan_at),
