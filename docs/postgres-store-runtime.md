@@ -59,6 +59,21 @@ for chunks, a per-network transaction lock for publication, and repeatable-read
 transactions for status, census and feed reads. The process still owns pool
 closure after request admission stops.
 
+`createPgLaneHealth(runtime)` supplies an explicit `LANE_HEALTH_STORE`
+capability to the existing lane-health selectors. Caller-supplied test injection
+keeps precedence, followed by this native capability and the existing D1 and
+Hyperdrive choices. Each operation uses the shared pool's transaction runner,
+sets the application schema for that lease, and checks the activated maintenance
+triggers before reading or writing. Temporary tables cannot shadow the
+application tables through this schema selection. Pool closure remains with
+the process owner.
+
+The native adapter uses the maintained current, clock and verdict projections,
+retains the bounded housekeeping query, and exposes `source_row_id` as its
+statement-local retention identity. Clock storage preserves exact integer and
+binary64 source values. The public gap query converts the selected value to the
+existing JavaScript number representation.
+
 This is an explicit composition option. It changes no Worker bindings, default
 store selection, table ownership, schema or public route. Production handoff
 still requires a dependency-closed set of readers, writers and transactions.
