@@ -23,6 +23,7 @@ function fixture() {
   >();
   let time = 100_000;
   let calls = 0;
+  let pending = Promise.resolve();
   const identity = (namespace: unknown, key: unknown) =>
     `${namespace}:${(key as Buffer).toString("hex")}`;
   const producer: PgStoreRuntime["producer"] = {
@@ -77,7 +78,17 @@ function fixture() {
     },
   };
   return {
-    runtime: { producer },
+    runtime: {
+      producer,
+      transaction<T>(callback: (tx: PgStoreRuntime["producer"]) => Promise<T>) {
+        const result = pending.then(() => callback(producer));
+        pending = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      },
+    },
     rows,
     calls: () => calls,
     now: () => time,
@@ -176,6 +187,51 @@ test("writes collect bounded streams and cancel refused input without replacing 
   );
   await assert.rejects(kv.put("bad", 1 as never), /text or bytes/);
   assert.equal((await kv.get("stream", "arrayBuffer"))!.byteLength, 4);
+});
+
+test("stream collection handles empty and tiny chunks with one bounded buffer", async () => {
+  const f = fixture();
+  const kv = createPgKv(f.runtime, "control", { maxValueBytes: 4 });
+  let chunks = 0;
+  await kv.put(
+    "tiny",
+    new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunks += 1;
+        if (chunks <= 10_000) controller.enqueue(new Uint8Array());
+        else if (chunks <= 10_004)
+          controller.enqueue(new Uint8Array([chunks - 10_000]));
+        else controller.close();
+      },
+    }),
+  );
+  assert.deepEqual(
+    new Uint8Array((await kv.get("tiny", "arrayBuffer"))!),
+    new Uint8Array([1, 2, 3, 4]),
+  );
+});
+
+test("stalled stream reads and cancellation respect the collection deadline", async () => {
+  const f = fixture();
+  const kv = createPgKv(f.runtime, "control", {
+    maxValueBytes: 4,
+    streamTimeoutMs: 10,
+  });
+  await kv.put("pending", "safe");
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    pull() {
+      return new Promise(() => {});
+    },
+    cancel() {
+      cancelled = true;
+      return new Promise(() => {});
+    },
+  });
+  await assert.rejects(kv.put("pending", stream), /deadline/);
+  assert.equal(cancelled, true);
+  assert.equal(await kv.get("pending"), "safe");
+  assert.equal(stream.locked, false);
 });
 
 test("expiry is invisible at its boundary and an overwrite clears old expiry and metadata", async () => {
@@ -316,6 +372,18 @@ test("native consumption and selection retain one-time and legacy behavior", asy
     kv,
   );
   assert.equal(oauthPendingKv({ OAUTH_KV: kv }), kv);
+  for (const invalid of [undefined, null, {}, { ...kv, consume: undefined }]) {
+    assert.throws(
+      () =>
+        appKv({ CONTROL_KV_STORE: invalid as AppKv, METAGRAPH_CONTROL: kv }),
+      /incomplete/,
+    );
+    assert.throws(
+      () =>
+        oauthPendingKv({ OAUTH_PENDING_STORE: invalid as AppKv, OAUTH_KV: kv }),
+      /incomplete/,
+    );
+  }
   await kv.put("nonce", "next");
   assert.equal(await consumeKvText(kv, "nonce"), "next");
   const legacy = { get: kv.get, delete: kv.delete };
@@ -330,4 +398,5 @@ test("a stricter reader declines preexisting larger values before transfer", asy
   const small = createPgKv(f.runtime, "control", { maxValueBytes: 4 });
   await assert.rejects(small.get("large"), /byte budget/);
   await assert.rejects(small.consume!("large"), /byte budget/);
+  assert.equal(await createPgKv(f.runtime, "control").get("large"), "12345");
 });

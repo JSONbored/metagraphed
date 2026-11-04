@@ -16,6 +16,7 @@ export interface PgKvOptions {
   maxValueBytes?: number;
   maxKeyBytes?: number;
   maxListKeys?: number;
+  streamTimeoutMs?: number;
   /** Millisecond clock, injectable for deterministic expiry tests. */
   now?: () => number;
 }
@@ -24,6 +25,7 @@ const defaults = {
   maxValueBytes: 25 * 1024 * 1024,
   maxKeyBytes: 512,
   maxListKeys: 1000,
+  streamTimeoutMs: 30_000,
 };
 const decoder = new TextDecoder();
 
@@ -86,26 +88,37 @@ function metadataText(value: unknown): string | null {
 async function valueBytes(
   value: Parameters<AppKv["put"]>[1],
   limit: number,
+  timeoutMs: number,
 ): Promise<Buffer> {
   if (value instanceof ReadableStream) {
     const reader = value.getReader();
-    const parts: Buffer[] = [];
+    const output = Buffer.allocUnsafe(limit);
     let size = 0;
+    const deadline = Date.now() + timeoutMs;
+    const expired = new Error("KV stream read deadline exceeded");
+    let timer!: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(expired), timeoutMs);
+    });
     try {
       for (;;) {
-        const next = await reader.read();
-        if (next.done) return Buffer.concat(parts, size);
+        if (Date.now() >= deadline) throw expired;
+        const next = await Promise.race([reader.read(), timeout]);
+        if (next.done) return Buffer.from(output.subarray(0, size));
         if (!(next.value instanceof Uint8Array))
           throw new TypeError("KV stream must contain bytes");
-        size += next.value.byteLength;
-        if (size > limit)
+        if (size + next.value.byteLength > limit)
           throw new RangeError("KV value exceeds its byte budget");
-        parts.push(Buffer.from(next.value));
+        output.set(next.value, size);
+        size += next.value.byteLength;
       }
     } catch (error) {
-      await reader.cancel().catch(() => undefined);
+      // Cancellation may itself stall in a producer. Observe its failure
+      // without extending the caller's deadline.
+      void reader.cancel().catch(() => undefined);
       throw error;
     } finally {
+      clearTimeout(timer);
       reader.releaseLock();
     }
   }
@@ -123,7 +136,7 @@ async function valueBytes(
 /** A bounded namespace over the process pool; every stored payload retains its
  * bytes and expiry. Authentication consumers opt into atomic consumption. */
 export function createPgKv(
-  runtime: Pick<PgStoreRuntime, "producer">,
+  runtime: Pick<PgStoreRuntime, "producer" | "transaction">,
   namespace: string,
   options: PgKvOptions = {},
 ): AppKv {
@@ -131,7 +144,12 @@ export function createPgKv(
   if (namespace.includes("\0"))
     throw new TypeError("KV namespace cannot contain NUL");
   const limits = { ...defaults, ...options };
-  for (const name of ["maxValueBytes", "maxKeyBytes", "maxListKeys"] as const) {
+  for (const name of [
+    "maxValueBytes",
+    "maxKeyBytes",
+    "maxListKeys",
+    "streamTimeoutMs",
+  ] as const) {
     if (
       !Number.isSafeInteger(limits[name]) ||
       limits[name] <= 0 ||
@@ -195,7 +213,11 @@ export function createPgKv(
           settings.expirationTtl < 60)
       )
         throw new RangeError("KV TTL must be at least 60 whole seconds");
-      const bytes = await valueBytes(value, limits.maxValueBytes);
+      const bytes = await valueBytes(
+        value,
+        limits.maxValueBytes,
+        limits.streamTimeoutMs,
+      );
       const current = now();
       const expiry =
         settings.expiration ??
@@ -220,12 +242,21 @@ export function createPgKv(
       );
     },
     async consume(key) {
-      const row = await runtime.producer.first<StoredEntry>(
-        "DELETE FROM auth.kv_entries WHERE namespace=? AND key=? AND (expires_at IS NULL OR expires_at>?) " +
-          "RETURNING CASE WHEN octet_length(value)<=? THEN value END AS value,octet_length(value) AS size",
-        [namespace, keyBytes(key), now(), limits.maxValueBytes],
-      );
-      return row === null ? null : decoder.decode(storedBytes(row));
+      const encoded = keyBytes(key);
+      return runtime.transaction(async (tx) => {
+        const row = await tx.first<StoredEntry>(
+          "SELECT CASE WHEN octet_length(value)<=? THEN value END AS value,octet_length(value) AS size " +
+            "FROM auth.kv_entries WHERE namespace=? AND key=? AND (expires_at IS NULL OR expires_at>?) FOR UPDATE",
+          [limits.maxValueBytes, namespace, encoded, now()],
+        );
+        if (row === null) return null;
+        const value = decoder.decode(storedBytes(row));
+        await tx.run(
+          "DELETE FROM auth.kv_entries WHERE namespace=? AND key=?",
+          [namespace, encoded],
+        );
+        return value;
+      });
     },
     async list(settings = {}) {
       const prefix = settings.prefix ?? "";

@@ -522,7 +522,8 @@ export async function latestPointer(
   env: ArtifactEnv,
 ): Promise<LatestPointer | null> {
   const control = appKv(env);
-  if (!control?.get) {
+  const get = control?.get?.bind(control);
+  if (!get) {
     return null;
   }
   const now = Date.now();
@@ -534,7 +535,7 @@ export async function latestPointer(
   if (existing) return existing;
   const pending = (async () => {
     try {
-      const value = await control.get<LatestPointer>(METAGRAPH_LATEST_KEY, {
+      const value = await get<LatestPointer>(METAGRAPH_LATEST_KEY, {
         type: "json",
       });
       pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };

@@ -181,6 +181,8 @@ describe("application KV on PostgreSQL 18.6", { concurrency: false }, () => {
     assert.equal(await kv.get("bounded"), "safe");
     await make().put("large", "12345");
     await assert.rejects(kv.get("large"), /budget/);
+    await assert.rejects(kv.consume!("large"), /budget/);
+    assert.equal(await make().get("large"), "12345");
     for (const settings of [
       { expirationTtl: 1 },
       { expiration: 1 },

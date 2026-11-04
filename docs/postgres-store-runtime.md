@@ -76,7 +76,9 @@ retain ordinary parse failures.
 
 The default limits are 25 MiB per value, 512 UTF-8 bytes per key, 1 KiB of JSON
 metadata and 1,000 keys per list page. Callers may lower value, key and list
-bounds. Stream writes count bytes before storage, and lists use a bytewise
+bounds. Stream writes use one bounded buffer and a configurable collection
+deadline of at most 30 seconds. Cancellation starts on refusal without waiting
+for the producer's cancellation callback. Lists use a bytewise
 prefix/keyset range. Their versioned cursors bind the namespace, prefix and
 last key. Expired rows are invisible to reads, listing and consumption at the
 expiry second. Absolute expiry and TTL are mutually exclusive, with the
@@ -84,8 +86,8 @@ existing 60-second TTL floor.
 
 `CONTROL_KV_STORE` selects this capability for wallet challenges and generic
 control/registry reads. `OAUTH_PENDING_STORE` selects only GitHub's pending
-authorization state. Native callbacks use one atomic delete-and-return
-operation, so a concurrent request cannot consume the same challenge twice.
+authorization state. Native callbacks lock, validate and delete the value in
+one transaction, so a concurrent request cannot consume the same challenge twice.
 The existing legacy bindings remain available through their selectors.
 
 The Workers OAuth provider's client, grant, code and refresh-token records have
