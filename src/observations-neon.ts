@@ -1,4 +1,4 @@
-// The observation family, against Neon (#10069).
+// The observation family, against Neon (#10069) or an explicit native store.
 //
 // FIVE TABLES, ONE UNIT. Two of these writes are `INSERT ... SELECT FROM
 // surface_checks` -- they aggregate INSIDE the store. So the moment
@@ -54,16 +54,26 @@ export interface ObservationsSql {
   nativeD1?: ProducerStore;
   /** Uses the migrated source schema and its attached alias trigger. */
   nativePostgres?: true;
-  transaction?(run: (sql: ObservationsSql) => Promise<unknown>): Promise<unknown>;
+  transaction?(
+    run: (sql: ObservationsSql) => Promise<unknown>,
+  ): Promise<unknown>;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
 }
 
-export function selectedObservationsStore(env: unknown): ObservationsSql | undefined {
-  const selected = env && typeof env === "object"
-    ? (env as { OBSERVATIONS_STORE?: ObservationsSql }).OBSERVATIONS_STORE
-    : undefined;
+export function selectedObservationsStore(
+  env: unknown,
+): ObservationsSql | undefined {
+  const selected =
+    env && typeof env === "object"
+      ? (env as { OBSERVATIONS_STORE?: ObservationsSql }).OBSERVATIONS_STORE
+      : undefined;
   if (selected === undefined) return undefined;
-  if (!selected || typeof selected.unsafe !== "function" || typeof selected.transaction !== "function" || selected.nativePostgres !== true) {
+  if (
+    !selected ||
+    typeof selected.unsafe !== "function" ||
+    typeof selected.transaction !== "function" ||
+    selected.nativePostgres !== true
+  ) {
     throw new TypeError("Selected observation store is invalid");
   }
   return selected;
@@ -285,9 +295,8 @@ export async function persistProbesToNeon(
 /**
  * The failure-REASON rollup: one row per (day, netuid, kind, classification).
  *
- * The conflict target is the plain column list, NOT an expression: Neon's
- * unique index is NULLS NOT DISTINCT, so a NULL netuid collides with itself
- * the way D1 needed `ifnull(netuid, -1)` to arrange.
+ * Neon uses a plain-column NULLS NOT DISTINCT index. The native source port
+ * retains D1's expression index, including the collision of NULL with -1.
  */
 export async function rollupFailureReasonsToNeon(
   sql: ObservationsSql,
@@ -299,6 +308,32 @@ export async function rollupFailureReasonsToNeon(
     sql,
     async (active) => {
       for (const { date, start, end } of days) {
+        if (active.nativePostgres) {
+          const groups = (await active.unsafe(
+            "SELECT netuid,kind,classification,COUNT(*) AS checks FROM surface_checks " +
+              "WHERE checked_at >= $1 AND checked_at < $2 AND kind IS NOT NULL AND classification IS NOT NULL " +
+              "GROUP BY netuid,kind,classification ORDER BY netuid ASC NULLS FIRST,kind,classification",
+            [start, end],
+          )) as Row[];
+          // The source's expression index aliases NULL and -1. Ordered single
+          // upserts preserve that case without PostgreSQL updating one target
+          // row twice in a single INSERT SELECT.
+          for (const group of groups) {
+            await active.unsafe(
+              "INSERT INTO surface_failure_daily(day,netuid,kind,classification,checks,updated_at) VALUES($1,$2,$3,$4,$5,$6) " +
+                "ON CONFLICT(day,(COALESCE(netuid,-1)),kind,classification) DO UPDATE SET checks=excluded.checks,updated_at=excluded.updated_at",
+              [
+                date,
+                group.netuid,
+                group.kind,
+                group.classification,
+                group.checks,
+                runAt,
+              ],
+            );
+          }
+          continue;
+        }
         await active.unsafe(
           `INSERT INTO surface_failure_daily
              (day, netuid, kind, classification, checks, updated_at)
@@ -307,7 +342,7 @@ export async function rollupFailureReasonsToNeon(
             WHERE checked_at >= $3 AND checked_at < $4
               AND kind IS NOT NULL AND classification IS NOT NULL
             GROUP BY netuid, kind, classification
-           ON CONFLICT (day, ${active.nativePostgres ? "COALESCE(netuid, -1)" : "netuid"}, kind, classification) DO UPDATE SET
+           ON CONFLICT (day, netuid, kind, classification) DO UPDATE SET
              checks = excluded.checks,
              updated_at = excluded.updated_at`,
           [date, runAt, start, end],
@@ -391,7 +426,9 @@ export async function pruneChecksNeon(
   return attempt(
     sql,
     (active) =>
-      active.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [cutoff]),
+      active.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [
+        cutoff,
+      ]),
     "pruneChecksNeon",
   );
 }

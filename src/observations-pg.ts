@@ -13,6 +13,7 @@ export function createPgObservations(
   return {
     nativePostgres: true,
     transaction,
-    unsafe: (text, values) => transaction((scope) => scope.unsafe(text, values)),
+    unsafe: (text, values) =>
+      transaction((scope) => scope.unsafe(text, values)),
   };
 }

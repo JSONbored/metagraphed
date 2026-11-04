@@ -18,7 +18,9 @@
 // data-api's subnet-identity-sync handler already makes for calling
 // env.DATA_API.fetch() directly.
 //
-// THE FLAG STILL GATES THE READ, just not through the forwardable union. A
+// An explicit native observation capability owns this read when supplied.
+// Malformed capabilities fail closed; transport failures still yield no rows.
+// Otherwise THE FLAG STILL GATES THE READ, not the forwardable union. A
 // deployment that has not pointed METAGRAPH_HEALTH_SOURCE at a tier must not
 // have this reach for one -- both callers' suites pin that ("never reaches
 // Postgres when the flag is off"), and it is the right contract: an unset flag
@@ -30,6 +32,8 @@
 // yield an empty array -- which is exactly the state that existed before this
 // route answered. A prober run that cannot read prior state should still
 // probe; it just cannot carry continuity forward that run.
+
+import { selectedObservationsStore } from "./observations-neon.ts";
 
 type Row = Record<string, unknown>;
 
@@ -52,6 +56,18 @@ export async function readLiveSurfaceStatus(
   sinceMs: number,
 ): Promise<Row[]> {
   if (!env) return [];
+  const native = selectedObservationsStore(env);
+  if (native) {
+    try {
+      const rows = await native.unsafe(
+        "SELECT * FROM surface_status WHERE last_checked >= $1",
+        [Number.isFinite(sinceMs) && sinceMs > 0 ? Math.floor(sinceMs) : 0],
+      );
+      return Array.isArray(rows) ? (rows as Row[]) : [];
+    } catch {
+      return [];
+    }
+  }
   if (!TIERS_THAT_ANSWER.has(String(env.METAGRAPH_HEALTH_SOURCE))) return [];
   // Not cast to reach it: `Env` declares DATA_API. The runtime check stays --
   // a wrangler config without the service binding is a real state, and a
