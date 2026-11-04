@@ -17,6 +17,7 @@ on:
       - tests/generated-artifact-runtime.pg18.ts
       - tests/pg-kv-runtime.pg18.ts
       - tests/lane-health-runtime.pg18.ts
+      - tests/native-api-process.pg18.ts
       - tests/helpers/pg18-fixture.ts
       - migrations/postgres/**
   push:
@@ -35,6 +36,7 @@ on:
       - tests/generated-artifact-runtime.pg18.ts
       - tests/pg-kv-runtime.pg18.ts
       - tests/lane-health-runtime.pg18.ts
+      - tests/native-api-process.pg18.ts
       - tests/helpers/pg18-fixture.ts
       - migrations/postgres/**
   workflow_dispatch:
@@ -109,7 +111,7 @@ jobs:
           docker image inspect --format '{{json .RepoDigests}}' "$PG18_IMAGE"
       - name: Exercise the real pool and store contracts
         timeout-minutes: 2
-        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/pg-store-runtime.pg18.ts tests/postgres-retained-schema.pg18.ts tests/retained-blocks-runtime.pg18.ts tests/generated-artifact-runtime.pg18.ts tests/pg-kv-runtime.pg18.ts tests/postgres-registry-schema.pg18.ts tests/lane-health-runtime.pg18.ts
+        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/pg-store-runtime.pg18.ts tests/postgres-retained-schema.pg18.ts tests/retained-blocks-runtime.pg18.ts tests/generated-artifact-runtime.pg18.ts tests/pg-kv-runtime.pg18.ts tests/postgres-registry-schema.pg18.ts tests/lane-health-runtime.pg18.ts tests/native-api-process.pg18.ts
       - name: Show failed fixture logs
         if: failure()
         run: timeout 10 docker logs --tail 50 "$PG18_CONTAINER" || true
