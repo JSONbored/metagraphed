@@ -101,6 +101,7 @@ describe("data-api's bundle boundary", () => {
     "src/native-auth-controls.ts",
     "src/pg-neuron-history.ts",
     "src/pg-neuron-metrics.ts",
+    "src/pg-neuron-aggregates.ts",
     "src/archive-catalog-pg.ts",
     "src/archive-content-fs.ts",
     "src/mcp-server.ts",
