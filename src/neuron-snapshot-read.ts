@@ -11,6 +11,7 @@ import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
+import { selectedNeuronSnapshotStore } from "./neuron-snapshot-store.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
@@ -161,7 +162,7 @@ export async function readNeuronEconomicsRows(
   );
 }
 
-interface SubnetSnapshotPart {
+export interface SubnetSnapshotPart {
   shard: number;
   payload: string | null;
   uid: number | null;
@@ -176,6 +177,8 @@ export async function readSubnetNeuronRows(
   netuid: number,
   validatorsOnly = false,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronSnapshotStore(env);
+  if (native) return native.subnetRows(netuid, validatorsOnly);
   const store = selectedD1Store(env, ["neurons"]);
   if (!store)
     return sql.unsafe(
@@ -194,6 +197,13 @@ export async function readSubnetNeuronRows(
      FROM neurons_members WHERE netuid=?`,
     [netuid, netuid],
   );
+  return subnetNeuronRowsFromParts(parts, validatorsOnly);
+}
+
+export function subnetNeuronRowsFromParts(
+  parts: SubnetSnapshotPart[],
+  validatorsOnly = false,
+): Record<string, unknown>[] {
   const documents = new Map<number, Record<string, unknown>>();
   for (const part of parts)
     if (part.payload !== null)

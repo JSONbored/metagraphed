@@ -19,6 +19,7 @@ import { sha256Hex } from "../src/sha256-hex.ts";
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
+import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,
@@ -6908,7 +6909,7 @@ export async function loadSubnetSnapshotCards(
   netuid: number,
 ) {
   const rows = await readSubnetNeuronRows(sql, env, netuid);
-  const native = Boolean(selectedD1Store(env, ["neurons"]));
+  const native = Boolean(selectedNeuronSnapshotStore(env) || selectedD1Store(env, ["neurons"]));
   const validators = rows
     .filter((r) => r.validator_permit === true || r.validator_permit === 1)
     .sort((a, b) => {
@@ -9220,12 +9221,19 @@ async function dispatchDataApiRequest(
     // capture + an opaque 502 that never leaks DB detail.
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
-      const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
-      if (!store) {
+      const nativeSnapshot = /^\/api\/v1\/subnets\/\d+\/metagraph$/.test(url.pathname)
+        ? selectedNeuronSnapshotStore(env) : null;
+      const store = nativeSnapshot ? undefined : routeRunner(env, ctx, NEURON_ROUTE_TABLES);
+      if (!nativeSnapshot && !store) {
         return json({ error: "no store bound for this route" }, 503);
       }
       try {
-        return await neuronsStoreHandler(store, env, ctx);
+        if (nativeSnapshot) {
+          const netuid = Number(url.pathname.split("/")[4]);
+          const rows = await nativeSnapshot.subnetRows(netuid, url.searchParams.get("validator_permit") === "true");
+          return json(buildSubnetMetagraph(rows, netuid, { immunityPeriod: null, burnHotkey: await nativeSnapshot.burnHotkey(netuid) }));
+        }
+        return await neuronsStoreHandler(store as PgSql, env, ctx);
       } catch (err) {
         console.error("data-api neurons query failed:", err);
         await captureDataApiError(err, maskRouteParams(url.pathname), env);
