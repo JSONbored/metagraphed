@@ -345,22 +345,10 @@ export function pgReadStore(
   };
 }
 
-/**
- * The store to read `tables` from: Neon, once it is declared to solely own
- * every one of them and Hyperdrive is bound.
- *
- * `injected` wins outright so a test can hand in its own fake, and `undefined`
- * comes back when no store is available -- which every caller already handles,
- * because an unbound store has always been possible.
- */
-/**
- * The one binding `readStore` looks for.
- *
- * `readStore` itself keeps taking `unknown` -- see its own note -- because its
- * callers hand in an `Env`, a bag, or nothing. This names the same shape for
- * COMPOSERS, which forward one env to both legs (the Neon store and the
- * lakehouse) and therefore need a type that admits either (#11339).
- */
+/** Inputs shared by Worker and native-process composers. readStore accepts
+ * unknown so callers can supply their existing Env without an index signature.
+ * An injected test reader wins. Native ownership is explicit and complete;
+ * absent native selection retains the existing D1/Hyperdrive behavior. */
 export interface StoreEnv {
   HYPERDRIVE?: { connectionString?: string };
   D1_STATE?: D1StoreBinding;
