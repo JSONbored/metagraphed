@@ -88,6 +88,9 @@ describe("data-api's bundle boundary", () => {
   for (const forbidden of [
     "src/mcp-server.ts",
     "src/projection-write-store.ts",
+    "src/root-basket-pg.ts",
+    "src/pg-pool.ts",
+    "src/pg-store-runtime.ts",
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",
@@ -146,11 +149,14 @@ describe("data-api's bundle boundary", () => {
     // graph (4,824,337 total), without adding any forbidden module.
     // Explicit retained-store selection adds 2,647 source bytes (4,826,984
     // total). The PostgreSQL implementation remains outside this Worker graph.
+    // Explicit Root basket selection measures 4,830,140 source bytes versus
+    // 4,829,554 on main (f6f4b681), with 571 minified / 182 gzip bytes added.
+    // Its PostgreSQL adapter and process pool remain outside this Worker.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_830_000,
+      firstParty < 4_835_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
