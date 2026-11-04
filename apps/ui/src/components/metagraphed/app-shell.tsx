@@ -453,7 +453,6 @@ function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
             </span>
             {chromeOnly ? null : <DeferredSourcesLine />}
           </div>
-          <p>Operated by carbonZERO LLC</p>
         </div>
       </div>
     </footer>
