@@ -52,7 +52,21 @@ import {
  * so this module depends on the SHAPE and not on another lane's file. */
 export interface ObservationsSql {
   nativeD1?: ProducerStore;
+  /** Uses the migrated source schema and its attached alias trigger. */
+  nativePostgres?: true;
+  transaction?(run: (sql: ObservationsSql) => Promise<unknown>): Promise<unknown>;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+export function selectedObservationsStore(env: unknown): ObservationsSql | undefined {
+  const selected = env && typeof env === "object"
+    ? (env as { OBSERVATIONS_STORE?: ObservationsSql }).OBSERVATIONS_STORE
+    : undefined;
+  if (selected === undefined) return undefined;
+  if (!selected || typeof selected.unsafe !== "function" || typeof selected.transaction !== "function" || selected.nativePostgres !== true) {
+    throw new TypeError("Selected observation store is invalid");
+  }
+  return selected;
 }
 
 type Row = Record<string, unknown>;
@@ -130,16 +144,16 @@ const LATENCY_COLUMNS = [
 
 async function attempt(
   sql: ObservationsSql,
-  run: () => Promise<unknown>,
+  run: (sql: ObservationsSql) => Promise<unknown>,
   label: string,
 ): Promise<ObservationWrite> {
   try {
-    await run();
+    if (sql.transaction) await sql.transaction(run);
+    else await run(sql);
     return { ok: true };
   } catch (error) {
     const reason = String((error as Error)?.message ?? error);
     console.error(`[${label}]`, reason);
-    void sql;
     return { ok: false, reason };
   }
 }
@@ -167,9 +181,9 @@ export async function persistProbesToNeon(
   if (sql.nativeD1) return persistProbesD1(sql.nativeD1, probed, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const row of probed) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO surface_checks
              (surface_id, surface_key, netuid, kind, status, classification,
               latency_ms, status_code, ok, checked_at)
@@ -189,9 +203,9 @@ export async function persistProbesToNeon(
           ],
         );
         const keyed = Boolean(row.surface_key);
-        await sql.unsafe(
+        await active.unsafe(
           `${
-            keyed
+            keyed && !active.nativePostgres
               ? `WITH alias_conflict AS (
              SELECT surface_id, surface_key FROM surface_status
              WHERE surface_id = $1 AND surface_key IS DISTINCT FROM $2
@@ -221,7 +235,7 @@ export async function persistProbesToNeon(
               consecutive_failures, updated_at)
            SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
            ${
-             keyed
+             keyed && !active.nativePostgres
                ? `FROM (SELECT COUNT(*) FROM displaced_alias) displaced
              CROSS JOIN (SELECT COUNT(*) FROM displaced_keyless) legacy
              WHERE NOT EXISTS (
@@ -283,9 +297,9 @@ export async function rollupFailureReasonsToNeon(
   if (sql.nativeD1) return rollupFailuresD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const { date, start, end } of days) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO surface_failure_daily
              (day, netuid, kind, classification, checks, updated_at)
            SELECT $1, netuid, kind, classification, COUNT(*), $2
@@ -293,7 +307,7 @@ export async function rollupFailureReasonsToNeon(
             WHERE checked_at >= $3 AND checked_at < $4
               AND kind IS NOT NULL AND classification IS NOT NULL
             GROUP BY netuid, kind, classification
-           ON CONFLICT (day, netuid, kind, classification) DO UPDATE SET
+           ON CONFLICT (day, ${active.nativePostgres ? "COALESCE(netuid, -1)" : "netuid"}, kind, classification) DO UPDATE SET
              checks = excluded.checks,
              updated_at = excluded.updated_at`,
           [date, runAt, start, end],
@@ -319,9 +333,9 @@ export async function rollupUptimeDailyToNeon(
   if (sql.nativeD1) return rollupUptimeD1(sql.nativeD1, days, runAt);
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const { date, start, end } of days) {
-        await sql.unsafe(
+        await active.unsafe(
           // Today and yesterday are recomputed from the retained raw window.
           // Replace the day's aliases atomically, including alias swaps; an
           // upsert cannot arbitrate both (display id, day) and (stable key, day).
@@ -376,8 +390,8 @@ export async function pruneChecksNeon(
   if (sql.nativeD1) return pruneChecksD1(sql.nativeD1, cutoff);
   return attempt(
     sql,
-    () =>
-      sql.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [cutoff]),
+    (active) =>
+      active.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [cutoff]),
     "pruneChecksNeon",
   );
 }
@@ -398,9 +412,9 @@ export async function upsertSubnetSnapshotsToNeon(
   const toBool = (v: unknown) => (v == null ? null : Boolean(v));
   return attempt(
     sql,
-    async () => {
+    async (active) => {
       for (const row of rows) {
-        await sql.unsafe(
+        await active.unsafe(
           `INSERT INTO subnet_snapshots
              (netuid, snapshot_date, completeness_score, surface_count,
               endpoint_count, monitored_count, candidate_count, captured_at,

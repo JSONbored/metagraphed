@@ -48,6 +48,7 @@ import {
   rollupFailureReasonsToNeon,
   rollupUptimeDailyToNeon,
   upsertSubnetSnapshotsToNeon,
+  selectedObservationsStore,
   type ObservationsSql,
 } from "./observations-neon.ts";
 import { observationsReadDb } from "./observations-read-runner.ts";
@@ -518,6 +519,8 @@ function observationsRunner(
   env: Env,
   ctx?: ExecutionContext,
 ): ObservationsSql | null {
+  const native = selectedObservationsStore(env);
+  if (native) return native;
   const d1 = selectedD1Store(env, OBSERVATION_TABLES);
   if (d1) return { nativeD1: d1, ...createD1Sql(d1) };
   if (!ctx) return null;
