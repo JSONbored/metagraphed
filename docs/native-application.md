@@ -60,6 +60,19 @@ ports invoke their own handlers without crossing the public OAuth dispatcher.
 These are internal capabilities; a later listener must expose only the main
 `fetch` unless another authenticated boundary is separately reviewed.
 
+The `background(owner, operation, signal)` port admits finite actor maintenance
+through that same job limit and shutdown drain. Its callback receives an active
+native execution context and can use the process-owned internal services. This
+is the entrypoint for alarm work that can call another application owner; a
+standalone callback outside an invocation has no internal service scope.
+Registered background work finishes before this port settles, and a failure
+propagates to its caller. It creates no loop or listener by itself.
+
+Composition also receives `onStartupCleanup`. Register an adapter immediately
+after constructing it, so a later construction failure cannot bypass its
+cleanup while the process closes PostgreSQL. The callback supplements the
+returned bindings' stop/close ownership; cleanup functions must be idempotent.
+
 On close, the process stops request/job admission, calls `stop` to stop recurring
 and external adapter work, waits for admitted invocations, calls `close` to
 drain/close adapters, and then closes PostgreSQL once. `stop` must preserve all

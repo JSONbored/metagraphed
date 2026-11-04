@@ -168,6 +168,112 @@ function fixture() {
 
 afterEach(() => vi.restoreAllMocks());
 
+test("native actor work owns an active internal-service scope and bounded job slot", async () => {
+  const f = fixture();
+  f.options.maxJobs = 1;
+  const app = await f.create();
+  const background = deferred();
+  let context!: NativeExecutionContext;
+  vi.spyOn(data, "fetch").mockImplementation(async (_request, _env, ctx) => {
+    assert.equal((ctx as NativeExecutionContext).active, true);
+    return new Response("background-data");
+  });
+  const result = app.background("api", async (ctx) => {
+    context = ctx;
+    ctx.waitUntil(background.promise);
+    return (
+      await f.services().data.fetch("https://internal.example/data")
+    ).text();
+  });
+  await Promise.resolve();
+  await assert.rejects(
+    app.background("api", async () => null),
+    /admission/,
+  );
+  assert.equal(context.active, true);
+  background.resolve();
+  assert.equal(await result, "background-data");
+  assert.equal(context.active, false);
+  await assert.rejects(
+    f.services().data.fetch("https://internal.example/data"),
+    /no active invocation/,
+  );
+  await assert.rejects(
+    app.background("invalid" as never, async () => null),
+    /Unknown native background owner/,
+  );
+  await app.close();
+});
+
+test("admitted actor work retains internal services while application shutdown drains", async () => {
+  const f = fixture();
+  f.options.drainTimeoutMillis = 1000;
+  const app = await f.create();
+  const entered = deferred(),
+    release = deferred();
+  vi.spyOn(data, "fetch").mockResolvedValue(new Response("drained-data"));
+  const task = app.background("data", async () => {
+    entered.resolve();
+    await release.promise;
+    return (
+      await f.services().data.fetch("https://internal.example/data")
+    ).text();
+  });
+  await entered.promise;
+  const closing = app.close();
+  assert.equal(app.state, "closing");
+  await assert.rejects(
+    app.background("api", async () => null),
+    /admission/,
+  );
+  assert.equal(f.ends(), 0);
+  release.resolve();
+  assert.equal(await task, "drained-data");
+  await closing;
+  assert.deepEqual(f.order, ["stop", "adapters", "pool"]);
+});
+
+test("actor background failures and caller cancellation retain process semantics", async () => {
+  const f = fixture();
+  const app = await f.create();
+  const failure = new Error("actor work failed");
+  await assert.rejects(
+    app.background("registry", async (ctx) => {
+      ctx.waitUntil(Promise.reject(failure));
+    }),
+    (error) => error === failure,
+  );
+  const controller = new AbortController();
+  controller.abort(new Error("caller cancelled"));
+  let called = false;
+  await assert.rejects(
+    app.background(
+      "api",
+      async () => {
+        called = true;
+      },
+      controller.signal,
+    ),
+    /caller cancelled/,
+  );
+  assert.equal(called, false);
+  await app.close();
+});
+
+test("composition registers partial startup cleanup before returning bindings", async () => {
+  const f = fixture();
+  const failure = new Error("later adapter construction failed");
+  f.options.compose = async (providers) => {
+    providers.onStartupCleanup(async () => {
+      f.order.push("partial-adapter");
+    });
+    throw failure;
+  };
+  await assert.rejects(f.create(), (error) => error === failure);
+  assert.deepEqual(f.order, ["partial-adapter", "pool"]);
+  assert.equal(f.ends(), 1);
+});
+
 describe("native application composition", () => {
   test("routes actual Worker entrypoints with one pool and no listener", async () => {
     const f = fixture();
