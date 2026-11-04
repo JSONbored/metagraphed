@@ -21,7 +21,9 @@ The adapter accepts the application's current query contract: top K from 1 to
 20, optional `type` equality or allow-list filtering, optional returned values,
 and all or no metadata. It preserves serialized metadata text, including NUL
 escapes, and stores the filter field separately because PostgreSQL JSON field
-access rejects those escapes. Upsert and delete batches accept at most 100 IDs.
+access rejects those escapes. Metadata values are checked on writes and reads:
+strings, numbers, booleans, string arrays and the application's existing null
+values are supported. Upsert and delete batches accept at most 100 IDs.
 Nonempty Vectorize namespaces and indexed-only metadata are rejected explicitly.
 
 Without an explicit capability the existing Worker still uses Vectorize. A

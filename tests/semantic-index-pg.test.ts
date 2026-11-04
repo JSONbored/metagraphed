@@ -153,6 +153,10 @@ test("stores float32 vectors, exact JSON metadata and deterministic cosine ranki
     (await db.query("SELECT vector_count FROM search.indexes")).rows,
     [{ vector_count: 3 }],
   );
+  await db.query("UPDATE search.vectors SET metadata=$1 WHERE id='a'", [
+    '{"nested":{}}',
+  ]);
+  await assert.rejects(index.query([1, 0, 0], { returnMetadata: "all" }));
 });
 
 test("filters exactly by type with equality or allow-lists", async () => {
@@ -246,6 +250,14 @@ test("rejects malformed vector and metadata boundaries without storing a partial
       index.upsert([entry as unknown as VectorizeVector]),
       /Semantic|semantic/,
     );
+  await assert.rejects(
+    index.upsert([
+      {
+        ...item("a"),
+        metadata: { nested: { value: "invalid" } },
+      } as unknown as VectorizeVector,
+    ]),
+  );
   const filters: unknown[] = [
     { type: "subnet", extra: true },
     { type: { $eq: 1 } },

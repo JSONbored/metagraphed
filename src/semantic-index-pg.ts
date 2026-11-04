@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { PgTransaction } from "./pg-pool.ts";
 import type { SemanticIndex } from "./semantic-index.ts";
+import { SemanticIndexMetadataSchema } from "../schemas-src/semantic-index-metadata.ts";
 
 export interface SemanticIndexOptions {
   name: string;
@@ -160,7 +161,7 @@ export async function createPgSemanticIndex(
           throw new TypeError("Semantic metadata must serialize as an object");
         if (encoder.encode(json).length > 10240)
           throw new RangeError("Semantic metadata exceeds 10 KiB");
-        const type = (JSON.parse(json) as Record<string, unknown>).type;
+        const type = SemanticIndexMetadataSchema.parse(JSON.parse(json)).type;
         if (typeof type === "string" && type.includes("\0"))
           throw new TypeError("Semantic type cannot contain NUL");
         return {
@@ -224,10 +225,9 @@ export async function createPgSemanticIndex(
         ...(query.returnValues ? { values: row.embedding } : {}),
         ...(query.returnMetadata === true || query.returnMetadata === "all"
           ? {
-              metadata: JSON.parse(row.metadata) as Record<
-                string,
-                VectorizeVectorMetadata
-              >,
+              metadata: SemanticIndexMetadataSchema.parse(
+                JSON.parse(row.metadata),
+              ) as Record<string, VectorizeVectorMetadata>,
             }
           : {}),
       }));
