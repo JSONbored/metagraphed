@@ -35,6 +35,7 @@ import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
 import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
+import { selectedNativeRelationalSql } from "../src/native-relational-read.ts";
 import {
   selectedNeuronViewStore,
   type NeuronViewQuery,
@@ -7081,6 +7082,8 @@ function routeRunner(
   ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | undefined {
+  const native = selectedNativeRelationalSql(env, tables);
+  if (native !== null) return native;
   const d1 = selectedD1Store(env, tables);
   return d1
     ? createD1Sql(d1)

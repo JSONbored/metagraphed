@@ -222,11 +222,14 @@ describe("data-api's bundle boundary", () => {
     // bytes over 4de15dcf, totaling 4,863,555 source bytes. Its PostgreSQL
     // factory and all existing forbidden implementations stay out of this
     // graph; retain 1,445 source bytes of margin for this measured change.
+    // Initial native relational qualification added 3,760 source / 1,303 minified /
+    // 526 gzip bytes over decb73ba, for 4,867,315 source bytes. The native
+    // implementations remain excluded; only the bounded SQL selector joins.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_865_000,
+      firstParty < 4_869_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
