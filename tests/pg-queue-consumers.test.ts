@@ -111,13 +111,11 @@ test("actual webhook consumer receives unchanged signed text and owns retry dela
 });
 
 test("actual sync dead-letter consumer retries custody when its durable store is unavailable", async () => {
-  await fixture.transport
-    .binding("sync-batches-dlq")
-    .send({
-      lane: "hotkey-alpha",
-      captured_at: 1000,
-      rows: [{ hotkey: "fixture" }],
-    });
+  await fixture.transport.binding("sync-batches-dlq").send({
+    lane: "hotkey-alpha",
+    captured_at: 1000,
+    rows: [{ hotkey: "fixture" }],
+  });
   await fixture.flush("sync-batches-dlq");
   const task = context();
   const dispatcher = createPgQueueDispatcher(fixture.transport, {
