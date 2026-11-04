@@ -3,6 +3,7 @@
 // image bytes and global negative results share the existing D1 artifact store.
 import type { StorageReadResult } from "../workers/storage.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 import { iconCacheStore, MAX_ICON_BYTES } from "./icon-cache-store.ts";
 
 const ICON_CACHE_PREFIX = "icon-cache";
@@ -405,7 +406,10 @@ export async function handleIconProxy(
     });
   }
 
-  const cache = iconCacheStore(env?.D1_STATE);
+  const cache = iconCacheStore(
+    env?.D1_STATE,
+    selectedGeneratedArtifactStore(env),
+  );
   const cacheKey = `${ICON_CACHE_PREFIX}/${subject}/${size}`;
 
   // One keyed read returns either exact image bytes or a shared negative result.

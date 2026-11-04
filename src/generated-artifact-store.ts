@@ -1,5 +1,37 @@
+export interface GeneratedArtifactStore {
+  get(key: string): Promise<unknown>;
+  put(key: string, payload: string): Promise<void>;
+}
+
+export interface GeneratedArtifactEnv {
+  D1_STATE?: Pick<D1Database, "prepare">;
+  GENERATED_ARTIFACT_STORE?: GeneratedArtifactStore;
+}
+
+/** Explicit native selection applies to every reader and writer of this family. */
+export function selectedGeneratedArtifactStore(
+  env: unknown,
+): GeneratedArtifactStore | undefined {
+  if (!env || typeof env !== "object") return undefined;
+  const configured = env as GeneratedArtifactEnv;
+  const selected = configured.GENERATED_ARTIFACT_STORE;
+  if (selected !== undefined) {
+    if (
+      !selected ||
+      typeof selected.get !== "function" ||
+      typeof selected.put !== "function"
+    ) {
+      throw new TypeError("Selected generated-artifact store is invalid");
+    }
+    return selected;
+  }
+  return generatedArtifactStore(configured.D1_STATE);
+}
+
 /** Small, mutable registry snapshots; durable state with no archive dependency. */
-export function generatedArtifactStore(db?: Pick<D1Database, "prepare">) {
+export function generatedArtifactStore(
+  db?: Pick<D1Database, "prepare">,
+): GeneratedArtifactStore | undefined {
   if (!db?.prepare) return undefined;
   return {
     async get(key: string) {
