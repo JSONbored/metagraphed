@@ -370,6 +370,7 @@ interface ArchiveObjectEnv {
 
 /** The main API Worker (wrangler.jsonc) carries every concern. */
 interface NativeRealtimeEnv {
+  ALERTER_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
   MCP_SESSION_SERVICE?: import("../src/mcp-session-service.ts").McpSessionService;
   CHAIN_FIREHOSE_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
   SUBNET_STATUS_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;

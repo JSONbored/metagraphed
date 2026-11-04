@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { mcpSessionService } from "../src/mcp-session-service.ts";
 import { chainFirehoseService } from "../src/chain-firehose-service.ts";
+import { alerterService } from "../src/alerter-service.ts";
 import { handleMcpRequest } from "../src/mcp-server.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
 
 test("explicit realtime services preserve absent bindings and reject malformed native selections", async () => {
   assert.equal(mcpSessionService({}, "A"), undefined);
   assert.equal(chainFirehoseService({}), undefined);
+  assert.equal(alerterService({}), undefined);
   for (const value of [null, false, {}, { fetch: "invalid" }]) {
     assert.throws(
       () => mcpSessionService({ MCP_SESSION_SERVICE: value }, "A"),
@@ -15,6 +17,10 @@ test("explicit realtime services preserve absent bindings and reject malformed n
     );
     assert.throws(
       () => chainFirehoseService({ CHAIN_FIREHOSE_SERVICE: value }),
+      /Invalid native/,
+    );
+    assert.throws(
+      () => alerterService({ ALERTER_SERVICE: value }),
       /Invalid native/,
     );
   }
@@ -45,6 +51,20 @@ test("explicit realtime services preserve absent bindings and reject malformed n
       .then((r) => r.text()),
     "https://chain.invalid/latest",
   );
+  assert.equal(
+    await alerterService({
+      ALERTER_SERVICE: {
+        fetch: async (request: Request) =>
+          new Response(`${request.method}:${await request.text()}`),
+      },
+    })!
+      .fetch("https://alerter.invalid/evaluate", {
+        method: "POST",
+        body: "event",
+      })
+      .then((response) => response.text()),
+    "POST:event",
+  );
 });
 
 test("absent native selection resolves Worker session keys and the global chain actor", async () => {
@@ -73,7 +93,14 @@ test("absent native selection resolves Worker session keys and the global chain 
     await chain.fetch("https://chain.invalid/latest").then((r) => r.text()),
     "https://chain.invalid/latest",
   );
-  assert.deepEqual(names, ["worker-session", "global"]);
+  const alerter = alerterService(apiEnv({ ALERTER_HUB: namespace }))!;
+  assert.equal(
+    await alerter
+      .fetch("https://alerter.invalid/evaluate")
+      .then((response) => response.text()),
+    "https://alerter.invalid/evaluate",
+  );
+  assert.deepEqual(names, ["worker-session", "global", "global"]);
 });
 
 test("public MCP initialization, membership, stream, termination and chain reads use explicit native services", async () => {

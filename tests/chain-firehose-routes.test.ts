@@ -10,6 +10,7 @@ import { ErrorEnvelopeSchema } from "../schemas-src/envelope.ts";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { ChainFirehoseUnavailableError } from "../src/chain-firehose-service.ts";
 import type { AnyFn } from "./row-type.ts";
 
 function stubHub(fetchImpl: AnyFn) {
@@ -317,4 +318,75 @@ test("ingest: relays a non-2xx upstream status (e.g. 400 from an invalid payload
     {},
   );
   assert.equal(res.status, 400);
+});
+
+test("native chain service handles streams, GraphQL upgrades and authenticated ingestion without namespace fallback", async () => {
+  const calls: string[] = [];
+  const env = {
+    CHAIN_FIREHOSE_SYNC_SECRET: "fixture-secret",
+    CHAIN_FIREHOSE_HUB: stubHub(() => {
+      throw new Error("legacy fallback");
+    }),
+    CHAIN_FIREHOSE_SERVICE: {
+      fetch: async (request: Request) => {
+        const path = new URL(request.url).pathname;
+        calls.push(path);
+        return path === "/ingest"
+          ? new Response('{"ok":true}', { status: 202 })
+          : new Response("native stream");
+      },
+    },
+  } as unknown as Env;
+  assert.equal(
+    (
+      await handleRequest(
+        new Request("https://api.metagraph.sh/api/v1/chain/stream"),
+        env,
+        {},
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await handleRequest(
+        new Request("https://api.metagraph.sh/api/v1/graphql", {
+          headers: { upgrade: "websocket" },
+        }),
+        env,
+        {},
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await handleRequest(ingestRequest("{}"), env, {})).status, 401);
+  assert.equal(
+    (
+      await handleRequest(
+        ingestRequest("{}", { token: "fixture-secret" }),
+        env,
+        {},
+      )
+    ).status,
+    202,
+  );
+  assert.deepEqual(calls, ["/subscribe", "/subscribe", "/ingest"]);
+});
+
+test("a lost native owner retains the established SSE reconnect response", async () => {
+  const env = {
+    CHAIN_FIREHOSE_SERVICE: {
+      fetch: async () => {
+        throw new ChainFirehoseUnavailableError("lease unavailable");
+      },
+    },
+  } as unknown as Env;
+  const response = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/stream"),
+    env,
+    {},
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type")!, /text\/event-stream/);
+  assert.match(await response.text(), /^retry: /);
 });

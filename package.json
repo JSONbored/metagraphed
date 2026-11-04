@@ -222,6 +222,7 @@
     "satori-html": "^0.3.2",
     "undici": "7.30.1",
     "workers-og": "^0.0.27",
+    "ws": "^8.21.3",
     "yaml": "^2.9.0",
     "zod": "4.4.3",
     "dompurify": "3.4.16"
@@ -236,6 +237,7 @@
     "@graphql-codegen/typescript-resolvers": "^6.1.1",
     "@graphql-tools/graphql-tag-pluck": "^8.3.41",
     "@types/pg": "^8.20.4",
+    "@types/ws": "8.18.2",
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
