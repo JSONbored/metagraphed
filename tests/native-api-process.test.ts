@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import type { AppKv } from "../src/app-kv.ts";
 import type { PgPool, PooledPgOptions } from "../src/pg-pool.ts";
 import {
@@ -464,61 +464,81 @@ describe("native API process", () => {
   });
 
   test("times out shutdown, cancels owned streams and retains unfinished work", async () => {
-    const f = fixture();
-    f.options.drainTimeoutMillis = 10;
-    const pending = deferred();
-    let cancelled = false;
-    f.setResponse(() => {
-      f.context().waitUntil(pending.promise);
-      return new Response(
-        new ReadableStream({
-          cancel() {
-            cancelled = true;
-          },
-        }),
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const f = fixture();
+      f.options.drainTimeoutMillis = 10;
+      const pending = deferred();
+      let cancelled = false;
+      f.setResponse(() => {
+        f.context().waitUntil(pending.promise);
+        return new Response(
+          new ReadableStream({
+            cancel() {
+              cancelled = true;
+            },
+          }),
+        );
+      });
+      const process = await f.create();
+      const response = await process.fetch(
+        new Request("https://fixture.invalid/mcp"),
       );
-    });
-    const process = await f.create();
-    const response = await process.fetch(
-      new Request("https://fixture.invalid/mcp"),
-    );
-    const body = response.text().catch((error) => error as Error);
-    await assert.rejects(process.close(), /drain deadline exceeded/);
-    assert.equal(f.context().signal.aborted, true);
-    assert.equal(cancelled, true);
-    assert.equal(process.state, "closing");
-    assert.equal(f.ends(), 0);
-    assert.match(((await body) as Error).message, /drain deadline exceeded/);
-    pending.resolve();
-    await process.close();
-    assert.equal(f.ends(), 1);
-    assert.equal(process.state, "closed");
+      const body = response.text().catch((error) => error as Error);
+      const closing = assert.rejects(
+        process.close(),
+        /drain deadline exceeded/,
+      );
+      await vi.advanceTimersByTimeAsync(10);
+      await closing;
+      assert.equal(f.context().signal.aborted, true);
+      assert.equal(cancelled, true);
+      assert.equal(process.state, "closing");
+      assert.equal(f.ends(), 0);
+      assert.match(((await body) as Error).message, /drain deadline exceeded/);
+      pending.resolve();
+      await process.close();
+      assert.equal(f.ends(), 1);
+      assert.equal(process.state, "closed");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("signals stalled jobs without closing their database prematurely", async () => {
-    const f = fixture();
-    f.options.drainTimeoutMillis = 10;
-    const pending = deferred();
-    let signal!: AbortSignal;
-    const compose = f.options.compose;
-    f.options.compose = async (providers) => {
-      const composition = await compose(providers);
-      composition.application.queue = async (_batch, _env, ctx) => {
-        signal = ctx.signal;
-        await pending.promise;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const f = fixture();
+      f.options.drainTimeoutMillis = 10;
+      const pending = deferred();
+      let signal!: AbortSignal;
+      const compose = f.options.compose;
+      f.options.compose = async (providers) => {
+        const composition = await compose(providers);
+        composition.application.queue = async (_batch, _env, ctx) => {
+          signal = ctx.signal;
+          await pending.promise;
+        };
+        return composition;
       };
-      return composition;
-    };
-    const process = await f.create();
-    const job = process.queue("stalled");
-    await assert.rejects(process.close(), /drain deadline exceeded/);
-    assert.equal(signal.aborted, true);
-    assert.equal(process.state, "closing");
-    assert.equal(f.ends(), 0);
-    pending.resolve();
-    await job;
-    await process.close();
-    assert.equal(process.state, "closed");
+      const process = await f.create();
+      const job = process.queue("stalled");
+      const closing = assert.rejects(
+        process.close(),
+        /drain deadline exceeded/,
+      );
+      await vi.advanceTimersByTimeAsync(10);
+      await closing;
+      assert.equal(signal.aborted, true);
+      assert.equal(process.state, "closing");
+      assert.equal(f.ends(), 0);
+      pending.resolve();
+      await job;
+      await process.close();
+      assert.equal(process.state, "closed");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("finishes bodyless responses and contains failed error reporters", async () => {
