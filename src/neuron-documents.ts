@@ -13,8 +13,9 @@ import {
 } from "./neuron-capture-receipt.ts";
 
 type Row = Record<string, unknown>;
-type Family = "neurons" | "neuron_daily" | "account_position_daily";
-type Document = {
+export type NeuronDocumentFamily =
+  "neurons" | "neuron_daily" | "account_position_daily";
+export type NeuronCaptureDocument = {
   netuid: number;
   day: string;
   shard: number;
@@ -24,16 +25,24 @@ type Document = {
 const encoder = new TextEncoder();
 const MAX_BYTES = 512 * 1024;
 
+/** Source wire size includes the document wrapper and JSON batch separators. */
+export function neuronCaptureDocumentSize(doc: NeuronCaptureDocument): number {
+  const size = encoder.encode(JSON.stringify(doc)).length + 1;
+  if (size + 2 > MAX_BYTES)
+    throw new RangeError("Neuron document exceeds 512 KiB");
+  return size;
+}
+
 function integer(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
-function documents(
-  family: Family,
+export function groupNeuronDocuments(
+  family: NeuronDocumentFamily,
   rows: Row[],
   columns: readonly string[],
-): Document[] {
-  const groups = new Map<string, Document>();
+): NeuronCaptureDocument[] {
+  const groups = new Map<string, NeuronCaptureDocument>();
   for (const row of rows) {
     if (
       !integer(row.netuid) ||
@@ -97,8 +106,8 @@ function documents(
 }
 
 function documentStatements(
-  family: Family,
-  docs: Document[],
+  family: NeuronDocumentFamily,
+  docs: NeuronCaptureDocument[],
 ): ProducerStatement[] {
   const table = `${family}_documents`;
   const members = `${family}_members`;
@@ -125,7 +134,7 @@ function documentStatements(
   // compare each member, including previously unseen members in an older batch.
   const newer = `json_extract(${table}.payload,${path}) IS NULL OR json_extract(${table}.payload,${path}) < json_extract(i.value,'$.captured_at')`;
   const out: ProducerStatement[] = [];
-  let batch: Document[] = [],
+  let batch: NeuronCaptureDocument[] = [],
     bytes = 2;
   function flush() {
     if (!batch.length) return;
@@ -181,9 +190,7 @@ function documentStatements(
     bytes = 2;
   }
   for (const doc of docs) {
-    const size = encoder.encode(JSON.stringify(doc)).length + 1;
-    if (size + 2 > MAX_BYTES)
-      throw new RangeError("Neuron document exceeds 512 KiB");
+    const size = neuronCaptureDocumentSize(doc);
     if (bytes + size > MAX_BYTES) flush();
     batch.push(doc);
     bytes += size;
@@ -196,7 +203,7 @@ function documentStatements(
 function neuronDocumentWrite(input: NeuronMirrorInput) {
   const statements = documentStatements(
     "neurons",
-    documents("neurons", input.rows, NEURON_INSERT_COLUMNS),
+    groupNeuronDocuments("neurons", input.rows, NEURON_INSERT_COLUMNS),
   );
   const cutoffs = [...(input.netuidMaxCapturedAt ?? [])];
   if (cutoffs.length) {
@@ -229,11 +236,15 @@ function neuronDocumentWrite(input: NeuronMirrorInput) {
   statements.push(
     ...documentStatements(
       "neuron_daily",
-      documents("neuron_daily", input.dailyRows, NEURON_DAILY_COLUMNS),
+      groupNeuronDocuments(
+        "neuron_daily",
+        input.dailyRows,
+        NEURON_DAILY_COLUMNS,
+      ),
     ),
     ...documentStatements(
       "account_position_daily",
-      documents(
+      groupNeuronDocuments(
         "account_position_daily",
         input.positionRows,
         ACCOUNT_POSITION_DAILY_COLUMNS,

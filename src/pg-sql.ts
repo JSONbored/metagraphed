@@ -109,6 +109,7 @@ export interface HyperdriveLike {
  * anything with waitUntil in a test. */
 export interface WaitUntilLike {
   waitUntil(promise: Promise<unknown>): void;
+  signal?: AbortSignal;
 }
 
 /**
