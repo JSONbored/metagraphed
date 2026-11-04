@@ -297,3 +297,23 @@ The native fixture compares source columns, types, nullability and explicit
 indexes, checks exact text and number storage, exercises source constraints and
 uniqueness, and validates forward-only sequence reconciliation and exhaustion.
 [Integration test](../tests/postgres-economic-history-schema.pg18.ts)
+
+## Account observations and retained ledgers
+
+The account-observation load migration preserves eleven balance, identity and
+nomination tables plus four retained migration ledgers, with ten explicit source
+indexes. It keeps original text, nullable fields, signed IDs, binary64 balances
+and the positive nominator receipt constraint. Ledger payloads stay plain text,
+including values that are not valid JSON. Audit neuron documents and their
+JSONB-dependent view retain their separate document-family owner.
+[Load schema](../migrations/postgres/0014_account_observations.sql)
+
+Account identity history has a separate sequence activation. It advances above
+imported rows, retained source sequence metadata and consumed native values,
+and refuses an exhausted signed-integer floor before advancing.
+[Activation](../migrations/postgres/0015_account_observations_activate.sql)
+
+The native fixture compares all fifteen source column definitions and ten
+indexes, checks exact and nullable values, retains pass defaults and composite
+uniqueness, and exercises sequence reconciliation and exhaustion.
+[Integration test](../tests/postgres-account-observations-schema.pg18.ts)
