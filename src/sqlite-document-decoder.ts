@@ -75,6 +75,8 @@ export interface SqliteDocumentEntry {
 export interface SqliteMetricEntry {
   key: string;
   values: Record<string, SqliteDocumentValue>;
+  /** Original SQL TEXT bytes for comparisons before D1 wire replacement. */
+  textBytes?: Record<string, Uint8Array>;
 }
 
 /** SQLite is used only as the decoder for its binary JSON format. This readonly
@@ -121,13 +123,39 @@ export function createSqliteDocumentDecoder(options: {
   const axons = db.prepare(
     "WITH payload AS MATERIALIZED (SELECT key,CASE WHEN type='object' THEN json_extract(value,'$.axon') END AS axon,MIN(id) AS first_id FROM json_each(?1) WHERE typeof(key)='text' GROUP BY key) SELECT CAST(key AS BLOB) AS key,typeof(axon) AS storage,CASE WHEN typeof(axon)='text' THEN CAST(axon AS BLOB) ELSE axon END AS value FROM payload ORDER BY first_id",
   );
+  const encode = db.prepare("SELECT jsonb(?1) AS value");
+  const textAffinity = db.prepare(
+    "SELECT CAST(CAST(?1 AS TEXT) AS BLOB) AS value",
+  );
+  const numericAffinity = db.prepare("SELECT sum(?1) AS value");
+  const integerAffinity = db.prepare("SELECT CAST(?1 AS INTEGER) AS value");
+  const mergeCapture = db.prepare(`SELECT jsonb_patch(?1,CASE
+    WHEN (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(?2) i) > ?3
+      THEN ?2
+    ELSE (SELECT jsonb_group_object(i.key,json(i.value)) FROM json_each(?2) i
+      WHERE json_extract(?1,'$."'||i.key||'".captured_at') IS NULL
+        OR json_extract(?1,'$."'||i.key||'".captured_at') < json_extract(i.value,'$.captured_at')) END) AS value
+    WHERE (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(?2) i) > ?3
+      OR EXISTS(SELECT 1 FROM json_each(?2) i
+        WHERE json_extract(?1,'$."'||i.key||'".captured_at') IS NULL
+          OR json_extract(?1,'$."'||i.key||'".captured_at') < json_extract(i.value,'$.captured_at'))`);
+  const expiredMembers = db.prepare(
+    "SELECT CAST(i.key AS INTEGER) AS uid FROM json_each(?1) i WHERE json_extract(i.value,'$.captured_at') < ?2 ORDER BY i.id",
+  );
+  const pruneCapture = db.prepare(
+    "SELECT jsonb((SELECT jsonb_group_object(i.key,json(i.value)) FROM json_each(?1) i WHERE json_extract(i.value,'$.captured_at') >= ?2)) AS value",
+  );
   extract.setReadBigInts(true);
   entries.setReadBigInts(true);
   axons.setReadBigInts(true);
+  expiredMembers.setReadBigInts(true);
+  numericAffinity.setReadBigInts(true);
+  integerAffinity.setReadBigInts(true);
   let closed = false;
   const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  const wireText = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true });
   const scalar = (value: SqliteDocumentValue, storage: unknown) =>
-    storage === "text" ? utf8.decode(value as Uint8Array) : value;
+    storage === "text" ? wireText.decode(value as Uint8Array) : value;
   const check = (payload: Uint8Array, kind: "live" | "audit") => {
     if (closed) throw new Error("SQLite document decoder is closed");
     const max = kind === "live" ? 524288 : options.maxAuditBytes;
@@ -140,6 +168,70 @@ export function createSqliteDocumentDecoder(options: {
   };
   return {
     identity: { ...SQLITE_DOCUMENT_DECODER },
+    encode(value: string): Uint8Array {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (typeof value !== "string" || Buffer.byteLength(value) > 2 * 524288)
+        throw new RangeError("Document exceeds its explicit encode budget");
+      if (valid.get(value, 1)?.valid !== 1)
+        throw new TypeError("Malformed JSON document");
+      const result = encode.get(value)!.value as Uint8Array;
+      check(result, "live");
+      return result;
+    },
+    textAffinity(value: SqliteDocumentValue): string | null {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (
+        (typeof value === "string" && Buffer.byteLength(value) > 524288) ||
+        (value instanceof Uint8Array && value.byteLength > 524288)
+      )
+        throw new RangeError("Scalar exceeds its explicit decode budget");
+      const result = textAffinity.get(value)!.value;
+      return result === null ? null : wireText.decode(result as Uint8Array);
+    },
+    numericAffinity(value: SqliteDocumentValue): bigint | number | null {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (
+        (typeof value === "string" && Buffer.byteLength(value) > 524288) ||
+        (value instanceof Uint8Array && value.byteLength > 524288)
+      )
+        throw new RangeError("Scalar exceeds its explicit decode budget");
+      return numericAffinity.get(value)!.value as bigint | number | null;
+    },
+    integerAffinity(value: SqliteDocumentValue): bigint | null {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (
+        (typeof value === "string" && Buffer.byteLength(value) > 524288) ||
+        (value instanceof Uint8Array && value.byteLength > 524288)
+      )
+        throw new RangeError("Scalar exceeds its explicit decode budget");
+      return integerAffinity.get(value)!.value as bigint | null;
+    },
+    mergeCapture(
+      current: Uint8Array,
+      incoming: Uint8Array,
+      stamp: bigint,
+    ): Uint8Array | null {
+      check(current, "live");
+      check(incoming, "live");
+      const row = mergeCapture.get(current, incoming, stamp);
+      if (!row) return null;
+      const result = row.value as Uint8Array;
+      check(result, "live");
+      return result;
+    },
+    pruneCapture(
+      payload: Uint8Array,
+      cutoff: number,
+    ): { payload: Uint8Array; uids: bigint[] } | null {
+      check(payload, "live");
+      const uids = expiredMembers
+        .all(payload, cutoff)
+        .map((row) => row.uid as bigint);
+      if (!uids.length) return null;
+      const result = pruneCapture.get(payload, cutoff)!.value as Uint8Array;
+      check(result, "live");
+      return { payload: result, uids };
+    },
     decode(payload: Uint8Array, kind: "live" | "audit" = "live"): string {
       check(payload, kind);
       return utf8.decode(text.get(payload)!.value as Uint8Array);
@@ -171,6 +263,7 @@ export function createSqliteDocumentDecoder(options: {
       payload: Uint8Array,
       names: readonly string[],
       keys?: readonly string[],
+      includeTextBytes = false,
     ): SqliteMetricEntry[] {
       check(payload, "live");
       if (
@@ -194,19 +287,31 @@ export function createSqliteDocumentDecoder(options: {
           ...names.map((name) => `$.${name}`),
         )
         .map((row) => ({
-          key: utf8.decode(row.key as Uint8Array),
+          key: wireText.decode(row.key as Uint8Array),
           values: Object.fromEntries(
             names.map((name, index) => [
               name,
               scalar(row[`v${index}`] as SqliteDocumentValue, row[`t${index}`]),
             ]),
           ),
+          ...(includeTextBytes
+            ? {
+                textBytes: Object.fromEntries(
+                  names
+                    .filter((_, index) => row[`t${index}`] === "text")
+                    .map((name) => [
+                      name,
+                      (row[`v${names.indexOf(name)}`] as Uint8Array).slice(),
+                    ]),
+                ),
+              }
+            : {}),
         }));
     },
     axons(payload: Uint8Array): { key: string; value: SqliteDocumentValue }[] {
       check(payload, "live");
       return axons.all(payload).map((row) => ({
-        key: utf8.decode(row.key as Uint8Array),
+        key: wireText.decode(row.key as Uint8Array),
         value: scalar(row.value as SqliteDocumentValue, row.storage),
       }));
     },

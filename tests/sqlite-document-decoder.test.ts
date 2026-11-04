@@ -146,17 +146,18 @@ test("tagged storage round-trips all actual SQLite storage classes without JSON 
     expect(() => readSqliteValue(value)).toThrow("tag");
 });
 
-test("preserves raw JSON escapes but refuses lossy UTF8 scalar decoding", () => {
+test("preserves raw JSON custody while scalar TEXT follows wire replacement", () => {
   const unpaired = blob('"\\ud800"');
   expect(decoder.decode(unpaired)).toBe('"\\ud800"');
-  expect(() => decoder.extract(unpaired, "$")).toThrow();
+  expect(decoder.extract(unpaired, "$")).toBe("\ufffd\ufffd\ufffd");
   // SQLite's strict binary-format check admits this TEXT node even though its
-  // payload is not UTF8. Neither the document nor a scalar may replace bytes.
+  // payload is not UTF8. Whole-document custody still refuses a rewrite;
+  // a scalar response uses the replacement behavior verified against D1.
   const malformedText = Buffer.from([0x17, 0xff]);
   expect(
     source.prepare("SELECT json_valid(?,8) AS valid").get(malformedText)!.valid,
   ).toBe(1);
   expect(() => decoder.decode(malformedText)).toThrow();
-  expect(() => decoder.extract(malformedText, "$")).toThrow();
+  expect(decoder.extract(malformedText, "$")).toBe("\ufffd");
   expect(malformedText).toEqual(Buffer.from([0x17, 0xff]));
 });

@@ -29,8 +29,9 @@ row. A malformed historical blob retains its original bytes and an explicit
 failed-decode receipt with nullable projection text; the historical reader
 still fails if asked to decode that row, matching the source failure. A failed
 receipt is forbidden for live documents. Text crosses the Node SQLite boundary as BLOB
-bytes to preserve embedded NUL. Decoding invalid UTF-8 or an unsupported scalar
-escape refuses conversion rather than replacing bytes. Exact `json(payload)`
+bytes to preserve embedded NUL. Whole-document invalid UTF-8 still refuses
+conversion; SQL scalar text follows D1's replacement of invalid UTF-8 bytes,
+including escaped lone surrogates. Exact `json(payload)`
 text retains duplicate keys and numeric spelling.
 
 The supported runtime is the official Node 22.23.4 distribution, whose bundled
@@ -64,6 +65,14 @@ hexadecimal UTF-8 account keys. Both preserve the first matching JSON key, SQL
 null, integer/REAL distinctions, 0/1 booleans and compact text for objects or
 arrays. Other consumers that use `JSON.parse` or `json_each` retain their own
 last-key or all-entry behavior through the decoder's separate operations.
+
+The codec also provides bounded, fixed-expression binary JSON encoding,
+timestamp-aware capture merging/pruning and SQLite text/numeric/integer affinity.
+These operations use the same read-only in-memory connection and create no
+persistent SQLite state. `metricEntries` can additionally return original TEXT
+bytes for comparisons before wire replacement. A reader implementing SQLite
+`MAX` must compare those original bytes, then return the D1-compatible scalar;
+comparing replaced strings can select a different row.
 
 The four axon triggers use the original first `json_each` entry for each key.
 Numeric comparison follows SQLite `IS`: integer 1 and REAL 1.0 are equal, so a
