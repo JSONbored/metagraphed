@@ -90,6 +90,10 @@ describe("data-api's bundle boundary", () => {
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",
     "src/pg-neuron-snapshot.ts",
+    "src/pg-subnet-status-hub.ts",
+    "src/pg-rate-limits.ts",
+    "src/pg-daily-quota.ts",
+    "src/native-auth-controls.ts",
     "src/archive-catalog-pg.ts",
     "src/archive-content-fs.ts",
     "src/mcp-server.ts",
@@ -158,11 +162,15 @@ describe("data-api's bundle boundary", () => {
     // Explicit Root basket selection measures 4,830,140 source bytes versus
     // 4,829,554 on main (f6f4b681), with 571 minified / 182 gzip bytes added.
     // Its PostgreSQL adapter and process pool remain outside this Worker.
+    // The combined subnet-status, archive-selection and auth-control helpers
+    // measure 4,837,225 source bytes on d69e34e2 versus 4,832,833 on 8a8ce69b:
+    // +4,392 source / 950 minified / 261 gzip bytes. All forbidden native
+    // implementations remain absent. Keep only 4,775 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_835_000,
+      firstParty < 4_842_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
