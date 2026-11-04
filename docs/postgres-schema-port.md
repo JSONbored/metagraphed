@@ -273,3 +273,27 @@ The PostgreSQL fixture compares source columns and explicit indexes, exercises
 exact values, nullable fields, account-kind keys and partial uniqueness, and
 checks sequence floors, orphan refusal, cascade deletion and rollback.
 [Integration test](../tests/postgres-account-state-schema.pg18.ts)
+
+## Subnet and economic history
+
+The economic-history load migration preserves twenty source tables and their
+thirty-one explicit indexes. It covers subnet parameters, identities, ownership,
+lifecycle and emission history, plus price, revenue, compute, treasury and
+attribution observations. Nullable and exact text values retain their source
+representation. Boolean fields use the explicit `boolean01` codec, while
+binary64 observations remain `double precision`. Compute-declaration JSON stays
+text with object validation, preserving its original serialization.
+[Load schema](../migrations/postgres/0012_economic_history.sql)
+
+The separate activation checks all seven identity high-water marks before any
+sequence advances. Imported IDs, retained source sequence rows and consumed
+native sequence values all contribute to that floor. These tables have no
+source foreign keys or user triggers. `subnet_snapshots` and the shared
+`archive_export_revisions` table remain with the complete closed-day trigger
+family, which has separate activation requirements.
+[Sequence activation](../migrations/postgres/0013_economic_history_activate.sql)
+
+The native fixture compares source columns, types, nullability and explicit
+indexes, checks exact text and number storage, exercises source constraints and
+uniqueness, and validates forward-only sequence reconciliation and exhaustion.
+[Integration test](../tests/postgres-economic-history-schema.pg18.ts)
