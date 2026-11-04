@@ -5,6 +5,7 @@ import {
   type PgPool,
   type PooledPgClient,
   type PooledPgOptions,
+  type PgTransaction,
 } from "../src/pg-pool.ts";
 
 const options: PooledPgOptions = {
@@ -328,6 +329,188 @@ describe("pooled transaction ownership", () => {
     );
     assert.equal(f.clients.length, 0);
     await f.runtime.store.query("SELECT 1");
+  });
+});
+
+describe("leased transaction callbacks", () => {
+  test("returns scoped query results on one lease and closes the escaped scope", async () => {
+    const f = fixture();
+    const c = client();
+    const query = c.connection.query;
+    c.connection.query = async (text, values) => {
+      await query(text, values);
+      return {
+        rows: text === "SELECT missing" ? [] : [{ value: 7 }],
+        rowCount: 2,
+      };
+    };
+    f.clients.push(c.connection);
+    let escaped!: PgTransaction;
+    const result = await f.runtime.transaction(
+      async (tx) => {
+        escaped = tx;
+        assert.deepEqual(await tx.query("SELECT ?", [7]), [{ value: 7 }]);
+        assert.deepEqual(await tx.first("SELECT first"), { value: 7 });
+        assert.equal(await tx.first("SELECT missing"), null);
+        assert.deepEqual(await tx.run("UPDATE items SET value=?", [7]), {
+          changes: 2,
+        });
+        return "completed";
+      },
+      { isolation: "repeatable read" },
+    );
+    assert.equal(result, "completed");
+    assert.equal(c.calls[0]!.text, "BEGIN ISOLATION LEVEL REPEATABLE READ");
+    assert.equal(c.calls.at(-1)!.text, "COMMIT");
+    assert.deepEqual(c.releases, [false]);
+    const count = c.calls.length;
+    await assert.rejects(escaped.query("SELECT late"), /scope is closed/);
+    await assert.rejects(escaped.first("SELECT late"), /scope is closed/);
+    await assert.rejects(escaped.run("UPDATE late"), /scope is closed/);
+    assert.equal(c.calls.length, count);
+  });
+
+  test("rejects unsupported isolation before taking a pool connection", async () => {
+    const f = fixture();
+    await assert.rejects(
+      f.runtime.transaction(async () => {}, {
+        isolation: "read uncommitted" as "read committed",
+      }),
+      /Unsupported/,
+    );
+    assert.deepEqual(f.calls, []);
+  });
+
+  test("settles an unawaited operation before commit and process shutdown", async () => {
+    const f = fixture();
+    const wait = deferred<void>();
+    const c = client({}, wait.promise);
+    f.clients.push(c.connection);
+    const completed = f.runtime.transaction(async (tx) => {
+      void tx.run("INSERT INTO items VALUES (?)", [1]);
+      return 42;
+    });
+    await c.entered;
+    const closing = f.runtime.close();
+    assert.equal(
+      c.calls.some((call) => call.text === "COMMIT"),
+      false,
+    );
+    assert.equal(f.ended(), 0);
+    wait.resolve();
+    assert.equal(await completed, 42);
+    await closing;
+    assert.equal(c.calls.at(-1)!.text, "COMMIT");
+    assert.equal(f.ended(), 1);
+  });
+
+  test("seals callback admission while already-issued operations drain", async () => {
+    const f = fixture();
+    const wait = deferred<void>();
+    const c = client({}, wait.promise);
+    f.clients.push(c.connection);
+    let escaped!: PgTransaction;
+    const completed = f.runtime.transaction(async (tx) => {
+      escaped = tx;
+      void tx.run("INSERT INTO items VALUES (?)", [1]);
+    });
+    await c.entered;
+    await Promise.resolve();
+    await assert.rejects(
+      escaped.run("INSERT INTO late VALUES (?)", [2]),
+      /scope is closed/,
+    );
+    assert.equal(
+      c.calls.some((call) => call.text.includes("late")),
+      false,
+    );
+    assert.equal(
+      c.calls.some((call) => call.text === "COMMIT"),
+      false,
+    );
+    wait.resolve();
+    await completed;
+    assert.equal(c.calls.at(-1)!.text, "COMMIT");
+  });
+
+  test("rolls back unawaited statement failures before releasing the lease", async () => {
+    const f = fixture();
+    const failure = new Error("detached query failed");
+    const c = client({ "SELECT broken": failure });
+    f.clients.push(c.connection);
+    await assert.rejects(
+      f.runtime.transaction(async (tx) => {
+        void tx.query("SELECT broken");
+        return "callback completed";
+      }),
+      (error) => error === failure,
+    );
+    assert.deepEqual(
+      c.calls.map((call) => call.text),
+      ["BEGIN", "SELECT broken", "ROLLBACK"],
+    );
+    assert.deepEqual(c.releases, [false]);
+  });
+
+  test("rolls back an issued failure even when the callback catches it", async () => {
+    const f = fixture();
+    const failure = new Error("query failed");
+    const c = client({ "SELECT broken": failure });
+    f.clients.push(c.connection);
+    let escaped!: PgTransaction;
+    await assert.rejects(
+      f.runtime.transaction(async (tx) => {
+        escaped = tx;
+        await tx.query("SELECT broken").catch(() => undefined);
+        return "ignored";
+      }),
+      (error) => error === failure,
+    );
+    assert.deepEqual(
+      c.calls.map((call) => call.text),
+      ["BEGIN", "SELECT broken", "ROLLBACK"],
+    );
+    await assert.rejects(escaped.query("SELECT late"), /scope is closed/);
+  });
+
+  test("drains issued work before rolling back the callback's original error", async () => {
+    const f = fixture();
+    const failure = new Error("callback failed");
+    const wait = deferred<void>();
+    const c = client({}, wait.promise);
+    f.clients.push(c.connection);
+    const completed = f.runtime.transaction(async (tx) => {
+      void tx.run("INSERT INTO items VALUES (?)", [1]);
+      throw failure;
+    });
+    const observed = assert.rejects(completed, (error) => error === failure);
+    await c.entered;
+    assert.equal(
+      c.calls.some((call) => call.text === "ROLLBACK"),
+      false,
+    );
+    wait.resolve();
+    await observed;
+    assert.equal(c.calls.at(-1)!.text, "ROLLBACK");
+    assert.deepEqual(c.releases, [false]);
+  });
+
+  test("uses the same uncertain-commit handling for callback writes", async () => {
+    const f = fixture();
+    const failure = new Error("commit receipt lost");
+    const c = client({ COMMIT: failure });
+    f.clients.push(c.connection);
+    await assert.rejects(
+      f.runtime.transaction(async (tx) => {
+        await tx.run("INSERT INTO items VALUES (?)", [1]);
+      }),
+      (error) => error === failure,
+    );
+    assert.deepEqual(
+      c.calls.map((call) => call.text),
+      ["BEGIN", "INSERT INTO items VALUES ($1)", "COMMIT"],
+    );
+    assert.deepEqual(c.releases, [true]);
   });
 });
 

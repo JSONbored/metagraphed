@@ -12,6 +12,7 @@ on:
       - src/**
       - tests/pg-store-runtime.pg18.ts
       - tests/postgres-retained-schema.pg18.ts
+      - tests/retained-blocks-runtime.pg18.ts
       - tests/helpers/pg18-fixture.ts
       - migrations/postgres/**
   push:
@@ -25,6 +26,7 @@ on:
       - src/**
       - tests/pg-store-runtime.pg18.ts
       - tests/postgres-retained-schema.pg18.ts
+      - tests/retained-blocks-runtime.pg18.ts
       - tests/helpers/pg18-fixture.ts
       - migrations/postgres/**
   workflow_dispatch:
@@ -80,7 +82,7 @@ jobs:
             -c max_wal_size=64MB -c min_wal_size=32MB
           for _ in $(seq 1 30); do
             if timeout 1 docker exec "$PG18_CONTAINER" \
-              pg_isready --username metagraphed_fixture --dbname metagraphed_pg18_fixture; then
+              pg_isready --host 127.0.0.1 --username metagraphed_fixture --dbname metagraphed_pg18_fixture; then
               exit 0
             fi
             sleep 1
@@ -99,7 +101,7 @@ jobs:
           docker image inspect --format '{{json .RepoDigests}}' "$PG18_IMAGE"
       - name: Exercise the real pool and store contracts
         timeout-minutes: 2
-        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/pg-store-runtime.pg18.ts tests/postgres-retained-schema.pg18.ts
+        run: node --experimental-strip-types --test --test-concurrency=1 --test-timeout=30000 tests/pg-store-runtime.pg18.ts tests/postgres-retained-schema.pg18.ts tests/retained-blocks-runtime.pg18.ts
       - name: Show failed fixture logs
         if: failure()
         run: timeout 10 docker logs --tail 50 "$PG18_CONTAINER" || true
