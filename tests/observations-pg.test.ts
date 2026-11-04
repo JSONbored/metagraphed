@@ -121,6 +121,14 @@ test("native transaction failure remains a failed observation result", async () 
     ok: false,
     reason: "synthetic write failure",
   });
+  const invalid = {
+    nativePostgres: true as const,
+    unsafe: async () => [],
+  };
+  assert.deepEqual(await rollupFailureReasonsToNeon(invalid, [], 0), {
+    ok: false,
+    reason: "Native failure rollup is unavailable",
+  });
 });
 
 test("native continuity reads preserve the prior-state fallback contract", async () => {

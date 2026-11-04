@@ -31,6 +31,11 @@ export interface ObservationsSql {
   transaction?(
     run: (sql: ObservationsSql) => Promise<unknown>,
   ): Promise<unknown>;
+  /** Transaction-scoped native expression-index rollup. */
+  nativeFailureRollup?(
+    days: { date: string; start: number; end: number }[],
+    runAt: number,
+  ): Promise<void>;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
 }
 
@@ -281,33 +286,13 @@ export async function rollupFailureReasonsToNeon(
   return attempt(
     sql,
     async (active) => {
+      if (active.nativePostgres) {
+        if (!active.nativeFailureRollup)
+          throw new TypeError("Native failure rollup is unavailable");
+        await active.nativeFailureRollup(days, runAt);
+        return;
+      }
       for (const { date, start, end } of days) {
-        if (active.nativePostgres) {
-          const groups = (await active.unsafe(
-            "SELECT netuid,kind,classification,COUNT(*) AS checks FROM surface_checks " +
-              "WHERE checked_at >= $1 AND checked_at < $2 AND kind IS NOT NULL AND classification IS NOT NULL " +
-              "GROUP BY netuid,kind,classification ORDER BY netuid ASC NULLS FIRST,kind,classification",
-            [start, end],
-          )) as Row[];
-          // The source's expression index aliases NULL and -1. Ordered single
-          // upserts preserve that case without PostgreSQL updating one target
-          // row twice in a single INSERT SELECT.
-          for (const group of groups) {
-            await active.unsafe(
-              "INSERT INTO surface_failure_daily(day,netuid,kind,classification,checks,updated_at) VALUES($1,$2,$3,$4,$5,$6) " +
-                "ON CONFLICT(day,(COALESCE(netuid,-1)),kind,classification) DO UPDATE SET checks=excluded.checks,updated_at=excluded.updated_at",
-              [
-                date,
-                group.netuid,
-                group.kind,
-                group.classification,
-                group.checks,
-                runAt,
-              ],
-            );
-          }
-          continue;
-        }
         await active.unsafe(
           `INSERT INTO surface_failure_daily
              (day, netuid, kind, classification, checks, updated_at)
