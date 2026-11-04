@@ -125,7 +125,11 @@ test("provisional and empty captures, batched children and exact replays preserv
   await f.store.write(empty, 2);
   const replay = fixture({ changes: 0 });
   assert.equal((await replay.store.write(value, 3)).replayed, true);
-  assert.equal(replay.run.mock.calls.length, 2);
+  assert.equal(replay.run.mock.calls.length, 3);
+  assert.match(
+    replay.run.mock.calls.at(-1)![0],
+    /INSERT INTO app.root_basket_current/,
+  );
 });
 
 test("validation, missing activation and a missing retained manifest reject before acknowledgment", async () => {

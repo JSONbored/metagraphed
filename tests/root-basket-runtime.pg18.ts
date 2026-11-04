@@ -215,6 +215,51 @@ describe("native Root basket source parity", { concurrency: false }, () => {
     );
   });
 
+  it("completed replays restore absent or older current pointers without changing provenance", async () => {
+    const older = syntheticBasketCapture();
+    const newer = {
+      ...older,
+      capture_id: "00000000-0000-4000-8000-000000000007",
+      finalized_block: "501",
+      finalized_block_hash: `0x${"77".repeat(32)}`,
+    };
+    await both(older);
+    await both(newer, 4000);
+    const replay = {
+      ...newer,
+      capture_id: "00000000-0000-4000-8000-000000000008",
+      started_at_ms: "5000",
+      finished_at_ms: "6000",
+    };
+    for (const recreateOlder of [false, true]) {
+      sqlite.exec("DELETE FROM root_basket_current");
+      await control.query("DELETE FROM app.root_basket_current");
+      if (recreateOlder) {
+        const values = [
+          older.network_genesis_hash,
+          older.decoder_version,
+          older.capture_id,
+        ];
+        sqlite
+          .prepare(
+            "INSERT INTO root_basket_current (network_genesis_hash,decoder_version,capture_id) VALUES (?,?,?)",
+          )
+          .run(...values);
+        await control.query(
+          "INSERT INTO app.root_basket_current (network_genesis_hash,decoder_version,capture_id) VALUES ($1,$2,$3)",
+          values,
+        );
+      }
+      assert.equal((await both(replay, 7000)).replayed, true);
+      assert.equal(
+        (await native.read.first<{ capture_id: string }>(
+          "SELECT capture_id FROM root_basket_current",
+        ))!.capture_id,
+        newer.capture_id,
+      );
+    }
+  });
+
   it("rejects source conflicts atomically through the protected sync handler", async () => {
     const value = syntheticBasketCapture();
     await both(value);

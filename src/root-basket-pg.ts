@@ -114,93 +114,89 @@ export function createPgRootBasketStore(
           throw new Error("accepted root basket capture is absent");
         // The manifest trigger validated replay identity under the family lock.
         // Completed replays retain the first ID, times and all child receipts.
-        if (inserted.changes === 0)
-          return {
-            capture_id: retained.capture_id,
-            content_sha256: digest,
-            replayed: true,
-          };
         const id = retained.capture_id;
-        await insertRows(
-          tx,
-          id,
-          "root_basket_capture_pages",
-          [
-            ["page_index", "bigint"],
-            ["start_after", "text"],
-            ["next_after", "text"],
-            ["response_sha256", "text"],
-            ["fund_count", "bigint"],
-          ],
-          capture.pages,
-        );
-        await insertRows(
-          tx,
-          id,
-          "root_basket_fund_snapshots",
-          [
-            ["hotkey", "text"],
-            ["page_index", "bigint"],
-            ["shares_atomic", "text"],
-            ["spot_nav_rao", "text"],
-            ["realizable_nav_rao", "text"],
-            ["deposited_rao", "text"],
-            ["redeemed_rao", "text"],
-            ["raw_spot_price_q64_bits", "text"],
-            ["display_price_q64_bits", "text"],
-            ["display_shares_q64_bits", "text"],
-            ["stake_price_q64_bits", "text"],
-            ["staker_twr_q64_bits", "text"],
-            ["pending_entitlement_q64_bits", "text"],
-            ["provisional", "bigint"],
-            ["first_block", "text"],
-            ["price_divisor_q64_bits", "text"],
-            ["rate0_q32_bits", "text"],
-            ["tr_splice_q64_bits", "text"],
-            ["holdings_count", "bigint"],
-            ["targets_count", "bigint"],
-          ],
-          capture.funds.map(({ baseline, holdings, targets, ...fund }) => ({
-            ...fund,
-            ...baseline,
-            provisional: baseline.provisional ? 1 : 0,
-            holdings_count: holdings.length,
-            targets_count: targets.length,
-          })),
-        );
-        await insertRows(
-          tx,
-          id,
-          "root_basket_holdings",
-          [
-            ["hotkey", "text"],
-            ["netuid", "bigint"],
-            ["quantity_atomic", "text"],
-            ["quantity_unit", "text"],
-            ["spot_value_rao", "text"],
-            ["realizable_value_rao", "text"],
-          ],
-          capture.funds.flatMap((fund) =>
-            fund.holdings.map((row) => ({ hotkey: fund.hotkey, ...row })),
-          ),
-        );
-        await insertRows(
-          tx,
-          id,
-          "root_basket_targets",
-          [
-            ["hotkey", "text"],
-            ["netuid", "bigint"],
-            ["weight", "bigint"],
-          ],
-          capture.funds.flatMap((fund) =>
-            fund.targets.map((row) => ({ hotkey: fund.hotkey, ...row })),
-          ),
-        );
-        await tx.run(
-          "INSERT INTO app.root_basket_capture_completions (capture_id,content_sha256,accepted_at_ms) VALUES (?,?,?)",
-          [id, digest, String(acceptedAtMs)],
-        );
+        if (inserted.changes !== 0) {
+          await insertRows(
+            tx,
+            id,
+            "root_basket_capture_pages",
+            [
+              ["page_index", "bigint"],
+              ["start_after", "text"],
+              ["next_after", "text"],
+              ["response_sha256", "text"],
+              ["fund_count", "bigint"],
+            ],
+            capture.pages,
+          );
+          await insertRows(
+            tx,
+            id,
+            "root_basket_fund_snapshots",
+            [
+              ["hotkey", "text"],
+              ["page_index", "bigint"],
+              ["shares_atomic", "text"],
+              ["spot_nav_rao", "text"],
+              ["realizable_nav_rao", "text"],
+              ["deposited_rao", "text"],
+              ["redeemed_rao", "text"],
+              ["raw_spot_price_q64_bits", "text"],
+              ["display_price_q64_bits", "text"],
+              ["display_shares_q64_bits", "text"],
+              ["stake_price_q64_bits", "text"],
+              ["staker_twr_q64_bits", "text"],
+              ["pending_entitlement_q64_bits", "text"],
+              ["provisional", "bigint"],
+              ["first_block", "text"],
+              ["price_divisor_q64_bits", "text"],
+              ["rate0_q32_bits", "text"],
+              ["tr_splice_q64_bits", "text"],
+              ["holdings_count", "bigint"],
+              ["targets_count", "bigint"],
+            ],
+            capture.funds.map(({ baseline, holdings, targets, ...fund }) => ({
+              ...fund,
+              ...baseline,
+              provisional: baseline.provisional ? 1 : 0,
+              holdings_count: holdings.length,
+              targets_count: targets.length,
+            })),
+          );
+          await insertRows(
+            tx,
+            id,
+            "root_basket_holdings",
+            [
+              ["hotkey", "text"],
+              ["netuid", "bigint"],
+              ["quantity_atomic", "text"],
+              ["quantity_unit", "text"],
+              ["spot_value_rao", "text"],
+              ["realizable_value_rao", "text"],
+            ],
+            capture.funds.flatMap((fund) =>
+              fund.holdings.map((row) => ({ hotkey: fund.hotkey, ...row })),
+            ),
+          );
+          await insertRows(
+            tx,
+            id,
+            "root_basket_targets",
+            [
+              ["hotkey", "text"],
+              ["netuid", "bigint"],
+              ["weight", "bigint"],
+            ],
+            capture.funds.flatMap((fund) =>
+              fund.targets.map((row) => ({ hotkey: fund.hotkey, ...row })),
+            ),
+          );
+          await tx.run(
+            "INSERT INTO app.root_basket_capture_completions (capture_id,content_sha256,accepted_at_ms) VALUES (?,?,?)",
+            [id, digest, String(acceptedAtMs)],
+          );
+        }
         await tx.run(
           `INSERT INTO app.root_basket_current (network_genesis_hash,decoder_version,capture_id) VALUES (?,?,?)
            ON CONFLICT(network_genesis_hash,decoder_version) DO UPDATE SET capture_id = excluded.capture_id
@@ -208,7 +204,11 @@ export function createPgRootBasketStore(
              < (SELECT ROW(length(finalized_block),finalized_block) FROM app.root_basket_captures WHERE capture_id = excluded.capture_id)`,
           [capture.network_genesis_hash, capture.decoder_version, id],
         );
-        return { capture_id: id, content_sha256: digest, replayed: false };
+        return {
+          capture_id: id,
+          content_sha256: digest,
+          replayed: inserted.changes === 0,
+        };
       });
     },
   };
