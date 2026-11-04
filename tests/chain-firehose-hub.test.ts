@@ -2186,6 +2186,29 @@ test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't t
   assert.deepEqual(sessionIds, ["s1", "s2"]);
 });
 
+test("broadcast selects native MCP sessions without falling back after a malformed selection", async () => {
+  const calls: { id: string; body: unknown }[] = [];
+  const native = {
+    fetch: async (id: string, request: Request) => {
+      calls.push({ id, body: await request.json() });
+      return new Response("{}");
+    },
+  };
+  for (const selected of [native, null]) {
+    const legacy = fakeMcpSessionHubBinding();
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv({ MCP_SESSION_SERVICE: selected, MCP_SESSION_HUB: legacy }),
+    );
+    hub.mcpSubscribeSession("native-session");
+    await hub.broadcast({ table: "blocks", block_number: 1 });
+    assert.equal(legacy.calls.length, 0);
+  }
+  assert.deepEqual(calls, [
+    { id: "native-session", body: { uri: MCP_CHAIN_STREAM_RESOURCE_URI } },
+  ]);
+});
+
 // --- ALERTER_HUB ping (#4984 Part 2) ---------------------------------------------
 
 function fakeAlerterHubBinding(overrides: Record<string, () => Response> = {}) {

@@ -7,6 +7,7 @@ import type { KeyedDoStorage } from "../workers/do-state.ts";
 import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { PgTransaction } from "./pg-pool.ts";
 import { createNativeWorkGroup } from "./native-work-group.ts";
+import { bufferNativeRequest } from "./native-request.ts";
 import { asJsonObject } from "../schemas-src/json-request.ts";
 import type {
   SubnetStatusNotifier,
@@ -28,56 +29,6 @@ interface StoredState {
   state: string;
   max_state_bytes: number;
   max_memberships: number;
-}
-
-/** Buffer input before acquiring the membership row; no client stream holds a lock. */
-async function bufferedRequest(
-  request: Request,
-  signal: AbortSignal,
-  maxBytes: number,
-) {
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  let reads = 0;
-  const reader = request.body?.getReader();
-  const cancel = () => {
-    void reader?.cancel(signal.reason).catch(() => {});
-  };
-  signal.addEventListener("abort", cancel, { once: true });
-  try {
-    signal.throwIfAborted();
-    if (reader)
-      for (;;) {
-        const next = await reader.read();
-        signal.throwIfAborted();
-        if (next.done) break;
-        if (++reads > maxBytes + 1)
-          throw new RangeError("Subnet status request exceeds chunk limit");
-        if (next.value.byteLength === 0) continue;
-        size += next.value.byteLength;
-        if (size > maxBytes)
-          throw new RangeError("Subnet status request exceeds byte limit");
-        chunks.push(next.value.slice());
-      }
-  } finally {
-    signal.removeEventListener("abort", cancel);
-    if (reader) {
-      void reader.cancel().catch(() => {});
-      reader.releaseLock();
-    }
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new Request(request.url, {
-    method: request.method,
-    headers: request.headers,
-    signal,
-    ...(reader ? { body: bytes } : {}),
-  });
 }
 
 /** Explicit stateful service preparation; no listener, singleton process or alarm loop. */
@@ -177,7 +128,7 @@ export async function createPgSubnetStatusHub(
         (scope) =>
           scope.invoke(async (workSignal) => {
             const signal = AbortSignal.any([request.signal, workSignal]);
-            const buffered = await bufferedRequest(
+            const buffered = await bufferNativeRequest(
               request,
               signal,
               options.maxRequestBytes,

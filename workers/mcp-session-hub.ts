@@ -68,7 +68,22 @@ import {
   HubSessionUriBodySchema,
 } from "../schemas-src/internal-wire.ts";
 import type { McpSessionHubState } from "./do-state.ts";
-import { subnetStatusService } from "../src/subnet-status-service.ts";
+import {
+  subnetStatusService,
+  type SubnetStatusServiceEnv,
+} from "../src/subnet-status-service.ts";
+import {
+  chainFirehoseService,
+  type ChainFirehoseServiceEnv,
+} from "../src/chain-firehose-service.ts";
+import type { TelemetryEnv } from "../src/usage-telemetry.ts";
+
+export interface McpSessionHubEnv
+  extends TelemetryEnv, SubnetStatusServiceEnv, ChainFirehoseServiceEnv {}
+export interface NativeMcpSessionLifecycle {
+  canSend(): boolean;
+  maxQueuedFrames: number;
+}
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -170,7 +185,8 @@ const SESSION_HUB_ROUTES: Record<string, string> = {
 
 export class McpSessionHub implements DurableObject {
   state: McpSessionHubState;
-  env: Env;
+  env: McpSessionHubEnv;
+  lifecycle?: NativeMcpSessionLifecycle;
   subscribedUris: Set<string>;
   pendingUris: Set<string>;
   sequence: number;
@@ -181,9 +197,14 @@ export class McpSessionHub implements DurableObject {
   hydrated: boolean;
   sessionId: string | null;
 
-  constructor(state: McpSessionHubState, env: Env) {
+  constructor(
+    state: McpSessionHubState,
+    env: McpSessionHubEnv,
+    lifecycle?: NativeMcpSessionLifecycle,
+  ) {
     this.state = state;
     this.env = env;
+    this.lifecycle = lifecycle;
     this.subscribedUris = new Set();
     this.pendingUris = new Set();
     this.sequence = 0;
@@ -406,11 +427,12 @@ export class McpSessionHub implements DurableObject {
     this.subscribedUris.add(uri);
     await this.persist();
     await this.touch();
-    if (uri === MCP_CHAIN_STREAM_RESOURCE_URI && this.env.CHAIN_FIREHOSE_HUB) {
-      const stub = this.env.CHAIN_FIREHOSE_HUB.get(
-        this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-      );
-      const response = await stub.fetch(
+    const chainService =
+      uri === MCP_CHAIN_STREAM_RESOURCE_URI
+        ? chainFirehoseService(this.env)
+        : undefined;
+    if (chainService) {
+      const response = await chainService.fetch(
         "https://chain-firehose-hub.internal/mcp-subscribe",
         {
           method: "POST",
@@ -450,15 +472,12 @@ export class McpSessionHub implements DurableObject {
     this.sessionId = sessionId;
     const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
-    if (
-      hadChain &&
-      uri === MCP_CHAIN_STREAM_RESOURCE_URI &&
-      this.env.CHAIN_FIREHOSE_HUB
-    ) {
-      const stub = this.env.CHAIN_FIREHOSE_HUB.get(
-        this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-      );
-      const response = await stub.fetch(
+    const chainService =
+      hadChain && uri === MCP_CHAIN_STREAM_RESOURCE_URI
+        ? chainFirehoseService(this.env)
+        : undefined;
+    if (chainService) {
+      const response = await chainService.fetch(
         "https://chain-firehose-hub.internal/mcp-unsubscribe",
         {
           method: "POST",
@@ -552,9 +571,13 @@ export class McpSessionHub implements DurableObject {
       this.sequence + 1,
       buildResourceUpdatedNotification(uri),
     );
-    if (!this.writeToStream(frame)) return;
+    if (!this.writeToStream(frame)) {
+      this.pendingUris.add(uri);
+      return;
+    }
     this.sequence += 1;
-    this.pendingUris.delete(uri);
+    if (this.lifecycle) this.pendingUris.add(uri);
+    else this.pendingUris.delete(uri);
   }
 
   /**
@@ -573,6 +596,14 @@ export class McpSessionHub implements DurableObject {
    */
   private writeToStream(frame: string): boolean {
     if (!this.streamController) return false;
+    if (
+      this.lifecycle &&
+      (!this.lifecycle.canSend() ||
+        (this.streamController.desiredSize ?? 0) <= 0)
+    ) {
+      this.closeStream();
+      return false;
+    }
     try {
       this.streamController.enqueue(new TextEncoder().encode(frame));
       return true;
@@ -624,6 +655,10 @@ export class McpSessionHub implements DurableObject {
    * duration cap in particular closed the controller and nulled it without ever
    * clearing the timers, which is how a takeover could inherit a stale one.
    */
+  dispose(): void {
+    this.closeStream();
+  }
+
   private closeStream(): void {
     const controller = this.streamController;
     this.clearStreamState();
@@ -659,11 +694,12 @@ export class McpSessionHub implements DurableObject {
       const hadStatus = [...this.subscribedUris].some(
         (u) => parseSubnetStatusResourceUri(u) != null,
       );
-      if (hadChain && effectiveSessionId && this.env.CHAIN_FIREHOSE_HUB) {
-        const stub = this.env.CHAIN_FIREHOSE_HUB.get(
-          this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-        );
-        const response = await stub.fetch(
+      const chainService =
+        hadChain && effectiveSessionId
+          ? chainFirehoseService(this.env)
+          : undefined;
+      if (chainService) {
+        const response = await chainService.fetch(
           "https://chain-firehose-hub.internal/mcp-unsubscribe",
           {
             method: "POST",
@@ -751,33 +787,40 @@ export class McpSessionHub implements DurableObject {
       if (!response.ok) return response;
     }
     this.closeStream();
-    void this.touch();
-    const stream = new ReadableStream({
-      start: (controller) => {
-        this.streamController = controller;
-        // Flush anything that arrived while no stream was open, coalesced
-        // to one frame per uri (matches handleNotify's coalescing).
-        for (const uri of this.pendingUris) {
-          this.deliverNow(uri);
-        }
-        // The bytes that keep an idle stream from being reaped. Enqueued
-        // through the same guarded path a notification takes, so a keepalive
-        // landing on a stream that HAS died tears it down here -- which is the
-        // second half of the repair: the connection is now discovered dead
-        // within 30 seconds rather than never.
-        this.streamKeepaliveTimer = setInterval(() => {
-          this.writeToStream(MCP_SESSION_KEEPALIVE_FRAME);
-        }, MCP_SESSION_STREAM_KEEPALIVE_MS);
-        this.streamCloseTimer = setTimeout(() => {
-          this.closeStream();
-        }, MCP_SESSION_MAX_STREAM_DURATION_MS);
+    await this.touch();
+    let streamController: ReadableStreamDefaultController | null = null;
+    const stream = new ReadableStream(
+      {
+        start: (controller) => {
+          streamController = controller;
+          this.streamController = controller;
+          // Flush anything that arrived while no stream was open, coalesced
+          // to one frame per uri (matches handleNotify's coalescing).
+          for (const uri of this.pendingUris) {
+            this.deliverNow(uri);
+          }
+          if (this.streamController !== controller) return;
+          // The bytes that keep an idle stream from being reaped. Enqueued
+          // through the same guarded path a notification takes, so a keepalive
+          // landing on a stream that HAS died tears it down here -- which is the
+          // second half of the repair: the connection is now discovered dead
+          // within 30 seconds rather than never.
+          this.streamKeepaliveTimer = setInterval(() => {
+            this.writeToStream(MCP_SESSION_KEEPALIVE_FRAME);
+          }, MCP_SESSION_STREAM_KEEPALIVE_MS);
+          this.streamCloseTimer = setTimeout(() => {
+            this.closeStream();
+          }, MCP_SESSION_MAX_STREAM_DURATION_MS);
+        },
+        // The client went away and the runtime told us. Clear the state without
+        // closing the controller -- it is already gone.
+        cancel: () => {
+          if (this.streamController === streamController)
+            this.clearStreamState();
+        },
       },
-      // The client went away and the runtime told us. Clear the state without
-      // closing the controller -- it is already gone.
-      cancel: () => {
-        this.clearStreamState();
-      },
-    });
+      { highWaterMark: this.lifecycle?.maxQueuedFrames ?? 1 },
+    );
     void url; // reserved for a future Last-Event-ID replay-from-cursor read
     return new Response(stream, {
       status: 200,

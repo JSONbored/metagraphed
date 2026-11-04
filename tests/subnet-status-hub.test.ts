@@ -265,6 +265,40 @@ test("handleNotifyChanged: fans out only to subscribed sessions for changed netu
   });
 });
 
+test("status notifications select native MCP sessions and reject malformed selection without legacy fallback", async () => {
+  const calls: { id: string; body: unknown }[] = [];
+  const native = {
+    fetch: async (id: string, request: Request) => {
+      calls.push({ id, body: await request.json() });
+      return new Response("{}");
+    },
+  };
+  for (const selected of [native, null]) {
+    const legacy = fakeMcpSessionHubBinding();
+    const hub = new SubnetStatusHub(stubState(), {
+      MCP_SESSION_SERVICE: selected,
+      MCP_SESSION_HUB: legacy,
+    } as unknown as Env);
+    await hub.fetch(
+      jsonRequest("https://status.invalid/mcp-subscribe", {
+        sessionId: "native-session",
+        netuid: 7,
+      }),
+    );
+    const response = await hub.fetch(
+      jsonRequest("https://status.invalid/notify-changed", { netuids: [7] }),
+    );
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      delivered: selected ? 1 : 0,
+    });
+    assert.equal(legacy.calls.length, 0);
+  }
+  assert.deepEqual(calls, [
+    { id: "native-session", body: { uri: buildSubnetStatusResourceUri(7) } },
+  ]);
+});
+
 // The DELIBERATE asymmetry between the envelope and its elements (#11194): a
 // prober that sends one bad netuid among many still delivers the rest, because
 // refusing the whole call would turn a partial producer fault into a total
