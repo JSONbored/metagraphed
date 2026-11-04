@@ -312,6 +312,18 @@ use the existing `boolean01` import codec. Account-kind composite keys continue
 to distinguish RPC and GitHub accounts with the same numeric ID.
 [Load schema](../migrations/postgres/0010_account_state.sql)
 
+The source-only [numeric compatibility migration](../migrations/postgres/0033_account_numeric.sql)
+widens seven additional account/usage columns before import. GitHub user IDs,
+block account IDs and usage account IDs use `sqlite_numeric`, preserving the
+wide or fractional values accepted by their current handlers. The request and
+rejection counters in `api_key_usage_daily`, and request/keyed counters in
+`api_usage_rollup`, use `sqlite_numeric_aggregate`: exact typed numeric storage
+plus explicit positive/negative Infinity as SQLite REAL. Actual D1 can promote
+integer counter overflow and can store an infinite SUM of finite inputs.
+INTEGER uses scale zero; integral REAL uses nonzero scale. Quota retains its
+finite-only `sqlite_numeric_typed` contract. This migration touches only `app`
+source tables and does not depend on native auth or job bootstrap.
+
 Delivery rows load before reference enforcement, so source export table order
 does not become an import prerequisite. The separate activation migration
 validates and adds the delivery-to-trigger foreign key with `ON DELETE CASCADE`.
