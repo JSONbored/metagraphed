@@ -211,7 +211,7 @@ test("publication validates freshness and complete source census before mutation
 test("publication locks the network including its initially empty state and emits the shared generation", async () => {
   for (const prior of [null, { ...state, sequence: 0 }]) {
     const f = fixture([{ files: 1, rows: 2 }, prior]);
-    const result = await (await f.store.sync(publish, now)).json();
+    const result: unknown = await (await f.store.sync(publish, now)).json();
     assert.deepEqual(result, {
       generation: retainedBlockDigest(publish),
       source_rows: 2,
