@@ -13,6 +13,7 @@ import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
 import { selectedNeuronSnapshotStore } from "./neuron-snapshot-store.ts";
 import { selectedNeuronMetricStore } from "./neuron-metric-store.ts";
+import { selectedNeuronAggregateStore } from "./neuron-aggregate-store.ts";
 
 const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
@@ -55,6 +56,8 @@ export async function readNeuronAggregates(
   db: UntypedRowQuerier,
   env: unknown,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronAggregateStore(env);
+  if (native) return native.aggregateRows();
   const store = selectedD1Store(env, ["neurons"]);
   return store
     ? store.query(NEURON_DOCUMENT_AGGREGATE_QUERY)
