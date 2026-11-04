@@ -4,6 +4,7 @@ import {
   type RegistryArtifact,
 } from "../schemas-src/registry-kv.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import type { AppKv } from "./app-kv.ts";
 
 export const REGISTRY_KV_PREFIX = "registry:v1:";
 export const registryObjectKey = (sha256: string): string =>
@@ -18,12 +19,15 @@ export interface RegistryKvPointer {
 
 type Index = Map<string, RegistryArtifact>;
 // Four small immutable indexes per binding, never an unbounded history of runs.
-let indexes = new WeakMap<KVNamespace, Map<string, Promise<Index>>>();
+let indexes = new WeakMap<Pick<AppKv, "get">, Map<string, Promise<Index>>>();
 registerModuleStateReset("src/registry-kv.ts", () => {
   indexes = new WeakMap();
 });
 
-async function manifestIndex(kv: KVNamespace, digest: string): Promise<Index> {
+async function manifestIndex(
+  kv: Pick<AppKv, "get">,
+  digest: string,
+): Promise<Index> {
   RegistryDigestSchema.parse(digest);
   let cache = indexes.get(kv);
   if (!cache) {
@@ -62,7 +66,7 @@ export type RegistryKvRead =
  * for propagation gaps. Explicit removal in a readable manifest is a 404:
  * it must never resurrect an old artifact from the previous publication. */
 export async function readRegistryKv(
-  kv: KVNamespace,
+  kv: Pick<AppKv, "get">,
   pointer: RegistryKvPointer,
   artifactPath: string,
 ): Promise<RegistryKvRead> {

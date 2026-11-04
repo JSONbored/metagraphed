@@ -17,6 +17,7 @@
 import { verify as sr25519Verify } from "@scure/sr25519";
 import { DEFAULT_SS58_PREFIX, decodeSs58 } from "./ss58.ts";
 import { signPayload, timingSafeEqual } from "./webhooks.ts";
+import { appKv, consumeKvText, type AppKv, type AppKvEnv } from "./app-kv.ts";
 
 const CHALLENGE_KV_PREFIX = "wallet-challenge:";
 // Short-lived and single-use -- mirrors the negative-cache-style short-TTL
@@ -29,14 +30,10 @@ const CHALLENGE_KV_PREFIX = "wallet-challenge:";
  * `Partial`, because every read below is guarded -- a deployment with no KV
  * bound declines rather than throwing, and the suite drives that path.
  */
-export interface WalletAuthEnv {
-  METAGRAPH_CONTROL?: Partial<KVNamespace>;
-}
+export type WalletAuthEnv = AppKvEnv;
 
 /** The challenge store, if this binding can actually write one. */
-function canIssue(
-  kv: Partial<KVNamespace> | undefined,
-): kv is Pick<KVNamespace, "put"> {
+function canIssue(kv: Partial<AppKv> | undefined): kv is Pick<AppKv, "put"> {
   return typeof kv?.put === "function";
 }
 
@@ -52,8 +49,8 @@ function canIssue(
  * (#11339).
  */
 function canConsume(
-  kv: Partial<KVNamespace> | undefined,
-): kv is Pick<KVNamespace, "get" | "delete"> {
+  kv: Partial<AppKv> | undefined,
+): kv is Pick<AppKv, "get" | "delete" | "consume"> {
   return typeof kv?.get === "function" && typeof kv?.delete === "function";
 }
 
@@ -134,7 +131,7 @@ export async function issueWalletChallenge(
   if (!decoded || decoded.prefix !== DEFAULT_SS58_PREFIX) {
     return { ok: false, code: "invalid_ss58" };
   }
-  const kv = env?.METAGRAPH_CONTROL;
+  const kv = appKv(env);
   if (!canIssue(kv)) {
     return { ok: false, code: "challenge_store_unavailable" };
   }
@@ -208,16 +205,15 @@ export async function verifyWalletChallenge(
   if (!decoded || decoded.prefix !== DEFAULT_SS58_PREFIX) {
     return { ok: false, code: "invalid_ss58" };
   }
-  const kv = env?.METAGRAPH_CONTROL;
+  const kv = appKv(env);
   if (!canConsume(kv)) {
     return { ok: false, code: "challenge_store_unavailable" };
   }
   const key = challengeKvKey(ss58, purpose);
-  const nonce = await kv.get(key);
+  const nonce = await consumeKvText(kv, key);
   if (!nonce) {
     return { ok: false, code: "challenge_expired_or_missing" };
   }
-  await kv.delete(key);
 
   if (
     typeof signatureHex !== "string" ||

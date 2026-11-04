@@ -17,6 +17,7 @@ import {
 import { METAGRAPH_LATEST_KEY } from "./config.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { readRegistryKv, type RegistryKvPointer } from "../src/registry-kv.ts";
+import { appKv, type AppKv, type AppKvEnv } from "../src/app-kv.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 
@@ -177,10 +178,9 @@ export async function withTimeout<T>(
  * and `env as never` was the spelling -- which also made the PATH argument
  * unverifiable at the same call.
  */
-export interface ArtifactEnv {
+export interface ArtifactEnv extends AppKvEnv {
   ASSETS?: { fetch(request: Request): Promise<Response> };
   METAGRAPH_ARCHIVE?: R2Bucket;
-  METAGRAPH_CONTROL?: KVNamespace;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_R2_LATEST_PREFIX?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
@@ -305,10 +305,11 @@ export async function readR2Object(
   storageTier: string,
 ): Promise<R2ObjectReadResult> {
   const pointer = await latestPointer(env);
-  if (pointer?.registry_manifest_sha256 && env.METAGRAPH_CONTROL) {
+  const control = appKv(env);
+  if (pointer?.registry_manifest_sha256 && control?.get) {
     try {
       return await withTimeout(
-        readRegistryKv(env.METAGRAPH_CONTROL, pointer, artifactPath),
+        readRegistryKv(control as Pick<AppKv, "get">, pointer, artifactPath),
         r2TimeoutMs(env),
       );
     } catch {
@@ -520,8 +521,9 @@ registerModuleStateReset("workers/storage.ts", () => {
 export async function latestPointer(
   env: ArtifactEnv,
 ): Promise<LatestPointer | null> {
-  const control = env.METAGRAPH_CONTROL;
-  if (!control?.get) {
+  const control = appKv(env);
+  const get = control?.get?.bind(control);
+  if (!get) {
     return null;
   }
   const now = Date.now();
@@ -533,7 +535,7 @@ export async function latestPointer(
   if (existing) return existing;
   const pending = (async () => {
     try {
-      const value = await control.get<LatestPointer>(METAGRAPH_LATEST_KEY, {
+      const value = await get<LatestPointer>(METAGRAPH_LATEST_KEY, {
         type: "json",
       });
       pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
@@ -557,11 +559,12 @@ export async function readHealthKv(
   env: ArtifactEnv,
   key: string,
 ): Promise<unknown> {
-  if (!env.METAGRAPH_CONTROL?.get) {
+  const control = appKv(env);
+  if (!control?.get) {
     return null;
   }
   try {
-    return await env.METAGRAPH_CONTROL.get(key, { type: "json" });
+    return await control.get(key, { type: "json" });
   } catch {
     return null;
   }
