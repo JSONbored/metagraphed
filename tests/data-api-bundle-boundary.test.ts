@@ -89,6 +89,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-rpc-usage.ts",
     "src/pg-rpc-usage-reader.ts",
     "src/pg-producer-store.ts",
+    "src/pg-raw-capture.ts",
     "src/semantic-index-pg.ts",
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",
