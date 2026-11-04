@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { Buffer } from "node:buffer";
 import { createPgKv } from "../src/pg-kv.ts";
 import {
@@ -234,6 +234,31 @@ test("stalled stream reads and cancellation respect the collection deadline", as
   assert.equal(stream.locked, false);
 });
 
+test("deadline expiry between chunks cancels even when cancellation rejects", async () => {
+  const f = fixture();
+  const kv = createPgKv(f.runtime, "control", { streamTimeoutMs: 10 });
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValueOnce(0)
+    .mockReturnValue(20);
+  try {
+    await assert.rejects(
+      kv.put(
+        "late",
+        new ReadableStream({
+          cancel() {
+            return Promise.reject(new Error("cancel failed"));
+          },
+        }),
+      ),
+      /deadline/,
+    );
+    await Promise.resolve();
+  } finally {
+    clock.mockRestore();
+  }
+});
+
 test("expiry is invisible at its boundary and an overwrite clears old expiry and metadata", async () => {
   const f = fixture();
   const kv = createPgKv(f.runtime, "control", { now: f.now });
@@ -276,6 +301,9 @@ test("metadata and UTF-8 limits reject values that would change silently", async
     new Date(),
     [, 1],
     { [Symbol("s")]: 1 },
+    { toJSON: () => "changed" },
+    { toJSON: () => null },
+    { toJSON: () => [] },
     "x".repeat(1024),
   ]) {
     await assert.rejects(kv.put("key", "v", { metadata }));
@@ -287,6 +315,7 @@ test("metadata and UTF-8 limits reject values that would change silently", async
   assert.equal(await kv.get("éé"), "ok");
   for (const key of ["", "12345", "\ud800"])
     await assert.rejects(kv.put(key, "v"));
+  await assert.rejects(kv.put(1 as never, "v"));
   for (const selected of [
     { maxValueBytes: 0 },
     { maxKeyBytes: 513 },
