@@ -151,12 +151,49 @@ the native process; native serving latency still needs its own acceptance.
 Upstream metadata checks during token mutations share the transaction lease,
 so their bounded fetch time also counts toward namespace-lock occupancy.
 
-Native rate limiting is a separate capability. `workers/tiered-rate-limit.ts`
-owns tier/IP limiter selection and ordering; daily quota decisions remain in
-`src/daily-quota.ts` with guarded `api_quota_daily` persistence in
-`workers/data-api.ts`. Managed-key identity and OAuth account-tier caches retain
-their freshness contracts. PostgreSQL OAuth storage does not replace the
-Cloudflare rate-limit algorithm or alter failure/entitlement behavior.
+## Native authentication controls
+
+`createNativeAuthControls(runtime, definitions, onError)` composes explicit
+rate-limit bindings, `CONTROL_KV_STORE` and `DAILY_QUOTA_STORE` over the same
+bounded pool. The final native process must call `assertEnvironment(env)` after
+building its environment and before admitting requests. It checks that every
+declared binding is the exact handle created by this composition. It does not
+claim that undeclared capabilities are ready or change Worker defaults.
+
+Each rate definition supplies its existing binding name, ceiling and 10- or
+60-second period. Admission serializes each binding/key with a transaction
+lock and PostgreSQL's clock. Per-second buckets retain the entire boundary
+second: this is a conservative rolling window that may retain traffic for up
+to one extra second, not Cloudflare's distributed approximate algorithm. A
+rejected admission spends nothing. Operational failures report through the
+required `onError(error, binding)` callback and return `{ success: false }`,
+including when the reporter itself throws. Existing public rate-limit responses
+remain owned by the caller. Invalid definitions and keys throw before admission.
+The process's existing housekeeping scheduler must call `pruneExpiredRates()`;
+each call deletes at most its explicit budget (default 1,000, maximum 10,000).
+The adapter starts no timer and does not close the pool.
+
+Daily quota writes use one locked transaction for each account kind, account
+ID and UTC day. The actual D1 composite-key UPSERT applies INTEGER affinity
+before conflict arithmetic: INTEGER operands add exactly until int64 overflow;
+REAL and overflow operations use binary64. The native adapter preserves that
+operation, its mixed INTEGER/REAL comparison, and the existing separate response
+calculation. PostgreSQL `numeric` stores exact resulting source values. The
+storage-sensitive import codec keeps INTEGER at scale zero and integral REAL
+values at nonzero scale, so the next write retains the same arithmetic. A plain
+rowid-primary-key UPSERT has different affinity timing and cannot substitute for
+the actual quota table in these tests. Migration 0010 declares the numeric
+columns for source-only imports; 0028 retains the conversion for existing
+schemas and adds native rate buckets after auth bootstrap. A first cost larger
+than the day's limit touches no database. The internal HTTP handler selects
+`DAILY_QUOTA_STORE` explicitly and retains its existing write-failure response.
+
+`workers/tiered-rate-limit.ts` retains identity precedence, blocklist-before-rate
+ordering, per-minute-before-daily ordering, and MCP's deferred tool cost.
+Managed-key identity, OAuth account-tier and blocklist reads use the explicit
+native control KV when supplied. Their positive/negative TTLs and fresh key
+revocation checks remain unchanged. This preparation does not enable a native
+process, migrate account rows, or activate any production binding.
 
 ## Queue transport
 

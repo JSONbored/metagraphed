@@ -17,6 +17,7 @@ import { sha256Hex } from "../src/sha256-hex.ts";
 // account/API-key state and the TAO/USD index. Read-store adapters preserve
 // compatibility for table families whose configured owner has not moved.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
+import { selectedDailyQuotaStore } from "../src/daily-quota-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
@@ -5864,6 +5865,19 @@ async function handleApiQuotaSpend(
   // INSERT would otherwise succeed and bank an over-limit balance.
   if (cost > limit) {
     return writeJson(applyQuotaSpend(0, cost, limit, now));
+  }
+
+  const native = selectedDailyQuotaStore(env);
+  if (native) {
+    try {
+      return writeJson(
+        await native.spend({ accountId, accountKind, cost, limit, nowMs: now }),
+      );
+    } catch (err) {
+      console.error("data-api wallet-auth/keys write failed:", err);
+      await captureDataApiError(err, "wallet-auth-keys", env);
+      return writeJson({ error: "write failed" }, 502);
+    }
   }
 
   const result = await withAccountsSql(env, ctx, async (sql) => {
