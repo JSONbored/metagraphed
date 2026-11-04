@@ -82,7 +82,7 @@ jobs:
             -c max_wal_size=64MB -c min_wal_size=32MB
           for _ in $(seq 1 30); do
             if timeout 1 docker exec "$PG18_CONTAINER" \
-              pg_isready --username metagraphed_fixture --dbname metagraphed_pg18_fixture; then
+              pg_isready --host 127.0.0.1 --username metagraphed_fixture --dbname metagraphed_pg18_fixture; then
               exit 0
             fi
             sleep 1

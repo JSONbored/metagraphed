@@ -545,6 +545,7 @@ describe(
         // This establishes index ordering support on a tiny fixture. Production
         // latency and the planner's choice over full history require measurements.
         await control.query("SET LOCAL enable_seqscan=off");
+        await control.query("SET LOCAL enable_bitmapscan=off");
         const result = await control.query(
           "EXPLAIN (FORMAT JSON, COSTS FALSE) SELECT block_number,observed_at,source_id,ordinal " +
             "FROM retained.history_blocks WHERE network=0 " +
