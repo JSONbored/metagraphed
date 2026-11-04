@@ -18,6 +18,8 @@ import { sha256Hex } from "../src/sha256-hex.ts";
 // compatibility for table families whose configured owner has not moved.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { selectedDailyQuotaStore } from "../src/daily-quota-store.ts";
+import { appKv } from "../src/app-kv.ts";
+import { selectedAccountStateStore } from "../src/account-state-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
@@ -4982,12 +4984,11 @@ async function withAccountsSql<T>(
   ctx: ExecutionContext,
   fn: (sql: PgSql) => Promise<T>,
 ): Promise<T | Response> {
-  const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-  if (!sql) {
-    // Store-neutral, same as withAlertTriggersSql above.
-    return writeJson({ error: "no user-state store bound" }, 503);
-  }
   try {
+    const sql =
+      selectedAccountStateStore(env)?.sql ??
+      userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
+    if (!sql) return writeJson({ error: "no user-state store bound" }, 503);
     return await fn(sql);
   } catch (err) {
     console.error("data-api wallet-auth/keys write failed:", err);
@@ -5465,7 +5466,7 @@ async function handleAccountKeysList(
   );
   if (sessionError) return sessionError;
   return withAccountsSql(env, ctx, async (sql) => {
-    const rows = await sql<{
+    type KeyListRow = {
       key_id: ApiKeys["unkey_key_id"];
       tier: ApiKeys["tier"];
       created_at: ApiKeys["created_at"];
@@ -5473,7 +5474,15 @@ async function handleAccountKeysList(
       // Additive 0038 column shares the existing nullable BIGINT timestamp type.
       revocation_requested_at: ApiKeys["revoked_at"];
       last_used_at: ApiKeys["last_used_at"];
-    }>`
+    };
+    const rows = selectedAccountStateStore(env)
+      ? await sql.unsafe<KeyListRow>(
+          `SELECT unkey_key_id AS key_id,tier,created_at,revoked_at,
+           revocation_requested_at,last_used_at FROM api_keys
+           WHERE account_id=$1::bigint ORDER BY created_at DESC,id`,
+          [session.accountId],
+        )
+      : await sql<KeyListRow>`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at,
              revocation_requested_at, last_used_at
       FROM api_keys
@@ -5779,6 +5788,15 @@ async function handleApiKeyUsageIncrement(
   try {
     await withAccountsSql(env, ctx, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
+      const native = selectedAccountStateStore(env);
+      if (native)
+        return native.usage.increment({
+          accountKind,
+          accountId,
+          day,
+          route,
+          rejected,
+        });
       await sql<never>`
         INSERT INTO api_key_usage_daily
           (account_kind, account_id, day, route, request_count, rejected_count)
@@ -5869,7 +5887,8 @@ async function handleApiQuotaSpend(
     return writeJson(applyQuotaSpend(0, cost, limit, now));
   }
 
-  const native = selectedDailyQuotaStore(env);
+  const native =
+    selectedDailyQuotaStore(env) ?? selectedAccountStateStore(env)?.quota;
   if (native) {
     try {
       return writeJson(
@@ -5958,7 +5977,8 @@ async function handleUsageRollupIncrement(
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
     await withAccountsSql(env, ctx, async (sql) => {
-      const d1 = selectedD1Store(env, ["api_usage_rollup"]);
+      const native = selectedAccountStateStore(env);
+      const d1 = native ? null : selectedD1Store(env, ["api_usage_rollup"]);
       const nativeBuckets: UsageRollupBucket[] = [];
       for (const bucket of buckets as Row[]) {
         const day = typeof bucket?.day === "string" ? bucket.day : null;
@@ -5982,7 +6002,7 @@ async function handleUsageRollupIncrement(
         ) {
           continue;
         }
-        if (d1) {
+        if (d1 || native) {
           nativeBuckets.push({
             day,
             family,
@@ -6001,7 +6021,8 @@ async function handleUsageRollupIncrement(
             request_count = api_usage_rollup.request_count + EXCLUDED.request_count,
             keyed_count = api_usage_rollup.keyed_count + EXCLUDED.keyed_count`;
       }
-      if (d1) await writeUsageRollupD1(d1, nativeBuckets);
+      if (native) await native.usage.writeRollup(nativeBuckets);
+      else if (d1) await writeUsageRollupD1(d1, nativeBuckets);
     });
   } catch {
     // Best-effort counter -- see header.
@@ -6042,8 +6063,10 @@ async function handleUsageRollupRead(
   const groupBy =
     url.searchParams.get("group_by") === "shape" ? "shape" : "family";
   const result = await withAccountsSql(env, ctx, async (sql) => {
-    const rows =
-      groupBy === "shape"
+    const native = selectedAccountStateStore(env);
+    const rows = native
+      ? await native.usage.rollupRows(since, groupBy)
+      : groupBy === "shape"
         ? await sql<{
             route_family?: undefined;
             cost_shape: ApiUsageRollup["cost_shape"];
@@ -6180,8 +6203,8 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * BLOCKLIST_KV_TTL. The TTL then only bounds how stale things can get if THIS
  * write fails -- it is the safety net, not the mechanism.
  *
- * Best-effort: a KV hiccup must not fail the block itself. The row is the
- * source of truth and the next refresh will pick it up.
+ * Best-effort: a KV hiccup must not fail the block itself. Native readers use
+ * the durable ledger whenever the cached snapshot is absent or malformed.
  */
 async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
   const rows = await sql<{
@@ -6213,13 +6236,11 @@ async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
     })),
   };
   try {
-    await env.METAGRAPH_CONTROL?.put(
-      BLOCKLIST_KV_KEY,
-      JSON.stringify(snapshot),
-      { expirationTtl: BLOCKLIST_KV_TTL },
-    );
+    await appKv(env)?.put?.(BLOCKLIST_KV_KEY, JSON.stringify(snapshot), {
+      expirationTtl: BLOCKLIST_KV_TTL,
+    });
   } catch {
-    // Ledger already written; the periodic refresh is the backstop.
+    // Ledger already written; native readers can consult it after cache expiry.
   }
   return snapshot.blocks.length;
 }
@@ -6388,20 +6409,28 @@ async function handleApiKeyAnomalies(
     .toISOString()
     .slice(0, 10);
   return withAccountsSql(env, ctx, async (sql) => {
-    const usage = await sql<{
-      account_id: ApiKeyUsageDaily["account_id"];
-      day: ApiKeyUsageDaily["day"];
-      route: ApiKeyUsageDaily["route"];
-      request_count: ApiKeyUsageDaily["request_count"];
-    }>`
+    const native = selectedAccountStateStore(env);
+    const usage = native
+      ? await native.usage.anomalyRows(since)
+      : await sql<{
+          account_id: ApiKeyUsageDaily["account_id"];
+          day: ApiKeyUsageDaily["day"];
+          route: ApiKeyUsageDaily["route"];
+          request_count: ApiKeyUsageDaily["request_count"];
+        }>`
       SELECT account_id, day, route, request_count
       FROM api_key_usage_daily
       WHERE day >= ${since}
       ORDER BY account_id, day`;
-    const blocked = await sql<{
-      account_id: ApiKeyBlocks["account_id"];
-      reason_code: ApiKeyBlocks["reason_code"];
-    }>`
+    const blocked = native
+      ? await sql<{
+          account_id: ApiKeyBlocks["account_id"];
+          reason_code: ApiKeyBlocks["reason_code"];
+        }>`SELECT account_id,reason_code FROM api_key_blocks WHERE unblocked_at IS NULL ORDER BY id`
+      : await sql<{
+          account_id: ApiKeyBlocks["account_id"];
+          reason_code: ApiKeyBlocks["reason_code"];
+        }>`
       SELECT account_id, reason_code FROM api_key_blocks
       WHERE unblocked_at IS NULL`;
     const blockedBy = new Map(
@@ -6514,12 +6543,15 @@ async function handleAccountKeyUsage(
     )
       .toISOString()
       .slice(0, 10);
-    const rows = await sql<{
-      day: ApiKeyUsageDaily["day"];
-      route: ApiKeyUsageDaily["route"];
-      request_count: ApiKeyUsageDaily["request_count"];
-      rejected_count: ApiKeyUsageDaily["rejected_count"];
-    }>`
+    const native = selectedAccountStateStore(env);
+    const rows = native
+      ? await native.usage.accountRows(session.accountId, since)
+      : await sql<{
+          day: ApiKeyUsageDaily["day"];
+          route: ApiKeyUsageDaily["route"];
+          request_count: ApiKeyUsageDaily["request_count"];
+          rejected_count: ApiKeyUsageDaily["rejected_count"];
+        }>`
       SELECT day, route, request_count, rejected_count
       FROM api_key_usage_daily
       WHERE account_id = ${session.accountId} AND day >= ${since}

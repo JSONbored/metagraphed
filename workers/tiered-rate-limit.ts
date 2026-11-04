@@ -27,6 +27,8 @@ import { DEFAULT_ACCOUNT_KIND, type AccountKind } from "../src/account-kind.ts";
 import { recordOrNull } from "../src/read-store.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { QuotaSpendResponseSchema } from "../schemas-src/internal-wire.ts";
+import { selectedAccountBlockStore } from "../src/account-block-store.ts";
+import { selectedAccountStateStore } from "../src/account-state-store.ts";
 
 /**
  * The rate-limiter binding a policy NAMES, or undefined.
@@ -167,7 +169,9 @@ export const BLOCKLIST_KV_KEY = "api-key-blocklist";
 /**
  * The block verdict for this account, from the cached snapshot.
  *
- * Fails OPEN on every error path, and unlike the rate-limit gate the reason is
+ * Legacy cache-only callers fail OPEN on an unavailable snapshot. Native
+ * callers require the durable authority when the snapshot is unavailable.
+ * Unlike the rate-limit gate the original cache-only reason is
  * asymmetry of harm rather than politeness to paying callers: a corrupt or
  * unreachable blocklist that read as "blocked" would lock out EVERY customer
  * at once, while reading as "not blocked" costs one TTL of traffic from an
@@ -178,16 +182,39 @@ async function loadBlockVerdict(
   accountId: unknown,
   accountKind: AccountKind,
 ): Promise<BlockVerdict> {
-  const kv = appKv(env);
-  if (!kv?.get) return evaluateBlock(null, accountId, accountKind);
-  try {
-    const snapshot = (await kv.get(BLOCKLIST_KV_KEY, { type: "json" })) as {
-      blocks?: unknown;
-    } | null;
-    return evaluateBlock(snapshot, accountId, accountKind);
-  } catch {
+  const id = Number(accountId);
+  if (!Number.isInteger(id) || id <= 0)
     return evaluateBlock(null, accountId, accountKind);
+  const authority =
+    selectedAccountBlockStore(env) ?? selectedAccountStateStore(env)?.blocks;
+  const kv = appKv(env);
+  let snapshot: {
+    blocks?: unknown;
+  } | null = null;
+  if (kv?.get) {
+    try {
+      snapshot = recordOrNull(await kv.get(BLOCKLIST_KV_KEY, { type: "json" }));
+    } catch {
+      /* A native authority failure below must propagate, not grant access. */
+    }
   }
+  const valid =
+    Array.isArray(snapshot?.blocks) &&
+    snapshot.blocks.every((entry) => {
+      const row = recordOrNull(entry);
+      const id = Number(row?.accountId);
+      return (
+        row !== null &&
+        Number.isInteger(id) &&
+        id > 0 &&
+        (row.accountKind == null ||
+          row.accountKind === "rpc" ||
+          row.accountKind === "github")
+      );
+    });
+  if (!authority || valid)
+    return evaluateBlock(snapshot, accountId, accountKind);
+  return authority.read(id, accountKind);
 }
 
 /**
