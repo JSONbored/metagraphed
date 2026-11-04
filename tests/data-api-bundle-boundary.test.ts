@@ -95,6 +95,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-neuron-capture.ts",
     "src/pg-neuron-live.ts",
     "src/pg-neuron-summaries.ts",
+    "src/pg-neuron-view.ts",
     "src/sqlite-metric-value.ts",
     "src/pg-subnet-status-hub.ts",
     "src/pg-rate-limits.ts",
@@ -213,11 +214,14 @@ describe("data-api's bundle boundary", () => {
     // Native summary selection adds 1,807 source / 512 minified / 129 gzip
     // bytes over af34dc12, totaling 4,853,065 source bytes. Its PostgreSQL
     // adapter and pinned codec remain absent; keep 1,935 bytes of margin.
+    // Native canonical-view selection adds 4,984 source / 2,271 minified /
+    // 515 gzip bytes over 728e0f12, for 4,858,423 source bytes. The native
+    // PostgreSQL adapter and SQLite decoder remain outside this graph.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_855_000,
+      firstParty < 4_859_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
