@@ -6,7 +6,12 @@ import {
 } from "../src/native-background-loops.ts";
 import { PG_QUEUE_CONCURRENCY, PG_QUEUE_NAMES } from "../src/pg-queue.ts";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  // Restore timer spies while their fake targets still belong to this test.
+  // Otherwise later shared-registry cleanup can reinstall the stopped clock.
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {
