@@ -22,6 +22,7 @@ import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
 import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
+import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,
@@ -9010,6 +9011,49 @@ async function readNativeDailyHistory(
   }
 }
 
+async function readNativeNeuronMetrics(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const history = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
+  );
+  const chain = url.pathname === "/api/v1/chain/performance";
+  if (!history && !chain) return null;
+  try {
+    const store = selectedNeuronMetricStore(env);
+    if (!store) return null;
+    if (chain)
+      return json(buildChainPerformance(await store.performanceRows()));
+    const netuid = Number(history![1]);
+    const cutoff = windowCutoffDate(
+      url,
+      PERFORMANCE_HISTORY_WINDOWS,
+      DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+    );
+    const rows = await store.dailyRows<PerformanceHistoryRow>(
+      netuid,
+      cutoff,
+      PERFORMANCE_HISTORY_READ_COLUMNS.split(",").map((name) => name.trim()),
+      PERFORMANCE_HISTORY_ROW_CAP,
+    );
+    return json(
+      buildSubnetPerformanceHistory(rows, netuid, {
+        window: windowLabelFor(
+          url,
+          PERFORMANCE_HISTORY_WINDOWS,
+          DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+        ),
+        capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+      }),
+    );
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -9318,6 +9362,8 @@ async function dispatchDataApiRequest(
     if (nativeSnapshot) return nativeSnapshot;
     const nativeHistory = await readNativeDailyHistory(url, env);
     if (nativeHistory) return nativeHistory;
+    const nativeMetrics = await readNativeNeuronMetrics(url, env);
+    if (nativeMetrics) return nativeMetrics;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);

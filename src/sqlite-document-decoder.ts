@@ -72,6 +72,11 @@ export interface SqliteDocumentEntry {
   atom: SqliteDocumentValue;
 }
 
+export interface SqliteMetricEntry {
+  key: string;
+  values: Record<string, SqliteDocumentValue>;
+}
+
 /** SQLite is used only as the decoder for its binary JSON format. This readonly
  * in-memory connection has no schema, persistent file, extensions or caller SQL.
  * PostgreSQL owns all persistent application data. */
@@ -161,6 +166,42 @@ export function createSqliteDocumentDecoder(options: {
         value: scalar(row.value as SqliteDocumentValue, row.value_storage),
         atom: scalar(row.atom as SqliteDocumentValue, row.atom_storage),
       }));
+    },
+    metricEntries(
+      payload: Uint8Array,
+      names: readonly string[],
+      keys?: readonly string[],
+    ): SqliteMetricEntry[] {
+      check(payload, "live");
+      if (
+        names.length > 32 ||
+        new Set(names).size !== names.length ||
+        names.some((name) => !/^[a-z][a-z0-9_]*$/.test(name))
+      )
+        throw new TypeError("Invalid metric document projection");
+      const columns = names.map((_, index) => {
+        const field = `json_extract(value,?${index + (keys ? 3 : 2)})`;
+        return `typeof(${field}) AS t${index},CASE WHEN typeof(${field})='text' THEN CAST(${field} AS BLOB) ELSE ${field} END AS v${index}`;
+      });
+      const statement = db.prepare(
+        `SELECT CAST(key AS BLOB) AS key${columns.length ? `,${columns.join(",")}` : ""} FROM json_each(?1) WHERE typeof(key)='text'${keys ? " AND key IN (SELECT value FROM json_each(?2))" : ""} ORDER BY id`,
+      );
+      statement.setReadBigInts(true);
+      return statement
+        .all(
+          payload,
+          ...(keys ? [JSON.stringify(keys)] : []),
+          ...names.map((name) => `$.${name}`),
+        )
+        .map((row) => ({
+          key: utf8.decode(row.key as Uint8Array),
+          values: Object.fromEntries(
+            names.map((name, index) => [
+              name,
+              scalar(row[`v${index}`] as SqliteDocumentValue, row[`t${index}`]),
+            ]),
+          ),
+        }));
     },
     axons(payload: Uint8Array): { key: string; value: SqliteDocumentValue }[] {
       check(payload, "live");
