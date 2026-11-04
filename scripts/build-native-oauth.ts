@@ -28,9 +28,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`;
 
-/** The reviewed import uses WorkerEntrypoint only for class validation. CIMD's
- * guarded Cloudflare global is not emulated. Added imports or executable class
- * use require a new native review. */
+const reviewedSourceSha256 =
+  "6f44fc0e229515d98e23ca75ccf4da17df40eefbe8d84ece4964b03bf977278f";
+
+/** Review both platform and fetch use before binding the source to native
+ * public-only fetch. The exact source digest is checked independently. */
 export function checkNativeOAuthSource(source: string): void {
   const ast = ts.createSourceFile(
     "oauth-provider.js",
@@ -40,7 +42,9 @@ export function checkNativeOAuthSource(source: string): void {
     ts.ScriptKind.JS,
   );
   let imports = 0,
-    classChecks = 0;
+    classChecks = 0,
+    fetchCalls = 0,
+    cloudflareReferences = 0;
   const visit = (node: ts.Node): void => {
     if (
       (ts.isExportDeclaration(node) && node.moduleSpecifier) ||
@@ -90,10 +94,41 @@ export function checkNativeOAuthSource(source: string): void {
     ) {
       throw new Error("Unexpected native OAuth require");
     }
+    if (ts.isIdentifier(node) && node.text === "Cloudflare") {
+      if (
+        !ts.isTypeOfExpression(node.parent) &&
+        !(
+          ts.isPropertyAccessExpression(node.parent) &&
+          node.parent.expression === node
+        )
+      ) {
+        throw new Error("Unexpected native OAuth Cloudflare use");
+      }
+      cloudflareReferences += 1;
+    }
+    if (ts.isIdentifier(node) && node.text === "fetch") {
+      if (ts.isCallExpression(node.parent) && node.parent.expression === node)
+        fetchCalls += 1;
+      else if (!(
+        (ts.isMethodDeclaration(node.parent) && node.parent.name === node) ||
+        (ts.isPropertyAccessExpression(node.parent) &&
+          node.parent.name === node &&
+          !["globalThis", "self", "window"].includes(
+            node.parent.expression.getText(ast),
+          ))
+      )) {
+        throw new Error("Unexpected native OAuth fetch use");
+      }
+    }
     ts.forEachChild(node, visit);
   };
   visit(ast);
-  if (imports !== 1 || classChecks !== 1)
+  if (
+    imports !== 1 ||
+    classChecks !== 1 ||
+    fetchCalls !== 2 ||
+    cloudflareReferences !== 5
+  )
     throw new Error("Native OAuth platform boundary changed");
 }
 
@@ -127,19 +162,22 @@ export async function buildNativeOAuth(
   );
   checkNativeOAuthSource(source);
   const digest = createHash("sha256").update(source).digest("hex");
-  const result = await build({
+  if (digest !== reviewedSourceSha256)
+    throw new Error(
+      "Native OAuth source digest differs from the reviewed provider",
+    );
+  const provider = await build({
     stdin: {
       contents: source,
       sourcefile: "workers-oauth-provider-0.8.3.js",
       resolveDir: packagePath,
     },
     bundle: true,
-    format: "esm",
+    format: "cjs",
     platform: "node",
     target: "node22",
     write: false,
     legalComments: "inline",
-    banner: { js: `/*\n${license}\n\nProvider source SHA-256: ${digest}\n*/` },
     plugins: [
       {
         name: "native-oauth-object-handlers",
@@ -156,6 +194,38 @@ export async function buildNativeOAuth(
         },
       },
     ],
+  });
+  // Scope the capability flag and fetch to this generated provider only. Each
+  // factory call still wraps its transport in the qualified safety owner.
+  const entry = `import { createNativePublicFetch } from ${JSON.stringify(resolve(root, "src/native-public-fetch.ts"))};
+export function createNativeOAuthModule(options) {
+  const fetch = createNativePublicFetch(options);
+  const Cloudflare = { compatibilityFlags: { global_fetch_strictly_public: true } };
+  const module = { exports: {} };
+  ${provider.outputFiles[0].text}
+  return { ...module.exports, publicFetchProtection: true };
+}
+const native = createNativeOAuthModule();
+export const OAuthProvider = native.OAuthProvider;
+export const getOAuthApi = native.getOAuthApi;
+export const publicFetchProtection = native.publicFetchProtection;`;
+  const result = await build({
+    stdin: {
+      contents: entry,
+      sourcefile: "native-oauth-provider.js",
+      resolveDir: root,
+    },
+    absWorkingDir: root,
+    bundle: true,
+    packages: "external",
+    format: "esm",
+    platform: "node",
+    target: "node22",
+    write: false,
+    legalComments: "inline",
+    banner: {
+      js: `/*\nUpstream @cloudflare/workers-oauth-provider 0.8.3:\n${license}\n\nProvider source SHA-256: ${digest}\nNative adapter: metagraphed, AGPL-3.0-or-later.\n*/`,
+    },
   });
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, result.outputFiles[0].contents);

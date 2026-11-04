@@ -220,6 +220,7 @@
     "posthog-node": "^5.44.0",
     "satori": "^0.28.0",
     "satori-html": "^0.3.2",
+    "undici": "7.30.1",
     "workers-og": "^0.0.27",
     "yaml": "^2.9.0",
     "zod": "4.4.3",

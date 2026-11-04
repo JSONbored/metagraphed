@@ -1,8 +1,8 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { buildNativeOAuth } from "../../scripts/build-native-oauth.ts";
 import { loadNativeOAuthProvider } from "../../src/native-oauth-provider.ts";
 import type { OAuthProviderOptions } from "@cloudflare/workers-oauth-provider";
@@ -10,11 +10,21 @@ import type { OAuthProviderOptions } from "@cloudflare/workers-oauth-provider";
 export async function nativeOAuthFixture() {
   const directory = await mkdtemp(join(tmpdir(), "oauth-fixture-"));
   const file = join(directory, "provider.mjs");
-  await buildNativeOAuth(file);
-  return {
-    module: await loadNativeOAuthProvider(pathToFileURL(file)),
-    close: () => rm(directory, { recursive: true, force: true }),
-  };
+  try {
+    await buildNativeOAuth(file);
+    await symlink(
+      resolve("node_modules"),
+      join(directory, "node_modules"),
+      "junction",
+    );
+    return {
+      module: await loadNativeOAuthProvider(pathToFileURL(file)),
+      close: () => rm(directory, { recursive: true, force: true }),
+    };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 export const oauthOptions = {
@@ -68,4 +78,28 @@ export function authorizeRequest(
     resource,
   });
   return new Request(`https://server.example/authorize?${query}`);
+}
+
+export function emaTestIdentity() {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+  return {
+    jwks: {
+      keys: [
+        {
+          ...publicKey.export({ format: "jwk" }),
+          kid: "fixture",
+          alg: "RS256",
+          use: "sig",
+        },
+      ],
+    },
+    assertion(claims: Record<string, unknown>) {
+      const encode = (value: unknown) =>
+        Buffer.from(JSON.stringify(value)).toString("base64url");
+      const payload = `${encode({ alg: "RS256", typ: "oauth-id-jag+jwt", kid: "fixture" })}.${encode(claims)}`;
+      return `${payload}.${sign("RSA-SHA256", Buffer.from(payload), privateKey).toString("base64url")}`;
+    },
+  };
 }

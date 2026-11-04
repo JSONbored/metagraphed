@@ -14,6 +14,7 @@ import {
   tokenRequest,
   authorizeRequest,
   verifier,
+  emaTestIdentity,
 } from "./helpers/native-oauth-fixture.ts";
 import { pg18FixtureUrl } from "./helpers/pg18-fixture.ts";
 
@@ -389,6 +390,144 @@ describe(
       } finally {
         await single.close();
       }
+    });
+
+    it("bounds slow metadata lock occupancy and rejects excess pool admission without retry", async () => {
+      let entered!: () => void;
+      const fetching = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      let fetches = 0;
+      const module = native.module.createNativeOAuthModule({
+        timeoutMs: 1000,
+        resolver: async () => [{ address: "93.184.216.34", family: 4 }],
+        transport: async () => {
+          fetches += 1;
+          entered();
+          return new Promise<Response>(() => {});
+        },
+      });
+      const single = createPgStoreRuntime({
+        connectionString,
+        maxConnections: 1,
+        connectionTimeoutMillis: 2000,
+        idleTimeoutMillis: 1000,
+        statementTimeoutMillis: 5000,
+        onIdleError(error) {
+          throw error;
+        },
+      });
+      try {
+        const slow = createPgOAuthProvider(single, module, {
+          ...oauthOptions,
+          clientIdMetadataDocumentEnabled: true,
+        });
+        const request = () =>
+          tokenRequest({
+            grant_type: "authorization_code",
+            client_id: "https://slow.example/client.json",
+            code: "invalid",
+            code_verifier: verifier,
+            redirect_uri: "https://client.example/callback",
+          });
+        const first = slow.fetch(request(), {}, oauthContext);
+        await fetching;
+        const lock =
+          "SELECT pg_try_advisory_xact_lock(hashtextextended('metagraphed:oauth-provider',0)) AS held";
+        assert.equal((await control.query(lock)).rows[0].held, false);
+        await assert.rejects(
+          slow.fetch(request(), {}, oauthContext),
+          /at capacity/,
+        );
+        assert.equal((await first).status, 401);
+        assert.equal(fetches, 1);
+        assert.equal((await control.query(lock)).rows[0].held, true);
+        assert.equal(
+          (await control.query("SELECT count(*) AS n FROM auth.kv_entries"))
+            .rows[0].n,
+          0,
+        );
+      } finally {
+        await single.close();
+      }
+    });
+
+    it("runs real CIMD and signed enterprise assertions with atomic replay protection", async () => {
+      const identity = emaTestIdentity();
+      const issuer = "https://issuer.example",
+        clientId = "https://client.example/client.json";
+      const seen: string[] = [];
+      const module = native.module.createNativeOAuthModule({
+        resolver: async () => [{ address: "93.184.216.34", family: 4 }],
+        transport: (async (input) => {
+          const url = String(input);
+          seen.push(url);
+          if (url === `${issuer}/jwks.json`)
+            return Response.json(identity.jwks);
+          assert.equal(url, clientId);
+          return Response.json({
+            client_id: clientId,
+            redirect_uris: ["https://client.example/callback"],
+            token_endpoint_auth_method: "none",
+            grant_types: ["urn:ietf:params:oauth:grant-type:jwt-bearer"],
+          });
+        }) as typeof fetch,
+      });
+      const ema = createPgOAuthProvider(runtime, module, {
+        ...oauthOptions,
+        clientIdMetadataDocumentEnabled: true,
+        resourceMetadata: { resource: "https://server.example/mcp" },
+        enterpriseManagedAuthorization: {
+          allowPublicClients: true,
+          trustedIssuers: async ({ iss }) =>
+            iss === issuer ? { issuer, jwksUri: `${issuer}/jwks.json` } : null,
+          mapClaims: async () => ({
+            userId: "enterprise-user",
+            scope: ["profile", "read"],
+            props: { enterprise: true },
+          }),
+        },
+      });
+      const now = Math.floor(Date.now() / 1000);
+      const assertion = identity.assertion({
+        iss: issuer,
+        sub: "enterprise-subject",
+        aud: "https://server.example",
+        client_id: clientId,
+        resource: "https://server.example/mcp",
+        jti: "fixture-once",
+        iat: now,
+        exp: now + 240,
+        scope: "profile",
+      });
+      const request = () =>
+        tokenRequest({
+          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          client_id: clientId,
+          assertion,
+        });
+      const responses = await Promise.all([
+        ema.fetch(request(), {}, oauthContext),
+        ema.fetch(request(), {}, oauthContext),
+      ]);
+      assert.deepEqual(
+        responses.map((response) => response.status).sort(),
+        [200, 400],
+      );
+      const token = (await responses
+        .find((response) => response.status === 200)!
+        .json()) as Tokens;
+      assert.equal(token.scope, "profile");
+      const result = await ema.fetch(
+        new Request("https://server.example/mcp", {
+          headers: { authorization: `Bearer ${token.access_token}` },
+        }),
+        {},
+        oauthContext,
+      );
+      assert.deepEqual(await result.json(), { enterprise: true });
+      assert.ok(seen.includes(clientId));
+      assert.ok(seen.includes(`${issuer}/jwks.json`));
     });
   },
 );
