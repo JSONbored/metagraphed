@@ -269,7 +269,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.2
+          node-version: 22.23.4
       - name: Install without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Check source formatting
@@ -364,7 +364,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.2
+          node-version: 22.23.4
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
           # in the tree, so a lockfile anywhere else would invalidate this job's
@@ -910,7 +910,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.2
+          node-version: 22.23.4
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
           # in the tree, so a lockfile anywhere else would invalidate this job's
@@ -1238,7 +1238,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.2
+          node-version: 22.23.4
           cache: npm
           cache-dependency-path: package-lock.json
 
