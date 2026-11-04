@@ -290,21 +290,25 @@ export async function handleFullnodeRpcProxyRequest(
   // missing header is a genuine routing failure (a 401/403/429 rejected
   // before any upstream, or an exhausted pool) and records as "no endpoint"
   // rather than as an invented one.
-  recordRpcUsageEvent(env.RPC_USAGE_ANALYTICS, {
-    pool: "fullnode",
-    // Not network-scoped: FULLNODE_RPC_ORIGINS is one configured pool, not
-    // a /rpc/v1/{network} path segment.
-    network: "fullnode",
-    endpointId: response.headers.get("x-metagraph-rpc-endpoint-id"),
-    provider: response.headers.get("x-metagraph-rpc-provider"),
-    ok: response.status < 500,
-    status: response.status,
-    attempts: Number(response.headers.get("x-metagraph-rpc-attempts")) || 0,
-    latencyMs: durationMs,
-    // No response cache on this tier at all (see the module header) --
-    // every request is a real upstream call.
-    cache: "bypass",
-  });
+  recordRpcUsageEvent(
+    env.RPC_USAGE_ANALYTICS,
+    {
+      pool: "fullnode",
+      // Not network-scoped: FULLNODE_RPC_ORIGINS is one configured pool, not
+      // a /rpc/v1/{network} path segment.
+      network: "fullnode",
+      endpointId: response.headers.get("x-metagraph-rpc-endpoint-id"),
+      provider: response.headers.get("x-metagraph-rpc-provider"),
+      ok: response.status < 500,
+      status: response.status,
+      attempts: Number(response.headers.get("x-metagraph-rpc-attempts")) || 0,
+      latencyMs: durationMs,
+      // No response cache on this tier at all (see the module header) --
+      // every request is a real upstream call.
+      cache: "bypass",
+    },
+    env.RPC_USAGE_STORE,
+  );
   return response;
 }
 

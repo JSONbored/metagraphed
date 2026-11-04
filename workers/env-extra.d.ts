@@ -309,6 +309,7 @@ interface RawCaptureLaneEnv {
 // deployment without it must still type-check and still serve: the hot tier
 // declines and /api/v1/rpc/usage falls through to the lakehouse cold tier.
 interface RpcUsageAnalyticsEnv {
+  RPC_USAGE_STORE?: import("../src/rpc-usage-store.ts").RpcUsageStore;
   RPC_USAGE_ANALYTICS?: AnalyticsEngineDataset;
   /** `npx wrangler secret put ANALYTICS_ENGINE_SQL_TOKEN` */
   ANALYTICS_ENGINE_SQL_TOKEN?: string;
