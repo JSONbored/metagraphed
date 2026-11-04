@@ -311,6 +311,37 @@ describe(
       );
     });
 
+    it("loads exact fractional and wide quota source values before native auth bootstrap", async () => {
+      await control.query(
+        "INSERT INTO app.api_quota_daily(account_kind,account_id,day,units_spent,updated_at) VALUES ('rpc',1e30,'day',0.1000000000000000055511151231257827021181583404541015625,1)",
+      );
+      assert.deepEqual(
+        (
+          await control.query(
+            "SELECT account_id::text AS account_id,units_spent::text AS units_spent FROM app.api_quota_daily",
+          )
+        ).rows,
+        [
+          {
+            account_id: "1000000000000000000000000000000",
+            units_spent:
+              "0.1000000000000000055511151231257827021181583404541015625",
+          },
+        ],
+      );
+      assert.deepEqual(
+        (
+          await control.query(
+            "SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='app' AND table_name='api_quota_daily' AND column_name IN ('account_id','units_spent') ORDER BY column_name",
+          )
+        ).rows,
+        [
+          { column_name: "account_id", data_type: "numeric" },
+          { column_name: "units_spent", data_type: "numeric" },
+        ],
+      );
+    });
+
     it("reconciles all seven sequences above imported, legacy and consumed values", async () => {
       for (const [name, sql] of Object.entries(identityInserts)) {
         await control.query(sql, [12, `fixture-${name}`]);

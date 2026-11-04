@@ -51,9 +51,11 @@ CREATE TABLE app.api_key_usage_daily (
     PRIMARY KEY (account_kind, account_id, day, route)
 );
 CREATE TABLE app.api_quota_daily (
-    account_id bigint NOT NULL,
+    -- D1's INTEGER affinity also accepts wide and fractional REAL values.
+    -- Import exact source numbers before native-only auth migrations run.
+    account_id numeric NOT NULL,
     day text COLLATE "C" NOT NULL,
-    units_spent bigint NOT NULL DEFAULT 0,
+    units_spent numeric NOT NULL DEFAULT 0,
     updated_at bigint NOT NULL,
     account_kind text COLLATE "C" NOT NULL DEFAULT 'rpc' CHECK (account_kind IN ('rpc', 'github')),
     PRIMARY KEY (account_kind, account_id, day)
