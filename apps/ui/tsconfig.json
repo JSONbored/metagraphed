@@ -2,6 +2,8 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "scripts/build-native.ts",
+    "tests/e2e/native-runtime*.ts",
     "vite.config.ts",
     "eslint.config.ts",
     "source.config.ts"
