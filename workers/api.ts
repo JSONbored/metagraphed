@@ -1,3 +1,7 @@
+import type {
+  AppExecutionContext,
+  AppScheduledEvent,
+} from "./runtime-context.ts";
 import {
   chainFirehoseService,
   ChainFirehoseUnavailableError,
@@ -1640,7 +1644,7 @@ function maskUsageRouteParams(pathname: string) {
 async function runAttributionSweepJobs(
   messages: LaneMessage[],
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<ConsumeResult> {
   // One subnet per message. The registry record is read HERE rather than
   // carried in the message, so a message that waited in the queue cannot
@@ -1663,7 +1667,7 @@ async function runAttributionSweepJobs(
 async function runRevenueProbeJobs(
   messages: LaneMessage[],
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<ConsumeResult> {
   // The eligible set is re-read HERE, so a message that waited cannot probe
   // a surface the registry has since withdrawn.
@@ -1692,7 +1696,7 @@ async function runRevenueProbeJobs(
 async function runComputeDeclarationJobs(
   messages: LaneMessage[],
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<ConsumeResult> {
   const store = producerStore(env, ctx, [...COMPUTE_DECLARATIONS_TABLES]);
   try {
@@ -1714,7 +1718,7 @@ async function runComputeDeclarationJobs(
 async function runOriginReachabilityJobs(
   messages: LaneMessage[],
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<ConsumeResult> {
   // The surfaces are resolved HERE, so a message that waited cannot check a
   // stale copy of what the registry advertises.
@@ -1749,7 +1753,7 @@ const PROBE_JOB_HANDLERS: Record<
   (
     messages: LaneMessage[],
     env: Env,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ) => Promise<ConsumeResult>
 > = {
   "attribution-sweep": runAttributionSweepJobs,
@@ -1766,9 +1770,9 @@ export default {
     return auditResponse(request, env, ctx, response);
   },
   async scheduled(
-    controller: ScheduledController,
+    controller: AppScheduledEvent,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ) {
     return handleScheduled(controller, env, ctx);
   },
@@ -1793,7 +1797,7 @@ export default {
   async queue(
     batch: MessageBatch<unknown>,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ): Promise<void> {
     env = withArchiveObjects(env);
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ
@@ -2095,7 +2099,7 @@ async function handleWebhookDispatch(request: Request, env: Env) {
 export async function handleWebhookQueue(
   batch: MessageBatch<unknown>,
   env: Env,
-  _ctx: ExecutionContext,
+  _ctx: AppExecutionContext,
   /** Injected so the unmodelled-throw path is reachable from a test. Every
    * other seam in this delivery path (`fetchFn`, `resolveHostnames`, the
    * delivery store) is injected for the same reason -- see src/webhooks.ts. */
@@ -2867,7 +2871,7 @@ export const LANE_PRODUCERS: ReadonlyArray<
  * carries a second write that needs a waitUntil. Nothing else here does.
  */
 export const STALENESS_WATCHDOGS: ReadonlyArray<
-  StalenessWatchdogLane<{ env: Env; ctx?: ExecutionContext }>
+  StalenessWatchdogLane<{ env: Env; ctx?: AppExecutionContext }>
 > = [
   {
     // The poller Container feeds D1 on a 15-minute tick, and the lane's first
@@ -2968,9 +2972,9 @@ export const STALENESS_WATCHDOGS: ReadonlyArray<
 ];
 
 export async function handleScheduled(
-  controller: ScheduledController,
+  controller: AppScheduledEvent,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   env = withArchiveObjects(env);
   const startedAt = Date.now();
@@ -3004,7 +3008,7 @@ export async function handleScheduled(
 
 function recordCronOutcome(
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   label: string,
   ok: boolean,
   startedAt: number,
@@ -3079,9 +3083,9 @@ export const API_HANDLED_CRONS: readonly string[] = [
 ];
 
 async function dispatchScheduled(
-  controller: ScheduledController,
+  controller: AppScheduledEvent,
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const cron = controller?.cron || "";
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")

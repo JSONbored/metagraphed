@@ -6,6 +6,7 @@ import type { PgPool, PooledPgOptions } from "../src/pg-pool.ts";
 import {
   createNativeApiProcess,
   NativeScheduledBackgroundError,
+  NativeStartupCleanupError,
   type NativeApiOptions,
   type NativeExecutionContext,
   type NativeSource,
@@ -155,6 +156,122 @@ function fixture() {
 }
 
 describe("native API process", () => {
+  test("cleans up constructed adapters before closing a failed startup pool", async () => {
+    const f = fixture();
+    const failure = new Error("invalid composition");
+    const order: string[] = [];
+    f.options.compose = async ({ onStartupCleanup }) => {
+      onStartupCleanup(async () => {
+        assert.equal(f.ends(), 0);
+        order.push("first");
+      });
+      onStartupCleanup(async () => {
+        assert.equal(f.ends(), 0);
+        order.push("last");
+      });
+      throw failure;
+    };
+    await assert.rejects(f.create(), (error) => error === failure);
+    assert.deepEqual(order, ["last", "first"]);
+    assert.equal(f.ends(), 1);
+  });
+
+  test("retains the startup pool and exposes retry when adapter cleanup fails", async () => {
+    const f = fixture();
+    let attempts = 0;
+    f.options.compose = async ({ onStartupCleanup }) => {
+      onStartupCleanup(async () => {
+        if (++attempts === 1) throw new Error("not drained");
+      });
+      throw new Error("startup");
+    };
+    let failure!: NativeStartupCleanupError;
+    await assert.rejects(f.create(), (error) => {
+      assert.ok(error instanceof NativeStartupCleanupError);
+      failure = error;
+      return true;
+    });
+    assert.equal(f.ends(), 0);
+    await failure.close();
+    assert.equal(attempts, 2);
+    assert.equal(f.ends(), 1);
+  });
+
+  test("retains a timed-out startup cleanup until its actual completion", async () => {
+    const f = fixture();
+    f.options.drainTimeoutMillis = 5;
+    const pending = deferred();
+    let attempts = 0;
+    f.options.compose = async ({ onStartupCleanup }) => {
+      onStartupCleanup(async () => {
+        attempts += 1;
+        await pending.promise;
+      });
+      throw new Error("startup");
+    };
+    let failure!: NativeStartupCleanupError;
+    await assert.rejects(f.create(), (error) => {
+      assert.ok(error instanceof NativeStartupCleanupError);
+      failure = error;
+      return true;
+    });
+    assert.equal(f.ends(), 0);
+    pending.resolve();
+    await failure.close();
+    assert.equal(attempts, 1);
+    assert.equal(f.ends(), 1);
+  });
+
+  test("keeps invocation activity through response and background drain", async () => {
+    const f = fixture();
+    const background = deferred();
+    const compose = f.options.compose;
+    f.options.compose = async (providers) => {
+      const result = await compose(providers);
+      const fetch = result.application.fetch;
+      result.application.fetch = async (request, env, ctx) => {
+        ctx.waitUntil(background.promise);
+        return fetch(request, env, ctx);
+      };
+      return result;
+    };
+    const process = await f.create();
+    const response = await process.fetch(
+      new Request("https://fixture.invalid/mcp"),
+    );
+    assert.equal(f.context().active, true);
+    await response.text();
+    assert.equal(f.context().active, true);
+    background.resolve();
+    await process.close();
+    assert.equal(f.context().active, false);
+  });
+
+  test("drains adapters before the pool and retries a failed adapter close", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    let closes = 0;
+    f.options.compose = async (providers) => ({
+      ...(await compose(providers)),
+      async close() {
+        assert.equal(f.ends(), 0);
+        closes += 1;
+        if (closes === 1) throw new Error("adapter still draining");
+      },
+    });
+    const process = await f.create();
+    await assert.rejects(process.close(), /adapter still draining/);
+    assert.equal(process.state, "closing");
+    assert.equal(f.ends(), 0);
+    assert.equal(
+      (await process.fetch(new Request("https://fixture.invalid/mcp"))).status,
+      503,
+    );
+    await process.close();
+    assert.equal(closes, 2);
+    assert.equal(f.ends(), 1);
+  });
+
   test("uses one checked source runtime through shared entry routing", async () => {
     const f = fixture();
     const process = await f.create();
