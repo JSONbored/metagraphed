@@ -108,8 +108,8 @@ The existing legacy bindings remain available through their selectors.
 ## Native OAuth preparation
 
 `node scripts/build-native-oauth.ts` deterministically bundles the lock-pinned
-Workers OAuth provider 0.8.3 for Node 22, retaining its MIT notice and source
-digest. The builder rejects expanded imports and executable use of
+Workers OAuth provider 0.8.3 for Node 22, retaining its MIT notice and checking
+the source bytes against the reviewed SHA-256. The builder rejects expanded imports and executable use of
 `WorkerEntrypoint`; native composition supports object handlers. Load the
 generated module with `loadNativeOAuthProvider(bundleUrl)`, then pass that module,
 `runtime` and provider options to `createPgOAuthProvider()`.
@@ -129,14 +129,25 @@ do not automatically roll back. Server-error responses roll back. A failed SQL
 statement also rolls back if upstream catches it. Bearer authentication uses
 ordinary pooled reads and releases them before invoking application/MCP work.
 
-This remains preparation, not a production replacement. The current Worker
-options enable Client ID Metadata Documents (CIMD), which require Cloudflare's
-public-only fetch protection. The native adapter explicitly rejects those
-options, and the optional enterprise issuer fetcher, until a qualified native
-public-fetch capability exists; it does not
-silently disable URL clients or pretend that Cloudflare's safety flag exists.
-The [public-fetch follow-up](https://github.com/JSONbored/metagraphed/issues/13020)
-owns that remaining boundary. The ordinary Worker entry point is unchanged.
+This remains preparation, not a production replacement. The generated native
+module supplies public-only metadata fetch for Client ID Metadata Documents
+(CIMD) and enterprise issuer keys. It scopes that fetch and its compatibility
+flag to each provider factory; it does not change global fetch or the ordinary
+Worker entry. The loader and PostgreSQL adapter require the generated capability
+before accepting options that need metadata fetching.
+
+The fetch owner reuses the script DNS and connection-pinning implementation.
+Every DNS answer and redirect is checked before connection; reserved and
+non-public addresses are rejected. Each hop pins its validated address at
+socket lookup. Metadata requests support GET/HEAD, retain ordinary response
+status and headers, and strip credentials on a cross-origin redirect. A
+10-second total deadline, five-redirect ceiling and 1-MiB decoded-body ceiling
+bound the operation; callers may lower these limits. Completion closes the
+dispatcher, while cancellation or failure destroys it even if a body producer
+never completes cancellation. Cloudflare's edge HTTP cache is not supplied by
+the native process; native serving latency still needs its own acceptance.
+Upstream metadata checks during token mutations share the transaction lease,
+so their bounded fetch time also counts toward namespace-lock occupancy.
 
 Native rate limiting is a separate capability. `workers/tiered-rate-limit.ts`
 owns tier/IP limiter selection and ordering; daily quota decisions remain in

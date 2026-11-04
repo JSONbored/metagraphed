@@ -38,8 +38,9 @@ export function createPgOAuthProvider<Environment extends object>(
   options: OAuthProviderOptions<Environment>,
 ) {
   if (
-    options.clientIdMetadataDocumentEnabled ||
-    options.enterpriseManagedAuthorization
+    (options.clientIdMetadataDocumentEnabled ||
+      options.enterpriseManagedAuthorization) &&
+    upstream.publicFetchProtection !== true
   ) {
     throw new TypeError(
       "Native OAuth metadata fetching requires a qualified public-only fetch capability",

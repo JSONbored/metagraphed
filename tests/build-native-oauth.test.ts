@@ -11,7 +11,10 @@ import {
 import { loadNativeOAuthProvider } from "../src/native-oauth-provider.ts";
 
 const source =
-  'import { WorkerEntrypoint } from "cloudflare:workers"; const valid = handler.prototype instanceof WorkerEntrypoint;';
+  'import { WorkerEntrypoint } from "cloudflare:workers"; const valid = handler.prototype instanceof WorkerEntrypoint; ' +
+  'if (!(typeof Cloudflare !== "undefined" && Cloudflare.compatibilityFlags?.global_fetch_strictly_public === true)) {} ' +
+  'function safety() { return !!(typeof Cloudflare !== "undefined" && Cloudflare.compatibilityFlags ? Cloudflare.compatibilityFlags : null)?.global_fetch_strictly_public; } ' +
+  'fetch("one"); fetch("two");';
 
 test("native bundle rejects expanded or executable platform dependencies", () => {
   checkNativeOAuthSource(source);
@@ -31,6 +34,10 @@ test("native bundle rejects expanded or executable platform dependencies", () =>
     source + ' export * from "other";',
     source + ' import other = require("other");',
     source + " WorkerEntrypoint.someMethod();",
+    source + " globalThis.fetch('extra');",
+    source + " const copy = fetch;",
+    source + " const Cloudflare = {};",
+    source + " fetch('extra');",
   ])
     assert.throws(
       () => checkNativeOAuthSource(invalid),
@@ -69,6 +76,22 @@ test("native bundle is deterministic, attributed, and loads the real locked prov
       loadNativeOAuthProvider(pathToFileURL(join(root, "missing-helper.mjs"))),
       /Invalid generated/,
     );
+    for (const [name, text] of [
+      [
+        "missing-factory",
+        "export class OAuthProvider {} export function getOAuthApi() {}",
+      ],
+      [
+        "missing-protection",
+        "export class OAuthProvider {} export function getOAuthApi() {} export function createNativeOAuthModule() {}",
+      ],
+    ]) {
+      await writeFile(join(root, `${name}.mjs`), text);
+      await assert.rejects(
+        loadNativeOAuthProvider(pathToFileURL(join(root, `${name}.mjs`))),
+        /Invalid generated/,
+      );
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -126,6 +149,11 @@ test("native bundle refuses an unreviewed version, license, lock or source", asy
     await assert.rejects(
       buildNativeOAuth(join(root, "output.mjs"), root),
       /Unexpected native OAuth/,
+    );
+    await writeFile(join(packagePath, "dist/oauth-provider.js"), source);
+    await assert.rejects(
+      buildNativeOAuth(join(root, "output.mjs"), root),
+      /source digest differs/,
     );
   } finally {
     await rm(root, { recursive: true, force: true });
