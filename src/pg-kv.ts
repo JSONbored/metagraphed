@@ -97,13 +97,14 @@ async function valueBytes(
     const deadline = Date.now() + timeoutMs;
     const expired = new Error("KV stream read deadline exceeded");
     let timer!: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(expired), timeoutMs);
-    });
     try {
       for (;;) {
         if (Date.now() >= deadline) throw expired;
+        const timeout = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(expired), deadline - Date.now());
+        });
         const next = await Promise.race([reader.read(), timeout]);
+        clearTimeout(timer);
         if (next.done) return Buffer.from(output.subarray(0, size));
         if (!(next.value instanceof Uint8Array))
           throw new TypeError("KV stream must contain bytes");
