@@ -49,7 +49,7 @@ function definition(
   };
 }
 
-async function fixture(sources: NativeSourceDefinition[]) {
+async function fixture(sources: NativeSourceDefinition[], maxConnections = 2) {
   const applicationName = `${prefix}_${++sequence}`;
   const connection = new URL(fixtureUrl);
   connection.username = role;
@@ -59,7 +59,7 @@ async function fixture(sources: NativeSourceDefinition[]) {
   const runtime = await createNativeApiProcess({
     postgres: {
       connectionString: connection.toString(),
-      maxConnections: 2,
+      maxConnections,
       connectionTimeoutMillis: 2000,
       idleTimeoutMillis: 1000,
       statementTimeoutMillis: 2000,
@@ -226,6 +226,28 @@ describe(
         assert.deepEqual(await source.read.first("SELECT value FROM items"), {
           value: 101,
         });
+      } finally {
+        await runtime.close();
+      }
+    });
+
+    it("keeps a reused connection's temporary relation behind the declared schema", async () => {
+      const { runtime, handles } = await fixture([definition(0)], 1);
+      const source = handles.get(schemas[0])!;
+      try {
+        const expected = await source.read.first("SELECT value FROM items");
+        await source.transaction(async (scope) => {
+          await scope.run("CREATE TEMPORARY TABLE items (value bigint)");
+          await scope.run("INSERT INTO pg_temp.items VALUES (9999)");
+        });
+        assert.deepEqual(
+          await source.read.first("SELECT value FROM items"),
+          expected,
+        );
+        assert.deepEqual(
+          await source.read.first("SELECT value FROM pg_temp.items"),
+          { value: 9999 },
+        );
       } finally {
         await runtime.close();
       }

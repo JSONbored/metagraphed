@@ -199,7 +199,7 @@ describe("native API process", () => {
         "COMMIT",
       ],
     );
-    assert.deepEqual(f.calls[2].values, ['pg_catalog, "app"']);
+    assert.deepEqual(f.calls[2].values, ['pg_catalog, "app", pg_temp']);
     await process.close();
     assert.equal(f.ends(), 1);
     assert.equal(process.state, "closed");

@@ -37,7 +37,7 @@ function scopedSource(
   source: NativeSourceDefinition,
 ): NativeSource {
   const readOnly = source.access === "read";
-  const searchPath = `pg_catalog, "${source.schema.replaceAll('"', '""')}"`;
+  const searchPath = `pg_catalog, "${source.schema.replaceAll('"', '""')}", pg_temp`;
   const requireWrite = () => {
     if (readOnly) throw new Error(`Native source ${source.name} is read-only`);
   };
