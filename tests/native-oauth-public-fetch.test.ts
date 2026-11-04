@@ -23,9 +23,7 @@ const metadata = {
   redirect_uris: ["https://client.example/callback"],
   token_endpoint_auth_method: "none",
 };
-const resolver = (async () => [
-  { address: "93.184.216.34", family: 4 },
-]);
+const resolver = async () => [{ address: "93.184.216.34", family: 4 }];
 
 test("real provider advertises and resolves CIMD using isolated public-only fetch", async () => {
   const beforeFetch = globalThis.fetch;
