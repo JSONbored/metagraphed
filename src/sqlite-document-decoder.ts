@@ -74,9 +74,16 @@ export interface SqliteDocumentEntry {
 
 export interface SqliteMetricEntry {
   key: string;
+  integerKey?: bigint;
   values: Record<string, SqliteDocumentValue>;
   /** Original SQL TEXT bytes for comparisons before D1 wire replacement. */
   textBytes?: Record<string, Uint8Array>;
+}
+export type SqliteMetricKeyMode = "text" | "integer";
+export interface SqliteMetricTuple {
+  key: string;
+  integerKey?: bigint;
+  json: string | null;
 }
 
 /** SQLite is used only as the decoder for its binary JSON format. This readonly
@@ -165,6 +172,38 @@ export function createSqliteDocumentDecoder(options: {
     // source constraint and json_extract also accepts JSON text and JSON5.
     if (valid.get(payload, kind === "live" ? 8 : 11)?.valid !== 1)
       throw new TypeError("Malformed SQLite document");
+  };
+  const metricInput = (
+    payload: Uint8Array,
+    names: readonly string[],
+    keys: readonly string[] | undefined,
+    keyMode: SqliteMetricKeyMode,
+  ) => {
+    check(payload, "live");
+    if (
+      names.length > 32 ||
+      new Set(names).size !== names.length ||
+      names.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)) ||
+      !["text", "integer"].includes(keyMode)
+    )
+      throw new TypeError("Invalid metric document projection");
+    const integer = keyMode === "integer";
+    const key = integer
+      ? "CAST(CAST(key AS TEXT) AS BLOB)"
+      : "CAST(key AS BLOB)";
+    const identity = integer ? "CAST(key AS INTEGER)" : "key";
+    const filter = `WHERE ${integer ? "key IS NOT NULL" : "typeof(key)='text'"}${keys ? ` AND ${identity} IN (SELECT ${integer ? "CAST(value AS INTEGER)" : "value"} FROM json_each(?2))` : ""}`;
+    return {
+      keyColumns: `${key} AS key${integer ? ",CAST(key AS INTEGER) AS integer_key" : ""}`,
+      filter,
+      paths: names.map((_, index) => `?${index + (keys ? 3 : 2)}`),
+      bindings: [
+        payload,
+        ...(keys ? [JSON.stringify(keys)] : []),
+        ...names.map((name) => `$.${name}`),
+      ],
+      integer,
+    };
   };
   return {
     identity: { ...SQLITE_DOCUMENT_DECODER },
@@ -264,49 +303,69 @@ export function createSqliteDocumentDecoder(options: {
       names: readonly string[],
       keys?: readonly string[],
       includeTextBytes = false,
+      keyMode: SqliteMetricKeyMode = "text",
     ): SqliteMetricEntry[] {
-      check(payload, "live");
-      if (
-        names.length > 32 ||
-        new Set(names).size !== names.length ||
-        names.some((name) => !/^[a-z][a-z0-9_]*$/.test(name))
-      )
-        throw new TypeError("Invalid metric document projection");
+      const input = metricInput(payload, names, keys, keyMode);
       const columns = names.map((_, index) => {
-        const field = `json_extract(value,?${index + (keys ? 3 : 2)})`;
+        const field = `json_extract(value,${input.paths[index]})`;
         return `typeof(${field}) AS t${index},CASE WHEN typeof(${field})='text' THEN CAST(${field} AS BLOB) ELSE ${field} END AS v${index}`;
       });
       const statement = db.prepare(
-        `SELECT CAST(key AS BLOB) AS key${columns.length ? `,${columns.join(",")}` : ""} FROM json_each(?1) WHERE typeof(key)='text'${keys ? " AND key IN (SELECT value FROM json_each(?2))" : ""} ORDER BY id`,
+        `SELECT ${input.keyColumns}${columns.length ? `,${columns.join(",")}` : ""} FROM json_each(?1) ${input.filter} ORDER BY id`,
       );
       statement.setReadBigInts(true);
-      return statement
-        .all(
-          payload,
-          ...(keys ? [JSON.stringify(keys)] : []),
-          ...names.map((name) => `$.${name}`),
-        )
-        .map((row) => ({
-          key: wireText.decode(row.key as Uint8Array),
-          values: Object.fromEntries(
-            names.map((name, index) => [
-              name,
-              scalar(row[`v${index}`] as SqliteDocumentValue, row[`t${index}`]),
-            ]),
-          ),
-          ...(includeTextBytes
-            ? {
-                textBytes: Object.fromEntries(
-                  names
-                    .filter((_, index) => row[`t${index}`] === "text")
-                    .map((name) => [
-                      name,
-                      (row[`v${names.indexOf(name)}`] as Uint8Array).slice(),
-                    ]),
-                ),
-              }
-            : {}),
-        }));
+      return statement.all(...input.bindings).map((row) => ({
+        key: wireText.decode(row.key as Uint8Array),
+        ...(input.integer ? { integerKey: row.integer_key as bigint } : {}),
+        values: Object.fromEntries(
+          names.map((name, index) => [
+            name,
+            scalar(row[`v${index}`] as SqliteDocumentValue, row[`t${index}`]),
+          ]),
+        ),
+        ...(includeTextBytes
+          ? {
+              textBytes: Object.fromEntries(
+                names
+                  .filter((_, index) => row[`t${index}`] === "text")
+                  .map((name) => [
+                    name,
+                    (row[`v${names.indexOf(name)}`] as Uint8Array).slice(),
+                  ]),
+              ),
+            }
+          : {}),
+      }));
+    },
+    validateMetricEntries(payload: Uint8Array, name: string): void {
+      const input = metricInput(payload, [name], undefined, "integer");
+      // A source WHERE predicate can run before the membership lookup. Keep
+      // malformed orphan values observable even though no row is returned.
+      const statement = db.prepare(
+        "SELECT json_extract(value,?2) FROM json_each(?1)",
+      );
+      statement.setReadBigInts(true);
+      statement.all(...input.bindings);
+    },
+    metricTuples(
+      payload: Uint8Array,
+      names: readonly string[],
+      keys?: readonly string[],
+      keyMode: SqliteMetricKeyMode = "text",
+    ): SqliteMetricTuple[] {
+      const input = metricInput(payload, names, keys, keyMode);
+      if (names.length < 2)
+        throw new TypeError("Metric tuples require multiple fields");
+      const statement = db.prepare(
+        `SELECT ${input.keyColumns},CAST(json_extract(value,${input.paths.join(",")}) AS BLOB) AS tuple FROM json_each(?1) ${input.filter} ORDER BY id`,
+      );
+      statement.setReadBigInts(true);
+      return statement.all(...input.bindings).map((row) => ({
+        key: wireText.decode(row.key as Uint8Array),
+        ...(input.integer ? { integerKey: row.integer_key as bigint } : {}),
+        json:
+          row.tuple === null ? null : wireText.decode(row.tuple as Uint8Array),
+      }));
     },
     axons(payload: Uint8Array): { key: string; value: SqliteDocumentValue }[] {
       check(payload, "live");

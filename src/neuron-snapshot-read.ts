@@ -14,8 +14,13 @@ import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
 import { selectedNeuronSnapshotStore } from "./neuron-snapshot-store.ts";
 import { selectedNeuronMetricStore } from "./neuron-metric-store.ts";
 import { selectedNeuronAggregateStore } from "./neuron-aggregate-store.ts";
+import {
+  selectedNeuronLiveStore,
+  NEURON_ECONOMICS_FIELDS,
+  type NeuronDirectoryRow,
+} from "./neuron-live-store.ts";
 
-const EconomicsValuesSchema = z.array(z.unknown()).length(5);
+export const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
   z.tuple([z.number(), z.string().nullable(), EconomicsValuesSchema]),
 );
@@ -76,6 +81,8 @@ export async function readNewestNeuronCapture(
   sql: PgSql,
   env: unknown,
 ): Promise<number> {
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.newestCapture();
   const store = selectedD1Store(env, ["neurons"]);
   const rows = store
     ? await store.query(NEWEST_NEURON_CAPTURE_QUERY)
@@ -88,7 +95,7 @@ export async function readNewestNeuronCapture(
 // A multi-path extraction returns JSON, while individual SQLite columns turn
 // booleans into integers and structured values into JSON text. Restore those
 // same column values when unpacking the compact response.
-function sqliteJsonColumn(value: unknown): unknown {
+export function sqliteJsonColumn(value: unknown): unknown {
   if (typeof value === "boolean") return Number(value);
   if (value !== null && typeof value === "object") return JSON.stringify(value);
   return value;
@@ -102,13 +109,9 @@ export async function readNeuronEconomicsRows(
   env: unknown,
   netuid?: number,
 ): Promise<Record<string, unknown>[]> {
-  const metrics = [
-    "stake_tao",
-    "validator_permit",
-    "dividends",
-    "active",
-    "take",
-  ];
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.economicsRows(netuid);
+  const metrics = NEURON_ECONOMICS_FIELDS;
   const scoped = netuid !== undefined;
   const params = scoped ? [netuid] : [];
   const store = selectedD1Store(env, ["neurons"]);
@@ -239,16 +242,13 @@ export function subnetNeuronRowsFromParts(
   return rows.sort((left, right) => Number(left.uid) - Number(right.uid));
 }
 
-interface NeuronDirectoryRow extends Record<string, unknown> {
-  // Both statements exclude NULL hotkeys before returning rows.
-  hotkey: string;
-}
-
 export async function readNeuronDirectoryRows(
   sql: PgSql,
   env: unknown,
   validatorsOnly = false,
 ): Promise<NeuronDirectoryRow[]> {
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.directoryRows(validatorsOnly);
   const metrics = validatorsOnly
     ? [
         "validator_trust",
