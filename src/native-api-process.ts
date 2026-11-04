@@ -114,16 +114,25 @@ export interface NativeApiComposition<Environment, Scheduled, Queue> {
   ): Promise<Response | null>;
 }
 
+export interface NativeApiKeyValues {
+  control: AppKv;
+  oauthPending: AppKv;
+}
+
 export interface NativeApiOptions<Environment, Scheduled, Queue> {
   postgres: PooledPgOptions;
   maxRequests: number;
   maxJobs: number;
   drainTimeoutMillis: number;
   sources: readonly NativeSourceDefinition[];
-  kv: { control: AppKv; oauthPending: AppKv };
+  kv:
+    | NativeApiKeyValues
+    | ((providers: {
+        sources: ReadonlyMap<string, NativeSource>;
+      }) => NativeApiKeyValues | Promise<NativeApiKeyValues>);
   compose(providers: {
     sources: ReadonlyMap<string, NativeSource>;
-    kv: NativeApiOptions<Environment, Scheduled, Queue>["kv"];
+    kv: NativeApiKeyValues;
   }): Promise<NativeApiComposition<Environment, Scheduled, Queue>>;
   onBackgroundError(error: unknown): void;
 }
@@ -235,8 +244,11 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
     if (!Number.isSafeInteger(value) || value <= 0)
       throw new Error("Native admission limits must be positive safe integers");
   }
-  requireKv(options.kv?.control, "control KV");
-  requireKv(options.kv?.oauthPending, "OAuth pending KV");
+  const requestedKv = options.kv;
+  if (typeof requestedKv !== "function") {
+    requireKv(requestedKv?.control, "control KV");
+    requireKv(requestedKv?.oauthPending, "OAuth pending KV");
+  }
   requireFunction(options.compose, "Native application composition");
   requireFunction(options.onBackgroundError, "Background error reporter");
   const runtime = createPgStoreRuntime(options.postgres, poolFactory);
@@ -255,7 +267,13 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
         scopedSource(runtime, source),
       ]),
     );
-    composition = await options.compose({ sources, kv: options.kv });
+    const kv =
+      typeof requestedKv === "function"
+        ? await requestedKv({ sources })
+        : requestedKv;
+    requireKv(kv?.control, "control KV");
+    requireKv(kv?.oauthPending, "OAuth pending KV");
+    composition = await options.compose({ sources, kv });
     for (const method of ["fetch", "scheduled", "queue"] as const) {
       requireFunction(
         composition?.application?.[method],
