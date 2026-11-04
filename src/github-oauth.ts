@@ -288,16 +288,15 @@ export const isAnonymousMcpRequest = isNonOAuthMcpRequest;
 // real Workers runtime: the package's own runtime file does
 // `import ... from "cloudflare:workers"` at module scope (confirmed against
 // dist/oauth-provider.js, not just its .d.ts), a protocol plain Node
-// doesn't implement. Both real routes
-// (handleAuthorizeRequest/handleGithubOAuthCallback) accept an injectable
-// deps.getHelpers precisely so their own logic stays fully covered without
-// this function ever running in a test.
-/* v8 ignore start */
-async function defaultGetOAuthHelpers(env: Env): Promise<OAuthHelpers> {
+// doesn't implement. Native composition supplies OAUTH_PROVIDER explicitly;
+// Worker deployments retain the lazy import. Tests can also inject getHelpers.
+async function defaultGetOAuthHelpers(
+  env: Env & { OAUTH_PROVIDER?: OAuthHelpers },
+): Promise<OAuthHelpers> {
+  if (env.OAUTH_PROVIDER) return env.OAUTH_PROVIDER;
   const { getOAuthApi } = await import("@cloudflare/workers-oauth-provider");
   return getOAuthApi(buildOAuthProviderOptions(UNUSED_DEFAULT_HANDLER), env);
 }
-/* v8 ignore stop */
 
 function randomNonce(): string {
   const bytes = new Uint8Array(24);

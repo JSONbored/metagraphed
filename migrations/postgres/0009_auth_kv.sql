@@ -1,5 +1,6 @@
 -- Application control, registry and pending-auth KV. This family is separate
--- from source-imported app/retained data and provider-owned OAuth grants.
+-- from source-imported app/retained data. The native OAuth adapter owns the
+-- oauth-provider namespace and serializes its grant transitions separately.
 CREATE SCHEMA auth;
 CREATE TABLE auth.kv_entries (
     namespace text COLLATE "C" NOT NULL,
