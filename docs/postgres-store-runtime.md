@@ -192,8 +192,8 @@ its local concurrency slot until it actually exits.
 Successful handlers default to acknowledgment; handler or queued background
 failure defaults to retry. Individual explicit decisions win over the batch
 fallback and preserve their first decision, including retry delays. Native
-queue invocations propagate background failures while retaining the existing
-HTTP and scheduled-job reporting behavior.
+queue invocations propagate background failures. HTTP background failures retain
+their report-only behavior; the scheduler section below describes scheduled results.
 
 Retry exhaustion moves the original payload, message ID and timestamp to its
 configured DLQ and records the source attempt count. A DLQ begins its own attempt
@@ -207,3 +207,65 @@ native process or its shared pool. Transport closure drains its admitted sends
 and deliveries. At the drain deadline it aborts consumers and rejects while retaining `closing` state if work
 is unfinished; a later close can observe completion. It does not close the
 database pool. No production queue binding, scheduler, fleet job or activation is supplied by this preparation layer.
+
+## Cron scheduler preparation
+
+`NATIVE_CRON_DEFINITIONS` derives all 36 current cron strings from the API, data
+API and registry-sync owners. `parseNativeCron` accepts the UTC syntax actually
+used by that grid: wildcard calendar fields and minute/hour integers, lists,
+wildcards and steps. Other syntax fails explicitly. The existing handlers remain
+the business-logic owners; no handler body is copied into the scheduler.
+
+`createPgCronScheduler(runtime, definitions, limits)` uses the process-owned pool
+and an explicit finite policy in migration `0030_cron.sql`. Constructing it
+installs no schedules. The caller must deliberately call `register(startAtMs)`
+with an inclusive UTC start boundary, then call `plan()` and `run(...)` or the
+`createPgCronDispatcher(scheduler, { api, data, registry })` dispatcher. Each
+method does one bounded operation. There is no timer, poller, process launcher or
+production entry point. Registration is idempotent only for the same inventory
+and start boundary; a changed policy or an incomplete/foreign stored inventory
+fails closed. Retiring or changing a registered schedule requires a separately
+reviewed migration.
+
+Planning uses database time, advances a durable per-schedule cursor and selects
+only the latest due occurrence. An older pending slot and any intervening due
+slots become skipped receipts with their first/last UTC slot and count. One
+pending slot can wait behind each active schedule. This is deliberate latest-due
+coalescing: current handlers observe current time and do not consume the old
+`scheduledTime` as historical input, so executing missed ticks would not backfill
+historical observations. Native events provide the exact `cron` and selected
+`scheduledTime` fields used by the current handlers. Other Worker event features
+are not implied.
+
+Claims have unique `(owner, cron, scheduledTime)` identity, a fresh fencing token,
+and a database-enforced global concurrency limit. Each schedule has at most one
+running lease. An expired lease can be reclaimed up to the finite attempt limit;
+exhaustion leaves a durable `lease-exhausted` receipt. A stale token or expired
+lease cannot record completion. Existing producers must remain safe for
+at-least-once execution because fencing cannot undo side effects performed
+before a process loses custody. Normal handler completion, a domain decline
+(`ok: false` or `skipped: true`), handler exception, background failure and abort
+are separate outcomes. Ordinary declines and completed failures are terminal for
+that occurrence; only an abandoned expired lease is redelivered. A later
+regular tick remains eligible.
+
+Native process `scheduled` calls return the handler's result and wait for its
+background work. A background failure throws `NativeScheduledBackgroundError`
+with the original result and cause. The scheduler returns that result/error to
+its caller but stores only the outcome and optional boolean `ok`/`skipped` flags,
+never raw results or exception text. The execution deadline is shorter than the
+lease; abort freezes the recorded outcome even if a handler returns late. An
+uncooperative handler continues to consume its local concurrency slot until it
+exits. Stop scheduler admission and await `close()` before closing its supplied
+processes or pool. A failed drain retains `closing` state and can be awaited
+again. The scheduler never closes the shared pool.
+
+`historyLimit` bounds each schedule to that many recent skip-window receipts and
+settled occurrence receipts, plus at most one active occurrence. The schedule's
+lifetime skipped count survives receipt pruning. Exact old slot ranges beyond
+that explicit retention limit are not retained; operators must export them
+before pruning if a future retention policy requires a longer audit trail.
+
+Durable Object alarms remain separate work. Chain firehose, write-buffer and MCP
+session actors need their own durable state, serialized callback and
+WebSocket/session semantics; generic cron rows do not replace those actors.

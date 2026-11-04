@@ -1,3 +1,4 @@
+import { createNativeWorkGroup } from "./native-work-group.ts";
 import { randomUUID } from "node:crypto";
 import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { PgTransaction } from "./pg-pool.ts";
@@ -180,23 +181,12 @@ export async function createPgQueueTransport(
       throw new Error("Native queue policy inventory differs");
     return new Map(rows.map((row) => [row.name, row]));
   });
-  let open = true;
-  const active = new Set<Promise<unknown>>();
-  const consumers = new Set<Promise<void>>();
-  const controllers = new Set<AbortController>();
-  let drained = false;
-  let draining: Promise<void> | undefined;
-  let drainReason: Error | undefined;
-  const running = new Map<PgQueueName, number>();
-  let closing: Promise<void> | undefined;
-  const admit = <T>(operation: () => Promise<T>): Promise<T> => {
-    if (!open)
-      return Promise.reject(new Error("Native queue transport is closed"));
-    const task = operation();
-    active.add(task);
-    void task.finally(() => active.delete(task)).catch(() => {});
-    return task;
-  };
+  const work = createNativeWorkGroup({
+    name: "Native queue",
+    executionTimeoutMillis: limits.executionTimeoutMillis,
+    drainTimeoutMillis: limits.drainTimeoutMillis,
+  });
+  const admit = work.track;
   const policyFor = (queue: PgQueueName): Policy => {
     const policy = policies.get(queue);
     if (!policy) throw new Error("Unknown native queue");
@@ -416,8 +406,8 @@ export async function createPgQueueTransport(
         metrics: () => admit(() => transact((tx) => metrics(tx, queue))),
       };
     },
-    get state(): "ready" | "closing" | "closed" {
-      return open ? "ready" : drained ? "closed" : "closing";
+    get state() {
+      return work.state;
     },
     run(
       queue: PgQueueName,
@@ -427,12 +417,11 @@ export async function createPgQueueTransport(
       ) => Promise<unknown>,
     ): Promise<PgQueueRunResult> {
       const policy = policyFor(queue);
-      return admit(async () => {
-        if ((running.get(queue) ?? 0) >= policy.max_concurrency)
-          return emptyResult("capacity");
-        running.set(queue, (running.get(queue) ?? 0) + 1);
-        let consumerOwnsSlot = false;
-        try {
+      return work.run(
+        queue,
+        policy.max_concurrency,
+        () => emptyResult("capacity"),
+        async (scope) => {
           const batch = await claim(policy);
           if (batch.status !== "claimed") return emptyResult(batch.status);
           const delivery = queueDelivery(
@@ -445,56 +434,18 @@ export async function createPgQueueTransport(
             })),
             batch.metrics,
           );
-          const controller = new AbortController();
-          controllers.add(controller);
-          if (drainReason) controller.abort(drainReason);
-          const pending = Promise.resolve().then(() => {
-            if (controller.signal.aborted) throw controller.signal.reason;
-            return consume(delivery.batch, controller.signal);
-          });
-          consumerOwnsSlot = true;
-          const finished = pending
-            .then(
-              () => undefined,
-              () => undefined,
-            )
-            .finally(() => {
-              controllers.delete(controller);
-              consumers.delete(finished);
-              running.set(queue, running.get(queue)! - 1);
-            });
-          consumers.add(finished);
           let frozen: readonly QueueDecision[] | undefined;
-          let onAbort!: () => void;
-          const aborted = new Promise<never>((_resolve, reject) => {
-            onAbort = () => {
-              frozen ??= delivery.finish(true);
-              reject(controller.signal.reason);
-            };
-            if (controller.signal.aborted) onAbort();
-            else
-              controller.signal.addEventListener("abort", onAbort, {
-                once: true,
-              });
-          });
-          const timer = setTimeout(
-            () =>
-              controller.abort(
-                new Error("Native queue execution deadline exceeded"),
-              ),
-            limits.executionTimeoutMillis,
-          );
           let failure: { error: unknown } | undefined;
           try {
-            await Promise.race([pending, aborted]);
+            await scope.invoke(
+              (signal) => consume(delivery.batch, signal),
+              () => {
+                frozen = delivery.finish(true);
+              },
+            );
           } catch (error) {
             failure = { error };
-          } finally {
-            clearTimeout(timer);
-            controller.signal.removeEventListener("abort", onAbort);
           }
-          // Freeze decisions at completion/abort. A late callback cannot undo
-          // settled custody, and keeps its local slot until it actually exits.
           const result = await settle(
             policy,
             batch.id,
@@ -503,37 +454,10 @@ export async function createPgQueueTransport(
           );
           if (failure) throw failure.error;
           return result;
-        } finally {
-          if (!consumerOwnsSlot) running.set(queue, running.get(queue)! - 1);
-        }
-      });
-    },
-    close(): Promise<void> {
-      if (closing) return closing;
-      open = false;
-      draining ??= (async () => {
-        while (active.size || consumers.size)
-          await Promise.allSettled([...active, ...consumers]);
-        drained = true;
-      })();
-      let timer: ReturnType<typeof setTimeout>;
-      const deadline = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          drainReason = new Error(
-            "Native queue drain deadline exceeded; unfinished operations remain",
-          );
-          for (const controller of controllers) controller.abort(drainReason);
-          reject(drainReason);
-        }, limits.drainTimeoutMillis);
-      });
-      closing = Promise.race([draining, deadline]).finally(() =>
-        clearTimeout(timer),
+        },
       );
-      void closing.catch(() => {
-        closing = undefined;
-      });
-      return closing;
     },
+    close: work.close,
   };
 }
 

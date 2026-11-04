@@ -5,6 +5,7 @@ import type { AppKv } from "../src/app-kv.ts";
 import type { PgPool, PooledPgOptions } from "../src/pg-pool.ts";
 import {
   createNativeApiProcess,
+  NativeScheduledBackgroundError,
   type NativeApiOptions,
   type NativeExecutionContext,
   type NativeSource,
@@ -463,6 +464,7 @@ describe("native API process", () => {
       };
       composition.application.scheduled = async (_event, _env, ctx) => {
         ctx.waitUntil(Promise.reject(failure));
+        return { ok: false, skipped: true };
       };
       return composition;
     };
@@ -472,7 +474,12 @@ describe("native API process", () => {
       { action: "ack" },
       { action: "retry" },
     ]);
-    await process.scheduled("unchanged");
+    await assert.rejects(process.scheduled("record result"), (error) => {
+      assert.ok(error instanceof NativeScheduledBackgroundError);
+      assert.equal(error.cause, failure);
+      assert.deepEqual(error.result, { ok: false, skipped: true });
+      return true;
+    });
     assert.equal(f.errors.length, 2);
     await process.close();
     assert.equal(f.ends(), 1);
@@ -496,36 +503,41 @@ describe("native API process", () => {
     await process.close();
   });
 
-  test("queue cancellation reaches the invocation signal and refuses an already-aborted dispatch", async () => {
-    const f = fixture();
-    const compose = f.options.compose;
-    const entered = deferred();
-    const reason = new Error("consumer deadline");
-    let calls = 0;
-    f.options.compose = async (providers) => {
-      const composition = await compose(providers);
-      composition.application.queue = async (_batch, _env, ctx) => {
-        calls += 1;
-        entered.resolve();
-        await new Promise<void>((resolve) =>
-          ctx.signal.addEventListener("abort", () => resolve(), { once: true }),
-        );
+  test.each(["queue", "scheduled"] as const)(
+    "%s cancellation reaches the invocation signal and refuses an already-aborted dispatch",
+    async (kind) => {
+      const f = fixture();
+      const compose = f.options.compose;
+      const entered = deferred();
+      const reason = new Error("consumer deadline");
+      let calls = 0;
+      f.options.compose = async (providers) => {
+        const composition = await compose(providers);
+        composition.application[kind] = async (_batch, _env, ctx) => {
+          calls += 1;
+          entered.resolve();
+          await new Promise<void>((resolve) =>
+            ctx.signal.addEventListener("abort", () => resolve(), {
+              once: true,
+            }),
+          );
+        };
+        return composition;
       };
-      return composition;
-    };
-    const process = await f.create();
-    const abort = new AbortController();
-    const running = process.queue("active", abort.signal);
-    await entered.promise;
-    abort.abort(reason);
-    await assert.rejects(running, (error) => error === reason);
-    await assert.rejects(
-      process.queue("never dispatched", abort.signal),
-      (error) => error === reason,
-    );
-    assert.equal(calls, 1);
-    await process.close();
-  });
+      const process = await f.create();
+      const abort = new AbortController();
+      const running = process[kind]("active", abort.signal);
+      await entered.promise;
+      abort.abort(reason);
+      await assert.rejects(running, (error) => error === reason);
+      await assert.rejects(
+        process[kind]("never dispatched", abort.signal),
+        (error) => error === reason,
+      );
+      assert.equal(calls, 1);
+      await process.close();
+    },
+  );
 
   test("cancels response bodies and reports rejected background work", async () => {
     const f = fixture();
