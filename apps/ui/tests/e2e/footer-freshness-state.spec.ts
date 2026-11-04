@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
-test.describe("Footer company attribution", () => {
+test.describe("Footer copyright and links", () => {
   for (const viewport of [
     { width: 375, height: 812 },
     { width: 768, height: 1024 },
@@ -13,9 +13,7 @@ test.describe("Footer company attribution", () => {
         await page.addInitScript((value) => localStorage.setItem("mg-theme", value), theme);
         await gotoThroughRestart(page, "/");
 
-        const attribution = page
-          .getByRole("contentinfo")
-          .getByText("Operated by carbonZERO LLC", { exact: true });
+        const attribution = page.getByRole("contentinfo").getByText(/^© \d{4} Metagraphed/);
         await expect(attribution).toHaveCount(1);
         await attribution.scrollIntoViewIfNeeded();
         await expect(attribution).toBeVisible();
@@ -77,9 +75,7 @@ test.describe("Footer company attribution", () => {
       if (route === "/this-page-does-not-exist") {
         await expect(page.getByRole("heading", { name: "Nothing at this URL" })).toBeVisible();
       }
-      const attribution = page
-        .getByRole("contentinfo")
-        .getByText("Operated by carbonZERO LLC", { exact: true });
+      const attribution = page.getByRole("contentinfo").getByText(/^© \d{4} Metagraphed/);
       await expect(attribution).toHaveCount(1);
       await attribution.scrollIntoViewIfNeeded();
       await expect(attribution).toBeVisible();
@@ -95,9 +91,7 @@ test.describe("Footer company attribution", () => {
       await page.evaluate(() => {
         document.documentElement.style.zoom = "2";
       });
-      const attribution = page
-        .getByRole("contentinfo")
-        .getByText("Operated by carbonZERO LLC", { exact: true });
+      const attribution = page.getByRole("contentinfo").getByText(/^© \d{4} Metagraphed/);
       await attribution.scrollIntoViewIfNeeded();
       await expect(attribution).toBeVisible();
       await expect(attribution).toBeInViewport();
