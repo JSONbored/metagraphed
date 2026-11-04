@@ -1,3 +1,7 @@
+import type {
+  AppExecutionContext,
+  AppScheduledEvent,
+} from "./runtime-context.ts";
 // metagraphed registry-sync Worker — the ONLY write path into the registry
 // database (`metagraphed`, schema in tests/fixtures/sqlite-schema/0001_registry.sql).
 //
@@ -311,9 +315,9 @@ export default {
    * to collide with.
    */
   async scheduled(
-    controller: ScheduledController,
+    controller: AppScheduledEvent,
     env: RegistrySyncApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ) {
     if (controller?.cron !== SELF_HEALTH_PROBE_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };

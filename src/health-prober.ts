@@ -1,3 +1,4 @@
+import type { AppExecutionContext } from "../workers/runtime-context.ts";
 import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 import { latestPointer } from "../workers/storage.ts";
 import { readRegistryKv } from "./registry-kv.ts";
@@ -517,7 +518,7 @@ interface RunHealthProberOverrides {
  */
 function observationsRunner(
   env: Env,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ): ObservationsSql | null {
   const native = selectedObservationsStore(env);
   if (native) return native;
@@ -537,7 +538,7 @@ function observationsRunner(
 // Run one full probe sweep and persist results. Returns a small summary object.
 export async function runHealthProber(
   env: Env,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   overrides: RunHealthProberOverrides = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
@@ -939,7 +940,7 @@ function utcDayBounds(ms: number): {
 // handleHealthUptimeRollupSync, keeps this idempotent).
 export async function rollupDailyUptime(
   env: Env,
-  overrides: { now?: () => number; ctx?: ExecutionContext } = {},
+  overrides: { now?: () => number; ctx?: AppExecutionContext } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const runAt = now();
@@ -1003,7 +1004,7 @@ export async function pruneHealthHistory(
     // can be true off the daily-uptime aggregate alone, and deleting the raw
     // window without its own aggregate landed would orphan the day.
     pruneRawChecks?: boolean;
-    ctx?: ExecutionContext;
+    ctx?: AppExecutionContext;
   } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
@@ -1088,7 +1089,7 @@ export async function writeSubnetSnapshotRows(
     capturedAt,
     ctx,
   }: {
-    ctx?: ExecutionContext;
+    ctx?: AppExecutionContext;
     profiles?: Row[];
     economicsByNetuid?: Map<unknown, Row>;
     /**
@@ -1196,7 +1197,7 @@ interface WriteSubnetSnapshotOverrides {
   recordExceptionEvent?: typeof recordExceptionEvent;
   /** Needed to reach Neon: createPgSql returns the pooled connection through
    * ctx.waitUntil, so without one this lane has no store. */
-  ctx?: ExecutionContext;
+  ctx?: AppExecutionContext;
 }
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into

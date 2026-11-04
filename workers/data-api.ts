@@ -1,3 +1,7 @@
+import type {
+  AppExecutionContext,
+  AppScheduledEvent,
+} from "./runtime-context.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
@@ -364,7 +368,7 @@ async function captureUncaughtDataApiError(
   error: unknown,
   route: string,
   env: DataApiEnv,
-  ctx: ExecutionContext | undefined,
+  ctx: AppExecutionContext | undefined,
 ): Promise<void> {
   const pending = recordExceptionEvent(env, {
     error,
@@ -767,7 +771,7 @@ const reportNeuronWriteFailure = createNeuronWriteReporter();
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
@@ -1029,7 +1033,7 @@ function chainDetailSyncAuth(
 async function handleChainDetailSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
@@ -1221,7 +1225,7 @@ const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
 async function handleNeuronDailyBackfill(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.NEURON_DAILY_BACKFILL_SECRET) {
     return writeJson(
@@ -1518,7 +1522,7 @@ function diffHyperparamsHistory(
 async function handleSubnetHyperparamsSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
     return writeJson(
@@ -1703,7 +1707,7 @@ const SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS = 500;
 async function handleSubnetHyperparamsBackfill(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<Response> {
   const provided =
     request.headers.get(SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER) || "";
@@ -1864,7 +1868,7 @@ function diffIdentityHistory(
 async function handleAccountIdentitySync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -2050,7 +2054,7 @@ const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
 async function handleSubnetIdentitySync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -2211,7 +2215,7 @@ const SUBNET_OWNERSHIP_SYNC_ROW_SCHEMA = subnetOwnershipSyncRowSchema({
 async function handleSubnetOwnershipSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_OWNERSHIP_SYNC_SECRET) {
     return writeJson(
@@ -2387,7 +2391,7 @@ function coerceNominatorCountSyncRow(row: Row) {
 async function handleValidatorNominatorCountsSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
     return writeJson(
@@ -2604,7 +2608,7 @@ function coerceNominatorPositionSyncRow(row: Row) {
 async function handleNominatorPositionsSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
     return writeJson(
@@ -2830,7 +2834,7 @@ const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
 async function handleSelfStakeSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SELF_STAKE_SYNC_SECRET) {
     return writeJson(
@@ -3067,7 +3071,7 @@ async function handleAccountBalancesSync(
   // Kept in the signature, unused: the router passes it positionally to every
   // handler, and the Neon mirror this route used to run moved to the queue
   // consumer with the write (metagraphed-infra#353).
-  _ctx?: ExecutionContext,
+  _ctx?: AppExecutionContext,
 ) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
     return writeJson(
@@ -3299,7 +3303,7 @@ function coerceHotkeyAlphaSyncRow(row: Row) {
 async function handleHotkeyAlphaSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.HOTKEY_ALPHA_SYNC_SECRET) {
     return writeJson(
@@ -3808,7 +3812,7 @@ export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
 /** The diff read and its capture writer must select the same complete family. */
 function captureFamilyRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   lane: string,
 ): PgSql {
   const plan = FAMILY_MIRROR_PLANS[lane];
@@ -3841,7 +3845,7 @@ export const ACCOUNT_STATE_TABLES = [
  * retain the tagged-SQL contract; null keeps the caller's unavailable response. */
 export function userStateRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | null {
   const d1 = selectedD1Store(env, tables);
@@ -3854,7 +3858,7 @@ export function userStateRunner(
 
 async function withAlertTriggersSql(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   fn: (sql: PgSql) => Promise<Response>,
 ) {
   const sql = userStateRunner(env, ctx, ALERT_TRIGGER_TABLES);
@@ -3994,7 +3998,7 @@ async function resolveAlertTriggerCreateAuth(
 async function handleAlertTriggerCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await resolveAlertTriggerCreateAuth(request, env);
   if (!auth.ok) return auth.response;
@@ -4081,7 +4085,7 @@ async function handleAlertTriggerCreate(
 async function handleAlertTriggerGet(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4180,7 +4184,7 @@ async function runAlertTriggerUpdate(sql: PgSql, id: string, merged: Row) {
 async function handleAlertTriggerUpdate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4208,7 +4212,7 @@ async function handleAlertTriggerUpdate(
 async function handleAlertTriggerDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4232,7 +4236,7 @@ async function handleAlertTriggerDelete(
 async function handleAlertTriggersActiveList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4278,7 +4282,7 @@ async function handleAlertTriggersActiveList(
 async function handleAlertTriggersMatchedWriteback(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4360,7 +4364,7 @@ const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
 async function handleAlertTriggersDeliveryLogWrite(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4441,7 +4445,7 @@ async function handleAlertTriggersDeliveryLogWrite(
 async function handleAlertTriggersRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4520,7 +4524,7 @@ async function requireVerifiedWatchSs58(
 async function handleWatchTriggersList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4540,7 +4544,7 @@ async function handleWatchTriggersList(
 async function handleWatchTriggerUpdate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4570,7 +4574,7 @@ async function handleWatchTriggerUpdate(
 async function handleWatchTriggerDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4593,7 +4597,7 @@ async function handleWatchTriggerDelete(
 async function handleWatchTriggerDeliveries(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4624,7 +4628,7 @@ async function handleWatchTriggerDeliveries(
 async function handleWatchTriggersRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4683,7 +4687,7 @@ function pushSubscriptionView(row: Record<string, unknown>) {
 async function handleWatchPushSubscriptionsList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4709,7 +4713,7 @@ async function handleWatchPushSubscriptionsList(
 async function handleWatchPushSubscriptionCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4820,7 +4824,7 @@ async function handleWatchPushSubscriptionCreate(
 async function handleWatchPushSubscriptionDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!/^[0-9]{1,19}$/.test(id)) {
@@ -4851,7 +4855,7 @@ async function handleWatchPushSubscriptionDelete(
 async function handleInternalPushSubscription(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   // Same inline gate the sibling internal routes use (no shared helper
@@ -4920,7 +4924,7 @@ async function handleInternalPushSubscription(
 async function handleWatchPushSubscriptionsRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4983,7 +4987,7 @@ const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql<T>(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   fn: (sql: PgSql) => Promise<T>,
 ): Promise<T | Response> {
   try {
@@ -5092,7 +5096,7 @@ async function handleWalletChallenge(request: Request, env: DataApiEnv) {
 async function handleWalletVerify(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
@@ -5233,7 +5237,7 @@ async function handleWatchTokenMint(request: Request, env: DataApiEnv) {
 async function handleGithubAccountUpsert(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5303,7 +5307,7 @@ async function handleGithubAccountUpsert(
 async function handleGithubAccountTier(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5379,7 +5383,7 @@ async function requireAccountSession(request: Request, env: DataApiEnv) {
 async function handleAccountKeyCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -5460,7 +5464,7 @@ async function handleAccountKeyCreate(
 async function handleAccountKeysList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -5510,7 +5514,7 @@ const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 async function handleAccountKeyRevoke(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   keyId: string,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -5613,7 +5617,7 @@ async function readApiKeyLedgerState(
 async function handleApiKeyState(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured)
@@ -5660,7 +5664,7 @@ async function handleApiKeyState(
 async function handleApiKeyVerify(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5747,7 +5751,7 @@ async function handleApiKeyVerify(
 async function handleApiKeyUsageIncrement(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5835,7 +5839,7 @@ async function handleApiKeyUsageIncrement(
 async function handleApiQuotaSpend(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5958,7 +5962,7 @@ async function handleApiQuotaSpend(
 async function handleUsageRollupIncrement(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -6039,7 +6043,7 @@ async function handleUsageRollupIncrement(
 async function handleUsageRollupRead(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -6145,7 +6149,7 @@ const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 async function handleAccountTierPromote(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
   if (!configured) {
@@ -6278,7 +6282,7 @@ function requireBlockToken(request: Request, env: DataApiEnv) {
 async function handleApiKeyBlock(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6344,7 +6348,7 @@ async function handleApiKeyBlock(
 async function handleApiKeyUnblock(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6398,7 +6402,7 @@ async function handleApiKeyUnblock(
 async function handleApiKeyAnomalies(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6498,7 +6502,7 @@ const USAGE_DASHBOARD_WINDOW_DAYS = 7;
 async function handleAccountKeyStatus(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -6531,7 +6535,7 @@ async function handleAccountKeyStatus(
 async function handleAccountKeyUsage(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -6649,7 +6653,7 @@ async function handleAccountKeyUsage(
 async function handleAccountKeysRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -6748,7 +6752,7 @@ async function handleAccountKeysRoute(
 type NeuronsStoreRouteHandler = (
   sql: PgSql,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
@@ -7051,7 +7055,7 @@ const IDENTITY_ROUTE_TABLES = [
 ] as const;
 function routeRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | undefined {
   const d1 = selectedD1Store(env, tables);
@@ -7230,7 +7234,7 @@ async function latestCompletedNeuronSnapshot(
 // boundary check prevents an in-place partial pass from publishing mixed data.
 export async function refreshExplorerDirectoryMaterialization(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   capturedAt: number,
 ): Promise<boolean> {
   if (!env.METAGRAPH_CONTROL) return false;
@@ -7360,7 +7364,7 @@ export async function refreshExplorerDirectoryMaterialization(
 
 function scheduleExplorerDirectoryRefresh(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   capturedAt: number | Promise<number>,
 ) {
   ctx.waitUntil(
@@ -9097,7 +9101,7 @@ async function dispatchDataApiRequest(
   env: DataApiEnv,
   // Threaded through for createPgSql, which returns its Hyperdrive connection
   // via waitUntil rather than making the response wait on the teardown.
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<Response> {
   {
     const url = new URL(request.url);
@@ -9549,7 +9553,7 @@ export function decodeBlockHeader(
 export async function writeTaoUsdIndexRow(
   env: DataApiEnv,
   row: TaoUsdIndexRow,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ): Promise<{ written: boolean; skipped?: boolean; reason?: string }> {
   // Both stores use the same observation, JSON provenance and conflict key.
   // D1 first acknowledges any existing commit after a lost reply; Neon retains
@@ -9617,7 +9621,7 @@ async function writeTaoUsdCurrentKv(env: DataApiEnv, row: TaoUsdIndexRow) {
 
 export async function ingestTaoUsdIndex(
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ): Promise<Row> {
   if (!env.ETH_RPC_URL) {
     return { ok: false, skipped: true, reason: "ETH_RPC_URL not configured" };
@@ -9701,9 +9705,9 @@ export default {
   // Hyperdrive) -- routing a write through a service binding to
   // reach another Worker is the hop #4832 removed, not one to add back.
   async scheduled(
-    controller: ScheduledController,
+    controller: AppScheduledEvent,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ) {
     env = withArchiveObjects(env);
     // Declined BEFORE the branches, against the declared set, so an expression
@@ -9752,7 +9756,7 @@ export default {
   async fetch(
     request: Request,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ): Promise<Response> {
     env = withArchiveObjects(env);
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
@@ -9846,7 +9850,7 @@ export default {
   async queue(
     batch: MessageBatch<unknown>,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ): Promise<void> {
     env = withArchiveObjects(env);
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ

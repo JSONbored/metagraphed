@@ -16,6 +16,7 @@ import {
 
 export interface NativeExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
+  readonly active: boolean;
   /** Request disconnects and the process drain deadline reach owned jobs here. */
   signal: AbortSignal;
 }
@@ -112,6 +113,10 @@ export interface NativeApiComposition<Environment, Scheduled, Queue> {
     env: Environment,
     ctx: NativeExecutionContext,
   ): Promise<Response | null>;
+  /** Stop recurring/external admission without closing request capabilities. */
+  stop?(): Promise<void>;
+  /** Drain adapters after admitted invocations, before the shared pool closes. */
+  close?(): Promise<void>;
 }
 
 export interface NativeApiKeyValues {
@@ -133,6 +138,8 @@ export interface NativeApiOptions<Environment, Scheduled, Queue> {
   compose(providers: {
     sources: ReadonlyMap<string, NativeSource>;
     kv: NativeApiKeyValues;
+    /** Register immediately after constructing an owned adapter. */
+    onStartupCleanup(cleanup: () => Promise<void>): void;
   }): Promise<NativeApiComposition<Environment, Scheduled, Queue>>;
   onBackgroundError(error: unknown): void;
 }
@@ -154,6 +161,24 @@ export class NativeScheduledBackgroundError extends Error {
     super("Native scheduled background work failed", { cause });
     this.name = "NativeScheduledBackgroundError";
     this.result = result;
+  }
+}
+
+/** Failed construction retained live resources. The caller must retry close;
+ * the shared pool remains open until adapter cleanup actually completes. */
+export class NativeStartupCleanupError extends Error {
+  readonly close: () => Promise<void>;
+
+  constructor(
+    cause: unknown,
+    cleanupError: unknown,
+    close: () => Promise<void>,
+  ) {
+    super("Native startup failed and resource cleanup is unfinished", {
+      cause: new AggregateError([cause, cleanupError]),
+    });
+    this.name = "NativeStartupCleanupError";
+    this.close = close;
   }
 }
 
@@ -259,6 +284,7 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
     transaction: runtime.transaction,
   };
   let composition: NativeApiComposition<Environment, Scheduled, Queue>;
+  const startupCleanup: (() => Promise<void>)[] = [];
   try {
     await verifySources(store, options.sources);
     const sources = new Map(
@@ -273,7 +299,14 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
         : requestedKv;
     requireKv(kv?.control, "control KV");
     requireKv(kv?.oauthPending, "OAuth pending KV");
-    composition = await options.compose({ sources, kv });
+    composition = await options.compose({
+      sources,
+      kv,
+      onStartupCleanup(cleanup) {
+        requireFunction(cleanup, "Native startup cleanup");
+        startupCleanup.push(cleanup);
+      },
+    });
     for (const method of ["fetch", "scheduled", "queue"] as const) {
       requireFunction(
         composition?.application?.[method],
@@ -285,8 +318,44 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
       "Native OAuth provider.fetch",
     );
     requireFunction(composition?.directory, "Native directory handler");
+    if (composition.close !== undefined)
+      requireFunction(composition.close, "Native adapter shutdown");
+    if (composition.stop !== undefined)
+      requireFunction(composition.stop, "Native adapter admission stop");
   } catch (error) {
-    await runtime.close();
+    let pending: Promise<void> | undefined;
+    const close = async () => {
+      pending ??= (async () => {
+        while (startupCleanup.length) {
+          await startupCleanup[startupCleanup.length - 1]();
+          startupCleanup.pop();
+        }
+        await runtime.close();
+      })().catch((failure) => {
+        pending = undefined;
+        throw failure;
+      });
+      let timer: ReturnType<typeof setTimeout>;
+      try {
+        await Promise.race([
+          pending,
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(new Error("Native startup cleanup deadline exceeded")),
+              drainTimeoutMillis,
+            );
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer!);
+      }
+    };
+    try {
+      await close();
+    } catch (cleanupError) {
+      throw new NativeStartupCleanupError(error, cleanupError, close);
+    }
     throw error;
   }
   const entry = createApiEntry({
@@ -329,6 +398,9 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
     };
     active.set(done, cancel);
     const context: NativeExecutionContext = {
+      get active() {
+        return !finished;
+      },
       signal: controller.signal,
       waitUntil(promise) {
         if (finished) throw new Error("Native invocation has finished");
@@ -515,7 +587,16 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
       if (closing) return closing;
       draining ??= (async () => {
         state = "closing";
-        await Promise.allSettled([...active.keys()]);
+        try {
+          await composition.stop?.();
+          await Promise.allSettled([...active.keys()]);
+          await composition.close?.();
+        } catch (error) {
+          // A failed adapter drain must not close its pool. A later close can
+          // retry the adapter while request admission remains stopped.
+          draining = undefined;
+          throw error;
+        }
         await runtime.close();
         state = "closed";
       })();
