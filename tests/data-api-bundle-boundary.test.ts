@@ -113,6 +113,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-alerter-owner.ts",
     "src/native-auth-controls.ts",
     "src/pg-neuron-history.ts",
+    "src/pg-neuron-daily-view.ts",
     "src/pg-neuron-metrics.ts",
     "src/pg-neuron-aggregates.ts",
     "src/archive-catalog-pg.ts",
@@ -225,11 +226,14 @@ describe("data-api's bundle boundary", () => {
     // Initial native relational qualification added 3,760 source / 1,303 minified /
     // 526 gzip bytes over decb73ba, for 4,867,315 source bytes. The native
     // implementations remain excluded; only the bounded SQL selector joins.
+    // Native daily-view dispatch adds 7,542 source / 2,689 minified / 650 gzip
+    // bytes over 704ed13a, for 4,875,014 source bytes. PostgreSQL daily view
+    // implementation and the SQLite codec remain excluded from this graph.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_869_000,
+      firstParty < 4_876_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

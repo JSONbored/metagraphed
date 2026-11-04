@@ -36,6 +36,8 @@ import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
 import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
 import { selectedNativeRelationalSql } from "../src/native-relational-read.ts";
+import { selectedNeuronDailyViewStore } from "../src/neuron-daily-view-store.ts";
+import { selectedNeuronSummaryStore } from "../src/neuron-summary-store.ts";
 import {
   selectedNeuronViewStore,
   type NeuronViewQuery,
@@ -9209,6 +9211,197 @@ async function readNativeNeuronView(
   }
 }
 
+async function readNativeDailyViewRoutes(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const concentration = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
+  );
+  const turnover = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/turnover$/);
+  const history = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/history$/);
+  const yieldHistory = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
+  );
+  const chain = url.pathname === "/api/v1/chain/turnover";
+  const movers = url.pathname === "/api/v1/subnets/movers";
+  if (
+    !concentration &&
+    !turnover &&
+    !history &&
+    !yieldHistory &&
+    !chain &&
+    !movers
+  )
+    return null;
+  try {
+    if (history) {
+      const store = selectedNeuronSummaryStore(env);
+      if (!store) return null;
+      const netuid = Number(history[1]);
+      const rows = await store.subnetHistory(
+        netuid,
+        windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+        MAX_HISTORY_POINTS,
+      );
+      return json(
+        buildSubnetHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
+        }),
+      );
+    }
+    if (yieldHistory) {
+      const store = selectedNeuronMetricStore(env);
+      if (!store) return null;
+      const netuid = Number(yieldHistory[1]);
+      const rows = await store.dailyRows<
+        Pick<
+          NeuronDaily,
+          "snapshot_date" | "validator_permit" | "stake_tao" | "emission_tao"
+        >
+      >(
+        netuid,
+        windowCutoffDate(
+          url,
+          YIELD_HISTORY_WINDOWS,
+          DEFAULT_YIELD_HISTORY_WINDOW,
+        ),
+        ["snapshot_date", "validator_permit", "stake_tao", "emission_tao"],
+        YIELD_HISTORY_ROW_CAP,
+      );
+      return json(
+        buildSubnetYieldHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            YIELD_HISTORY_WINDOWS,
+            DEFAULT_YIELD_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= YIELD_HISTORY_ROW_CAP,
+        }),
+      );
+    }
+    const store = selectedNeuronDailyViewStore(env);
+    if (!store) return null;
+    if (concentration) {
+      const netuid = Number(concentration[1]);
+      const rows = await store.rows({
+        netuid,
+        columns: ["snapshot_date", "stake_tao", "emission_tao"],
+        fromDay: windowCutoffDate(
+          url,
+          CONCENTRATION_HISTORY_WINDOWS,
+          DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+        ),
+        limit: CONCENTRATION_HISTORY_ROW_CAP,
+      });
+      return json(
+        buildConcentrationHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            CONCENTRATION_HISTORY_WINDOWS,
+            DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+        }),
+      );
+    }
+    if (turnover) {
+      const netuid = Number(turnover[1]);
+      const rawWindow =
+        url.searchParams.get("window") || DEFAULT_HISTORY_WINDOW;
+      const window = Object.hasOwn(HISTORY_WINDOW_DAYS, rawWindow)
+        ? rawWindow
+        : DEFAULT_HISTORY_WINDOW;
+      const days = HISTORY_WINDOW_DAYS[window];
+      const { startDate, endDate } = await store.window(days, netuid);
+      const limit = 1000000;
+      const rows =
+        startDate == null || endDate == null
+          ? []
+          : await store.rows({
+              netuid,
+              columns: ["snapshot_date", "uid", "hotkey", "validator_permit"],
+              days: [startDate, endDate],
+              oldestFirst: true,
+              limit,
+            });
+      if (rows.length >= limit)
+        throw new Error("Native turnover exceeds its complete-row budget");
+      const options = {
+        window,
+        startDate,
+        endDate,
+        requestedDays: days ?? null,
+      };
+      const result = buildTurnover(rows, netuid, options);
+      return json(
+        url.searchParams.get("changes") === "true"
+          ? {
+              ...result,
+              changes: turnoverChangeDetail(
+                buildTurnoverChanges(rows, netuid, options),
+              ),
+            }
+          : result,
+      );
+    }
+    const summary = selectedNeuronSummaryStore(env);
+    if (!summary) return null;
+    if (chain) {
+      const rawWindow =
+        url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const window = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, rawWindow)
+        ? rawWindow
+        : DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const rawLimit = url.searchParams.get("limit");
+      const limit =
+        rawLimit == null || rawLimit === ""
+          ? CHAIN_TURNOVER_LIMIT_DEFAULT
+          : Number(rawLimit);
+      const { startDate, endDate } = await store.window(
+        CHAIN_TURNOVER_WINDOWS[window],
+      );
+      const rows =
+        startDate == null || endDate == null || startDate === endDate
+          ? []
+          : await summary.dailyValidators(startDate, endDate);
+      return json(
+        buildChainTurnover(rows, { window, startDate, endDate, limit }),
+      );
+    }
+    const rawWindow = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+    const window = Object.hasOwn(MOVERS_WINDOWS, rawWindow)
+      ? rawWindow
+      : DEFAULT_MOVERS_WINDOW;
+    const sort = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+    const rawLimit = url.searchParams.get("limit");
+    const limit =
+      rawLimit == null || rawLimit === ""
+        ? MOVERS_LIMIT_DEFAULT
+        : Number(rawLimit);
+    const { startDate, endDate } = await store.window(MOVERS_WINDOWS[window]);
+    const rows =
+      startDate == null || endDate == null || startDate === endDate
+        ? []
+        : await summary.dailyTotals(startDate, endDate);
+    return json(
+      buildMovers(
+        rows.filter((row) => row.snapshot_date === startDate),
+        rows.filter((row) => row.snapshot_date === endDate),
+        { window, startDate, endDate, sort, limit },
+      ),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 async function readNativeNeuronMetrics(
   url: URL,
   env: DataApiEnv,
@@ -9560,6 +9753,8 @@ async function dispatchDataApiRequest(
     if (nativeSnapshot) return nativeSnapshot;
     const nativeHistory = await readNativeDailyHistory(url, env);
     if (nativeHistory) return nativeHistory;
+    const nativeDailyViews = await readNativeDailyViewRoutes(url, env);
+    if (nativeDailyViews) return nativeDailyViews;
     const nativeMetrics = await readNativeNeuronMetrics(url, env);
     if (nativeMetrics) return nativeMetrics;
     const nativeView = await readNativeNeuronView(url, env);
