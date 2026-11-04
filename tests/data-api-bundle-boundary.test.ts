@@ -186,11 +186,14 @@ describe("data-api's bundle boundary", () => {
     // 412 gzip bytes over dbc5eaee, for 4,847,535 source bytes total. Only its
     // selectors enter the Worker; all PostgreSQL implementations stay absent.
     // Keep 465 source bytes of margin for this independently measured change.
+    // Native aggregate selection adds 751 source bytes over 4585f5f9, to
+    // 4,848,286. The minified size is unchanged and gzip is 2 bytes smaller;
+    // the native implementation remains absent. Keep 1,714 source bytes spare.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_848_000,
+      firstParty < 4_850_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
