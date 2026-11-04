@@ -1,6 +1,5 @@
 import type { ReadStoreDb } from "./read-store.ts";
 
-/** A process-owned capture capability; request handlers never own its pool. */
 export interface RootBasketStore {
   write(
     input: unknown,
@@ -9,7 +8,6 @@ export interface RootBasketStore {
   read: ReadStoreDb;
 }
 
-/** An explicitly supplied native capability must be complete or fail closed. */
 export function selectedRootBasketStore(env: unknown): RootBasketStore | null {
   if (!env || typeof env !== "object" || !("ROOT_BASKET_STORE" in env))
     return null;
@@ -21,7 +19,7 @@ export function selectedRootBasketStore(env: unknown): RootBasketStore | null {
     typeof store.read?.first !== "function"
   )
     throw new Error(
-      "ROOT_BASKET_STORE must provide capture write and read capabilities",
+      "ROOT_BASKET_STORE requires write, query and first",
     );
   return store as RootBasketStore;
 }
