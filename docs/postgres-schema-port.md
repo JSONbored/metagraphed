@@ -188,6 +188,29 @@ source import and production cutover retain their separate acceptance evidence.
 [PostgreSQL capability](../src/retained-blocks-pg.ts),
 [cursor index](../migrations/postgres/0003_retained_feed_order.sql)
 
+## Raw-capture staging and archive transitions
+
+The raw-capture load migration preserves seven source tables, two indexes,
+bytea chunks and the source capacity bounds. Accounting and archive triggers
+remain detached during load, allowing retained archives whose source batches
+were already released to be restored directly.
+[Load schema](../migrations/postgres/0018_raw_capture.sql)
+
+Activation requires the original budget singleton and compares its byte/object
+counts with the imported batches before validating chunk and selected-source
+foreign keys. It then attaches reservation, release, archive-source verification
+and archive-release effects. Shared statement locks establish ordering before
+tuple and foreign-key locks across those writes. An archive commit releases only
+its matching selected source and chunks, and adjusts the same budget atomically.
+Writes require `READ COMMITTED` isolation so cross-table validation observes the
+preceding writer after waiting for that lock.
+[Activation](../migrations/postgres/0019_raw_capture_activate.sql)
+
+The native fixture compares source metadata and transition effects, checks
+imported archive and budget states, demonstrates rollback, and tests competing
+reservations and concurrent archive/delete operations.
+[Integration test](../tests/postgres-raw-capture-schema.pg18.ts)
+
 ## Lane-health history and materializations
 
 The lane-health load phase preserves original hidden SQLite rowids in
@@ -342,26 +365,3 @@ The native fixture compares all fifteen source column definitions and ten
 indexes, checks exact and nullable values, retains pass defaults and composite
 uniqueness, and exercises sequence reconciliation and exhaustion.
 [Integration test](../tests/postgres-account-observations-schema.pg18.ts)
-
-## Raw-capture staging and archive transitions
-
-The raw-capture load migration preserves seven source tables, two indexes,
-bytea chunks and the source capacity bounds. Accounting and archive triggers
-remain detached during load, allowing retained archives whose source batches
-were already released to be restored directly.
-[Load schema](../migrations/postgres/0018_raw_capture.sql)
-
-Activation requires the original budget singleton and compares its byte/object
-counts with the imported batches before validating chunk and selected-source
-foreign keys. It then attaches reservation, release, archive-source verification
-and archive-release effects. Shared statement locks establish ordering before
-tuple and foreign-key locks across those writes. An archive commit releases only
-its matching selected source and chunks, and adjusts the same budget atomically.
-Writes require `READ COMMITTED` isolation so cross-table validation observes the
-preceding writer after waiting for that lock.
-[Activation](../migrations/postgres/0019_raw_capture_activate.sql)
-
-The native fixture compares source metadata and transition effects, checks
-imported archive and budget states, demonstrates rollback, and tests competing
-reservations and concurrent archive/delete operations.
-[Integration test](../tests/postgres-raw-capture-schema.pg18.ts)
