@@ -205,7 +205,10 @@ describe("pooled transaction ownership", () => {
     assert.deepEqual(c.releases, [true]);
   });
 
-  test.each(["BEGIN", "INSERT INTO items VALUES ($1)"])(
+  test.each([
+    "BEGIN ISOLATION LEVEL READ COMMITTED",
+    "INSERT INTO items VALUES ($1)",
+  ])(
     "discards a connection error during %s and removes its listener",
     async (phase) => {
       const f = fixture();
@@ -250,11 +253,19 @@ describe("pooled transaction ownership", () => {
     assert.deepEqual(await first, [{ changes: 1 }]);
     assert.deepEqual(
       a.calls.map((call) => call.text),
-      ["BEGIN", "INSERT INTO items VALUES ($1)", "COMMIT"],
+      [
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
+        "INSERT INTO items VALUES ($1)",
+        "COMMIT",
+      ],
     );
     assert.deepEqual(
       b.calls.map((call) => call.text),
-      ["BEGIN", "INSERT INTO items VALUES ($1)", "COMMIT"],
+      [
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
+        "INSERT INTO items VALUES ($1)",
+        "COMMIT",
+      ],
     );
     assert.deepEqual(a.calls[1]!.values, [1]);
     assert.deepEqual(b.calls[1]!.values, [2]);
@@ -276,7 +287,12 @@ describe("pooled transaction ownership", () => {
     );
     assert.deepEqual(
       c.calls.map((call) => call.text),
-      ["BEGIN", "INSERT INTO items VALUES ($1)", "SELECT 1", "COMMIT"],
+      [
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
+        "INSERT INTO items VALUES ($1)",
+        "SELECT 1",
+        "COMMIT",
+      ],
     );
   });
 
@@ -295,13 +311,13 @@ describe("pooled transaction ownership", () => {
       );
       assert.deepEqual(
         c.calls.map((call) => call.text),
-        ["BEGIN", "SELECT broken", "ROLLBACK"],
+        ["BEGIN ISOLATION LEVEL READ COMMITTED", "SELECT broken", "ROLLBACK"],
       );
       assert.deepEqual(c.releases, [rollbackFails]);
     },
   );
 
-  test.each(["BEGIN", "COMMIT"])(
+  test.each(["BEGIN ISOLATION LEVEL READ COMMITTED", "COMMIT"])(
     "discards the client after an uncertain %s without retry",
     async (phase) => {
       const f = fixture();
@@ -314,7 +330,9 @@ describe("pooled transaction ownership", () => {
       );
       assert.deepEqual(
         c.calls.map((call) => call.text),
-        phase === "BEGIN" ? ["BEGIN"] : ["BEGIN", "COMMIT"],
+        phase === "BEGIN ISOLATION LEVEL READ COMMITTED"
+          ? ["BEGIN ISOLATION LEVEL READ COMMITTED"]
+          : ["BEGIN ISOLATION LEVEL READ COMMITTED", "COMMIT"],
       );
       assert.deepEqual(c.releases, [true]);
     },
@@ -447,7 +465,7 @@ describe("leased transaction callbacks", () => {
     );
     assert.deepEqual(
       c.calls.map((call) => call.text),
-      ["BEGIN", "SELECT broken", "ROLLBACK"],
+      ["BEGIN ISOLATION LEVEL READ COMMITTED", "SELECT broken", "ROLLBACK"],
     );
     assert.deepEqual(c.releases, [false]);
   });
@@ -468,7 +486,7 @@ describe("leased transaction callbacks", () => {
     );
     assert.deepEqual(
       c.calls.map((call) => call.text),
-      ["BEGIN", "SELECT broken", "ROLLBACK"],
+      ["BEGIN ISOLATION LEVEL READ COMMITTED", "SELECT broken", "ROLLBACK"],
     );
     await assert.rejects(escaped.query("SELECT late"), /scope is closed/);
   });
@@ -508,7 +526,11 @@ describe("leased transaction callbacks", () => {
     );
     assert.deepEqual(
       c.calls.map((call) => call.text),
-      ["BEGIN", "INSERT INTO items VALUES ($1)", "COMMIT"],
+      [
+        "BEGIN ISOLATION LEVEL READ COMMITTED",
+        "INSERT INTO items VALUES ($1)",
+        "COMMIT",
+      ],
     );
     assert.deepEqual(c.releases, [true]);
   });
