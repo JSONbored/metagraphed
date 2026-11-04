@@ -15,12 +15,10 @@ vi.mock("../src/pg-store-runtime.ts", () => ({
 beforeEach(() => {
   mock.first.mockReset().mockResolvedValue({ payload: '{"value":1}' });
   mock.close.mockReset().mockResolvedValue(undefined);
-  mock.factory
-    .mockReset()
-    .mockImplementation(() => ({
-      producer: { first: mock.first },
-      close: mock.close,
-    }));
+  mock.factory.mockReset().mockImplementation(() => ({
+    producer: { first: mock.first },
+    close: mock.close,
+  }));
 });
 afterEach(() => {
   vi.unstubAllEnvs();

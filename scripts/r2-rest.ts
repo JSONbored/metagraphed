@@ -60,8 +60,13 @@ export async function readGeneratedStoreJson(
   const nativeDatabase = process.env.METAGRAPH_GENERATED_ARTIFACT_DATABASE_URL;
   if (nativeDatabase) {
     try {
-      const { readGeneratedArtifactPostgres } = await import("./generated-artifact-postgres.ts");
-      const doc = await readGeneratedArtifactPostgres(key, nativeDatabase, timeoutMs);
+      const { readGeneratedArtifactPostgres } =
+        await import("./generated-artifact-postgres.ts");
+      const doc = await readGeneratedArtifactPostgres(
+        key,
+        nativeDatabase,
+        timeoutMs,
+      );
       return doc && typeof doc === "object" && !Array.isArray(doc)
         ? (doc as Record<string, unknown>)
         : null;
