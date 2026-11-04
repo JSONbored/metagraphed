@@ -1,6 +1,7 @@
 import { createAdaptorServer } from "@hono/node-server";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
+import type { Duplex } from "node:stream";
 import type { NativeApiProcess } from "./native-api-process.ts";
 import { errorResponse } from "../workers/http.ts";
 
@@ -12,6 +13,37 @@ export interface NativeHttpOptions {
   requestTimeoutMillis: number;
   headersTimeoutMillis: number;
   onError(error: unknown): void;
+  upgrade?: NativeHttpUpgrade;
+}
+
+export interface NativeHttpUpgrade {
+  handle(
+    request: Request,
+    incoming: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+  ): Promise<void>;
+  close(): Promise<void>;
+}
+
+export function trustedHeaders(
+  original: Headers,
+  remoteAddress: string | undefined,
+  origin: URL,
+) {
+  const headers = new Headers(original);
+  for (const name of [...headers.keys()]) {
+    if (
+      name === "forwarded" ||
+      name === "x-real-ip" ||
+      name.startsWith("x-forwarded-") ||
+      name.startsWith("cf-")
+    )
+      headers.delete(name);
+  }
+  headers.set("host", origin.host);
+  if (remoteAddress) headers.set("cf-connecting-ip", remoteAddress);
+  return headers;
 }
 
 class NativePayloadTooLargeError extends Error {}
@@ -19,8 +51,9 @@ class NativePayloadTooLargeError extends Error {}
 /** Explicit listener for an already verified composition; no implicit bind address. */
 export async function listenNativeApi<Scheduled, Queue>(
   process: NativeApiProcess<Scheduled, Queue>,
-  options: NativeHttpOptions,
+  requested: NativeHttpOptions,
 ): Promise<{ address: AddressInfo; close(): Promise<void> }> {
+  const options = { ...requested };
   const origin = new URL(options.origin);
   if (
     !/^https?:$/.test(origin.protocol) ||
@@ -54,6 +87,12 @@ export async function listenNativeApi<Scheduled, Queue>(
     throw new Error("Native composition is not ready");
   if (typeof options.onError !== "function")
     throw new Error("Native HTTP error reporter is required");
+  if (
+    options.upgrade !== undefined &&
+    (typeof options.upgrade?.handle !== "function" ||
+      typeof options.upgrade?.close !== "function")
+  )
+    throw new Error("Native HTTP upgrade handler must own admission and close");
   const reportError = (error: unknown) => {
     try {
       options.onError(error);
@@ -71,19 +110,11 @@ export async function listenNativeApi<Scheduled, Queue>(
     overrideGlobalObjects: false,
     fetch: async (request, { incoming }) => {
       try {
-        const headers = new Headers(request.headers);
-        for (const name of [...headers.keys()]) {
-          if (
-            name === "forwarded" ||
-            name === "x-real-ip" ||
-            name.startsWith("x-forwarded-") ||
-            name.startsWith("cf-")
-          )
-            headers.delete(name);
-        }
-        headers.set("host", origin.host);
-        if (incoming.socket.remoteAddress)
-          headers.set("cf-connecting-ip", incoming.socket.remoteAddress);
+        const headers = trustedHeaders(
+          request.headers,
+          incoming.socket.remoteAddress,
+          origin,
+        );
         const declaredBytes = headers.get("content-length");
         if (
           declaredBytes !== null &&
@@ -133,6 +164,45 @@ export async function listenNativeApi<Scheduled, Queue>(
       }
     },
   });
+  if (options.upgrade)
+    server.on(
+      "upgrade",
+      (incoming: IncomingMessage, socket: Duplex, head: Buffer) => {
+        const aborted = new AbortController();
+        socket.once("close", () =>
+          aborted.abort(new Error("Native upgrade socket closed")),
+        );
+        void Promise.resolve()
+          .then(async () => {
+            if (process.state !== "ready")
+              throw new Error("Native composition is not ready");
+            const headers = new Headers();
+            for (const [name, value] of Object.entries(incoming.headers)) {
+              if (Array.isArray(value))
+                for (const item of value) headers.append(name, item);
+              else if (value !== undefined) headers.set(name, value);
+            }
+            const path = new URL(incoming.url ?? "/", origin);
+            const request = new Request(
+              `${origin.origin}${path.pathname}${path.search}`,
+              {
+                method: incoming.method,
+                headers: trustedHeaders(
+                  headers,
+                  incoming.socket.remoteAddress,
+                  origin,
+                ),
+                signal: aborted.signal,
+              },
+            );
+            await options.upgrade!.handle(request, incoming, socket, head);
+          })
+          .catch((error) => {
+            reportError(error);
+            socket.destroy();
+          });
+      },
+    );
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(options.port, options.hostname, () => {
@@ -140,6 +210,7 @@ export async function listenNativeApi<Scheduled, Queue>(
       resolve();
     });
   }).catch(async (error) => {
+    if (options.upgrade) await options.upgrade.close().catch(reportError);
     await process.close().catch(reportError);
     throw error;
   });
@@ -153,9 +224,10 @@ export async function listenNativeApi<Scheduled, Queue>(
       stopped ??= new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
-      const attempt = Promise.all([stopped, process.close()]).then(
-        () => undefined,
-      );
+      const attempt = Promise.resolve()
+        .then(() => options.upgrade?.close())
+        .then(() => Promise.all([stopped, process.close()]))
+        .then(() => undefined);
       closing = attempt;
       void attempt.catch(() => {
         closing = undefined;

@@ -1,3 +1,7 @@
+import {
+  chainFirehoseService,
+  ChainFirehoseUnavailableError,
+} from "../src/chain-firehose-service.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
@@ -3650,14 +3654,14 @@ async function dispatchScheduled(
     // #204: self-healing bootstrap for the firehose head poller, piggybacked on
     // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
     // best-effort -- the probe sweep must never fail because the hub was cold.
-    if (env.CHAIN_FIREHOSE_HUB) {
+    if (env.CHAIN_FIREHOSE_SERVICE !== undefined || env.CHAIN_FIREHOSE_HUB) {
       try {
-        const hub = env.CHAIN_FIREHOSE_HUB.get(
-          env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+        await chainFirehoseService(env)?.fetch(
+          "https://firehose.internal/poll-start",
+          {
+            method: "POST",
+          },
         );
-        await hub.fetch("https://firehose.internal/poll-start", {
-          method: "POST",
-        });
       } catch (error) {
         console.error(
           "[head-poller-bootstrap]",
@@ -5444,16 +5448,14 @@ function chainFirehoseReconnect(request: Request): Response {
 }
 
 async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
-  if (!env.CHAIN_FIREHOSE_HUB) {
+  const service = chainFirehoseService(env);
+  if (!service) {
     return errorResponse(
       "chain_firehose_unavailable",
       "The realtime chain firehose is not bound to this deployment.",
       503,
     );
   }
-  const stub = env.CHAIN_FIREHOSE_HUB.get(
-    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-  );
   const forwardUrl = new URL("https://chain-firehose-hub.internal/subscribe");
   forwardUrl.search = url.search;
   // #11021: a deploy evicts the hub, and every in-flight operation on it --
@@ -5475,9 +5477,13 @@ async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   // This form also catches a SYNCHRONOUS throw from `.fetch`, which the
   // `.catch` form silently would not.
   const response = await Promise.resolve()
-    .then(() => stub.fetch(new Request(forwardUrl, request)))
+    .then(() => service.fetch(new Request(forwardUrl, request)))
     .catch((error: unknown) => {
-      if (!isDurableObjectReset(error)) throw error;
+      if (
+        !isDurableObjectReset(error) &&
+        !(error instanceof ChainFirehoseUnavailableError)
+      )
+        throw error;
       return null;
     });
   if (response === null) return chainFirehoseReconnect(request);
@@ -5538,7 +5544,8 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
   // every live firehose subscriber (#5550).
   const rateLimited = await chainFirehoseIngestRateLimited(request, env);
   if (rateLimited) return rateLimited;
-  if (!env.CHAIN_FIREHOSE_HUB) {
+  const service = chainFirehoseService(env);
+  if (!service) {
     return errorResponse(
       "chain_firehose_unavailable",
       "The realtime chain firehose is not bound to this deployment.",
@@ -5546,16 +5553,16 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
     );
   }
   const body = await request.text();
-  const stub = env.CHAIN_FIREHOSE_HUB.get(
-    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-  );
   let upstream;
   try {
-    upstream = await stub.fetch("https://chain-firehose-hub.internal/ingest", {
-      method: "POST",
-      body,
-      headers: { "content-type": "application/json" },
-    });
+    upstream = await service.fetch(
+      "https://chain-firehose-hub.internal/ingest",
+      {
+        method: "POST",
+        body,
+        headers: { "content-type": "application/json" },
+      },
+    );
   } catch {
     // Sentry METAGRAPHED-1: a DO stub call throws "Durable Object reset
     // because its code was updated" when a deploy touching ChainFirehoseHub

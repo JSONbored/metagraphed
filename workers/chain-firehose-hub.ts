@@ -1,4 +1,12 @@
-import { mcpSessionService } from "../src/mcp-session-service.ts";
+import {
+  mcpSessionService,
+  type McpSessionServiceEnv,
+} from "../src/mcp-session-service.ts";
+import {
+  alerterService,
+  type AlerterServiceEnv,
+} from "../src/alerter-service.ts";
+import type { NeonWriteEnv } from "../src/neon-write-buffer.ts";
 // ChainFirehoseHub -- the realtime chain-event fanout (#4982, ADR 0015,
 // docs/realtime-firehose.md). The first Durable Object in this codebase.
 //
@@ -51,6 +59,7 @@ import {
   fetchBlockAt,
   fetchHeadNumber,
   planHeadPoll,
+  type HeadBlock,
 } from "../src/head-poller.ts";
 import {
   recordExceptionEvent,
@@ -900,6 +909,28 @@ interface ChainEventsGraphqlWsExtra {
   graphqlWsConnection: GraphqlWsConnectionInfo;
 }
 
+export interface NativeChainHeadSource {
+  head(): Promise<number>;
+  block(height: number): Promise<HeadBlock>;
+  write(block: HeadBlock): Promise<void>;
+}
+
+export interface NativeChainLifecycle {
+  schema: GraphQLSchema;
+  assertActive(): void;
+  broadcast(payload: ChainFirehoseIngestPayload): Promise<void>;
+  head: NativeChainHeadSource;
+}
+
+export interface ChainFirehoseHubEnv
+  extends NeonWriteEnv, McpSessionServiceEnv, AlerterServiceEnv {
+  CHAIN_HEAD_POLL_ENABLED?: string;
+  CHAIN_HEAD_RPC_URL?: string;
+  CHAIN_HEAD_POLL_INTERVAL_MS?: string;
+  CHAIN_HEAD_EVENT_COUNT_ENABLED?: string;
+  CHAIN_HEAD_AUTHOR_ENABLED?: string;
+}
+
 // Only the WebSocket-upgrade branch of handleSubscribe below needs a real
 // Durable Object runtime (WebSocketPair/state.acceptWebSocket have no Node
 // equivalent -- no @cloudflare/vitest-pool-workers/Miniflare in this repo,
@@ -913,7 +944,8 @@ interface ChainEventsGraphqlWsExtra {
 // gap explicitly rather than skipping silently").
 export class ChainFirehoseHub implements DurableObject {
   state: ChainFirehoseHubState;
-  env: Env;
+  env: ChainFirehoseHubEnv;
+  native?: NativeChainLifecycle;
   sseClients: Set<SseClientEntry>;
   // #5004 item 1: live SSE/WS connection count per client IP, mirroring
   // sseClients/state.getWebSockets() but keyed by resolveClientIp(request)
@@ -978,9 +1010,14 @@ export class ChainFirehoseHub implements DurableObject {
   // failure is the desired behavior, not a leak.
   lastCapturedHeadPollerError?: string;
 
-  constructor(state: ChainFirehoseHubState, env: Env) {
+  constructor(
+    state: ChainFirehoseHubState,
+    env: ChainFirehoseHubEnv,
+    native?: NativeChainLifecycle,
+  ) {
     this.state = state;
     this.env = env;
+    this.native = native;
     this.sseClients = new Set();
     this.sseClientsByIp = new Map();
     this.wsClientsByIp = new Map();
@@ -998,7 +1035,7 @@ export class ChainFirehoseHub implements DurableObject {
       // A FUNCTION, so the schema module is evaluated on the first subscribe
       // rather than in this Durable Object's constructor (#10900) — graphql-ws
       // resolves a promise-returning schema option per operation.
-      schema: () => chainEventsGraphqlSchema(),
+      schema: () => this.native?.schema ?? chainEventsGraphqlSchema(),
       execute,
       subscribe,
       // graphql-ws only invokes these once a real connection_init/subscribe
@@ -1010,7 +1047,7 @@ export class ChainFirehoseHub implements DurableObject {
       onSubscribe: async (_ctx, _id, payload) =>
         validateChainEventsSubscribePayload(
           payload,
-          await chainEventsGraphqlSchema(),
+          this.native?.schema ?? (await chainEventsGraphqlSchema()),
         ) || undefined,
       // #5004 item 2: ctx.extra is whatever this.graphqlWsServer.opened() was
       // called with as its second argument (graphql-ws's own Context.extra
@@ -1065,6 +1102,7 @@ export class ChainFirehoseHub implements DurableObject {
     clientIp: string | undefined,
     connection: GraphqlWsConnectionInfo | undefined,
   ): AsyncRepeater<ChainFirehoseIngestPayload> | null {
+    this.native?.assertActive();
     if (
       this.chainEventSubscribers.size >=
       CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
@@ -1308,7 +1346,9 @@ export class ChainFirehoseHub implements DurableObject {
         storedLastSeen < Number.MAX_SAFE_INTEGER
           ? storedLastSeen
           : null;
-      const head = await fetchHeadNumber(rpcUrl);
+      const head = this.native
+        ? await this.native.head.head()
+        : await fetchHeadNumber(rpcUrl);
       if (!Number.isSafeInteger(head) || head === Number.MAX_SAFE_INTEGER)
         throw new Error("head height cannot produce a safe persistence cursor");
       // last_seen is live delivery progress, not a durable write receipt.
@@ -1341,20 +1381,22 @@ export class ChainFirehoseHub implements DurableObject {
         // storage read per block, and the whole 11-17 KB blob comes back to
         // read a 1-4 byte prefix, so it must be instantly disableable if the
         // archive endpoint objects to the volume.
-        const block = await fetchBlockAt(
-          rpcUrl,
-          height,
-          fetch,
-          Date.now,
-          this.env.CHAIN_HEAD_EVENT_COUNT_ENABLED !== "false",
-          // #9455: derive the author too, so the head window can answer "who
-          // produced this block" instead of showing null until the decode lane
-          // catches up ~10-20 minutes later. Separately kill-switched from the
-          // event count -- it is its own extra storage read per block, and the
-          // two should be disableable independently if the endpoint objects to
-          // either one's volume.
-          this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
-        );
+        const block = this.native
+          ? await this.native.head.block(height)
+          : await fetchBlockAt(
+              rpcUrl,
+              height,
+              fetch,
+              Date.now,
+              this.env.CHAIN_HEAD_EVENT_COUNT_ENABLED !== "false",
+              // #9455: derive the author too, so the head window can answer "who
+              // produced this block" instead of showing null until the decode lane
+              // catches up ~10-20 minutes later. Separately kill-switched from the
+              // event count -- it is its own extra storage read per block, and the
+              // two should be disableable independently if the endpoint objects to
+              // either one's volume.
+              this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
+            );
         // Neither a cast nor a runtime check. `fetchBlockAt` returns a
         // `HeadBlock`, whose schema is declared "scalar fields only, per the
         // ingest validator's rules ... so it must not be constructible here" --
@@ -1384,9 +1426,16 @@ export class ChainFirehoseHub implements DurableObject {
           repairFailure = { error };
           break;
         }
-        const write = await mirrorBlocksHeadToNeon(this.env, this.state, block);
-        if (write.result?.ok !== true)
-          throw new Error("blocks_head write was not committed");
+        if (this.native) await this.native.head.write(block);
+        else {
+          const write = await mirrorBlocksHeadToNeon(
+            this.env,
+            this.state,
+            block,
+          );
+          if (write.result?.ok !== true)
+            throw new Error("blocks_head write was not committed");
+        }
         committed.add(height);
         // A failed/ambiguous cursor put retries the same idempotent UPSERT.
         await this.state.storage.put("head:write_next", height + 1);
@@ -1397,13 +1446,17 @@ export class ChainFirehoseHub implements DurableObject {
       // storm of doomed writes against the same unavailable owner.
       for (const height of plan.live) {
         if (committed.has(height)) continue;
-        const write = await mirrorBlocksHeadToNeon(
-          this.env,
-          this.state,
-          await readBlock(height),
-        );
-        if (write.result?.ok !== true)
-          throw new Error("live blocks_head write was not committed");
+        const block = await readBlock(height);
+        if (this.native) await this.native.head.write(block);
+        else {
+          const write = await mirrorBlocksHeadToNeon(
+            this.env,
+            this.state,
+            block,
+          );
+          if (write.result?.ok !== true)
+            throw new Error("live blocks_head write was not committed");
+        }
       }
       if (repairFailure) throw repairFailure.error;
     } catch (error) {
@@ -1483,6 +1536,7 @@ export class ChainFirehoseHub implements DurableObject {
   }
 
   handleSubscribe(request: Request, url: URL): Response {
+    this.native?.assertActive();
     const topics = parseChainFirehoseTopics(url.searchParams);
     // #8364: only meaningful for the SSE branch below (WS/graphql-ws have no
     // Last-Event-ID/netuid concept in this class) -- parsed up here anyway so
@@ -1703,6 +1757,7 @@ export class ChainFirehoseHub implements DurableObject {
           // cannot double-release, whichever order they land in.
           entry.heartbeatTimer = setInterval(() => {
             try {
+              this.native?.assertActive();
               controller.enqueue(encoder.encode(": heartbeat\n\n"));
             } catch {
               try {
@@ -1864,6 +1919,23 @@ export class ChainFirehoseHub implements DurableObject {
     }
   }
 
+  disposeNativeConnections() {
+    for (const entry of [...this.sseClients]) {
+      try {
+        entry.controller.close();
+      } catch {
+        /* Already closed. */
+      }
+      this.removeSseClient(entry);
+    }
+    for (const entry of [...this.chainEventSubscribers])
+      if (entry.repeater) this.unsubscribeChainEvents(entry.repeater);
+  }
+
+  recordNativeSocketClose() {
+    this.emitTelemetry("ws-close", true);
+  }
+
   // Rebuilds the per-IP WS quota from the Durable Object runtime's durable
   // hibernatable WebSocket list. Accepted sockets persist their IP in
   // serializeAttachment() in both WS branches below; after a hibernation
@@ -2023,6 +2095,7 @@ export class ChainFirehoseHub implements DurableObject {
   }
 
   async broadcast(payload: ChainFirehoseIngestPayload) {
+    this.native?.assertActive();
     this.latestPayload = payload;
     // #8364: recorded once per broadcast, before the per-client fanout loop,
     // so every matching client this cycle -- and every future resuming
@@ -2102,6 +2175,8 @@ export class ChainFirehoseHub implements DurableObject {
       }
     }
 
+    if (this.native) await this.native.broadcast(payload);
+
     // #4983: GraphQL `chainEvents` subscriptions -- push into every matching
     // repeater; src/graphql.ts's chainEventsSubscribe is consuming these via
     // `for await`, and graphql-js's subscribe() takes it from there (executes
@@ -2171,12 +2246,10 @@ export class ChainFirehoseHub implements DurableObject {
     // relay) for however long that takes. This timeout only bounds how
     // long broadcast() WAITS; it does not cancel AlerterHub's own
     // in-flight work, which continues independently.
-    if (this.env.ALERTER_HUB) {
+    if (this.env.ALERTER_SERVICE !== undefined || this.env.ALERTER_HUB) {
       try {
-        const stub = this.env.ALERTER_HUB.get(
-          this.env.ALERTER_HUB.idFromName("global"),
-        );
-        await stub.fetch("https://alerter-hub.internal/evaluate", {
+        const service = alerterService(this.env);
+        await service?.fetch("https://alerter-hub.internal/evaluate", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),

@@ -9035,6 +9035,7 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
     subscribeChainEvents(topics: unknown, _clientIp?: unknown) {
       const pending: unknown[] = [];
       let waitingResolve: AnyFn | null = null;
+      let finished = false;
       const repeater = {
         push(value: unknown) {
           if (waitingResolve) {
@@ -9045,14 +9046,22 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
             pending.push(value);
           }
         },
+        end() {
+          finished = true;
+          pending.length = 0;
+          waitingResolve?.({ value: undefined, done: true });
+          waitingResolve = null;
+        },
         [Symbol.asyncIterator]() {
           return {
             next: () =>
-              pending.length
-                ? Promise.resolve({ value: pending.shift(), done: false })
-                : new Promise((resolve) => {
-                    waitingResolve = resolve;
-                  }),
+              finished
+                ? Promise.resolve({ value: undefined, done: true })
+                : pending.length
+                  ? Promise.resolve({ value: pending.shift(), done: false })
+                  : new Promise((resolve) => {
+                      waitingResolve = resolve;
+                    }),
           };
         },
       };
@@ -9061,6 +9070,7 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
       return repeater;
     },
     unsubscribeChainEvents(repeater: Row) {
+      repeater.end();
       const index = subscriptions.findIndex((s) => s.repeater === repeater);
       if (index !== -1) subscriptions.splice(index, 1);
     },
@@ -20047,24 +20057,23 @@ describe("Subscription.chainEvents", () => {
     );
   });
 
-  test("unsubscribeChainEvents is called when the async generator is returned early (client disconnects/completes)", async () => {
-    // Calling .return() while a .next() is still unresolved deadlocks
-    // graphql-js's internal withConcurrentAbruptClose handling (it waits for
-    // the in-flight next() before honoring return()) -- push a value so the
-    // pending next() actually resolves first, matching how a real client
-    // completes a subscription only after having received at least one
-    // event, not mid-flight on an empty stream.
-    const hub = fakeChainFirehose((repeater: Row) => {
-      repeater.push({ table: "blocks" });
-    });
+  test("unsubscribeChainEvents releases a pending next when a quiet subscription completes", async () => {
+    const hub = fakeChainFirehose();
     const result = await subscribeChainEvents(
       "subscription { chainEvents { table } }",
       hub,
     );
     const it = result[Symbol.asyncIterator]();
-    await it.next(); // starts the generator body (-> subscribeChainEvents) and resolves with the pushed value
+    const pending = it.next();
     assert.equal(hub.subscriptions.length, 1);
     await it.return();
+    assert.equal((await pending).done, true);
+    assert.equal(hub.subscriptions.length, 0);
+    const unstarted = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    await unstarted[Symbol.asyncIterator]().return();
     assert.equal(hub.subscriptions.length, 0);
   });
 

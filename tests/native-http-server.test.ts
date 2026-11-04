@@ -7,7 +7,8 @@ import type { NativeHttpOptions } from "../src/native-http-server.ts";
 // Exercise real Node networking in a fresh registry. Worker tests replace
 // fetch globally; the shared-registry CI pass cannot qualify this boundary.
 vi.resetModules();
-const { listenNativeApi } = await import("../src/native-http-server.ts");
+const { listenNativeApi, trustedHeaders } =
+  await import("../src/native-http-server.ts");
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -40,6 +41,7 @@ async function listen(
   const server = await listenNativeApi(process, { ...options, ...overrides });
   cleanup.push(() => server.close());
   return {
+    process,
     server,
     url: `http://127.0.0.1:${server.address.port}`,
     closed: () => closed,
@@ -96,6 +98,20 @@ describe("native HTTP boundary", () => {
       new Uint8Array(await response.arrayBuffer()),
       Uint8Array.of(0, 128, 255),
     );
+  });
+
+  test("a socket without a peer address cannot retain a forged client identity", () => {
+    const headers = trustedHeaders(
+      new Headers({
+        "cf-connecting-ip": "forged",
+        authorization: "Bearer retained",
+      }),
+      undefined,
+      new URL(options.origin),
+    );
+    assert.equal(headers.has("cf-connecting-ip"), false);
+    assert.equal(headers.get("host"), "api.fixture.invalid");
+    assert.equal(headers.get("authorization"), "Bearer retained");
   });
 
   test("rejects a declared oversized body before dispatch", async () => {
@@ -178,6 +194,10 @@ describe("native HTTP boundary", () => {
       { origin: "https://fixture.invalid/path" },
       { maxRequestBytes: 0 },
       { hostname: "" },
+      { [String("onError")]: null },
+      { [String("upgrade")]: null },
+      { [String("upgrade")]: { handle: async () => {} } },
+      { [String("upgrade")]: { close: async () => {} } },
     ]) {
       await assert.rejects(listen(async () => new Response(), override));
     }
@@ -232,4 +252,132 @@ describe("native HTTP boundary", () => {
       "internal_error",
     );
   });
+});
+
+test("native upgrades use trusted origin and peer identity, and drain before the process", async () => {
+  let seen!: Request;
+  let upgradeClosed = 0;
+  const fixture = await listen(async () => new Response("ordinary"), {
+    upgrade: {
+      async handle(request, _incoming, socket) {
+        seen = request;
+        socket.end(
+          "HTTP/1.1 503 Upgrade declined\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        );
+      },
+      async close() {
+        assert.equal(fixture.closed(), 0);
+        upgradeClosed++;
+      },
+    },
+  });
+  const status = await new Promise<number>((resolve, reject) => {
+    const request = httpRequest(
+      fixture.url + "/api/v1/chain/stream?topics=blocks",
+      {
+        headers: {
+          connection: "Upgrade",
+          upgrade: "websocket",
+          host: "untrusted.invalid",
+          "cf-connecting-ip": "forged",
+          "x-forwarded-for": "forged",
+          "set-cookie": ["first=1", "second=2"],
+        },
+      },
+      (response) => {
+        response.resume();
+        response.on("end", () => resolve(response.statusCode!));
+      },
+    );
+    request.on("error", reject);
+    request.end();
+  });
+  assert.equal(status, 503);
+  assert.equal(
+    seen.url,
+    "https://api.fixture.invalid/api/v1/chain/stream?topics=blocks",
+  );
+  assert.match(seen.headers.get("cf-connecting-ip")!, /127\.0\.0\.1/);
+  assert.equal(seen.headers.has("x-forwarded-for"), false);
+  assert.match(seen.headers.get("set-cookie")!, /first=1/);
+  assert.match(seen.headers.get("set-cookie")!, /second=2/);
+  await fixture.server.close();
+  assert.equal(upgradeClosed, 1);
+  assert.equal(fixture.closed(), 1);
+});
+
+test("upgrade failures and a no-longer-ready process destroy the connection", async () => {
+  const errors: unknown[] = [];
+  const fixture = await listen(async () => new Response("ok"), {
+    onError: (error) => errors.push(error),
+    upgrade: {
+      handle: async () => {
+        throw new Error("upgrade failed");
+      },
+      close: async () => {},
+    },
+  });
+  const connect = () =>
+    new Promise<void>((resolve, reject) => {
+      const request = httpRequest(fixture.url, {
+        headers: { connection: "Upgrade", upgrade: "websocket" },
+      });
+      request.on("response", () => reject(new Error("unexpected response")));
+      request.on("error", () => resolve());
+      request.end();
+    });
+  await connect();
+  assert.match(String(errors[0]), /upgrade failed/);
+  Object.defineProperty(fixture.process, "state", { value: "closing" });
+  await connect();
+  assert.match(String(errors[1]), /not ready/);
+});
+
+test("a bind failure drains the upgrade owner before the shared process", async () => {
+  const occupied = await listen(async () => new Response("ok"));
+  const calls: string[] = [];
+  const process: NativeApiProcess<string, string> = {
+    state: "ready",
+    fetch: async () => new Response(),
+    scheduled: async () => {},
+    queue: async () => {},
+    close: async () => {
+      calls.push("process");
+    },
+  };
+  await assert.rejects(
+    listenNativeApi(process, {
+      ...options,
+      port: occupied.server.address.port,
+      onError: () => {
+        calls.push("report");
+      },
+      upgrade: {
+        handle: async () => {},
+        close: async () => {
+          calls.push("upgrade");
+          throw new Error("cleanup failed");
+        },
+      },
+    }),
+    /EADDRINUSE/,
+  );
+  assert.deepEqual(calls, ["upgrade", "report", "process"]);
+});
+
+test("an upgrade drain failure keeps process resources open until a successful retry", async () => {
+  let fail = true;
+  const fixture = await listen(async () => new Response("ok"), {
+    upgrade: {
+      handle: async () => {},
+      close: async () => {
+        if (fail) throw new Error("upgrade drain incomplete");
+      },
+    },
+  });
+  await assert.rejects(fixture.server.close(), /upgrade drain incomplete/);
+  assert.equal(fixture.closed(), 0);
+  fail = false;
+  await fixture.server.close();
+  assert.equal(fixture.closed(), 1);
 });

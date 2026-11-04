@@ -1179,54 +1179,70 @@ interface ChainEventsSubscriptionContext {
 }
 
 schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
-  async function* chainEventsSubscribe(
+  function chainEventsSubscribe(
     _source: unknown,
     args: Row,
     context: ChainEventsSubscriptionContext,
   ) {
     const hub = context?.[GRAPHQL_SUBSCRIPTION_CONTEXT_KEY];
-    if (!hub) {
-      throw new GraphQLError(
-        "chainEvents is only reachable over the WebSocket transport (Sec-WebSocket-Protocol: graphql-transport-ws) at /api/v1/graphql.",
-      );
-    }
-    // Distinguish omitted (undefined -> null, no filter, matches everything)
-    // from an EXPLICIT empty list (tables: [] -> an empty Set, matches
-    // nothing) -- consistent with the SSE/WS firehose's own
-    // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
-    // also collapses to an empty Set, never silently falling back to
-    // "everything"). Previously both cases collapsed to null.
-    // `undefined` (no filter) stays distinct from `[]` (match nothing) --
-    // see the comment above; `stringsOf` only changes what a NON-list or a
-    // non-string element does, which the published `[ChainFirehoseTable!]`
-    // already forbids.
-    const topics =
-      args.tables === undefined ? null : new Set(stringsOf(args.tables));
-    // context.clientIp/context.graphqlWsConnection are set by
-    // workers/chain-firehose-hub.ts's graphqlWsServer context() callback
-    // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
-    // handleSubscribe's opened(adapterSocket, { ip, graphqlWsConnection })
-    // call) -- threaded through so subscribeChainEvents can enforce its
-    // per-IP (#5004 item 2) and per-socket subscription-count caps alongside
-    // the global one.
-    const repeater = hub.subscribeChainEvents(
-      topics,
-      context.clientIp,
-      context.graphqlWsConnection,
-    );
-    if (!repeater) {
-      throw new GraphQLError(
-        "The realtime chain firehose has reached its maximum number of " +
-          "concurrent GraphQL subscriptions; try again later.",
-      );
-    }
-    try {
-      for await (const payload of repeater) {
-        yield { chainEvents: payload };
+    let repeater: ReturnType<ChainFirehoseHub["subscribeChainEvents"]> = null;
+    const source = (async function* () {
+      if (!hub) {
+        throw new GraphQLError(
+          "chainEvents is only reachable over the WebSocket transport (Sec-WebSocket-Protocol: graphql-transport-ws) at /api/v1/graphql.",
+        );
       }
-    } finally {
-      hub.unsubscribeChainEvents(repeater);
-    }
+      // Distinguish omitted (undefined -> null, no filter, matches everything)
+      // from an EXPLICIT empty list (tables: [] -> an empty Set, matches
+      // nothing) -- consistent with the SSE/WS firehose's own
+      // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
+      // also collapses to an empty Set, never silently falling back to
+      // "everything"). Previously both cases collapsed to null.
+      // `undefined` (no filter) stays distinct from `[]` (match nothing) --
+      // see the comment above; `stringsOf` only changes what a NON-list or a
+      // non-string element does, which the published `[ChainFirehoseTable!]`
+      // already forbids.
+      const topics =
+        args.tables === undefined ? null : new Set(stringsOf(args.tables));
+      // context.clientIp/context.graphqlWsConnection are set by
+      // workers/chain-firehose-hub.ts's graphqlWsServer context() callback
+      // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
+      // handleSubscribe's opened(adapterSocket, { ip, graphqlWsConnection })
+      // call) -- threaded through so subscribeChainEvents can enforce its
+      // per-IP (#5004 item 2) and per-socket subscription-count caps alongside
+      // the global one.
+      repeater = hub.subscribeChainEvents(
+        topics,
+        context.clientIp,
+        context.graphqlWsConnection,
+      );
+      if (!repeater) {
+        throw new GraphQLError(
+          "The realtime chain firehose has reached its maximum number of " +
+            "concurrent GraphQL subscriptions; try again later.",
+        );
+      }
+      try {
+        for await (const payload of repeater) {
+          yield { chainEvents: payload };
+        }
+      } finally {
+        hub.unsubscribeChainEvents(repeater);
+      }
+    })();
+    return {
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+      next: () => source.next(),
+      return() {
+        // An async generator queues return() behind an unresolved next().
+        // End its push source first so a quiet subscription can complete
+        // immediately without waiting for another chain event.
+        if (hub && repeater) hub.unsubscribeChainEvents(repeater);
+        return source.return(undefined);
+      },
+    };
   };
 
 // --- Complexity weights ---

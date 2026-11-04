@@ -2,6 +2,7 @@ import type {
   SubnetStatusCaller,
   SubnetStatusService,
 } from "./subnet-status-service.ts";
+export class ChainFirehoseUnavailableError extends Error {}
 export interface ChainFirehoseServiceEnv {
   CHAIN_FIREHOSE_SERVICE?: unknown;
   CHAIN_FIREHOSE_HUB?: Pick<DurableObjectNamespace, "get" | "idFromName">;
