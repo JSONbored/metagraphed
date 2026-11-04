@@ -104,6 +104,8 @@ describe("data-api's bundle boundary", () => {
     "src/pg-store-runtime.ts",
     "src/native-mcp-sessions.ts",
     "src/pg-mcp-session-store.ts",
+    "src/native-ai-inference.ts",
+    "schemas-src/native-inference-http.ts",
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",

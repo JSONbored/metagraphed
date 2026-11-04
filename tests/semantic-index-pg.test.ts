@@ -70,8 +70,21 @@ test("selection requires a complete explicit capability and never falls through 
       () => selectedSemanticIndex({ SEMANTIC_INDEX: value }),
       /invalid/,
     );
+  assert.throws(
+    () => aiConfigured(mockEnv({ AI: { run() {} }, SEMANTIC_INDEX: index })),
+    /identity differs/,
+  );
+  const compatible = await createPgSemanticIndex(
+    { transaction },
+    {
+      ...options,
+      name: "compatible",
+      model: EMBED_MODEL,
+      dimensions: 1024,
+    },
+  );
   assert.equal(
-    aiConfigured(mockEnv({ AI: { run() {} }, SEMANTIC_INDEX: index })),
+    aiConfigured(mockEnv({ AI: { run() {} }, SEMANTIC_INDEX: compatible })),
     true,
   );
   assert.throws(

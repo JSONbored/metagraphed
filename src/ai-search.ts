@@ -29,6 +29,13 @@ import { EmbedManifestSchema } from "../schemas-src/internal-wire.ts";
 import { recordOrNull, recordsOrEmpty } from "./read-store.ts";
 import type { overlayCatalogIndex } from "./health-serving.ts";
 import { selectedSemanticIndex } from "./semantic-index.ts";
+import { selectedAiInference } from "./ai-inference.ts";
+import { appKv } from "./app-kv.ts";
+import { sha256Hex } from "./sha256-hex.ts";
+import type {
+  InferenceIdentity,
+  InferenceMessage,
+} from "../schemas-src/native-inference.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -103,6 +110,49 @@ export const EMBED_MANIFEST_KEY = [
   EMBED_DIMENSIONS,
 ].join(":");
 
+const DEFAULT_INFERENCE_IDENTITY: InferenceIdentity = {
+  embedding: {
+    provider: ASK_PROVIDER,
+    model: EMBED_MODEL,
+    dimensions: EMBED_DIMENSIONS,
+  },
+  completion: {
+    provider: ASK_PROVIDER,
+    model: ASK_MODEL,
+    inputUsdPerMillion: ASK_MODEL_INPUT_USD_PER_MILLION,
+    outputUsdPerMillion: ASK_MODEL_OUTPUT_USD_PER_MILLION,
+  },
+};
+
+function inferenceIdentity(env: Env): InferenceIdentity {
+  const native = selectedAiInference(env);
+  const identity = native?.identity ?? DEFAULT_INFERENCE_IDENTITY;
+  const index = selectedSemanticIndex(env);
+  const expected =
+    index?.identity ??
+    (native && index ? undefined : DEFAULT_INFERENCE_IDENTITY.embedding);
+  if (
+    !expected ||
+    (index?.identity &&
+      (typeof index.identity.name !== "string" || !index.identity.name)) ||
+    expected.model !== identity.embedding.model ||
+    expected.dimensions !== identity.embedding.dimensions
+  )
+    throw new Error(
+      "Inference embedding identity differs from its semantic index",
+    );
+  return identity;
+}
+
+async function embeddingManifestKey(env: Env): Promise<string> {
+  const native = selectedAiInference(env);
+  const index = selectedSemanticIndex(env);
+  if (!native && !index?.identity) return EMBED_MANIFEST_KEY;
+  const { provider, model, dimensions } = inferenceIdentity(env).embedding;
+  const scope = index?.identity?.name ?? VECTORIZE_INDEX_NAME;
+  return `ai:embed-manifest:native:${await sha256Hex(JSON.stringify([scope, provider, model, dimensions]))}`;
+}
+
 // The ceilings live in route-limits.ts so the published parameter and the
 // enforcement read one constant (#10075); re-exported under their existing
 // names so every current import site keeps working, the same pattern the other
@@ -149,10 +199,11 @@ export function aiInputError(message: string): AiInputError {
 // The AI bindings exist (independent of the kill-switch). Used by the cron,
 // which should run whenever the bindings are present.
 export function aiConfigured(env: Env): boolean {
-  return (
-    typeof env?.AI?.run === "function" &&
-    Boolean(selectedSemanticIndex(env) ?? env?.VECTORIZE)
-  );
+  const native = selectedAiInference(env);
+  const available = Boolean(native) || typeof env?.AI?.run === "function";
+  if (available && (selectedSemanticIndex(env) || env?.VECTORIZE))
+    inferenceIdentity(env);
+  return available && Boolean(selectedSemanticIndex(env) ?? env?.VECTORIZE);
 }
 
 // AI request handling is permitted: bindings present AND the kill-switch is on.
@@ -178,7 +229,10 @@ export const AI_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
 
 interface AiRequestDeps {
   distinctId?: string;
-  executionCtx?: { waitUntil?: (pending: Promise<unknown>) => void };
+  executionCtx?: {
+    waitUntil?: (pending: Promise<unknown>) => void;
+    signal?: AbortSignal;
+  };
 }
 
 // Preserve delivery through the request lifecycle without making PostHog a
@@ -338,8 +392,12 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-async function readManifest(env: Env): Promise<Record<string, string>> {
-  if (!env?.METAGRAPH_CONTROL?.get) return {};
+async function readManifest(
+  env: Env,
+  key: string,
+): Promise<Record<string, string>> {
+  const control = appKv(env);
+  if (!control?.get) return {};
   try {
     // PARSED, NOT CAST (#11194). This value was written by a PREVIOUS deploy,
     // so its shape is whatever the manifest was then. A wrong-typed entry
@@ -348,7 +406,7 @@ async function readManifest(env: Env): Promise<Record<string, string>> {
     // An unreadable manifest is treated as absent, which is the same recovery
     // the catch below already performs.
     const parsed = EmbedManifestSchema.safeParse(
-      await env.METAGRAPH_CONTROL.get(EMBED_MANIFEST_KEY, { type: "json" }),
+      await control.get(key, { type: "json" }),
     );
     return parsed.success ? parsed.data : {};
   } catch {
@@ -360,10 +418,13 @@ async function readManifest(env: Env): Promise<Record<string, string>> {
 // Workers AI batch embedding can return fewer rows than requested, an
 // error-shaped body (so `data` is `[]`), or a malformed row — none of which may
 // be upserted into Vectorize or recorded as "embedded" in the manifest.
-function isValidEmbeddingVector(values: unknown): values is number[] {
+function isValidEmbeddingVector(
+  values: unknown,
+  dimensions = EMBED_DIMENSIONS,
+): values is number[] {
   return (
     Array.isArray(values) &&
-    values.length === EMBED_DIMENSIONS &&
+    values.length === dimensions &&
     values.every((n) => typeof n === "number" && Number.isFinite(n))
   );
 }
@@ -378,6 +439,7 @@ export interface EmbeddingSyncResult {
 
 interface EmbeddingSyncDeps {
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  signal?: AbortSignal;
 }
 
 // Embedding-sync cron: diff the search index against a deployment-scoped
@@ -399,7 +461,10 @@ export async function runEmbeddingSync(
   const docs: EmbeddableDoc[] = Array.isArray(indexData?.documents)
     ? indexData.documents
     : [];
-  const previous = await readManifest(env);
+  const native = selectedAiInference(env);
+  const identity = inferenceIdentity(env);
+  const manifestKey = await embeddingManifestKey(env);
+  const previous = await readManifest(env, manifestKey);
   const next: Record<string, string> = {};
   const pending: Array<{ id: string; doc: EmbeddableDoc; hash: string }> = [];
   const currentIds = new Set<string>();
@@ -430,21 +495,28 @@ export async function runEmbeddingSync(
   // bills per call, so `inputCount` (the batch size) is what makes the daily
   // cron's cost comparable to a single query-time embedding.
   const syncTraceId = crypto.randomUUID();
-  const gateway = aiGatewayOptions(env);
+  const gateway = native ? null : aiGatewayOptions(env);
   for (const batch of chunk(pending, EMBED_BATCH_SIZE)) {
     const batchStartedAt = Date.now();
-    const response = await env.AI.run(
-      EMBED_MODEL,
-      { text: batch.map((entry) => embeddingText(entry.doc)) },
-      // Gatewayed too, though this lane's hit rate is near zero -- a daily sync
-      // re-embeds only documents whose content hash CHANGED. It is here for the
-      // per-model cost analytics, which is the half of metagraphed-infra#362's
-      // ask that applies to a cron rather than to a repeated query.
-      ...(gateway ? [gateway] : []),
+    const response = await (
+      native
+        ? native.embed(
+            batch.map((entry) => embeddingText(entry.doc)),
+            deps.signal,
+          )
+        : env.AI.run(
+            EMBED_MODEL,
+            { text: batch.map((entry) => embeddingText(entry.doc)) },
+            // Gatewayed too, though this lane's hit rate is near zero -- a daily sync
+            // re-embeds only documents whose content hash CHANGED. It is here for the
+            // per-model cost analytics, which is the half of metagraphed-infra#362's
+            // ask that applies to a cron rather than to a repeated query.
+            ...(gateway ? [gateway] : []),
+          )
     ).catch(async (error: unknown) => {
       await recordAiEmbeddingEvent(env, {
-        provider: ASK_PROVIDER,
-        model: EMBED_MODEL,
+        provider: identity.embedding.provider,
+        model: identity.embedding.model,
         traceId: syncTraceId,
         traceName: EMBED_SYNC_TRACE_NAME,
         latencyMs: Date.now() - batchStartedAt,
@@ -455,8 +527,8 @@ export async function runEmbeddingSync(
       throw error;
     });
     await recordAiEmbeddingEvent(env, {
-      provider: ASK_PROVIDER,
-      model: EMBED_MODEL,
+      provider: identity.embedding.provider,
+      model: identity.embedding.model,
       traceId: syncTraceId,
       traceName: EMBED_SYNC_TRACE_NAME,
       latencyMs: Date.now() - batchStartedAt,
@@ -475,7 +547,7 @@ export async function runEmbeddingSync(
       values: number[];
     }> = [];
     for (let i = 0; i < batch.length; i += 1) {
-      if (isValidEmbeddingVector(data[i])) {
+      if (isValidEmbeddingVector(data[i], identity.embedding.dimensions)) {
         valid.push({ entry: batch[i], values: data[i] });
       } else if (Object.prototype.hasOwnProperty.call(previous, batch[i].id)) {
         next[batch[i].id] = previous[batch[i].id];
@@ -515,8 +587,9 @@ export async function runEmbeddingSync(
       await indexStore.deleteByIds(ids);
     }
   }
-  if (env?.METAGRAPH_CONTROL?.put) {
-    await env.METAGRAPH_CONTROL.put(EMBED_MANIFEST_KEY, JSON.stringify(next));
+  const control = appKv(env);
+  if (control?.put) {
+    await control.put(manifestKey, JSON.stringify(next));
   }
   return {
     ok: true,
@@ -535,13 +608,15 @@ async function embedQuery(
   text: string,
   telemetry: AiRequestDeps & { traceId?: string; traceName?: string } = {},
 ): Promise<number[]> {
+  const native = selectedAiInference(env);
+  const identity = inferenceIdentity(env);
   const startedAt = Date.now();
   const record = (isError: boolean, error?: unknown) =>
     recordAiEmbeddingEvent(
       env,
       {
-        provider: ASK_PROVIDER,
-        model: EMBED_MODEL,
+        provider: identity.embedding.provider,
+        model: identity.embedding.model,
         traceId: telemetry.traceId,
         traceName: telemetry.traceName,
         latencyMs: Date.now() - startedAt,
@@ -554,17 +629,20 @@ async function embedQuery(
 
   // THE ONE THAT REPEATS. Two users searching the same phrase used to pay for
   // two identical model calls, and a hot query paid on every hit.
-  const gateway = aiGatewayOptions(env);
-  const response = await env.AI.run(
-    EMBED_MODEL,
-    { text: [text] },
-    ...(gateway ? [gateway] : []),
+  const gateway = native ? null : aiGatewayOptions(env);
+  const response = await (
+    native
+      ? native.embed([text], telemetry.executionCtx?.signal)
+      : env.AI.run(EMBED_MODEL, { text: [text] }, ...(gateway ? [gateway] : []))
   ).catch(async (error: unknown) => {
     await finishAiCapture(record(true, error), telemetry.executionCtx);
     throw error;
   });
   const vector = response?.data?.[0];
-  if (!Array.isArray(vector)) {
+  if (
+    !Array.isArray(vector) ||
+    (native && !isValidEmbeddingVector(vector, identity.embedding.dimensions))
+  ) {
     const error = new Error("embedding model returned no vector");
     // A malformed response is a failed embedding, not a successful one — the
     // caller throws either way, and the event must agree.
@@ -711,7 +789,12 @@ export async function semanticSearch(
   });
   const matches = await retrieveMatches(env, vector, limit, types);
   const results = matches.map(mapMatch);
-  return { query: q, count: results.length, results, model: EMBED_MODEL };
+  return {
+    query: q,
+    count: results.length,
+    results,
+    model: inferenceIdentity(env).embedding.model,
+  };
 }
 
 interface AskEnrichment {
@@ -851,6 +934,8 @@ export async function askQuestion(
   options: { topK?: unknown; type?: unknown } = {},
   deps: AskDeps = {},
 ): Promise<AskQuestionResult> {
+  const native = selectedAiInference(env);
+  const identity = inferenceIdentity(env);
   const q = typeof question === "string" ? question.trim() : "";
   if (!q) throw aiInputError("Field `question` is required.");
   if (q.length > ASK_MAX_QUESTION_LENGTH) {
@@ -886,7 +971,7 @@ export async function askQuestion(
   const enrichByNetuid = await loadAskEnrichment(env, deps);
   const contextBlock = formatAskContextBlock(matches, enrichByNetuid);
 
-  const messages = [
+  const messages: InferenceMessage[] = [
     { role: "system", content: ASK_SYSTEM_PROMPT },
     {
       role: "user",
@@ -899,16 +984,20 @@ export async function askQuestion(
   ];
   const modelParameters = { max_tokens: ASK_MAX_TOKENS };
   const generationStart = Date.now();
-  const completion = await env.AI.run(ASK_MODEL, {
-    messages,
-    max_tokens: ASK_MAX_TOKENS,
-  }).catch(async (error) => {
+  const completion = await (
+    native
+      ? native.complete(messages, ASK_MAX_TOKENS, deps.executionCtx?.signal)
+      : env.AI.run(ASK_MODEL, {
+          messages,
+          max_tokens: ASK_MAX_TOKENS,
+        })
+  ).catch(async (error) => {
     await finishAiCapture(
       recordAiGenerationEvent(
         env,
         {
-          provider: ASK_PROVIDER,
-          model: ASK_MODEL,
+          provider: identity.completion.provider,
+          model: identity.completion.model,
           traceId,
           traceName: ASK_TRACE_NAME,
           latencyMs: Date.now() - generationStart,
@@ -930,16 +1019,22 @@ export async function askQuestion(
     recordAiGenerationEvent(
       env,
       {
-        provider: ASK_PROVIDER,
-        model: ASK_MODEL,
+        provider: identity.completion.provider,
+        model: identity.completion.model,
         traceId,
         traceName: ASK_TRACE_NAME,
         latencyMs: Date.now() - generationStart,
         isError: false,
         inputTokens,
         outputTokens,
-        inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
-        outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
+        inputCostUsd:
+          identity.completion.inputUsdPerMillion === undefined
+            ? undefined
+            : costUsd(inputTokens, identity.completion.inputUsdPerMillion),
+        outputCostUsd:
+          identity.completion.outputUsdPerMillion === undefined
+            ? undefined
+            : costUsd(outputTokens, identity.completion.outputUsdPerMillion),
         modelParameters,
         input: messages,
         outputChoices: [{ role: "assistant", content: answer }],
@@ -953,6 +1048,6 @@ export async function askQuestion(
     answer,
     citations,
     context_count: matches.length,
-    model: ASK_MODEL,
+    model: identity.completion.model,
   };
 }

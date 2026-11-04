@@ -143,6 +143,7 @@ export async function createPgSemanticIndex(
       return run(tx);
     });
   return {
+    identity: Object.freeze({ name, model, dimensions: options.dimensions }),
     async upsert(input) {
       if (!Array.isArray(input) || input.length < 1 || input.length > 100)
         throw new RangeError("Semantic upserts require 1 to 100 vectors");
