@@ -42,7 +42,9 @@ function fixture() {
       calls.push({ text, values });
       return { rows: text.includes("pg_class") ? relationRows : [{ value: "9007199254740993" }], rowCount: 1 };
     },
-    async connect() { throw new Error("Unexpected dedicated connection"); },
+    async connect() {
+      return { query: pool.query, release() {}, on() {}, removeListener() {} };
+    },
     async end() { ends += 1; },
     on() {},
   };
@@ -65,7 +67,7 @@ function fixture() {
           async fetch(request, env, ctx) {
             currentContext = ctx;
             seen.push("main:" + new URL(request.url).pathname);
-            await env.database.read.query("SELECT value FROM app.items");
+            await env.database.read.query("SELECT value FROM items");
             return response();
           },
           async scheduled(event, _env, ctx) { currentContext = ctx; seen.push("scheduled:" + event); },
@@ -106,7 +108,11 @@ describe("native API process", () => {
     await process.scheduled("tick");
     await process.queue("batch");
     assert.deepEqual(f.seen, ["main:/mcp", "main:/mcp", "auth:/mcp", "auth:/authorize", "scheduled:tick", "queue:batch"]);
-    assert.equal(f.calls.filter((call) => call.text === "SELECT value FROM app.items").length, 2);
+    assert.equal(f.calls.filter((call) => call.text === "SELECT value FROM items").length, 2);
+    assert.deepEqual(f.calls.slice(1, 5).map((call) => call.text), [
+      "BEGIN", "SELECT pg_catalog.set_config('search_path', $1, true)", "SELECT value FROM items", "COMMIT",
+    ]);
+    assert.deepEqual(f.calls[2].values, ['pg_catalog, "app"']);
     await process.close();
     assert.equal(f.ends(), 1);
     assert.equal(process.state, "closed");
@@ -143,6 +149,29 @@ describe("native API process", () => {
     f.options.sources = [source, { ...source, name: "duplicate" }];
     f.setRelationRows([{ relation: "items", owner: "fixture_owner", readable: true, insertable: true, updatable: true, deletable: true }]);
     await assert.rejects(f.create(), /ownership overlaps/);
+  });
+
+  test("keeps source SQL and writes on the same schema-scoped transaction", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    f.options.compose = async (providers) => {
+      const application = providers.sources.get("application")!;
+      assert.equal("close" in application, false);
+      await application.sql`SELECT ${7} FROM items`;
+      await application.producer.run("UPDATE items SET value = ?", [8]);
+      await application.producer.transaction([
+        { text: "UPDATE items SET value = ?", values: [9] },
+        { text: "DELETE FROM items WHERE value = ?", values: [10] },
+      ]);
+      return compose(providers);
+    };
+    const process = await f.create();
+    assert.deepEqual(f.calls.slice(1).map((call) => call.text), [
+      "BEGIN", "SELECT pg_catalog.set_config('search_path', $1, true)", "SELECT $1 FROM items", "COMMIT",
+      "BEGIN", "SELECT pg_catalog.set_config('search_path', $1, true)", "UPDATE items SET value = $1", "COMMIT",
+      "BEGIN", "SELECT pg_catalog.set_config('search_path', $1, true)", "UPDATE items SET value = $1", "DELETE FROM items WHERE value = $1", "COMMIT",
+    ]);
+    await process.close();
   });
 
   test("holds request admission and shutdown through the streamed body and background work", async () => {

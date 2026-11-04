@@ -1,6 +1,7 @@
 import type { PoolConfig } from "pg";
 import { createPgStoreRuntime, type PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { PgPool, PooledPgOptions } from "./pg-pool.ts";
+import { pgStatementText, type PgSql } from "./pg-sql.ts";
 import type { AppKv } from "./app-kv.ts";
 import { errorResponse } from "../workers/http.ts";
 import {
@@ -24,6 +25,40 @@ export interface NativeSourceDefinition {
 
 /** Each declared source supplies the actual process-owned read/write handles. */
 export interface NativeSource extends NativeSourceDefinition, NativeStore {}
+
+function scopedSource(runtime: PgStoreRuntime, source: NativeSourceDefinition): NativeSource {
+  const transaction: PgStoreRuntime["transaction"] = (callback, options) =>
+    runtime.transaction(async (scope) => {
+      const searchPath = `pg_catalog, "${source.schema.replaceAll('"', '""')}"`;
+      await scope.query("SELECT pg_catalog.set_config('search_path', $1, true)", [searchPath]);
+      return callback(scope);
+    }, options);
+  const query: NativeStore["read"]["query"] = (text, values) =>
+    transaction((scope) => scope.query(text, values));
+  const first: NativeStore["read"]["first"] = (text, values) =>
+    transaction((scope) => scope.first(text, values));
+  const sql: PgSql = Object.assign(
+    <Row>(strings: TemplateStringsArray, ...values: unknown[]) => query<Row>(pgStatementText(strings), values),
+    { unsafe: query },
+  );
+  const scoped: NativeSource = {
+    ...source,
+    relations: Object.freeze([...source.relations]),
+    sql,
+    read: { query, first },
+    producer: {
+      query, first,
+      run: (text, values) => transaction((scope) => scope.run(text, values)),
+      transaction: (statements) => transaction(async (scope) => {
+        const results = [];
+        for (const statement of statements) results.push(await scope.run(statement.text, statement.values));
+        return results;
+      }),
+    },
+    transaction,
+  };
+  return Object.freeze(scoped);
+}
 
 export interface NativeApiComposition<Environment, Scheduled, Queue> {
   environment: Environment;
@@ -95,7 +130,7 @@ async function verifySources(store: NativeStore, sources: readonly NativeSourceD
         has_table_privilege(current_user, c.oid, 'INSERT') AS insertable,
         has_table_privilege(current_user, c.oid, 'UPDATE') AS updatable,
         has_table_privilege(current_user, c.oid, 'DELETE') AS deletable
-       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
        WHERE n.nspname = $1 AND c.relname = ANY($2::text[])
          AND c.relkind IN ('r','p','v','m')`,
       [source.schema, source.relations],
@@ -123,11 +158,11 @@ export async function createNativeApiProcess<Environment, Scheduled, Queue>(
   requireFunction(options.compose, "Native application composition");
   requireFunction(options.onBackgroundError, "Background error reporter");
   const runtime = createPgStoreRuntime(options.postgres, poolFactory);
-  const store: NativeStore = { sql: runtime.sql, read: runtime.read, producer: runtime.producer };
+  const store: NativeStore = { sql: runtime.sql, read: runtime.read, producer: runtime.producer, transaction: runtime.transaction };
   let composition: NativeApiComposition<Environment, Scheduled, Queue>;
   try {
     await verifySources(store, options.sources);
-    const sources = new Map(options.sources.map((source) => [source.name, Object.freeze({ ...source, ...store })]));
+    const sources = new Map(options.sources.map((source) => [source.name, scopedSource(runtime, source)]));
     composition = await options.compose({ sources, kv: options.kv });
     for (const method of ["fetch", "scheduled", "queue"] as const) {
       requireFunction(composition?.application?.[method], `Native application.${method}`);
