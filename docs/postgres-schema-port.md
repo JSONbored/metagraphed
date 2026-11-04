@@ -187,3 +187,35 @@ source import and production cutover retain their separate acceptance evidence.
 [reader owner](../src/retained-blocks-d1.ts),
 [PostgreSQL capability](../src/retained-blocks-pg.ts),
 [cursor index](../migrations/postgres/0003_retained_feed_order.sql)
+
+## Lane-health history and materializations
+
+The lane-health load phase preserves original hidden SQLite rowids in
+`app.lane_health.source_row_id`, with the complete signed 64-bit range. Import
+history and all three original materializations before activation. The
+activation transaction validates current-row payloads and source identities,
+the timestamp/severity maximum, clock multiplicities and predecessor links,
+and each verdict maximum. An imported current row may retain any existing
+equal-time, equal-severity winner. Subsequent updates and winner deletions use
+the source's ascending physical-identity tie break.
+
+The generated clock gap is stored as `numeric`. SQLite performs exact integer
+subtraction within the signed 64-bit range and promotes overflow by converting
+both operands to binary64 before subtracting. `app.lane_health_gap` reproduces
+that operation and stores the exact binary64 value as a numeric integer. The
+private importer's explicit `sqlite_numeric` codec maps source INTEGER values
+exactly and source REAL values from their binary64 value, while retaining the
+original storage-class census. A cast of the exact mathematical difference to
+binary64, or a direct PostgreSQL float-to-numeric cast, can produce another
+value and cannot replace that codec or function.
+
+Native writes take one history-wide advisory transaction lock before tuple
+locks. The row-identity trigger retains explicit imported IDs, allocates the
+largest ID plus one normally, and searches at most 100 positive random IDs
+when the signed maximum exists. This preserves SQLite's non-AUTOINCREMENT
+allocation behavior and permits reuse after the maximum row is deleted.
+PostgreSQL transaction failures retain their normal rollback semantics.
+
+[Load schema and functions](../migrations/postgres/0004_lane_health.sql),
+[activation](../migrations/postgres/0005_lane_health_activate.sql),
+[differential SQLite/PostgreSQL fixture](../tests/lane-health-runtime.pg18.ts)
