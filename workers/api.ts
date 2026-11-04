@@ -42,6 +42,7 @@ import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
+import { selectedChainConcentrationStore } from "../src/chain-concentration-store.ts";
 import { createProducerStore, storeBoolean } from "../src/producer-store.ts";
 import { selectedD1Store } from "../src/d1-store.ts";
 import {
@@ -3530,6 +3531,8 @@ async function dispatchScheduled(
     // day that has none yet, bounded per tick. Runs the same builder
     // /chain/concentration serves, so a historical point and the live card are
     // one computation -- see src/chain-concentration-rollup.ts.
+    const native = selectedChainConcentrationStore(env);
+    if (native) return rollupChainConcentration(null, { env, native });
     {
       // Reads neuron_daily (already Neon's) and writes the rollup, so BOTH
       // must be Neon's before this lane moves -- a rollup reading one store
