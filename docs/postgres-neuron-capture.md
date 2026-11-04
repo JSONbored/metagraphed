@@ -32,3 +32,8 @@ These are preparation components. They do not activate a writer, move source
 data, allocate storage or change any production service. Source custody, complete
 read-path coverage, deployment composition and a full restore/cutover rehearsal
 remain separate acceptance requirements.
+
+Member identity columns still use PostgreSQL text. The separate source-text
+representation plan must address values PostgreSQL text cannot store, including
+embedded NUL, before migrating them. The writer refuses those inputs atomically;
+it does not delete or normalize characters to make an insert succeed.

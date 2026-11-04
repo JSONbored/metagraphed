@@ -15,7 +15,6 @@ import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
 import {
   ACCOUNT_POSITION_DAILY_COLUMNS,
   NEURON_DAILY_COLUMNS,
-  type NeuronMirrorInput,
 } from "./neurons-neon-write.ts";
 import { neuronCaptureIdentity } from "./neuron-capture-receipt.ts";
 import type { NeuronCaptureStore } from "./neuron-capture-store.ts";
