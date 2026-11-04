@@ -70,10 +70,10 @@ const sourceSql = createD1Sql(createD1Store(binding));
 const sourceEnv = {
   ...dataApiEnv(),
   D1_STATE: binding as unknown as D1Database,
-  D1_STATE_TABLES: (objects
+  D1_STATE_TABLES: objects
     .filter((item) => item.type === "table" || item.type === "view")
     .map((item) => item.name)
-    .join(",")) as DataApiEnv["D1_STATE_TABLES"],
+    .join(",") as DataApiEnv["D1_STATE_TABLES"],
 };
 const nativeEnv = { ...dataApiEnv(), NEURON_SNAPSHOT_STORE: native };
 const ctx = { waitUntil() {} } as unknown as ExecutionContext;
