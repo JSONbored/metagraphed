@@ -1,3 +1,5 @@
+import { mcpSessionService } from "./mcp-session-service.ts";
+import { chainFirehoseService } from "./chain-firehose-service.ts";
 import {
   LEGACY_EMISSION_SHARE_DESCRIPTION,
   MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
@@ -16457,20 +16459,21 @@ function resourceArtifactPath(uri: string) {
 // the hub last cold-started) -- a subscribed client's first resources/read
 // after subscribing is a normal, expected case, not a fault.
 async function readLiveChainStreamResource(ctx: McpCtx) {
-  if (!ctx.env.CHAIN_FIREHOSE_HUB) {
+  const service = chainFirehoseService(ctx.env);
+  if (!service) {
     return {
       table: null,
       message: "the realtime firehose is not bound on this deployment",
     };
   }
-  const stub = ctx.env.CHAIN_FIREHOSE_HUB.get(
-    ctx.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-  );
-  const upstream = await stub.fetch(
+  const upstream = await service.fetch(
     "https://chain-firehose-hub.internal/latest",
   );
-  const { payload } = await upstream.json();
-  return payload ?? { table: null, message: "no chain event observed yet" };
+  const data = asJsonObject(await upstream.json());
+  if (!data) throw new Error("Invalid chain firehose response");
+  return (
+    data.payload ?? { table: null, message: "no chain event observed yet" }
+  );
 }
 
 async function readSubnetStatusResource(ctx: McpCtx, netuid: number) {
@@ -16554,16 +16557,15 @@ async function subscribeResource(params: Row | null, ctx: McpCtx) {
         "from the initialize response).",
     );
   }
-  if (!ctx.env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(ctx.env, ctx.sessionId);
+  if (!sessionService) {
     throw toolError(
       "resource_unavailable",
       "MCP resource subscriptions are not provisioned on this deployment.",
     );
   }
-  const stub = ctx.env.MCP_SESSION_HUB.get(
-    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     "https://mcp-session-hub.internal/subscribe",
     {
       method: "POST",
@@ -16588,18 +16590,17 @@ async function unsubscribeResource(params: Row | null, ctx: McpCtx) {
       "resources/unsubscribe requires an Mcp-Session-Id header.",
     );
   }
-  if (!ctx.env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(ctx.env, ctx.sessionId);
+  if (!sessionService) {
     throw toolError(
       "resource_unavailable",
       "MCP resource subscriptions are not provisioned on this deployment.",
     );
   }
-  const stub = ctx.env.MCP_SESSION_HUB.get(
-    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
-  );
+
   // Unsubscribing from something never subscribed to is a harmless no-op
   // (McpSessionHub's Set.delete semantics) -- no existence check needed.
-  await stub.fetch("https://mcp-session-hub.internal/unsubscribe", {
+  await sessionService.fetch("https://mcp-session-hub.internal/unsubscribe", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ sessionId: ctx.sessionId, uri }),
@@ -18587,12 +18588,11 @@ async function registerMcpSession(
   env: Env,
   sessionId: string | undefined,
 ): Promise<void> {
-  if (!sessionId || !env.MCP_SESSION_HUB) return;
+  if (!sessionId) return;
   try {
-    const stub = env.MCP_SESSION_HUB.get(
-      env.MCP_SESSION_HUB.idFromName(sessionId),
-    );
-    await stub.fetch("https://mcp-session-hub.internal/register", {
+    const sessionService = mcpSessionService(env, sessionId);
+    if (!sessionService) return;
+    await sessionService.fetch("https://mcp-session-hub.internal/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ sessionId }),
@@ -18647,14 +18647,14 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
       { allow: "POST, DELETE, OPTIONS" },
     );
   }
-  if (!env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(env, rawSessionId);
+  if (!sessionService) {
     return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
   }
-  const stub = env.MCP_SESSION_HUB.get(
-    env.MCP_SESSION_HUB.idFromName(rawSessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     `https://mcp-session-hub.internal/stream?sessionId=${encodeURIComponent(rawSessionId)}`,
+    { signal: request.signal },
   );
   if (!upstream.ok) {
     // 404 (session unknown/already terminated) from the DO -- a client-facing
@@ -18725,13 +18725,12 @@ async function handleMcpTerminateRequest(request: Request, env: Env) {
       400,
     );
   }
-  if (!env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(env, rawSessionId);
+  if (!sessionService) {
     return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
   }
-  const stub = env.MCP_SESSION_HUB.get(
-    env.MCP_SESSION_HUB.idFromName(rawSessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     "https://mcp-session-hub.internal/terminate",
     {
       method: "POST",

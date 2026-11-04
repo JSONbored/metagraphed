@@ -1,3 +1,4 @@
+import { mcpSessionService } from "../src/mcp-session-service.ts";
 // ChainFirehoseHub -- the realtime chain-event fanout (#4982, ADR 0015,
 // docs/realtime-firehose.md). The first Durable Object in this codebase.
 //
@@ -2133,19 +2134,21 @@ export class ChainFirehoseHub implements DurableObject {
     if (
       mcpMembershipAvailable &&
       this.mcpSubscribedSessions.size > 0 &&
-      this.env.MCP_SESSION_HUB
+      (this.env.MCP_SESSION_SERVICE !== undefined || this.env.MCP_SESSION_HUB)
     ) {
       await Promise.all(
         [...this.mcpSubscribedSessions].map(async (sessionId) => {
           try {
-            const stub = this.env.MCP_SESSION_HUB.get(
-              this.env.MCP_SESSION_HUB.idFromName(sessionId),
+            const sessionService = mcpSessionService(this.env, sessionId);
+            if (!sessionService) return;
+            await sessionService.fetch(
+              "https://mcp-session-hub.internal/notify",
+              {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ uri: MCP_CHAIN_STREAM_RESOURCE_URI }),
+              },
             );
-            await stub.fetch("https://mcp-session-hub.internal/notify", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ uri: MCP_CHAIN_STREAM_RESOURCE_URI }),
-            });
           } catch {
             // best-effort -- a dead/unreachable session DO never blocks
             // ingest or the other broadcast populations above
