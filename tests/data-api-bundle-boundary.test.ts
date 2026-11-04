@@ -90,6 +90,8 @@ describe("data-api's bundle boundary", () => {
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",
     "src/pg-neuron-snapshot.ts",
+    "src/archive-catalog-pg.ts",
+    "src/archive-content-fs.ts",
     "src/mcp-server.ts",
     "src/projection-write-store.ts",
     "src/root-basket-pg.ts",
