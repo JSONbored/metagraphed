@@ -224,6 +224,31 @@ test("head alarms keep live and durable cursors distinct and perform no I/O unti
   assert.equal((await state())["head:write_next"], 4);
 });
 
+test("an unavailable older block does not prevent the newly live head from being written", async () => {
+  await db.query("UPDATE realtime.chain_firehose_actor SET state=$1", [
+    JSON.stringify({ "head:last_seen": 3, "head:write_next": 3 }),
+  ]);
+  const writes: number[] = [];
+  const service = await peer({
+    head: {
+      head: async () => 4,
+      block: async (height) => {
+        if (height === 3) throw new Error("old block unavailable");
+        return block(height);
+      },
+      write: async (value) => {
+        writes.push(value.block_number);
+      },
+    },
+  });
+  await service.fetch(request("/poll-start", {}));
+  await db.exec("UPDATE realtime.chain_firehose_actor SET alarm_at_ms=0");
+  assert.equal(await service.runDueAlarm(), "rearmed");
+  assert.deepEqual(writes, [4]);
+  assert.equal((await state())["head:last_seen"], 4);
+  assert.equal((await state())["head:write_next"], 3);
+});
+
 test("GraphQL sockets use the existing protocol and never receive plain event frames", async () => {
   const service = await peer();
   const socket = new Socket();

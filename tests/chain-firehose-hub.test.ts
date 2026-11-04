@@ -2003,6 +2003,43 @@ test("GRAPHQL_WS_SOCKET_TAG is the documented tag string", () => {
   assert.equal(GRAPHQL_WS_SOCKET_TAG, "graphql-ws");
 });
 
+test("the Worker protocol lazily loads its schema and disposes an active quiet subscription", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const frames: { type: string }[] = [];
+  let message!: (value: string) => Promise<void>;
+  const closed = hub.graphqlWsServer.opened(
+    {
+      protocol: "graphql-transport-ws",
+      send: (value) => {
+        frames.push(JSON.parse(value));
+      },
+      close: () => {},
+      onMessage: (callback) => {
+        message = callback;
+      },
+    },
+    { ip: "203.0.113.1", graphqlWsConnection: { activeSubscriptions: 0 } },
+  );
+  await message(JSON.stringify({ type: "connection_init" }));
+  const subscription = message(
+    JSON.stringify({
+      id: "worker",
+      type: "subscribe",
+      payload: { query: "subscription { chainEvents { table } }" },
+    }),
+  );
+  await vi.waitFor(() => assert.equal(hub.chainEventSubscribers.size, 1));
+  await hub.broadcast({ table: "blocks", block_number: 1 });
+  await vi.waitFor(() =>
+    assert.ok(frames.some((frame) => frame.type === "next")),
+  );
+  hub.disposeNativeConnections();
+  await subscription;
+  await closed(1000, "finished");
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  assert.ok(frames.some((frame) => frame.type === "complete"));
+});
+
 test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the documented constants", () => {
   assert.equal(
     CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
