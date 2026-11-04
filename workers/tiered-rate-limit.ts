@@ -16,6 +16,7 @@
 // own header comment: this repo's rate limiting stays on infrastructure this
 // codebase can introspect/test directly, not a third party's opaque counter.
 import { resolveClientIp } from "./config.ts";
+import { appKv } from "../src/app-kv.ts";
 import {
   API_KEY_LOOKUP_TOKEN_HEADER,
   validateApiKey,
@@ -177,7 +178,7 @@ async function loadBlockVerdict(
   accountId: unknown,
   accountKind: AccountKind,
 ): Promise<BlockVerdict> {
-  const kv = env.METAGRAPH_CONTROL;
+  const kv = appKv(env);
   if (!kv?.get) return evaluateBlock(null, accountId, accountKind);
   try {
     const snapshot = (await kv.get(BLOCKLIST_KV_KEY, { type: "json" })) as {
