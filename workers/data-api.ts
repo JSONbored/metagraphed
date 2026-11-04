@@ -19,6 +19,7 @@ import { sha256Hex } from "../src/sha256-hex.ts";
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
+import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,
@@ -6908,7 +6909,9 @@ export async function loadSubnetSnapshotCards(
   netuid: number,
 ) {
   const rows = await readSubnetNeuronRows(sql, env, netuid);
-  const native = Boolean(selectedD1Store(env, ["neurons"]));
+  const native = Boolean(
+    selectedNeuronSnapshotStore(env) || selectedD1Store(env, ["neurons"]),
+  );
   const validators = rows
     .filter((r) => r.validator_permit === true || r.validator_permit === 1)
     .sort((a, b) => {
@@ -8914,6 +8917,34 @@ function matchHyperparamsIdentityStoreRoute(
   return null;
 }
 
+// This explicit document capability does not make the SQL view routes native.
+async function readNativeSubnetSnapshot(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/metagraph$/);
+  if (!match) return null;
+  try {
+    const native = selectedNeuronSnapshotStore(env);
+    if (!native) return null;
+    const netuid = Number(match[1]);
+    const rows = await native.subnetRows(
+      netuid,
+      url.searchParams.get("validator_permit") === "true",
+    );
+    return json(
+      buildSubnetMetagraph(rows, netuid, {
+        immunityPeriod: null,
+        burnHotkey: await native.burnHotkey(netuid),
+      }),
+    );
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -9218,6 +9249,8 @@ async function dispatchDataApiRequest(
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
+    const nativeSnapshot = await readNativeSubnetSnapshot(url, env);
+    if (nativeSnapshot) return nativeSnapshot;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
