@@ -243,7 +243,7 @@ export function createPgKv(
       if (settings.cursor) {
         const raw = settings.cursor;
         if (
-          raw.length > 4096 ||
+          raw.length > 8192 ||
           !/^[A-Za-z0-9_-]+$/.test(raw) ||
           Buffer.from(raw, "base64url").toString("base64url") !== raw
         )

@@ -275,7 +275,7 @@ test("prefix keysets preserve byte order and bind cursors to namespace, prefix a
   for (const cursor of [
     "=",
     "A",
-    "a".repeat(4097),
+    "a".repeat(8193),
     encode(null),
     encode([2, "control", "a", "YQ"]),
     encode([1, "control", "a", "Yg"]),
@@ -284,6 +284,19 @@ test("prefix keysets preserve byte order and bind cursors to namespace, prefix a
     await assert.rejects(kv.list({ prefix: "a", cursor }));
   }
   for (const limit of [0, 1001, 1.5]) await assert.rejects(kv.list({ limit }));
+});
+
+test("cursor budget includes JSON escaping for maximum-size control-character prefixes", async () => {
+  const f = fixture();
+  const kv = createPgKv(f.runtime, "control");
+  const prefix = "\0".repeat(511);
+  await kv.put(prefix + "a", "first");
+  await kv.put(prefix + "b", "second");
+  const page = await kv.list({ prefix, limit: 1 });
+  assert.ok(page.cursor && page.cursor.length > 4096);
+  assert.deepEqual((await kv.list({ prefix, cursor: page.cursor })).keys, [
+    { name: prefix + "b" },
+  ]);
 });
 
 test("native consumption and selection retain one-time and legacy behavior", async () => {
