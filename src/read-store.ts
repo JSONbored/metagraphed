@@ -345,26 +345,18 @@ export function pgReadStore(
   };
 }
 
-/**
- * The store to read `tables` from: Neon, once it is declared to solely own
- * every one of them and Hyperdrive is bound.
- *
- * `injected` wins outright so a test can hand in its own fake, and `undefined`
- * comes back when no store is available -- which every caller already handles,
- * because an unbound store has always been possible.
- */
-/**
- * The one binding `readStore` looks for.
- *
- * `readStore` itself keeps taking `unknown` -- see its own note -- because its
- * callers hand in an `Env`, a bag, or nothing. This names the same shape for
- * COMPOSERS, which forward one env to both legs (the Neon store and the
- * lakehouse) and therefore need a type that admits either (#11339).
- */
+/** Inputs shared by Worker and native-process composers. readStore accepts
+ * unknown so callers can supply their existing Env without an index signature.
+ * An injected test reader wins. Native ownership is explicit and complete;
+ * absent native selection retains the existing D1/Hyperdrive behavior. */
 export interface StoreEnv {
   HYPERDRIVE?: { connectionString?: string };
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
+  NATIVE_READ_STORE?: {
+    tables: readonly string[];
+    store: ReadStoreDb;
+  };
 }
 
 /**
@@ -401,6 +393,25 @@ export function readStore(
   deps: ReadStoreDeps = {},
 ): ReadStoreDb | undefined {
   if (injected) return injected;
+  const native = recordOrNull(env)?.NATIVE_READ_STORE;
+  if (native !== undefined) {
+    const selection = recordOrNull(native);
+    const owned = selection?.tables;
+    const store = recordOrNull(selection?.store);
+    if (
+      !Array.isArray(owned) ||
+      !owned.every((table) => typeof table === "string") ||
+      typeof store?.query !== "function" ||
+      typeof store?.first !== "function"
+    ) {
+      throw new TypeError("Selected native read store is invalid");
+    }
+    if (tables.length === 0) return undefined;
+    if (!tables.every((table) => owned.includes(table))) {
+      throw new Error("Native read store does not own every requested table");
+    }
+    return selection!.store as ReadStoreDb;
+  }
   const d1 = selectedD1Store(env, tables);
   if (d1) return d1;
   const connectionString = hyperdriveConnectionString(env);

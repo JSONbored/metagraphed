@@ -220,6 +220,31 @@ PostgreSQL transaction failures retain their normal rollback semantics.
 [activation](../migrations/postgres/0005_lane_health_activate.sql),
 [differential SQLite/PostgreSQL fixture](../tests/lane-health-runtime.pg18.ts)
 
+## Root basket load and integrity
+
+Migrations `0020_root_basket.sql` and `0021_root_basket_activate.sql` preserve
+the seven Root basket tables and five explicit indexes. Capture IDs remain
+source text; unsigned and signed quantities retain their canonical decimal
+text and exact bounds, including the 128-bit limits. The source 0/1
+`provisional` flag remains an integer. The old Neon numeric/UUID schema is not
+the import target.
+
+Activation validates every imported completion against its capture digest,
+page chain and per-page/per-fund child counts, and validates current-pointer
+scope before attaching six foreign keys and all 21 source trigger effects.
+Completed observations and receipts reject even no-op updates. The original
+source may choose a different first error when two immutable-write triggers
+apply; both reject the statement atomically.
+
+Seven additional statement triggers serialize family writes before tuple and
+foreign-key locks. Native writers use `READ COMMITTED`; activation explicitly
+rejects writes under a fixed transaction snapshot, whose stale view after a
+lock wait could miss a newly committed completion. The fixture exercises both
+directions of the completion/child-write race, replay conflicts, monotonic
+current selection, failed activation rollback and decimal bounds. This is
+schema preparation; it does not select a producer or move production data.
+[Root basket integration](../tests/postgres-root-basket-schema.pg18.ts)
+
 ## Registry and surface-health load schema
 
 Migrations `0007_registry_health.sql` and `0008_registry_health_activate.sql`
@@ -250,3 +275,50 @@ alias replay, whole-batch rollback, the NULL/-1 failure-key collision and
 uptime percentiles. This does not select a production writer or activate the
 separate `subnet_snapshots` family; that path also requires its complete schema
 and closed-day revision triggers.
+
+## Account, usage and alert state
+
+The account-state load migration preserves eleven source tables and their
+fourteen explicit indexes. Account identifiers and timestamps remain signed
+`bigint` values. Opaque credential, contact, condition and subscription text
+retain their original bytes. The source `applied`, `active` and `success` flags
+use the existing `boolean01` import codec. Account-kind composite keys continue
+to distinguish RPC and GitHub accounts with the same numeric ID.
+[Load schema](../migrations/postgres/0010_account_state.sql)
+
+Delivery rows load before reference enforcement, so source export table order
+does not become an import prerequisite. The separate activation migration
+validates and adds the delivery-to-trigger foreign key with `ON DELETE CASCADE`.
+It checks all seven identity sequence floors before advancing any sequence,
+using imported rows, original `sqlite_sequence` metadata and consumed native
+sequence values. Exhaustion or orphaned deliveries abort activation.
+[Activation](../migrations/postgres/0011_account_state_activate.sql)
+
+The PostgreSQL fixture compares source columns and explicit indexes, exercises
+exact values, nullable fields, account-kind keys and partial uniqueness, and
+checks sequence floors, orphan refusal, cascade deletion and rollback.
+[Integration test](../tests/postgres-account-state-schema.pg18.ts)
+
+## Subnet and economic history
+
+The economic-history load migration preserves twenty source tables and their
+thirty-one explicit indexes. It covers subnet parameters, identities, ownership,
+lifecycle and emission history, plus price, revenue, compute, treasury and
+attribution observations. Nullable and exact text values retain their source
+representation. Boolean fields use the explicit `boolean01` codec, while
+binary64 observations remain `double precision`. Compute-declaration JSON stays
+text with object validation, preserving its original serialization.
+[Load schema](../migrations/postgres/0012_economic_history.sql)
+
+The separate activation checks all seven identity high-water marks before any
+sequence advances. Imported IDs, retained source sequence rows and consumed
+native sequence values all contribute to that floor. These tables have no
+source foreign keys or user triggers. `subnet_snapshots` and the shared
+`archive_export_revisions` table remain with the complete closed-day trigger
+family, which has separate activation requirements.
+[Sequence activation](../migrations/postgres/0013_economic_history_activate.sql)
+
+The native fixture compares source columns, types, nullability and explicit
+indexes, checks exact text and number storage, exercises source constraints and
+uniqueness, and validates forward-only sequence reconciliation and exhaustion.
+[Integration test](../tests/postgres-economic-history-schema.pg18.ts)

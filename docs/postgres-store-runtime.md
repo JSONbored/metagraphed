@@ -105,8 +105,42 @@ authorization state. Native callbacks lock, validate and delete the value in
 one transaction, so a concurrent request cannot consume the same challenge twice.
 The existing legacy bindings remain available through their selectors.
 
-The Workers OAuth provider's client, grant, code and refresh-token records have
-a separate transaction boundary. Its read-modify-write grant transitions and
-token rotation require request-level transactional qualification before native
-selection. Supplying a KV-compatible object alone does not establish that
-qualification, and this capability does not select the provider's `OAUTH_KV`.
+## Native OAuth preparation
+
+`node scripts/build-native-oauth.ts` deterministically bundles the lock-pinned
+Workers OAuth provider 0.8.3 for Node 22, retaining its MIT notice and source
+digest. The builder rejects expanded imports and executable use of
+`WorkerEntrypoint`; native composition supports object handlers. Load the
+generated module with `loadNativeOAuthProvider(bundleUrl)`, then pass that module,
+`runtime` and provider options to `createPgOAuthProvider()`.
+
+The adapter uses the `oauth-provider` namespace in `auth.kv_entries`. Token and
+registration endpoints, authorization completion, client mutations, grant
+revocation, token exchange and purge each acquire one transaction-scoped
+namespace lock before reading. They explicitly select READ COMMITTED so a
+waiter sees the previous lock holder's committed grant even if the connection
+defaults differ. Nested helper calls share that lease. Each operation creates
+fresh helpers and environment objects; no closed transaction is cached.
+
+The upstream provider retains crypto, PKCE, grant formats, expiry, current and
+previous refresh-token acceptance, and response semantics. A replayed code can
+deliberately revoke its grant while returning a 400 response, so client errors
+do not automatically roll back. Server-error responses roll back. A failed SQL
+statement also rolls back if upstream catches it. Bearer authentication uses
+ordinary pooled reads and releases them before invoking application/MCP work.
+
+This remains preparation, not a production replacement. The current Worker
+options enable Client ID Metadata Documents (CIMD), which require Cloudflare's
+public-only fetch protection. The native adapter explicitly rejects those
+options, and the optional enterprise issuer fetcher, until a qualified native
+public-fetch capability exists; it does not
+silently disable URL clients or pretend that Cloudflare's safety flag exists.
+The [public-fetch follow-up](https://github.com/JSONbored/metagraphed/issues/13020)
+owns that remaining boundary. The ordinary Worker entry point is unchanged.
+
+Native rate limiting is a separate capability. `workers/tiered-rate-limit.ts`
+owns tier/IP limiter selection and ordering; daily quota decisions remain in
+`src/daily-quota.ts` with guarded `api_quota_daily` persistence in
+`workers/data-api.ts`. Managed-key identity and OAuth account-tier caches retain
+their freshness contracts. PostgreSQL OAuth storage does not replace the
+Cloudflare rate-limit algorithm or alter failure/entitlement behavior.
