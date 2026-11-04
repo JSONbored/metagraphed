@@ -303,7 +303,10 @@ and closed-day revision triggers.
 
 The account-state load migration preserves eleven source tables and their
 fourteen explicit indexes. Account identifiers and timestamps remain signed
-`bigint` values. Opaque credential, contact, condition and subscription text
+`bigint` values, except the quota table's `account_id` and `units_spent`: these
+use exact `numeric` storage to preserve the source INTEGER-affinity columns'
+wide and fractional REAL values before native auth bootstrap. Opaque credential,
+contact, condition and subscription text
 retain their original bytes. The source `applied`, `active` and `success` flags
 use the existing `boolean01` import codec. Account-kind composite keys continue
 to distinguish RPC and GitHub accounts with the same numeric ID.
