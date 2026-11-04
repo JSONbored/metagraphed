@@ -209,10 +209,10 @@ describe("native API process", () => {
 
   test("rejects missing KV and OAuth adapters before serving", async () => {
     const f = fixture();
-    f.options.kv.control = { ...kv, consume: undefined };
+    f.options.kv = { control: { ...kv, consume: undefined }, oauthPending: kv };
     await assert.rejects(f.create(), /control KV.consume/);
     assert.equal(f.factories(), 0);
-    f.options.kv.control = kv;
+    f.options.kv = { control: kv, oauthPending: kv };
     const compose = f.options.compose;
     f.options.compose = async (providers) => {
       const composition = await compose(providers);
@@ -374,6 +374,70 @@ describe("native API process", () => {
       const f = fixture();
       f.options.sources = sources;
       await assert.rejects(f.create(), /ownership is required|unique names/);
+      assert.equal(f.ends(), 1);
+    }
+  });
+
+  test("constructs KV from the checked source handles without a second pool", async () => {
+    const f = fixture();
+    const compose = f.options.compose;
+    let factoryCalls = 0;
+    let factorySource: NativeSource | undefined;
+    f.options.kv = async ({ sources }) => {
+      factoryCalls++;
+      assert.equal(f.factories(), 1);
+      assert.ok(f.calls.some((call) => call.text.includes("pg_class")));
+      factorySource = sources.get("application");
+      assert.ok(factorySource);
+      await factorySource.read.query("SELECT value FROM items");
+      return { control: kv, oauthPending: kv };
+    };
+    f.options.compose = async (providers) => {
+      assert.equal(providers.sources.get("application"), factorySource);
+      assert.equal(providers.kv.control, kv);
+      assert.equal(providers.kv.oauthPending, kv);
+      return compose(providers);
+    };
+    const process = await f.create();
+    assert.equal(factoryCalls, 1);
+    assert.equal(
+      await (
+        await process.fetch(new Request("https://fixture.invalid/mcp"))
+      ).text(),
+      "main",
+    );
+    await process.close();
+    assert.equal(f.factories(), 1);
+    assert.equal(f.ends(), 1);
+  });
+
+  test("KV factories cannot run before ownership checks and failures close the pool", async () => {
+    const absent = fixture();
+    absent.options.sources = [];
+    absent.options.kv = () => {
+      throw new Error("must not run");
+    };
+    await assert.rejects(absent.create(), /ownership/);
+    assert.equal(absent.ends(), 1);
+    for (const make of [
+      async () => {
+        throw new Error("factory failed");
+      },
+      () => undefined as never,
+      () => ({ control: { ...kv, consume: undefined }, oauthPending: kv }),
+      () =>
+        ({ control: kv, oauthPending: { ...kv, list: undefined } }) as never,
+    ]) {
+      const f = fixture();
+      f.options.kv = make;
+      f.options.compose = () => {
+        throw new Error("composition must not run");
+      };
+      await assert.rejects(
+        f.create(),
+        /factory failed|KV.get|KV.consume|KV.list/,
+      );
+      assert.equal(f.factories(), 1);
       assert.equal(f.ends(), 1);
     }
   });

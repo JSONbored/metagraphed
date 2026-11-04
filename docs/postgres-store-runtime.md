@@ -313,3 +313,16 @@ before pruning if a future retention policy requires a longer audit trail.
 Durable Object alarms remain separate work. Chain firehose, write-buffer and MCP
 session actors need their own durable state, serialized callback and
 WebSocket/session semantics; generic cron rows do not replace those actors.
+
+## API bootstrap and KV ownership
+
+`createNativeApiProcess` accepts explicit KV capabilities or a `kv({ sources })`
+factory. The factory runs after database source ownership is verified and before
+application composition. It receives the same scoped handles as the application,
+so PostgreSQL-backed control and OAuth-pending KV can use the process-owned pool
+without a second pool or a deferred proxy.
+
+Both factory results must provide the complete KV interface. A factory error or
+incomplete result refuses startup and closes the owned pool. Source ownership
+failure prevents the factory from running at all. The factory adds no listener,
+timer or production activation; the process owner still drains before closing.
