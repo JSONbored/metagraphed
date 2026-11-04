@@ -30,6 +30,10 @@ import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
 import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
 import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
 import {
+  selectedNeuronViewStore,
+  type NeuronViewQuery,
+} from "../src/neuron-view-store.ts";
+import {
   writeUsageRollupD1,
   type UsageRollupBucket,
 } from "../src/usage-rollup-d1.ts";
@@ -9049,6 +9053,140 @@ async function readNativeDailyHistory(
   }
 }
 
+async function readNativeNeuronView(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  let query: NeuronViewQuery | undefined;
+  let build: ((rows: Record<string, unknown>[]) => unknown) | undefined;
+  const point = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/,
+  );
+  const validators = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/validators$/,
+  );
+  const subnet = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/(concentration|performance|idle-stake|yield)$/,
+  );
+  const account = url.pathname.match(/^\/api\/v1\/accounts\/([^/]+)\/subnets$/);
+  if (point) {
+    const netuid = Number(point[1]);
+    query = {
+      columns: NEURON_COLUMNS.split(", "),
+      netuid,
+      uid: Number(point[2]),
+      limit: 1,
+    };
+    build = (rows) =>
+      buildNeuronDetail(rows[0] ?? null, netuid, { immunityPeriod: null });
+  } else if (validators) {
+    const netuid = Number(validators[1]);
+    query = {
+      columns: NEURON_COLUMNS.split(", "),
+      netuid,
+      validatorsOnly: true,
+      order: [{ column: "stake_tao", descending: true }, { column: "uid" }],
+    };
+    build = (rows) =>
+      buildSubnetValidators(rows, netuid, {
+        featuredHotkeys: FEATURED_HOTKEY_SET,
+      });
+  } else if (subnet) {
+    const netuid = Number(subnet[1]);
+    if (subnet[2] === "concentration") {
+      query = {
+        columns: [
+          "stake_tao",
+          "emission_tao",
+          "coldkey",
+          "validator_permit",
+          "captured_at",
+        ],
+        netuid,
+      };
+      build = (rows) => buildConcentration(rows, netuid);
+    } else if (subnet[2] === "performance") {
+      query = {
+        columns: [
+          "incentive",
+          "dividends",
+          "trust",
+          "consensus",
+          "validator_trust",
+          "active",
+          "validator_permit",
+          "captured_at",
+        ],
+        netuid,
+      };
+      build = (rows) => buildSubnetPerformance(rows, netuid);
+    } else if (subnet[2] === "idle-stake") {
+      query = { columns: ["stake_tao", "dividends", "captured_at"], netuid };
+      build = (rows) => buildSubnetIdleStake(rows, netuid);
+    } else {
+      query = {
+        columns: [
+          "uid",
+          "hotkey",
+          "validator_permit",
+          "stake_tao",
+          "emission_tao",
+          "captured_at",
+          "block_number",
+        ],
+        netuid,
+        order: [{ column: "uid" }],
+      };
+      build = (rows) => buildSubnetYield(rows, netuid);
+    }
+  } else if (url.pathname === "/api/v1/chain/concentration") {
+    query = {
+      columns: [
+        "stake_tao",
+        "emission_tao",
+        "coldkey",
+        "validator_permit",
+        "netuid",
+        "captured_at",
+      ],
+    };
+    build = (rows) => buildChainConcentration(rows);
+  } else if (url.pathname === "/api/v1/chain/idle-stake") {
+    query = { columns: ["stake_tao", "dividends", "netuid", "captured_at"] };
+    build = (rows) => buildChainIdleStake(rows);
+  } else if (url.pathname === "/api/v1/chain/yield") {
+    query = {
+      columns: [
+        "validator_permit",
+        "stake_tao",
+        "emission_tao",
+        "netuid",
+        "captured_at",
+      ],
+      excludeRoot: true,
+    };
+    build = (rows) => buildChainYield(rows);
+  } else if (account) {
+    query = {
+      columns: ["netuid", "uid", "stake_tao", "validator_permit", "active"],
+      hotkey: account[1],
+      order: [{ column: "netuid" }],
+    };
+    build = (rows) => buildAccountSubnets(rows, query!.hotkey!);
+  }
+  if (!query || !build) return null;
+  try {
+    const native = selectedNeuronViewStore(env);
+    if (!native) return null;
+    if (account) query = { ...query, hotkey: decodeURIComponent(account[1]) };
+    return json(build(await native.rows(query)));
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 async function readNativeNeuronMetrics(
   url: URL,
   env: DataApiEnv,
@@ -9402,6 +9540,8 @@ async function dispatchDataApiRequest(
     if (nativeHistory) return nativeHistory;
     const nativeMetrics = await readNativeNeuronMetrics(url, env);
     if (nativeMetrics) return nativeMetrics;
+    const nativeView = await readNativeNeuronView(url, env);
+    if (nativeView) return nativeView;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);

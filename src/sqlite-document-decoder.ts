@@ -342,6 +342,39 @@ export function createSqliteDocumentDecoder(options: {
           : {}),
       }));
     },
+    memberMetrics(
+      payload: Uint8Array,
+      names: readonly string[],
+      keys: readonly string[],
+    ): SqliteMetricEntry[] {
+      const input = metricInput(payload, names, keys, "text");
+      if (keys.some((key) => !/^-?(0|[1-9][0-9]*)$/.test(key) || key === "-0"))
+        throw new TypeError("Invalid canonical member key");
+      const columns = names.map((_, index) => {
+        const value = `json_extract(?1,'$."'||k.value||'"'||substr(${input.paths[index]},2))`;
+        return `typeof(${value}) AS t${index},CASE WHEN typeof(${value})='text' THEN CAST(${value} AS BLOB) ELSE ${value} END AS v${index}`;
+      });
+      const statement = db.prepare(
+        `SELECT CAST(k.value AS BLOB) AS key${columns.length ? `,${columns.join(",")}` : ""} FROM json_each(?2) k ORDER BY k.id`,
+      );
+      statement.setReadBigInts(true);
+      return statement.all(...input.bindings).map((row) => ({
+        key: wireText.decode(row.key as Uint8Array),
+        values: Object.fromEntries(
+          names.map((name, index) => [
+            name,
+            scalar(row[`v${index}`] as SqliteDocumentValue, row[`t${index}`]),
+          ]),
+        ),
+        textBytes: Object.fromEntries(
+          names.flatMap((name, index) =>
+            row[`t${index}`] === "text"
+              ? [[name, (row[`v${index}`] as Uint8Array).slice()]]
+              : [],
+          ),
+        ),
+      }));
+    },
     validateMetricEntries(payload: Uint8Array, name: string): void {
       const input = metricInput(payload, [name], undefined, "integer");
       // A source WHERE predicate can run before the membership lookup. Keep
