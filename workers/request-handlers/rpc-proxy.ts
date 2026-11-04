@@ -201,7 +201,7 @@ export async function readRpcPoolArtifact(
 // point), and that is what src/rpc-usage-staleness-watchdog.ts watches for --
 // the fix for "nothing noticed" is an alarm, not a blocking write.
 function recordRpcUsage(env: Env, event: RpcUsageEvent) {
-  recordRpcUsageEvent(env.RPC_USAGE_ANALYTICS, event);
+  recordRpcUsageEvent(env.RPC_USAGE_ANALYTICS, event, env.RPC_USAGE_STORE);
 }
 
 // RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,

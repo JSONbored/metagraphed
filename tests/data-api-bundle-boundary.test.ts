@@ -86,6 +86,8 @@ describe("data-api's bundle boundary", () => {
   });
 
   for (const forbidden of [
+    "src/pg-rpc-usage.ts",
+    "src/pg-rpc-usage-reader.ts",
     "src/semantic-index-pg.ts",
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",

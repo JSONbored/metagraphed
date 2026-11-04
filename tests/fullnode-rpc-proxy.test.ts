@@ -864,6 +864,34 @@ describe("PostHog usage telemetry", () => {
 // carries the pool discriminator and the reader filters on it; a point written
 // without that tag would silently move a published number.
 describe("Analytics Engine usage capture (#9228)", () => {
+  test("native capture receives fullnode events while the legacy dataset remains unused", async () => {
+    const events: { pool: string; network: string }[] = [];
+    let legacy = 0;
+    const { env, key } = makeValidatedKeyEnv({
+      RPC_USAGE_ANALYTICS: {
+        writeDataPoint() {
+          legacy++;
+        },
+      },
+      RPC_USAGE_STORE: {
+        record(value: { pool: string; network: string }) {
+          events.push(value);
+          return false;
+        },
+        async load() {
+          return null;
+        },
+      },
+    });
+    globalThis.fetch = async () =>
+      Response.json({ jsonrpc: "2.0", id: 1, result: "ok" });
+    const result = await callGate(env, key);
+    assert.equal(result.status, 200);
+    assert.equal(legacy, 0);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].pool, "fullnode");
+    assert.equal(events[0].network, "fullnode");
+  });
   function captureDataset() {
     const points: { blobs: string[]; doubles: number[]; indexes: string[] }[] =
       [];

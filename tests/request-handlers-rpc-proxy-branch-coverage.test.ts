@@ -524,6 +524,38 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
 // write that reaches the request path, or one that silently stops firing, is
 // precisely the failure #9228 documents.
 describe("AE usage capture wiring (#9228)", () => {
+  test("native capture receives the ordinary public proxy event without an AE write", async () => {
+    const dataset = captureDataset();
+    const events: unknown[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = async () =>
+      Response.json({ jsonrpc: "2.0", id: 1, result: "ok" });
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+        rpcEnv(poolWith(ep("a", SAFE_A)), {
+          RPC_USAGE_ANALYTICS: dataset,
+          RPC_USAGE_STORE: {
+            record(value: unknown) {
+              events.push(value);
+              return true;
+            },
+            async load() {
+              return null;
+            },
+          },
+        }),
+        url("/rpc/v1/finney"),
+        { waitUntil() {} },
+      );
+      assert.equal(res.status, 200);
+      assert.equal(events.length, 1);
+      assert.equal(dataset.points.length, 0);
+      assert.equal((events[0] as { pool: string }).pool, "public");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
   const rpcPost = (body: unknown) =>
     req("/rpc/v1/finney", {
       method: "POST",

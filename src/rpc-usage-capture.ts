@@ -1,3 +1,5 @@
+import type { RpcUsageStore } from "./rpc-usage-store.ts";
+
 // RPC reverse-proxy usage capture, on Workers Analytics Engine (#9228).
 //
 // This is the writer that stopped existing. the store's `rpc_proxy_events` went with
@@ -210,9 +212,11 @@ function finiteOrZero(value: unknown): number {
 export function recordRpcUsageEvent(
   dataset: AnalyticsEngineDatasetLike | undefined | null,
   event: RpcUsageEvent,
+  native?: RpcUsageStore,
 ): boolean {
-  if (typeof dataset?.writeDataPoint !== "function") return false;
   try {
+    if (native) return native.record(event);
+    if (typeof dataset?.writeDataPoint !== "function") return false;
     dataset.writeDataPoint(usageDataPoint(event));
     return true;
   } catch {

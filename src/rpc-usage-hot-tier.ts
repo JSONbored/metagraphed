@@ -167,6 +167,7 @@ export async function loadRpcUsageHotTier(
     bucketMs?: number;
   } = {},
 ): Promise<Row | null> {
+  if (env?.RPC_USAGE_STORE) return env.RPC_USAGE_STORE.load(window, Date.now());
   if (!isAnalyticsSqlConfigured(env)) return null;
   const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
     ? window
