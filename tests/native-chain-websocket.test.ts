@@ -84,7 +84,7 @@ async function fixture() {
     },
     scheduled: async () => {},
     queue: async () => {},
-    close: async () => {},
+    close: () => chain.close(),
   };
   const listener = await listenNativeApi(process, {
     origin: "https://chain.fixture.invalid",
