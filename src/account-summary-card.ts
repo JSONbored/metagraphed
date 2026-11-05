@@ -43,6 +43,7 @@ import {
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { readStore } from "./read-store.ts";
+import { selectedNeuronViewStore } from "./neuron-view-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 import { ArtifactReadTimeoutError } from "./artifact-read-budget.ts";
 
@@ -78,10 +79,17 @@ export async function loadAccountRegistrationsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<AccountRegistrationRow[] | null> {
-  const db = readStore(env, ["neurons"]);
-  if (!db?.query) return [];
+  const native = selectedNeuronViewStore(env);
+  const db = native ? null : readStore(env, ["neurons"]);
+  if (!native && !db?.query) return [];
   try {
-    return await db.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
+    if (native)
+      return (await native.rows({
+        columns: ["netuid", "uid", "stake_tao", "validator_permit", "active"],
+        hotkey: ss58,
+        order: [{ column: "netuid" }],
+      })) as AccountRegistrationRow[];
+    return await db!.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
       ss58,
     ]);
   } catch {
