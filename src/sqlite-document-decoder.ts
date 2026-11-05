@@ -138,6 +138,7 @@ export function createSqliteDocumentDecoder(options: {
   const multiply = db.prepare("SELECT ?1 * ?2 AS value");
   const divide = db.prepare("SELECT ?1 / ?2 AS value");
   const integerAffinity = db.prepare("SELECT CAST(?1 AS INTEGER) AS value");
+  const formatReal = db.prepare("SELECT printf('%!.26g',?1) AS value");
   const matchesInteger = db.prepare("SELECT CAST(?2 AS INTEGER)=?1 AS value");
   const mergeCapture = db.prepare(`SELECT jsonb_patch(?1,CASE
     WHEN (SELECT MIN(json_extract(i.value,'$.captured_at')) FROM json_each(?2) i) > ?3
@@ -286,6 +287,12 @@ export function createSqliteDocumentDecoder(options: {
     matchesInteger(value: SqliteDocumentValue, integer: bigint): boolean {
       if (closed) throw new Error("SQLite document decoder is closed");
       return matchesInteger.get(value, integer)!.value === 1;
+    },
+    formatReal(value: number): string {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (!Number.isFinite(value))
+        throw new TypeError("Export REAL must be finite");
+      return formatReal.get(value)!.value as string;
     },
     mergeCapture(
       current: Uint8Array,

@@ -11,6 +11,25 @@ const source = new DatabaseSync(":memory:");
 const decoder = createSqliteDocumentDecoder({ maxAuditBytes: 2 * 1024 * 1024 });
 const blob = (text: string) =>
   source.prepare("SELECT jsonb(?) AS value").get(text)!.value as Uint8Array;
+
+test("formats export REALs with the source's exact lossless notation", () => {
+  const format = source.prepare("SELECT printf('%!.26g',?) AS value");
+  for (const value of [
+    0,
+    -0,
+    0.1,
+    -0.1,
+    Number.MIN_VALUE,
+    Number.MAX_VALUE,
+    2 ** 53,
+  ])
+    expect(decoder.formatReal(value)).toBe(format.get(value)!.value);
+  for (const value of [NaN, Infinity, -Infinity])
+    expect(() => decoder.formatReal(value)).toThrow("finite");
+  const closed = createSqliteDocumentDecoder({ maxAuditBytes: 1 });
+  closed.close();
+  expect(() => closed.formatReal(1)).toThrow("closed");
+});
 afterAll(() => {
   decoder.close();
   source.close();
