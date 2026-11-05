@@ -161,3 +161,35 @@ test("preserves raw JSON custody while scalar TEXT follows wire replacement", ()
   expect(decoder.extract(malformedText, "$")).toBe("\ufffd");
   expect(malformedText).toEqual(Buffer.from([0x17, 0xff]));
 });
+
+test("scalar arithmetic retains SQLite integer, REAL and null semantics", () => {
+  expect(decoder.numericAffinity("7\0tail")).toBe(7);
+  expect(decoder.numericAffinity("2.5\0tail")).toBe(2.5);
+  expect(decoder.numericAffinity("7")).toBe(7n);
+  expect(decoder.arithmetic("multiply", 2n, 3n)).toBe(6n);
+  expect(decoder.arithmetic("divide", 7n, 2n)).toBe(3n);
+  expect(decoder.arithmetic("divide", 7n, 2)).toBe(3.5);
+  expect(decoder.arithmetic("multiply", (1n << 63n) - 1n, 2n)).toBe(
+    18446744073709551616,
+  );
+  expect(decoder.arithmetic("divide", -(1n << 63n), -1n)).toBe(
+    9223372036854775808,
+  );
+  expect(decoder.arithmetic("multiply", "2.5", 4n)).toBe(10);
+  expect(decoder.arithmetic("divide", "7\0tail", 2n)).toBe(3n);
+  expect(decoder.arithmetic("divide", 7n, "2\0tail")).toBe(3n);
+  expect(decoder.arithmetic("divide", 1n, 0n)).toBeNull();
+  expect(decoder.arithmetic("multiply", null, 2n)).toBeNull();
+  expect(() => decoder.arithmetic("other" as never, 1n, 2n)).toThrow(
+    "operator",
+  );
+  expect(() => decoder.arithmetic("multiply", "x".repeat(524289), 2n)).toThrow(
+    "budget",
+  );
+  expect(() =>
+    decoder.arithmetic("divide", 1n, new Uint8Array(524289)),
+  ).toThrow("budget");
+  const closed = createSqliteDocumentDecoder({ maxAuditBytes: 1024 });
+  closed.close();
+  expect(() => closed.arithmetic("multiply", 1n, 2n)).toThrow("closed");
+});

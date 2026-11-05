@@ -135,6 +135,8 @@ export function createSqliteDocumentDecoder(options: {
     "SELECT CAST(CAST(?1 AS TEXT) AS BLOB) AS value",
   );
   const numericAffinity = db.prepare("SELECT sum(?1) AS value");
+  const multiply = db.prepare("SELECT ?1 * ?2 AS value");
+  const divide = db.prepare("SELECT ?1 / ?2 AS value");
   const integerAffinity = db.prepare("SELECT CAST(?1 AS INTEGER) AS value");
   const matchesInteger = db.prepare("SELECT CAST(?2 AS INTEGER)=?1 AS value");
   const mergeCapture = db.prepare(`SELECT jsonb_patch(?1,CASE
@@ -158,6 +160,8 @@ export function createSqliteDocumentDecoder(options: {
   axons.setReadBigInts(true);
   expiredMembers.setReadBigInts(true);
   numericAffinity.setReadBigInts(true);
+  multiply.setReadBigInts(true);
+  divide.setReadBigInts(true);
   integerAffinity.setReadBigInts(true);
   let closed = false;
   const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -235,7 +239,40 @@ export function createSqliteDocumentDecoder(options: {
         (value instanceof Uint8Array && value.byteLength > 524288)
       )
         throw new RangeError("Scalar exceeds its explicit decode budget");
-      return numericAffinity.get(value)!.value as bigint | number | null;
+      const result = numericAffinity.get(value)!.value as
+        bigint | number | null;
+      // D1's SUM treats NUL-bearing numeric TEXT as REAL even when this
+      // pinned decoder's numeric affinity recognizes an exact integer.
+      return typeof value === "string" &&
+        value.includes("\0") &&
+        typeof result === "bigint"
+        ? Number(result)
+        : result;
+    },
+    arithmetic(
+      operator: "multiply" | "divide",
+      left: SqliteDocumentValue,
+      right: SqliteDocumentValue,
+    ): bigint | number | null {
+      if (closed) throw new Error("SQLite document decoder is closed");
+      if (operator !== "multiply" && operator !== "divide")
+        throw new TypeError("Unsupported SQLite scalar operator");
+      if (
+        [left, right].some(
+          (value) =>
+            (typeof value === "string" && Buffer.byteLength(value) > 524288) ||
+            (value instanceof Uint8Array && value.byteLength > 524288),
+        )
+      )
+        throw new RangeError("Scalar exceeds its explicit decode budget");
+      // D1's numeric text parser stops at the first NUL. Keep the original
+      // scalar for responses, but retain that arithmetic boundary explicitly.
+      const operand = (value: SqliteDocumentValue) =>
+        typeof value === "string" ? value.split("\0", 1)[0]! : value;
+      return (operator === "multiply" ? multiply : divide).get(
+        operand(left),
+        operand(right),
+      )!.value as bigint | number | null;
     },
     integerAffinity(value: SqliteDocumentValue): bigint | null {
       if (closed) throw new Error("SQLite document decoder is closed");

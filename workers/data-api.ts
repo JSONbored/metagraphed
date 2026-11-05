@@ -41,6 +41,7 @@ import { selectedNeuronLiveStore } from "../src/neuron-live-store.ts";
 import { selectedNeuronSummaryStore } from "../src/neuron-summary-store.ts";
 import { selectedValidatorEnrichmentStore } from "../src/validator-enrichment-store.ts";
 import { selectedSubnetEnrichmentStore } from "../src/subnet-enrichment-store.ts";
+import { selectedValidatorHistoryStore } from "../src/validator-history-store.ts";
 import {
   selectedNeuronViewStore,
   type NeuronViewQuery,
@@ -9277,6 +9278,48 @@ async function readNativeEnrichedRoutes(
   }
 }
 
+async function readNativeValidatorHistory(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/v1\/validators\/([^/]+)\/history$/);
+  if (!match) return null;
+  try {
+    const store = selectedValidatorHistoryStore(env);
+    if (!store) return null;
+    const hotkey = decodeURIComponent(match[1]);
+    const rawNetuid = url.searchParams.get("netuid");
+    const parsedNetuid =
+      rawNetuid == null || rawNetuid.trim() === "" ? null : Number(rawNetuid);
+    const netuid =
+      parsedNetuid !== null &&
+      Number.isSafeInteger(parsedNetuid) &&
+      parsedNetuid >= 0
+        ? parsedNetuid
+        : undefined;
+    const rows = await store.rows(
+      hotkey,
+      windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+      MAX_HISTORY_POINTS,
+      netuid,
+    );
+    return json(
+      buildValidatorHistory(rows, hotkey, {
+        window: windowLabelFor(
+          url,
+          HISTORY_WINDOW_DAYS,
+          DEFAULT_HISTORY_WINDOW,
+        ),
+        ...(netuid === undefined ? {} : { netuid }),
+      }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 async function readNativeNeuronView(
   url: URL,
   env: DataApiEnv,
@@ -10115,6 +10158,8 @@ async function dispatchDataApiRequest(
       env,
     );
     if (nativeSubnetEnrichment) return nativeSubnetEnrichment;
+    const nativeValidatorHistory = await readNativeValidatorHistory(url, env);
+    if (nativeValidatorHistory) return nativeValidatorHistory;
     const nativeDailyViews = await readNativeDailyViewRoutes(url, env);
     if (nativeDailyViews) return nativeDailyViews;
     const nativeEnriched = await readNativeEnrichedRoutes(url, env, ctx);

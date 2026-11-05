@@ -100,6 +100,7 @@ describe("data-api's bundle boundary", () => {
     "src/pg-neuron-view.ts",
     "src/pg-validator-enrichment.ts",
     "src/pg-subnet-enrichment.ts",
+    "src/pg-validator-history.ts",
     "src/sqlite-metric-value.ts",
     "src/pg-subnet-status-hub.ts",
     "src/pg-rate-limits.ts",
@@ -238,11 +239,14 @@ describe("data-api's bundle boundary", () => {
     // Native subnet economics dispatch adds 6,428 source / 2,209 minified /
     // 479 gzip bytes over 1f53f990, for 4,891,082 source bytes. The native
     // joined reader and SQLite decoder remain excluded from this graph.
+    // Native validator history selection adds 2,183 source / 825 minified /
+    // 151 gzip bytes over d2db7911, for 4,893,265 source bytes. The paged
+    // PostgreSQL reader and its scalar codec remain excluded from this graph.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_892_000,
+      firstParty < 4_894_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
