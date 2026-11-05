@@ -5,8 +5,57 @@ import { selectedNativeStateExport } from "../src/native-state-export.ts";
 import { createPgStateExport } from "../src/pg-state-export.ts";
 import { createSqliteDocumentDecoder } from "../src/sqlite-document-decoder.ts";
 import { exportProjectionSource } from "../scripts/generate-export-projection.ts";
+import { handleD1StateExport } from "../src/d1-state-export.ts";
 
 describe("native export selection and policy", () => {
+  it("authenticates before native dispatch and never falls back after a native failure", async () => {
+    const input = { table: "account_balances", kind: "schema" };
+    const request = (token = "fixture") =>
+      new Request("https://example.invalid/api/v1/internal/state-export", {
+        method: "POST",
+        headers: { "x-state-export-token": token },
+        body: JSON.stringify(input),
+      });
+    const calls: unknown[] = [];
+    const env = {
+      STATE_EXPORT_SECRET: "fixture",
+      NATIVE_STATE_EXPORT: {
+        export: async (body: unknown) => {
+          calls.push(body);
+          return Response.json({ native: true });
+        },
+      },
+      get D1_STATE(): never {
+        throw new Error("Legacy source must not be selected");
+      },
+    };
+    expect((await handleD1StateExport(request("wrong"), env)).status).toBe(401);
+    expect(calls).toEqual([]);
+    expect(await (await handleD1StateExport(request(), env)).json()).toEqual({
+      native: true,
+    });
+    expect(calls).toEqual([input]);
+    for (const selected of [
+      {},
+      {
+        export: async () => {
+          throw new Error("Native unavailable");
+        },
+      },
+    ])
+      expect(
+        (
+          await handleD1StateExport(request(), {
+            STATE_EXPORT_SECRET: "fixture",
+            NATIVE_STATE_EXPORT: selected,
+            get D1_STATE(): never {
+              throw new Error("Legacy source must not be selected");
+            },
+          })
+        ).status,
+      ).toBe(503);
+  });
+
   it("keeps the committed metadata derived from the pinned source schema", () => {
     expect(
       readFileSync(

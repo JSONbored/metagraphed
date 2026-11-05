@@ -237,6 +237,17 @@ describe("native export protocol boundaries", () => {
     );
   });
 
+  it("refuses a newer physical field before its original projection metadata exists", async () => {
+    const f = fixture({
+      table: "nominator_positions",
+      columns: (columns) => [
+        ...columns,
+        { name: "alpha_rao", type: "numeric" },
+      ],
+    });
+    expect((await f.request({ kind: "schema" })).status).toBe(503);
+  });
+
   it("refuses malformed source envelopes and non-text field representations", async () => {
     for (const payload of ["null", "[]", "1", '{"ss58":true}', '{"ss58":{}}'])
       expect((await fixture({ payload }).request()).status).toBe(503);
@@ -415,6 +426,14 @@ describe("native export protocol boundaries", () => {
     });
     expect(
       (await (await f.request({ kind: "days" })).json<UnitReply>()).days,
+    ).toEqual([{ day: "2020-01-01", rows: 2 }]);
+    const documents = fixture({
+      table: "neuron_daily",
+      rows: [{ day: "2020-01-01", rows: "2" }],
+    });
+    expect(
+      (await (await documents.request({ kind: "days" })).json<UnitReply>())
+        .days,
     ).toEqual([{ day: "2020-01-01", rows: 2 }]);
     expect(
       (
