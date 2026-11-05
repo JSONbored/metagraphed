@@ -57,16 +57,28 @@ describe("native RPC usage on PostgreSQL 18", { concurrency: false }, () => {
       await control.query("SELECT 1 FROM pg_namespace WHERE nspname='app'")
     ).rowCount;
     await control.query("CREATE SCHEMA IF NOT EXISTS app");
-    await control.query(
-      readFileSync(
-        new URL("../migrations/postgres/0038_rpc_usage.sql", import.meta.url),
-        "utf8",
-      ),
-    );
+    for (const name of [
+      "0038_rpc_usage.sql",
+      "0042_rpc_usage_archive.sql",
+      "0043_rpc_usage_archive_prune.sql",
+    ])
+      await control.query(
+        readFileSync(
+          new URL(`../migrations/postgres/${name}`, import.meta.url),
+          "utf8",
+        ),
+      );
   });
   after(async () => {
     await runtime.close();
-    await control.query("DROP TABLE app.rpc_usage_events");
+    await control.query("DROP FUNCTION app.rpc_usage_prune(bigint,integer)");
+    await control.query(
+      "DROP FUNCTION app.rpc_usage_record_archive(date,bigint,text,text,text,bigint)",
+    );
+    await control.query("DROP FUNCTION app.rpc_usage_day_fingerprint(date)");
+    await control.query(
+      "DROP TABLE app.rpc_usage_prune_state,app.rpc_usage_archive_days,app.rpc_usage_events",
+    );
     if (ownSchema) await control.query("DROP SCHEMA app");
     await control.end();
   });
@@ -196,17 +208,37 @@ describe("native RPC usage on PostgreSQL 18", { concurrency: false }, () => {
     assert.equal((await store.load("7d", stamp))?.observed_at, stamp);
   });
 
-  it("prunes only expired rows and enforces SQL measurement bounds", async () => {
+  it("requires archive receipts for public retention and preserves fullnode policy", async () => {
     await control.query("TRUNCATE app.rpc_usage_events");
     const old = createPgRpcUsageStore(runtime, {
       ...options,
       now: () => stamp - 32 * 86400000,
     });
-    old.record(event);
+    old.record({ ...event, endpointId: "node" });
+    old.record({ ...event, pool: "fullnode" });
     await old.close();
     const fresh = createPgRpcUsageStore(runtime, options);
     fresh.record(event);
     await fresh.flush();
+    assert.equal(await fresh.prune(), 1); // Only the expired fullnode event.
+    assert.equal(await fresh.prune(), 0); // Public source has no archive receipt.
+    const oldDay = new Date(stamp - 32 * 86400000).toISOString().slice(0, 10);
+    const source = (
+      await control.query("SELECT * FROM app.rpc_usage_day_fingerprint($1)", [
+        oldDay,
+      ])
+    ).rows[0];
+    await control.query(
+      "SELECT app.rpc_usage_record_archive($1,$2,$3,$4,$5,$6)",
+      [
+        oldDay,
+        source.source_rows,
+        source.source_sha256,
+        "11111111-2222-3333-4444-555555555555",
+        "123",
+        stamp,
+      ],
+    );
     assert.equal(await fresh.prune(), 1);
     assert.equal(await fresh.prune(), 0);
     await assert.rejects(
