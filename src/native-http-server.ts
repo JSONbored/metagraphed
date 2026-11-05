@@ -23,8 +23,14 @@ export interface NativeHttpUpgrade {
     socket: Duplex,
     head: Buffer,
   ): Promise<void>;
+  /** Stop upgrade admission and sockets; shared application adapters stay open. */
   close(): Promise<void>;
 }
+
+export type NativeHttpApplication = Pick<
+  NativeApiProcess<never, never>,
+  "state" | "fetch" | "close"
+>;
 
 export function trustedHeaders(
   original: Headers,
@@ -49,8 +55,8 @@ export function trustedHeaders(
 class NativePayloadTooLargeError extends Error {}
 
 /** Explicit listener for an already verified composition; no implicit bind address. */
-export async function listenNativeApi<Scheduled, Queue>(
-  process: NativeApiProcess<Scheduled, Queue>,
+export async function listenNativeApi(
+  process: NativeHttpApplication,
   requested: NativeHttpOptions,
 ): Promise<{ address: AddressInfo; close(): Promise<void> }> {
   const options = { ...requested };

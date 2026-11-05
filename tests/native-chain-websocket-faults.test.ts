@@ -381,5 +381,6 @@ test("close handles empty, already closed and forced sockets and retries a faile
   assert.deepEqual(slow.closes, [
     { code: 1012, reason: "chain transport is closing; reconnect" },
   ]);
-  assert.equal(f.chain.close.mock.calls.length, 1);
+  assert.equal(f.chain.close.mock.calls.length, 0);
+  assert.equal(f.chain.state, "ready");
 });

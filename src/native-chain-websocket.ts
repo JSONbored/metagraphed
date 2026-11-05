@@ -23,7 +23,8 @@ function messageBytes(data: RawData): Buffer {
       : Buffer.from(data);
 }
 
-/** Native ws noServer integration; the caller's one HTTP server owns listening. */
+/** Native ws noServer integration. This owns socket admission and closure;
+ * the application retains its shared chain adapter through request drain. */
 export function createNativeChainWebSocketTransport(
   chain: ChainService,
   requested: NativeChainWebSocketOptions,
@@ -184,7 +185,7 @@ export function createNativeChainWebSocketTransport(
     close() {
       if (closing) return closing;
       open = false;
-      closing = Promise.all([chain.close(), closeSockets()]).then(
+      closing = closeSockets().then(
         () =>
           new Promise<void>((resolve, rejectClose) =>
             server.close((error) => (error ? rejectClose(error) : resolve())),

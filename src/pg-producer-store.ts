@@ -50,6 +50,9 @@ const laneTables: Readonly<Record<string, readonly string[]>> = Object.freeze({
   [TAO_USD_INDEX_NEON_LANE]: ["tao_usd_index"],
 });
 
+/** Complete supported write inventory for the native application composer. */
+export const NATIVE_PRODUCER_LANES = Object.freeze(Object.keys(laneTables));
+
 /** Use an already verified scoped source. The application still owns pool
  * admission and closure; these handles never open connections of their own. */
 export function createPgProducerBindings(
