@@ -160,13 +160,18 @@ export function createPgRpcUsageStore(
         (scope) =>
           scope.invoke(() =>
             runtime.transaction(async (transaction) => {
-              const rows = await transaction.query<{ event_id: string }>(
-                `DELETE FROM app.rpc_usage_events
-          WHERE event_id IN (SELECT event_id FROM app.rpc_usage_events WHERE occurred_at < $1
-          ORDER BY occurred_at,event_id LIMIT 10000) RETURNING event_id`,
+              const rows = await transaction.query<{ removed: number }>(
+                "SELECT app.rpc_usage_prune($1::bigint,10000) AS removed",
                 [String(stamp - retention)],
               );
-              return rows.length;
+              if (
+                rows.length !== 1 ||
+                !Number.isInteger(rows[0].removed) ||
+                rows[0].removed < 0 ||
+                rows[0].removed > 10000
+              )
+                throw new Error("Invalid native RPC retention receipt");
+              return rows[0].removed;
             }),
           ),
       );

@@ -43,8 +43,10 @@ function fixture(overrides: Partial<PgRpcUsageOptions> = {}) {
           if (wait) await wait;
           return { changes: 1 };
         },
-        async query() {
-          return [];
+        async query<Row>(sql: string) {
+          return (
+            sql.includes("rpc_usage_prune") ? [{ removed: 0 }] : []
+          ) as Row[];
         },
         async first() {
           return null;
@@ -219,9 +221,11 @@ test("prune is bounded and uses the configured retention cutoff", async () => {
           return null;
         },
         async query<Row>(sql: string, values: unknown[]) {
-          expect(sql).toContain("LIMIT 10000");
+          expect(sql).toBe(
+            "SELECT app.rpc_usage_prune($1::bigint,10000) AS removed",
+          );
           calls.push(values);
-          return [{ event_id: "fixture" }] as Row[];
+          return [{ removed: 1 }] as Row[];
         },
       });
     },
@@ -447,5 +451,35 @@ test("concurrent prune calls are bounded by one database task", async () => {
   expect(await f.store.prune()).toBe(0);
   release();
   await first;
+  await f.store.close();
+});
+
+test("prune refuses missing, malformed and out-of-budget deletion receipts", async () => {
+  for (const result of [
+    [],
+    [{ removed: -1 }],
+    [{ removed: 10001 }],
+    [{ removed: NaN }],
+    [{ removed: 1.5 }],
+    [{ removed: 1 }, { removed: 2 }],
+  ]) {
+    const f = fixture();
+    f.runtime.transaction = async (fn) =>
+      fn({
+        async run() {
+          return { changes: 0 };
+        },
+        async first() {
+          return null;
+        },
+        async query<Row>() {
+          return result as Row[];
+        },
+      });
+    await expect(f.store.prune()).rejects.toThrow("retention receipt");
+    await f.store.close();
+  }
+  const f = fixture();
+  expect(await f.store.prune()).toBe(0);
   await f.store.close();
 });
