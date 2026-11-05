@@ -8,8 +8,9 @@ import { handleNativeHistoryExport } from "./native-history-export.ts";
 import { handleRootBasketExport } from "./root-basket-export.ts";
 import { handleSyncDeadLetterExport } from "./sync-dead-letter-export.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
+import { selectedNativeStateExport } from "./native-state-export.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
-const RequestSchema = z
+export const RequestSchema = z
   .object({
     table: z.string(),
     kind: z.enum(["schema", "revision", "days", "rows"]),
@@ -72,13 +73,14 @@ interface ExportEnv {
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
   ROOT_BASKET_STORE?: unknown;
+  NATIVE_STATE_EXPORT?: unknown;
   METAGRAPH_CONTROL?: Pick<KVNamespace, "get" | "list">;
 }
 // JSON and exact decimals are TEXT; exports contain no blobs.
 interface ExportRow {
   [column: string]: string | number | null;
 }
-function logicalType(table: string, name: string, type: string): string {
+export function logicalType(table: string, name: string, type: string): string {
   if (BOOLEANS.has(name)) return "bool";
   // SQLite cannot infer column types for JSON-extract views. Retained rows
   // can contain either numeric JSON strings or numbers, so Arrow needs the
@@ -122,6 +124,12 @@ export async function handleD1StateExport(
       return handleNativeHistoryExport(inputBody, env);
     if (kind === "dead-letter")
       return handleSyncDeadLetterExport(inputBody, env);
+  }
+  try {
+    const native = selectedNativeStateExport(env);
+    if (native) return await native.export(inputBody);
+  } catch {
+    return fail(503, "native export unavailable; no snapshot was acknowledged");
   }
   const parsed = RequestSchema.safeParse(inputBody);
   if (!parsed.success || !Object.hasOwn(D1_EXPORT_TABLES, parsed.data.table))

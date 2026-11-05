@@ -90,6 +90,8 @@ describe("data-api's bundle boundary", () => {
     "src/pg-rpc-usage-reader.ts",
     "src/pg-producer-store.ts",
     "src/pg-raw-capture.ts",
+    "src/pg-state-export.ts",
+    "scripts/generate-export-projection.ts",
     "src/semantic-index-pg.ts",
     "src/sqlite-document-decoder.ts",
     "src/neuron-document-preparation.ts",
@@ -242,11 +244,14 @@ describe("data-api's bundle boundary", () => {
     // Native validator history selection adds 2,183 source / 825 minified /
     // 151 gzip bytes over d2db7911, for 4,893,265 source bytes. The paged
     // PostgreSQL reader and its scalar codec remain excluded from this graph.
+    // Native table-export selection adds 953 source / 386 minified / 63 gzip
+    // bytes over 347bc45a, for 4,894,218 source bytes. The PostgreSQL exporter
+    // and pinned decoder remain outside the Worker graph.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_894_000,
+      firstParty < 4_896_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
