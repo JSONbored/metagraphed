@@ -44,6 +44,7 @@ import { selectedSubnetEnrichmentStore } from "../src/subnet-enrichment-store.ts
 import { selectedValidatorHistoryStore } from "../src/validator-history-store.ts";
 import {
   selectedNeuronViewStore,
+  ACCOUNT_REGISTRATION_COLUMNS,
   type NeuronViewQuery,
 } from "../src/neuron-view-store.ts";
 import {
@@ -9435,7 +9436,7 @@ async function readNativeNeuronView(
     build = (rows) => buildChainYield(rows);
   } else if (account) {
     query = {
-      columns: ["netuid", "uid", "stake_tao", "validator_permit", "active"],
+      columns: ACCOUNT_REGISTRATION_COLUMNS,
       hotkey: account[1],
       order: [{ column: "netuid" }],
     };
