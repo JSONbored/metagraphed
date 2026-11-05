@@ -1,5 +1,5 @@
 import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
-// Account positions use the selected D1 ledger and indexed activity history.
+// Account positions use the selected relational ledger and indexed history.
 // Live neuron stakes price every position; selected owner failures decline
 // without replacing a current answer with a stale archive. Complete native
 // account feeds provide the stake-activity cross-check for a zero snapshot.
@@ -12,18 +12,23 @@ import {
 import { accountHistoryFloorMs } from "./account-summary-projection.ts";
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { safeSs58Literal } from "./history-readers.ts";
-import { readStore } from "./read-store.ts";
+import { readStore, recordOrNull } from "./read-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNeuronViewStore } from "./neuron-view-store.ts";
+import { COMPARE_VALIDATORS_MAX } from "./analytics-live.ts";
 import { loadIndexedAccountFeedPage } from "./indexed-account-feeds.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 
-async function nativePositionRows(
+async function positionRows(
   env: unknown,
   text: string,
   values: unknown[] = [],
 ): Promise<Record<string, unknown>[] | null | undefined> {
   try {
-    const store = selectedD1Store(env, ["nominator_positions"]);
+    const store =
+      recordOrNull(env)?.NATIVE_READ_STORE !== undefined
+        ? readStore(env, ["nominator_positions"])
+        : selectedD1Store(env, ["nominator_positions"]);
     return store ? await store.query(text, values) : undefined;
   } catch {
     return null;
@@ -69,23 +74,37 @@ export async function neuronStakeByHotkeys(
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
-  const db = readStore(env, ["neurons"]);
-  if (!db?.query) return null;
+  const native = selectedNeuronViewStore(env);
+  const db = native ? null : readStore(env, ["neurons"]);
+  if (!native && !db?.query) return null;
+  const chunkSize = native ? COMPARE_VALIDATORS_MAX : BIND_PARAM_CHUNK;
   const chunks: string[][] = [];
-  for (let i = 0; i < hotkeys.length; i += BIND_PARAM_CHUNK) {
-    chunks.push(hotkeys.slice(i, i + BIND_PARAM_CHUNK));
+  for (let i = 0; i < hotkeys.length; i += chunkSize) {
+    chunks.push(hotkeys.slice(i, i + chunkSize));
   }
   let results: unknown[][];
   try {
-    results = await Promise.all(
-      chunks.map(async (chunk) => {
-        const placeholders = chunk.map(() => "?").join(", ");
-        return await db.query!(
-          `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
-          chunk,
+    if (native) {
+      // Preserve the bounded lookup contract without opening one concurrent
+      // pool operation for every chunk of a large account's positions.
+      results = [];
+      for (const chunk of chunks)
+        results.push(
+          await native.rows({
+            columns: ["hotkey", "netuid", "stake_tao"],
+            hotkeys: chunk,
+          }),
         );
-      }),
-    );
+    } else
+      results = await Promise.all(
+        chunks.map(async (chunk) => {
+          const placeholders = chunk.map(() => "?").join(", ");
+          return await db!.query!(
+            `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
+            chunk,
+          );
+        }),
+      );
   } catch {
     return null;
   }
@@ -109,7 +128,7 @@ function latestStamp(
 export async function ledgerCapturedAt(
   env: HistoryReadEnv | null | undefined,
 ): Promise<number | null> {
-  const native = await nativePositionRows(
+  const native = await positionRows(
     env,
     "SELECT MAX(captured_at) AS latest FROM nominator_positions",
   );
@@ -179,7 +198,7 @@ export async function loadAccountPositionsColdTier(
 
   // One row over the cap is enough to know the cap was exceeded, and cheaper
   // than a second counting query over the same predicate.
-  const native = await nativePositionRows(
+  const native = await positionRows(
     env,
     `SELECT ${POSITION_COLUMNS} FROM nominator_positions WHERE coldkey = ? LIMIT ?`,
     [coldkey, POSITION_SCAN_CAP + 1],

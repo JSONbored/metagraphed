@@ -1,3 +1,12 @@
+/** Shared registration projection for account cards and the data API. */
+export const ACCOUNT_REGISTRATION_COLUMNS = [
+  "netuid",
+  "uid",
+  "stake_tao",
+  "validator_permit",
+  "active",
+] as const;
+
 export interface NeuronViewQuery {
   columns: readonly string[];
   netuid?: number;

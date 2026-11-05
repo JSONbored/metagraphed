@@ -195,6 +195,8 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadChainBurn } from "../../src/chain-burn.ts";
 import { readLatestSubnetBurns } from "../../src/subnet-burn-read.ts";
+import { selectedNeuronLiveStore } from "../../src/neuron-live-store.ts";
+import { selectedNeuronMetricStore } from "../../src/neuron-metric-store.ts";
 import {
   BURN_HISTORY_WINDOWS,
   buildSubnetBurnHistory,
@@ -3817,9 +3819,16 @@ export async function buildSubnetValidatorEconomicsPayload(
   const readParams = deps.loadParams ?? loadNetworkParameters;
   const readBurn = deps.loadBurn ?? loadSubnetBurn;
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
-  const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
-    ReadStoreDb | undefined;
-  const rows = db ? await readNeuronEconomicsRows(db, env, netuid) : [];
+  const native = selectedNeuronLiveStore(env);
+  const db = readStore(
+    env,
+    native ? ["subnet_hyperparams"] : VALIDATOR_ECONOMICS_TABLES,
+  ) as ReadStoreDb | undefined;
+  const rows = native
+    ? await native.economicsRows(netuid)
+    : db
+      ? await readNeuronEconomicsRows(db, env, netuid)
+      : [];
 
   const hyperRow = db
     ? await db.first(
@@ -4035,21 +4044,40 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // empty series published for every subnet, edge-cached, with nothing marking
   // it a decline. readStore awaits its own teardown, so there is no ctx to
   // thread and no caller left that can forget one.
-  const db = readStore(env, VALIDATOR_ECONOMICS_HISTORY_TABLES) as
-    ReadStoreDb | undefined;
+  const native = selectedNeuronMetricStore(env);
+  const db = readStore(
+    env,
+    native
+      ? ["subnet_snapshots", "subnet_hyperparams_history"]
+      : VALIDATOR_ECONOMICS_HISTORY_TABLES,
+  ) as ReadStoreDb | undefined;
 
-  const neuronRows = db
-    ? await readNeuronDailyMetricRows<HistoryRow>(
-        db,
-        env,
+  const neuronRows = native
+    ? await native.dailyRows<HistoryRow>(
         netuid,
         cutoff,
-        // `hotkey` is selected only so the owner's unconditional permit can be kept
-        // out of the observed floor.
-        "snapshot_date, hotkey, stake_tao, validator_permit, dividends, active",
+        [
+          "snapshot_date",
+          "hotkey",
+          "stake_tao",
+          "validator_permit",
+          "dividends",
+          "active",
+        ],
         VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
       )
-    : [];
+    : db
+      ? await readNeuronDailyMetricRows<HistoryRow>(
+          db,
+          env,
+          netuid,
+          cutoff,
+          // `hotkey` is selected only so the owner's unconditional permit can be kept
+          // out of the observed floor.
+          "snapshot_date, hotkey, stake_tao, validator_permit, dividends, active",
+          VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
+        )
+      : [];
 
   const emissionRows = db
     ? await db.query<HistoryEmissionRow>(
@@ -4177,11 +4205,18 @@ export async function buildValidatorEconomicsRankingPayload(
       };
     });
 
-  const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
-    ReadStoreDb | undefined;
-  const neuronRead = db
-    ? readNeuronEconomicsRows(db, env)
-    : Promise.resolve([]);
+  const native = selectedNeuronLiveStore(env);
+  const db = readStore(
+    env,
+    native
+      ? ["subnet_burn_history", "subnet_hyperparams"]
+      : VALIDATOR_ECONOMICS_RANKING_TABLES,
+  ) as ReadStoreDb | undefined;
+  const neuronRead = native
+    ? native.economicsRows()
+    : db
+      ? readNeuronEconomicsRows(db, env)
+      : Promise.resolve([]);
   // Only the burn lookup depends on the accepted neuron identities. Start the
   // other bulk inputs together, preserving their existing freshness and reads.
   const [

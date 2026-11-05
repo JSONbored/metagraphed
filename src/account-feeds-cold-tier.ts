@@ -61,6 +61,7 @@ import { safeBlockNumber, safeSs58Literal } from "./history-readers.ts";
 import { loadAccountSummaryProjection } from "./account-summary-projection.ts";
 import { offsetBeyondEmulationCap } from "./cold-tier-offset.ts";
 import { readStore } from "./read-store.ts";
+import { selectedNeuronViewStore } from "./neuron-view-store.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadIndexedValidatorNominators } from "./validator-nominators-indexed.ts";
 import { loadNativeAccountWeightSetters } from "./account-weight-setters-native.ts";
@@ -535,14 +536,16 @@ async function neuronSlots(
   env: HistoryReadEnv | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
-  const db = readStore(env, ["neurons"]);
-  if (!db?.query) return null;
+  const native = selectedNeuronViewStore(env);
+  const db = native ? null : readStore(env, ["neurons"]);
+  if (!native && !db?.query) return null;
   let results: unknown[];
   try {
-    results = await db.query(
-      "SELECT netuid, uid FROM neurons WHERE hotkey = ?",
-      [addr],
-    );
+    results = native
+      ? await native.rows({ columns: ["netuid", "uid"], hotkey: addr })
+      : await db!.query("SELECT netuid, uid FROM neurons WHERE hotkey = ?", [
+          addr,
+        ]);
   } catch {
     return null;
   }

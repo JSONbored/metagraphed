@@ -46,6 +46,8 @@ import {
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { readCompleteNeuronRows } from "./neuron-snapshot-read.ts";
+import { selectedNeuronSummaryStore } from "./neuron-summary-store.ts";
+import { selectedNativeProducerStore } from "./native-producer-store.ts";
 import { lifecycleValidityPredicate } from "./subnet-lifecycle-read.ts";
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
@@ -153,7 +155,11 @@ export async function runSubnetLifecycleLane(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const floor = deps.coverageFloor ?? NEURONS_COVERAGE_FLOOR_NETUIDS;
-  const db = readStore(env, ["neurons", "subnet_lifecycle"]);
+  const native = selectedNeuronSummaryStore(env);
+  const db = readStore(
+    env,
+    native ? ["subnet_lifecycle"] : ["neurons", "subnet_lifecycle"],
+  );
   if (!db?.query) return { ok: false, reason: "no store bound" };
 
   const record = async (
@@ -226,15 +232,24 @@ export async function runSubnetLifecycleLane(
 
     const diff = diffSubnetSets(known, observed, blockNumber);
     if (diff.events.length > 0) {
+      const nativeWriter = selectedNativeProducerStore(env, [
+        "subnet_lifecycle",
+      ]);
+      if (native && !nativeWriter)
+        throw new Error("Native lifecycle writer is unavailable");
       const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
-      const d1 = selectedD1Store(env, ["neurons", "subnet_lifecycle"]);
+      const d1 = nativeWriter
+        ? null
+        : selectedD1Store(env, ["neurons", "subnet_lifecycle"]);
       const sql =
         deps.sql ??
-        (d1
-          ? { unsafe: d1.run }
-          : // readStore above already proved either complete D1 ownership or
-            // a Hyperdrive connection in this invocation's immutable bindings.
-            createPgSql(hyperdrive!, deps.ctx ?? { waitUntil: () => {} }));
+        (nativeWriter
+          ? { unsafe: nativeWriter.run }
+          : d1
+            ? { unsafe: d1.run }
+            : // readStore above already proved either complete D1 ownership or
+              // a Hyperdrive connection in this invocation's immutable bindings.
+              createPgSql(hyperdrive!, deps.ctx ?? { waitUntil: () => {} }));
       for (const event of diff.events) {
         await sql.unsafe(
           "INSERT INTO subnet_lifecycle (netuid, event, block_number, observed_at, predates_capture)" +
