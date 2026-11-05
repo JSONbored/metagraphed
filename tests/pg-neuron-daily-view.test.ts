@@ -401,3 +401,32 @@ test("daily metric values cross the same finite-number wire boundary as D1", asy
   ]);
   expect(Object.is(rows[1].stake_tao, -0)).toBe(false);
 });
+
+test("explicit same-day shard order preserves joined-view cap selection", async () => {
+  const f = fixture();
+  for (const part of f.parts) {
+    part.netuid = "7";
+    part.snapshot_date = "2026-11-01";
+    if (part.shard === "1" && part.kind === 1) part.uid = "0";
+  }
+  expect(
+    (
+      await f.store.rows({ columns: ["uid"], limit: 10, sameDayOrder: "uid" })
+    ).map((row) => row.uid),
+  ).toEqual([0, 1, 2, 3, 4]);
+  expect(
+    (
+      await f.store.rows({ columns: ["uid"], limit: 10, sameDayOrder: "shard" })
+    ).map((row) => row.uid),
+  ).toEqual([1, 2, 3, 4, 0]);
+  expect(f.calls[1].text).toContain("m.netuid,m.shard,m.uid");
+  f.parts.reverse();
+  expect(
+    (
+      await f.store.rows({ columns: ["uid"], limit: 10, sameDayOrder: "shard" })
+    ).map((row) => row.uid),
+  ).toEqual([1, 2, 3, 4, 0]);
+  await expect(
+    f.store.rows({ columns: ["uid"], limit: 10, sameDayOrder: "bad" as never }),
+  ).rejects.toThrow("Invalid");
+});

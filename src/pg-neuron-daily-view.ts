@@ -60,6 +60,9 @@ export function createPgNeuronDailyViewStore(
         query.columns.some((name) => !columns.has(name)) ||
         (query.oldestFirst !== undefined &&
           typeof query.oldestFirst !== "boolean") ||
+        (query.sameDayOrder !== undefined &&
+          query.sameDayOrder !== "uid" &&
+          query.sameDayOrder !== "shard") ||
         [query.fromDay, query.beforeDay].some(
           (day) => day != null && typeof day !== "string",
         ) ||
@@ -101,7 +104,7 @@ export function createPgNeuronDailyViewStore(
         SELECT m.* FROM app.neuron_daily_members m JOIN app.neuron_daily_documents d
           ON d.netuid=m.netuid AND d.day=m.snapshot_date AND d.shard=m.shard
         ${predicates.length ? `WHERE ${predicates.join(" AND ")}` : ""}
-        ORDER BY m.snapshot_date ${direction},m.netuid,m.uid LIMIT $${values.length}
+        ORDER BY m.snapshot_date ${direction},m.netuid,${query.sameDayOrder === "shard" ? "m.shard," : ""}m.uid LIMIT $${values.length}
       ), documents AS (
         SELECT d.* FROM app.neuron_daily_documents d JOIN (
           SELECT DISTINCT netuid,snapshot_date,shard FROM selected
@@ -148,6 +151,10 @@ export function createPgNeuronDailyViewStore(
         if (date) return query.oldestFirst ? date : -date;
         const netuid = BigInt(left.netuid) - BigInt(right.netuid);
         if (netuid) return netuid < 0n ? -1 : 1;
+        if (query.sameDayOrder === "shard") {
+          const shard = BigInt(left.shard) - BigInt(right.shard);
+          if (shard) return shard < 0n ? -1 : 1;
+        }
         const uid = BigInt(left.uid!) - BigInt(right.uid!);
         return uid < 0n ? -1 : uid > 0n ? 1 : 0;
       });

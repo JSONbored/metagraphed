@@ -40,6 +40,7 @@ import { selectedNeuronDailyViewStore } from "../src/neuron-daily-view-store.ts"
 import { selectedNeuronLiveStore } from "../src/neuron-live-store.ts";
 import { selectedNeuronSummaryStore } from "../src/neuron-summary-store.ts";
 import { selectedValidatorEnrichmentStore } from "../src/validator-enrichment-store.ts";
+import { selectedSubnetEnrichmentStore } from "../src/subnet-enrichment-store.ts";
 import {
   selectedNeuronViewStore,
   type NeuronViewQuery,
@@ -9410,6 +9411,162 @@ async function readNativeNeuronView(
   }
 }
 
+async function readNativeSubnetEnrichmentRoutes(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/(miner-fairness|emission-split\/history|owner-capture|cost-to-participate|treasury)$/,
+  );
+  if (!match) return null;
+  try {
+    const store = selectedSubnetEnrichmentStore(env);
+    if (!store) return null;
+    const netuid = Number(match[1]);
+    const kind = match[2];
+    if (kind === "treasury")
+      return json(buildSubnetTreasury(await store.treasury(netuid), netuid));
+    const cutoff = windowCutoffDate(
+      url,
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    )!;
+    const window = windowLabelFor(
+      url,
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    );
+    if (kind === "cost-to-participate") {
+      const metrics = selectedNeuronMetricStore(env);
+      if (!metrics) return null;
+      const rows = await store.declarations(netuid);
+      const defaultCutoff = new Date(
+        Date.now() -
+          SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS[
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW
+          ] *
+            86400000,
+      )
+        .toISOString()
+        .slice(0, 10);
+      const fairnessRows = await metrics.dailyRows<
+        Pick<
+          NeuronDaily,
+          | "snapshot_date"
+          | "uid"
+          | "coldkey"
+          | "emission_tao"
+          | "validator_permit"
+        >
+      >(
+        netuid,
+        defaultCutoff,
+        ["snapshot_date", "uid", "coldkey", "emission_tao", "validator_permit"],
+        MINER_FAIRNESS_ROW_CAP,
+      );
+      return json(
+        buildSubnetCostToParticipate(rows, netuid, {
+          minerFairness: buildSubnetMinerFairness(fairnessRows, netuid, {
+            window: DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+            capped: fairnessRows.length >= MINER_FAIRNESS_ROW_CAP,
+          }),
+        }),
+      );
+    }
+    if (kind === "owner-capture") {
+      const ownerColdkey = await store.ownerColdkey(netuid);
+      const rows = await store.dailyRows(
+        netuid,
+        cutoff,
+        "owner",
+        OWNER_CAPTURE_HISTORY_ROW_CAP,
+      );
+      const positions = ownerColdkey ? await store.ownerPositions(netuid) : [];
+      return json(
+        buildSubnetOwnerCapture(rows, netuid, {
+          window,
+          capped: rows.length >= OWNER_CAPTURE_HISTORY_ROW_CAP,
+          ownerColdkey,
+          positions,
+        }),
+      );
+    }
+    const snapshot = selectedNeuronSnapshotStore(env);
+    if (!snapshot) return null;
+    if (kind === "miner-fairness") {
+      const daily = selectedNeuronDailyViewStore(env);
+      const live = selectedNeuronViewStore(env);
+      if (!daily || !live) return null;
+      const rows = await daily.rows({
+        netuid,
+        fromDay: cutoff,
+        columns: [
+          "snapshot_date",
+          "uid",
+          "coldkey",
+          "hotkey",
+          "validator_permit",
+          "emission_tao",
+        ],
+        limit: MINER_FAIRNESS_ROW_CAP,
+      });
+      const burnHotkey = await snapshot.burnHotkey(netuid);
+      const liveRows = await live.rows({
+        netuid,
+        columns: [
+          "uid",
+          "coldkey",
+          "hotkey",
+          "validator_permit",
+          "incentive",
+          "captured_at",
+          "block_number",
+        ],
+        order: [{ column: "uid" }],
+      });
+      return json(
+        buildSubnetMinerFairness(rows, netuid, {
+          window,
+          capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
+          liveRows,
+          burnHotkey,
+        }),
+      );
+    }
+    const rows = await store.dailyRows(
+      netuid,
+      cutoff,
+      "emission",
+      EMISSION_SPLIT_HISTORY_ROW_CAP,
+    );
+    const usdRows = await store.usdDays(
+      Date.parse(`${cutoff}T00:00:00Z`),
+      Math.floor(Date.now() / 86400000) * 86400000,
+    );
+    const burnHotkey = await snapshot.burnHotkey(netuid);
+    const usdPerTaoByDay = new Map<string, number>(
+      usdRows
+        .filter((row) => row.usd_per_tao !== null)
+        .map((row) => [
+          new Date(Number(row.observed_at)).toISOString().slice(0, 10),
+          Number(row.usd_per_tao),
+        ]),
+    );
+    return json(
+      buildSubnetEmissionSplitHistory(rows, netuid, {
+        window,
+        capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        burnHotkey,
+        usdPerTaoByDay,
+      }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 async function readNativeDailyViewRoutes(
   url: URL,
   env: DataApiEnv,
@@ -9495,6 +9652,7 @@ async function readNativeDailyViewRoutes(
           CONCENTRATION_HISTORY_WINDOWS,
           DEFAULT_CONCENTRATION_HISTORY_WINDOW,
         ),
+        sameDayOrder: "shard",
         limit: CONCENTRATION_HISTORY_ROW_CAP,
       });
       return json(
@@ -9952,6 +10110,11 @@ async function dispatchDataApiRequest(
     if (nativeSnapshot) return nativeSnapshot;
     const nativeHistory = await readNativeDailyHistory(url, env);
     if (nativeHistory) return nativeHistory;
+    const nativeSubnetEnrichment = await readNativeSubnetEnrichmentRoutes(
+      url,
+      env,
+    );
+    if (nativeSubnetEnrichment) return nativeSubnetEnrichment;
     const nativeDailyViews = await readNativeDailyViewRoutes(url, env);
     if (nativeDailyViews) return nativeDailyViews;
     const nativeEnriched = await readNativeEnrichedRoutes(url, env, ctx);

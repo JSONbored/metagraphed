@@ -5,6 +5,7 @@ export interface NeuronDailyViewQuery {
   beforeDay?: string | null;
   days?: readonly string[];
   oldestFirst?: boolean;
+  sameDayOrder?: "uid" | "shard";
   limit: number;
 }
 export interface NeuronDailyViewStore {
