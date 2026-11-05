@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { request as httpRequest } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import type { AddressInfo } from "node:net";
 import { afterEach, describe, test, vi } from "vitest";
 import type { NativeApiProcess } from "../src/native-api-process.ts";
 import type { NativeHttpOptions } from "../src/native-http-server.ts";
+import { resolveClientIp } from "../workers/config.ts";
 
 // Exercise real Node networking in a fresh registry. Worker tests replace
 // fetch globally; the shared-registry CI pass cannot qualify this boundary.
@@ -46,6 +48,47 @@ async function listen(
     url: `http://127.0.0.1:${server.address.port}`,
     closed: () => closed,
   };
+}
+
+async function fixedClientProxy(target: string, clientIp: string) {
+  const proxy = createServer((request, response) => {
+    const upstream = httpRequest(
+      target,
+      {
+        method: request.method,
+        headers: { ...request.headers, "x-real-ip": clientIp },
+      },
+      (result) => {
+        response.writeHead(result.statusCode!, result.headers);
+        result.pipe(response);
+      },
+    );
+    upstream.on("error", (error) => response.destroy(error));
+    request.pipe(upstream);
+  });
+  await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+  cleanup.push(
+    () => new Promise<void>((resolve) => proxy.close(() => resolve())),
+  );
+  return `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
+}
+
+function upgradeStatus(
+  url: string,
+  headers: Record<string, string | string[]>,
+) {
+  return new Promise<number>((resolve, reject) => {
+    const request = httpRequest(
+      url,
+      { headers: { connection: "Upgrade", upgrade: "websocket", ...headers } },
+      (response) => {
+        response.resume();
+        response.on("end", () => resolve(response.statusCode!));
+      },
+    );
+    request.on("error", reject);
+    request.end();
+  });
 }
 
 describe("native HTTP boundary", () => {
@@ -251,6 +294,220 @@ describe("native HTTP boundary", () => {
       ((await response.json()) as { error: { code: string } }).error.code,
       "internal_error",
     );
+  });
+});
+
+describe("native trusted ingress identity", () => {
+  test("requires a bounded list of distinct exact IP addresses", async () => {
+    const inherited = Object.assign(
+      Object.create({ trustedProxyAddresses: ["127.0.0.1"] }),
+      { unexpected: true },
+    );
+    for (const clientIdentity of [
+      null,
+      "127.0.0.1",
+      [],
+      {},
+      inherited,
+      { trustedProxyAddresses: "127.0.0.1" },
+      { trustedProxyAddresses: [] },
+      { trustedProxyAddresses: Array(1) },
+      { trustedProxyAddresses: Array(33).fill("127.0.0.1") },
+      { trustedProxyAddresses: ["127.0.0.1"], extra: true },
+      ...[
+        null,
+        "",
+        "*",
+        "localhost",
+        "127.0.0.1/32",
+        "127.000.0.1",
+        "[::1]",
+        "fe80::1%eth0",
+        "0.0.0.0",
+        "::",
+        "::ffff:0.0.0.0",
+      ].map((address) => ({ trustedProxyAddresses: [address] })),
+      { trustedProxyAddresses: ["127.0.0.1", "127.0.0.1"] },
+      { trustedProxyAddresses: ["127.0.0.1", "::ffff:7f00:1"] },
+      { trustedProxyAddresses: ["2001:db8::1", "2001:0DB8:0:0:0:0:0:1"] },
+    ]) {
+      await assert.rejects(
+        listen(async () => new Response(), {
+          [String("clientIdentity")]: clientIdentity,
+        }),
+        /Native.*(identity|proxy)/,
+      );
+    }
+  });
+
+  test("copies the policy and normalizes mapped peers and client addresses", async () => {
+    const clientIdentity = { trustedProxyAddresses: ["::ffff:127.0.0.1"] };
+    const pending = listen(
+      async (request) => {
+        assert.equal(request.headers.get("host"), "api.fixture.invalid");
+        assert.equal(request.headers.get("authorization"), "Bearer retained");
+        assert.equal(request.headers.has("x-real-ip"), false);
+        assert.equal(request.headers.has("x-forwarded-for"), false);
+        assert.equal(request.headers.has("cf-ray"), false);
+        return new Response(resolveClientIp(request));
+      },
+      { clientIdentity },
+    );
+    clientIdentity.trustedProxyAddresses[0] = "198.51.100.7";
+    clientIdentity.trustedProxyAddresses.push("198.51.100.8");
+    const { url } = await pending;
+    for (const [claimed, expected] of [
+      ["::ffff:192.0.2.1", "192.0.2.1"],
+      ["2001:0DB8:0:0:0:0:0:1", "2001:db8::1"],
+      ["::fffe:c000:201", "::fffe:c000:201"],
+      ["::ff00:c000:201", "::ff00:c000:201"],
+    ]) {
+      const response = await fetch(url, {
+        headers: {
+          "x-real-ip": claimed,
+          "x-forwarded-for": "spoofed",
+          "cf-connecting-ip": "spoofed",
+          "cf-ray": "spoofed",
+          authorization: "Bearer retained",
+        },
+      });
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), expected);
+    }
+  });
+
+  test("rejects missing, malformed and duplicate trusted claims before HTTP dispatch", async () => {
+    let calls = 0;
+    const errors: unknown[] = [];
+    const { url } = await listen(
+      async () => {
+        calls++;
+        return new Response("unexpected");
+      },
+      {
+        clientIdentity: { trustedProxyAddresses: ["127.0.0.1"] },
+        onError: (error) => errors.push(error),
+      },
+    );
+    for (const value of [
+      undefined,
+      "",
+      "invalid",
+      "192.0.2.1, 198.51.100.2",
+      "fe80::1%lo0",
+      "::",
+      "0.0.0.0",
+    ]) {
+      const response = await fetch(url, {
+        headers: value === undefined ? {} : { "x-real-ip": value },
+      });
+      assert.equal(response.status, 400);
+      const body = (await response.json()) as { error: { code: string } };
+      assert.equal(body.error.code, "invalid_client_identity");
+    }
+    const duplicate = await new Promise<number>((resolve, reject) => {
+      const request = httpRequest(
+        url,
+        { headers: { "x-real-ip": ["192.0.2.1", "192.0.2.1"] } },
+        (response) => {
+          response.resume();
+          response.on("end", () => resolve(response.statusCode!));
+        },
+      );
+      request.on("error", reject);
+      request.end();
+    });
+    assert.equal(duplicate, 400);
+    assert.equal(calls, 0);
+    assert.deepEqual(errors, []);
+  });
+
+  test("ignores forwarded claims from untrusted peers", async () => {
+    const { url } = await listen(
+      async (request) => {
+        assert.equal(request.headers.has("x-real-ip"), false);
+        assert.equal(request.headers.has("forwarded"), false);
+        return new Response(resolveClientIp(request));
+      },
+      { clientIdentity: { trustedProxyAddresses: ["192.0.2.1"] } },
+    );
+    const response = await fetch(url, {
+      headers: { "x-real-ip": "malformed, claim", forwarded: "for=spoofed" },
+    });
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /127\.0\.0\.1/);
+  });
+
+  test("separates client quotas through proxies which overwrite client claims", async () => {
+    const calls = new Map<string, number>();
+    const { url } = await listen(
+      async (request) => {
+        const key = resolveClientIp(request);
+        const count = (calls.get(key) ?? 0) + 1;
+        calls.set(key, count);
+        return new Response(key, { status: count > 1 ? 429 : 200 });
+      },
+      { clientIdentity: { trustedProxyAddresses: ["127.0.0.1"] } },
+    );
+    const first = await fixedClientProxy(url, "192.0.2.1");
+    const second = await fixedClientProxy(url, "198.51.100.2");
+    assert.equal(
+      (await fetch(first, { headers: { "x-real-ip": "forged" } })).status,
+      200,
+    );
+    assert.equal(
+      (await fetch(second, { headers: { "x-real-ip": "forged" } })).status,
+      200,
+    );
+    assert.equal(
+      (await fetch(first, { headers: { "x-real-ip": "another-forgery" } }))
+        .status,
+      429,
+    );
+    assert.deepEqual(
+      [...calls],
+      [
+        ["192.0.2.1", 2],
+        ["198.51.100.2", 1],
+      ],
+    );
+  });
+
+  test("applies the same trusted identity policy before WebSocket admission", async () => {
+    const seen: Request[] = [];
+    const errors: unknown[] = [];
+    const { url } = await listen(async () => new Response(), {
+      clientIdentity: { trustedProxyAddresses: ["127.0.0.1"] },
+      onError: (error) => errors.push(error),
+      upgrade: {
+        async handle(request, _incoming, socket) {
+          seen.push(request);
+          socket.end(
+            "HTTP/1.1 503 Upgrade declined\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+          );
+        },
+        async close() {},
+      },
+    });
+    assert.equal(
+      await upgradeStatus(url, {
+        "x-real-ip": "::ffff:192.0.2.1",
+        "cf-connecting-ip": "forged",
+      }),
+      503,
+    );
+    assert.equal(resolveClientIp(seen[0]), "192.0.2.1");
+    assert.equal(seen[0].headers.has("x-real-ip"), false);
+    const invalidHeaders: Array<Record<string, string | string[]>> = [
+      {},
+      { "x-real-ip": "forged" },
+      { "x-real-ip": ["192.0.2.1", "192.0.2.1"] },
+    ];
+    for (const headers of invalidHeaders) {
+      await assert.rejects(upgradeStatus(url, headers), /socket hang up/);
+    }
+    assert.equal(seen.length, 1);
+    assert.equal(errors.length, 3);
   });
 });
 
