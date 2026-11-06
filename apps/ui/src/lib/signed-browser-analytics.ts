@@ -3,6 +3,8 @@
 // first-party PostHog analytics still run. This is compatibility, not signature
 // verification. Ordinary browsers retain Cloudflare RUM.
 // https://developers.cloudflare.com/web-analytics/get-started/#sites-proxied-through-cloudflare
+import { prefersMarkdown } from "./markdown-negotiation";
+
 const SIGNATURE_HEADERS = ["Signature", "Signature-Input", "Signature-Agent"] as const;
 
 function appendCacheDirective(headers: Headers, name: string, directive: string): void {
@@ -21,7 +23,7 @@ export function applySignedBrowserAnalyticsPolicy(response: Response, request: R
   // Both variants must declare the same inputs so a browser cannot reuse an
   // unsigned page (with the injected script) for a signed navigation.
   if (!vary.has("*")) {
-    for (const name of SIGNATURE_HEADERS) {
+    for (const name of [...SIGNATURE_HEADERS, "Accept"]) {
       if (!vary.has(name.toLowerCase())) headers.append("vary", name);
     }
   }
@@ -30,7 +32,10 @@ export function applySignedBrowserAnalyticsPolicy(response: Response, request: R
     // Cloudflare does not honor arbitrary Vary fields by default. HTML is
     // uncached there by default; do not let a signed response enter a cache.
     appendCacheDirective(headers, "cache-control", "no-store");
-    appendCacheDirective(headers, "cache-control", "no-transform");
+    // Markdown for Agents also needs edge transforms. Its output contains no
+    // executable scripts, so the RUM CORS failure cannot occur in that variant.
+    // Preserve any no-transform the origin already supplied.
+    if (!prefersMarkdown(request)) appendCacheDirective(headers, "cache-control", "no-transform");
     for (const name of ["cdn-cache-control", "cloudflare-cdn-cache-control"]) {
       if (headers.has(name)) appendCacheDirective(headers, name, "no-store");
     }
