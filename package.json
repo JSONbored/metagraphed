@@ -203,7 +203,7 @@
     "validate:retired-storage": "node scripts/validate-retired-storage.ts"
   },
   "dependencies": {
-    "@hono/node-server": "2.1.0",
+    "@hono/node-server": "2.1.6",
     "@cloudflare/workers-oauth-provider": "^0.8.3",
     "@duckdb/node-api": "^1.5.4-r.1",
     "@jsonbored/chain-summaries": "*",
