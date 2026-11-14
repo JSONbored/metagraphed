@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { metagraphedQueryInvalidationTarget } from "@/hooks/use-api-base";
+import { metagraphedQueryInvalidationTarget, useApiBase } from "@/hooks/use-api-base";
 import {
   AnalyticsPage,
   EntityHero,
@@ -19,15 +19,17 @@ import { CounterpartiesSection } from "@/components/metagraphed/account-detail/c
 import { ActivitySection } from "@/components/metagraphed/account-detail/activity";
 import { KeysSection } from "@/components/metagraphed/account-detail/keys";
 import {
+  AccountBalance,
+  type AccountBalanceView,
+} from "@/components/metagraphed/account-detail/balance";
+import {
   EVENT_SCAN_CAP,
   fmtSignedTao,
-  fmtTao,
   type FlowWindow,
 } from "@/components/metagraphed/account-detail/account-detail-logic";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 import {
   SUBNETS_ALL_LIMIT,
-  accountBalanceQuery,
   accountIdentityQuery,
   accountPositionsQuery,
   accountQuery,
@@ -36,7 +38,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { useRelativeTime } from "@/hooks/use-time-format";
-import { API_BASE } from "@/lib/metagraphed/config";
+import { ModernExplorerSources } from "@/lib/metagraphed/modern-explorer";
 import { Route } from "./accounts.$ss58";
 
 /**
@@ -63,11 +65,9 @@ const ACCOUNT_SUBNET_NAME_FIELDS = "netuid,name";
 
 const apiPaths = (ss58: string) => [
   `/api/v1/accounts/${ss58}`,
-  `/api/v1/accounts/${ss58}/balance`,
   `/api/v1/accounts/${ss58}/positions`,
   `/api/v1/accounts/${ss58}/stake-flow`,
   `/api/v1/accounts/${ss58}/counterparties`,
-  `/api/v1/accounts/${ss58}/events`,
   `/api/v1/accounts/${ss58}/children`,
   `/api/v1/accounts/${ss58}/parents`,
   `/api/v1/accounts/${ss58}/identity`,
@@ -82,7 +82,17 @@ function ApiSources({ paths }: { paths: string[] }) {
 const short = (ss58: string) => `${ss58.slice(0, 6)}…${ss58.slice(-6)}`;
 
 export function AccountDetailPage() {
+  const { ss58 } = Route.useParams();
+  return (
+    <AccountBalance ss58={ss58}>
+      {(balance) => <AccountDetailContent balance={balance} />}
+    </AccountBalance>
+  );
+}
+
+function AccountDetailContent({ balance }: { balance: AccountBalanceView }) {
   const formatRelative = useRelativeTime();
+  const apiBase = useApiBase();
   const { ss58 } = Route.useParams();
   const { window } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -96,7 +106,6 @@ export function AccountDetailPage() {
   const summaryQuery = useQuery({ ...accountQuery(ss58), retry: 0 });
   const summaryResult = summaryQuery.data;
   const summary = summaryResult?.data ?? null;
-  const balance = useQuery({ ...accountBalanceQuery(ss58), retry: 0 });
   const identity = useQuery({ ...accountIdentityQuery(ss58), retry: 0 });
   const positions = useQuery({ ...accountPositionsQuery(ss58), retry: 0 });
   const flow = useQuery({ ...accountStakeFlowQuery(ss58, { window }), retry: 0 });
@@ -117,7 +126,6 @@ export function AccountDetailPage() {
   // rendering "0 positions" is indistinguishable from an account that holds
   // nothing, and the two are opposite facts (#8818).
   const held = positions.data?.data.degraded ? null : (positions.data?.data.positions ?? null);
-  const free = balance.data?.data.balance_tao ?? null;
   const subnetCount = held ? new Set(held.map((position) => position.netuid)).size : null;
   const positionCount = held === null ? null : (positions.data?.data.position_count ?? null);
   const scanCapped = Boolean(summary?.event_scan_capped);
@@ -143,7 +151,7 @@ export function AccountDetailPage() {
     : [];
 
   const cells: FactCells = [
-    { label: "Balance (free + reserved)", value: fmtTao(free, 4), loading: balance.isPending },
+    { label: "Balance (free + reserved)", value: balance.value, loading: balance.loading },
     // The legacy /positions response does not identify a token quantity basis.
     { label: "Staked value", value: "—", loading: positions.isPending },
     {
@@ -181,20 +189,31 @@ export function AccountDetailPage() {
 
   const rawRows: RawRow[] = [
     { label: "ss58", value: ss58 },
+    ...balance.rows,
+    ...(balance.source
+      ? balance.source.paths.map((path) => ({
+          label: "Balance API",
+          value: `${balance.source!.origin}${path}`,
+          href: `${balance.source!.origin}${path}`,
+        }))
+      : []),
     ...(identity.data?.data.name ? [{ label: "Identity", value: identity.data.data.name }] : []),
     ...(identity.data?.data.url
       ? [{ label: "Identity URL", value: identity.data.data.url, href: identity.data.data.url }]
       : []),
     ...paths.map((path) => ({
       label: path.split("/").slice(5).join("/") || "summary",
-      value: `${API_BASE}${path}`,
-      href: `${API_BASE}${path}`,
+      value: `${apiBase}${path}`,
+      href: `${apiBase}${path}`,
     })),
   ];
 
   return (
     <AppShell>
       <ApiSources paths={paths} />
+      {balance.source ? (
+        <ModernExplorerSources paths={balance.source.paths} origin={balance.source.origin} />
+      ) : null}
       <AnalyticsPage
         sections={SECTIONS}
         hero={
@@ -212,6 +231,7 @@ export function AccountDetailPage() {
             sentence={
               <FactSentence>
                 Recorded account relationships, balance and activity. {sentence}
+                {balance.notice ? ` ${balance.notice}` : null}
                 {summaryQuery.isPending ? " Activity history is loading." : null}
                 {summaryQuery.isError
                   ? " Activity history is temporarily unavailable; the independent evidence below remains usable."
@@ -228,7 +248,7 @@ export function AccountDetailPage() {
           />
         }
       >
-        <PositionsSection ss58={ss58} nameOf={nameOf} />
+        <PositionsSection ss58={ss58} />
         <FlowSection
           ss58={ss58}
           window={window}
@@ -238,14 +258,7 @@ export function AccountDetailPage() {
           nameOf={nameOf}
         />
         <CounterpartiesSection ss58={ss58} />
-        <ActivitySection
-          ss58={ss58}
-          nameOf={nameOf}
-          kinds={summary?.event_kinds ?? []}
-          eventCount={summary?.event_count ?? null}
-          summaryPending={summaryQuery.isPending}
-          scanCapped={scanCapped}
-        />
+        <ActivitySection ss58={ss58} />
         <KeysSection ss58={ss58} />
         <Raw rows={rawRows} title="Account identifiers, identity and API" />
       </AnalyticsPage>
