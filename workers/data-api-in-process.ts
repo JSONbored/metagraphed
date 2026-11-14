@@ -23,10 +23,10 @@
 // a call site that cannot produce both sets cannot construct the adapter.
 import dataApi from "./data-api.ts";
 import type { AppExecutionContext } from "./runtime-context.ts";
-import type { ApiWorkerEnv, DataApiWorkerEnv } from "./types.ts";
+import type { DataApiWorkerEnv, MergedWorkerEnv } from "./types.ts";
 
 /** The merged single-Worker env: the main Worker's plus the data tier's. */
-export type MergedDataApiEnv = ApiWorkerEnv & DataApiWorkerEnv;
+export type MergedDataApiEnv = MergedWorkerEnv<DataApiWorkerEnv>;
 
 /**
  * A DATA_API-shaped Fetcher that serves the data tier in-process.
