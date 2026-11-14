@@ -680,6 +680,10 @@ export const CROWDLOAN_DETAIL_PATH_PATTERN = /^\/api\/v1\/crowdloans\/(\d+)$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;
+// One subnet's mechanism (sub-subnet) registry (#13162), live from the
+// mechanisms store, no static file.
+export const SUBNET_MECHANISMS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/mechanisms$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

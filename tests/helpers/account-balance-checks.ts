@@ -564,5 +564,4 @@ export function registerAccountBalanceChecks(
       (e) => e instanceof V2ReadClientError && e.code === "response_rejected",
     );
   });
-
 }

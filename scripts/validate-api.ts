@@ -1742,6 +1742,18 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/mechanisms",
+    (body) => {
+      // #13162: no mechanisms store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: every subnet has at least mechanism 0).
+      assert.deepEqual(body.data.mechanisms, []);
+      assert.equal(body.data.mechanism_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
     "/api/v1/chain/subnet-price-share-composition",
     (body) => {
       assert.equal(body.data.quality, "estimated_observed_price_set");

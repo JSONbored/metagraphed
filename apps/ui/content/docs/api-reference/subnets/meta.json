@@ -36,6 +36,7 @@
     "subnet-lease-by-network",
     "subnet-lease-history",
     "subnet-lifecycle",
+    "subnet-mechanisms",
     "subnet-metagraph",
     "subnet-miner-fairness",
     "subnet-movers",

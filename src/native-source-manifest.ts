@@ -87,6 +87,7 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "subnet_identity",
     "subnet_identity_history",
     "subnet_lifecycle",
+    "subnet_mechanisms",
     "subnet_ownership",
     "subnet_ownership_history",
     "subnet_snapshots",

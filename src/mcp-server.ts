@@ -1435,6 +1435,14 @@ import {
   stampMechanismScope,
 } from "./mechanism-scope.ts";
 import {
+  GetSubnetMechanismsInputSchema,
+  GetSubnetMechanismsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-mechanisms.ts";
+import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "./subnet-mechanisms.ts";
+import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
   buildAccountEvents,
@@ -9390,6 +9398,35 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_mechanisms",
+    title: "Get a subnet's mechanism registry",
+    description:
+      "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each " +
+      "mechanism's mechid, its emission split (0..1, from " +
+      "SubtensorModule.MechanismEmissionSplit), its consensus mode " +
+      "(ConsensusByMechanism) and the capture stamp, ordered by mechid. " +
+      "Until the engine's per-mechanism capture lands, the registry holds no " +
+      "rows and the response is the schema-stable decline: an empty " +
+      "mechanisms array with mechanism_count NULL -- never 0, because every " +
+      "subnet has at least mechanism 0 and a zero count would be a " +
+      "fabricated measurement. Scope the per-UID tools to one mechanism with " +
+      "their own mechid argument (get_subnet_metagraph, get_neuron, " +
+      "get_subnet_weights). Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+    inputSchema: inputJsonSchema(GetSubnetMechanismsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetMechanismsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetMechanisms -> buildSubnetMechanisms decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildSubnetMechanisms(
+        await loadSubnetMechanisms(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -15717,6 +15754,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
     outputJsonSchema(GetChainConcentrationHistoryOutputSchema),
   get_subnet_price_share_composition: () =>
     outputJsonSchema(GetSubnetPriceShareCompositionOutputSchema),
+  get_subnet_mechanisms: () =>
+    outputJsonSchema(GetSubnetMechanismsOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

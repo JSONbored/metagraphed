@@ -243,6 +243,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_price_share_composition: {
     operation: "subnet-price-share-composition",
   },
+  get_subnet_mechanisms: {
+    operation: "subnet-mechanisms",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

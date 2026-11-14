@@ -464,6 +464,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetWeightSettersArtifact: "SubnetWeightSetters",
   SubnetWeightSettersArtifactSetters: "SubnetWeightSetter",
   SubnetWeightsArtifact: "SubnetWeights",
+  SubnetMechanismsArtifact: "SubnetMechanisms",
+  SubnetMechanism: "SubnetMechanism",
   SubnetYieldArtifact: "SubnetYield",
   SubnetYieldArtifactNeurons: "SubnetYieldNeuron",
   SubnetEmissionSplitHistoryArtifact: "SubnetEmissionSplitHistory",

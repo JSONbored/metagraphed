@@ -432,6 +432,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights.",
   },
   {
+    field: "subnet_mechanisms",
+    operation: "subnet-mechanisms",
+    returns: "SubnetMechanisms!",
+    description:
+      "One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+  },
+  {
     field: "subnet_stake_moves",
     operation: "subnet-stake-moves",
     returns: "SubnetStakeMoves!",

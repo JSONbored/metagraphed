@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-70 endpoints.
+71 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -73,6 +73,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing.
 - [Subnet Lifecycle](/docs/api-reference/subnets/subnet-lifecycle) — `GET /api/v1/subnets/{netuid}/lifecycle`\
   Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table.
+- [Subnet Mechanisms](/docs/api-reference/subnets/subnet-mechanisms) — `GET /api/v1/subnets/{netuid}/mechanisms`\
+  Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid.
 - [Subnet Metagraph](/docs/api-reference/subnets/subnet-metagraph) — `GET /api/v1/subnets/{netuid}/metagraph`\
   Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store.
 - [Subnet Miner Fairness](/docs/api-reference/subnets/subnet-miner-fairness) — `GET /api/v1/subnets/{netuid}/miner-fairness`\
