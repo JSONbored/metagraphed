@@ -199,6 +199,11 @@ interface RuntimeSecretEnv {
   METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS?: string;
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
+  /** #13171 (part of #13142): selects the Hyperdrive-backed state assembly on
+   * the main Worker entry. Unset everywhere today — the seam lands dark, and
+   * only the exact value "hyperdrive" (plus a bound HYPERDRIVE) activates it;
+   * see workers/api.entry.ts and src/hyperdrive-state-bindings.ts. */
+  METAGRAPH_STATE_SOURCE?: string;
   METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN?: string;
   /**
    * #9009: AES-256-GCM key material (via SHA-256) for the MCP
