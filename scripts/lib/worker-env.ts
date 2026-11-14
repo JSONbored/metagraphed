@@ -54,3 +54,10 @@ export function registrySyncEnv(
 export function apiEnv(overrides: EnvStub<ApiWorkerEnv> = {}): ApiWorkerEnv {
   return overrides as ApiWorkerEnv;
 }
+
+/** The merged single-Worker env (#13143): the main Worker's plus the data tier's. */
+export function mergedDataApiEnv(
+  overrides: EnvStub<ApiWorkerEnv & DataApiWorkerEnv> = {},
+): ApiWorkerEnv & DataApiWorkerEnv {
+  return overrides as ApiWorkerEnv & DataApiWorkerEnv;
+}
