@@ -705,7 +705,10 @@ test.describe("#11315 the hubs stay within a payload ratchet", () => {
 
 test.describe("sitewide payload and entry-bundle ratchets", () => {
   const ROUTE_FAMILY_HTML_KIB = {
-    "/subnets/19": 150,
+    // 150 -> 152: seroval 1.7 (security bump) serializes the dehydrated query
+    // cache ~1 KiB larger on the heaviest subnet route. Measured 151 KiB in CI;
+    // one spare KiB absorbs rounding on the boundary, nothing more.
+    "/subnets/19": 152,
     "/validators/5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u": 190,
     "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9": 100,
     "/providers/lium": 80,
