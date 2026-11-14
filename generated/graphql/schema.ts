@@ -1026,7 +1026,7 @@ type Query {
   account_balance(ss58: String!, network: Network): AccountBalance
 
   """
-  Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+  One account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility -- only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor -- claims flow through Basket* events since Root Reborn (v441), and basket state lives on validator_baskets. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
   """
   account_root_claim(ss58: String!, network: Network): AccountRootClaim
 
@@ -9104,7 +9104,7 @@ type AccountBalance {
 }
 
 """
-Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
 """
 type AccountRootClaim {
   schema_version: Int!
@@ -9117,6 +9117,7 @@ type AccountRootClaim {
   Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.
   """
   compatibility: RootClaimCompatibility!
+  basket_claims: RootClaimBasketClaims
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -9160,6 +9161,26 @@ type RootClaimCompatibility {
   spec_version: Int
   block_hash: String
   claim_type_source: String
+}
+
+"""
+The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket.
+"""
+type RootClaimBasketClaims {
+  """
+  This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface).
+  """
+  claims: [AccountEvent!]!
+
+  """
+  \`claims.length\` -- the returned page, capped at 100, not a lifetime total.
+  """
+  claim_count: Int!
+
+  """
+  The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read.
+  """
+  covered_since: String
 }
 
 """

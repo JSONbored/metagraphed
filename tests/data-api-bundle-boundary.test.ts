@@ -264,11 +264,16 @@ describe("data-api's bundle boundary", () => {
     // and the capture-write module (node:crypto) stays out -- the fund cap
     // is restated as a pinned literal for exactly that reason. Keep 2,512
     // source bytes of margin.
+    // The root-claim basket-claim era (#13163) adds 1,767 source bytes over
+    // 28a9c277, for 4,912,255: the basket_claims block in
+    // account-root-claim.ts, the kind-filtered hot-tier read, and the grown
+    // route/tool prose. Nothing new enters the graph -- both modules were
+    // already in it; keep 2,745 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_913_000,
+      firstParty < 4_915_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

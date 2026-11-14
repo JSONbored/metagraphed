@@ -1171,7 +1171,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim. */
+        /** @description Read one account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility — only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor — claims flow through Basket* events since Root Reborn (v441), and basket STATE (shares, NAV, holdings) lives on the REST surfaces /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. Returns 400 on invalid ss58. Read-only; never submits a claim. */
         get: operations["accountRootClaim"];
         put?: never;
         post?: never;
@@ -5910,8 +5910,9 @@ export interface components {
             total_registrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+        /** @description Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
         AccountRootClaimArtifact: {
+            basket_claims: components["schemas"]["RootClaimBasketClaims"] | null;
             claim_type?: {
                 /** @enum {string} */
                 kind: "Swap" | "Keep" | "KeepSubnets";
@@ -10653,6 +10654,15 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
+        /** @description The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. */
+        RootClaimBasketClaims: {
+            /** @description `claims.length` -- the returned page, capped at 100, not a lifetime total. */
+            claim_count: number;
+            /** @description This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface). */
+            claims: components["schemas"]["AccountEvent"][];
+            /** @description The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read. */
+            covered_since: string | null;
+        };
         RpcEndpointsArtifact: {
             contract_version?: string;
             endpoints: {
@@ -15333,6 +15343,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "basket_claims": {
+                     *           "claim_count": 1,
+                     *           "claims": [
+                     *             {
+                     *               "block_number": 5000000,
+                     *               "event_kind": "example"
+                     *             }
+                     *           ],
+                     *           "covered_since": "example"
+                     *         },
                      *         "claim_type": {
                      *           "kind": "Swap",
                      *           "subnets": [
@@ -24499,6 +24519,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "basket_claims": {
+                     *           "claim_count": 1,
+                     *           "claims": [
+                     *             {
+                     *               "block_number": 5000000,
+                     *               "event_kind": "example"
+                     *             }
+                     *           ],
+                     *           "covered_since": "example"
+                     *         },
                      *         "claim_type": {
                      *           "kind": "Swap",
                      *           "subnets": [

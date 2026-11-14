@@ -10379,7 +10379,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/root-claim.json",
       "cache": "short",
-      "description": "Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim.",
+      "description": "Read one account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility — only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor — claims flow through Basket* events since Root Reborn (v441), and basket STATE (shares, NAV, holdings) lives on the REST surfaces /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. Returns 400 on invalid ss58. Read-only; never submits a claim.",
       "id": "account-root-claim",
       "mainnet_only": false,
       "method": "GET",

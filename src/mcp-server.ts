@@ -2692,8 +2692,8 @@ export const MCP_INSTRUCTIONS =
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
-  "get_account_root_claim its deprecated legacy Root-claim compatibility (claim type, claimable rates, " +
-  "cumulative claimed — read-only, never submits claim_root), " +
+  "get_account_root_claim its Root-claim currency (deprecated legacy compatibility plus the " +
+  "basket_claims event flow — read-only, never submits claim_root), " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered, get_account_portfolio " +
   "its registered memberships, scores and emission observations (capital, " +
@@ -11708,14 +11708,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_account_root_claim",
-    title: "Get an account's legacy Root-claim compatibility",
+    title: "Get an account's Root-claim currency",
     description:
-      "Read deprecated per-subnet Root-claim state at a finalized block. " +
-      "Only audited node-subtensor v440 is supported; v441+ reports unsupported, " +
-      "other runtimes or failed reads unavailable, with claim_type/hotkeys null. " +
-      "Runtime is checked before the 120s KV cache. Native basket entitlement " +
-      "requires separate basket data and is not inferred here. Read-only; never " +
-      "submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+      "Read one account's Root-claim currency across both eras. Legacy: " +
+      "deprecated per-subnet state at a finalized block -- only audited " +
+      "node-subtensor v440 is supported; v441+ reports unsupported, other " +
+      "runtimes or failed reads unavailable, with claim_type/hotkeys null; " +
+      "runtime is checked before the 120s KV cache. Current era (#13163): " +
+      "basket_claims carries the newest BasketClaimed / " +
+      "BasketClaimDustSkipped events from the ingested event stream with the " +
+      "store's coverage floor -- claims flow through Basket* events since " +
+      "Root Reborn (v441), and basket STATE lives on get_validator_baskets. " +
+      "Read-only; never submits claim_root. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/root-claim.",
     inputSchema: inputJsonSchema(GetAccountRootClaimInputSchema),
     async handler(
       args: z.infer<typeof GetAccountRootClaimInputSchema>,

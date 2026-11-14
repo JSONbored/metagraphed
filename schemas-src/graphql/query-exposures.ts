@@ -1525,7 +1525,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "account-root-claim",
     returns: "AccountRootClaim",
     description:
-      "Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+      "One account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility -- only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor -- claims flow through Basket* events since Root Reborn (v441), and basket state lives on validator_baskets. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
   },
   {
     field: "account_locks",

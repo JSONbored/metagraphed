@@ -1511,7 +1511,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Deprecated per-subnet Root-claim compatibility read at a finalized block. The audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys stay null unless supported. Runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits claim_root.",
+      "description": "Per-account Root-claim currency: the deprecated per-subnet compatibility read at a finalized block (the audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys stay null unless supported; runtime is checked before the 120s KV cache) plus the ≥v441 basket-claim era block (#13163), assembled fresh from the ingested Basket* event stream — claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root.",
       "id": "account-root-claim",
       "path": "/metagraph/accounts/{ss58}/root-claim.json",
       "retirement": null,

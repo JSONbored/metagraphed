@@ -25999,3 +25999,104 @@ describe("graphql — validator_baskets (#13163)", () => {
     assert.equal(basket.spot_nav_rao, "6000000000");
   });
 });
+
+// The ≥v441 basket-claim era block on account_root_claim (#13163): attached
+// by the shared loader beside field_sources, so GraphQL serves it with no
+// resolver change -- and the legacy compatibility read cannot take it down.
+describe("graphql — account_root_claim basket_claims (#13163)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("serves the era block from the event store while legacy RPC is down", async () => {
+    const env = {
+      NATIVE_READ_STORE: {
+        tables: [
+          "chain_detail_blocks",
+          "chain_detail_extrinsics",
+          "chain_detail_chain_events",
+          "chain_detail_account_events",
+        ],
+        store: {
+          async query(sql: string) {
+            if (/MIN\(observed_at\)/.test(sql))
+              return [{ floor_ms: 1_762_000_000_000 }];
+            return [
+              {
+                block_number: 6_500_000,
+                event_index: 2,
+                extrinsic_index: 1,
+                event_kind: "BasketClaimed",
+                hotkey: "5Hotkey_one",
+                coldkey: SS58,
+                netuid: 0,
+                uid: null,
+                amount_tao: 1.25,
+                alpha_amount: null,
+                observed_at: 1_763_000_000_000,
+              },
+            ];
+          },
+          async first() {
+            return null;
+          },
+        },
+      },
+    } as unknown as Env;
+    await withFetchStub(
+      async () => {
+        throw new Error("rpc down");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_root_claim(ss58: "${SS58}") {
+              compatibility { status }
+              basket_claims { claim_count covered_since
+                claims { event_kind amount_tao observed_at netuid } }
+            } }`,
+          env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const record = body.data.account_root_claim;
+        // The legacy read degraded without taking the era block with it.
+        assert.equal(record.compatibility.status, "unavailable");
+        assert.equal(record.basket_claims.claim_count, 1);
+        assert.equal(
+          record.basket_claims.covered_since,
+          new Date(1_762_000_000_000).toISOString(),
+        );
+        assert.deepEqual(record.basket_claims.claims, [
+          {
+            event_kind: "BasketClaimed",
+            amount_tao: 1.25,
+            observed_at: new Date(1_763_000_000_000).toISOString(),
+            netuid: 0,
+          },
+        ]);
+      },
+    );
+  });
+
+  test("no bound event store resolves the era block to null, never an error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("rpc down");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_root_claim(ss58: "${SS58}") { basket_claims { claim_count } } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.account_root_claim.basket_claims, null);
+      },
+    );
+  });
+});
