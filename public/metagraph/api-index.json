@@ -635,6 +635,33 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-gamma",
+      "path": "/metagraph/subnets/{netuid}/gamma.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetGammaArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-gamma-history",
+      "path": "/metagraph/subnets/{netuid}/gamma/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetGammaHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-services",
+      "path": "/metagraph/subnets/{netuid}/services.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetServicesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
       "retirement": null,
@@ -855,6 +882,24 @@
       "path": "/metagraph/chain/baskets.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/ValidatorBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-gamma",
+      "path": "/metagraph/chain/gamma.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainGammaArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "gamma-deposits",
+      "path": "/metagraph/gamma/deposits.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/GammaDepositsArtifact",
       "status": "live",
       "storage_tier": "r2"
     },
@@ -2651,7 +2696,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 179,
+    "mainnet_only_route_count": 184,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7872,6 +7917,54 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/gamma.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until the engine's Gamma capture lands the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.",
+      "id": "subnet-gamma",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/gamma",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/gamma/history.json",
+      "cache": "short",
+      "description": "Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.",
+      "id": "subnet-gamma-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/gamma/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/services.json",
+      "cache": "short",
+      "description": "Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.",
+      "id": "subnet-services",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/services",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/weights.json",
       "cache": "short",
       "description": "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
@@ -8803,6 +8896,38 @@
         "mainnet"
       ],
       "path": "/api/v1/chain/baskets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/gamma.json",
+      "cache": "short",
+      "description": "Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.",
+      "id": "chain-gamma",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/gamma",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/gamma/deposits.json",
+      "cache": "short",
+      "description": "Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until the engine's GammaDeposits capture lands the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.",
+      "id": "gamma-deposits",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/gamma/deposits",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

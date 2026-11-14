@@ -255,6 +255,15 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_validator_baskets: {
     operation: "chain-baskets",
   },
+  get_subnet_gamma: {
+    operation: "subnet-gamma",
+  },
+  get_gamma_deposits: {
+    operation: "gamma-deposits",
+  },
+  get_subnet_services: {
+    operation: "subnet-services",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

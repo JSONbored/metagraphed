@@ -143,6 +143,15 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // check enforces.
   "/api/v1/chain/baskets",
   "/api/v1/validators/{hotkey}/basket",
+  // #13164 publishes the Gamma subsystem and the on-chain service registry;
+  // every table behind them is empty until the engine's Gamma capture lands,
+  // so no UI consumes them yet. Remove the entries when a real consumer
+  // lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/gamma",
+  "/api/v1/subnets/{netuid}/gamma/history",
+  "/api/v1/chain/gamma",
+  "/api/v1/gamma/deposits",
+  "/api/v1/subnets/{netuid}/services",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

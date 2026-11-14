@@ -58,6 +58,20 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "tool would be a second, narrower answer to the same question. The " +
     "holdings/targets detail is a UI drill-in; add the tool when an agent " +
     "workflow actually needs per-leg composition.",
+  "/api/v1/subnets/{netuid}/gamma/history":
+    "The capture-series drill-in of /api/v1/subnets/{netuid}/gamma " +
+    "(#13164). get_subnet_gamma already answers the agent question -- the " +
+    "subnet's CURRENT Gamma state -- and the series is empty until the " +
+    "engine's Gamma capture lands, so a history tool today would only " +
+    "restate the decline. Add it when an agent workflow actually needs the " +
+    "trajectory.",
+  "/api/v1/chain/gamma":
+    "The chain-wide rollup of /api/v1/subnets/{netuid}/gamma (#13164). " +
+    "get_subnet_gamma answers the per-subnet question an agent actually " +
+    "asks, and the rollup's one extra scalar (the global GammaEnabled " +
+    "switch) is not worth a second tool that restates every per-subnet row; " +
+    "the chain card is an HTTP/UI surface. Add a tool when an agent " +
+    "workflow needs the global switch on its own.",
 };
 
 /** `.atom`/`.rss`/`.json` feed variants: get_feed serves the JSON one. */

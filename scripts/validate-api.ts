@@ -1766,6 +1766,61 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/gamma",
+    (body) => {
+      // #13164: no Gamma store is bound in this harness, so the one honest
+      // body is the decline -- a NULL state (never a zeroed one: an absent
+      // capture is not a measured Gamma-off subnet).
+      assert.equal(body.data.gamma, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/gamma/history",
+    (body) => {
+      // #13164: same decline through the series -- empty points with a NULL
+      // count (never 0: an empty series is not a measured history).
+      assert.deepEqual(body.data.points, []);
+      assert.equal(body.data.point_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/chain/gamma",
+    (body) => {
+      // #13164: same decline chain-wide -- the global flag NULL (never a
+      // measured off-switch) and an empty subnet list with a NULL count.
+      assert.equal(body.data.enabled, null);
+      assert.equal(body.data.subnet_count, null);
+      assert.deepEqual(body.data.subnets, []);
+    },
+  ],
+  [
+    "/api/v1/gamma/deposits",
+    (body) => {
+      // #13164: no deposits store is bound in this harness, so the one
+      // honest body is the decline -- an empty list with a NULL count
+      // (never 0: an empty list is not a measured deposit-free chain).
+      assert.deepEqual(body.data.deposits, []);
+      assert.equal(body.data.deposit_count, null);
+      assert.equal(body.data.captured_at, null);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/services",
+    (body) => {
+      // #13164: no services store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: an empty registry is not a measured service-less subnet).
+      assert.deepEqual(body.data.services, []);
+      assert.equal(body.data.service_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
     "/api/v1/chain/baskets",
     (body) => {
       // #13163: no capture store is bound in this harness, so the one honest

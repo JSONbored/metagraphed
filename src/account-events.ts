@@ -129,6 +129,25 @@ export const INGESTED_EVENT_KINDS = [
   "CollateralLocked",
   "MinCollateralSet",
   "LiquidAlphaConsensusModeSet",
+  // The Gamma subsystem (#13164, runtime v490) -- forward-compat like the
+  // #2555 kinds above: these land raw-only in chain_detail_chain_events
+  // today, and the structured decode (into app.gamma_events / the shared
+  // account_events columns) lands with the engine. Named here so ?kind=
+  // accepts them the day the producer emits them instead of 400ing on a
+  // kind the chain demonstrably fires.
+  "GammaMinted",
+  "GammaMoved",
+  "GammaDepositClosed",
+  "GammaDepositSpenderSet",
+  "GammaDepositDailySpendCapSet",
+  "GammaSpent",
+  "GammaSpendSkipped",
+  "SubnetGammaEmissionSet",
+  "GammaEmissionMinted",
+  // The on-chain service-URL registry (#13164, SubtensorModule.Services) --
+  // same forward-compat footing as the Gamma kinds above.
+  "ServiceSet",
+  "ServiceRemoved",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {

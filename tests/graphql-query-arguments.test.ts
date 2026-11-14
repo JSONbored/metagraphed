@@ -103,7 +103,9 @@ describe("checkQueryArguments", () => {
     // #13162 adds another (subnet_mechanisms), the same way.
     // #13163 adds three more (subnet_alpha_dividends, account_locks,
     // validator_baskets), the same way.
-    assert.equal(report.exact, 211);
+    // #13164 adds three more (subnet_gamma, gamma_deposits,
+    // subnet_services), the same way.
+    assert.equal(report.exact, 214);
     assert.equal(report.skipped, 0);
   });
 

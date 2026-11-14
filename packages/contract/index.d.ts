@@ -1833,6 +1833,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/gamma": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch the chain-wide Gamma state
+         * @description Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.
+         */
+        get: operations["chainGamma"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/governance/emission-changes": {
         parameters: {
             query?: never;
@@ -3319,6 +3339,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gamma/deposits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch the chain's Gamma deposits
+         * @description Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until the engine's GammaDeposits capture lands the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.
+         */
+        get: operations["gammaDeposits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gaps": {
         parameters: {
             query?: never;
@@ -4309,6 +4349,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/gamma": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's current Gamma state
+         * @description Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until the engine's Gamma capture lands the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.
+         */
+        get: operations["subnetGamma"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/gamma/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's Gamma capture series
+         * @description Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.
+         */
+        get: operations["subnetGammaHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/gaps": {
         parameters: {
             query?: never;
@@ -4834,6 +4914,26 @@ export interface paths {
         };
         /** @description Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible. */
         get: operations["subnetRevenue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's on-chain service URLs
+         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.
+         */
+        get: operations["subnetServices"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7329,6 +7429,36 @@ export interface components {
              */
             table: "blocks" | "extrinsics" | "chain_events" | "account_events";
         };
+        /** @description The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until the engine's Gamma capture lands. Mirrors GET /api/v1/chain/gamma. */
+        ChainGammaArtifact: {
+            captured_at: string | null;
+            /** @description Whether Gamma is enabled globally (SubtensorModule.GammaEnabled). NULL when the store holds no capture (store unbound, or the Gamma capture has not run) -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            /** @description When the global flag was captured. Null with a null flag. */
+            enabled_captured_at: string | null;
+            schema_version: number;
+            /** @description How many subnets carry a captured Gamma state here -- `subnets.length`. NULL when the per-subnet series holds no rows (store unbound, or the capture has not run): a zero count is never a measurement and is not published. */
+            subnet_count: number | null;
+            /** @description Every subnet's newest captured Gamma state, ordered by netuid. */
+            subnets: components["schemas"]["ChainGammaSubnet"][];
+        };
+        /** @description One subnet's newest captured Gamma state, keyed by its netuid. */
+        ChainGammaSubnet: {
+            captured_at: string | null;
+            /** @description The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            emission: string | null;
+            /** @description Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            netuid: number;
+            /** @description Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            pending_emission: string | null;
+            /** @description The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            unconverted_emission: string | null;
+            /** @description Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+            whitelisted: boolean | null;
+        };
         ChainHoldersArtifact: {
             captured_at: string | null;
             /** @description Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
@@ -9173,6 +9303,32 @@ export interface components {
                 verification_generated_at: string | null;
                 warning_source_count: number;
             };
+        };
+        /** @description One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp. */
+        GammaDeposit: {
+            /** @description The deposit's Gamma balance -- u64 atomic units as a decimal string. */
+            balance: string;
+            captured_at: string | null;
+            /** @description The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis. */
+            closed_at: number | null;
+            /** @description The ss58 address the deposit is keyed by on chain -- its owning account. */
+            coldkey: string;
+            /** @description The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling). */
+            daily_cap: string | null;
+            /** @description The hotkey this deposit is bound to. */
+            hotkey: string;
+            netuid: number;
+            /** @description The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set. */
+            spender: string | null;
+        };
+        /** @description The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+        GammaDepositsArtifact: {
+            captured_at: string | null;
+            /** @description How many deposits this answer carries -- `deposits.length`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published. */
+            deposit_count: number | null;
+            /** @description The chain's Gamma deposits, largest balance first. */
+            deposits: components["schemas"]["GammaDeposit"][];
+            schema_version: number;
         };
         Gaps: {
             gap_notes: string[];
@@ -12146,6 +12302,40 @@ export interface components {
             schema_version: 1;
             slug?: string;
         };
+        /** @description One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+        SubnetGammaArtifact: {
+            captured_at: string | null;
+            /** @description The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one. */
+            gamma: components["schemas"]["SubnetGammaState"] | null;
+            netuid: number;
+            schema_version: number;
+        };
+        /** @description One subnet's Gamma capture series (#13164). Empty with a null point_count until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma/history. */
+        SubnetGammaHistoryArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description How many captures this answer carries -- `points.length`. NULL when the series holds no rows for this subnet (store unbound, or the Gamma capture has not run): a zero count is never a measurement and is not published. */
+            point_count: number | null;
+            /** @description The subnet's captured Gamma states, newest first. */
+            points: components["schemas"]["SubnetGammaState"][];
+            schema_version: number;
+        };
+        /** @description One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp. */
+        SubnetGammaState: {
+            captured_at: string | null;
+            /** @description The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            emission: string | null;
+            /** @description Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            /** @description Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            pending_emission: string | null;
+            /** @description The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            unconverted_emission: string | null;
+            /** @description Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+            whitelisted: boolean | null;
+        };
         SubnetGapsArtifact: {
             contract_version?: string;
             enrichment_queue: {
@@ -13411,6 +13601,26 @@ export interface components {
                 version?: string;
             };
             subnets: components["schemas"]["SubnetIndexEntry"][];
+        };
+        /** @description One on-chain service binding: the hotkey, the URL it published, and the capture stamp. */
+        SubnetService: {
+            captured_at: string | null;
+            /** @description The hotkey this service URL is bound to. */
+            hotkey: string;
+            /** @description The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim. */
+            service_url: string;
+            /** @description The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis. */
+            set_at: number | null;
+        };
+        /** @description One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+        SubnetServicesArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            schema_version: number;
+            /** @description How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+            service_count: number | null;
+            /** @description The subnet's service bindings, ordered by hotkey. */
+            services: components["schemas"]["SubnetService"][];
         };
         SubnetServingArtifact: {
             announcements: number;
@@ -30187,6 +30397,126 @@ export interface operations {
             };
         };
     };
+    chainGamma: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "enabled": true,
+                     *         "enabled_captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "emission": "example",
+                     *             "enabled": true,
+                     *             "netuid": 7,
+                     *             "pending_emission": "example",
+                     *             "price": "example",
+                     *             "unconverted_emission": "example",
+                     *             "whitelisted": false
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainGammaArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     emissionGateChanges: {
         parameters: {
             query?: {
@@ -38408,6 +38738,124 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["FreshnessArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    gammaDeposits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "deposit_count": 1,
+                     *         "deposits": [
+                     *           {
+                     *             "balance": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "closed_at": 1,
+                     *             "coldkey": "example",
+                     *             "daily_cap": "example",
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "spender": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GammaDepositsArtifact"];
                     };
                 };
             };
@@ -47352,6 +47800,251 @@ export interface operations {
             };
         };
     };
+    subnetGamma: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "gamma": {
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "emission": "example",
+                     *           "enabled": true,
+                     *           "pending_emission": "example",
+                     *           "price": "example",
+                     *           "unconverted_emission": "example",
+                     *           "whitelisted": false
+                     *         },
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetGammaArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetGammaHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "emission": "example",
+                     *             "enabled": true,
+                     *             "pending_emission": "example",
+                     *             "price": "example",
+                     *             "unconverted_emission": "example",
+                     *             "whitelisted": false
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetGammaHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetGaps: {
         parameters: {
             query?: {
@@ -52200,6 +52893,127 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetRevenueArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "service_count": 1,
+                     *         "services": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "service_url": "https://api.metagraph.sh/example",
+                     *             "set_at": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetServicesArtifact"];
                     };
                 };
             };

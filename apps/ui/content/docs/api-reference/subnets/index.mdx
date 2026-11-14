@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-72 endpoints.
+75 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -55,6 +55,10 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice.
 - [Subnet Events](/docs/api-reference/subnets/subnet-events) — `GET /api/v1/subnets/{netuid}/events`\
   Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events store filtered by netuid.
+- [Subnet Gamma](/docs/api-reference/subnets/subnet-gamma) — `GET /api/v1/subnets/{netuid}/gamma`\
+  Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp.
+- [Subnet Gamma History](/docs/api-reference/subnets/subnet-gamma-history) — `GET /api/v1/subnets/{netuid}/gamma/history`\
+  Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/\{netuid}/gamma, newest first and store-capped.
 - [Subnet History](/docs/api-reference/subnets/subnet-history) — `GET /api/v1/subnets/{netuid}/history`\
   Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier.
 - [Subnet Holders](/docs/api-reference/subnets/subnet-holders) — `GET /api/v1/subnets/{netuid}/holders`\
@@ -111,6 +115,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream.
 - [Subnet Revenue](/docs/api-reference/subnets/subnet-revenue) — `GET /api/v1/subnets/{netuid}/revenue`\
   Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios.
+- [Subnet Services](/docs/api-reference/subnets/subnet-services) — `GET /api/v1/subnets/{netuid}/services`\
+  Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey.
 - [Subnet Serving](/docs/api-reference/subnets/subnet-serving) — `GET /api/v1/subnets/{netuid}/serving`\
   Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream.
 - [Subnet Stake Flow](/docs/api-reference/subnets/subnet-stake-flow) — `GET /api/v1/subnets/{netuid}/stake-flow`\

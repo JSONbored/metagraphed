@@ -1451,9 +1451,24 @@ import {
   GetValidatorBasketsOutputSchema,
 } from "../schemas-src/mcp-tools/get-validator-baskets.ts";
 import {
+  GetSubnetGammaInputSchema,
+  GetSubnetGammaOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-gamma.ts";
+import {
+  GetGammaDepositsInputSchema,
+  GetGammaDepositsOutputSchema,
+} from "../schemas-src/mcp-tools/get-gamma-deposits.ts";
+import {
+  GetSubnetServicesInputSchema,
+  GetSubnetServicesOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-services.ts";
+import {
   buildValidatorBaskets,
   loadValidatorBaskets,
 } from "./validator-baskets.ts";
+import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
+import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
+import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
 import {
   buildSubnetMechanisms,
   loadSubnetMechanisms,
@@ -9529,6 +9544,83 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_gamma",
+    title: "Get a subnet's current Gamma state",
+    description:
+      "Fetch one subnet's current Gamma state (#13164): the " +
+      "SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw " +
+      "SubnetGammaPrice as a canonical decimal string (the engine's decode " +
+      "owns the scaling), and the SubnetGammaEmission / " +
+      "PendingGammaEmission / UnconvertedGammaEmission counters as u64 " +
+      "atomic units in decimal strings, with their capture stamp. Until the " +
+      "engine's Gamma capture lands, the store holds no rows and the " +
+      "response is the schema-stable decline: gamma NULL -- never a zeroed " +
+      "state, because an absent capture is not a measured Gamma-off subnet. " +
+      "The capture series lives on the REST drill-in " +
+      "/api/v1/subnets/{netuid}/gamma/history. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/gamma.",
+    inputSchema: inputJsonSchema(GetSubnetGammaInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetGammaInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetGamma -> buildSubnetGamma decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildSubnetGamma(await loadSubnetGamma(ctx.env, netuid), netuid);
+    },
+  },
+  {
+    name: "get_gamma_deposits",
+    title: "Get the chain's Gamma deposits",
+    description:
+      "Fetch the chain's Gamma deposit state (#13164): each deposit's " +
+      "owning account and hotkey, subnet, balance " +
+      "(SubtensorModule.GammaDeposits; u64 atomic units as a decimal " +
+      "string), authorized spender, daily spend cap and closed-at block " +
+      "with its capture stamp, largest balance first and store-capped. " +
+      "Until the engine's GammaDeposits capture lands, the state holds no " +
+      "rows and the response is the schema-stable decline: an empty " +
+      "deposits array with deposit_count NULL -- never 0, because an empty " +
+      "list is not a measured deposit-free chain. Mirrors GET " +
+      "/api/v1/gamma/deposits.",
+    inputSchema: inputJsonSchema(GetGammaDepositsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetGammaDepositsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadGammaDeposits -> buildGammaDeposits decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildGammaDeposits(await loadGammaDeposits(ctx.env));
+    },
+  },
+  {
+    name: "get_subnet_services",
+    title: "Get a subnet's on-chain service URLs",
+    description:
+      "Fetch one subnet's on-chain service-URL registry (#13164): each " +
+      "hotkey's published service URL (SubtensorModule.Services; events " +
+      "ServiceSet / ServiceRemoved) with the block it was set at and its " +
+      "capture stamp, ordered by hotkey. Until the engine's Services " +
+      "capture lands, the registry holds no rows and the response is the " +
+      "schema-stable decline: an empty services array with service_count " +
+      "NULL -- never 0, because an empty registry is not a measured " +
+      "service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
+    inputSchema: inputJsonSchema(GetSubnetServicesInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetServicesInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetServices -> buildSubnetServices decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildSubnetServices(
+        await loadSubnetServices(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -15868,6 +15960,9 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
   get_validator_baskets: () =>
     outputJsonSchema(GetValidatorBasketsOutputSchema),
+  get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),
+  get_gamma_deposits: () => outputJsonSchema(GetGammaDepositsOutputSchema),
+  get_subnet_services: () => outputJsonSchema(GetSubnetServicesOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

@@ -271,6 +271,16 @@ type Query {
   subnet_alpha_dividends(netuid: Int!): SubnetAlphaDividends!
 
   """
+  One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+  """
+  subnet_gamma(netuid: Int!): SubnetGamma!
+
+  """
+  One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
+  """
+  subnet_services(netuid: Int!): SubnetServices!
+
+  """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
   """
   subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
@@ -709,6 +719,11 @@ type Query {
   Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets.
   """
   validator_baskets: ValidatorBaskets!
+
+  """
+  The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.
+  """
+  gamma_deposits: GammaDeposits!
 
   """
   Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts.
@@ -2500,6 +2515,92 @@ type SubnetAlphaDividend {
   Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured.
   """
   root_alpha_divs: String
+  captured_at: String
+}
+
+"""
+One subnet's current Gamma state (#13164). Null \`gamma\` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+"""
+type SubnetGamma {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one.
+  """
+  gamma: SubnetGammaState
+  captured_at: String
+}
+
+"""
+One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp.
+"""
+type SubnetGammaState {
+  """
+  Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch.
+  """
+  enabled: Boolean
+
+  """
+  The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured.
+  """
+  price: String
+
+  """
+  The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  emission: String
+
+  """
+  Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured.
+  """
+  pending_emission: String
+
+  """
+  Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured.
+  """
+  unconverted_emission: String
+
+  """
+  Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag.
+  """
+  whitelisted: Boolean
+  captured_at: String
+}
+
+"""
+One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services.
+"""
+type SubnetServices {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many service bindings this subnet carries -- \`services.length\`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published.
+  """
+  service_count: Int
+  captured_at: String
+
+  """The subnet's service bindings, ordered by hotkey."""
+  services: [SubnetService!]!
+}
+
+"""
+One on-chain service binding: the hotkey, the URL it published, and the capture stamp.
+"""
+type SubnetService {
+  """The hotkey this service URL is bound to."""
+  hotkey: String!
+
+  """
+  The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim.
+  """
+  service_url: String!
+
+  """
+  The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis.
+  """
+  set_at: Int
   captured_at: String
 }
 
@@ -6414,6 +6515,55 @@ type ValidatorBasket {
   first_block: String
   holdings_count: Int
   targets_count: Int
+}
+
+"""
+The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits.
+"""
+type GammaDeposits {
+  schema_version: Int!
+
+  """
+  How many deposits this answer carries -- \`deposits.length\`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published.
+  """
+  deposit_count: Int
+  captured_at: String
+
+  """The chain's Gamma deposits, largest balance first."""
+  deposits: [GammaDeposit!]!
+}
+
+"""
+One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp.
+"""
+type GammaDeposit {
+  """
+  The ss58 address the deposit is keyed by on chain -- its owning account.
+  """
+  coldkey: String!
+
+  """The hotkey this deposit is bound to."""
+  hotkey: String!
+  netuid: Int!
+
+  """The deposit's Gamma balance -- u64 atomic units as a decimal string."""
+  balance: String!
+
+  """
+  The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set.
+  """
+  spender: String
+
+  """
+  The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling).
+  """
+  daily_cap: String
+
+  """
+  The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis.
+  """
+  closed_at: Int
+  captured_at: String
 }
 
 type AccountList {
