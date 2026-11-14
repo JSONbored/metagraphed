@@ -148,6 +148,9 @@ export const INGESTED_EVENT_KINDS = [
   // same forward-compat footing as the Gamma kinds above.
   "ServiceSet",
   "ServiceRemoved",
+  // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
+  // -- same forward-compat footing again.
+  "TaoUsdPriceFed",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {

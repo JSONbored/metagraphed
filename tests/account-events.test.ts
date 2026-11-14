@@ -126,6 +126,12 @@ test("INGESTED_EVENT_KINDS accepts the Gamma and Services kinds (#13164)", () =>
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
+  // Same forward-compat footing as the Gamma kinds: the oracle-feed decode
+  // lands with the engine.
+  assert.ok(INGESTED_EVENT_KINDS.includes("TaoUsdPriceFed"));
+});
+
 test("basket and collateral kinds support public filters and meaningful summary categories", () => {
   const categories = {
     BasketDeposited: "stake",

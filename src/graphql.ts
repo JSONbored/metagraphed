@@ -54,6 +54,7 @@ import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildValidatorBaskets,
   loadValidatorBaskets,
@@ -3032,6 +3033,9 @@ const rootValue = {
     return buildTaoUsdSeries(rows, {
       window: label,
       includePoints: include_points ?? true,
+      // #13164: same oracle decline contract the REST handler and the MCP
+      // tool share -- null until the engine's oracle capture lands.
+      oracle: buildTaoUsdOracle(await loadTaoUsdOracle(context.env)),
     });
   },
 

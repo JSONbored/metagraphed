@@ -602,6 +602,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   TaoUsdArtifact: "TaoUsd",
   TaoUsdLatest: "TaoUsdLatest",
   TaoUsdPoint: "TaoUsdPoint",
+  TaoUsdOracle: "TaoUsdOracle",
+  TaoUsdOracleFeed: "TaoUsdOracleFeed",
   UptimeArtifact: "SubnetUptime",
   UptimeArtifactReliability: "UptimeReliability",
   UptimeArtifactSurfaces: "UptimeSurface",

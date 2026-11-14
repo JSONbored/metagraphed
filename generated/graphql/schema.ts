@@ -411,7 +411,7 @@ type Query {
   indexer_lag: IndexerLag!
 
   """
-  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
+  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the \`oracle\` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
   """
   tao_usd(window: String, include_points: Boolean): TaoUsd!
 
@@ -4142,6 +4142,11 @@ type TaoUsd {
   point_count: Int!
 
   """
+  Always \`pool_composite\`: the price series and \`latest\` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate \`oracle\` block labelled \`chain_oracle\`.
+  """
+  source: String!
+
+  """
   True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh.
   """
   stale: Boolean!
@@ -4161,6 +4166,11 @@ type TaoUsd {
   """
   priced_point_count: Int!
   latest: TaoUsdLatest
+
+  """
+  The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source \`chain_oracle\`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price.
+  """
+  oracle: TaoUsdOracle
 
   """
   How far back the answer actually reaches -- the series began 2026-08-02.
@@ -4188,6 +4198,55 @@ type TaoUsdLatest {
 
   """Per-pool provenance as the producer stored it."""
   pools: [JSON!]!
+}
+
+"""
+The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price.
+"""
+type TaoUsdOracle {
+  """
+  Always \`chain_oracle\`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source \`pool_composite\`).
+  """
+  source: String!
+
+  """
+  The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price.
+  """
+  usd_per_tao: Float
+
+  """
+  The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived.
+  """
+  price_raw: String
+
+  """
+  The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it.
+  """
+  oracle: String
+  block_number: Int!
+  observed_at: String
+  captured_at: String
+
+  """
+  How many feeds this block carries -- \`feeds.length\`, store-capped. Never 0: with no captured feeds the whole block is null instead.
+  """
+  fed_count: Int!
+
+  """
+  The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price.
+  """
+  feeds: [TaoUsdOracleFeed!]!
+}
+
+"""One TaoUsdPriceFed reading, pinned to the block it landed at."""
+type TaoUsdOracleFeed {
+  block_number: Int!
+
+  """
+  The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price.
+  """
+  usd_per_tao: Float
+  observed_at: String
 }
 
 """One TAO/USD reading."""

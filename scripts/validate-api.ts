@@ -1528,6 +1528,11 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       for (const p of body.data.points) {
         assert.notEqual(p.usd_per_tao, 0);
       }
+      // #13164: the provenance labels. The card's own series is the composed
+      // index, and the on-chain oracle block declines to null in this
+      // harness (no oracle store bound) -- never a fabricated price.
+      assert.equal(body.data.source, "pool_composite");
+      assert.equal(body.data.oracle, null);
       // priced_point_count can never exceed the points it counts.
       assert.equal(body.data.priced_point_count <= body.data.point_count, true);
       if (body.data.latest !== null) {

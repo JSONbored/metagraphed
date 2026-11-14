@@ -107,6 +107,7 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "surfaces",
     "sync_dead_letters",
     "tao_usd_index",
+    "tao_usd_oracle",
     "treasury_readings",
     "validator_nominator_counts",
     "validator_nominator_counts_passes",
