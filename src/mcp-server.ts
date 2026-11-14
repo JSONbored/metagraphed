@@ -1430,6 +1430,11 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.ts";
 import {
+  MECHANISM_SCOPE_MESSAGE,
+  invalidMechanismScope,
+  stampMechanismScope,
+} from "./mechanism-scope.ts";
+import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
   buildAccountEvents,
@@ -4631,6 +4636,24 @@ function requireNetuid(args: Row) {
     );
   }
   return netuid;
+}
+
+/**
+ * The mechanism (mechid) scope argument (#13162).
+ *
+ * SAME REASON AS requireNetuid: dispatch does not validate against the Zod
+ * input schema, so the published bound-to-0 (mechidSchema's
+ * enforce-what-you-publish posture) is enforced here, with the sentence every
+ * surface rejects an out-of-range scope with. Null means "unscoped", which
+ * keeps the response byte-identical to before the argument existed.
+ */
+function optionalMechanismScope(args: Row) {
+  const raw = args?.mechid;
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "number" || invalidMechanismScope(raw)) {
+    throw toolError("invalid_params", MECHANISM_SCOPE_MESSAGE);
+  }
+  return raw;
 }
 
 /**
@@ -8731,14 +8754,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_WEIGHTS_WINDOWS,
         DEFAULT_SUBNET_WEIGHTS_WINDOW,
       );
-      return (
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamp below is a no-op then.
+      const mechid = optionalMechanismScope(args);
+      return stampMechanismScope(
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightsColdTier(ctx.env, netuid, {
           windowLabel: window,
           windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
-        })) ?? buildSubnetWeights(null, netuid, { window })
+        })) ?? buildSubnetWeights(null, netuid, { window }),
+        mechid,
       );
     },
   },
@@ -9397,6 +9424,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // handleSubnetMetagraph (validator_permit=true is the only value that
       // changes the canonical cache path; omission and false are equivalent).
       const validatorPermit = optionalBoolean(args, "validator_permit");
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamp below is a no-op then.
+      const mechid = optionalMechanismScope(args);
       // #9082: rejected before the tier read, so an unsupported field costs a
       // tool error rather than a full 256-row fetch the caller never sees.
       const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
@@ -9418,13 +9448,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // columns being filtered on.
       return projectNeuronPayload(
         selectNeuronRows(
-          (await tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
-              validator_permit: validatorPermit ? "true" : undefined,
-            }),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) ?? buildSubnetMetagraph([], netuid),
+          stampMechanismScope(
+            (await tryDataApiTier(
+              ctx.env,
+              mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
+                validator_permit: validatorPermit ? "true" : undefined,
+              }),
+              "METAGRAPH_NEURONS_SOURCE",
+            )) ?? buildSubnetMetagraph([], netuid),
+            mechid,
+          ),
           selection,
         ),
         fields,
@@ -9869,6 +9902,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // handleNeuron.
       const uid = optionalNonNegativeInt(args, "uid");
       const hotkey = optionalHotkey(args, "hotkey");
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamps below are no-ops then.
+      const mechid = optionalMechanismScope(args);
       // #9872: exactly one identifier. Enforced here rather than in the
       // schema because this server validates arguments in the handler by
       // design (#8942) -- and because both failures need to say which pair
@@ -9903,23 +9939,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : [];
         const match = rows.find((row) => row.hotkey === hotkey) ?? null;
         return projectNeuronPayload(
-          {
-            schema_version: snapshot.schema_version ?? 1,
-            netuid,
-            captured_at: snapshot.captured_at ?? null,
-            block_number: snapshot.block_number ?? null,
-            // null is a real answer: the hotkey holds no UID on this subnet.
-            neuron: match,
-          },
+          stampMechanismScope(
+            {
+              schema_version: snapshot.schema_version ?? 1,
+              netuid,
+              captured_at: snapshot.captured_at ?? null,
+              block_number: snapshot.block_number ?? null,
+              // null is a real answer: the hotkey holds no UID on this subnet.
+              neuron: match,
+            },
+            mechid,
+          ),
           fields,
         );
       }
       return projectNeuronPayload(
-        (await tryDataApiTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
-          "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildNeuronDetail(null, netuid),
+        stampMechanismScope(
+          (await tryDataApiTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildNeuronDetail(null, netuid),
+          mechid,
+        ),
         fields,
       );
     },

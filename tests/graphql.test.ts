@@ -25657,3 +25657,76 @@ describe("deleted resolver guards: the dispatch still refuses, with its own sent
     assert.match(errors[0]?.message ?? "", /must differ from ss58/);
   });
 });
+
+// The mechanism (mechid) scope on the three mirrored fields (#13162): the
+// derived `mechid: Int` argument is validated with the same bound-to-0 posture
+// the REST contract publishes (mechidSchema), and an accepted scope stamps the
+// payload exactly as the REST handler does.
+describe("graphql — mechanism scope (#13162)", () => {
+  function neuronsTier(payload: Row) {
+    return {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: { fetch: async () => Response.json(payload) },
+    } as unknown as Env;
+  }
+
+  test("subnet_metagraph(mechid: 0) stamps the artifact and every row", async () => {
+    const env = neuronsTier({
+      schema_version: 1,
+      netuid: 3,
+      neuron_count: 1,
+      neurons: [{ uid: 0 }],
+    });
+    const { status, body } = await gql(
+      "{ subnet_metagraph(netuid: 3, mechid: 0) }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_metagraph.mechid, 0);
+    assert.deepEqual(body.data.subnet_metagraph.neurons, [
+      { uid: 0, mechid: 0 },
+    ]);
+  });
+
+  test("neuron(mechid: 0) stamps the card, and a cold neuron stays null", async () => {
+    const { status, body } = await gql(
+      "{ neuron(netuid: 3, uid: 2, mechid: 0) { netuid mechid neuron { uid mechid } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.neuron.mechid, 0);
+    assert.equal(body.data.neuron.neuron, null);
+  });
+
+  test("subnet_weights(mechid: 0) echoes the scope on the card", async () => {
+    const { status, body } = await gql(
+      `{ subnet_weights(netuid: 5, mechid: 0) { netuid mechid weight_sets } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_weights.mechid, 0);
+  });
+
+  test("a scope above 0 is BAD_USER_INPUT on all three fields", async () => {
+    // Rejected by the dispatch-level argument parse, against the ROUTE'S OWN
+    // published bound (mechidSchema's 0..0) -- no resolver check to drift.
+    for (const query of [
+      "{ subnet_metagraph(netuid: 3, mechid: 1) }",
+      "{ neuron(netuid: 3, uid: 2, mechid: 1) { netuid } }",
+      "{ subnet_weights(netuid: 5, mechid: 1) { netuid } }",
+    ]) {
+      const { body } = await gql(query);
+      const errors = (body.errors ?? []) as Array<{
+        message?: string;
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", query);
+      assert.match(
+        errors[0]?.message ?? "",
+        /mechid must be an integer between 0 and 0/,
+        query,
+      );
+    }
+  });
+});

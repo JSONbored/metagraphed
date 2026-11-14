@@ -221,6 +221,7 @@ import {
   kindSchema,
   kindStringSchema,
   limitSchema,
+  mechidSchema,
   netuidListSchema,
   netuidSchema,
   offsetSchema,
@@ -584,6 +585,10 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
         ANALYTICS_WINDOWS as [string, ...string[]],
         "7d",
       ).optional(),
+      // #13162: the mechanism dimension. Accepted-and-echoed rather than
+      // ignored, and bounded to the one mechanism the WeightsSet stream can
+      // honestly answer for -- see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/weights/setters": () =>
     z.object({
@@ -888,11 +893,16 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
       // and answering it with all 256 rows is the silent wrong answer. A caller
       // who wants the complement omits the parameter and filters the rows.
       validator_permit: z.enum(["true"] as const).optional(),
+      // #13162: the mechanism dimension, same enforce-what-you-publish posture
+      // as validator_permit above -- see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
       fields: fieldsSchema().optional(),
       format: formatSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/neurons/{uid}": () =>
     z.object({
+      // #13162: see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
       fields: fieldsSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/hyperparameters/history": () =>

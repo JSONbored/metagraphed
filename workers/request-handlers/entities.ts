@@ -85,6 +85,7 @@ import {
 } from "../../src/route-query.ts";
 import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
+import { stampMechanismScope } from "../../src/mechanism-scope.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,
@@ -971,6 +972,10 @@ export async function handleSubnetMetagraph(
   // rather than a full 256-row fetch the caller never sees.
   const projection = parseNeuronFields(url.searchParams, "neurons");
   if (projection.error) return analyticsQueryError(projection.error);
+  // #13162: the mechanism scope, already bounded to 0 by the central
+  // parseRouteQuery gate. Read for the stamp -- null means unscoped, and the
+  // response then stays byte-identical to before the parameter existed.
+  const mechid = routeInt(url, "mechid");
   // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
   // table is dropped in production, so a store query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
@@ -978,13 +983,15 @@ export async function handleSubnetMetagraph(
   // validator_permit is validated by the router against the route's published
   // one-value enum (#10060) and forwarded to Postgres via the proxied request
   // (tryDataApiTier passes the request through unchanged).
-  const data =
+  const data = stampMechanismScope(
     ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
-    buildSubnetMetagraph([], netuid);
+      buildSubnetMetagraph([], netuid),
+    mechid,
+  );
   // CSV keeps its own fixed column set (NEURON_CSV_COLUMNS): a projected CSV
   // would be a second, caller-defined column contract for the same download.
   if (csvRequested(url, request)) {
@@ -1068,13 +1075,17 @@ export async function handleNeuron(
   if (projection.error) return analyticsQueryError(projection.error);
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
-  const data =
+  // #13162: the mechanism scope rides the same stamp as the metagraph route --
+  // see handleSubnetMetagraph above.
+  const data = stampMechanismScope(
     ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildNeuronDetail> | null) ??
-    buildNeuronDetail(null, netuid);
+      buildNeuronDetail(null, netuid),
+    routeInt(url, "mechid"),
+  );
   return envelopeResponse(
     request,
     {
@@ -2514,8 +2525,16 @@ export function canonicalSubnetMetagraphCachePath(
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const validatorsOnly = routeText(url, "validator_permit") === "true";
-  const canonicalPath = validatorsOnly
-    ? `${url.pathname}?validator_permit=true`
+  // #13162: a mechanism-scoped response carries the stamp, so the scope must
+  // ride the cache key -- a scoped body in the unscoped slot (or vice versa)
+  // would serve the wrong shape until the next bust.
+  const mechid = routeInt(url, "mechid");
+  const canonicalParams = [
+    ...(validatorsOnly ? ["validator_permit=true"] : []),
+    ...(mechid == null ? [] : [`mechid=${mechid}`]),
+  ];
+  const canonicalPath = canonicalParams.length
+    ? `${url.pathname}?${canonicalParams.join("&")}`
     : url.pathname;
   return neuronProjectionCacheVariant(url, request, canonicalPath, "neurons");
 }
@@ -2984,7 +3003,12 @@ export async function handleSubnetTurnover(
 export function canonicalSubnetWeightsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam = routeValue<string>(url, "window");
-  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  // #13162: the mechanism scope changes the body (the stamp), so it rides the
+  // key; unscoped requests keep their exact pre-mechid slot.
+  const mechid = routeInt(url, "mechid");
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}${
+    mechid == null ? "" : `&mechid=${mechid}`
+  }`;
 }
 
 // GET /api/v1/subnets/{netuid}/weights?window=7d|30d: validator weight-setting activity for
@@ -3002,7 +3026,7 @@ export async function handleSubnetWeights(
     SUBNET_WEIGHTS_WINDOWS,
     DEFAULT_SUBNET_WEIGHTS_WINDOW,
   );
-  const data =
+  const data = stampMechanismScope(
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
     // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
@@ -3013,7 +3037,12 @@ export async function handleSubnetWeights(
     (await loadSubnetWeightsColdTier(env, netuid, {
       windowLabel: windowParam,
       windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
-    })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+    })) ?? buildSubnetWeights(null, netuid, { window: windowParam }),
+    // #13162: the mechanism scope, already bounded to 0 by the central
+    // parseRouteQuery gate. The stream is attributed to mechanism 0 (the
+    // ingestion dedupe), so a scoped card is today's card plus the echo.
+    routeInt(url, "mechid"),
+  );
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
   return envelopeResponse(
