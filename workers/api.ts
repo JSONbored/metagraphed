@@ -10251,10 +10251,21 @@ async function handleHealthRequest(request: Request, env: Env) {
   // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
   // The newest observed_at row is an index-friendly heartbeat for the latest
   // indexed chain event; age_seconds is ~12-30s while the streamer is live,
-  // growing toward the ~5-min poller backstop if it's down. Reported for
-  // observability (does NOT gate the HTTP status, like operational_health);
-  // best-effort + null on a cold/unbound store.
+  // growing toward the ~5-min poller backstop if it's down. Best-effort + null
+  // on a cold/unbound store.
+  //
+  // A PRESENT stale heartbeat now GATES the status. The head froze at block
+  // 9,420,866 on 2026-11-02 and /health kept answering 200 "ok" for weeks —
+  // served chain data was wrong output presented as healthy, and every uptime
+  // monitor pointed here agreed. Same posture as the publish pointer above:
+  // only a present heartbeat can trip it (an unbound or cold store stays
+  // reported-null and does not gate), so local/dev and the worker-test harness
+  // stay healthy. Default 1800s = 6 missed 5-minute poller backstops: a
+  // restarting streamer rides through, a dead one is degraded within the hour.
+  const chainMaxAgeSeconds =
+    Number(env.METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS) || 1800;
   let chainEvents = null;
+  let chainStale = false;
   if (bindings.health_db) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
@@ -10262,19 +10273,25 @@ async function handleHealthRequest(request: Request, env: Env) {
     // (mirrors toIso in src/blocks.ts and captured_at guards elsewhere).
     const chainEventsFresh =
       Number.isFinite(chainEventsAtMs) && chainEventsAtMs > 0;
+    const chainAgeSeconds = chainEventsFresh
+      ? Math.round((Date.now() - chainEventsAtMs) / 1000)
+      : null;
+    chainStale =
+      chainAgeSeconds !== null && chainAgeSeconds > chainMaxAgeSeconds;
     chainEvents = {
       latest_indexed_block: chainEventsRow?.block ?? null,
       latest_event_at: chainEventsFresh
         ? new Date(chainEventsAtMs).toISOString()
         : null,
-      age_seconds: chainEventsFresh
-        ? Math.round((Date.now() - chainEventsAtMs) / 1000)
-        : null,
+      age_seconds: chainAgeSeconds,
+      max_age_seconds: chainMaxAgeSeconds,
+      stale: chainStale,
     };
   }
+  const degraded = stale || chainStale;
 
   const body = JSON.stringify({
-    status: stale ? "degraded" : "ok",
+    status: degraded ? "degraded" : "ok",
     service: "metagraphed",
     contract_version: contractVersion(env),
     rpc_proxy_enabled: env.METAGRAPH_ENABLE_RPC_PROXY === "true",
@@ -10296,8 +10313,8 @@ async function handleHealthRequest(request: Request, env: Env) {
   });
 
   const headers = apiHeaders("short");
-  headers.set("x-metagraph-health", stale ? "degraded" : "ok");
-  if (stale) {
+  headers.set("x-metagraph-health", degraded ? "degraded" : "ok");
+  if (degraded) {
     // The degraded branch is a transient 503; a 503 carrying explicit freshness
     // (public, max-age=60, stale-while-revalidate=300) is cacheable per RFC 7234,
     // so a shared/edge cache could keep serving "degraded" for up to ~6 min after
@@ -10306,7 +10323,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     headers.set("x-metagraph-cache-profile", "no-store");
   }
   return new Response(request.method === "HEAD" ? null : body, {
-    status: stale ? 503 : 200,
+    status: degraded ? 503 : 200,
     headers,
   });
 }
