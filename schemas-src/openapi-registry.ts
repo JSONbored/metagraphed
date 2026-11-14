@@ -356,7 +356,10 @@ import {
   AccountPositionsArtifactSchema,
   AccountPositionHistoryArtifactSchema,
 } from "./routes/account-positions.ts";
-import { AccountRootClaimArtifactSchema } from "./routes/account-root-claim.ts";
+import {
+  AccountRootClaimArtifactSchema,
+  RootClaimBasketClaimsSchema,
+} from "./routes/account-root-claim.ts";
 import {
   AccountServingArtifactSchema,
   AccountPrometheusArtifactSchema,
@@ -816,6 +819,7 @@ register(
   AccountPositionHistoryArtifactSchema,
   "AccountPositionHistoryArtifact",
 );
+register(RootClaimBasketClaimsSchema, "RootClaimBasketClaims");
 register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
 register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");

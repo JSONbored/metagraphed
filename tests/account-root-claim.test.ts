@@ -292,9 +292,12 @@ describe("loadAccountRootClaim", () => {
     );
     // Was assert.equal (same OBJECT identity). The loader now spreads the
     // cached body and attaches provenance outside the cache (#9108), so the
-    // served record is a new object carrying the same values plus the map.
+    // served record is a new object carrying the same values plus the map --
+    // and, since #13163, the basket_claims era block (null here: no event
+    // store is bound in this env), which never enters the KV blob either.
     assert.deepEqual(payload, {
       ...cached,
+      basket_claims: null,
       field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
     });
     assert.equal(fetchSpy.mock.calls.length, 0);

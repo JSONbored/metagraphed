@@ -549,9 +549,10 @@ export type AccountRegistrations = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+/** Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
 export type AccountRootClaim = {
   __typename?: 'AccountRootClaim';
+  basket_claims?: Maybe<RootClaimBasketClaims>;
   claim_type?: Maybe<RootClaimType>;
   /** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
   compatibility: RootClaimCompatibility;
@@ -3518,7 +3519,7 @@ export type Query = {
   account_prometheus: AccountPrometheus;
   /** One account's per-subnet registration footprint over a 7d/30d/90d window (default 30d): NeuronRegistered count and first/last timestamps per subnet, an HHI concentration of where its registration activity is focused, and the dominant subnet; an address with no registrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/registrations. */
   account_registrations: AccountRegistrations;
-  /** Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+  /** One account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility -- only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor -- claims flow through Basket* events since Root Reborn (v441), and basket state lives on validator_baskets. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
   account_root_claim?: Maybe<AccountRootClaim>;
   /** One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving. */
   account_serving: AccountServing;
@@ -5804,6 +5805,17 @@ export type ReviewProfileCompletenessList = {
   sort?: Maybe<Scalars['String']['output']>;
   summary: ReviewProfileCompletenessArtifactSummary;
   total: Scalars['Int']['output'];
+};
+
+/** The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. */
+export type RootClaimBasketClaims = {
+  __typename?: 'RootClaimBasketClaims';
+  /** `claims.length` -- the returned page, capped at 100, not a lifetime total. */
+  claim_count: Scalars['Int']['output'];
+  /** This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface). */
+  claims: Array<AccountEvent>;
+  /** The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read. */
+  covered_since?: Maybe<Scalars['String']['output']>;
 };
 
 /** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
@@ -9006,6 +9018,7 @@ export type ResolversTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ResolverTypeWrapper<ReviewProfileCompletenessArtifactProfiles>;
   ReviewProfileCompletenessArtifactSummary: ResolverTypeWrapper<ReviewProfileCompletenessArtifactSummary>;
   ReviewProfileCompletenessList: ResolverTypeWrapper<ReviewProfileCompletenessList>;
+  RootClaimBasketClaims: ResolverTypeWrapper<RootClaimBasketClaims>;
   RootClaimCompatibility: ResolverTypeWrapper<RootClaimCompatibility>;
   RootClaimEntry: ResolverTypeWrapper<RootClaimEntry>;
   RootClaimHotkey: ResolverTypeWrapper<RootClaimHotkey>;
@@ -9489,6 +9502,7 @@ export type ResolversParentTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ReviewProfileCompletenessArtifactProfiles;
   ReviewProfileCompletenessArtifactSummary: ReviewProfileCompletenessArtifactSummary;
   ReviewProfileCompletenessList: ReviewProfileCompletenessList;
+  RootClaimBasketClaims: RootClaimBasketClaims;
   RootClaimCompatibility: RootClaimCompatibility;
   RootClaimEntry: RootClaimEntry;
   RootClaimHotkey: RootClaimHotkey;
@@ -10111,6 +10125,7 @@ export type AccountRegistrationsResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type AccountRootClaimResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountRootClaim'] = ResolversParentTypes['AccountRootClaim']> = ResolversObject<{
+  basket_claims?: Resolver<Maybe<ResolversTypes['RootClaimBasketClaims']>, ParentType, ContextType>;
   claim_type?: Resolver<Maybe<ResolversTypes['RootClaimType']>, ParentType, ContextType>;
   compatibility?: Resolver<ResolversTypes['RootClaimCompatibility'], ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
@@ -12968,6 +12983,12 @@ export type ReviewProfileCompletenessListResolvers<ContextType = GqlContext, Par
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type RootClaimBasketClaimsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimBasketClaims'] = ResolversParentTypes['RootClaimBasketClaims']> = ResolversObject<{
+  claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  claims?: Resolver<Array<ResolversTypes['AccountEvent']>, ParentType, ContextType>;
+  covered_since?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type RootClaimCompatibilityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimCompatibility'] = ResolversParentTypes['RootClaimCompatibility']> = ResolversObject<{
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   claim_type_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -15381,6 +15402,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles?: ReviewProfileCompletenessArtifactProfilesResolvers<ContextType>;
   ReviewProfileCompletenessArtifactSummary?: ReviewProfileCompletenessArtifactSummaryResolvers<ContextType>;
   ReviewProfileCompletenessList?: ReviewProfileCompletenessListResolvers<ContextType>;
+  RootClaimBasketClaims?: RootClaimBasketClaimsResolvers<ContextType>;
   RootClaimCompatibility?: RootClaimCompatibilityResolvers<ContextType>;
   RootClaimEntry?: RootClaimEntryResolvers<ContextType>;
   RootClaimHotkey?: RootClaimHotkeyResolvers<ContextType>;

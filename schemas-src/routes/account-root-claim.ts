@@ -19,6 +19,41 @@
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
 import { FieldSourcesSchema } from "../shared.ts";
+import { AccountEventSchema } from "./subnet-events.ts";
+
+/**
+ * The ≥v441 basket-claim era (#13163). Root Reborn retired the per-subnet
+ * claim storage the legacy fields describe; on the live runtime, claims flow
+ * through Basket* events this repo already ingests, and this block serves
+ * that flow beside the legacy compatibility read. NULL is the decline (no
+ * event store bound, a failed read, or a non-finney network); an EMPTY
+ * `claims` from a bound store is a measurement over the stated coverage
+ * window.
+ */
+export const RootClaimBasketClaimsSchema = z
+  .object({
+    claims: z
+      .array(AccountEventSchema)
+      .describe(
+        "This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface).",
+      ),
+    claim_count: z
+      .int()
+      .min(0)
+      .describe(
+        "`claims.length` -- the returned page, capped at 100, not a lifetime total.",
+      ),
+    covered_since: z
+      .string()
+      .nullable()
+      .describe(
+        "The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read.",
+      ),
+  })
+  .strict()
+  .describe(
+    "The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket.",
+  );
 
 const RootClaimTypeSchema = z
   .object({
@@ -79,13 +114,16 @@ export const AccountRootClaimArtifactSchema = z
       .describe(
         "Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.",
       ),
+    // #13163. Required: attached outside the KV cache on every read (same
+    // mechanism as field_sources below), so no fresh response lacks it.
+    basket_claims: RootClaimBasketClaimsSchema.nullable(),
     // #9108. Required: attached outside the KV cache on every read, so no
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
   .strict()
   .describe(
-    "Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+    "Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
   );
 export type AccountRootClaimArtifact = z.infer<
   typeof AccountRootClaimArtifactSchema
