@@ -91,6 +91,14 @@ import {
   loadSubnetMechanisms,
 } from "../../src/subnet-mechanisms.ts";
 import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "../../src/subnet-alpha-dividends.ts";
+import {
+  buildAccountLocks,
+  loadAccountLocks,
+} from "../../src/account-locks.ts";
+import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -3083,6 +3091,69 @@ export async function handleSubnetMechanisms(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/mechanisms.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/alpha-dividends (#13163): one subnet's pending
+// alpha dividend accrual, read through the native dividends-store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `dividends` with `hotkey_count: null`,
+// never a zero count (an empty registry is not a measured zero accrual),
+// marked as a tier fallback.
+export async function handleSubnetAlphaDividends(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetAlphaDividends(env, netuid);
+  const data = buildSubnetAlphaDividends(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/alpha-dividends.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/locks (#13163): one account's conviction-lock
+// state, read through the native locks-store seam. Same ss58 validation as
+// the sibling account routes; no store bound -- today's deployed Workers --
+// or a failed read is the same schema-stable decline: an empty `locks` with
+// `lock_count: null`, never a zero count (an empty list is not a measured
+// lock-free account), marked as a tier fallback.
+export async function handleAccountLocks(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountLocks(env, ss58);
+  const data = buildAccountLocks(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/locks.json`,
         data.captured_at,
       ),
     },

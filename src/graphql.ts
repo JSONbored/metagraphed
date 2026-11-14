@@ -46,6 +46,11 @@ import {
   buildSubnetMechanisms,
   loadSubnetMechanisms,
 } from "./subnet-mechanisms.ts";
+import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "./subnet-alpha-dividends.ts";
+import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -3705,6 +3710,21 @@ const rootValue = {
     // mechanism_count null, never a GraphQL error.
     return buildSubnetMechanisms(
       await loadSubnetMechanisms(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_alpha_dividends(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13163: same loadSubnetAlphaDividends -> buildSubnetAlphaDividends
+    // decline contract the REST handler and the MCP tool share -- an unbound
+    // or unfilled dividends store is a schema-stable card with hotkey_count
+    // null, never a GraphQL error.
+    return buildSubnetAlphaDividends(
+      await loadSubnetAlphaDividends(context.env, netuid),
       netuid,
     );
   },
@@ -9552,6 +9572,19 @@ const rootValue = {
       ss58,
       chainNetworkFromChainName(network),
     );
+  },
+
+  async account_locks({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13163: same loadAccountLocks -> buildAccountLocks decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled locks
+    // store is a schema-stable card with lock_count null, never a GraphQL
+    // error.
+    return buildAccountLocks(await loadAccountLocks(context.env, ss58), ss58);
   },
 
   async account_children(

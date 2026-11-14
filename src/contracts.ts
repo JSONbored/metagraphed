@@ -1348,6 +1348,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-alpha-dividends",
+    "/metagraph/subnets/{netuid}/alpha-dividends.json",
+    "One subnet's pending alpha dividend accrual (#13163) — each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp — served live from the dividends store at /api/v1/subnets/{netuid}/alpha-dividends (no static file). Empty with a null hotkey_count until the engine's dividend capture lands: an empty registry is not a measured zero accrual, so a zero count is never published.",
+    "SubnetAlphaDividendsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-weight-setters",
     "/metagraph/subnets/{netuid}/weights/setters.json",
     "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
@@ -1807,6 +1814,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/root-claim.json",
     "Deprecated per-subnet Root-claim compatibility read at a finalized block. The audited node-subtensor v440 adapter supplies legacy values; v441+ is unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys stay null unless supported. Runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits claim_root.",
     "AccountRootClaimArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "account-locks",
+    "/metagraph/accounts/{ss58}/locks.json",
+    "One account's conviction-lock state (#13163) — each lock's hotkey, subnet, variant, locked amount and maturity block with its capture stamp — served live from the locks store at /api/v1/accounts/{ss58}/locks (no static file). Empty with a null lock_count until the engine's lock capture lands: an empty list is not a measured lock-free account, so a zero count is never published.",
+    "AccountLocksArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3176,6 +3190,17 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-alpha-dividends",
+    "GET",
+    "/api/v1/subnets/{netuid}/alpha-dividends",
+    "/metagraph/subnets/{netuid}/alpha-dividends.json",
+    "Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first. Served live from the dividends store; until the engine's dividend capture lands the registry holds no rows and the response is the schema-stable decline — an empty dividends array with hotkey_count null, never 0, because an empty registry is not a measured zero accrual.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-weights",
     "GET",
     "/api/v1/subnets/{netuid}/weights",
@@ -3942,6 +3967,17 @@ export const API_ROUTES = [
     "/api/v1/accounts/{ss58}/root-claim",
     "/metagraph/accounts/{ss58}/root-claim.json",
     "Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim.",
+    "short",
+    ["accounts"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-locks",
+    "GET",
+    "/api/v1/accounts/{ss58}/locks",
+    "/metagraph/accounts/{ss58}/locks.json",
+    "Fetch one account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants, spelled as the chain spells them), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Served live from the locks store; until the engine's lock capture lands the state holds no rows and the response is the schema-stable decline — an empty locks array with lock_count null, never 0, because an empty list is not a measured lock-free account. Returns 400 on invalid ss58.",
     "short",
     ["accounts"],
     [],
@@ -5517,6 +5553,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // #13162: app.subnet_mechanisms has no network column -- a testnet-addressed
   // request would be served MAINNET mechanisms the day the registry fills.
   "/api/v1/subnets/{netuid}/mechanisms",
+  // #13163: app.subnet_alpha_dividends and app.stake_locks have no network
+  // column -- a testnet-addressed request would be served MAINNET accruals
+  // and locks the day the captures fill.
+  "/api/v1/subnets/{netuid}/alpha-dividends",
+  "/api/v1/accounts/{ss58}/locks",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6416,6 +6457,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
   "subnet-mechanisms": "Fetch one subnet's mechanism registry",
+  "subnet-alpha-dividends": "Fetch one subnet's pending alpha dividends",
+  "account-locks": "Fetch one account's conviction-lock state",
   "subnet-health": "Fetch probe-derived health for one subnet",
   "subnet-surfaces": "List the API surfaces one subnet publishes",
   "subnet-endpoints": "List live endpoints for one subnet, with probe results",

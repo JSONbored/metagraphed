@@ -168,6 +168,10 @@ export const FIELD_COMPLEXITY = {
   subnet_price_share_composition: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13162: one bounded read of a handful of app.subnet_mechanisms rows.
   subnet_mechanisms: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one bounded read of app.subnet_alpha_dividends (store-capped).
+  subnet_alpha_dividends: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one bounded read of a handful of app.stake_locks rows.
+  account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_emission_pipeline_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,

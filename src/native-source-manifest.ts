@@ -79,6 +79,8 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "rpc_usage_prune_state",
     "self_health_checks",
     "self_health_daily",
+    "stake_locks",
+    "subnet_alpha_dividends",
     "subnet_burn_history",
     "subnet_deregistration_daily",
     "subnet_emission_enabled_history",

@@ -2447,6 +2447,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   // #13162: the mechanisms registry has no producer until the engine's
   // per-mechanism capture lands, so the harness can only see the decline.
   ["get_subnet_mechanisms", HARNESS_SERVES_NO_ROWS],
+  // #13163: the dividend accrual and lock state have no producer until the
+  // engine's stake-v2 capture lands, so the harness can only see the decline.
+  ["get_subnet_alpha_dividends", HARNESS_SERVES_NO_ROWS],
+  ["get_account_locks", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

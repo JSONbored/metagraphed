@@ -1754,6 +1754,33 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/alpha-dividends",
+    (body) => {
+      // #13163: no dividends store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: an empty registry is not a measured zero accrual).
+      assert.deepEqual(body.data.dividends, []);
+      assert.equal(body.data.hotkey_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/locks",
+    (body) => {
+      // #13163: no locks store is bound in this harness, so the one honest
+      // body is the decline -- an empty list with a NULL count (never 0: an
+      // empty list is not a measured lock-free account).
+      assert.deepEqual(body.data.locks, []);
+      assert.equal(body.data.lock_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
     "/api/v1/chain/subnet-price-share-composition",
     (body) => {
       assert.equal(body.data.quality, "estimated_observed_price_set");

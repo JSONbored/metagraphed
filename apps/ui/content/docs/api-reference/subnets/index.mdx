@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-71 endpoints.
+72 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -19,6 +19,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup.
 - [Emission Pipeline](/docs/api-reference/subnets/emission-pipeline) — `GET /api/v1/chain/emission-pipeline`\
   Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`.
+- [Subnet Alpha Dividends](/docs/api-reference/subnets/subnet-alpha-dividends) — `GET /api/v1/subnets/{netuid}/alpha-dividends`\
+  Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first.
 - [Subnet Alpha Volume](/docs/api-reference/subnets/subnet-alpha-volume) — `GET /api/v1/subnets/{netuid}/volume`\
   Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/\{netuid}/stake-flow.
 - [Subnet Axon Removals](/docs/api-reference/subnets/subnet-axon-removals) — `GET /api/v1/subnets/{netuid}/axon-removals`\

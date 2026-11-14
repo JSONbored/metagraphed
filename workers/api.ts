@@ -421,6 +421,8 @@ import {
   handleCrowdloans,
   handleSubnetLease,
   handleSubnetMechanisms,
+  handleSubnetAlphaDividends,
+  handleAccountLocks,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -846,6 +848,8 @@ import {
   CROWDLOAN_DETAIL_PATH_PATTERN,
   SUBNET_LEASE_PATH_PATTERN,
   SUBNET_MECHANISMS_PATH_PATTERN,
+  SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN,
+  ACCOUNT_LOCKS_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7072,6 +7076,28 @@ async function dispatchRequest(
       // sibling hyperparameters card (no edge-cache wrapper).
       return handleSubnetMechanisms(request, env, Number(mechanismsMatch[1]));
     }
+    const alphaDividendsMatch = SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (alphaDividendsMatch) {
+      // #13163: one subnet's pending dividend accrual -- one bounded read
+      // through the native store seam, dispatched directly like the sibling
+      // mechanisms card (no edge-cache wrapper).
+      return handleSubnetAlphaDividends(
+        request,
+        env,
+        Number(alphaDividendsMatch[1]),
+      );
+    }
+    const accountLocksMatch = ACCOUNT_LOCKS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountLocksMatch) {
+      // #13163: one account's conviction-lock state -- a handful of rows per
+      // account through the native store seam, dispatched directly like the
+      // sibling subnet cards above (no edge-cache wrapper).
+      return handleAccountLocks(request, env, accountLocksMatch[1]);
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8110,6 +8136,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
     // #13162: app.subnet_mechanisms carries no network dimension.
     SUBNET_MECHANISMS_PATH_PATTERN.test(pathname) ||
+    // #13163: app.subnet_alpha_dividends / app.stake_locks carry no network
+    // dimension.
+    SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_LOCKS_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

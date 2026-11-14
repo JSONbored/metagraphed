@@ -3,7 +3,7 @@ title: Accounts
 description: Every Accounts endpoint in the metagraphed API, with its method and path.
 ---
 
-41 endpoints.
+42 endpoints.
 
 - [Account Axon Removals](/docs/api-reference/accounts/account-axon-removals) — `GET /api/v1/accounts/{ss58}/axon-removals`\
   Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero.
@@ -33,6 +33,8 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
   Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity tier.
 - [Account Identity History](/docs/api-reference/accounts/account-identity-history) — `GET /api/v1/accounts/{ss58}/identity-history`\
   Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed.
+- [Account Locks](/docs/api-reference/accounts/account-locks) — `GET /api/v1/accounts/{ss58}/locks`\
+  Fetch one account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants, spelled as the chain spells them), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind).
 - [Account Parents](/docs/api-reference/accounts/account-parents) — `GET /api/v1/accounts/{ss58}/parents`\
   Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache.
 - [Account Parents By Network](/docs/api-reference/accounts/account-parents-by-network) — `GET /api/v1/{network}/accounts/{ss58}/parents`\

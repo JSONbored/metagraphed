@@ -1439,9 +1439,22 @@ import {
   GetSubnetMechanismsOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-mechanisms.ts";
 import {
+  GetSubnetAlphaDividendsInputSchema,
+  GetSubnetAlphaDividendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-alpha-dividends.ts";
+import {
+  GetAccountLocksInputSchema,
+  GetAccountLocksOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-locks.ts";
+import {
   buildSubnetMechanisms,
   loadSubnetMechanisms,
 } from "./subnet-mechanisms.ts";
+import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "./subnet-alpha-dividends.ts";
+import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
 import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
@@ -9427,6 +9440,61 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_alpha_dividends",
+    title: "Get a subnet's pending alpha dividends",
+    description:
+      "Fetch one subnet's pending alpha dividend accrual (#13163): each " +
+      "hotkey's pending alpha dividends " +
+      "(SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends " +
+      "(RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal " +
+      "strings with their capture stamp, largest alpha_divs first. Until the " +
+      "engine's dividend capture lands, the registry holds no rows and the " +
+      "response is the schema-stable decline: an empty dividends array with " +
+      "hotkey_count NULL -- never 0, because an empty registry is not a " +
+      "measured zero accrual. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/alpha-dividends.",
+    inputSchema: inputJsonSchema(GetSubnetAlphaDividendsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetAlphaDividendsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetAlphaDividends -> buildSubnetAlphaDividends decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetAlphaDividends(
+        await loadSubnetAlphaDividends(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_account_locks",
+    title: "Get an account's conviction-lock state",
+    description:
+      "Fetch one account's conviction-lock state (#13163): each lock's " +
+      "hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / " +
+      "DecayingLock / OwnerLock and their decaying variants, spelled as the " +
+      "chain spells them), locked amount (u64 atomic units as a decimal " +
+      "string) and maturity block with its capture stamp, ordered by " +
+      "(netuid, hotkey, kind). Until the engine's lock capture lands, the " +
+      "state holds no rows and the response is the schema-stable decline: " +
+      "an empty locks array with lock_count NULL -- never 0, because an " +
+      "empty list is not a measured lock-free account. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/locks.",
+    inputSchema: inputJsonSchema(GetAccountLocksInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountLocksInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountLocks -> buildAccountLocks decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildAccountLocks(await loadAccountLocks(ctx.env, ss58), ss58);
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -15756,6 +15824,9 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
     outputJsonSchema(GetSubnetPriceShareCompositionOutputSchema),
   get_subnet_mechanisms: () =>
     outputJsonSchema(GetSubnetMechanismsOutputSchema),
+  get_subnet_alpha_dividends: () =>
+    outputJsonSchema(GetSubnetAlphaDividendsOutputSchema),
+  get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

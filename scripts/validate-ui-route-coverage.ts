@@ -132,6 +132,12 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // engine's per-mechanism capture lands, so no UI consumes it yet. Remove the
   // entry when a real consumer lands, which the stale-entry check enforces.
   "/api/v1/subnets/{netuid}/mechanisms",
+  // #13163 publishes the dividend accrual and lock state; both are empty
+  // until the engine's stake-v2 capture lands, so no UI consumes them yet.
+  // Remove the entries when a real consumer lands, which the stale-entry
+  // check enforces.
+  "/api/v1/subnets/{netuid}/alpha-dividends",
+  "/api/v1/accounts/{ss58}/locks",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

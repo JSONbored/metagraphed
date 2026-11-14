@@ -16,6 +16,7 @@
     "account-holder-directory",
     "account-identity",
     "account-identity-history",
+    "account-locks",
     "account-parents",
     "account-parents-by-network",
     "account-portfolio",

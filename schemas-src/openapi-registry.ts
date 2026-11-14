@@ -324,6 +324,14 @@ import {
   SubnetMechanismsArtifactSchema,
 } from "./routes/subnet-mechanisms.ts";
 import {
+  SubnetAlphaDividendSchema,
+  SubnetAlphaDividendsArtifactSchema,
+} from "./routes/subnet-alpha-dividends.ts";
+import {
+  StakeLockSchema,
+  AccountLocksArtifactSchema,
+} from "./routes/account-locks.ts";
+import {
   AccountSummaryArtifactSchema,
   AccountSubnetsArtifactSchema,
 } from "./routes/account-summary.ts";
@@ -864,6 +872,10 @@ register(SubnetPrometheusArtifactSchema, "SubnetPrometheusArtifact");
 register(SubnetWeightsArtifactSchema, "SubnetWeightsArtifact");
 register(SubnetMechanismSchema, "SubnetMechanism");
 register(SubnetMechanismsArtifactSchema, "SubnetMechanismsArtifact");
+register(SubnetAlphaDividendSchema, "SubnetAlphaDividend");
+register(SubnetAlphaDividendsArtifactSchema, "SubnetAlphaDividendsArtifact");
+register(StakeLockSchema, "StakeLock");
+register(AccountLocksArtifactSchema, "AccountLocksArtifact");
 register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
 register(AccountAxonRemovalsArtifactSchema, "AccountAxonRemovalsArtifact");
 register(

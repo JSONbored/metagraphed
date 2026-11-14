@@ -253,11 +253,16 @@ describe("data-api's bundle boundary", () => {
     // schema prose. The PostgreSQL mechanisms store (pg-subnet-mechanisms.ts)
     // and every previously forbidden native implementation remain outside this
     // graph; keep 2,154 source bytes of margin for this measured change.
+    // The stake-v2 serving slices (#13163) add 4,551 source bytes over
+    // 59bff494, for 4,904,397: the subnet-alpha-dividends and account-locks
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-alpha-dividends.ts, pg-stake-locks.ts)
+    // stay outside the graph; keep 2,603 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_902_000,
+      firstParty < 4_907_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

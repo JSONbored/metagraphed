@@ -266,6 +266,11 @@ type Query {
   subnet_mechanisms(netuid: Int!): SubnetMechanisms!
 
   """
+  One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.
+  """
+  subnet_alpha_dividends(netuid: Int!): SubnetAlphaDividends!
+
+  """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
   """
   subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
@@ -1019,6 +1024,11 @@ type Query {
   Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
   """
   account_root_claim(ss58: String!, network: Network): AccountRootClaim
+
+  """
+  One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks.
+  """
+  account_locks(ss58: String!): AccountLocks!
 
   """
   Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children.
@@ -2449,6 +2459,42 @@ type SubnetMechanism {
   The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.
   """
   consensus_mode: String
+  captured_at: String
+}
+
+"""
+One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.
+"""
+type SubnetAlphaDividends {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many hotkeys carry a pending accrual row here -- \`dividends.length\`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published.
+  """
+  hotkey_count: Int
+  captured_at: String
+
+  """The subnet's pending dividend accruals, largest alpha_divs first."""
+  dividends: [SubnetAlphaDividend!]!
+}
+
+"""
+One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp.
+"""
+type SubnetAlphaDividend {
+  """The hotkey this pending dividend accrual belongs to."""
+  hotkey: String!
+
+  """
+  Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0.
+  """
+  alpha_divs: String
+
+  """
+  Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  root_alpha_divs: String
   captured_at: String
 }
 
@@ -9027,6 +9073,46 @@ type RootClaimCompatibility {
   spec_version: Int
   block_hash: String
   claim_type_source: String
+}
+
+"""
+One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks.
+"""
+type AccountLocks {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many locks this account holds here -- \`locks.length\`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published.
+  """
+  lock_count: Int
+  captured_at: String
+
+  """The account's locks, ordered by (netuid, hotkey, kind)."""
+  locks: [StakeLock!]!
+}
+
+"""
+One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp.
+"""
+type StakeLock {
+  """The hotkey this lock binds."""
+  hotkey: String!
+  netuid: Int!
+
+  """
+  The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends.
+  """
+  kind: String!
+
+  """The locked quantity -- u64 atomic units as a decimal string."""
+  amount: String!
+
+  """
+  The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis.
+  """
+  maturity_block: Int
+  captured_at: String
 }
 
 """

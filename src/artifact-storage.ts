@@ -166,6 +166,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13162: one subnet's mechanism registry, computed live from the mechanisms
   // store -- a baked copy would freeze a registry the engine has yet to fill.
   /^subnets\/(?:\d+|\{netuid\})\/mechanisms\.json$/,
+  // #13163: one subnet's pending dividend accrual, computed live from the
+  // dividends store -- a baked copy would freeze an accrual the engine has
+  // yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/alpha-dividends\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.
@@ -253,6 +257,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Live root-claim current state (#7229): computed from RPC at request time,
   // never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-claim\.json$/,
+  // #13163: one account's conviction-lock state, computed live from the locks
+  // store -- a baked copy would freeze a state the engine has yet to fill.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/locks\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,

@@ -25791,3 +25791,132 @@ describe("graphql — subnet_mechanisms (#13162)", () => {
     assert.match(errors[0]?.message ?? "", /netuid/);
   });
 });
+
+// The subnet_alpha_dividends field (#13163): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served accruals match exactly.
+describe("graphql — subnet_alpha_dividends (#13163)", () => {
+  const SELECTION = `{ subnet_alpha_dividends(netuid: 64) {
+      schema_version netuid hotkey_count captured_at
+      dividends { hotkey alpha_divs root_alpha_divs captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_dividends, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty registry is "not captured", not a measured
+      // zero accrual.
+      hotkey_count: null,
+      captured_at: null,
+      dividends: [],
+    });
+  });
+
+  test("a bound store serves the accruals", async () => {
+    const env = {
+      SUBNET_ALPHA_DIVIDENDS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            alpha_divs: "12500",
+            root_alpha_divs: "300",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_alpha_dividends.hotkey_count, 1);
+    assert.deepEqual(body.data.subnet_alpha_dividends.dividends, [
+      {
+        hotkey: "5Hotkey_one",
+        alpha_divs: "12500",
+        root_alpha_divs: "300",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_alpha_dividends(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The account_locks field (#13163): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served locks match exactly.
+describe("graphql — account_locks (#13163)", () => {
+  const COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const SELECTION = `{ account_locks(ss58: "${COLDKEY}") {
+      schema_version ss58 lock_count captured_at
+      locks { hotkey netuid kind amount maturity_block captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_locks, {
+      schema_version: 1,
+      ss58: COLDKEY,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // lock-free account.
+      lock_count: null,
+      captured_at: null,
+      locks: [],
+    });
+  });
+
+  test("a bound store serves the locks", async () => {
+    const env = {
+      ACCOUNT_LOCKS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            netuid: 7,
+            kind: "Lock",
+            amount: "5000000000",
+            maturity_block: 9_000_000,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_locks.lock_count, 1);
+    assert.deepEqual(body.data.account_locks.locks, [
+      {
+        hotkey: "5Hotkey_one",
+        netuid: 7,
+        kind: "Lock",
+        amount: "5000000000",
+        maturity_block: 9_000_000,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT", async () => {
+    const { body } = await gql('{ account_locks(ss58: "nope") { ss58 } }');
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /ss58/);
+  });
+});
