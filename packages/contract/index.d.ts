@@ -14295,7 +14295,7 @@ export interface components {
         };
         /** @description One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
         ValidatorBasket: {
-            /** @description The fund's validator hotkey as the raw 0x account-id hex. */
+            /** @description The hotkey this fund belongs to, as the raw 0x account-id hex. */
             account_id: string;
             deposited_rao: string | null;
             /** @description Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
@@ -14303,7 +14303,7 @@ export interface components {
             /** @description The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
             first_block: string | null;
             holdings_count: number | null;
-            /** @description The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+            /** @description The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
             hotkey: string | null;
             pending_entitlement_q64_bits: string | null;
             /** @description Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */
@@ -14324,7 +14324,7 @@ export interface components {
             capture: components["schemas"]["BasketCapture"] | null;
             /** @description The basket's holding legs, ordered by netuid. */
             holdings: components["schemas"]["BasketHolding"][];
-            /** @description The requested validator hotkey (SS58). */
+            /** @description The requested hotkey (SS58). */
             hotkey: string;
             schema_version: number;
             /** @description The basket's target allocations, ordered by netuid. */
