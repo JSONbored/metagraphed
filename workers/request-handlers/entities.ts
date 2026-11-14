@@ -122,6 +122,10 @@ import {
   loadSubnetServices,
 } from "../../src/subnet-services.ts";
 import {
+  buildTaoUsdOracle,
+  loadTaoUsdOracle,
+} from "../../src/tao-usd-oracle.ts";
+import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -6560,11 +6564,17 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
   const rows = await loadTaoUsdSeries(readStore(env, TAO_USD_TABLES), {
     windowHours,
   });
+  // #13164: the chain's own TaoUsdPrice block, through the native oracle
+  // seam -- null (no store bound on today's deployed Workers, no feed
+  // captured, or a failed read) is the schema-stable decline beside the
+  // composed index, never an error.
+  const oracle = buildTaoUsdOracle(await loadTaoUsdOracle(env));
   // A cold or unwritten table yields an EMPTY series with a null `latest`, not
   // a 404: "we have not priced this window" is a real state.
   const data = buildTaoUsdSeries(rows, {
     window: label,
     includePoints: includePoints.value,
+    oracle,
   });
   return envelopeResponse(
     request,

@@ -275,11 +275,15 @@ describe("data-api's bundle boundary", () => {
     // prose. The PostgreSQL stores (pg-subnet-gamma.ts,
     // pg-gamma-deposits.ts, pg-subnet-services.ts) stay outside the graph;
     // keep 2,538 source bytes of margin.
+    // The on-chain TAO/USD oracle (#13164) adds 1,397 source bytes over
+    // e635a993, for 4,924,359: the tao-usd-oracle builder and store selector
+    // plus the grown tao-usd route/tool prose. pg-tao-usd-oracle.ts stays
+    // outside the graph; keep 2,641 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_925_500,
+      firstParty < 4_927_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

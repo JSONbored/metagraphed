@@ -225,6 +225,8 @@ import {
 import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
+  TaoUsdOracleFeedSchema,
+  TaoUsdOracleSchema,
   TaoUsdArtifactSchema,
 } from "./routes/tao-usd.ts";
 import {
@@ -720,6 +722,8 @@ register(ResolvedIdentifierSchema, "ResolvedIdentifier");
 register(SearchResolveArtifactSchema, "SearchResolveArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
+register(TaoUsdOracleFeedSchema, "TaoUsdOracleFeed");
+register(TaoUsdOracleSchema, "TaoUsdOracle");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");
 register(SurfaceHistoryChangeSchema, "SurfaceHistoryChange");
 register(SubnetSurfaceHistoryArtifactSchema, "SubnetSurfaceHistoryArtifact");

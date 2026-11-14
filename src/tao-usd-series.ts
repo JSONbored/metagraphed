@@ -182,8 +182,16 @@ export function buildTaoUsdSeries(
   {
     window,
     includePoints = true,
+    oracle = null,
     now = Date.now,
-  }: { window?: unknown; includePoints?: boolean; now?: () => number } = {},
+  }: {
+    window?: unknown;
+    includePoints?: boolean;
+    /** The on-chain oracle block (#13164), already built by
+     * buildTaoUsdOracle -- null until the engine's oracle capture lands. */
+    oracle?: Row | null;
+    now?: () => number;
+  } = {},
 ): Row {
   // ONE clock reading for the whole response.
   //
@@ -223,6 +231,11 @@ export function buildTaoUsdSeries(
     schema_version: 1,
     window: window ?? null,
     point_count: points.length,
+    // THE SOURCE IS STATED, NOT INFERRED (#13164). Everything on this card
+    // except `oracle` is the composed off-chain index (ADR 0025); the
+    // on-chain block beside it carries its own `chain_oracle` label, so a
+    // consumer never has to guess which provenance a figure has.
+    source: "pool_composite",
     // How many of those carried a price. A gap between the two is the signal
     // that the index could not be computed for part of the window, and
     // collapsing them into one number would hide it.
@@ -230,6 +243,10 @@ export function buildTaoUsdSeries(
     // The whole latest reading, kept together so the price and the provenance
     // that produced it always describe the same block.
     latest: newestRow ? latestReading(newestRow) : null,
+    // NULL IS THE DECLINE (#13164): the chain's own TaoUsdPrice, captured by
+    // the engine's oracle decode and handed in by the caller -- null until
+    // that capture lands, never a fabricated price.
+    oracle,
     oldest_observed_at: points.length
       ? points[points.length - 1].observed_at
       : null,

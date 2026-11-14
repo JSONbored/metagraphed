@@ -1469,6 +1469,7 @@ import {
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildSubnetMechanisms,
   loadSubnetMechanisms,
@@ -10974,11 +10975,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the USD price of one TAO (#9609) with the derivation behind it, " +
       "plus the recent series. Use this to convert any TAO-denominated figure " +
-      "in this API into USD. There is no TAO/USD pair on chain, so the number " +
-      "is COMPOSED: a liquidity-weighted median across qualifying wTAO/WETH " +
-      "pools, rejecting pools more than 2% from the unweighted median, " +
-      "refusing to publish below a two-pool quorum, multiplied through an " +
-      "ETH/USDC anchor leg (ADR 0025). `latest` carries the price together " +
+      "in this API into USD. The series is COMPOSED off-chain (source " +
+      "pool_composite): a liquidity-weighted median across qualifying " +
+      "wTAO/WETH pools, rejecting pools more than 2% from the unweighted " +
+      "median, refusing to publish below a two-pool quorum, multiplied " +
+      "through an ETH/USDC anchor leg (ADR 0025). The chain's own " +
+      "TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, " +
+      "labelled source chain_oracle with its TaoUsdPriceFed history " +
+      "(#13164); it is NULL until the engine's oracle capture lands -- an " +
+      "absent capture is never served as a price. `latest` carries the " +
+      "composed price together " +
       "with price_basis, eth_usd, block_number, pool_count and the per-pool " +
       "breakdown, so the figure and its audit trail always describe the same " +
       "block. IMPORTANT: a null usd_per_tao is a STATED OUTCOME, not missing " +
@@ -11006,6 +11012,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return buildTaoUsdSeries(rows, {
         window: label,
         includePoints: args?.include_points === true,
+        // #13164: same oracle decline contract the REST handler and the
+        // GraphQL resolver share -- null until the engine's oracle capture
+        // lands.
+        oracle: buildTaoUsdOracle(await loadTaoUsdOracle(ctx.env)),
       });
     },
   },

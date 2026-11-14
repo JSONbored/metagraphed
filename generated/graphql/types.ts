@@ -3917,7 +3917,7 @@ export type Query = {
   sudo_key?: Maybe<SudoKey>;
   /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
-  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
+  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
   tao_usd: TaoUsd;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when every holders tier is cold, never null. TWO TIERS (#9469): the net_flow_7d/30d/90d sorts are LIVE, recomputed daily from the account_events stake stream; the free_tao/delegated_tao/total_tao sorts are served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so on those captured_at/last_updated do not advance and balances are as of that date -- read that ranking as historical, and use account(ss58) for a live balance. On a flow-sorted page the three holdings columns are null, never zero. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
@@ -8361,11 +8361,15 @@ export type TaoUsd = {
   latest?: Maybe<TaoUsdLatest>;
   /** How far back the answer actually reaches -- the series began 2026-08-02. */
   oldest_observed_at?: Maybe<Scalars['String']['output']>;
+  /** The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price. */
+  oracle?: Maybe<TaoUsdOracle>;
   point_count: Scalars['Int']['output'];
   points: Array<TaoUsdPoint>;
   /** How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
   priced_point_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+  /** Always `pool_composite`: the price series and `latest` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate `oracle` block labelled `chain_oracle`. */
+  source: Scalars['String']['output'];
   /** True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh. */
   stale: Scalars['Boolean']['output'];
   /** The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift. */
@@ -8394,6 +8398,35 @@ export type TaoUsdLatest = {
   pools: Array<Scalars['JSON']['output']>;
   /** Stated even when the price is null -- it is what says why. */
   price_basis?: Maybe<Scalars['String']['output']>;
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
+/** The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price. */
+export type TaoUsdOracle = {
+  __typename?: 'TaoUsdOracle';
+  block_number: Scalars['Int']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many feeds this block carries -- `feeds.length`, store-capped. Never 0: with no captured feeds the whole block is null instead. */
+  fed_count: Scalars['Int']['output'];
+  /** The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price. */
+  feeds: Array<TaoUsdOracleFeed>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it. */
+  oracle?: Maybe<Scalars['String']['output']>;
+  /** The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived. */
+  price_raw?: Maybe<Scalars['String']['output']>;
+  /** Always `chain_oracle`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source `pool_composite`). */
+  source: Scalars['String']['output'];
+  /** The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price. */
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
+/** One TaoUsdPriceFed reading, pinned to the block it landed at. */
+export type TaoUsdOracleFeed = {
+  __typename?: 'TaoUsdOracleFeed';
+  block_number: Scalars['Int']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price. */
   usd_per_tao?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -9291,6 +9324,8 @@ export type ResolversTypes = ResolversObject<{
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
   TaoUsdConversion: ResolverTypeWrapper<TaoUsdConversion>;
   TaoUsdLatest: ResolverTypeWrapper<TaoUsdLatest>;
+  TaoUsdOracle: ResolverTypeWrapper<TaoUsdOracle>;
+  TaoUsdOracleFeed: ResolverTypeWrapper<TaoUsdOracleFeed>;
   TaoUsdPoint: ResolverTypeWrapper<TaoUsdPoint>;
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
   TurnoverValidatorChange: ResolverTypeWrapper<TurnoverValidatorChange>;
@@ -9781,6 +9816,8 @@ export type ResolversParentTypes = ResolversObject<{
   TaoUsd: TaoUsd;
   TaoUsdConversion: TaoUsdConversion;
   TaoUsdLatest: TaoUsdLatest;
+  TaoUsdOracle: TaoUsdOracle;
+  TaoUsdOracleFeed: TaoUsdOracleFeed;
   TaoUsdPoint: TaoUsdPoint;
   TurnoverUidReassignment: TurnoverUidReassignment;
   TurnoverValidatorChange: TurnoverValidatorChange;
@@ -14992,10 +15029,12 @@ export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends Resolve
   change_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   latest?: Resolver<Maybe<ResolversTypes['TaoUsdLatest']>, ParentType, ContextType>;
   oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oracle?: Resolver<Maybe<ResolversTypes['TaoUsdOracle']>, ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['TaoUsdPoint']>, ParentType, ContextType>;
   priced_point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   stale?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   stale_after_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -15015,6 +15054,24 @@ export type TaoUsdLatestResolvers<ContextType = GqlContext, ParentType extends R
   pool_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   pools?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdOracleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdOracle'] = ResolversParentTypes['TaoUsdOracle']> = ResolversObject<{
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  fed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  feeds?: Resolver<Array<ResolversTypes['TaoUsdOracleFeed']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oracle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  price_raw?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdOracleFeedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdOracleFeed'] = ResolversParentTypes['TaoUsdOracleFeed']> = ResolversObject<{
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
@@ -15739,6 +15796,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   TaoUsd?: TaoUsdResolvers<ContextType>;
   TaoUsdConversion?: TaoUsdConversionResolvers<ContextType>;
   TaoUsdLatest?: TaoUsdLatestResolvers<ContextType>;
+  TaoUsdOracle?: TaoUsdOracleResolvers<ContextType>;
+  TaoUsdOracleFeed?: TaoUsdOracleFeedResolvers<ContextType>;
   TaoUsdPoint?: TaoUsdPointResolvers<ContextType>;
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;
   TurnoverValidatorChange?: TurnoverValidatorChangeResolvers<ContextType>;

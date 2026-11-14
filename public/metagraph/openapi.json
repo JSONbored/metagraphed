@@ -14971,6 +14971,23 @@
               "usd_per_tao": 0.5
             },
             "oldest_observed_at": "2026-06-01T00:00:00.000Z",
+            "oracle": {
+              "block_number": 5000000,
+              "captured_at": "2026-06-01T00:00:00.000Z",
+              "fed_count": 1,
+              "feeds": [
+                {
+                  "block_number": 5000000,
+                  "observed_at": "2026-06-01T00:00:00.000Z",
+                  "usd_per_tao": 0.5
+                }
+              ],
+              "observed_at": "2026-06-01T00:00:00.000Z",
+              "oracle": "example",
+              "price_raw": "example",
+              "source": "chain_oracle",
+              "usd_per_tao": 0.5
+            },
             "point_count": 1,
             "points": [
               {
@@ -14981,6 +14998,7 @@
             ],
             "priced_point_count": 1,
             "schema_version": 1,
+            "source": "pool_composite",
             "stale": false,
             "stale_after_ms": 1,
             "window": "30d"
@@ -61015,6 +61033,17 @@
             ],
             "description": "How far back the answer actually reaches -- the series began 2026-08-02."
           },
+          "oracle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaoUsdOracle"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price."
+          },
           "point_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -61037,6 +61066,11 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "source": {
+            "const": "pool_composite",
+            "description": "Always `pool_composite`: the price series and `latest` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate `oracle` block labelled `chain_oracle`.",
+            "type": "string"
+          },
           "stale": {
             "description": "True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh.",
             "type": "boolean"
@@ -61058,11 +61092,13 @@
           "schema_version",
           "window",
           "point_count",
+          "source",
           "stale",
           "stale_after_ms",
           "age_ms",
           "priced_point_count",
           "latest",
+          "oracle",
           "oldest_observed_at",
           "change_usd",
           "change_pct",
@@ -61154,6 +61190,138 @@
           "observed_at",
           "pool_count",
           "pools"
+        ],
+        "type": "object"
+      },
+      "TaoUsdOracle": {
+        "additionalProperties": false,
+        "description": "The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price.",
+        "properties": {
+          "block_number": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fed_count": {
+            "description": "How many feeds this block carries -- `feeds.length`, store-capped. Never 0: with no captured feeds the whole block is null instead.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "feeds": {
+            "description": "The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price.",
+            "items": {
+              "$ref": "#/components/schemas/TaoUsdOracleFeed"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oracle": {
+            "description": "The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_raw": {
+            "description": "The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "const": "chain_oracle",
+            "description": "Always `chain_oracle`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source `pool_composite`).",
+            "type": "string"
+          },
+          "usd_per_tao": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price."
+          }
+        },
+        "required": [
+          "source",
+          "usd_per_tao",
+          "price_raw",
+          "oracle",
+          "block_number",
+          "observed_at",
+          "captured_at",
+          "fed_count",
+          "feeds"
+        ],
+        "type": "object"
+      },
+      "TaoUsdOracleFeed": {
+        "additionalProperties": false,
+        "description": "One TaoUsdPriceFed reading, pinned to the block it landed at.",
+        "properties": {
+          "block_number": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usd_per_tao": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price."
+          }
+        },
+        "required": [
+          "block_number",
+          "usd_per_tao",
+          "observed_at"
         ],
         "type": "object"
       },
@@ -91302,7 +91470,7 @@
     },
     "/api/v1/network/tao-usd": {
       "get": {
-        "description": "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
+        "description": "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until the engine's oracle capture lands -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
         "operationId": "taoUsd",
         "parameters": [
           {
