@@ -1,0 +1,1 @@
+{"baseline_fixture_sha256":"21739945180cd5c610f4ceb40775f380bb6ecf0c3721ebf3b86eebc491504795","files":[{"path":"serving-contract.sql","sha256":"efdca85215fe7e92ce96607754fea9ffaefd1895794e2861294de6b42cd2b229","size_bytes":18465}],"format":"metagraphed.postgres-serving-fixture.v1","schema_contract":5}

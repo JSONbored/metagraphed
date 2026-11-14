@@ -1,14 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHydrated } from "@/hooks/use-hydrated";
 import {
   DEFAULT_API_BASE,
+  getApiBase,
+  onApiBaseChange,
   getNetwork,
   setNetwork,
   onNetworkChange,
   DEFAULT_NETWORK,
   type ChainNetwork,
 } from "@/lib/metagraphed/config";
+
+const subscribeApiBase = (notify: () => void) => onApiBaseChange(notify);
+const serverApiBase = () => DEFAULT_API_BASE;
+
+/** Match SSR during hydration, then follow the selected source and resets. */
+export function useApiBase(): string {
+  return useSyncExternalStore(subscribeApiBase, getApiBase, serverApiBase);
+}
 
 /** Query root both runtime hooks invalidate when origin or network changes. */
 export const METAGRAPHED_QUERY_ROOT = ["metagraphed"] as const;

@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "engines": {
-    "node": ">=22.23.1"
+    "node": ">=26.13.0 <27"
   },
   "scripts": {
     "postinstall": "fumadocs-mdx",
@@ -17,7 +17,7 @@
     "build:native": "node scripts/build-native.ts",
     "test:native": "node --test --test-concurrency=1 --test-timeout=30000 tests/e2e/native-runtime.check.ts",
     "build:worker:e2e": "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:worker",
-    "postbuild:worker:e2e": "npm run build:native && npm run test:native",
+    "postbuild:worker:e2e": "VITE_METAGRAPH_API_BASE=http://127.0.0.1:8081 VITE_ICON_PROXY_URL=http://127.0.0.1:8081/api/v1/icon npm run build:native && npm run test:native",
     "check:ssr-content-isolation": "node scripts/check-ssr-content-isolation.ts",
     "build:dev": "vite build --mode development",
     "generate:design-tokens": "node scripts/generate-design-tokens.ts",
@@ -30,6 +30,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:native": "playwright test --config=playwright.native.config.ts",
     "test:e2e:record-har": "node tests/e2e/record-har.ts",
     "screenshots": "node tests/e2e/capture-pr-screenshots.ts"
   },

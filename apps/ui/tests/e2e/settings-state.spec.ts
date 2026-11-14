@@ -1,3 +1,4 @@
+import { ss58AccountId } from "../../src/lib/metagraphed/accounts";
 import { expect, test, type Page } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart.ts";
 
@@ -86,6 +87,12 @@ test.describe("Settings record states", () => {
         // Reuse recorded public data as a synthetic second account response.
         // The browser must request the newly selected address before this fixture applies.
         const secondAccountRequests: string[] = [];
+        const secondStakeRequests: string[] = [];
+        page.on("request", (request) => {
+          const path = new URL(request.url()).pathname;
+          if (path === `/api/v2/networks/finney/accounts/${ss58AccountId(OWNER)}/stake`)
+            secondStakeRequests.push(path);
+        });
         await page.route(
           (url) =>
             url.pathname === `/api/v1/accounts/${OWNER}` ||
@@ -117,7 +124,9 @@ test.describe("Settings record states", () => {
         await expect(accountLink).toBeFocused();
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(new RegExp(`/accounts/${address}$`));
-        await expect(page.getByRole("table", { name: "Recorded ties by subnet" })).toBeVisible();
+        await expect(
+          page.getByRole("table", { name: "Account stake and entitlements" }),
+        ).toBeVisible();
         await expect(page.getByRole("link", { name: "Positions", exact: true })).toBeVisible();
 
         await page.goBack();
@@ -128,9 +137,13 @@ test.describe("Settings record states", () => {
         expect((await accountLink.boundingBox())!.height).toBeGreaterThanOrEqual(44);
         await accountLink.tap();
         await expect(page).toHaveURL(new RegExp(`/accounts/${OWNER}$`));
-        const positions = page.getByRole("table", { name: "Recorded ties by subnet" });
+        const positions = page.getByRole("table", { name: "Account stake and entitlements" });
+        await positions.scrollIntoViewIfNeeded();
         await expect(positions).toBeVisible();
         await expect(positions.locator(".mg-dt-skeleton")).toHaveCount(0);
+        await expect
+          .poll(() => secondStakeRequests)
+          .toContain(`/api/v2/networks/finney/accounts/${ss58AccountId(OWNER)}/stake`);
         await expect
           .poll(() => secondAccountRequests)
           .toContain(`/api/v1/accounts/${OWNER}/positions`);

@@ -1,163 +1,253 @@
 import { useMemo, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  AnalyticsSection,
-  DataTable,
-  FilterField,
-  FilterSelect,
-  LoadMore,
-  type DataTableColumn,
-} from "@jsonbored/ui-kit";
-import { accountEventsInfiniteQuery } from "@/lib/metagraphed/queries";
+import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
+import { AnalyticsSection, DataTable, Raw, RawCode, type DataTableColumn } from "@jsonbored/ui-kit";
+import { createV2ReadClient } from "../../../../../../src/v2/client.ts";
 import { RouterLink } from "@/components/metagraphed/router-link";
-import { useNearViewport } from "@/hooks/use-near-viewport";
 import { ErrorState } from "@/components/metagraphed/states";
-import { formatNumber } from "@/lib/metagraphed/format";
-import type { AccountEvent } from "@/lib/metagraphed/types";
-import { EVENT_SCAN_CAP, eventKindOptions, fmtTao } from "./account-detail-logic";
+import { useNearViewport } from "@/hooks/use-near-viewport";
+import { ss58AccountId } from "@/lib/metagraphed/accounts";
+import { formatAbsoluteTime } from "@/lib/metagraphed/format";
+import {
+  MODERN_ACCOUNT_MAX_PAGES,
+  modernAccountAnchor,
+  modernAccountKey,
+  modernAccountPath,
+  modernBlockHref,
+  ModernExplorerSources,
+  readModernAccountEvents,
+  useModernExplorerConfiguration,
+  type ModernAccountContinuation,
+  type ModernAccountEvents,
+  type ModernExplorerScope,
+} from "@/lib/metagraphed/modern-explorer";
 
-const PAGE = 100;
+type Activity = ModernAccountEvents["events"][number];
+const actionClass =
+  "inline-flex min-h-11 items-center justify-center rounded border border-border px-3 py-2 text-13 text-ink-strong disabled:opacity-60";
+const columns: DataTableColumn<Activity>[] = [
+  {
+    key: "block",
+    label: "Block",
+    kind: "link",
+    value: (row) => row.snapshot.block_number,
+    href: modernBlockHref,
+  },
+  {
+    key: "event",
+    label: "Event",
+    value: (row) => `#${row.event.event_index} ${row.event.pallet}.${row.event.variant}`,
+  },
+  { key: "phase", label: "Phase", value: (row) => row.event.phase },
+  {
+    key: "extrinsic",
+    label: "Extrinsic",
+    value: (row) => (row.event.extrinsic_index === null ? "None" : `#${row.event.extrinsic_index}`),
+  },
+  {
+    key: "appearances",
+    label: "Matching positions",
+    value: (row) =>
+      row.matching_participants.map((p) => `#${p.participant_index} ${p.role}`).join(" · "),
+  },
+  {
+    key: "fields",
+    label: "Decoded fields",
+    value: (row) => JSON.stringify(row.event.fields),
+    render: (row) => (
+      <Raw title={`Event #${row.event.event_index} decoded fields`}>
+        <RawCode label={`Event #${row.event.event_index} decoded fields`}>
+          {JSON.stringify(row.event.fields, null, 2)}
+        </RawCode>
+      </Raw>
+    ),
+  },
+];
 
-/**
- * Section 4 — every first-party event, newest first.
- *
- * One table replaces the Transfers / Activity / Extrinsics tabs: they were
- * three filtered views of one stream, and a reader had to guess which tab
- * held the row they remembered. The kind filter is now the thing that used
- * to be a tab, and it is a control rather than a navigation.
- */
-export function ActivitySection({
-  ss58,
-  nameOf,
-  kinds,
-  eventCount,
-  summaryPending,
-  scanCapped,
-}: {
-  ss58: string;
-  nameOf: (netuid: number) => string;
-  kinds: readonly { kind: string; count: number }[];
-  eventCount: number | null;
-  summaryPending: boolean;
-  scanCapped: boolean;
-}) {
-  const [kind, setKind] = useState("");
-  const { ref, nearViewport } = useNearViewport("320px 0px");
-
-  const query = useInfiniteQuery({
-    ...accountEventsInfiniteQuery(ss58, { limit: PAGE, ...(kind ? { kind } : {}) }),
-    enabled: nearViewport,
-    retry: 0,
-  });
-
-  const events = useMemo(
-    () => (query.data?.pages ?? []).flatMap((page) => page.data),
-    [query.data],
-  );
-  const initialError = query.isError && events.length === 0;
-
-  const columns: DataTableColumn<AccountEvent>[] = [
-    { key: "observed_at", label: "When", kind: "time", value: (row) => row.observed_at ?? null },
-    { key: "event_kind", label: "Kind", kind: "status", value: (row) => row.event_kind ?? "—" },
-    {
-      key: "netuid",
-      label: "Subnet",
-      kind: "link",
-      value: (row) => (typeof row.netuid === "number" ? nameOf(row.netuid) : "—"),
-      href: (row) => (typeof row.netuid === "number" ? `/subnets/${row.netuid}` : undefined),
-    },
-    {
-      key: "amount_tao",
-      label: "Amount",
-      kind: "number",
-      value: (row) => row.amount_tao ?? null,
-      format: (value) => (typeof value === "number" ? fmtTao(value, 4) : "—"),
-    },
-    {
-      key: "hotkey",
-      label: "Hotkey",
-      kind: "identifier",
-      value: (row) => row.hotkey ?? "—",
-      demote: true,
-    },
-    {
-      key: "block_number",
-      label: "Block",
-      kind: "link",
-      value: (row) => (row.block_number == null ? "—" : String(row.block_number)),
-      href: (row) => (row.block_number == null ? undefined : `/blocks/${row.block_number}`),
-    },
-  ];
-
+/** One activity owner, bound to the selected source, chain, account and interval. */
+export function ActivitySection({ ss58 }: { ss58: string }) {
+  const configuration = useModernExplorerConfiguration();
+  const accountId = ss58AccountId(ss58);
+  if (configuration?.status === "ready" && accountId)
+    return (
+      <PublishedActivity
+        key={JSON.stringify([configuration.scope, accountId])}
+        scope={configuration.scope}
+        accountId={accountId}
+      />
+    );
+  const pending = accountId !== null && configuration === null;
   return (
     <AnalyticsSection
       id="activity"
       name="Activity"
-      question="Every first-party event, newest first."
-      visualRef={ref}
-      controls={
-        <FilterField label="Kind">
-          <FilterSelect value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="">Any kind</option>
-            {eventKindOptions(kinds).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </FilterSelect>
-        </FilterField>
-      }
+      question="Published events containing this account."
       visual={
-        <>
+        pending ? (
           <DataTable
-            rows={events}
+            rows={[]}
             columns={columns}
-            rowKey={(row) => `${row.block_number}-${row.event_index}`}
+            rowKey={() => "pending"}
             caption="Account events"
-            link={RouterLink}
-            source="account-event"
+            loading
             paginate={false}
-            loading={!nearViewport || query.isPending}
-            error={
-              initialError ? (
-                <ErrorState
-                  error={query.error}
-                  onRetry={() => void query.refetch()}
-                  context="account events"
-                />
-              ) : undefined
-            }
-            empty="No events match this filter."
             mobile="cards"
             dense
-            storageKey="account-events-columns"
           />
-          {/* A cursor feed has no terminal range to repeat beneath the table. */}
-          {query.hasNextPage || (query.error && events.length > 0) ? (
-            <LoadMore
-              hasMore={Boolean(query.hasNextPage)}
-              isLoading={query.isFetchingNextPage}
-              onLoadMore={() => void query.fetchNextPage()}
-              shown={events.length}
-              total={kind ? undefined : (eventCount ?? undefined)}
-              error={query.error as Error | null}
-            />
-          ) : null}
-        </>
+        ) : (
+          <p role="status">
+            {accountId === null
+              ? "This address has an invalid checksum or an unsupported account format. No account activity was queried."
+              : configuration?.status === "unsupported-network"
+                ? "Published account activity is unavailable for the selected network. No other network was queried."
+                : "The selected API source must be a public HTTPS origin or a local development origin."}
+          </p>
+        )
       }
       footnote={
-        !nearViewport
-          ? "newest-first account event ledger · chain-direct"
-          : query.isPending
-            ? "Loading account events · chain-direct"
-            : initialError
-              ? "Account events are temporarily unavailable · chain-direct"
-              : scanCapped
-                ? `More than ${formatNumber(EVENT_SCAN_CAP)} events: the summary above describes the scanned prefix, not the whole account. This feed is complete — page through it.`
-                : eventCount === null
-                  ? `${formatNumber(events.length)} loaded · account total ${summaryPending ? "loading" : "unavailable"} · chain-direct`
-                  : `${formatNumber(eventCount)} events · chain-direct`
+        pending
+          ? "Choose your network and API source to load published account activity."
+          : undefined
       }
     />
+  );
+}
+
+function PublishedActivity({
+  scope,
+  accountId,
+}: {
+  scope: ModernExplorerScope;
+  accountId: string;
+}) {
+  const { ref, nearViewport } = useNearViewport("320px 0px");
+  const [restart, setRestart] = useState(0);
+  const reader = useMemo(() => createV2ReadClient({ origin: scope.origin }), [scope.origin]);
+  const feed = useInfiniteQuery<
+    ModernAccountEvents,
+    Error,
+    InfiniteData<ModernAccountEvents, ModernAccountContinuation | null>,
+    ReturnType<typeof modernAccountKey>,
+    ModernAccountContinuation | null
+  >({
+    queryKey: modernAccountKey(scope, accountId, restart),
+    initialPageParam: null,
+    queryFn: ({ pageParam, signal }) =>
+      readModernAccountEvents(reader, scope, accountId, pageParam ?? undefined, signal),
+    getNextPageParam: (last) =>
+      last.next_cursor === null
+        ? undefined
+        : { anchor: modernAccountAnchor(last), cursor: last.next_cursor },
+    maxPages: MODERN_ACCOUNT_MAX_PAGES,
+    gcTime: 0,
+    enabled: nearViewport,
+    retry: false,
+    retryOnMount: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  const pages = feed.data?.pages ?? [];
+  const first = pages[0];
+  const events = pages.flatMap((page) => page.events);
+  const params = feed.data?.pageParams ?? [null];
+  const paths = params.map((page) => modernAccountPath(scope, accountId, page?.cursor));
+  const initialError = feed.isError && events.length === 0;
+  const unavailable = new Error(
+    "Published account activity is unavailable. Retry or restart from the latest publication.",
+  );
+  const coverage = first
+    ? `blocks ${first.coverage.from_block}–${first.coverage.through_block}`
+    : null;
+  return (
+    <>
+      <ModernExplorerSources paths={paths} origin={scope.origin} />
+      <AnalyticsSection
+        id="activity"
+        name="Activity"
+        question="Published events containing this account."
+        visualRef={ref}
+        controls={
+          <button
+            type="button"
+            className={actionClass}
+            onClick={() => setRestart((value) => value + 1)}
+          >
+            Restart from latest activity
+          </button>
+        }
+        visual={
+          <>
+            <DataTable
+              rows={events}
+              columns={columns}
+              rowKey={(row) => `${row.snapshot.block_number}:${row.event.event_index}`}
+              caption="Account events"
+              link={RouterLink}
+              source="published-account-event"
+              paginate={false}
+              loading={!nearViewport || feed.isPending}
+              error={
+                initialError ? (
+                  <ErrorState
+                    error={unavailable}
+                    context="account events"
+                    onRetry={() => void feed.refetch()}
+                  />
+                ) : undefined
+              }
+              empty={
+                coverage
+                  ? `No matching typed account appearances in published coverage ${coverage}.`
+                  : "Account activity coverage has not been established."
+              }
+              mobile="cards"
+              dense
+              storageKey="published-account-events-columns"
+            />
+            {feed.isError && events.length > 0 ? (
+              <>
+                <p role="status">
+                  Previously accepted account events retained. Restart to select a new publication
+                  interval.
+                </p>
+                <ErrorState
+                  error={unavailable}
+                  context="older account events"
+                  onRetry={() => void feed.fetchNextPage()}
+                />
+              </>
+            ) : null}
+            {feed.hasNextPage ? (
+              <button
+                type="button"
+                className={`mt-3 ${actionClass}`}
+                disabled={feed.isFetchingNextPage}
+                onClick={() => void feed.fetchNextPage()}
+              >
+                {feed.isFetchingNextPage
+                  ? "Loading older account events…"
+                  : "Load older account events"}
+              </button>
+            ) : null}
+          </>
+        }
+        footnote={
+          first ? (
+            <>
+              Published coverage {coverage}. Observation{" "}
+              {formatAbsoluteTime(first.snapshot.observed_at)} · freshness {first.freshness.status}.{" "}
+              Positions are metadata-derived labels, not economic or authorization roles. Up to{" "}
+              {MODERN_ACCOUNT_MAX_PAGES} loaded pages are retained in this view; other account
+              sections have separate observations.
+            </>
+          ) : !nearViewport ? (
+            "Account activity loads when this section is near the viewport."
+          ) : feed.isPending ? (
+            "Loading published account activity."
+          ) : (
+            "Account activity coverage is unavailable."
+          )
+        }
+      />
+    </>
   );
 }
