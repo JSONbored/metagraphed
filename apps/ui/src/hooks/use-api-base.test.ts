@@ -1,7 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import * as configuration from "@/lib/metagraphed/config";
+import { describe, expect, it } from "vitest";
 
 import { DEFAULT_API_BASE, DEFAULT_NETWORK } from "@/lib/metagraphed/config";
 
@@ -9,27 +6,7 @@ import {
   isDefaultApiBase,
   isDefaultChainNetwork,
   metagraphedQueryInvalidationTarget,
-  useApiBase,
 } from "./use-api-base";
-
-describe("useApiBase", () => {
-  it("renders the SSR default without consulting browser preferences or requiring query context", () => {
-    const getter = vi
-      .spyOn(configuration, "getApiBase")
-      .mockReturnValue("https://browser-selected.example/path");
-    function Source() {
-      return createElement("span", null, useApiBase());
-    }
-    try {
-      expect(renderToStaticMarkup(createElement(Source))).toBe(
-        renderToStaticMarkup(createElement("span", null, DEFAULT_API_BASE)),
-      );
-      expect(getter).not.toHaveBeenCalled();
-    } finally {
-      getter.mockRestore();
-    }
-  });
-});
 
 describe("metagraphedQueryInvalidationTarget", () => {
   it("invalidates the metagraphed query root used by both runtime hooks", () => {

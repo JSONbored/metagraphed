@@ -6,34 +6,10 @@ import {
   isValidSs58,
   normalizeH160,
   ss58PathSegment,
-  ss58AccountId,
-  chainAccountHref,
 } from "./accounts";
 import { accountHolderDirectoryQuery, normalizeAccountHolderDirectory } from "./queries";
 
 const VALID_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-const ALICE_ID = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-
-describe("qualified chain account addresses", () => {
-  it("maps the independent Alice vector in both directions", () => {
-    expect(ss58AccountId(VALID_SS58)).toBe(ALICE_ID);
-    expect(ss58AccountId(` ${VALID_SS58} `)).toBe(ALICE_ID);
-    expect(chainAccountHref(ALICE_ID)).toBe(`/accounts/${VALID_SS58}`);
-  });
-  it("refuses checksum mutations, unsupported shapes and noncanonical account IDs", () => {
-    for (const value of [
-      null,
-      1,
-      "",
-      "x".repeat(129),
-      VALID_SS58.slice(0, -1) + "Z",
-      "0".repeat(48),
-    ])
-      expect(ss58AccountId(value)).toBeNull();
-    for (const value of ["", ALICE_ID.slice(2), ALICE_ID.toUpperCase(), "0x" + "a".repeat(40)])
-      expect(chainAccountHref(value)).toBeNull();
-  });
-});
 
 describe("isValidSs58", () => {
   it("accepts plausible Bittensor ss58 addresses", () => {

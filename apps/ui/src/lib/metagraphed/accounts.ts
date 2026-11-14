@@ -1,22 +1,5 @@
 // Helpers for the account explorer (hotkey / coldkey ss58 lookups).
-import { decodeSs58, encodeSs58 } from "./ss58";
-
-/** The chain activity reader accepts bytes, never a shape-only address guess. */
-export function ss58AccountId(address: unknown): string | null {
-  if (typeof address !== "string" || address.length > 128) return null;
-  const decoded = decodeSs58(address.trim());
-  if (!decoded?.valid || !decoded.checksumValid || decoded.pubkey?.length !== 32) return null;
-  return `0x${Array.from(decoded.pubkey, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-}
-
-export function chainAccountHref(accountId: string): string | null {
-  if (!/^0x[0-9a-f]{64}$/.test(accountId)) return null;
-  const bytes = Uint8Array.from(accountId.slice(2).match(/../g)!, (pair) =>
-    Number.parseInt(pair, 16),
-  );
-  const address = encodeSs58(bytes, 42);
-  return address ? `/accounts/${address}` : null;
-}
+import { decodeSs58 } from "./ss58";
 
 // Substrate ss58 addresses are base58 (no 0 O I l) and ~47–48 chars; Bittensor
 // addresses start with 5. Keep this lenient — the backend validates definitively;
