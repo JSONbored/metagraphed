@@ -26100,3 +26100,188 @@ describe("graphql — account_root_claim basket_claims (#13163)", () => {
     );
   });
 });
+
+// The subnet_gamma field (#13164): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served state match exactly.
+describe("graphql — subnet_gamma (#13164)", () => {
+  const SELECTION = `{ subnet_gamma(netuid: 64) {
+      schema_version netuid captured_at
+      gamma { enabled price emission pending_emission unconverted_emission whitelisted captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_gamma, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured Gamma-off subnet.
+      gamma: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      SUBNET_GAMMA_STORE: {
+        latest: async () => [
+          {
+            enabled: true,
+            price: "12500",
+            emission: "900",
+            pending_emission: "0",
+            unconverted_emission: null,
+            whitelisted: false,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        history: async () => [],
+        chain: async () => [],
+        enabled: async () => [],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_gamma.gamma, {
+      enabled: true,
+      price: "12500",
+      emission: "900",
+      pending_emission: "0",
+      unconverted_emission: null,
+      whitelisted: false,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_gamma(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The gamma_deposits field (#13164): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served deposits match exactly.
+describe("graphql — gamma_deposits (#13164)", () => {
+  const SELECTION = `{ gamma_deposits {
+      schema_version deposit_count captured_at
+      deposits { coldkey hotkey netuid balance spender daily_cap closed_at captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.gamma_deposits, {
+      schema_version: 1,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // deposit-free chain.
+      deposit_count: null,
+      captured_at: null,
+      deposits: [],
+    });
+  });
+
+  test("a bound store serves the deposits", async () => {
+    const env = {
+      GAMMA_DEPOSITS_STORE: {
+        rows: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            hotkey: "5Hotkey_one",
+            netuid: 64,
+            balance: "5000000000",
+            spender: null,
+            daily_cap: "1000000000",
+            closed_at: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.gamma_deposits.deposit_count, 1);
+    assert.deepEqual(body.data.gamma_deposits.deposits, [
+      {
+        coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        hotkey: "5Hotkey_one",
+        netuid: 64,
+        balance: "5000000000",
+        spender: null,
+        daily_cap: "1000000000",
+        closed_at: null,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+});
+
+// The subnet_services field (#13164): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served registry match exactly.
+describe("graphql — subnet_services (#13164)", () => {
+  const SELECTION = `{ subnet_services(netuid: 64) {
+      schema_version netuid service_count captured_at
+      services { hotkey service_url set_at captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_services, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty registry is "not captured", not a measured
+      // service-less subnet.
+      service_count: null,
+      captured_at: null,
+      services: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      SUBNET_SERVICES_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            service_url: "https://sn64.example.com/v1",
+            set_at: 9_000_000,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_services.service_count, 1);
+    assert.deepEqual(body.data.subnet_services.services, [
+      {
+        hotkey: "5Hotkey_one",
+        service_url: "https://sn64.example.com/v1",
+        set_at: 9_000_000,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_services(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});

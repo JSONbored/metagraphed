@@ -106,6 +106,22 @@ import {
   loadValidatorBaskets,
 } from "../../src/validator-baskets.ts";
 import {
+  buildChainGamma,
+  buildSubnetGamma,
+  buildSubnetGammaHistory,
+  loadChainGamma,
+  loadSubnetGamma,
+  loadSubnetGammaHistory,
+} from "../../src/subnet-gamma.ts";
+import {
+  buildGammaDeposits,
+  loadGammaDeposits,
+} from "../../src/gamma-deposits.ts";
+import {
+  buildSubnetServices,
+  loadSubnetServices,
+} from "../../src/subnet-services.ts";
+import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -3231,6 +3247,134 @@ export async function handleValidatorBasket(
     "short",
   );
   return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/gamma (#13164): one subnet's current Gamma
+// state, read through the native Gamma store seam. No store bound -- today's
+// deployed Workers -- or a failed read is the same schema-stable decline:
+// `gamma: null`, never a zeroed state (an absent capture is not a measured
+// Gamma-off subnet), marked as a tier fallback.
+export async function handleSubnetGamma(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetGamma(env, netuid);
+  const data = buildSubnetGamma(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/gamma.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/gamma/history (#13164): the capture series
+// behind the card above, newest first and store-capped. Same decline contract:
+// an empty `points` with `point_count: null`, never a zero count (an empty
+// series is not a measured history), marked as a tier fallback.
+export async function handleSubnetGammaHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetGammaHistory(env, netuid);
+  const data = buildSubnetGammaHistory(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/gamma/history.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/chain/gamma (#13164): the global GammaEnabled switch beside
+// every subnet's newest captured Gamma state, read through the same seam. No
+// store bound or a failed read is the same schema-stable decline: `enabled`
+// null (never a measured off-switch), `subnets` empty with `subnet_count`
+// null, marked as a tier fallback.
+export async function handleChainGamma(request: Request, env: Env) {
+  const loaded = await loadChainGamma(env);
+  const data = buildChainGamma(loaded);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/gamma.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/gamma/deposits (#13164): the chain's Gamma deposit state,
+// largest balance first and store-capped, read through the native deposits
+// store seam. No store bound or a failed read is the same schema-stable
+// decline: an empty `deposits` with `deposit_count: null`, never a zero count
+// (an empty list is not a measured deposit-free chain), marked as a tier
+// fallback.
+export async function handleGammaDeposits(request: Request, env: Env) {
+  const rows = await loadGammaDeposits(env);
+  const data = buildGammaDeposits(rows);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/gamma/deposits.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/services (#13164): one subnet's on-chain
+// service-URL registry, read through the native services store seam. No
+// store bound or a failed read is the same schema-stable decline: an empty
+// `services` with `service_count: null`, never a zero count (an empty
+// registry is not a measured service-less subnet), marked as a tier
+// fallback.
+export async function handleSubnetServices(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetServices(env, netuid);
+  const data = buildSubnetServices(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/services.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes

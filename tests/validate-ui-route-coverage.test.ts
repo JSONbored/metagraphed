@@ -156,8 +156,16 @@ describe("the named prose-only exemption (#10517)", () => {
     // still names its consumer path and the stale-entry check still forces
     // removal the moment one is rendered; the next route that is NOT
     // engine-gated must render instead of widening this.
+    //
+    // 7 -> 12 (#13164): the Gamma serving slice publishes five more routes
+    // of exactly that engine-gated class (subnets/{netuid}/gamma and its
+    // /history, chain/gamma, gamma/deposits, subnets/{netuid}/services) --
+    // every table behind them is empty until the engine's Gamma capture
+    // lands. Same discipline: the stale-entry check forces removal the
+    // moment one is rendered, and a route that is NOT engine-gated must
+    // render instead of widening this.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 7,
+      PROSE_ONLY_ROUTES.length <= 12,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

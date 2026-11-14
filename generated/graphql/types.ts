@@ -2807,6 +2807,36 @@ export type FailureReasonsDay = {
   total_checks: Scalars['Int']['output'];
 };
 
+/** One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp. */
+export type GammaDeposit = {
+  __typename?: 'GammaDeposit';
+  /** The deposit's Gamma balance -- u64 atomic units as a decimal string. */
+  balance: Scalars['String']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis. */
+  closed_at?: Maybe<Scalars['Int']['output']>;
+  /** The ss58 address the deposit is keyed by on chain -- its owning account. */
+  coldkey: Scalars['String']['output'];
+  /** The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling). */
+  daily_cap?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this deposit is bound to. */
+  hotkey: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  /** The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set. */
+  spender?: Maybe<Scalars['String']['output']>;
+};
+
+/** The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+export type GammaDeposits = {
+  __typename?: 'GammaDeposits';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many deposits this answer carries -- `deposits.length`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published. */
+  deposit_count?: Maybe<Scalars['Int']['output']>;
+  /** The chain's Gamma deposits, largest balance first. */
+  deposits: Array<GammaDeposit>;
+  schema_version: Scalars['Int']['output'];
+};
+
 export type Gaps = {
   __typename?: 'Gaps';
   gap_notes: Array<Scalars['String']['output']>;
@@ -3667,6 +3697,8 @@ export type Query = {
   fixtures?: Maybe<Scalars['JSON']['output']>;
   /** Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness. */
   freshness?: Maybe<Scalars['JSON']['output']>;
+  /** The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits. */
+  gamma_deposits: GammaDeposits;
   /** Registry-wide interface gap report -- every active subnet's missing/unsupported public interface facets, gap_count, coverage_level, and curation_level. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_gaps(netuid) (one subnet's contributor enrichment queue). Mirrors GET /api/v1/gaps. */
   gaps: GapsList;
   /** The get_global_incidents-aligned name for the same global downtime-incident ledger (#7643): identical 7d/30d window validation, tier fallback, and cold-tier degradation as incidents — a thin alias so MCP tool names and GraphQL fields line up. Distinct from endpoint_incidents (the active endpoint failure/degradation feed, GET /api/v1/endpoint-incidents): this is the historical incident ledger. Returns the typed GlobalIncidents envelope rather than the issue's literal JSON suggestion, matching incidents. Mirrors GET /api/v1/incidents. */
@@ -3777,6 +3809,8 @@ export type Query = {
   subnet_events: SubnetEvents;
   /** One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Search with q across subject, claim, source_url, and support_summary; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does — an unsupported sort/limit/cursor is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the claims rows. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/evidence. */
   subnet_evidence?: Maybe<Scalars['JSON']['output']>;
+  /** One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+  subnet_gamma: SubnetGamma;
   /** One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Filter with curation_level, missing_kinds, and review_state; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the priorities rows. Mirrors GET /api/v1/subnets/{netuid}/gaps. */
   subnet_gaps?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Filter with kind, provider, status, and classification; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST reports (total, returned, limit, cursor, next_cursor, sort, order) alongside the surfaces. Opaque JSON otherwise matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health. */
@@ -3837,6 +3871,8 @@ export type Query = {
   subnet_registrations: SubnetRegistrations;
   /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   subnet_revenue: SubnetRevenueCard;
+  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services. */
+  subnet_services: SubnetServices;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
   /** Per-subnet net stake flow over a 7d/30d/90d window (default 30d): TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream. direction narrows to inflow (in) or outflow (out); all (default) reports both. A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-flow. */
@@ -5005,6 +5041,11 @@ export type QuerySubnet_EvidenceArgs = {
 };
 
 
+export type QuerySubnet_GammaArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_GapsArgs = {
   curation_level?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
@@ -5194,6 +5235,11 @@ export type QuerySubnet_RegistrationsArgs = {
 export type QuerySubnet_RevenueArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_ServicesArgs = {
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -6802,6 +6848,34 @@ export type SubnetEvents = {
   schema_version: Scalars['Int']['output'];
 };
 
+/** One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+export type SubnetGamma = {
+  __typename?: 'SubnetGamma';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one. */
+  gamma?: Maybe<SubnetGammaState>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
+/** One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp. */
+export type SubnetGammaState = {
+  __typename?: 'SubnetGammaState';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  emission?: Maybe<Scalars['String']['output']>;
+  /** Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+  enabled?: Maybe<Scalars['Boolean']['output']>;
+  /** Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+  pending_emission?: Maybe<Scalars['String']['output']>;
+  /** The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+  price?: Maybe<Scalars['String']['output']>;
+  /** Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+  unconverted_emission?: Maybe<Scalars['String']['output']>;
+  /** Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+  whitelisted?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type SubnetHealth = {
   __typename?: 'SubnetHealth';
   avg_latency_ms?: Maybe<Scalars['Int']['output']>;
@@ -7739,6 +7813,30 @@ export type SubnetRevenueCard = {
   notes?: Maybe<Scalars['JSON']['output']>;
   revenue: SubnetRevenue;
   schema_version: Scalars['Int']['output'];
+};
+
+/** One on-chain service binding: the hotkey, the URL it published, and the capture stamp. */
+export type SubnetService = {
+  __typename?: 'SubnetService';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this service URL is bound to. */
+  hotkey: Scalars['String']['output'];
+  /** The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim. */
+  service_url: Scalars['String']['output'];
+  /** The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis. */
+  set_at?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+export type SubnetServices = {
+  __typename?: 'SubnetServices';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+  service_count?: Maybe<Scalars['Int']['output']>;
+  /** The subnet's service bindings, ordered by hotkey. */
+  services: Array<SubnetService>;
 };
 
 export type SubnetServing = {
@@ -8947,6 +9045,8 @@ export type ResolversTypes = ResolversObject<{
   FailureReasons: ResolverTypeWrapper<FailureReasons>;
   FailureReasonsDay: ResolverTypeWrapper<FailureReasonsDay>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
+  GammaDeposit: ResolverTypeWrapper<GammaDeposit>;
+  GammaDeposits: ResolverTypeWrapper<GammaDeposits>;
   Gaps: ResolverTypeWrapper<Gaps>;
   GapsArtifactGaps: ResolverTypeWrapper<GapsArtifactGaps>;
   GapsArtifactGapsSchemaParity: ResolverTypeWrapper<GapsArtifactGapsSchemaParity>;
@@ -9085,6 +9185,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
   SubnetEventSummaryArtifactEventKinds: ResolverTypeWrapper<SubnetEventSummaryArtifactEventKinds>;
   SubnetEvents: ResolverTypeWrapper<SubnetEvents>;
+  SubnetGamma: ResolverTypeWrapper<SubnetGamma>;
+  SubnetGammaState: ResolverTypeWrapper<SubnetGammaState>;
   SubnetHealth: ResolverTypeWrapper<SubnetHealth>;
   SubnetHealthIncidents: ResolverTypeWrapper<SubnetHealthIncidents>;
   SubnetHealthPercentiles: ResolverTypeWrapper<SubnetHealthPercentiles>;
@@ -9152,6 +9254,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetRegistrations: ResolverTypeWrapper<SubnetRegistrations>;
   SubnetRevenue: ResolverTypeWrapper<SubnetRevenue>;
   SubnetRevenueCard: ResolverTypeWrapper<SubnetRevenueCard>;
+  SubnetService: ResolverTypeWrapper<SubnetService>;
+  SubnetServices: ResolverTypeWrapper<SubnetServices>;
   SubnetServing: ResolverTypeWrapper<SubnetServing>;
   SubnetStakeFlow: ResolverTypeWrapper<SubnetStakeFlow>;
   SubnetStakeMoves: ResolverTypeWrapper<SubnetStakeMoves>;
@@ -9432,6 +9536,8 @@ export type ResolversParentTypes = ResolversObject<{
   FailureReasons: FailureReasons;
   FailureReasonsDay: FailureReasonsDay;
   Float: Scalars['Float']['output'];
+  GammaDeposit: GammaDeposit;
+  GammaDeposits: GammaDeposits;
   Gaps: Gaps;
   GapsArtifactGaps: GapsArtifactGaps;
   GapsArtifactGapsSchemaParity: GapsArtifactGapsSchemaParity;
@@ -9569,6 +9675,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
   SubnetEventSummaryArtifactEventKinds: SubnetEventSummaryArtifactEventKinds;
   SubnetEvents: SubnetEvents;
+  SubnetGamma: SubnetGamma;
+  SubnetGammaState: SubnetGammaState;
   SubnetHealth: SubnetHealth;
   SubnetHealthIncidents: SubnetHealthIncidents;
   SubnetHealthPercentiles: SubnetHealthPercentiles;
@@ -9636,6 +9744,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetRegistrations: SubnetRegistrations;
   SubnetRevenue: SubnetRevenue;
   SubnetRevenueCard: SubnetRevenueCard;
+  SubnetService: SubnetService;
+  SubnetServices: SubnetServices;
   SubnetServing: SubnetServing;
   SubnetStakeFlow: SubnetStakeFlow;
   SubnetStakeMoves: SubnetStakeMoves;
@@ -11896,6 +12006,24 @@ export type FailureReasonsDayResolvers<ContextType = GqlContext, ParentType exte
   total_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type GammaDepositResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GammaDeposit'] = ResolversParentTypes['GammaDeposit']> = ResolversObject<{
+  balance?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  closed_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  daily_cap?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  spender?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type GammaDepositsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GammaDeposits'] = ResolversParentTypes['GammaDeposits']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  deposit_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  deposits?: Resolver<Array<ResolversTypes['GammaDeposit']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type GapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Gaps'] = ResolversParentTypes['Gaps']> = ResolversObject<{
   gap_notes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12531,6 +12659,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   fixture?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryFixtureArgs, 'surface_id'>>;
   fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryFixturesArgs>>;
   freshness?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  gamma_deposits?: Resolver<ResolversTypes['GammaDeposits'], ParentType, ContextType>;
   gaps?: Resolver<ResolversTypes['GapsList'], ParentType, ContextType, Partial<QueryGapsArgs>>;
   global_incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryGlobal_IncidentsArgs>>;
   governance_config_changes?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryGovernance_Config_ChangesArgs>>;
@@ -12586,6 +12715,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
   subnet_events?: Resolver<ResolversTypes['SubnetEvents'], ParentType, ContextType, RequireFields<QuerySubnet_EventsArgs, 'netuid'>>;
   subnet_evidence?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EvidenceArgs, 'netuid'>>;
+  subnet_gamma?: Resolver<ResolversTypes['SubnetGamma'], ParentType, ContextType, RequireFields<QuerySubnet_GammaArgs, 'netuid'>>;
   subnet_gaps?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_GapsArgs, 'netuid'>>;
   subnet_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_HealthArgs, 'netuid'>>;
   subnet_health_incidents?: Resolver<ResolversTypes['SubnetHealthIncidents'], ParentType, ContextType, RequireFields<QuerySubnet_Health_IncidentsArgs, 'netuid'>>;
@@ -12616,6 +12746,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_recycled?: Resolver<Maybe<ResolversTypes['SubnetRecycled']>, ParentType, ContextType, RequireFields<QuerySubnet_RecycledArgs, 'netuid'>>;
   subnet_registrations?: Resolver<ResolversTypes['SubnetRegistrations'], ParentType, ContextType, RequireFields<QuerySubnet_RegistrationsArgs, 'netuid'>>;
   subnet_revenue?: Resolver<ResolversTypes['SubnetRevenueCard'], ParentType, ContextType, RequireFields<QuerySubnet_RevenueArgs, 'netuid'>>;
+  subnet_services?: Resolver<ResolversTypes['SubnetServices'], ParentType, ContextType, RequireFields<QuerySubnet_ServicesArgs, 'netuid'>>;
   subnet_serving?: Resolver<ResolversTypes['SubnetServing'], ParentType, ContextType, RequireFields<QuerySubnet_ServingArgs, 'netuid'>>;
   subnet_stake_flow?: Resolver<ResolversTypes['SubnetStakeFlow'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_FlowArgs, 'netuid'>>;
   subnet_stake_moves?: Resolver<ResolversTypes['SubnetStakeMoves'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_MovesArgs, 'netuid'>>;
@@ -13690,6 +13821,23 @@ export type SubnetEventsResolvers<ContextType = GqlContext, ParentType extends R
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetGammaResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetGamma'] = ResolversParentTypes['SubnetGamma']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  gamma?: Resolver<Maybe<ResolversTypes['SubnetGammaState']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetGammaStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetGammaState'] = ResolversParentTypes['SubnetGammaState']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  pending_emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  price?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  unconverted_emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  whitelisted?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+}>;
+
 export type SubnetHealthResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHealth'] = ResolversParentTypes['SubnetHealth']> = ResolversObject<{
   avg_latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   degraded_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14425,6 +14573,21 @@ export type SubnetRevenueCardResolvers<ContextType = GqlContext, ParentType exte
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   revenue?: Resolver<ResolversTypes['SubnetRevenue'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetServiceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetService'] = ResolversParentTypes['SubnetService']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  service_url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  set_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type SubnetServicesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServices'] = ResolversParentTypes['SubnetServices']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  service_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  services?: Resolver<Array<ResolversTypes['SubnetService']>, ParentType, ContextType>;
 }>;
 
 export type SubnetServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServing'] = ResolversParentTypes['SubnetServing']> = ResolversObject<{
@@ -15333,6 +15496,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReason?: FailureReasonResolvers<ContextType>;
   FailureReasons?: FailureReasonsResolvers<ContextType>;
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
+  GammaDeposit?: GammaDepositResolvers<ContextType>;
+  GammaDeposits?: GammaDepositsResolvers<ContextType>;
   Gaps?: GapsResolvers<ContextType>;
   GapsArtifactGaps?: GapsArtifactGapsResolvers<ContextType>;
   GapsArtifactGapsSchemaParity?: GapsArtifactGapsSchemaParityResolvers<ContextType>;
@@ -15468,6 +15633,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
   SubnetEventSummaryArtifactEventKinds?: SubnetEventSummaryArtifactEventKindsResolvers<ContextType>;
   SubnetEvents?: SubnetEventsResolvers<ContextType>;
+  SubnetGamma?: SubnetGammaResolvers<ContextType>;
+  SubnetGammaState?: SubnetGammaStateResolvers<ContextType>;
   SubnetHealth?: SubnetHealthResolvers<ContextType>;
   SubnetHealthIncidents?: SubnetHealthIncidentsResolvers<ContextType>;
   SubnetHealthPercentiles?: SubnetHealthPercentilesResolvers<ContextType>;
@@ -15535,6 +15702,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetRegistrations?: SubnetRegistrationsResolvers<ContextType>;
   SubnetRevenue?: SubnetRevenueResolvers<ContextType>;
   SubnetRevenueCard?: SubnetRevenueCardResolvers<ContextType>;
+  SubnetService?: SubnetServiceResolvers<ContextType>;
+  SubnetServices?: SubnetServicesResolvers<ContextType>;
   SubnetServing?: SubnetServingResolvers<ContextType>;
   SubnetStakeFlow?: SubnetStakeFlowResolvers<ContextType>;
   SubnetStakeMoves?: SubnetStakeMovesResolvers<ContextType>;

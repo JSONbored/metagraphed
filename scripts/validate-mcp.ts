@@ -2454,6 +2454,12 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   // #13163: no capture store is bound in the harness, so the baskets tool can
   // only see the null-capture decline.
   ["get_validator_baskets", HARNESS_SERVES_NO_ROWS],
+  // #13164: the Gamma state, deposit state and service registry have no
+  // producer until the engine's Gamma capture lands, so the harness can only
+  // see the decline.
+  ["get_subnet_gamma", HARNESS_SERVES_NO_ROWS],
+  ["get_gamma_deposits", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_services", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

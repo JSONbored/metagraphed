@@ -269,11 +269,17 @@ describe("data-api's bundle boundary", () => {
     // account-root-claim.ts, the kind-filtered hot-tier read, and the grown
     // route/tool prose. Nothing new enters the graph -- both modules were
     // already in it; keep 2,745 source bytes of margin.
+    // The Gamma serving slice (#13164) adds 10,707 source bytes over
+    // 4707fa14, for 4,922,962: the subnet-gamma / gamma-deposits /
+    // subnet-services builders and store selectors plus their route/tool
+    // prose. The PostgreSQL stores (pg-subnet-gamma.ts,
+    // pg-gamma-deposits.ts, pg-subnet-services.ts) stay outside the graph;
+    // keep 2,538 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_915_000,
+      firstParty < 4_925_500,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

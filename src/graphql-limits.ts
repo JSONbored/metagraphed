@@ -170,6 +170,12 @@ export const FIELD_COMPLEXITY = {
   subnet_mechanisms: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of app.subnet_alpha_dividends (store-capped).
   subnet_alpha_dividends: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded newest-capture read of app.subnet_gamma.
+  subnet_gamma: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded read of app.gamma_deposits (store-capped).
+  gamma_deposits: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded read of a handful of app.subnet_services rows.
+  subnet_services: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of a handful of app.stake_locks rows.
   account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one completed capture's funds, capped by the receiver's own

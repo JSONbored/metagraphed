@@ -286,6 +286,22 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // bound lives in the store (SUBNET_ALPHA_DIVIDENDS_ROW_CAP), not in a
   // query parameter a caller could widen.
   "/api/v1/subnets/{netuid}/alpha-dividends",
+  // #13164: per-netuid Gamma card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/gamma",
+  // #13164: the Gamma capture series -- the row bound lives in the store
+  // (SUBNET_GAMMA_HISTORY_ROW_CAP), not in a query parameter a caller could
+  // widen; the capture cadence is the engine's, so a window vocabulary here
+  // would promise a density nothing guarantees yet.
+  "/api/v1/subnets/{netuid}/gamma/history",
+  // #13164: the chain-wide Gamma card -- one newest state per subnet, store
+  // capped (CHAIN_GAMMA_ROW_CAP).
+  "/api/v1/chain/gamma",
+  // #13164: the chain-wide deposit card -- largest-first and store-capped
+  // (GAMMA_DEPOSITS_ROW_CAP), not a query parameter a caller could widen.
+  "/api/v1/gamma/deposits",
+  // #13164: per-netuid service registry -- a subnet carries a handful of
+  // service bindings, not a series.
+  "/api/v1/subnets/{netuid}/services",
   // #13163: per-account lock card -- an account holds a handful of locks,
   // not a series.
   "/api/v1/accounts/{ss58}/locks",

@@ -105,6 +105,27 @@ test("INGESTED_EVENT_KINDS accepts child-hotkey delegation kinds (#6722)", () =>
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts the Gamma and Services kinds (#13164)", () => {
+  // Forward-compat like AxonInfoRemoved: the structured decode lands with
+  // the engine, and ?kind= must accept a kind the runtime demonstrably
+  // fires instead of 400ing on it.
+  for (const kind of [
+    "GammaMinted",
+    "GammaMoved",
+    "GammaDepositClosed",
+    "GammaDepositSpenderSet",
+    "GammaDepositDailySpendCapSet",
+    "GammaSpent",
+    "GammaSpendSkipped",
+    "SubnetGammaEmissionSet",
+    "GammaEmissionMinted",
+    "ServiceSet",
+    "ServiceRemoved",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("basket and collateral kinds support public filters and meaningful summary categories", () => {
   const categories = {
     BasketDeposited: "stake",

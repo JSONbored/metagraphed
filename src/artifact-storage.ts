@@ -59,6 +59,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13163: every validator's Root basket fund at the newest completed
   // capture, computed live from the same store.
   /^chain\/baskets\.json$/,
+  // #13164: the chain-wide Gamma state, computed live from the Gamma store --
+  // a baked copy would freeze a state the engine has yet to fill.
+  /^chain\/gamma\.json$/,
+  // #13164: the chain's Gamma deposits, computed live from the deposits
+  // store, same reasoning.
+  /^gamma\/deposits\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,
@@ -177,6 +183,14 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // dividends store -- a baked copy would freeze an accrual the engine has
   // yet to fill.
   /^subnets\/(?:\d+|\{netuid\})\/alpha-dividends\.json$/,
+  // #13164: one subnet's Gamma card and its capture series, computed live
+  // from the Gamma store -- a baked copy would freeze a state the engine has
+  // yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/gamma\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/gamma\/history\.json$/,
+  // #13164: one subnet's on-chain service-URL registry, computed live from
+  // the services store, same reasoning.
+  /^subnets\/(?:\d+|\{netuid\})\/services\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.

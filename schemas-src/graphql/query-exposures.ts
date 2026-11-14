@@ -446,6 +446,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.",
   },
   {
+    field: "subnet_gamma",
+    operation: "subnet-gamma",
+    returns: "SubnetGamma!",
+    description:
+      "One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
+  },
+  {
+    field: "subnet_services",
+    operation: "subnet-services",
+    returns: "SubnetServices!",
+    description:
+      "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
+  },
+  {
     field: "subnet_stake_moves",
     operation: "subnet-stake-moves",
     returns: "SubnetStakeMoves!",
@@ -1077,6 +1091,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     returns: "ValidatorBaskets!",
     description:
       "Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets.",
+  },
+  {
+    field: "gamma_deposits",
+    operation: "gamma-deposits",
+    returns: "GammaDeposits!",
+    description:
+      "The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.",
   },
   {
     field: "accounts",

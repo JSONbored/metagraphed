@@ -425,6 +425,11 @@ import {
   handleAccountLocks,
   handleChainBaskets,
   handleValidatorBasket,
+  handleSubnetGamma,
+  handleSubnetGammaHistory,
+  handleChainGamma,
+  handleGammaDeposits,
+  handleSubnetServices,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -854,6 +859,11 @@ import {
   ACCOUNT_LOCKS_PATH_PATTERN,
   CHAIN_BASKETS_PATH,
   VALIDATOR_BASKET_PATH_PATTERN,
+  SUBNET_GAMMA_HISTORY_PATH_PATTERN,
+  SUBNET_GAMMA_PATH_PATTERN,
+  CHAIN_GAMMA_PATH,
+  GAMMA_DEPOSITS_PATH,
+  SUBNET_SERVICES_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7116,6 +7126,42 @@ async function dispatchRequest(
       // through the same capture store seam.
       return handleValidatorBasket(request, env, validatorBasketMatch[1]);
     }
+    // #13164: the Gamma capture series BEFORE its bare card -- same ordering
+    // convention as SUBNET_WEIGHT_SETTERS before SUBNET_WEIGHTS.
+    const gammaHistoryMatch = SUBNET_GAMMA_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (gammaHistoryMatch) {
+      return handleSubnetGammaHistory(
+        request,
+        env,
+        Number(gammaHistoryMatch[1]),
+      );
+    }
+    const gammaMatch = SUBNET_GAMMA_PATH_PATTERN.exec(resolved.url.pathname);
+    if (gammaMatch) {
+      // #13164: one subnet's current Gamma state -- one bounded read through
+      // the native Gamma store seam, dispatched directly like the sibling
+      // mechanisms card (no edge-cache wrapper).
+      return handleSubnetGamma(request, env, Number(gammaMatch[1]));
+    }
+    if (resolved.url.pathname === CHAIN_GAMMA_PATH) {
+      // #13164: the chain-wide Gamma state, through the same seam.
+      return handleChainGamma(request, env);
+    }
+    if (resolved.url.pathname === GAMMA_DEPOSITS_PATH) {
+      // #13164: the chain's Gamma deposits -- one bounded read through the
+      // native deposits store seam.
+      return handleGammaDeposits(request, env);
+    }
+    const servicesMatch = SUBNET_SERVICES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (servicesMatch) {
+      // #13164: one subnet's on-chain service-URL registry, through the
+      // native services store seam.
+      return handleSubnetServices(request, env, Number(servicesMatch[1]));
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8161,6 +8207,13 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // #13163: the basket loaders pin network='finney' by construction.
     pathname === CHAIN_BASKETS_PATH ||
     VALIDATOR_BASKET_PATH_PATTERN.test(pathname) ||
+    // #13164: app.subnet_gamma / app.chain_gamma / app.gamma_deposits /
+    // app.subnet_services carry no network dimension.
+    SUBNET_GAMMA_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_GAMMA_PATH_PATTERN.test(pathname) ||
+    pathname === CHAIN_GAMMA_PATH ||
+    pathname === GAMMA_DEPOSITS_PATH ||
+    SUBNET_SERVICES_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

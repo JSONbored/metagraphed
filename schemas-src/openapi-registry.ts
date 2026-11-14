@@ -328,6 +328,23 @@ import {
   SubnetAlphaDividendsArtifactSchema,
 } from "./routes/subnet-alpha-dividends.ts";
 import {
+  SubnetGammaStateSchema,
+  SubnetGammaArtifactSchema,
+  SubnetGammaHistoryArtifactSchema,
+} from "./routes/subnet-gamma.ts";
+import {
+  ChainGammaSubnetSchema,
+  ChainGammaArtifactSchema,
+} from "./routes/chain-gamma.ts";
+import {
+  GammaDepositSchema,
+  GammaDepositsArtifactSchema,
+} from "./routes/gamma-deposits.ts";
+import {
+  SubnetServiceSchema,
+  SubnetServicesArtifactSchema,
+} from "./routes/subnet-services.ts";
+import {
   StakeLockSchema,
   AccountLocksArtifactSchema,
 } from "./routes/account-locks.ts";
@@ -886,6 +903,15 @@ register(SubnetMechanismSchema, "SubnetMechanism");
 register(SubnetMechanismsArtifactSchema, "SubnetMechanismsArtifact");
 register(SubnetAlphaDividendSchema, "SubnetAlphaDividend");
 register(SubnetAlphaDividendsArtifactSchema, "SubnetAlphaDividendsArtifact");
+register(SubnetGammaStateSchema, "SubnetGammaState");
+register(SubnetGammaArtifactSchema, "SubnetGammaArtifact");
+register(SubnetGammaHistoryArtifactSchema, "SubnetGammaHistoryArtifact");
+register(ChainGammaSubnetSchema, "ChainGammaSubnet");
+register(ChainGammaArtifactSchema, "ChainGammaArtifact");
+register(GammaDepositSchema, "GammaDeposit");
+register(GammaDepositsArtifactSchema, "GammaDepositsArtifact");
+register(SubnetServiceSchema, "SubnetService");
+register(SubnetServicesArtifactSchema, "SubnetServicesArtifact");
 register(StakeLockSchema, "StakeLock");
 register(AccountLocksArtifactSchema, "AccountLocksArtifact");
 register(BasketCaptureSchema, "BasketCapture");

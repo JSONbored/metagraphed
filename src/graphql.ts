@@ -51,6 +51,9 @@ import {
   loadSubnetAlphaDividends,
 } from "./subnet-alpha-dividends.ts";
 import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
+import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
+import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
 import {
   buildValidatorBaskets,
   loadValidatorBaskets,
@@ -3729,6 +3732,26 @@ const rootValue = {
     // null, never a GraphQL error.
     return buildSubnetAlphaDividends(
       await loadSubnetAlphaDividends(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_gamma({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13164: same loadSubnetGamma -> buildSubnetGamma decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled Gamma
+    // store is a schema-stable card with gamma null, never a GraphQL error.
+    return buildSubnetGamma(await loadSubnetGamma(context.env, netuid), netuid);
+  },
+
+  async subnet_services({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13164: same loadSubnetServices -> buildSubnetServices decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // services store is a schema-stable card with service_count null, never a
+    // GraphQL error.
+    return buildSubnetServices(
+      await loadSubnetServices(context.env, netuid),
       netuid,
     );
   },
@@ -9597,6 +9620,14 @@ const rootValue = {
     // completed capture, is a schema-stable card with capture and fund_count
     // null, never a GraphQL error.
     return buildValidatorBaskets(await loadValidatorBaskets(context.env));
+  },
+
+  async gamma_deposits(_args: unknown, context: GqlContext) {
+    // #13164: same loadGammaDeposits -> buildGammaDeposits decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // deposits store is a schema-stable card with deposit_count null, never a
+    // GraphQL error.
+    return buildGammaDeposits(await loadGammaDeposits(context.env));
   },
 
   async account_children(

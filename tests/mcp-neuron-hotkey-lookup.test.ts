@@ -617,3 +617,170 @@ describe("get_validator_baskets (#13163)", () => {
     assert.equal((data.capture as Row).finalized_block, "6500000");
   });
 });
+
+// The get_subnet_gamma tool (#13164): same loader/builder as the REST route
+// and the GraphQL field, so the decline and the state match exactly.
+describe("get_subnet_gamma (#13164)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_gamma",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      gamma: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_GAMMA_STORE: {
+        latest: async () => [
+          {
+            enabled: true,
+            price: "12500",
+            emission: "900",
+            pending_emission: "0",
+            unconverted_emission: null,
+            whitelisted: false,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        history: async () => [],
+        chain: async () => [],
+        enabled: async () => [],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_gamma",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal((data.gamma as Row).enabled, true);
+    assert.equal((data.gamma as Row).price, "12500");
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_gamma", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});
+
+// The get_gamma_deposits tool (#13164): same loader/builder as the REST route
+// and the GraphQL field, so the decline and the deposits match exactly.
+describe("get_gamma_deposits (#13164)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_gamma_deposits",
+        {},
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      deposit_count: null,
+      captured_at: null,
+      deposits: [],
+    });
+  });
+
+  test("a bound store serves the deposits", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      GAMMA_DEPOSITS_STORE: {
+        rows: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            hotkey: "5Hotkey_one",
+            netuid: 64,
+            balance: "5000000000",
+            spender: null,
+            daily_cap: null,
+            closed_at: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_gamma_deposits",
+        {},
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.deposit_count, 1);
+    assert.equal((data.deposits as Row[])[0].balance, "5000000000");
+  });
+});
+
+// The get_subnet_services tool (#13164): same loader/builder as the REST
+// route and the GraphQL field, so the decline and the registry match exactly.
+describe("get_subnet_services (#13164)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_services",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      service_count: null,
+      captured_at: null,
+      services: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_SERVICES_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            service_url: "https://sn64.example.com/v1",
+            set_at: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_services",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.service_count, 1);
+    assert.equal(
+      (data.services as Row[])[0].service_url,
+      "https://sn64.example.com/v1",
+    );
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_services", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});

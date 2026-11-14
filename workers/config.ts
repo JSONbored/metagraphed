@@ -700,6 +700,21 @@ export const CHAIN_BASKETS_PATH = "/api/v1/chain/baskets";
 // the same store. The handler validates the ss58 itself.
 export const VALIDATOR_BASKET_PATH_PATTERN =
   /^\/api\/v1\/validators\/([^/]+)\/basket$/;
+// One subnet's Gamma capture series (#13164), live from the Gamma store, no
+// static file. Dispatched BEFORE SUBNET_GAMMA (same ordering convention as
+// SUBNET_WEIGHT_SETTERS before SUBNET_WEIGHTS).
+export const SUBNET_GAMMA_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/gamma\/history$/;
+// One subnet's current Gamma state (#13164), live from the same store.
+export const SUBNET_GAMMA_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/gamma$/;
+// The chain-wide Gamma state (#13164), live from the same store.
+export const CHAIN_GAMMA_PATH = "/api/v1/chain/gamma";
+// The chain's Gamma deposits (#13164), live from the deposits store.
+export const GAMMA_DEPOSITS_PATH = "/api/v1/gamma/deposits";
+// One subnet's on-chain service-URL registry (#13164), live from the
+// services store.
+export const SUBNET_SERVICES_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/services$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

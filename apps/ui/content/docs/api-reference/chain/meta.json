@@ -23,6 +23,7 @@
     "chain-events-stats-by-network",
     "chain-fees",
     "chain-fees-by-network",
+    "chain-gamma",
     "chain-holders",
     "chain-identity-history",
     "chain-idle-stake",
@@ -61,6 +62,7 @@
     "emission-gate-changes",
     "export-chain-events",
     "export-chain-events-by-network",
+    "gamma-deposits",
     "indexer-lag",
     "subnet-price-share-composition"
   ]
