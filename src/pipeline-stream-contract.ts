@@ -68,7 +68,10 @@ export interface StreamSchema {
  * that drops rows at the sink.
  */
 const JsonSchemaNode = z.object({
-  type: z.string().optional(),
+  // Scalar, or a type UNION ARRAY: since zod 4.6 `z.toJSONSchema` emits a
+  // nullable field as `type: ["string", "null"]` rather than an `anyOf` with
+  // a `{type: "null"}` branch. Both are valid JSON Schema for the same thing.
+  type: z.union([z.string(), z.array(z.string())]).optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
   anyOf: z.array(z.object({ type: z.string().optional() }).loose()).optional(),
@@ -148,15 +151,24 @@ export function streamSchemaFrom(
   );
   return {
     fields: Object.entries(properties).map(([name, node]) => {
-      // A nullable field arrives as `anyOf: [{...}, {type: "null"}]` AND stays
-      // listed in `required`, because JSON Schema treats present-but-null as
-      // present. A stream has no null-vs-absent distinction, so carrying that
-      // through would declare the field required and drop every null row.
+      // A nullable field arrives either as `anyOf: [{...}, {type: "null"}]`
+      // (zod <=4.4) or as a type union `type: [..., "null"]` (zod >=4.6), AND
+      // stays listed in `required`, because JSON Schema treats present-but-null
+      // as present. A stream has no null-vs-absent distinction, so carrying
+      // that through would declare the field required and drop every null row.
       const branches = node.anyOf ?? [];
-      const nullable = branches.some((branch) => branch.type === "null");
-      const effective = nullable
+      let nullable = branches.some((branch) => branch.type === "null");
+      let effective = nullable
         ? (branches.find((branch) => branch.type !== "null") ?? node)
         : node;
+      if (Array.isArray(node.type)) {
+        nullable = node.type.includes("null");
+        const nonNull = node.type.filter((t) => t !== "null");
+        effective = {
+          ...node,
+          type: nonNull.length === 1 ? nonNull[0] : node.type,
+        };
+      }
       return {
         name,
         type: pipelineTypeOf(effective, name),
