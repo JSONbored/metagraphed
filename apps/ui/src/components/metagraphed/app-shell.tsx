@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Github, Menu, Rss, Search } from "lucide-react";
 import {
+  API_BASE,
   DEFAULT_DISCORD_URL,
   DEFAULT_GITHUB_REPO,
   DISCORD_URL,
@@ -25,11 +26,9 @@ import { classNames } from "@/lib/metagraphed/format";
 import { CommandPalette, preloadCommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
 import { ApiSourceProvider, useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
-import { apiSourceHref } from "@/lib/metagraphed/api-source-helpers";
 import { DEFINITIONS } from "@/lib/metagraphed/definitions";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
 import { observeStickyHeader } from "@/lib/metagraphed/sticky-header";
-import { useApiBase } from "@/hooks/use-api-base";
 
 const LazySourcesLine = lazy(() => import("./app-shell-sources-line"));
 
@@ -86,7 +85,6 @@ export function AppShell({
   children,
   fullBleedMain = false,
   chromeOnly = false,
-  dataProfile = "legacy",
 }: {
   children: ReactNode;
   // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
@@ -105,8 +103,6 @@ export function AppShell({
    * failed still needs.
    */
   chromeOnly?: boolean;
-  /** Modern pages report their own dataset freshness, independently of v1. */
-  dataProfile?: "legacy" | "modern";
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -359,7 +355,7 @@ export function AppShell({
               {children}
             </main>
 
-            <SiteFooter chromeOnly={chromeOnly} dataProfile={dataProfile} />
+            <SiteFooter chromeOnly={chromeOnly} />
             <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
             <BackToTop />
           </div>
@@ -369,14 +365,7 @@ export function AppShell({
   );
 }
 
-function SiteFooter({
-  chromeOnly,
-  dataProfile,
-}: {
-  chromeOnly: boolean;
-  dataProfile: "legacy" | "modern";
-}) {
-  const apiBase = useApiBase();
+function SiteFooter({ chromeOnly }: { chromeOnly: boolean }) {
   return (
     <footer className="mt-24 border-t border-border">
       <div className="max-w-shell-max mx-auto px-4 md:px-10 py-12 grid gap-10 md:grid-cols-5 text-13 text-ink-muted">
@@ -410,7 +399,7 @@ function SiteFooter({
             </ExternalLink>
             <ExternalLink
               bare
-              href={`${apiBase}/api/v1/feeds/registry.rss`}
+              href={`${API_BASE}/api/v1/feeds/registry.rss`}
               ariaLabel="Registry changes RSS feed"
               title="Subscribe to the registry-changes feed (RSS)"
               className="inline-flex items-center justify-center rounded size-8 hover:text-ink-strong hover:bg-layer transition-colors"
@@ -462,7 +451,7 @@ function SiteFooter({
             <span>
               © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
             </span>
-            {chromeOnly || dataProfile === "modern" ? null : <DeferredSourcesLine />}
+            {chromeOnly ? null : <DeferredSourcesLine />}
           </div>
         </div>
       </div>
@@ -480,31 +469,22 @@ function SiteFooter({
  * line in the shell footer, fed by the registry, serves every route instead.
  */
 function PageSourcesLine() {
-  const apiBase = useApiBase();
   const { sources } = useApiSourceCtx();
-  const links = sources.flatMap((source) => {
-    const href = apiSourceHref(source, apiBase);
-    return href === null ? [] : [{ source, href }];
-  });
-  if (links.length === 0) return null;
+  const paths = sources.map((s) => s.path);
+  if (paths.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-10 text-ink-muted">
       <span className="shrink-0">this page reads</span>
-      {links.map(({ source, href }) => (
+      {paths.map((path) => (
         <ExternalLink
-          key={JSON.stringify([source.origin ?? null, source.path])}
+          key={path}
           bare
           // A templated path like /api/v1/subnets/{netuid}/validator-economics
           // is longer than a 375px viewport and has no space to break on.
           className="min-w-0 max-w-full truncate hover:text-ink-strong transition-colors"
-          href={href}
-          ariaLabel={
-            source.origin ? `${source.label ?? source.path} from ${source.origin}` : undefined
-          }
+          href={`${API_BASE}${path}`}
         >
-          {source.origin === undefined
-            ? source.path
-            : `${source.origin} · ${source.label ?? source.path}`}
+          {path}
         </ExternalLink>
       ))}
     </div>
@@ -553,11 +533,10 @@ function DeferredSourcesLine() {
 }
 
 function SourcesLineFallback() {
-  const apiBase = useApiBase();
   return (
     <ExternalLink
       bare
-      href={`${apiBase}/api/v1/openapi.json`}
+      href={`${API_BASE}/api/v1/openapi.json`}
       className="hover:text-ink-strong transition-colors"
     >
       openapi

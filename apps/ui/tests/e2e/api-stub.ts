@@ -31,7 +31,6 @@ import { fileURLToPath } from "node:url";
 import { buildValidatorOperatorDirectory } from "../../../../src/validator-operator-directory.ts";
 import { HAR_DIR, DATED_ENDPOINT_PATTERNS } from "./har-path.ts";
 import { matchedCatalogFixture } from "./catalog-fixture.ts";
-import { modernExplorerFixture, MODERN_EXPLORER_ACCOUNT } from "./modern-explorer-fixture.ts";
 
 const port = Number(process.argv[2] ?? 8081);
 // `--record` fills gaps from live production and writes them to the
@@ -49,64 +48,6 @@ const OPENAPI_ARTIFACT = path.resolve(
 const UPSTREAM = "https://api.metagraph.sh";
 
 type Recorded = { status: number; contentType: string; body: Buffer };
-
-const unavailableLegacyNetworks = new Map<string, "mainnet" | "testnet">();
-for (const [prefix, account, network] of [
-  ["/api/v1/accounts", MODERN_EXPLORER_ACCOUNT, "mainnet"],
-  ["/api/v1/testnet/accounts", "5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9", "testnet"],
-] as const)
-  for (const resource of [
-    "",
-    "balance",
-    "positions",
-    "stake-flow",
-    "counterparties",
-    "children",
-    "parents",
-    "identity",
-  ])
-    unavailableLegacyNetworks.set(`${prefix}/${account}${resource ? `/${resource}` : ""}`, network);
-unavailableLegacyNetworks.set("/api/v1/testnet/subnets", "testnet");
-
-// These journeys intentionally combine modern evidence with unavailable legacy
-// observations. Preserve real recordings and keep every other missing read loud.
-function unavailableLegacyAccountFixture(url: URL, method: string | undefined): Recorded | null {
-  const network = unavailableLegacyNetworks.get(url.pathname);
-  if (method !== "GET" || !network) return null;
-  const parameters = [...url.searchParams];
-  if (url.pathname.endsWith("/stake-flow")) {
-    if (
-      new Set(parameters.map(([name]) => name)).size !== parameters.length ||
-      parameters.some(
-        ([name, value]) =>
-          !(name === "window" && ["7d", "30d", "90d"].includes(value)) &&
-          !(name === "direction" && ["in", "out"].includes(value)),
-      )
-    )
-      return null;
-  } else if (url.pathname === "/api/v1/testnet/subnets") {
-    if (
-      parameters.length !== 2 ||
-      url.searchParams.get("limit") !== "200" ||
-      url.searchParams.get("fields") !== "netuid,name"
-    )
-      return null;
-  } else if (parameters.length) return null;
-  return {
-    status: 503,
-    contentType: "application/json",
-    body: Buffer.from(
-      JSON.stringify({
-        ok: false,
-        error: {
-          code: "fixture_unavailable",
-          message: "Controlled legacy account evidence is unavailable.",
-        },
-        meta: { network },
-      }),
-    ),
-  };
-}
 
 // The validator detail record has an intentionally independent nominator
 // movement read. It was added after the original detail HAR and has no
@@ -590,14 +531,6 @@ const server = createServer((req, res) => {
   };
 
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
-  // v2 is always closed over this fixture, including record mode. A missing
-  // modern route must never become a request to a live provider.
-  const modern = modernExplorerFixture(url, req.method);
-  if (modern) {
-    res.writeHead(modern.status, { ...cors, "content-type": modern.contentType });
-    res.end(modern.body);
-    return;
-  }
   if (url.pathname === VALIDATOR_NOMINATOR_FIXTURE_PATH) {
     serve(validatorNominatorsFixture);
     return;
@@ -618,12 +551,6 @@ const server = createServer((req, res) => {
   // miss, because the miss at least prints.
   if (hit && (hit.exact || !recording)) {
     serve(hit.recorded);
-    return;
-  }
-
-  const unavailableLegacy = unavailableLegacyAccountFixture(url, req.method);
-  if (unavailableLegacy) {
-    serve(unavailableLegacy);
     return;
   }
 

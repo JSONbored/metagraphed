@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "@jsonbored/ui-kit";
 import { useHydrated } from "@/hooks/use-hydrated";
-import { useApiBase } from "@/hooks/use-api-base";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { freshnessQuery } from "@/lib/metagraphed/queries";
 
 /** `sources N · stale N · openapi` -- the one liveness line in the chrome. */
 export default function SourcesLine() {
-  const apiBase = useApiBase();
   const hydrated = useHydrated();
   const freshness = useQuery({ ...freshnessQuery(), retry: 0, enabled: hydrated });
   const f = hydrated ? freshness.data?.data : undefined;
@@ -38,7 +37,7 @@ export default function SourcesLine() {
       <span aria-hidden="true">·</span>
       <ExternalLink
         bare
-        href={`${apiBase}/api/v1/openapi.json`}
+        href={`${API_BASE}/api/v1/openapi.json`}
         className="hover:text-ink-strong transition-colors"
       >
         openapi

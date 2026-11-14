@@ -1,5 +1,3 @@
-import { modernStakeFixture } from "./modern-explorer-fixture";
-import { ss58AccountId } from "../../src/lib/metagraphed/accounts";
 import { expect, test } from "@playwright/test";
 import { gotoThroughRestart } from "./server-restart";
 
@@ -22,15 +20,10 @@ test.describe("account detail query states", () => {
       await continueReads;
       await route.continue();
     });
-    await page.route("**/api/v2/**/accounts/*/{events,stake}*", async (route) => {
-      requested.push(new URL(route.request().url()).pathname);
-      await continueReads;
-      await route.continue();
-    });
 
     await gotoThroughRestart(page, ROUTE);
 
-    const positions = page.getByRole("table", { name: "Account stake and entitlements" });
+    const positions = page.getByRole("table", { name: "Recorded ties by subnet" });
     const flow = page.getByRole("group", { name: "Stake moved per subnet" });
     const counterparties = page.getByRole("group", {
       name: "Transfer counterparties by volume moved",
@@ -52,9 +45,6 @@ test.describe("account detail query states", () => {
     await expect(page.getByText("No transfers recorded for this account.")).toHaveCount(0);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/counterparties`);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/events`);
-    expect(requested.some((path) => path.startsWith("/api/v2/") && path.endsWith("/events"))).toBe(
-      false,
-    );
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/children`);
     expect(requested).not.toContain(`/api/v1/accounts/${SS58}/parents`);
 
@@ -81,10 +71,11 @@ test.describe("account detail query states", () => {
     await Promise.all(completedReads);
     await expect(positions.locator(".mg-dt-skeleton")).toHaveCount(0);
     await expect(counterparties).not.toHaveAttribute("aria-busy", "true");
-    await positions.scrollIntoViewIfNeeded();
-    await expect(positions).toContainText("Root TAO");
-    await expect(positions).toContainText("18446744073709551615 rao");
-    await expect(positions).not.toContainText("Apex");
+    await expect(positions.getByRole("link", { name: "Apex", exact: true })).toBeVisible();
+    await expect(positions.getByRole("link", { name: "Apex", exact: true })).toHaveAttribute(
+      "href",
+      "/subnets/1",
+    );
   });
 
   test("keeps unavailable account records actionable rather than calling them empty", async ({
@@ -105,28 +96,12 @@ test.describe("account detail query states", () => {
         }),
       });
     });
-    await page.route("**/api/v2/**/accounts/*/{events,stake}*", async (route) => {
-      if (!shouldFail) {
-        await route.continue();
-        return;
-      }
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          api_version: "2",
-          error: { code: "data_unavailable", message: "Controlled account activity unavailable" },
-        }),
-      });
-    });
 
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoThroughRestart(page, ROUTE);
 
-    await page.locator("#positions").scrollIntoViewIfNeeded();
-    await expect(page.locator("#positions").getByRole("alert")).toContainText(
-      "Couldn't load account stake",
-    );
+    await expect(page.getByRole("alert")).toHaveCount(2);
+    await expect(page.getByText("Couldn't load position snapshots")).toBeVisible();
     await expect(page.getByText("Couldn't load stake movement")).toBeVisible();
     await expect(page.getByText("Couldn't load transfer counterparties")).toHaveCount(0);
     await expect(page.getByText("Couldn't load account events")).toHaveCount(0);
@@ -143,13 +118,13 @@ test.describe("account detail query states", () => {
     await expect(page.getByRole("alert")).toHaveCount(5);
     await expect(page.getByText("No positions recorded for this account.")).toHaveCount(0);
     await expect(page.getByText("No transfers recorded for this account.")).toHaveCount(0);
-    await expect(page.getByText(/No matching typed account appearances/)).toHaveCount(0);
+    await expect(page.getByText("No events match this filter.")).toHaveCount(0);
 
     shouldFail = false;
-    const positionsError = page.getByRole("alert").filter({ hasText: "account stake" });
+    const positionsError = page.getByRole("alert").filter({ hasText: "position snapshots" });
     await positionsError.getByRole("button", { name: "Retry", exact: true }).click();
     await expect(positionsError).toHaveCount(0);
-    await expect(page.getByRole("table", { name: "Account stake and entitlements" })).toBeVisible();
+    await expect(page.getByRole("table", { name: "Recorded ties by subnet" })).toBeVisible();
   });
 
   test("keeps relationships without accepting unqualified position amounts or shares", async ({
@@ -180,11 +155,9 @@ test.describe("account detail query states", () => {
     );
     await gotoThroughRestart(page, ROUTE);
     const positions = page.locator("#positions");
-    const table = positions.getByRole("table", { name: "Account stake and entitlements" });
-    await positions.scrollIntoViewIfNeeded();
-    await expect(table.locator(".mg-dt-row:not(.mg-dt-skeleton)")).toHaveCount(10);
-    await expect(table).toContainText("18446744073709551615 rao");
-    await expect(table).toContainText("Root entitlement");
+    const table = positions.getByRole("table", { name: "Recorded ties by subnet" });
+    await expect(table.locator("tbody tr")).toHaveCount(3);
+    await expect(table.locator("tbody tr").first().getByRole("cell").last()).toHaveText("2");
     await expect(table).not.toContainText("α");
     await expect(table).not.toContainText("τ");
     await expect(table).not.toContainText("%");
@@ -195,13 +168,15 @@ test.describe("account detail query states", () => {
       "τ",
     );
     await expect(page.getByText("Balance (free + reserved)", { exact: true })).toBeVisible();
-    await expect(positions).toContainText(
-      "Liquid balances and combined TAO valuation are not supplied",
-    );
-    await expect(positions).toContainText("must not be added together");
-    await expect(positions).not.toContainText("Root holdings are not covered");
-    await expect(table).not.toContainText("5A");
-    await expect(table).toContainText("Hotkey");
+    await expect(positions).toContainText("authoritative quantity basis");
+    await expect(positions).toContainText("Root holdings are not covered");
+    await expect(positions).toContainText("do not establish wallet holdings");
+    await positions.getByRole("button", { name: "Show recorded relationships (4)" }).click();
+    const relationships = positions.getByRole("table", { name: "Recorded position relationships" });
+    await expect(relationships).toContainText("Hotkey");
+    await expect(relationships).not.toContainText("Share");
+    await expect(relationships).not.toContainText("α");
+    await expect(relationships).not.toContainText("τ");
   });
 
   for (const { width, height } of [
@@ -256,31 +231,14 @@ test.describe("account detail query states", () => {
           }),
         );
 
-        await page.route("**/api/v2/**/accounts/*/stake*", (route) => {
-          const value = modernStakeFixture(ss58AccountId(SS58)!);
-          value.entries = value.entries.filter((entry) => entry.kind === "root_entitlement");
-          for (const entry of value.entries)
-            if (entry.kind === "root_entitlement") {
-              entry.entitlement.principal = { status: "absent_in_complete_join" };
-              if (entry.entitlement.outcome.status === "assessed")
-                entry.entitlement.outcome.value.root_principal_rao = "0";
-            }
-          value.next_cursor = null;
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify(value),
-          });
-        });
         await gotoThroughRestart(page, ROUTE);
         const positions = page.locator("#positions");
-        await positions.scrollIntoViewIfNeeded();
         await expect(positions).toContainText(
-          "Loaded 0 position records and 1 root entitlement records",
+          "No position relationships recorded in this response.",
         );
-        await expect(positions).toContainText("No root principal entry in the complete census");
-        await expect(positions).toContainText("49 rao deferred cash");
-        await expect(positions).toContainText("Census at block");
+        await expect(positions).toContainText("Root holdings are not covered");
+        await expect(positions).toContainText("do not establish wallet holdings");
+        await expect(positions).toContainText("Relationship snapshot");
         await expect(positions).not.toContainText("Share of holdings");
         const capital = page.locator(".mg-fact").filter({ hasText: "Staked value" });
         await expect(capital).toContainText("—");
@@ -320,26 +278,9 @@ test.describe("account detail query states", () => {
         }),
       }),
     );
-    await page.route("**/api/v2/**/accounts/*/stake*", (route) => {
-      const value = modernStakeFixture(ss58AccountId(SS58)!);
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ...value,
-          stake: { ...value.stake, census_complete: false },
-          entries: [],
-          next_cursor: null,
-        }),
-      });
-    });
     await gotoThroughRestart(page, ROUTE);
-    await page.locator("#positions").scrollIntoViewIfNeeded();
-    await expect(page.locator("#positions").getByRole("alert")).toContainText(
-      "Published account stake is unavailable",
-    );
-    await expect(page.locator("#positions")).not.toContainText(
-      "No stake positions or root entitlements",
+    await expect(page.locator("#positions").getByRole("status")).toHaveText(
+      "Position relationship coverage is unavailable.",
     );
     await expect(
       page.locator(".mg-fact").filter({ hasText: "Recorded ties / subnets" }),
