@@ -82,15 +82,11 @@ jobs:
   # always resolves docs_only=false — the fast lane only ever applies to a
   # `pull_request` event, where a real merge-base diff exists.
   #
-  # Two further outputs, independent of docs_only and of each other: `Validate
-  # workflows` (scripts/validate-workflows.ts) reads ONLY
-  # `.github/workflows/*.yml`/`.yaml`, and `Validate migration sequence`
-  # (scripts/validate-migrations.ts) reads ONLY `migrations/*.sql` — verified
-  # by reading each script's full source; neither imports anything outside its
-  # own directory. Each flag also matches its OWN validator script path
-  # (scripts/validate-workflows.ts / scripts/validate-migrations.ts) directly,
-  # so editing the validator's logic itself still runs it even when the diff
-  # doesn't touch `.github/workflows/` or `migrations/`. A PR can be
+  # Two further outputs, independent of docs_only and of each other: workflow
+  # validation reads workflow documents, script sources, the shared Node pin,
+  # root/UI manifests and codecov.yml. Its selector includes the dependency
+  # lockfile too. Migration sequence validation reads migrations/neon/*.sql and its
+  # own validator source. Editing either validator still runs it. A PR can be
   # workflow-only or migration-only without being a docs PR, so these are
   # computed as their own flags rather than folded into docs_only, and neither
   # needs the registry guardrail above (neither path is registry-adjacent).
@@ -185,10 +181,10 @@ jobs:
           echo "Changed files:"
           cat changed-files.txt
 
-          # Narrow, independent skips -- see the job comment above for the
-          # file:line evidence that these two validators' entire footprint is
-          # their own directory.
-          if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.ts$' changed-files.txt; then
+          # The workflow validator reads Node/engine/coverage declarations and
+          # scans script sources as well as the workflow documents. Migration
+          # sequence validation keeps its separate, narrower source footprint.
+          if grep -qE '^\.github/workflows/|^\.nvmrc$|^package(-lock)?\.json$|^apps/ui/package\.json$|^codecov\.yml$|^scripts/.*\.(ts|mjs|js)$' changed-files.txt; then
             echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
@@ -198,7 +194,7 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
+          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/chain-summaries/|^packages/client/|^packages/contract/|^packages/ui-kit/|^scripts/lib/modern-ecosystem-fixture\.ts$' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
@@ -215,7 +211,7 @@ jobs:
           # chain-summaries/ui-kit-only diffs, which have their own suites here.
           # packages/client IS included: its committed dist is real runtime code
           # apps/ui executes, so it can change what renders.
-          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/client/' changed-files.txt; then
+          if grep -qE '^package(-lock)?\.json$|^apps/ui/|^packages/client/|^scripts/lib/modern-ecosystem-fixture\.ts$' changed-files.txt; then
             echo "run_ui_e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_e2e=false" >> "$GITHUB_OUTPUT"
@@ -269,7 +265,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.4
+          node-version-file: .nvmrc
       - name: Install without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Check source formatting
@@ -364,7 +360,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.4
+          node-version-file: .nvmrc
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
           # in the tree, so a lockfile anywhere else would invalidate this job's
@@ -739,10 +735,8 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:operational-surface-parity
 
-      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.ts
-      # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
-      # that path cannot affect this validator's result. See the `changes` job
-      # comment for the full rationale.
+      # The changes predicate includes the validator's workflow documents,
+      # script sources, shared Node pin, manifests and coverage declaration.
       - name: Validate workflows
         if: env.RUN_WORKFLOWS_VALIDATION == 'true'
         run: npm run validate:workflows
@@ -910,7 +904,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.4
+          node-version-file: .nvmrc
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
           # in the tree, so a lockfile anywhere else would invalidate this job's
@@ -1238,7 +1232,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.4
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -1548,6 +1542,20 @@ jobs:
           path: |
             apps/ui/playwright-report/**
             apps/ui/test-results/**
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Modern application journeys (native e2e)
+        id: ui-e2e-native
+        if: ${{ needs.changes.outputs.run_ui_e2e == 'true' }}
+        run: npm run test:e2e:native --workspace=apps/ui
+
+      - name: Upload native e2e diagnostics
+        if: ${{ !cancelled() && (steps.ui-e2e-native.outcome == 'success' || steps.ui-e2e-native.outcome == 'failure') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-native-e2e-diagnostics
+          path: apps/ui/test-results/**
           retention-days: 7
           if-no-files-found: warn
 

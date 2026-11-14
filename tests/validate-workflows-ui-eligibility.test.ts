@@ -124,6 +124,38 @@ test("UI draft and browser-step guards remain intact", () => {
   assert.equal(e2e.if, "${{ needs.changes.outputs.run_ui_e2e == 'true' }}");
 });
 
+test("both worker and modern native browser journeys run after the shared runtime build", () => {
+  const steps = workflow.jobs.ui.steps;
+  const build = steps.findIndex(
+    (step) => step.run === "npm run build:worker:e2e --workspace=apps/ui",
+  );
+  const worker = steps.findIndex((step) => step.id === "ui-e2e");
+  const workerReceipt = steps.findIndex(
+    (step) => step.name === "Upload e2e report diagnostics",
+  );
+  const native = steps.findIndex((step) => step.id === "ui-e2e-native");
+  const nativeReceipt = steps.findIndex(
+    (step) => step.name === "Upload native e2e diagnostics",
+  );
+  assert.ok(build >= 0 && build < worker);
+  assert.ok(
+    worker < workerReceipt && workerReceipt < native && native < nativeReceipt,
+  );
+  assert.equal(steps[worker]!.run, "npm run test:e2e --workspace=apps/ui");
+  assert.equal(
+    steps[native]!.run,
+    "npm run test:e2e:native --workspace=apps/ui",
+  );
+  assert.equal(
+    steps[native]!.if,
+    "${{ needs.changes.outputs.run_ui_e2e == 'true' }}",
+  );
+  assert.equal(
+    steps[nativeReceipt]!.if,
+    "${{ !cancelled() && (steps.ui-e2e-native.outcome == 'success' || steps.ui-e2e-native.outcome == 'failure') }}",
+  );
+});
+
 test("preview root dependency paths retain the same-repo and fork draft guards", () => {
   const preview = parse(
     readFileSync(

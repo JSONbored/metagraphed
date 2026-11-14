@@ -67,7 +67,6 @@ const apiPaths = (ss58: string) => [
   `/api/v1/accounts/${ss58}/positions`,
   `/api/v1/accounts/${ss58}/stake-flow`,
   `/api/v1/accounts/${ss58}/counterparties`,
-  `/api/v1/accounts/${ss58}/events`,
   `/api/v1/accounts/${ss58}/children`,
   `/api/v1/accounts/${ss58}/parents`,
   `/api/v1/accounts/${ss58}/identity`,
@@ -228,7 +227,7 @@ export function AccountDetailPage() {
           />
         }
       >
-        <PositionsSection ss58={ss58} nameOf={nameOf} />
+        <PositionsSection ss58={ss58} />
         <FlowSection
           ss58={ss58}
           window={window}
@@ -238,14 +237,7 @@ export function AccountDetailPage() {
           nameOf={nameOf}
         />
         <CounterpartiesSection ss58={ss58} />
-        <ActivitySection
-          ss58={ss58}
-          nameOf={nameOf}
-          kinds={summary?.event_kinds ?? []}
-          eventCount={summary?.event_count ?? null}
-          summaryPending={summaryQuery.isPending}
-          scanCapped={scanCapped}
-        />
+        <ActivitySection ss58={ss58} />
         <KeysSection ss58={ss58} />
         <Raw rows={rawRows} title="Account identifiers, identity and API" />
       </AnalyticsPage>
