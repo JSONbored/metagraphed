@@ -8438,7 +8438,7 @@ export type Validator = {
 /** One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
 export type ValidatorBasket = {
   __typename?: 'ValidatorBasket';
-  /** The fund's validator hotkey as the raw 0x account-id hex. */
+  /** The hotkey this fund belongs to, as the raw 0x account-id hex. */
   account_id: Scalars['String']['output'];
   deposited_rao?: Maybe<Scalars['String']['output']>;
   /** Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
@@ -8446,7 +8446,7 @@ export type ValidatorBasket = {
   /** The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
   first_block?: Maybe<Scalars['String']['output']>;
   holdings_count?: Maybe<Scalars['Int']['output']>;
-  /** The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+  /** The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
   hotkey?: Maybe<Scalars['String']['output']>;
   pending_entitlement_q64_bits?: Maybe<Scalars['String']['output']>;
   /** Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */

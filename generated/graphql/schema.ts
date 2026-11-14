@@ -6377,11 +6377,11 @@ One validator's Root basket fund at the served capture: shares, NAV, deposit/red
 """
 type ValidatorBasket {
   """
-  The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded.
+  The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded.
   """
   hotkey: String
 
-  """The fund's validator hotkey as the raw 0x account-id hex."""
+  """The hotkey this fund belongs to, as the raw 0x account-id hex."""
   account_id: String!
   shares_atomic: String
 

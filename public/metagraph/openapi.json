@@ -60964,7 +60964,7 @@
         "description": "One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state.",
         "properties": {
           "account_id": {
-            "description": "The fund's validator hotkey as the raw 0x account-id hex.",
+            "description": "The hotkey this fund belongs to, as the raw 0x account-id hex.",
             "type": "string"
           },
           "deposited_rao": {
@@ -61000,7 +61000,7 @@
             ]
           },
           "hotkey": {
-            "description": "The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded.",
+            "description": "The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded.",
             "type": [
               "string",
               "null"
@@ -61121,7 +61121,7 @@
             "type": "array"
           },
           "hotkey": {
-            "description": "The requested validator hotkey (SS58).",
+            "description": "The requested hotkey (SS58).",
             "type": "string"
           },
           "schema_version": {

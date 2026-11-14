@@ -42,11 +42,11 @@ export const ValidatorBasketSchema = z
       .string()
       .nullable()
       .describe(
-        "The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded.",
+        "The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded.",
       ),
     account_id: z
       .string()
-      .describe("The fund's validator hotkey as the raw 0x account-id hex."),
+      .describe("The hotkey this fund belongs to, as the raw 0x account-id hex."),
     shares_atomic: z.string().nullable(),
     spot_nav_rao: z
       .string()
@@ -142,7 +142,7 @@ export const ValidatorBasketsArtifactSchema = z
 export const ValidatorBasketArtifactSchema = z
   .object({
     schema_version: z.int(),
-    hotkey: z.string().describe("The requested validator hotkey (SS58)."),
+    hotkey: z.string().describe("The requested hotkey (SS58)."),
     capture: BasketCaptureSchema.nullable(),
     /**
      * basket null with a NON-null capture is a measurement: the completed
