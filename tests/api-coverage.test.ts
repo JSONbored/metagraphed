@@ -939,6 +939,85 @@ describe("/health readiness", () => {
     assert.equal(body.chain_events.age_seconds, null);
   });
 
+  test("a PRESENT stale chain heartbeat gates the status (#13142 phase-0)", async () => {
+    // The head froze at 9,420,866 on 2026-11-02 while /health answered 200 ok
+    // for weeks. A heartbeat older than the limit is now degraded + 503, with
+    // the same no-store posture as the stale publish pointer.
+    const atMs = Date.now() - 2_000_000 * 1000; // weeks stale
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      ...healthDb({ head: 9420866, latest: atMs }),
+    });
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("x-metagraph-health"), "degraded");
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
+    assert.equal(body.status, "degraded");
+    assert.equal(body.chain_events.stale, true);
+    assert.equal(body.chain_events.max_age_seconds, 1800);
+    // The publish pointer itself is fresh: the chain gate alone trips it.
+    assertJsonObject(body.freshness);
+    assert.equal(body.freshness.stale, false);
+  });
+
+  test("the chain gate honors METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS", async () => {
+    const atMs = Date.now() - 3_000 * 1000; // ~50 minutes old
+    const base = {
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+    };
+    // 50 minutes > the 1800s default: degraded.
+    const defaulted = await handleRequest(
+      req("/health"),
+      createLocalArtifactEnv({
+        ...base,
+        ...healthDb({ head: 9420866, latest: atMs }),
+      }) as unknown as Env,
+      {},
+    );
+    assert.equal(defaulted.status, 503);
+    // A raised limit of 2 hours keeps the same age healthy.
+    const raised = await handleRequest(
+      req("/health"),
+      createLocalArtifactEnv({
+        ...base,
+        ...healthDb({ head: 9420866, latest: atMs }),
+        METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS: "7200",
+      }) as unknown as Env,
+      {},
+    );
+    assert.equal(raised.status, 200);
+    const body: unknown = await raised.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
+    assert.equal(body.chain_events.stale, false);
+    assert.equal(body.chain_events.max_age_seconds, 7200);
+  });
+
+  test("an absent heartbeat still does not gate (cold store stays 200)", async () => {
+    // Same posture as the publish pointer: only a PRESENT stale value trips
+    // the gate, so a cold lane or unbound store cannot 503 local/dev.
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      ...healthDb({ head: null, latest: null }),
+    });
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
+    assert.equal(res.status, 200);
+    const body: unknown = await res.json();
+    assertJsonObject(body);
+    assertJsonObject(body.chain_events);
+    assert.equal(body.chain_events.stale, false);
+    assert.equal(body.chain_events.age_seconds, null);
+  });
+
   test("HEAD /health returns no body", async () => {
     const res = await handleRequest(
       req("/health", { method: "HEAD" }),
