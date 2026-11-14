@@ -7819,6 +7819,15 @@
             ],
             "type": "string"
           }
+        },
+        {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
+          }
         }
       ]
     },
@@ -8731,6 +8740,15 @@
           }
         },
         {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
@@ -8766,6 +8784,15 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": [
+        {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         {
           "name": "fields",
           "schema": {

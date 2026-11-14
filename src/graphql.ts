@@ -41,6 +41,7 @@ import {
   maxComplexityRule,
   maxDepthRule,
 } from "./graphql-limits.ts";
+import { stampMechanismScope } from "./mechanism-scope.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -2492,9 +2493,11 @@ const rootValue = {
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
   async subnet_metagraph(
-    { netuid, validator_permit, fields }: QuerySubnet_MetagraphArgs,
+    { netuid, validator_permit, fields, mechid }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
     // fallback contract get_subnet_metagraph uses; a subnet with no indexed
     // neurons is a schema-stable empty metagraph, never a GraphQL error.
@@ -2503,7 +2506,7 @@ const rootValue = {
     // #10065: the payload is opaque JSON, so the selection set cannot narrow
     // it and `fields` is the only projection a caller has.
     if (fields != null && fields !== "") params.set("fields", fields);
-    return (
+    return stampMechanismScope(
       ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
@@ -2512,7 +2515,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ?? buildSubnetMetagraph([], netuid)
+      )) as Row | null) ?? buildSubnetMetagraph([], netuid),
+      mechid ?? null,
     );
   },
 
@@ -3548,13 +3552,15 @@ const rootValue = {
     };
   },
 
-  async neuron({ netuid, uid }: QueryNeuronArgs, context: GqlContext) {
+  async neuron({ netuid, uid, mechid }: QueryNeuronArgs, context: GqlContext) {
     assertNetuidArgument(netuid);
     if (!Number.isInteger(uid) || uid < 0) {
       throw new GraphQLError("uid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null)
     // cold fallback contract handleNeuron / MCP get_neuron use: an absent UID
     // is a schema-stable card with neuron:null, never a GraphQL error.
@@ -3567,13 +3573,16 @@ const rootValue = {
         ),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ?? buildNeuronDetail(null, netuid);
-    return {
-      schema_version: data.schema_version ?? 1,
-      netuid: data.netuid ?? netuid,
-      captured_at: data.captured_at ?? null,
-      block_number: data.block_number ?? null,
-      neuron: data.neuron ?? null,
-    };
+    return stampMechanismScope(
+      {
+        schema_version: data.schema_version ?? 1,
+        netuid: data.netuid ?? netuid,
+        captured_at: data.captured_at ?? null,
+        block_number: data.block_number ?? null,
+        neuron: data.neuron ?? null,
+      },
+      mechid ?? null,
+    );
   },
 
   async neuron_history(
@@ -3685,9 +3694,11 @@ const rootValue = {
   },
 
   async subnet_weights(
-    { netuid, window }: QuerySubnet_WeightsArgs,
+    { netuid, window, mechid }: QuerySubnet_WeightsArgs,
     context: GqlContext,
   ) {
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -3711,15 +3722,18 @@ const rootValue = {
         windowLabel: windowParam,
         windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
       })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
-    return {
-      schema_version: data.schema_version ?? 1,
-      netuid: data.netuid ?? netuid,
-      window: data.window ?? windowParam,
-      observed_at: data.observed_at ?? null,
-      distinct_setters: data.distinct_setters ?? 0,
-      weight_sets: data.weight_sets ?? 0,
-      sets_per_setter: data.sets_per_setter ?? null,
-    };
+    return stampMechanismScope(
+      {
+        schema_version: data.schema_version ?? 1,
+        netuid: data.netuid ?? netuid,
+        window: data.window ?? windowParam,
+        observed_at: data.observed_at ?? null,
+        distinct_setters: data.distinct_setters ?? 0,
+        weight_sets: data.weight_sets ?? 0,
+        sets_per_setter: data.sets_per_setter ?? null,
+      },
+      mechid ?? null,
+    );
   },
 
   async subnet_stake_moves(

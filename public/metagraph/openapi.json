@@ -7611,6 +7611,7 @@
           "data": {
             "block_number": 5000000,
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "mechid": 1,
             "netuid": 7,
             "neuron": {
               "active": false,
@@ -7627,6 +7628,7 @@
               "incentive": 0.5,
               "is_burn_uid": false,
               "is_immunity_period": false,
+              "mechid": 1,
               "rank": 0.5,
               "registered_at_block": 5000000,
               "stake_tao": 0.5,
@@ -11571,6 +11573,7 @@
             },
             "block_number": 5000000,
             "captured_at": "2026-06-01T00:00:00.000Z",
+            "mechid": 1,
             "netuid": 7,
             "neuron_count": 1,
             "neurons": [
@@ -14181,6 +14184,7 @@
               "reason": "example"
             },
             "distinct_setters": 1,
+            "mechid": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -37981,6 +37985,12 @@
               "null"
             ]
           },
+          "mechid": {
+            "description": "The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -38068,6 +38078,12 @@
                   },
                   "is_immunity_period": {
                     "type": "boolean"
+                  },
+                  "mechid": {
+                    "description": "The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162).",
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
                   },
                   "rank": {
                     "description": "1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541).",
@@ -38281,6 +38297,12 @@
                 },
                 "is_immunity_period": {
                   "type": "boolean"
+                },
+                "mechid": {
+                  "description": "The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162).",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "rank": {
                   "description": "1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541).",
@@ -51655,6 +51677,12 @@
               "null"
             ]
           },
+          "mechid": {
+            "description": "The mechanism (sub-subnet) this snapshot is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -51746,6 +51774,12 @@
                 },
                 "is_immunity_period": {
                   "type": "boolean"
+                },
+                "mechid": {
+                  "description": "The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162).",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "rank": {
                   "description": "1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541).",
@@ -57474,6 +57508,12 @@
                 "is_immunity_period": {
                   "type": "boolean"
                 },
+                "mechid": {
+                  "description": "The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162).",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "rank": {
                   "description": "1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541).",
                   "type": [
@@ -57961,6 +58001,12 @@
             ]
           },
           "distinct_setters": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mechid": {
+            "description": "The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
@@ -99850,6 +99896,17 @@
             }
           },
           {
+            "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+            "in": "query",
+            "name": "mechid",
+            "required": false,
+            "schema": {
+              "maximum": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
             "description": "Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored.",
             "in": "query",
             "name": "fields",
@@ -100125,6 +100182,17 @@
             "name": "uid",
             "required": true,
             "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+            "in": "query",
+            "name": "mechid",
+            "required": false,
+            "schema": {
+              "maximum": 0,
               "minimum": 0,
               "type": "integer"
             }
@@ -104144,6 +104212,17 @@
                 "30d"
               ],
               "type": "string"
+            }
+          },
+          {
+            "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+            "in": "query",
+            "name": "mechid",
+            "required": false,
+            "schema": {
+              "maximum": 0,
+              "minimum": 0,
+              "type": "integer"
             }
           }
         ],

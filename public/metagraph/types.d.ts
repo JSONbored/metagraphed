@@ -9624,6 +9624,8 @@ export interface components {
         NeuronDetailArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
+            /** @description The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             /** @description The UID's live metagraph row; null when absent from the latest snapshot. */
             neuron: {
@@ -9647,6 +9649,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -9691,6 +9695,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -12344,6 +12350,8 @@ export interface components {
             };
             block_number?: number | null;
             captured_at?: string | null;
+            /** @description The mechanism (sub-subnet) this snapshot is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             neuron_count: number;
             neurons: {
@@ -12367,6 +12375,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -13520,6 +13530,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -13622,6 +13634,8 @@ export interface components {
         SubnetWeightsArtifact: {
             degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_setters: number;
+            /** @description The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             observed_at: string | null;
             schema_version: number;
@@ -48677,6 +48691,8 @@ export interface operations {
         parameters: {
             query?: {
                 validator_permit?: "true";
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -48714,6 +48730,7 @@ export interface operations {
                      *         },
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "neuron_count": 1,
                      *         "neurons": [
@@ -48978,6 +48995,8 @@ export interface operations {
     subnetNeuron: {
         parameters: {
             query?: {
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
             };
@@ -49012,6 +49031,7 @@ export interface operations {
                      *       "data": {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "neuron": {
                      *           "active": false,
@@ -49028,6 +49048,7 @@ export interface operations {
                      *           "incentive": 0.5,
                      *           "is_burn_uid": false,
                      *           "is_immunity_period": false,
+                     *           "mechid": 1,
                      *           "rank": 0.5,
                      *           "registered_at_block": 5000000,
                      *           "stake_tao": 0.5,
@@ -53689,6 +53710,8 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
             };
             header?: never;
             path: {
@@ -53719,6 +53742,7 @@ export interface operations {
                      *           "reason": "example"
                      *         },
                      *         "distinct_setters": 1,
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,

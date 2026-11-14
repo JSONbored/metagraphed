@@ -258,7 +258,7 @@ type Query {
   """
   Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights.
   """
-  subnet_weights(netuid: Int!, window: String): SubnetWeights!
+  subnet_weights(netuid: Int!, window: String, mechid: Int): SubnetWeights!
 
   """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
@@ -408,7 +408,7 @@ type Query {
   """
   One neuron in a subnet by UID: hot/cold keys, stake, rank, trust, consensus, incentive, dividends, emission, validator permit, immunity, axon, and take. The nested neuron field is null when that UID is absent from the latest snapshot -- a schema-stable card, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}.
   """
-  neuron(netuid: Int!, uid: Int!): Neuron!
+  neuron(netuid: Int!, uid: Int!, mechid: Int): Neuron!
 
   """
   One neuron's per-day metagraph history in a subnet by UID from the neuron_daily rollup (window: 7d/30d/90d/1y/all, default 30d), newest first: stake, rank, trust, consensus, incentive, dividends, emission, validator permit, axon, and take per snapshot_date. A UID with no matching rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.
@@ -428,7 +428,7 @@ type Query {
   """
   One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph.
   """
-  subnet_metagraph(netuid: Int!, validator_permit: Boolean, fields: String): JSON
+  subnet_metagraph(netuid: Int!, validator_permit: Boolean, mechid: Int, fields: String): JSON
 
   """
   One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview.
@@ -2240,6 +2240,11 @@ One UID's live metagraph state within a subnet (hot/cold keys, scores, stake/emi
 """
 type NeuronState {
   uid: Int!
+
+  """
+  The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via \`mechid=\`; every stored row today is mechanism 0 (#13162).
+  """
+  mechid: Int
   hotkey: String
   coldkey: String
   active: Boolean!
@@ -2391,6 +2396,11 @@ type SubnetAxonRemovals {
 type SubnetWeights {
   schema_version: Int!
   netuid: Int!
+
+  """
+  The mechanism (sub-subnet) this card is scoped to, echoed from the request's \`mechid=\`. Absent when the request did not scope a mechanism (#13162).
+  """
+  mechid: Int
   window: String
   observed_at: String
   distinct_setters: Int!
@@ -4060,6 +4070,11 @@ One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{ne
 type Neuron {
   schema_version: Int!
   netuid: Int!
+
+  """
+  The mechanism (sub-subnet) this card is scoped to, echoed from the request's \`mechid=\`. Absent when the request did not scope a mechanism (#13162).
+  """
+  mechid: Int
   captured_at: String
   block_number: Int
 
@@ -4092,6 +4107,11 @@ type NeuronHistoryPoint {
   captured_at: String
   block_number: Int
   uid: Int!
+
+  """
+  The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via \`mechid=\`; every stored row today is mechanism 0 (#13162).
+  """
+  mechid: Int
   hotkey: String
   coldkey: String
   active: Boolean!

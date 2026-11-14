@@ -3177,6 +3177,8 @@ export type Neuron = {
   __typename?: 'Neuron';
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
+  /** The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   netuid: Scalars['Int']['output'];
   /** The UID's live metagraph row; null when absent from the latest snapshot. */
   neuron?: Maybe<NeuronState>;
@@ -3222,6 +3224,8 @@ export type NeuronHistoryPoint = {
   /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
   is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
+  /** The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
@@ -3259,6 +3263,8 @@ export type NeuronState = {
   /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
   is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
+  /** The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
@@ -4569,6 +4575,7 @@ export type QueryNetwork_RandomnessArgs = {
 
 
 export type QueryNeuronArgs = {
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   uid: Scalars['Int']['input'];
 };
@@ -5056,6 +5063,7 @@ export type QuerySubnet_LifecycleArgs = {
 
 export type QuerySubnet_MetagraphArgs = {
   fields?: InputMaybe<Scalars['String']['input']>;
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   validator_permit?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -5234,6 +5242,7 @@ export type QuerySubnet_Weight_SettersArgs = {
 
 
 export type QuerySubnet_WeightsArgs = {
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -7972,6 +7981,8 @@ export type SubnetWeights = {
   __typename?: 'SubnetWeights';
   degraded?: Maybe<DegradedInfo>;
   distinct_setters: Scalars['Int']['output'];
+  /** The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
@@ -12018,6 +12029,7 @@ export type NetworkRandomnessResolvers<ContextType = GqlContext, ParentType exte
 export type NeuronResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Neuron'] = ResolversParentTypes['Neuron']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron?: Resolver<Maybe<ResolversTypes['NeuronState']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -12052,6 +12064,7 @@ export type NeuronHistoryPointResolvers<ContextType = GqlContext, ParentType ext
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -12078,6 +12091,7 @@ export type NeuronStateResolvers<ContextType = GqlContext, ParentType extends Re
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14443,6 +14457,7 @@ export type SubnetWeightSettersResolvers<ContextType = GqlContext, ParentType ex
 export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetWeights'] = ResolversParentTypes['SubnetWeights']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_setters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

@@ -4,6 +4,7 @@
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
 import { AxonEarningSchema, NeuronSchema } from "../routes/subnet-metagraph.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   NEURON_SORT_FIELD_NAMES,
   NEURON_SORT_NULLS_LAST_NOTE,
@@ -12,9 +13,16 @@ import {
   netuidSchema,
 } from "./shared.ts";
 
+const RouteQuery_subnets_netuid_metagraph =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/metagraph"];
+
 export const GetSubnetMetagraphInputSchema = z
   .object({
     netuid: netuidSchema(),
+    // #13162: THE ROUTE'S OWN PARAMETER, including its bound-to-0 posture --
+    // see mechidSchema in schemas-src/query-params.ts for why 0 is the only
+    // honest value until mechanism-aware capture lands.
+    mechid: RouteQuery_subnets_netuid_metagraph.shape.mechid,
     validator_permit: z
       .boolean()
       .optional()
@@ -106,6 +114,15 @@ export const GetSubnetMetagraphOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     netuid: netuidSchema(),
+    // #13162: echo of the request's mechanism scope -- present exactly when
+    // the caller passed `mechid`, mirroring the route's artifact field.
+    mechid: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "The mechanism (sub-subnet) this snapshot is scoped to, echoed from the request's `mechid`. Absent when the request did not scope a mechanism (#13162).",
+      ),
     neuron_count: z
       .int()
       .describe(

@@ -324,3 +324,71 @@ describe("get_subnet_metagraph row selection (#9872)", () => {
     assert.deepEqual(data.neurons, [{ uid: 1 }, { uid: 2 }]);
   });
 });
+
+// The mechanism (mechid) scope on the three mirrored tools (#13162). MCP
+// dispatch does not validate against the published Zod input schema, so the
+// bound-to-0 posture (mechidSchema) is enforced in the handlers via
+// optionalMechanismScope, with the shared MECHANISM_SCOPE_MESSAGE sentence.
+describe("mechanism scope (#13162)", () => {
+  test("get_subnet_metagraph mechid: 0 stamps the snapshot and every row", async () => {
+    const data = structured(
+      await callTool("get_subnet_metagraph", { netuid: 53, mechid: 0 }),
+    );
+    assert.equal(data.mechid, 0);
+    for (const row of data.neurons as Row[]) assert.equal(row.mechid, 0);
+  });
+
+  test("omitting mechid leaves the snapshot unstamped", async () => {
+    const data = structured(
+      await callTool("get_subnet_metagraph", { netuid: 53 }),
+    );
+    assert.equal("mechid" in data, false);
+    assert.equal("mechid" in (data.neurons as Row[])[0], false);
+  });
+
+  test("get_neuron mechid: 0 stamps both the uid and the hotkey path", async () => {
+    const byUid = structured(
+      await callTool("get_neuron", { netuid: 53, uid: 0, mechid: 0 }),
+    );
+    assert.equal(byUid.mechid, 0);
+    assert.equal((byUid.neuron as Row).mechid, 0);
+
+    const byHotkey = structured(
+      await callTool("get_neuron", {
+        netuid: 53,
+        hotkey: HOTKEY_B,
+        mechid: 0,
+      }),
+    );
+    assert.equal(byHotkey.mechid, 0);
+    assert.equal((byHotkey.neuron as Row).mechid, 0);
+  });
+
+  test("get_subnet_weights mechid: 0 echoes the scope on the card", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_weights",
+        { netuid: 5, mechid: 0 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.equal(data.mechid, 0);
+    assert.equal(data.weight_sets, 0);
+  });
+
+  test("a scope above 0 -- or a non-number -- is invalid_params on all three tools", async () => {
+    for (const [name, args] of [
+      ["get_subnet_metagraph", { netuid: 53, mechid: 1 }],
+      ["get_neuron", { netuid: 53, uid: 0, mechid: 1 }],
+      ["get_subnet_weights", { netuid: 5, mechid: 1 }],
+      ["get_subnet_metagraph", { netuid: 53, mechid: "0" }],
+    ] as const) {
+      const body = await callTool(name, args as unknown as Row);
+      const text = errorText(body);
+      assert.match(text, /invalid_params/, name);
+      assert.match(text, /mechid must be 0/, name);
+    }
+  });
+});
