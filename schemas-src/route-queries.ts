@@ -289,6 +289,11 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #13163: per-account lock card -- an account holds a handful of locks,
   // not a series.
   "/api/v1/accounts/{ss58}/locks",
+  // #13163: the newest completed basket capture is one capture -- the row
+  // bound lives in the capture receiver's own fund ceiling, not in a query
+  // parameter a caller could widen; the per-validator card takes none either.
+  "/api/v1/chain/baskets",
+  "/api/v1/validators/{hotkey}/basket",
   // #10932: per-netuid card. The earnings block it carries is projected from
   // miner-fairness at that route's own default window, so exposing a window
   // here would be a second place to set one.

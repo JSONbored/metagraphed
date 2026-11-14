@@ -252,6 +252,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_account_locks: {
     operation: "account-locks",
   },
+  get_validator_baskets: {
+    operation: "chain-baskets",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

@@ -138,6 +138,11 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // check enforces.
   "/api/v1/subnets/{netuid}/alpha-dividends",
   "/api/v1/accounts/{ss58}/locks",
+  // #13163 serves the stored Root basket captures; no UI consumes them yet.
+  // Remove the entries when a real consumer lands, which the stale-entry
+  // check enforces.
+  "/api/v1/chain/baskets",
+  "/api/v1/validators/{hotkey}/basket",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

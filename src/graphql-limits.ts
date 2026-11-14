@@ -172,6 +172,9 @@ export const FIELD_COMPLEXITY = {
   subnet_alpha_dividends: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of a handful of app.stake_locks rows.
   account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one completed capture's funds, capped by the receiver's own
+  // fund ceiling.
+  validator_baskets: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_emission_pipeline_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,

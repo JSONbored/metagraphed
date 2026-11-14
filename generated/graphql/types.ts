@@ -783,6 +783,19 @@ export type AttributionEvidence = {
   source_url?: Maybe<Scalars['String']['output']>;
 };
 
+/** The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp. */
+export type BasketCapture = {
+  __typename?: 'BasketCapture';
+  /** When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time. */
+  accepted_at?: Maybe<Scalars['String']['output']>;
+  decoder_version: Scalars['String']['output'];
+  /** The finalized block height the capture observed, as a u64 decimal string. */
+  finalized_block: Scalars['String']['output'];
+  finalized_block_hash: Scalars['String']['output'];
+  /** The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder). */
+  runtime_spec_version: Scalars['Int']['output'];
+};
+
 export type Block = {
   __typename?: 'Block';
   author?: Maybe<Scalars['String']['output']>;
@@ -3873,6 +3886,8 @@ export type Query = {
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
   validator?: Maybe<Validator>;
+  /** Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets. */
+  validator_baskets: ValidatorBaskets;
   /** Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics. */
   validator_economics: ValidatorEconomicsRanking;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
@@ -8408,6 +8423,44 @@ export type Validator = {
   uid_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
+export type ValidatorBasket = {
+  __typename?: 'ValidatorBasket';
+  /** The fund's validator hotkey as the raw 0x account-id hex. */
+  account_id: Scalars['String']['output'];
+  deposited_rao?: Maybe<Scalars['String']['output']>;
+  /** Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
+  display_price_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
+  first_block?: Maybe<Scalars['String']['output']>;
+  holdings_count?: Maybe<Scalars['Int']['output']>;
+  /** The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+  hotkey?: Maybe<Scalars['String']['output']>;
+  pending_entitlement_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */
+  provisional?: Maybe<Scalars['Boolean']['output']>;
+  realizable_nav_rao?: Maybe<Scalars['String']['output']>;
+  redeemed_rao?: Maybe<Scalars['String']['output']>;
+  shares_atomic?: Maybe<Scalars['String']['output']>;
+  /** Spot net asset value in rao, as a u64 decimal string. */
+  spot_nav_rao?: Maybe<Scalars['String']['output']>;
+  stake_price_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return. */
+  staker_twr_q64_bits?: Maybe<Scalars['String']['output']>;
+  targets_count?: Maybe<Scalars['Int']['output']>;
+};
+
+/** Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets. */
+export type ValidatorBaskets = {
+  __typename?: 'ValidatorBaskets';
+  /** The capture's funds, largest spot NAV first. */
+  baskets: Array<ValidatorBasket>;
+  capture?: Maybe<BasketCapture>;
+  /** How many funds the served capture holds -- `baskets.length`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture. */
+  fund_count?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+};
+
 /** Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators. */
 export type ValidatorComparison = {
   __typename?: 'ValidatorComparison';
@@ -8726,6 +8779,7 @@ export type ResolversTypes = ResolversObject<{
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
+  BasketCapture: ResolverTypeWrapper<BasketCapture>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
   BlockChainEventsArtifactEvents: ResolverTypeWrapper<BlockChainEventsArtifactEvents>;
@@ -9130,6 +9184,8 @@ export type ResolversTypes = ResolversObject<{
   UptimeReliability: ResolverTypeWrapper<UptimeReliability>;
   UptimeSurface: ResolverTypeWrapper<UptimeSurface>;
   Validator: ResolverTypeWrapper<Validator>;
+  ValidatorBasket: ResolverTypeWrapper<ValidatorBasket>;
+  ValidatorBaskets: ResolverTypeWrapper<ValidatorBaskets>;
   ValidatorComparison: ResolverTypeWrapper<ValidatorComparison>;
   ValidatorEconomicsExclusion: ResolverTypeWrapper<ValidatorEconomicsExclusion>;
   ValidatorEconomicsHistoryPoint: ResolverTypeWrapper<ValidatorEconomicsHistoryPoint>;
@@ -9208,6 +9264,7 @@ export type ResolversParentTypes = ResolversObject<{
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   AttributionEvidence: AttributionEvidence;
+  BasketCapture: BasketCapture;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
   BlockChainEventsArtifactEvents: BlockChainEventsArtifactEvents;
@@ -9610,6 +9667,8 @@ export type ResolversParentTypes = ResolversObject<{
   UptimeReliability: UptimeReliability;
   UptimeSurface: UptimeSurface;
   Validator: Validator;
+  ValidatorBasket: ValidatorBasket;
+  ValidatorBaskets: ValidatorBaskets;
   ValidatorComparison: ValidatorComparison;
   ValidatorEconomicsExclusion: ValidatorEconomicsExclusion;
   ValidatorEconomicsHistoryPoint: ValidatorEconomicsHistoryPoint;
@@ -10234,6 +10293,14 @@ export type AttributionEvidenceResolvers<ContextType = GqlContext, ParentType ex
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   source_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type BasketCaptureResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BasketCapture'] = ResolversParentTypes['BasketCapture']> = ResolversObject<{
+  accepted_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  decoder_version?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  finalized_block?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  finalized_block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  runtime_spec_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type BlockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Block'] = ResolversParentTypes['Block']> = ResolversObject<{
@@ -12559,6 +12626,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   tao_usd?: Resolver<ResolversTypes['TaoUsd'], ParentType, ContextType, Partial<QueryTao_UsdArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;
+  validator_baskets?: Resolver<ResolversTypes['ValidatorBaskets'], ParentType, ContextType>;
   validator_economics?: Resolver<ResolversTypes['ValidatorEconomicsRanking'], ParentType, ContextType, Partial<QueryValidator_EconomicsArgs>>;
   validator_history?: Resolver<ResolversTypes['ValidatorHistory'], ParentType, ContextType, RequireFields<QueryValidator_HistoryArgs, 'hotkey'>>;
   validator_nominators?: Resolver<ResolversTypes['NominatorList'], ParentType, ContextType, RequireFields<QueryValidator_NominatorsArgs, 'hotkey'>>;
@@ -14864,6 +14932,31 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type ValidatorBasketResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorBasket'] = ResolversParentTypes['ValidatorBasket']> = ResolversObject<{
+  account_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  deposited_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  display_price_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  first_block?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  holdings_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pending_entitlement_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provisional?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  realizable_nav_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  redeemed_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  shares_atomic?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spot_nav_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  stake_price_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  staker_twr_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  targets_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type ValidatorBasketsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorBaskets'] = ResolversParentTypes['ValidatorBaskets']> = ResolversObject<{
+  baskets?: Resolver<Array<ResolversTypes['ValidatorBasket']>, ParentType, ContextType>;
+  capture?: Resolver<Maybe<ResolversTypes['BasketCapture']>, ParentType, ContextType>;
+  fund_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorComparison'] = ResolversParentTypes['ValidatorComparison']> = ResolversObject<{
   netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -15066,6 +15159,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
+  BasketCapture?: BasketCaptureResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
   BlockChainEventsArtifactEvents?: BlockChainEventsArtifactEventsResolvers<ContextType>;
@@ -15464,6 +15558,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   UptimeReliability?: UptimeReliabilityResolvers<ContextType>;
   UptimeSurface?: UptimeSurfaceResolvers<ContextType>;
   Validator?: ValidatorResolvers<ContextType>;
+  ValidatorBasket?: ValidatorBasketResolvers<ContextType>;
+  ValidatorBaskets?: ValidatorBasketsResolvers<ContextType>;
   ValidatorComparison?: ValidatorComparisonResolvers<ContextType>;
   ValidatorEconomicsExclusion?: ValidatorEconomicsExclusionResolvers<ContextType>;
   ValidatorEconomicsHistoryPoint?: ValidatorEconomicsHistoryPointResolvers<ContextType>;

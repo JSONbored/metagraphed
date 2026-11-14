@@ -693,6 +693,13 @@ export const SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN =
 // sibling account routes above.
 export const ACCOUNT_LOCKS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([^/]+)\/locks$/;
+// Every validator's Root basket fund at the newest completed capture
+// (#13163), live from the Root basket capture store, no static file.
+export const CHAIN_BASKETS_PATH = "/api/v1/chain/baskets";
+// One validator's Root basket fund with holdings/targets (#13163), live from
+// the same store. The handler validates the ss58 itself.
+export const VALIDATOR_BASKET_PATH_PATTERN =
+  /^\/api\/v1\/validators\/([^/]+)\/basket$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

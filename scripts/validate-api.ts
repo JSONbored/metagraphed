@@ -1766,6 +1766,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/baskets",
+    (body) => {
+      // #13163: no capture store is bound in this harness, so the one honest
+      // body is the decline -- a NULL capture with a NULL fund count (0 is
+      // reserved for a completed capture's real measurement).
+      assert.equal(body.data.capture, null);
+      assert.equal(body.data.fund_count, null);
+      assert.deepEqual(body.data.baskets, []);
+    },
+  ],
+  [
+    "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/basket",
+    (body) => {
+      // #13163: same decline through the per-validator card -- capture and
+      // basket NULL, holdings/targets empty.
+      assert.equal(body.data.capture, null);
+      assert.equal(body.data.basket, null);
+      assert.deepEqual(body.data.holdings, []);
+      assert.deepEqual(body.data.targets, []);
+      assert.equal(
+        body.data.hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/locks",
     (body) => {
       // #13163: no locks store is bound in this harness, so the one honest

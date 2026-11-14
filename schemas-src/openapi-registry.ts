@@ -332,6 +332,14 @@ import {
   AccountLocksArtifactSchema,
 } from "./routes/account-locks.ts";
 import {
+  BasketCaptureSchema,
+  BasketHoldingSchema,
+  BasketTargetSchema,
+  ValidatorBasketSchema,
+  ValidatorBasketsArtifactSchema,
+  ValidatorBasketArtifactSchema,
+} from "./routes/validator-baskets.ts";
+import {
   AccountSummaryArtifactSchema,
   AccountSubnetsArtifactSchema,
 } from "./routes/account-summary.ts";
@@ -876,6 +884,12 @@ register(SubnetAlphaDividendSchema, "SubnetAlphaDividend");
 register(SubnetAlphaDividendsArtifactSchema, "SubnetAlphaDividendsArtifact");
 register(StakeLockSchema, "StakeLock");
 register(AccountLocksArtifactSchema, "AccountLocksArtifact");
+register(BasketCaptureSchema, "BasketCapture");
+register(ValidatorBasketSchema, "ValidatorBasket");
+register(BasketHoldingSchema, "BasketHolding");
+register(BasketTargetSchema, "BasketTarget");
+register(ValidatorBasketsArtifactSchema, "ValidatorBasketsArtifact");
+register(ValidatorBasketArtifactSchema, "ValidatorBasketArtifact");
 register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
 register(AccountAxonRemovalsArtifactSchema, "AccountAxonRemovalsArtifact");
 register(

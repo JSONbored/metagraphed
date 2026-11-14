@@ -99,6 +99,13 @@ import {
   loadAccountLocks,
 } from "../../src/account-locks.ts";
 import {
+  basketAccountHex,
+  buildValidatorBasket,
+  buildValidatorBaskets,
+  loadValidatorBasket,
+  loadValidatorBaskets,
+} from "../../src/validator-baskets.ts";
+import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -3160,6 +3167,70 @@ export async function handleAccountLocks(
     "short",
   );
   return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/chain/baskets (#13163): every validator's Root basket fund at
+// the newest completed capture, read through the ROOT_BASKET_STORE seam. No
+// store bound -- today's deployed Workers -- no completed capture, or a
+// failed read is the same schema-stable decline: capture null, fund_count
+// null, baskets empty, marked as a tier fallback. With a capture present an
+// empty list is a real measurement (a completed capture is a verified
+// complete enumeration), so only the null-capture body is marked degraded.
+export async function handleChainBaskets(request: Request, env: Env) {
+  const loaded = await loadValidatorBaskets(env);
+  const data = buildValidatorBaskets(loaded);
+  const capture = data.capture as Record<string, unknown> | null;
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/baskets.json",
+        capture?.accepted_at ?? null,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/validators/{hotkey}/basket (#13163): one validator's Root
+// basket fund with its holdings and target allocations, read through the same
+// seam. Same ss58 validation as the sibling account routes; `basket: null`
+// with a PRESENT capture is a measurement (the capture enumerates every
+// fund), while a null capture is the decline, marked as a tier fallback.
+export async function handleValidatorBasket(
+  request: Request,
+  env: Env,
+  hotkey: string,
+) {
+  const accountHex = isFinneySs58Address(hotkey)
+    ? basketAccountHex(hotkey)
+    : null;
+  if (accountHex === null) {
+    return errorResponse(
+      "invalid_ss58",
+      "hotkey must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const loaded = await loadValidatorBasket(env, accountHex);
+  const data = buildValidatorBasket(loaded, hotkey);
+  const capture = data.capture as Record<string, unknown> | null;
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/validators/${hotkey}/basket.json`,
+        capture?.accepted_at ?? null,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes

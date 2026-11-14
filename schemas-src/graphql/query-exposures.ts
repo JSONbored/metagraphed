@@ -1072,6 +1072,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history.",
   },
   {
+    field: "validator_baskets",
+    operation: "chain-baskets",
+    returns: "ValidatorBaskets!",
+    description:
+      "Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets.",
+  },
+  {
     field: "accounts",
     operation: "accounts-list",
     returns: "AccountList!",

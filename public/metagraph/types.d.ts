@@ -1660,6 +1660,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch every validator's Root basket fund
+         * @description Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.
+         */
+        get: operations["chainBaskets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/burn": {
         parameters: {
             query?: never;
@@ -5290,6 +5310,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/{hotkey}/basket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one validator's Root basket detail
+         * @description Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163). Served live from the Root basket capture store; basket null with a PRESENT capture is a measurement — the completed capture enumerates every fund and this hotkey holds none — while a null capture is the decline (no store bound, or no completed capture yet). Returns 400 on an invalid ss58 hotkey.
+         */
+        get: operations["validatorBasket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validators/{hotkey}/history": {
         parameters: {
             query?: never;
@@ -6580,6 +6620,31 @@ export interface components {
         };
         /** @enum {string} */
         Authority: "community" | "official" | "provider-claimed" | "registry-observed";
+        /** @description The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp. */
+        BasketCapture: {
+            /** @description When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time. */
+            accepted_at: string | null;
+            decoder_version: string;
+            /** @description The finalized block height the capture observed, as a u64 decimal string. */
+            finalized_block: string;
+            finalized_block_hash: string;
+            /** @description The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder). */
+            runtime_spec_version: number;
+        };
+        /** @description One holding leg of a validator's basket at the served capture. */
+        BasketHolding: {
+            netuid: number;
+            quantity_atomic: string | null;
+            /** @description rao for the netuid-0 cash leg; alpha_atomic for every subnet holding. */
+            quantity_unit: ("rao" | "alpha_atomic") | null;
+            realizable_value_rao: string | null;
+            spot_value_rao: string | null;
+        };
+        /** @description One target-allocation entry of a validator's basket. */
+        BasketTarget: {
+            netuid: number;
+            weight: number;
+        };
         /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
         BlockChainEventsArtifact: {
@@ -14217,6 +14282,52 @@ export interface components {
                 uptime_ratio: number | null;
             }[];
             window?: string | null;
+        };
+        /** @description One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
+        ValidatorBasket: {
+            /** @description The fund's validator hotkey as the raw 0x account-id hex. */
+            account_id: string;
+            deposited_rao: string | null;
+            /** @description Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
+            display_price_q64_bits: string | null;
+            /** @description The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
+            first_block: string | null;
+            holdings_count: number | null;
+            /** @description The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+            hotkey: string | null;
+            pending_entitlement_q64_bits: string | null;
+            /** @description Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */
+            provisional: boolean | null;
+            realizable_nav_rao: string | null;
+            redeemed_rao: string | null;
+            shares_atomic: string | null;
+            /** @description Spot net asset value in rao, as a u64 decimal string. */
+            spot_nav_rao: string | null;
+            stake_price_q64_bits: string | null;
+            /** @description The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return. */
+            staker_twr_q64_bits: string | null;
+            targets_count: number | null;
+        };
+        /** @description One validator's Root basket fund with its holdings and target allocations at the newest completed capture (#13163). basket is null with a present capture when the capture holds no fund for the hotkey (a measurement), and null with a null capture when there is nothing to serve (the decline). Mirrors GET /api/v1/validators/{hotkey}/basket. */
+        ValidatorBasketArtifact: {
+            basket: components["schemas"]["ValidatorBasket"] | null;
+            capture: components["schemas"]["BasketCapture"] | null;
+            /** @description The basket's holding legs, ordered by netuid. */
+            holdings: components["schemas"]["BasketHolding"][];
+            /** @description The requested validator hotkey (SS58). */
+            hotkey: string;
+            schema_version: number;
+            /** @description The basket's target allocations, ordered by netuid. */
+            targets: components["schemas"]["BasketTarget"][];
+        };
+        /** @description Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets. */
+        ValidatorBasketsArtifact: {
+            /** @description The capture's funds, largest spot NAV first. */
+            baskets: components["schemas"]["ValidatorBasket"][];
+            capture: components["schemas"]["BasketCapture"] | null;
+            /** @description How many funds the served capture holds -- `baskets.length`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture. */
+            fund_count: number | null;
+            schema_version: number;
         };
         ValidatorDetailArtifact: {
             /**
@@ -28463,6 +28574,137 @@ export interface operations {
                      *     1,4,40,10
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainBaskets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "baskets": [
+                     *           {
+                     *             "account_id": "example",
+                     *             "deposited_rao": "example",
+                     *             "display_price_q64_bits": "example",
+                     *             "first_block": "example",
+                     *             "holdings_count": 1,
+                     *             "hotkey": "example",
+                     *             "pending_entitlement_q64_bits": "Example Subnet",
+                     *             "provisional": false,
+                     *             "realizable_nav_rao": "example",
+                     *             "redeemed_rao": "example",
+                     *             "shares_atomic": "example",
+                     *             "spot_nav_rao": "example",
+                     *             "stake_price_q64_bits": "example",
+                     *             "staker_twr_q64_bits": "example",
+                     *             "targets_count": 1
+                     *           }
+                     *         ],
+                     *         "capture": {
+                     *           "accepted_at": "2026-06-01T00:00:00.000Z",
+                     *           "decoder_version": "2026-06-29.1",
+                     *           "finalized_block": "example",
+                     *           "finalized_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1
+                     *         },
+                     *         "fund_count": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorBasketsArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -55721,6 +55963,156 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorDetailArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorBasket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "basket": {
+                     *           "account_id": "example",
+                     *           "deposited_rao": "example",
+                     *           "display_price_q64_bits": "example",
+                     *           "first_block": "example",
+                     *           "holdings_count": 1,
+                     *           "hotkey": "example",
+                     *           "pending_entitlement_q64_bits": "Example Subnet",
+                     *           "provisional": false,
+                     *           "realizable_nav_rao": "example",
+                     *           "redeemed_rao": "example",
+                     *           "shares_atomic": "example",
+                     *           "spot_nav_rao": "example",
+                     *           "stake_price_q64_bits": "example",
+                     *           "staker_twr_q64_bits": "example",
+                     *           "targets_count": 1
+                     *         },
+                     *         "capture": {
+                     *           "accepted_at": "2026-06-01T00:00:00.000Z",
+                     *           "decoder_version": "2026-06-29.1",
+                     *           "finalized_block": "example",
+                     *           "finalized_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1
+                     *         },
+                     *         "holdings": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "quantity_atomic": "example",
+                     *             "quantity_unit": "rao",
+                     *             "realizable_value_rao": "example",
+                     *             "spot_value_rao": "example"
+                     *           }
+                     *         ],
+                     *         "hotkey": "example",
+                     *         "schema_version": 1,
+                     *         "targets": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "weight": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorBasketArtifact"];
                     };
                 };
             };

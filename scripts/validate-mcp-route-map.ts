@@ -51,6 +51,13 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "event stream open; MCP sessions subscribe through the hub's own " +
     "/mcp-subscribe channel (mcpSubscribedSessions), and the polled twin is " +
     "list_chain_events.",
+  "/api/v1/validators/{hotkey}/basket":
+    "The per-validator drill-in of /api/v1/chain/baskets (#13163). " +
+    "get_validator_baskets already hands an agent EVERY fund at the served " +
+    "capture in one call -- a capture holds at most 2,048 -- so a per-hotkey " +
+    "tool would be a second, narrower answer to the same question. The " +
+    "holdings/targets detail is a UI drill-in; add the tool when an agent " +
+    "workflow actually needs per-leg composition.",
 };
 
 /** `.atom`/`.rss`/`.json` feed variants: get_feed serves the JSON one. */

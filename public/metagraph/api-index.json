@@ -851,6 +851,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-baskets",
+      "path": "/metagraph/chain/baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "validator-basket",
+      "path": "/metagraph/validators/{hotkey}/basket.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "retirement": null,
@@ -2633,7 +2651,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 177,
+    "mainnet_only_route_count": 179,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8773,6 +8791,38 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/baskets.json",
+      "cache": "short",
+      "description": "Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.",
+      "id": "chain-baskets",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/baskets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/validators/{hotkey}/basket.json",
+      "cache": "short",
+      "description": "Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163). Served live from the Root basket capture store; basket null with a PRESENT capture is a measurement — the completed capture enumerates every fund and this hotkey holds none — while a null capture is the decline (no store bound, or no completed capture yet). Returns 400 on an invalid ss58 hotkey.",
+      "id": "validator-basket",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/validators/{hotkey}/basket",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",

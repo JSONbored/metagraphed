@@ -148,8 +148,16 @@ describe("the named prose-only exemption (#10517)", () => {
     // backlog reach 35 unnoticed. A named list has the opposite property only
     // while it is short enough to read, so this bounds it rather than trusting
     // that nobody appends.
+    //
+    // 3 -> 7 (#13163): the stake-v2 and basket serving slices publish four
+    // routes whose producers land with the engine (alpha-dividends, locks,
+    // chain/baskets, validators/{hotkey}/basket) -- rendering an empty
+    // decline card would be building a surface for the checker. Each entry
+    // still names its consumer path and the stale-entry check still forces
+    // removal the moment one is rendered; the next route that is NOT
+    // engine-gated must render instead of widening this.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 3,
+      PROSE_ONLY_ROUTES.length <= 7,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

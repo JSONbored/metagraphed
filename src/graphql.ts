@@ -51,6 +51,10 @@ import {
   loadSubnetAlphaDividends,
 } from "./subnet-alpha-dividends.ts";
 import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import {
+  buildValidatorBaskets,
+  loadValidatorBaskets,
+} from "./validator-baskets.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -9585,6 +9589,14 @@ const rootValue = {
     // store is a schema-stable card with lock_count null, never a GraphQL
     // error.
     return buildAccountLocks(await loadAccountLocks(context.env, ss58), ss58);
+  },
+
+  async validator_baskets(_args: unknown, context: GqlContext) {
+    // #13163: same loadValidatorBaskets -> buildValidatorBaskets decline
+    // contract the REST handler and the MCP tool share -- no store, or no
+    // completed capture, is a schema-stable card with capture and fund_count
+    // null, never a GraphQL error.
+    return buildValidatorBaskets(await loadValidatorBaskets(context.env));
   },
 
   async account_children(

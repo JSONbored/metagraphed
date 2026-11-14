@@ -559,3 +559,61 @@ describe("get_account_locks (#13163)", () => {
     assert.match(errorText(body), /ss58/);
   });
 });
+
+// The get_validator_baskets tool (#13163): same loader/builder as the REST
+// route and the GraphQL field, so the decline and the capture match exactly.
+describe("get_validator_baskets (#13163)", () => {
+  test("no bound store answers the null-capture decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_validator_baskets",
+        {},
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      capture: null,
+      fund_count: null,
+      baskets: [],
+    });
+  });
+
+  test("a bound store serves the capture's funds", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      ROOT_BASKET_STORE: {
+        write: async () => ({}),
+        read: {
+          async first(sql: string) {
+            return /FROM root_basket_captures/.test(sql)
+              ? {
+                  capture_id: "00000000-0000-4000-8000-000000000001",
+                  finalized_block: "6500000",
+                  finalized_block_hash: `0x${"02".repeat(32)}`,
+                  runtime_spec_version: 454,
+                  decoder_version: "subtensor-v454-14cde641-v1",
+                  accepted_at_ms: "1763000000000",
+                }
+              : null;
+          },
+          async query() {
+            return [];
+          },
+        },
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_validator_baskets",
+        {},
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    // A completed capture with no funds is a MEASURED zero, not a decline.
+    assert.equal(data.fund_count, 0);
+    assert.equal((data.capture as Row).finalized_block, "6500000");
+  });
+});
