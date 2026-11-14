@@ -199,11 +199,6 @@ interface RuntimeSecretEnv {
   METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS?: string;
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
-  /** #13171 (part of #13142): selects the Hyperdrive-backed state assembly on
-   * the main Worker entry. Unset everywhere today — the seam lands dark, and
-   * only the exact value "hyperdrive" (plus a bound HYPERDRIVE) activates it;
-   * see workers/api.entry.ts and src/hyperdrive-state-bindings.ts. */
-  METAGRAPH_STATE_SOURCE?: string;
   METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN?: string;
   /**
    * #9009: AES-256-GCM key material (via SHA-256) for the MCP
@@ -353,6 +348,16 @@ interface SubtleCryptoDeriveKeyAlgorithm {
  * fixtures do not make these bindings appear required or available on wss-lb. */
 interface LegacyStoreFixtureEnv {
   HYPERDRIVE?: Hyperdrive;
+  /** #13171 (part of #13142): selects the Hyperdrive-backed state assembly on
+   * the main Worker entry. Unset everywhere today — the seam lands dark, and
+   * only the exact value "hyperdrive" (plus the HYPERDRIVE binding above)
+   * activates it; see workers/api.entry.ts and
+   * src/hyperdrive-state-bindings.ts. Declared HERE, beside the binding it
+   * gates, and deliberately NOT in RuntimeSecretEnv: it is a Worker-entry
+   * selector, not a native-process scalar, so it must never join
+   * NATIVE_SETTING_KEYS (tests/native-environment-contracts.test.ts enforces
+   * that every RuntimeSecretEnv scalar is reviewed into that vocabulary). */
+  METAGRAPH_STATE_SOURCE?: string;
   NEON_WRITE_BUFFER_LANES?: string;
 }
 interface LegacyBufferFixtureEnv {
