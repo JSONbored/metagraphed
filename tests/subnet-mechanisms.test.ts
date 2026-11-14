@@ -48,16 +48,17 @@ describe("buildSubnetMechanisms", () => {
   test("formats, orders by mechid, and stamps the newest capture", () => {
     const card = buildSubnetMechanisms(
       [
-        mechanismRow({ mechid: 1, emission_split: 0.25, captured_at: CAPTURED_MS + 1000 }),
+        mechanismRow({
+          mechid: 1,
+          emission_split: 0.25,
+          captured_at: CAPTURED_MS + 1000,
+        }),
         mechanismRow(),
       ],
       64,
     );
     assert.equal(card.mechanism_count, 2);
-    assert.equal(
-      card.captured_at,
-      new Date(CAPTURED_MS + 1000).toISOString(),
-    );
+    assert.equal(card.captured_at, new Date(CAPTURED_MS + 1000).toISOString());
     assert.deepEqual(card.mechanisms, [
       {
         mechid: 0,
@@ -119,8 +120,18 @@ describe("buildSubnetMechanisms", () => {
     );
     assert.equal(card.mechanism_count, 4);
     assert.deepEqual(card.mechanisms, [
-      { mechid: 0, emission_split: null, consensus_mode: null, captured_at: null },
-      { mechid: 1, emission_split: null, consensus_mode: null, captured_at: null },
+      {
+        mechid: 0,
+        emission_split: null,
+        consensus_mode: null,
+        captured_at: null,
+      },
+      {
+        mechid: 1,
+        emission_split: null,
+        consensus_mode: null,
+        captured_at: null,
+      },
       {
         mechid: 2,
         emission_split: 0.75,

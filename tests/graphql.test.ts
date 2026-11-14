@@ -25782,9 +25782,7 @@ describe("graphql — subnet_mechanisms (#13162)", () => {
   });
 
   test("an impossible netuid is BAD_USER_INPUT", async () => {
-    const { body } = await gql(
-      "{ subnet_mechanisms(netuid: -1) { netuid } }",
-    );
+    const { body } = await gql("{ subnet_mechanisms(netuid: -1) { netuid } }");
     const errors = (body.errors ?? []) as Array<{
       message?: string;
       extensions?: { code?: string };

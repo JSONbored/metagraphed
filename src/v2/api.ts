@@ -32,9 +32,10 @@ function integer(value: string) {
 /** Public GET operations. Sharing their matchers keeps CORS scoped
  * to the same paths the read-only REST handler actually owns. */
 export function matchV2PublicReadRoute(pathname: string) {
-  const route = /^\/api\/v2\/networks\/([^/]+)\/(head|blocks(?:\/([^/]+))?)$/.exec(
-    pathname,
-  );
+  const route =
+    /^\/api\/v2\/networks\/([^/]+)\/(head|blocks(?:\/([^/]+))?)$/.exec(
+      pathname,
+    );
   const accountRoute =
     /^\/api\/v2\/networks\/([^/]+)\/accounts\/([^/]+)\/(events|stake|balance)$/.exec(
       pathname,

@@ -247,11 +247,17 @@ describe("data-api's bundle boundary", () => {
     // Native table-export selection adds 953 source / 386 minified / 63 gzip
     // bytes over 347bc45a, for 4,894,218 source bytes. The PostgreSQL exporter
     // and pinned decoder remain outside the Worker graph.
+    // The mechanism (mechid) dimension (#13162) adds 5,628 source bytes over
+    // a1263f71, for 4,899,846: the shared scope stamp (mechanism-scope.ts),
+    // the subnet-mechanisms builders and store selector, and the grown neuron
+    // schema prose. The PostgreSQL mechanisms store (pg-subnet-mechanisms.ts)
+    // and every previously forbidden native implementation remain outside this
+    // graph; keep 2,154 source bytes of margin for this measured change.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_896_000,
+      firstParty < 4_902_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

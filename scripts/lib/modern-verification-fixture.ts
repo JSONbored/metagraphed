@@ -28,7 +28,6 @@ export const MODERN_FIXTURE = {
     "a282c9f90a033ee097f300fbfbfb922cc64d18b47c55d64fcfe077e1f2d25c79",
 } as const;
 
-
 /** Controlled exact-key observation, not producer or chain qualification. */
 export function modernAccountBalanceRow(account = `0x${"a".repeat(64)}`) {
   const observedAt = String(MODERN_FIXTURE.now);

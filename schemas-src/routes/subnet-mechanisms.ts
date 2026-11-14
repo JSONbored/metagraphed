@@ -9,7 +9,12 @@ import { z } from "zod";
 
 export const SubnetMechanismSchema = z
   .object({
-    mechid: z.int().min(0).describe("The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has."),
+    mechid: z
+      .int()
+      .min(0)
+      .describe(
+        "The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has.",
+      ),
     emission_split: z
       .number()
       .min(0)

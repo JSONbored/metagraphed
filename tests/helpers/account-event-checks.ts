@@ -466,5 +466,4 @@ export function registerAccountEventChecks(
       );
     }
   });
-
 }

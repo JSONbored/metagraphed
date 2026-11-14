@@ -7189,8 +7189,7 @@ describe("mechanism scope (#13162)", () => {
     const { env } = dbWith({ neurons: [] });
     env.METAGRAPH_NEURONS_SOURCE = "data-api";
     env.DATA_API = {
-      fetch: async () =>
-        Response.json(buildNeuronDetail(neuronRow(), NETUID)),
+      fetch: async () => Response.json(buildNeuronDetail(neuronRow(), NETUID)),
     };
     const path = `/api/v1/subnets/${NETUID}/neurons/${UID}?mechid=0`;
     const body = await json(

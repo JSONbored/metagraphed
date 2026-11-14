@@ -15,8 +15,10 @@ import {
 // stampMechanismScope is generic over the payload it returns, which is the
 // point for its callers (an unscoped payload keeps its exact type); the tests
 // widen the literals so the ADDED key is readable.
-const stamp = (data: Record<string, unknown>, mechid: number | null | undefined) =>
-  stampMechanismScope(data, mechid);
+const stamp = (
+  data: Record<string, unknown>,
+  mechid: number | null | undefined,
+) => stampMechanismScope(data, mechid);
 
 describe("invalidMechanismScope", () => {
   test("absent means unscoped, which is always servable", () => {
@@ -65,7 +67,10 @@ describe("stampMechanismScope", () => {
   });
 
   test("stamps a neuron detail card, and leaves a null neuron null", () => {
-    const withRow = stamp({ schema_version: 1, netuid: 7, neuron: { uid: 3 } }, 0);
+    const withRow = stamp(
+      { schema_version: 1, netuid: 7, neuron: { uid: 3 } },
+      0,
+    );
     assert.equal(withRow.mechid, 0);
     assert.deepEqual(withRow.neuron, { uid: 3, mechid: 0 });
 

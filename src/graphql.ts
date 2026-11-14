@@ -3697,10 +3697,7 @@ const rootValue = {
     };
   },
 
-  async subnet_mechanisms(
-    { netuid }: { netuid: number },
-    context: GqlContext,
-  ) {
+  async subnet_mechanisms({ netuid }: { netuid: number }, context: GqlContext) {
     assertNetuidArgument(netuid);
     // #13162: same loadSubnetMechanisms -> buildSubnetMechanisms decline
     // contract the REST handler and the MCP tool share -- an unbound or
