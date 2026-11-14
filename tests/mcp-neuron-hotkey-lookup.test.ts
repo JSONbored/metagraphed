@@ -446,3 +446,116 @@ describe("get_subnet_mechanisms (#13162)", () => {
     assert.match(errorText(body), /netuid/);
   });
 });
+
+// The get_subnet_alpha_dividends tool (#13163): same loader/builder as the
+// REST route and the GraphQL field, so the decline and the accruals match
+// exactly.
+describe("get_subnet_alpha_dividends (#13163)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_alpha_dividends",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      hotkey_count: null,
+      captured_at: null,
+      dividends: [],
+    });
+  });
+
+  test("a bound store serves the accruals", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_ALPHA_DIVIDENDS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            alpha_divs: "12500",
+            root_alpha_divs: "300",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_alpha_dividends",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.hotkey_count, 1);
+    assert.equal((data.dividends as Row[])[0].alpha_divs, "12500");
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_alpha_dividends", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});
+
+// The get_account_locks tool (#13163): same loader/builder as the REST route
+// and the GraphQL field, so the decline and the locks match exactly.
+describe("get_account_locks (#13163)", () => {
+  const COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_account_locks",
+        { ss58: COLDKEY },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      ss58: COLDKEY,
+      lock_count: null,
+      captured_at: null,
+      locks: [],
+    });
+  });
+
+  test("a bound store serves the locks", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      ACCOUNT_LOCKS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            netuid: 7,
+            kind: "Lock",
+            amount: "5000000000",
+            maturity_block: 9_000_000,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_account_locks",
+        { ss58: COLDKEY },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.lock_count, 1);
+    assert.equal((data.locks as Row[])[0].kind, "Lock");
+  });
+
+  test("an invalid ss58 is invalid_params", async () => {
+    const body = await callTool("get_account_locks", { ss58: "nope" });
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /ss58/);
+  });
+});

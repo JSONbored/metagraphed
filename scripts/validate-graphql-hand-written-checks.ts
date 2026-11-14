@@ -82,7 +82,12 @@ import { readFileSync } from "node:fs";
 // rejection for a representative of every deleted class.
 // 185 -> 179: four more sort guards proven dispatch-covered and deleted in
 // the annotated-consts sweep (probe log on the PR), same method as #10993.
-const CEILING = 179;
+// 179 -> 180 (#13163): account_locks hand-checks its ss58 PATH parameter --
+// dispatch validates query parameters only, and the checksum test
+// (isFinneySs58Address, #10036) is not expressible in the published
+// { type: "string" } schema. Same live class as the sibling account
+// resolvers' guards.
+const CEILING = 180;
 
 const SOURCE = "src/graphql.ts";
 

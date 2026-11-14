@@ -346,6 +346,18 @@ export type AccountList = {
   total: Scalars['Int']['output'];
 };
 
+/** One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+export type AccountLocks = {
+  __typename?: 'AccountLocks';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many locks this account holds here -- `locks.length`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published. */
+  lock_count?: Maybe<Scalars['Int']['output']>;
+  /** The account's locks, ordered by (netuid, hotkey, kind). */
+  locks: Array<StakeLock>;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
+};
+
 export type AccountModuleCall = {
   __typename?: 'AccountModuleCall';
   call_module?: Maybe<Scalars['String']['output']>;
@@ -3479,6 +3491,8 @@ export type Query = {
   account_identity: AccountIdentity;
   /** One account's on-chain identity change history, newest first -- an append-only diff-tracking timeline (name/url/github/image/discord/description/additional plus a stable hash per entry). Page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no identity-history rows resolves to a schema-stable empty timeline, never null. Mirrors GET /api/v1/accounts/{ss58}/identity-history. */
   account_identity_history: AccountIdentityHistory;
+  /** One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+  account_locks: AccountLocks;
   /** Live parent-hotkey delegation graph (#6723) for one Finney ss58 account -- every hotkey currently delegating stake-weight to it, per subnet -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no parents on any subnet). Companion to account_children. Mirrors GET /api/v1/accounts/{ss58}/parents. */
   account_parents?: Maybe<AccountParents>;
   /** One hotkey's cross-subnet neuron memberships in netuid/uid order, with observed scores, role, active state, native emission, counts and priced emission totals. Legacy stake quantities, total capital, concentration and investment yield are unavailable and remain null, including for an empty card; metagraph voting weight cannot establish independent principal. An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio. */
@@ -3717,6 +3731,8 @@ export type Query = {
   source_snapshots: SourceSnapshotList;
   /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}. */
   subnet?: Maybe<Subnet>;
+  /** One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+  subnet_alpha_dividends: SubnetAlphaDividends;
   /** Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals. */
   subnet_axon_removals: SubnetAxonRemovals;
   /** Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn. */
@@ -3951,6 +3967,11 @@ export type QueryAccount_Identity_HistoryArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
+  ss58: Scalars['String']['input'];
+};
+
+
+export type QueryAccount_LocksArgs = {
   ss58: Scalars['String']['input'];
 };
 
@@ -4837,6 +4858,11 @@ export type QuerySubnetArgs = {
   netuid: Scalars['Int']['input'];
   network?: InputMaybe<Network>;
   sections?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_Alpha_DividendsArgs = {
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -6143,6 +6169,21 @@ export type SourceSnapshotsArtifactSummary = {
   verification_result_count: Scalars['Int']['output'];
 };
 
+/** One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp. */
+export type StakeLock = {
+  __typename?: 'StakeLock';
+  /** The locked quantity -- u64 atomic units as a decimal string. */
+  amount: Scalars['String']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this lock binds. */
+  hotkey: Scalars['String']['output'];
+  /** The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends. */
+  kind: Scalars['String']['output'];
+  /** The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis. */
+  maturity_block?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+};
+
 export type Subnet = {
   __typename?: 'Subnet';
   also_on?: Maybe<Array<SubnetIndexEntryAlsoOn>>;
@@ -6203,6 +6244,30 @@ export type SubnetSurfacesArgs = {
   order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp. */
+export type SubnetAlphaDividend = {
+  __typename?: 'SubnetAlphaDividend';
+  /** Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0. */
+  alpha_divs?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this pending dividend accrual belongs to. */
+  hotkey: Scalars['String']['output'];
+  /** Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  root_alpha_divs?: Maybe<Scalars['String']['output']>;
+};
+
+/** One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+export type SubnetAlphaDividends = {
+  __typename?: 'SubnetAlphaDividends';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's pending dividend accruals, largest alpha_divs first. */
+  dividends: Array<SubnetAlphaDividend>;
+  /** How many hotkeys carry a pending accrual row here -- `dividends.length`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published. */
+  hotkey_count?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
 };
 
 export type SubnetAxonRemovals = {
@@ -8626,6 +8691,7 @@ export type ResolversTypes = ResolversObject<{
   AccountIdentityHistoryEntry: ResolverTypeWrapper<AccountIdentityHistoryEntry>;
   AccountLabel: ResolverTypeWrapper<AccountLabel>;
   AccountList: ResolverTypeWrapper<AccountList>;
+  AccountLocks: ResolverTypeWrapper<AccountLocks>;
   AccountModuleCall: ResolverTypeWrapper<AccountModuleCall>;
   AccountOwnershipTie: ResolverTypeWrapper<AccountOwnershipTie>;
   AccountParentEntry: ResolverTypeWrapper<AccountParentEntry>;
@@ -8916,8 +8982,11 @@ export type ResolversTypes = ResolversObject<{
   SourceSnapshotList: ResolverTypeWrapper<SourceSnapshotList>;
   SourceSnapshotsArtifactSources: ResolverTypeWrapper<SourceSnapshotsArtifactSources>;
   SourceSnapshotsArtifactSummary: ResolverTypeWrapper<SourceSnapshotsArtifactSummary>;
+  StakeLock: ResolverTypeWrapper<StakeLock>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subnet: ResolverTypeWrapper<Subnet>;
+  SubnetAlphaDividend: ResolverTypeWrapper<SubnetAlphaDividend>;
+  SubnetAlphaDividends: ResolverTypeWrapper<SubnetAlphaDividends>;
   SubnetAxonRemovals: ResolverTypeWrapper<SubnetAxonRemovals>;
   SubnetBurn: ResolverTypeWrapper<SubnetBurn>;
   SubnetBurnHistory: ResolverTypeWrapper<SubnetBurnHistory>;
@@ -9104,6 +9173,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountIdentityHistoryEntry: AccountIdentityHistoryEntry;
   AccountLabel: AccountLabel;
   AccountList: AccountList;
+  AccountLocks: AccountLocks;
   AccountModuleCall: AccountModuleCall;
   AccountOwnershipTie: AccountOwnershipTie;
   AccountParentEntry: AccountParentEntry;
@@ -9392,8 +9462,11 @@ export type ResolversParentTypes = ResolversObject<{
   SourceSnapshotList: SourceSnapshotList;
   SourceSnapshotsArtifactSources: SourceSnapshotsArtifactSources;
   SourceSnapshotsArtifactSummary: SourceSnapshotsArtifactSummary;
+  StakeLock: StakeLock;
   String: Scalars['String']['output'];
   Subnet: Subnet;
+  SubnetAlphaDividend: SubnetAlphaDividend;
+  SubnetAlphaDividends: SubnetAlphaDividends;
   SubnetAxonRemovals: SubnetAxonRemovals;
   SubnetBurn: SubnetBurn;
   SubnetBurnHistory: SubnetBurnHistory;
@@ -9822,6 +9895,14 @@ export type AccountListResolvers<ContextType = GqlContext, ParentType extends Re
   items?: Resolver<Array<ResolversTypes['AccountEntry']>, ParentType, ContextType>;
   sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type AccountLocksResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountLocks'] = ResolversParentTypes['AccountLocks']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lock_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  locks?: Resolver<Array<ResolversTypes['StakeLock']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type AccountModuleCallResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountModuleCall'] = ResolversParentTypes['AccountModuleCall']> = ResolversObject<{
@@ -12287,6 +12368,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   account_history?: Resolver<ResolversTypes['AccountHistory'], ParentType, ContextType, RequireFields<QueryAccount_HistoryArgs, 'ss58'>>;
   account_identity?: Resolver<ResolversTypes['AccountIdentity'], ParentType, ContextType, RequireFields<QueryAccount_IdentityArgs, 'ss58'>>;
   account_identity_history?: Resolver<ResolversTypes['AccountIdentityHistory'], ParentType, ContextType, RequireFields<QueryAccount_Identity_HistoryArgs, 'ss58'>>;
+  account_locks?: Resolver<ResolversTypes['AccountLocks'], ParentType, ContextType, RequireFields<QueryAccount_LocksArgs, 'ss58'>>;
   account_parents?: Resolver<Maybe<ResolversTypes['AccountParents']>, ParentType, ContextType, RequireFields<QueryAccount_ParentsArgs, 'ss58'>>;
   account_portfolio?: Resolver<ResolversTypes['AccountPortfolio'], ParentType, ContextType, RequireFields<QueryAccount_PortfolioArgs, 'ss58'>>;
   account_position_history?: Resolver<ResolversTypes['AccountPositionHistory'], ParentType, ContextType, RequireFields<QueryAccount_Position_HistoryArgs, 'netuid' | 'ss58'>>;
@@ -12406,6 +12488,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   source_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   source_snapshots?: Resolver<ResolversTypes['SourceSnapshotList'], ParentType, ContextType, Partial<QuerySource_SnapshotsArgs>>;
   subnet?: Resolver<Maybe<ResolversTypes['Subnet']>, ParentType, ContextType, RequireFields<QuerySubnetArgs, 'netuid'>>;
+  subnet_alpha_dividends?: Resolver<ResolversTypes['SubnetAlphaDividends'], ParentType, ContextType, RequireFields<QuerySubnet_Alpha_DividendsArgs, 'netuid'>>;
   subnet_axon_removals?: Resolver<ResolversTypes['SubnetAxonRemovals'], ParentType, ContextType, RequireFields<QuerySubnet_Axon_RemovalsArgs, 'netuid'>>;
   subnet_burn?: Resolver<Maybe<ResolversTypes['SubnetBurn']>, ParentType, ContextType, RequireFields<QuerySubnet_BurnArgs, 'netuid'>>;
   subnet_burn_history?: Resolver<ResolversTypes['SubnetBurnHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Burn_HistoryArgs, 'netuid'>>;
@@ -13102,6 +13185,15 @@ export type SourceSnapshotsArtifactSummaryResolvers<ContextType = GqlContext, Pa
   verification_result_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type StakeLockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['StakeLock'] = ResolversParentTypes['StakeLock']> = ResolversObject<{
+  amount?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  maturity_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Subnet'] = ResolversParentTypes['Subnet']> = ResolversObject<{
   also_on?: Resolver<Maybe<Array<ResolversTypes['SubnetIndexEntryAlsoOn']>>, ParentType, ContextType>;
   categories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
@@ -13130,6 +13222,21 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   surfaces?: Resolver<Array<ResolversTypes['Surface']>, ParentType, ContextType, Partial<SubnetSurfacesArgs>>;
   symbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaDividendResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaDividend'] = ResolversParentTypes['SubnetAlphaDividend']> = ResolversObject<{
+  alpha_divs?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  root_alpha_divs?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaDividendsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaDividends'] = ResolversParentTypes['SubnetAlphaDividends']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  dividends?: Resolver<Array<ResolversTypes['SubnetAlphaDividend']>, ParentType, ContextType>;
+  hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAxonRemovals'] = ResolversParentTypes['SubnetAxonRemovals']> = ResolversObject<{
@@ -14924,6 +15031,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountIdentityHistoryEntry?: AccountIdentityHistoryEntryResolvers<ContextType>;
   AccountLabel?: AccountLabelResolvers<ContextType>;
   AccountList?: AccountListResolvers<ContextType>;
+  AccountLocks?: AccountLocksResolvers<ContextType>;
   AccountModuleCall?: AccountModuleCallResolvers<ContextType>;
   AccountOwnershipTie?: AccountOwnershipTieResolvers<ContextType>;
   AccountParentEntry?: AccountParentEntryResolvers<ContextType>;
@@ -15209,7 +15317,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SourceSnapshotList?: SourceSnapshotListResolvers<ContextType>;
   SourceSnapshotsArtifactSources?: SourceSnapshotsArtifactSourcesResolvers<ContextType>;
   SourceSnapshotsArtifactSummary?: SourceSnapshotsArtifactSummaryResolvers<ContextType>;
+  StakeLock?: StakeLockResolvers<ContextType>;
   Subnet?: SubnetResolvers<ContextType>;
+  SubnetAlphaDividend?: SubnetAlphaDividendResolvers<ContextType>;
+  SubnetAlphaDividends?: SubnetAlphaDividendsResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
   SubnetBurnHistory?: SubnetBurnHistoryResolvers<ContextType>;

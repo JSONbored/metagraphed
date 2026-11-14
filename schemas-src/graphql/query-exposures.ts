@@ -439,6 +439,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
   },
   {
+    field: "subnet_alpha_dividends",
+    operation: "subnet-alpha-dividends",
+    returns: "SubnetAlphaDividends!",
+    description:
+      "One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.",
+  },
+  {
     field: "subnet_stake_moves",
     operation: "subnet-stake-moves",
     returns: "SubnetStakeMoves!",
@@ -1512,6 +1519,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     returns: "AccountRootClaim",
     description:
       "Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+  },
+  {
+    field: "account_locks",
+    operation: "account-locks",
+    returns: "AccountLocks!",
+    description:
+      "One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks.",
   },
   {
     field: "account_children",

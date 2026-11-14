@@ -282,6 +282,13 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #13162: per-netuid registry card -- a subnet has a handful of mechanisms,
   // not a series; the mechid filter lives on the per-UID surfaces instead.
   "/api/v1/subnets/{netuid}/mechanisms",
+  // #13163: per-netuid accrual card over one bounded store read -- the row
+  // bound lives in the store (SUBNET_ALPHA_DIVIDENDS_ROW_CAP), not in a
+  // query parameter a caller could widen.
+  "/api/v1/subnets/{netuid}/alpha-dividends",
+  // #13163: per-account lock card -- an account holds a handful of locks,
+  // not a series.
+  "/api/v1/accounts/{ss58}/locks",
   // #10932: per-netuid card. The earnings block it carries is projected from
   // miner-fairness at that route's own default window, so exposing a window
   // here would be a second place to set one.

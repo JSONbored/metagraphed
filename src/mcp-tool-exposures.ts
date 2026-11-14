@@ -246,6 +246,12 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_mechanisms: {
     operation: "subnet-mechanisms",
   },
+  get_subnet_alpha_dividends: {
+    operation: "subnet-alpha-dividends",
+  },
+  get_account_locks: {
+    operation: "account-locks",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

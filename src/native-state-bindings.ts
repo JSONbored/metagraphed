@@ -17,6 +17,8 @@ import {
 } from "./pg-validator-history.ts";
 import { createPgSubnetEnrichmentStore } from "./pg-subnet-enrichment.ts";
 import { createPgSubnetMechanismsStore } from "./pg-subnet-mechanisms.ts";
+import { createPgSubnetAlphaDividendsStore } from "./pg-subnet-alpha-dividends.ts";
+import { createPgAccountLocksStore } from "./pg-stake-locks.ts";
 import {
   createPgNeuronCaptureStore,
   type PgNeuronCaptureOptions,
@@ -79,6 +81,8 @@ export function createNativeStateBindings(
     ),
     SUBNET_ENRICHMENT_STORE: createPgSubnetEnrichmentStore(app, decoder),
     SUBNET_MECHANISMS_STORE: createPgSubnetMechanismsStore(app),
+    SUBNET_ALPHA_DIVIDENDS_STORE: createPgSubnetAlphaDividendsStore(app),
+    ACCOUNT_LOCKS_STORE: createPgAccountLocksStore(app),
     NEURON_CAPTURE_STORE: capture,
     ROOT_BASKET_STORE: createPgRootBasketStore(app),
     OBSERVATIONS_STORE: createPgObservations(app),

@@ -1059,6 +1059,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/locks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's conviction-lock state
+         * @description Fetch one account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants, spelled as the chain spells them), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Served live from the locks store; until the engine's lock capture lands the state holds no rows and the response is the schema-stable decline — an empty locks array with lock_count null, never 0, because an empty list is not a measured lock-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountLocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/parents": {
         parameters: {
             query?: never;
@@ -3974,6 +3994,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/alpha-dividends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's pending alpha dividends
+         * @description Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first. Served live from the dividends store; until the engine's dividend capture lands the registry holds no rows and the response is the schema-stable decline — an empty dividends array with hotkey_count null, never 0, because an empty registry is not a measured zero accrual.
+         */
+        get: operations["subnetAlphaDividends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/axon-removals": {
         parameters: {
             query?: never;
@@ -5659,6 +5699,16 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
+        };
+        /** @description One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+        AccountLocksArtifact: {
+            captured_at: string | null;
+            /** @description How many locks this account holds here -- `locks.length`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published. */
+            lock_count: number | null;
+            /** @description The account's locks, ordered by (netuid, hotkey, kind). */
+            locks: components["schemas"]["StakeLock"][];
+            schema_version: number;
+            ss58: string;
         };
         /** @description Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents. */
         AccountParentsArtifact: {
@@ -11126,6 +11176,39 @@ export interface components {
         };
         /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+        /** @description One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp. */
+        StakeLock: {
+            /** @description The locked quantity -- u64 atomic units as a decimal string. */
+            amount: string;
+            captured_at: string | null;
+            /** @description The hotkey this lock binds. */
+            hotkey: string;
+            /** @description The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends. */
+            kind: string;
+            /** @description The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis. */
+            maturity_block: number | null;
+            netuid: number;
+        };
+        /** @description One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp. */
+        SubnetAlphaDividend: {
+            /** @description Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0. */
+            alpha_divs: string | null;
+            captured_at: string | null;
+            /** @description The hotkey this pending dividend accrual belongs to. */
+            hotkey: string;
+            /** @description Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured. */
+            root_alpha_divs: string | null;
+        };
+        /** @description One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+        SubnetAlphaDividendsArtifact: {
+            captured_at: string | null;
+            /** @description The subnet's pending dividend accruals, largest alpha_divs first. */
+            dividends: components["schemas"]["SubnetAlphaDividend"][];
+            /** @description How many hotkeys carry a pending accrual row here -- `dividends.length`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published. */
+            hotkey_count: number | null;
+            netuid: number;
+            schema_version: number;
+        };
         /** @description One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
@@ -23449,6 +23532,129 @@ export interface operations {
                      *     2026-06-27T00:00:00.000Z,Alice,https://alice.example,https://github.com/alice,https://alice.example/avatar.png,https://discord.gg/alice,Sample account,extra,hash_sample
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountLocks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "lock_count": 1,
+                     *         "locks": [
+                     *           {
+                     *             "amount": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "kind": "example",
+                     *             "maturity_block": 5000000,
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountLocksArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -44323,6 +44529,127 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetDetailArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetAlphaDividends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "dividends": [
+                     *           {
+                     *             "alpha_divs": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "root_alpha_divs": "example"
+                     *           }
+                     *         ],
+                     *         "hotkey_count": 1,
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetAlphaDividendsArtifact"];
                     };
                 };
             };

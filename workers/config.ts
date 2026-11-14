@@ -684,6 +684,15 @@ export const SUBNET_WEIGHTS_PATH_PATTERN =
 // mechanisms store, no static file.
 export const SUBNET_MECHANISMS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/mechanisms$/;
+// One subnet's pending alpha dividend accrual (#13163), live from the
+// dividends store, no static file.
+export const SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/alpha-dividends$/;
+// One account's conviction-lock state (#13163), live from the locks store,
+// no static file. The handler validates the ss58 itself, same as the
+// sibling account routes above.
+export const ACCOUNT_LOCKS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/locks$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =
