@@ -61,19 +61,19 @@ export function useApiSourceCtx() {
 }
 
 /** Pages call this to declare which API paths power the current view. */
-export function useRegisterApiSource(paths: string[], artifacts: string[] = []) {
+export function useRegisterApiSource(paths: string[], artifacts: string[] = [], origin?: string) {
   const { register } = useApiSourceCtx();
   // Stable joined key so we don't re-register on every render.
   const pathsKey = paths.join("|");
   const artifactsKey = artifacts.join("|");
   useEffect(() => {
     const items: ApiSource[] = [
-      ...paths.map((p) => ({ path: p })),
+      ...paths.map((p) => (origin === undefined ? { path: p } : { path: p, origin })),
       ...artifacts.map((p) => ({ path: p, artifact: p })),
     ];
     return register(items);
     // paths/artifacts omitted on purpose: pathsKey/artifactsKey capture content changes
     // without re-registering when the parent passes a fresh array identity each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic deps are the keys
-  }, [pathsKey, artifactsKey, register]);
+  }, [pathsKey, artifactsKey, origin, register]);
 }
