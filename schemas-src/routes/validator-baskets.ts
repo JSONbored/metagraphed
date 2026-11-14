@@ -46,7 +46,9 @@ export const ValidatorBasketSchema = z
       ),
     account_id: z
       .string()
-      .describe("The hotkey this fund belongs to, as the raw 0x account-id hex."),
+      .describe(
+        "The hotkey this fund belongs to, as the raw 0x account-id hex.",
+      ),
     shares_atomic: z.string().nullable(),
     spot_nav_rao: z
       .string()
