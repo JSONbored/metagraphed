@@ -13,7 +13,6 @@
         "workers/mcp-session-hub.ts",
         "workers/alerter-hub.ts",
         "workers/registry-sync-api.ts",
-        "workers/wss-lb.ts",
         "src/mcp-server.ts",
         "schemas-src/openapi-registry.ts",
         "scripts/*.ts",

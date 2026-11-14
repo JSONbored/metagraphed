@@ -1029,8 +1029,8 @@ describe("extended target-root coverage (scripts, deploy)", () => {
     // by exact path.
     //
     // deploy/wss-lb/test/*.test.ts was the second exempted path until the Railway
-    // service was deleted (#9353); its select tests moved to tests/ and carry no
-    // private URLs at all.
+    // service was deleted (#9353); its select tests moved to tests/ (carrying no
+    // private URLs) and left again when the wss-lb Worker retired (#13151).
     assert.equal(
       scanOutput.includes("scripts/worker-test.ts:"),
       false,

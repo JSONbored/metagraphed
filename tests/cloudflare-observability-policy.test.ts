@@ -13,7 +13,6 @@ describe("Cloudflare telemetry ingestion stays disabled", () => {
     "wrangler.jsonc",
     "wrangler.data.jsonc",
     "wrangler.registry.jsonc",
-    "wrangler.wss-lb.jsonc",
     "apps/ui/wrangler.jsonc",
   ]) {
     test(file, () => {

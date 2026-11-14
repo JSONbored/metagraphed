@@ -1067,59 +1067,9 @@ export const SAFE_RPC_METHODS = new Set([
   "system_properties",
   "system_version",
 ]);
-// Read-only WebSocket subscriptions — WSS-ONLY. The HTTP proxy uses SAFE_RPC_METHODS
-// alone (subscriptions need a persistent connection, so they make no sense over HTTP);
-// the wss-lb additionally allows these. Their notifications stream upstream→client.
-// Deliberately excludes persistent storage subscriptions, which can create
-// unbounded upstream watcher state for arbitrary keys.
-// All allowed entries are read-only; author_submitAndWatchExtrinsic stays blocked
-// by the author_ prefix.
-export const SAFE_RPC_SUBSCRIPTIONS = new Set([
-  "chain_subscribeNewHeads",
-  "chain_subscribeNewHead",
-  "chain_unsubscribeNewHeads",
-  "chain_subscribeFinalizedHeads",
-  "chain_subscribeFinalisedHeads",
-  "chain_unsubscribeFinalizedHeads",
-  "chain_unsubscribeFinalisedHeads",
-  "chain_subscribeAllHeads",
-  "chain_unsubscribeAllHeads",
-  "state_subscribeRuntimeVersion",
-  "state_unsubscribeRuntimeVersion",
-]);
 export const DENIED_RPC_PREFIXES = [
   "author_",
   "state_call",
-  "sudo_",
-  "payment_",
-  "contracts_",
-];
-// The WSS proxy's policy, deliberately WIDER than the HTTP proxy's allowlist above.
-//
-// The two endpoints answer different questions. `/rpc/v1/{network}` serves single
-// JSON-RPC calls to callers who picked a method by name, so an 11-entry allowlist is
-// a reasonable contract. `wss.metagraph.sh` is a WebSocket URL people point a whole
-// Substrate CLIENT at — and every such client opens by fetching metadata and calling
-// runtime APIs through `state_call`, then reads storage. Under SAFE_RPC_METHODS none
-// of that is possible, so the allowlist would not narrow the WSS endpoint, it would
-// end it.
-//
-// So the WSS side enforces a DENY list instead: nothing that mutates chain state or
-// costs an upstream a signature. Everything else — storage reads, runtime calls,
-// metadata — is a read, which is what this endpoint advertises itself as.
-//
-// `state_call` is absent here ON PURPOSE and it is the one real judgement call: it
-// executes a runtime API, which is read-only but not free. It is also load-bearing
-// for every real client, and the per-IP connect limits plus the pool's own upstream
-// rate limits are the controls that bound it — not a method name.
-//
-// This is enforced in workers/wss-lb.ts. It was NOT enforced at all between the
-// Railway retirement and this change: the Worker imported only MAX_RPC_BODY_BYTES,
-// so `author_submitExtrinsic` and `sudo_*` were proxied to five upstream providers
-// under our IP reputation. The migration note in that file lists what deliberately
-// changed and does not mention the policy, which is how a silent drop reads.
-export const WSS_DENIED_RPC_PREFIXES = [
-  "author_",
   "sudo_",
   "payment_",
   "contracts_",

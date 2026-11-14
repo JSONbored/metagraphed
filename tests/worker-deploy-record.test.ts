@@ -40,7 +40,6 @@ vi.mock("node:child_process", () => ({
         "metagraphed",
         "metagraphed-data-api",
         "metagraphed-registry-sync-api",
-        "metagraphed-wss-lb",
       ]
         .map((worker) => `Workers Builds: ${worker}`)
         .join("\n");
@@ -70,7 +69,7 @@ describe("deployment identity through the actual checker", () => {
     }
     assert.equal(
       fixtures.calls.filter((call) => call.startsWith("npx ")).length,
-      4,
+      3,
     );
   });
 
