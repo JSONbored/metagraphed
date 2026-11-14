@@ -258,11 +258,17 @@ describe("data-api's bundle boundary", () => {
     // builders and store selectors plus their route/tool prose. The
     // PostgreSQL stores (pg-subnet-alpha-dividends.ts, pg-stake-locks.ts)
     // stay outside the graph; keep 2,603 source bytes of margin.
+    // The basket serving slice (#13163) adds 6,091 source bytes over
+    // 2c2c18ca, for 4,910,488: the validator-baskets builders and loaders
+    // plus their route/tool prose. root-basket-pg.ts stays forbidden above,
+    // and the capture-write module (node:crypto) stays out -- the fund cap
+    // is restated as a pinned literal for exactly that reason. Keep 2,512
+    // source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_907_000,
+      firstParty < 4_913_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

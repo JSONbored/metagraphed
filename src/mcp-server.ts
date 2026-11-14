@@ -1447,6 +1447,14 @@ import {
   GetAccountLocksOutputSchema,
 } from "../schemas-src/mcp-tools/get-account-locks.ts";
 import {
+  GetValidatorBasketsInputSchema,
+  GetValidatorBasketsOutputSchema,
+} from "../schemas-src/mcp-tools/get-validator-baskets.ts";
+import {
+  buildValidatorBaskets,
+  loadValidatorBaskets,
+} from "./validator-baskets.ts";
+import {
   buildSubnetMechanisms,
   loadSubnetMechanisms,
 } from "./subnet-mechanisms.ts";
@@ -9495,6 +9503,32 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_validator_baskets",
+    title: "Get every validator's Root basket fund",
+    description:
+      "Fetch every validator's Root basket fund at the newest completed " +
+      "capture (#13163): shares, spot/realizable NAV in rao, " +
+      "deposit/redemption watermarks and Q64.64 pricing marks as canonical " +
+      "decimal strings, largest spot NAV first, with the capture's " +
+      "finalized block, runtime era and acceptance stamp. With no capture " +
+      "store bound, or no completed capture yet, the response is the " +
+      "schema-stable decline: capture NULL with fund_count NULL and an " +
+      "empty baskets array. With a capture present, fund_count 0 is a real " +
+      "measurement -- a completed capture is a verified complete " +
+      "enumeration of every fund. Per-fund holdings and target allocations " +
+      "live on the REST drill-in /api/v1/validators/{hotkey}/basket. " +
+      "Mirrors GET /api/v1/chain/baskets.",
+    inputSchema: inputJsonSchema(GetValidatorBasketsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetValidatorBasketsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadValidatorBaskets -> buildValidatorBaskets decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildValidatorBaskets(await loadValidatorBaskets(ctx.env));
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -15827,6 +15861,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_subnet_alpha_dividends: () =>
     outputJsonSchema(GetSubnetAlphaDividendsOutputSchema),
   get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
+  get_validator_baskets: () =>
+    outputJsonSchema(GetValidatorBasketsOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

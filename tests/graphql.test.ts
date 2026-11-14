@@ -25920,3 +25920,82 @@ describe("graphql — account_locks (#13163)", () => {
     assert.match(errors[0]?.message ?? "", /ss58/);
   });
 });
+
+// The validator_baskets field (#13163): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served capture match exactly.
+describe("graphql — validator_baskets (#13163)", () => {
+  const SELECTION = `{ validator_baskets {
+      schema_version fund_count
+      capture { finalized_block finalized_block_hash runtime_spec_version decoder_version accepted_at }
+      baskets { hotkey account_id shares_atomic spot_nav_rao realizable_nav_rao deposited_rao redeemed_rao display_price_q64_bits stake_price_q64_bits staker_twr_q64_bits pending_entitlement_q64_bits provisional first_block holdings_count targets_count }
+    } }`;
+
+  test("no bound store resolves to the null-capture decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator_baskets, {
+      schema_version: 1,
+      capture: null,
+      // NULL, never 0: with no completed capture a zero fund count would be
+      // fabricated; 0 is reserved for a completed capture's measurement.
+      fund_count: null,
+      baskets: [],
+    });
+  });
+
+  test("a bound store serves the newest completed capture", async () => {
+    const env = {
+      ROOT_BASKET_STORE: {
+        write: async () => ({}),
+        read: {
+          async first(sql: string) {
+            return /FROM root_basket_captures/.test(sql)
+              ? {
+                  capture_id: "00000000-0000-4000-8000-000000000001",
+                  finalized_block: "6500000",
+                  finalized_block_hash: `0x${"02".repeat(32)}`,
+                  runtime_spec_version: 454,
+                  decoder_version: "subtensor-v454-14cde641-v1",
+                  accepted_at_ms: "1763000000000",
+                }
+              : null;
+          },
+          async query() {
+            return [
+              {
+                hotkey: `0x${"11".repeat(32)}`,
+                shares_atomic: "2000000000",
+                spot_nav_rao: "6000000000",
+                realizable_nav_rao: "5000000000",
+                deposited_rao: "4000000000",
+                redeemed_rao: "0",
+                display_price_q64_bits: "36893488147419103232",
+                stake_price_q64_bits: null,
+                staker_twr_q64_bits: null,
+                pending_entitlement_q64_bits: null,
+                provisional: 1,
+                first_block: "0",
+                holdings_count: 3,
+                targets_count: 2,
+              },
+            ];
+          },
+        },
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_baskets.fund_count, 1);
+    assert.equal(
+      body.data.validator_baskets.capture.finalized_block,
+      "6500000",
+    );
+    const [basket] = body.data.validator_baskets.baskets;
+    assert.equal(basket.account_id, `0x${"11".repeat(32)}`);
+    assert.equal(basket.provisional, true);
+    assert.equal(basket.first_block, null);
+    assert.equal(basket.spot_nav_rao, "6000000000");
+  });
+});

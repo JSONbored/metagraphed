@@ -1523,6 +1523,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "chain-baskets",
+    "/metagraph/chain/baskets.json",
+    "Every validator's Root basket fund at the newest completed capture (#13163) — shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp — served live from the Root basket capture store at /api/v1/chain/baskets (no static file). capture: null with fund_count: null is the decline (no store, or no completed capture); fund_count: 0 appears only as a real measurement from a completed capture.",
+    "ValidatorBasketsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "validator-basket",
+    "/metagraph/validators/{hotkey}/basket.json",
+    "One validator's Root basket fund with its holdings and target allocations at the newest completed capture (#13163), served live from the Root basket capture store at /api/v1/validators/{hotkey}/basket (no static file). basket: null with a present capture is a measurement (the completed capture enumerates every fund and this hotkey holds none); a null capture is the decline.",
+    "ValidatorBasketArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons store at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -3470,6 +3484,28 @@ export const API_ROUTES = [
     "/api/v1/validators/{hotkey}/history",
     "/metagraph/validators/{hotkey}/history.json",
     "Fetch daily membership and emission history for one validator from the neuron_daily rollup. Capital history and rewards-per-1000 principal ratios are unavailable (null): historical neuron voting weight is not investment principal. With a subnet context, raw voting weight and observed trust, consensus, dividends, take, and permit state remain available independently. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["validators", "analytics"],
+    [],
+    [{ name: "hotkey", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-baskets",
+    "GET",
+    "/api/v1/chain/baskets",
+    "/metagraph/chain/baskets.json",
+    "Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.",
+    "short",
+    ["chain", "analytics"],
+    [],
+    [],
+  ),
+  route(
+    "validator-basket",
+    "GET",
+    "/api/v1/validators/{hotkey}/basket",
+    "/metagraph/validators/{hotkey}/basket.json",
+    "Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163). Served live from the Root basket capture store; basket null with a PRESENT capture is a measurement — the completed capture enumerates every fund and this hotkey holds none — while a null capture is the decline (no store bound, or no completed capture yet). Returns 400 on an invalid ss58 hotkey.",
     "short",
     ["validators", "analytics"],
     [],
@@ -5558,6 +5594,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // and locks the day the captures fill.
   "/api/v1/subnets/{netuid}/alpha-dividends",
   "/api/v1/accounts/{ss58}/locks",
+  // #13163: the basket routes serve the newest completed FINNEY capture by
+  // construction (the loader pins network='finney'); a testnet twin would
+  // advertise captures the lane does not take for it.
+  "/api/v1/chain/baskets",
+  "/api/v1/validators/{hotkey}/basket",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6459,6 +6500,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "subnet-mechanisms": "Fetch one subnet's mechanism registry",
   "subnet-alpha-dividends": "Fetch one subnet's pending alpha dividends",
   "account-locks": "Fetch one account's conviction-lock state",
+  "chain-baskets": "Fetch every validator's Root basket fund",
+  "validator-basket": "Fetch one validator's Root basket detail",
   "subnet-health": "Fetch probe-derived health for one subnet",
   "subnet-surfaces": "List the API surfaces one subnet publishes",
   "subnet-endpoints": "List live endpoints for one subnet, with probe results",

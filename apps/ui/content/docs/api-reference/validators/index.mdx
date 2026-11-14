@@ -3,12 +3,14 @@ title: Validators
 description: Every Validators endpoint in the metagraphed API, with its method and path.
 ---
 
-7 endpoints.
+8 endpoints.
 
 - [Compare Validators](/docs/api-reference/validators/compare-validators) — `GET /api/v1/compare/validators`\
   Place several validators side by side by take rate, nominator count, on-chain identity, emission, and trust.
 - [Global Validators](/docs/api-reference/validators/global-validators) — `GET /api/v1/validators`\
   Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across current subnet memberships, with trust metrics, emission totals, and membership rows.
+- [Validator Basket](/docs/api-reference/validators/validator-basket) — `GET /api/v1/validators/{hotkey}/basket`\
+  Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163).
 - [Validator Detail](/docs/api-reference/validators/validator-detail) — `GET /api/v1/validators/{hotkey}`\
   Fetch cross-subnet membership detail for one validator identity, including emission totals and trust metrics.
 - [Validator Economics Ranking](/docs/api-reference/validators/validator-economics-ranking) — `GET /api/v1/validators/economics`\

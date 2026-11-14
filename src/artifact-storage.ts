@@ -52,6 +52,13 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Validator staked-over-time + rewards history (#4334/7.3): computed live
   // from the neuron_daily rollup.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/history\.json$/,
+  // #13163: one validator's Root basket fund with holdings/targets, computed
+  // live from the Root basket capture store -- a baked copy would freeze a
+  // capture the lane supersedes.
+  /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/basket\.json$/,
+  // #13163: every validator's Root basket fund at the newest completed
+  // capture, computed live from the same store.
+  /^chain\/baskets\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,

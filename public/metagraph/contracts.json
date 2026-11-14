@@ -1038,6 +1038,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Every validator's Root basket fund at the newest completed capture (#13163) — shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp — served live from the Root basket capture store at /api/v1/chain/baskets (no static file). capture: null with fund_count: null is the decline (no store, or no completed capture); fund_count: 0 appears only as a real measurement from a completed capture.",
+      "id": "chain-baskets",
+      "path": "/metagraph/chain/baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "One validator's Root basket fund with its holdings and target allocations at the newest completed capture (#13163), served live from the Root basket capture store at /api/v1/validators/{hotkey}/basket (no static file). basket: null with a present capture is a measurement (the completed capture enumerates every fund and this hotkey holds none); a null capture is the decline.",
+      "id": "validator-basket",
+      "path": "/metagraph/validators/{hotkey}/basket.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons store at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
@@ -3112,7 +3134,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 177,
+    "mainnet_only_route_count": 179,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

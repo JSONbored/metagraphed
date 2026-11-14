@@ -99,6 +99,15 @@ export async function handleRootBasketCaptureSync(
     }
     // Partial ownership or a missing selected binding THROWS here. Only a
     // family with zero D1-selected tables can reach the legacy fallback.
+    // The legacy D1/Neon lanes keep their production-held v454 DDL pins
+    // (#13163): decline a v490-era capture here, before any insert, rather
+    // than letting the row die on a CHECK constraint mid-transaction.
+    if (parsed.data.runtime_spec_version !== 454) {
+      return fail(
+        422,
+        "post-v454 root basket captures require the native PostgreSQL store",
+      );
+    }
     const native = selectedD1Store(env, ROOT_BASKET_D1_TABLES);
     store =
       deps.store ??

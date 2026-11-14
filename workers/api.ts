@@ -423,6 +423,8 @@ import {
   handleSubnetMechanisms,
   handleSubnetAlphaDividends,
   handleAccountLocks,
+  handleChainBaskets,
+  handleValidatorBasket,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -850,6 +852,8 @@ import {
   SUBNET_MECHANISMS_PATH_PATTERN,
   SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN,
   ACCOUNT_LOCKS_PATH_PATTERN,
+  CHAIN_BASKETS_PATH,
+  VALIDATOR_BASKET_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7098,6 +7102,20 @@ async function dispatchRequest(
       // sibling subnet cards above (no edge-cache wrapper).
       return handleAccountLocks(request, env, accountLocksMatch[1]);
     }
+    if (resolved.url.pathname === CHAIN_BASKETS_PATH) {
+      // #13163: every validator's Root basket fund at the newest completed
+      // capture -- one bounded read through the capture store seam,
+      // dispatched directly like the sibling cards above.
+      return handleChainBaskets(request, env);
+    }
+    const validatorBasketMatch = VALIDATOR_BASKET_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (validatorBasketMatch) {
+      // #13163: one validator's Root basket fund with holdings/targets,
+      // through the same capture store seam.
+      return handleValidatorBasket(request, env, validatorBasketMatch[1]);
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8140,6 +8158,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // dimension.
     SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_LOCKS_PATH_PATTERN.test(pathname) ||
+    // #13163: the basket loaders pin network='finney' by construction.
+    pathname === CHAIN_BASKETS_PATH ||
+    VALIDATOR_BASKET_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

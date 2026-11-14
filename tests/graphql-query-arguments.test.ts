@@ -101,8 +101,9 @@ describe("checkQueryArguments", () => {
     // confirm. Bumping it is a prompt to check that, not a formality.
     // #11550 adds one exact empty-argument mirror, declared in NO_QUERY_PARAMETERS.
     // #13162 adds another (subnet_mechanisms), the same way.
-    // #13163 adds two more (subnet_alpha_dividends, account_locks), the same way.
-    assert.equal(report.exact, 210);
+    // #13163 adds three more (subnet_alpha_dividends, account_locks,
+    // validator_baskets), the same way.
+    assert.equal(report.exact, 211);
     assert.equal(report.skipped, 0);
   });
 

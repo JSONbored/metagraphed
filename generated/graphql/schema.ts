@@ -706,6 +706,11 @@ type Query {
   validator_history(hotkey: String!, window: String, netuid: Int): ValidatorHistory!
 
   """
+  Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets.
+  """
+  validator_baskets: ValidatorBaskets!
+
+  """
   Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts.
   """
   accounts(sort: String, limit: Int): AccountList!
@@ -6327,6 +6332,88 @@ type ValidatorHistoryPoint {
   Always null while a valid common-denomination stake-share denominator is unavailable. Raw dividends remain available separately.
   """
   dividend_efficiency: Float
+}
+
+"""
+Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets.
+"""
+type ValidatorBaskets {
+  schema_version: Int!
+  capture: BasketCapture
+
+  """
+  How many funds the served capture holds -- \`baskets.length\`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture.
+  """
+  fund_count: Int
+
+  """The capture's funds, largest spot NAV first."""
+  baskets: [ValidatorBasket!]!
+}
+
+"""
+The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp.
+"""
+type BasketCapture {
+  """
+  The finalized block height the capture observed, as a u64 decimal string.
+  """
+  finalized_block: String!
+  finalized_block_hash: String!
+
+  """
+  The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder).
+  """
+  runtime_spec_version: Int!
+  decoder_version: String!
+
+  """
+  When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time.
+  """
+  accepted_at: String
+}
+
+"""
+One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state.
+"""
+type ValidatorBasket {
+  """
+  The fund's validator hotkey as a finney SS58 address. Null only when the stored account id could not be re-encoded.
+  """
+  hotkey: String
+
+  """The fund's validator hotkey as the raw 0x account-id hex."""
+  account_id: String!
+  shares_atomic: String
+
+  """Spot net asset value in rao, as a u64 decimal string."""
+  spot_nav_rao: String
+  realizable_nav_rao: String
+  deposited_rao: String
+  redeemed_rao: String
+
+  """
+  Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented.
+  """
+  display_price_q64_bits: String
+  stake_price_q64_bits: String
+
+  """
+  The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return.
+  """
+  staker_twr_q64_bits: String
+  pending_entitlement_q64_bits: String
+
+  """
+  Whether the fund's pricing baseline is still provisional (no first_block stamped yet).
+  """
+  provisional: Boolean
+
+  """
+  The baseline's first block as a u64 decimal string; null while the baseline is provisional.
+  """
+  first_block: String
+  holdings_count: Int
+  targets_count: Int
 }
 
 type AccountList {

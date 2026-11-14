@@ -281,3 +281,26 @@ test("the edge proxy preserves body/token/status and refuses unbound or non-POST
   );
   assert.equal(downstream.mock.calls.length, 1);
 });
+
+test("a v490 capture is declined on the legacy lanes before any insert (#13163)", async () => {
+  // The legacy D1/Neon receiver lanes keep their production-held v454 DDL
+  // pins; only the native PostgreSQL store (migration 0046) accepts the v490
+  // era. A clean 422 here is the contract -- never a CHECK-constraint death
+  // mid-transaction.
+  const v490 = JSON.stringify({
+    ...syntheticBasketCapture(),
+    runtime_spec_version: 490,
+    decoder_version: "subtensor-v490-0abc1234-v1",
+  });
+  const response = await handleRootBasketCaptureSync(request(v490), {
+    ...env,
+    HYPERDRIVE: { connectionString: "postgres://synthetic" },
+  });
+  assert.equal(response.status, 422);
+  assert.match(
+    JSON.stringify(await response.json()),
+    /native PostgreSQL store/,
+  );
+  // No storage statement ran: the decline happened before the lane opened.
+  assert.equal(driver.query.mock.calls.length, 0);
+});

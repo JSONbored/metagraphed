@@ -70,6 +70,13 @@ export const DECLARED_UNEXPOSED: Readonly<Record<string, string>> = {
     "Agents already receive the richer independently sortable rows through " +
     "list_accounts; mirroring the compact SSR payload would expose a second, " +
     "less capable answer to the same domain question.",
+  "validator-basket":
+    "the per-validator drill-in of chain-baskets (#13163). " +
+    "get_validator_baskets / validator_baskets already hand both surfaces " +
+    "EVERY fund at the served capture in one call (a capture holds at most " +
+    "2,048), so a per-hotkey twin would be a second, narrower answer to the " +
+    "same question; the per-leg holdings/targets detail is an HTTP drill-in " +
+    "until an agent workflow actually needs it.",
 
   // ── three feeds REST serves and no surface reaches ────────────────────────
   //
