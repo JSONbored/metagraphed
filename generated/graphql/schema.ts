@@ -261,6 +261,11 @@ type Query {
   subnet_weights(netuid: Int!, window: String, mechid: Int): SubnetWeights!
 
   """
+  One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+  """
+  subnet_mechanisms(netuid: Int!): SubnetMechanisms!
+
+  """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
   """
   subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
@@ -2407,6 +2412,44 @@ type SubnetWeights {
   weight_sets: Int!
   sets_per_setter: Float
   degraded: DegradedInfo
+}
+
+"""
+One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+"""
+type SubnetMechanisms {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many mechanisms this subnet has -- \`mechanisms.length\`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published.
+  """
+  mechanism_count: Int
+  captured_at: String
+
+  """The subnet's mechanisms, ordered by mechid."""
+  mechanisms: [SubnetMechanism!]!
+}
+
+"""
+One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp.
+"""
+type SubnetMechanism {
+  """
+  The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has.
+  """
+  mechid: Int!
+
+  """
+  This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share.
+  """
+  emission_split: Float
+
+  """
+  The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.
+  """
+  consensus_mode: String
+  captured_at: String
 }
 
 type SubnetStakeMoves {

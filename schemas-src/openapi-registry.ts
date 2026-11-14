@@ -320,6 +320,10 @@ import {
   SubnetWeightSettersArtifactSchema,
 } from "./routes/subnet-weights.ts";
 import {
+  SubnetMechanismSchema,
+  SubnetMechanismsArtifactSchema,
+} from "./routes/subnet-mechanisms.ts";
+import {
   AccountSummaryArtifactSchema,
   AccountSubnetsArtifactSchema,
 } from "./routes/account-summary.ts";
@@ -858,6 +862,8 @@ register(
 );
 register(SubnetPrometheusArtifactSchema, "SubnetPrometheusArtifact");
 register(SubnetWeightsArtifactSchema, "SubnetWeightsArtifact");
+register(SubnetMechanismSchema, "SubnetMechanism");
+register(SubnetMechanismsArtifactSchema, "SubnetMechanismsArtifact");
 register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
 register(AccountAxonRemovalsArtifactSchema, "AccountAxonRemovalsArtifact");
 register(

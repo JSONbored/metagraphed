@@ -163,6 +163,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/validator-economics-history\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
+  // #13162: one subnet's mechanism registry, computed live from the mechanisms
+  // store -- a baked copy would freeze a registry the engine has yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/mechanisms\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.

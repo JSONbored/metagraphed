@@ -4490,6 +4490,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/mechanisms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's mechanism registry
+         * @description Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).
+         */
+        get: operations["subnetMechanisms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/metagraph": {
         parameters: {
             query?: never;
@@ -12335,6 +12355,26 @@ export interface components {
             netuid: number;
             next_cursor?: string | null;
             offset?: number | null;
+            schema_version: number;
+        };
+        /** @description One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp. */
+        SubnetMechanism: {
+            captured_at: string | null;
+            /** @description The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured. */
+            consensus_mode: string | null;
+            /** @description This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share. */
+            emission_split: number | null;
+            /** @description The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has. */
+            mechid: number;
+        };
+        /** @description One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+        SubnetMechanismsArtifact: {
+            captured_at: string | null;
+            /** @description How many mechanisms this subnet has -- `mechanisms.length`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published. */
+            mechanism_count: number | null;
+            /** @description The subnet's mechanisms, ordered by mechid. */
+            mechanisms: components["schemas"]["SubnetMechanism"][];
+            netuid: number;
             schema_version: number;
         };
         SubnetMetagraphArtifact: {
@@ -48640,6 +48680,127 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetMechanisms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechanism_count": 1,
+                     *         "mechanisms": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "consensus_mode": "example",
+                     *             "emission_split": 0.5,
+                     *             "mechid": 1
+                     *           }
+                     *         ],
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetMechanismsArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

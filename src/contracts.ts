@@ -1341,6 +1341,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-mechanisms",
+    "/metagraph/subnets/{netuid}/mechanisms.json",
+    "One subnet's mechanism (sub-subnet) registry (#13162) — each mechanism's mechid, emission split and consensus mode with its capture stamp — served live from the mechanisms store at /api/v1/subnets/{netuid}/mechanisms (no static file). Empty with a null mechanism_count until the engine's per-mechanism capture lands: every subnet has at least mechanism 0, so a zero count is never published.",
+    "SubnetMechanismsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-weight-setters",
     "/metagraph/subnets/{netuid}/weights/setters.json",
     "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
@@ -3154,6 +3161,17 @@ export const API_ROUTES = [
     "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily rollup).",
     "short",
     ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-mechanisms",
+    "GET",
+    "/api/v1/subnets/{netuid}/mechanisms",
+    "/metagraph/subnets/{netuid}/mechanisms.json",
+    "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).",
+    "short",
+    ["subnets"],
     [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
@@ -5496,6 +5514,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // which reads the first of those two tables.
   "/api/v1/subnets/{netuid}/holders",
   "/api/v1/chain/subnet-price-share-composition",
+  // #13162: app.subnet_mechanisms has no network column -- a testnet-addressed
+  // request would be served MAINNET mechanisms the day the registry fills.
+  "/api/v1/subnets/{netuid}/mechanisms",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6394,6 +6415,7 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
     "Fetch an estimated subnet price-share timeline",
   subnets: "List active Finney subnets",
   "subnet-detail": "Fetch one subnet's full profile",
+  "subnet-mechanisms": "Fetch one subnet's mechanism registry",
   "subnet-health": "Fetch probe-derived health for one subnet",
   "subnet-surfaces": "List the API surfaces one subnet publishes",
   "subnet-endpoints": "List live endpoints for one subnet, with probe results",

@@ -128,6 +128,10 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // exception. The current UI does not consume this route; remove the entry
   // when a real consumer lands, which the stale-entry check below enforces.
   "/api/v1/chain/subnet-price-share-composition",
+  // #13162 publishes the mechanism registry; the registry is empty until the
+  // engine's per-mechanism capture lands, so no UI consumes it yet. Remove the
+  // entry when a real consumer lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/mechanisms",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

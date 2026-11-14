@@ -100,7 +100,8 @@ describe("checkQueryArguments", () => {
     // than in `violations` -- which is the outcome this count exists to
     // confirm. Bumping it is a prompt to check that, not a formality.
     // #11550 adds one exact empty-argument mirror, declared in NO_QUERY_PARAMETERS.
-    assert.equal(report.exact, 207);
+    // #13162 adds another (subnet_mechanisms), the same way.
+    assert.equal(report.exact, 208);
     assert.equal(report.skipped, 0);
   });
 

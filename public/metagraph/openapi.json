@@ -11562,6 +11562,53 @@
           "schema_version": 1
         }
       },
+      "SubnetMechanismsArtifactResponse": {
+        "value": {
+          "data": {
+            "captured_at": "2026-06-01T00:00:00.000Z",
+            "mechanism_count": 1,
+            "mechanisms": [
+              {
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "consensus_mode": "example",
+                "emission_split": 0.5,
+                "mechid": 1
+              }
+            ],
+            "netuid": 7,
+            "schema_version": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SubnetMetagraphArtifactResponse": {
         "value": {
           "data": {
@@ -51612,6 +51659,101 @@
           "netuid",
           "entry_count",
           "entries"
+        ],
+        "type": "object"
+      },
+      "SubnetMechanism": {
+        "additionalProperties": false,
+        "description": "One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus_mode": {
+            "description": "The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emission_split": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share."
+          },
+          "mechid": {
+            "description": "The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mechid",
+          "emission_split",
+          "consensus_mode",
+          "captured_at"
+        ],
+        "type": "object"
+      },
+      "SubnetMechanismsArtifact": {
+        "additionalProperties": false,
+        "description": "One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mechanism_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many mechanisms this subnet has -- `mechanisms.length`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published."
+          },
+          "mechanisms": {
+            "description": "The subnet's mechanisms, ordered by mechid.",
+            "items": {
+              "$ref": "#/components/schemas/SubnetMechanism"
+            },
+            "type": "array"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "mechanism_count",
+          "captured_at",
+          "mechanisms"
         ],
         "type": "object"
       },
@@ -99861,6 +100003,116 @@
         "tags": [
           "subnets",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/mechanisms": {
+      "get": {
+        "description": "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).",
+        "operationId": "subnetMechanisms",
+        "parameters": [
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetMechanismsArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetMechanismsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetMechanismsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one subnet's mechanism registry",
+        "tags": [
+          "subnets"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

@@ -392,3 +392,57 @@ describe("mechanism scope (#13162)", () => {
     }
   });
 });
+
+// The get_subnet_mechanisms tool (#13162): same loader/builder as the REST
+// route and the GraphQL field, so the decline and the registry match exactly.
+describe("get_subnet_mechanisms (#13162)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_mechanisms",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      mechanism_count: null,
+      captured_at: null,
+      mechanisms: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_MECHANISMS_STORE: {
+        rows: async () => [
+          {
+            mechid: 0,
+            emission_split: 0.75,
+            consensus_mode: "Yuma3",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_mechanisms",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.mechanism_count, 1);
+    assert.equal((data.mechanisms as Row[])[0].mechid, 0);
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_mechanisms", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});

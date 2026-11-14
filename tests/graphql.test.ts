@@ -25730,3 +25730,66 @@ describe("graphql — mechanism scope (#13162)", () => {
     }
   });
 });
+
+// The subnet_mechanisms field (#13162): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served registry match exactly.
+describe("graphql — subnet_mechanisms (#13162)", () => {
+  const SELECTION = `{ subnet_mechanisms(netuid: 64) {
+      schema_version netuid mechanism_count captured_at
+      mechanisms { mechid emission_split consensus_mode captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_mechanisms, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: every subnet has at least mechanism 0, so a zero
+      // count would be a fabricated measurement.
+      mechanism_count: null,
+      captured_at: null,
+      mechanisms: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      SUBNET_MECHANISMS_STORE: {
+        rows: async () => [
+          {
+            mechid: 0,
+            emission_split: 0.75,
+            consensus_mode: "Yuma3",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_mechanisms.mechanism_count, 1);
+    assert.deepEqual(body.data.subnet_mechanisms.mechanisms, [
+      {
+        mechid: 0,
+        emission_split: 0.75,
+        consensus_mode: "Yuma3",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_mechanisms(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});

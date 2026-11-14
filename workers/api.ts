@@ -420,6 +420,7 @@ import {
   handleCrowdloan,
   handleCrowdloans,
   handleSubnetLease,
+  handleSubnetMechanisms,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -844,6 +845,7 @@ import {
   CROWDLOANS_PATH_PATTERN,
   CROWDLOAN_DETAIL_PATH_PATTERN,
   SUBNET_LEASE_PATH_PATTERN,
+  SUBNET_MECHANISMS_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7061,6 +7063,15 @@ async function dispatchRequest(
         canonicalSubnetWeightsCachePath(resolved.url),
       );
     }
+    const mechanismsMatch = SUBNET_MECHANISMS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (mechanismsMatch) {
+      // #13162: one subnet's mechanism registry -- a handful of rows per
+      // subnet through the native store seam, dispatched directly like the
+      // sibling hyperparameters card (no edge-cache wrapper).
+      return handleSubnetMechanisms(request, env, Number(mechanismsMatch[1]));
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8097,6 +8108,8 @@ export function isMainnetOnlyApiPath(pathname: string) {
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
+    // #13162: app.subnet_mechanisms carries no network dimension.
+    SUBNET_MECHANISMS_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

@@ -87,6 +87,10 @@ import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
 import { stampMechanismScope } from "../../src/mechanism-scope.ts";
 import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "../../src/subnet-mechanisms.ts";
+import {
   buildGlobalValidators,
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -3057,6 +3061,34 @@ export async function handleSubnetWeights(
     },
     "short",
   );
+}
+
+// GET /api/v1/subnets/{netuid}/mechanisms (#13162): one subnet's mechanism
+// (sub-subnet) registry, read through the native mechanisms-store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `mechanisms` with `mechanism_count: null`,
+// never a zero count (every subnet has at least mechanism 0, so zero would be
+// a fabricated measurement), marked as a tier fallback.
+export async function handleSubnetMechanisms(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetMechanisms(env, netuid);
+  const data = buildSubnetMechanisms(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/mechanisms.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes

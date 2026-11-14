@@ -42,6 +42,10 @@ import {
   maxDepthRule,
 } from "./graphql-limits.ts";
 import { stampMechanismScope } from "./mechanism-scope.ts";
+import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "./subnet-mechanisms.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -3691,6 +3695,21 @@ const rootValue = {
       // so GraphQL resolves the nested selection off the raw rows directly.
       neurons: data.neurons ?? [],
     };
+  },
+
+  async subnet_mechanisms(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13162: same loadSubnetMechanisms -> buildSubnetMechanisms decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled mechanisms store is a schema-stable card with
+    // mechanism_count null, never a GraphQL error.
+    return buildSubnetMechanisms(
+      await loadSubnetMechanisms(context.env, netuid),
+      netuid,
+    );
   },
 
   async subnet_weights(
