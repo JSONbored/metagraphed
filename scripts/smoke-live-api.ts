@@ -7,6 +7,7 @@ import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { HISTORY_READ_TIMEOUT_MS } from "../src/history-readers.ts";
 import { X402_VERSION, x402RequiresPayment } from "../src/x402.ts";
 import { assertLiveApiStatus } from "./live-smoke-status.ts";
+import { DECLARED_LIVE_DEGRADATIONS } from "./lib/declared-live-degradations.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
 // every field below is read for assertion/reporting only, and an unexpected
@@ -109,7 +110,20 @@ async function runLiveSmoke(): Promise<void> {
         });
         continue;
       }
-      assertLiveApiStatus(result);
+      const declared = DECLARED_LIVE_DEGRADATIONS.get(check.route);
+      assertLiveApiStatus(result, declared);
+      if (declared) {
+        // The declared 503 has no ok envelope, data payload, or cacheable
+        // headers to assert -- the contract above already pinned its exact
+        // status and error code. Record it visibly and move on.
+        results.push({
+          path: new URL(check.url).pathname,
+          route: check.route,
+          status: result.status,
+          source: "declared-degraded",
+        });
+        continue;
+      }
       assertHeader(result, "access-control-allow-origin", "*", check.route);
       // AN ETAG IS REQUIRED OF CACHEABLE RESPONSES, not of all of them. A
       // route that answers `cache-control: no-store` is telling every cache not
