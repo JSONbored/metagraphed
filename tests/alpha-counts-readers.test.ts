@@ -48,7 +48,7 @@ async function fixture(migrated = true) {
   runtimes.push(runtime);
   const db = await runtime.getD1Database("DB");
   const files = ["0010_ledger_state.sql"];
-  if (migrated) files.push("0039_alpha_runtime_receiver.sql");
+  if (migrated) files.push("0040_alpha_runtime_receiver.sql");
   for (const file of files) {
     const source = readFileSync(
       new URL("../migrations/d1/" + file, import.meta.url),

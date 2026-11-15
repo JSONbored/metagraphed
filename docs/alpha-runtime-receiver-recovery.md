@@ -87,22 +87,26 @@ falling back to fraction-only input.
 
 ## Focused schema identity and recovery compatibility
 
-Main ends at D1 migration 0038. Its bytes and all earlier migration identities stay
+Main ends at D1 migration 0038, and the open payments ledger (#12908) takes
+`0039_x402_payment_attempts.sql`. All earlier migration identities stay
 unchanged. The proposed next identity is
-`0039_alpha_runtime_receiver.sql`: seven tables (`alpha_runtime_metadata`,
+`0040_alpha_runtime_receiver.sql`: seven tables (`alpha_runtime_metadata`,
 `alpha_snapshot_passes`, `alpha_snapshot_chunks`, `alpha_snapshot_rows`,
 `alpha_snapshot_pools`, `self_stake_snapshot_passes`,
 `self_stake_snapshot_chunks`), nullable `alpha_rao`/`alpha_evidence` on
 `nominator_positions`, nullable exact `alpha_snapshot` on the existing
 `validator_nominator_counts_passes`, ownership/immutability triggers and indexes.
-This is a fresh focused migration, not a renaming of a recorded migration.
+This is a fresh focused migration, not a renaming of a recorded migration. Until
+#12908's 0039 reaches this branch's base, the sequence validator reports a
+0038→0040 gap here; the mandatory pre-merge reconciliation with main closes it.
 
 The retained stack used 0039 for unrelated retention trigger work, 0040 for
 self-stake receipts, 0041 for raw finality, 0042 for webhooks and 0043 for Alpha.
-Only the self-stake/Alpha requirements are composed here. Do not copy those
-numbers with gaps, apply both versions, or treat any previously recorded 0039 as
-this migration. Stop and reconcile the actual ledger and physical schema if
-any competing identity is present. No Neon migration is introduced.
+Only the self-stake/Alpha requirements are composed here, and this file's 0040 is
+a fresh identity, not that retained self-stake stage. Do not copy those
+numbers with gaps, apply both versions, or treat any previously recorded 0039 or
+0040 as this migration. Stop and reconcile the actual ledger and physical schema
+if any competing identity is present. No Neon migration is introduced.
 
 The strict exporter supports both exact reviewed position generations: the
 baseline seven columns and the additive nine columns. Unknown or partial physical
@@ -203,7 +207,7 @@ the observed production artifacts.
 
 The default production verifier, authentic snapshot pair and maintenance workflow
 remain strict. Before DDL, the observed catalog through 0038 cannot satisfy the
-new 0039 declarations. A passing source check cannot certify deployed objects,
+new 0040 declarations. A passing source check cannot certify deployed objects,
 physical headroom, authentic full census or historical state availability.
 Main pushes touching these paths automatically apply tracked migrations; merging
 this PR is an activation step and remains held.

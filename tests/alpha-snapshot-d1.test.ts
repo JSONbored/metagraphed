@@ -44,7 +44,7 @@ async function fixture(includeAlpha = true) {
   for (const name of [
     "0010_ledger_state.sql",
     "0016_archive_export_revisions.sql",
-    ...(includeAlpha ? ["0039_alpha_runtime_receiver.sql"] : []),
+    ...(includeAlpha ? ["0040_alpha_runtime_receiver.sql"] : []),
   ])
     for (const statement of readFileSync(
       new URL(`../migrations/d1/${name}`, import.meta.url),
@@ -641,7 +641,7 @@ test("exporter upgrade precedes DDL and rollback is unsafe before first selectio
   assert.equal((await handleD1StateExport(request(), env)).status, 200);
   for (const sql of readFileSync(
     new URL(
-      "../migrations/d1/0039_alpha_runtime_receiver.sql",
+      "../migrations/d1/0040_alpha_runtime_receiver.sql",
       import.meta.url,
     ),
     "utf8",

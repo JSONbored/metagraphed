@@ -90,7 +90,7 @@ beforeAll(async () => {
   db = await runtime.getD1Database("DB");
   for (const file of [
     "0010_ledger_state.sql",
-    "0039_alpha_runtime_receiver.sql",
+    "0040_alpha_runtime_receiver.sql",
   ])
     for (const sql of readFileSync(
       new URL("../migrations/d1/" + file, import.meta.url),
@@ -742,7 +742,7 @@ test("empty HTTP snapshot receipts retire only older self-stake and replay witho
     for (const file of [
       "0010_ledger_state.sql",
       "0016_archive_export_revisions.sql",
-      "0039_alpha_runtime_receiver.sql",
+      "0040_alpha_runtime_receiver.sql",
     ]) {
       const source = readFileSync(
         new URL(`../migrations/d1/${file}`, import.meta.url),

@@ -52,7 +52,7 @@ async function fixture() {
   for (const file of [
     "0010_ledger_state.sql",
     "0016_archive_export_revisions.sql",
-    "0039_alpha_runtime_receiver.sql",
+    "0040_alpha_runtime_receiver.sql",
   ]) {
     const sql = readFileSync(
       new URL(`../migrations/d1/${file}`, import.meta.url),

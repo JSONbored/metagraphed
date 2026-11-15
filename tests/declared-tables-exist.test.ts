@@ -312,7 +312,7 @@ test("populated 0038 upgrades preserve exact legacy rows", async () => {
     assert.equal(before[3]?.[0]?.captured_at, at);
     assert.equal(before[4]?.[0]?.captured_at, at);
     assert.equal(before[4]?.[0]?.completed_at, completedAt);
-    const next = new URL("0039_alpha_runtime_receiver.sql", origin);
+    const next = new URL("0040_alpha_runtime_receiver.sql", origin);
     const statements = readFileSync(next, "utf8")
       .split("-- statement-breakpoint")
       .filter((sql) => sql.trim())

@@ -29,7 +29,7 @@ import { isPostgresReadStore, readStore } from "../src/read-store.ts";
 const NATIVE_ONLY_FAMILIES = [
   {
     owner: "nominator_positions",
-    migration: "0039_alpha_runtime_receiver.sql",
+    migration: "0040_alpha_runtime_receiver.sql",
     tables: [
       "alpha_runtime_metadata",
       "alpha_snapshot_passes",
