@@ -1822,8 +1822,10 @@
     // ids 1028-1031 were made account-unique ahead of the fold (#13159's
     // shared-id item) so these carry over verbatim: same names, same limits,
     // same periods, now enforced inside the one surviving Worker.
-    // wrangler.wss-lb.jsonc's WSS_CONNECT_RATE_LIMITER (1032) does NOT move
-    // -- #13151 decides that Worker's fate separately.
+    // wrangler.wss-lb.jsonc's WSS_CONNECT_RATE_LIMITER (1032) is NOT carried:
+    // #13151's decision retires the WSS Worker outright (291 req/week; final
+    // shape is 2 Workers), so its config is deleted in this same PR and the
+    // Worker goes on cutover day behind a deprecation notice.
     {
       "name": "ALERT_TRIGGER_CREATE_RATE_LIMITER",
       "namespace_id": "1028",
