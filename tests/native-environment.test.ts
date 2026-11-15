@@ -251,6 +251,11 @@ test("constructs a fixed complete environment and keeps internal owners guarded 
   const application = await createNativeEnvironment(options());
   assert.match(state.earlyError, /MCP actor is not bound/);
   assert.equal(
+    (await import("../src/native-conformance-contract.ts"))
+      .NATIVE_CONFORMANCE_CONTRACT,
+    application.conformance,
+  );
+  assert.equal(
     await (
       await application.fetch(new Request("https://fixture.example"))
     ).text(),

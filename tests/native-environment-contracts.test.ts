@@ -18,6 +18,7 @@ import {
 import type { NativeSource } from "../src/native-api-process.ts";
 import type { NativeCronOwner } from "../src/pg-cron.ts";
 import { NATIVE_RATE_POLICIES } from "../src/native-rate-policies.ts";
+import { NATIVE_CONFORMANCE_CONTRACT } from "../src/native-conformance-contract.ts";
 
 const owners = {
   app: "owner",
@@ -31,6 +32,23 @@ const credentials = (owner: NativeCronOwner) =>
   Object.fromEntries(
     NATIVE_REQUIRED_SECRETS[owner].map((key) => [key, "fixture-value"]),
   );
+
+test("the cross-repo conformance-fixture identity is pinned, exact and frozen", () => {
+  // Paired pin with JSONbored/subnet-ops metagraphed/native-app/ci.py
+  // (metagraphed-infra#883): the fleet conformance run refuses descriptors
+  // with any other identity, so changing a value here without the fleet-side
+  // bump fails there, and a fleet-side bump without this deliberate diff
+  // fails here. Exact literals on purpose -- no derivation, no drift.
+  assert.deepEqual(NATIVE_CONFORMANCE_CONTRACT, {
+    publicFixtureFormat: "metagraphed.native-public-conformance-fixture.v1",
+    stakeFixtureFormat: "metagraphed.native-stake-conformance-fixture.v1",
+    schemaContract: 4,
+    databaseVersionFloor: 180000,
+    databaseVersionCeiling: 190000,
+    serveLogin: "metagraphed_serve_login",
+  });
+  assert(Object.isFrozen(NATIVE_CONFORMANCE_CONTRACT));
+});
 
 test("native settings retain reviewed feature defaults without legacy selectors", () => {
   const retired = new Set([
