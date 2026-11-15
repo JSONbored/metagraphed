@@ -170,6 +170,11 @@ export const INGESTED_EVENT_KINDS = [
   "LinkedOutputRecorded",
   "LinkedOutputConsumed",
   "LinkedOutputPruned",
+  // The on-chain EVM key association (#13165,
+  // SubtensorModule.AssociatedEvmAddress) -- same forward-compat footing as
+  // the kinds above: the structured decode (into app.evm_associations) lands
+  // with the engine.
+  "EvmKeyAssociated",
   // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
   // -- same forward-compat footing again.
   "TaoUsdPriceFed",

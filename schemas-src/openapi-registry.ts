@@ -416,6 +416,7 @@ import {
   AccountParentsArtifactSchema,
 } from "./routes/account-child-delegation.ts";
 import {
+  EvmAssociationSchema,
   EvmAddressMappingArtifactSchema,
   NetworkParametersArtifactSchema,
   RandomnessArtifactSchema,
@@ -958,6 +959,7 @@ register(AccountCounterpartiesArtifactSchema, "AccountCounterpartiesArtifact");
 register(AccountEntitiesArtifactSchema, "AccountEntitiesArtifact");
 register(AccountChildrenArtifactSchema, "AccountChildrenArtifact");
 register(AccountParentsArtifactSchema, "AccountParentsArtifact");
+register(EvmAssociationSchema, "EvmAssociation");
 register(EvmAddressMappingArtifactSchema, "EvmAddressMappingArtifact");
 register(NetworkParametersArtifactSchema, "NetworkParametersArtifact");
 register(RandomnessArtifactSchema, "RandomnessArtifact");

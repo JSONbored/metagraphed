@@ -2467,6 +2467,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_subnet_alpha_assets", HARNESS_SERVES_NO_ROWS],
   // #13165: the LimitOrders order book is engine-gated the same way.
   ["get_subnet_limit_orders", HARNESS_SERVES_NO_ROWS],
+  // #13165: the associations block on the EVM address mapping is engine-gated
+  // the same way -- no association store is bound in the harness, so the tool
+  // can only see the empty decline beside its precompile answer.
+  ["get_evm_address_mapping", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

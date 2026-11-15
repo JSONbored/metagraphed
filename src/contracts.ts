@@ -1910,7 +1910,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "evm-address-mapping",
     "/metagraph/evm/address/{h160}.json",
-    "Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache (deterministic given h160, never changes). ss58 is null on RPC failure.",
+    "H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress, read through the association store with its capture history in `associations`) answers when the engine's capture holds the key's owning ss58; otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache (deterministic given h160, never changes) — `source` says which path answered. ss58 is null when neither resolves; associations is empty with association_count null until the engine's capture lands (an empty list is not a measured never-associated key).",
     "EvmAddressMappingArtifact",
     COMPUTED_LIVE,
   ),
@@ -4190,7 +4190,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/evm/address/{h160}",
     "/metagraph/evm/address/{h160}.json",
-    "Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.",
+    "Fetch the H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated) answers when the engine's capture holds the key's owning ss58 — with its capture history in `associations`, newest first and store-capped — otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache; `source` says which path answered. ss58 is null when neither resolves. associations is empty with association_count null until the engine's capture lands: an empty list is not a measured never-associated key, so a zero count is never published.",
     "short",
     ["accounts"],
     [],

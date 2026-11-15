@@ -25,6 +25,7 @@ import { createPgSubnetServicesStore } from "./pg-subnet-services.ts";
 import { createPgSubnetSwapStore } from "./pg-subnet-swap.ts";
 import { createPgSubnetAlphaAssetsStore } from "./pg-subnet-alpha-assets.ts";
 import { createPgSubnetLimitOrdersStore } from "./pg-subnet-limit-orders.ts";
+import { createPgEvmAssociationsStore } from "./pg-evm-associations.ts";
 import { createPgTaoUsdOracleStore } from "./pg-tao-usd-oracle.ts";
 import {
   createPgNeuronCaptureStore,
@@ -96,6 +97,7 @@ export function createNativeStateBindings(
     SUBNET_SWAP_STORE: createPgSubnetSwapStore(app),
     SUBNET_ALPHA_ASSETS_STORE: createPgSubnetAlphaAssetsStore(app),
     SUBNET_LIMIT_ORDERS_STORE: createPgSubnetLimitOrdersStore(app),
+    EVM_ASSOCIATIONS_STORE: createPgEvmAssociationsStore(app),
     TAO_USD_ORACLE_STORE: createPgTaoUsdOracleStore(app),
     NEURON_CAPTURE_STORE: capture,
     ROOT_BASKET_STORE: createPgRootBasketStore(app),

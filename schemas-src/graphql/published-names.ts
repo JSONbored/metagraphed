@@ -342,6 +342,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   EndpointsArtifact: "EndpointList",
   EvidenceLedgerArtifact: "EvidenceList",
   EvmAddressMappingArtifact: "EvmAddressMapping",
+  EvmAssociation: "EvmAssociation",
   ExtrinsicsFeedArtifact: "ExtrinsicList",
   FailureReason: "FailureReason",
   FailureReasonsArtifact: "FailureReasons",

@@ -36,6 +36,7 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "compute_declarations",
     "emission_flow_watch",
     "emission_gate_param_history",
+    "evm_associations",
     "gamma_deposits",
     "gamma_events",
     "generated_artifacts",

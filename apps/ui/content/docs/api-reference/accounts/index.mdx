@@ -70,7 +70,7 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
 - [Accounts List](/docs/api-reference/accounts/accounts-list) — `GET /api/v1/accounts`\
   Fetch currently registered hotkeys with membership counts and emission observations.
 - [Evm Address Mapping](/docs/api-reference/accounts/evm-address-mapping) — `GET /api/v1/evm/address/{h160}`\
-  Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache.
+  Fetch the H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165).
 - [Evm Address Mapping By Network](/docs/api-reference/accounts/evm-address-mapping-by-network) — `GET /api/v1/{network}/evm/address/{h160}`\
   Network-scoped form of /api/v1/evm/address/\{h160} — prefix the route with a network to choose which chain answers it.
 - [Network Parameters](/docs/api-reference/accounts/network-parameters) — `GET /api/v1/network/parameters`\
