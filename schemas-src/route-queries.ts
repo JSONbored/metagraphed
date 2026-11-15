@@ -319,6 +319,11 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // is a handful of rows.
   "/api/v1/accounts/pending-coldkey-swaps",
   "/api/v1/accounts/{ss58}/coldkey-swap",
+  // #13166: per-account delegation/membership cards -- an account holds a
+  // handful of proxies and multisigs, not a series (the membership read is
+  // store-capped, not a query parameter a caller could widen).
+  "/api/v1/accounts/{ss58}/proxies",
+  "/api/v1/accounts/{ss58}/multisigs",
   // #13163: the newest completed basket capture is one capture -- the row
   // bound lives in the capture receiver's own fund ceiling, not in a query
   // parameter a caller could widen; the per-validator card takes none either.

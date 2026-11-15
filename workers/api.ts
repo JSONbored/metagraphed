@@ -425,6 +425,8 @@ import {
   handleAccountLocks,
   handlePendingColdkeySwaps,
   handleAccountColdkeySwap,
+  handleAccountProxies,
+  handleAccountMultisigs,
   handleChainBaskets,
   handleValidatorBasket,
   handleSubnetGamma,
@@ -864,6 +866,8 @@ import {
   ACCOUNT_LOCKS_PATH_PATTERN,
   PENDING_COLDKEY_SWAPS_PATH,
   ACCOUNT_COLDKEY_SWAP_PATH_PATTERN,
+  ACCOUNT_PROXIES_PATH_PATTERN,
+  ACCOUNT_MULTISIGS_PATH_PATTERN,
   CHAIN_BASKETS_PATH,
   VALIDATOR_BASKET_PATH_PATTERN,
   SUBNET_GAMMA_HISTORY_PATH_PATTERN,
@@ -7137,6 +7141,22 @@ async function dispatchRequest(
       // through the same seam.
       return handleAccountColdkeySwap(request, env, accountColdkeySwapMatch[1]);
     }
+    const accountProxiesMatch = ACCOUNT_PROXIES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountProxiesMatch) {
+      // #13166: one account's Proxy-pallet delegation state -- a handful of
+      // rows per account through the native proxies store seam.
+      return handleAccountProxies(request, env, accountProxiesMatch[1]);
+    }
+    const accountMultisigsMatch = ACCOUNT_MULTISIGS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountMultisigsMatch) {
+      // #13166: every multisig the account belongs to, through the native
+      // multisigs store seam.
+      return handleAccountMultisigs(request, env, accountMultisigsMatch[1]);
+    }
     if (resolved.url.pathname === CHAIN_BASKETS_PATH) {
       // #13163: every validator's Root basket fund at the newest completed
       // capture -- one bounded read through the capture store seam,
@@ -8256,6 +8276,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // app.key_successors carry no network dimension.
     pathname === PENDING_COLDKEY_SWAPS_PATH ||
     ACCOUNT_COLDKEY_SWAP_PATH_PATTERN.test(pathname) ||
+    // #13166: app.proxies / app.multisigs carry no network dimension.
+    ACCOUNT_PROXIES_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_MULTISIGS_PATH_PATTERN.test(pathname) ||
     // #13163: the basket loaders pin network='finney' by construction.
     pathname === CHAIN_BASKETS_PATH ||
     VALIDATOR_BASKET_PATH_PATTERN.test(pathname) ||

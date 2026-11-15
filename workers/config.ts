@@ -703,6 +703,14 @@ export const PENDING_COLDKEY_SWAPS_PATH =
 // the sibling account routes above.
 export const ACCOUNT_COLDKEY_SWAP_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([^/]+)\/coldkey-swap$/;
+// One account's Proxy-pallet delegation state (#13166), live from the
+// proxies store, no static file. The handler validates the ss58 itself.
+export const ACCOUNT_PROXIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/proxies$/;
+// Every multisig an account belongs to (#13166), live from the multisigs
+// store, no static file. The handler validates the ss58 itself.
+export const ACCOUNT_MULTISIGS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/multisigs$/;
 // Every validator's Root basket fund at the newest completed capture
 // (#13163), live from the Root basket capture store, no static file.
 export const CHAIN_BASKETS_PATH = "/api/v1/chain/baskets";

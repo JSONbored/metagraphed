@@ -170,6 +170,13 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // enforces.
   "/api/v1/accounts/pending-coldkey-swaps",
   "/api/v1/accounts/{ss58}/coldkey-swap",
+  // #13166 publishes the Proxy-pallet delegation state and the multisig
+  // membership; both tables behind them are empty until the engine's
+  // Proxy/Multisig captures land, so no UI consumes them yet. Remove the
+  // entries when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/accounts/{ss58}/proxies",
+  "/api/v1/accounts/{ss58}/multisigs",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

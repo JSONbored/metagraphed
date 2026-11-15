@@ -189,6 +189,10 @@ export const FIELD_COMPLEXITY = {
   pending_coldkey_swaps: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13166: one announcement row plus a handful of app.key_successors rows.
   account_coldkey_swap: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded read of a handful of app.proxies rows.
+  account_proxies: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded (store-capped) membership read of app.multisigs.
+  account_multisigs: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one completed capture's funds, capped by the receiver's own
   // fund ceiling.
   validator_baskets: RELATIONSHIP_FIELD_COMPLEXITY,

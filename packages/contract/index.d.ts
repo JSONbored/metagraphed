@@ -913,7 +913,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows, its PendingChildKeys queue, its threshold bookkeeping and the ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read. */
         get: operations["accountChildren"];
         put?: never;
         post?: never;
@@ -1099,6 +1099,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/multisigs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every multisig an account belongs to
+         * @description Fetch every multisig an account belongs to (#13166) — as the multisig account itself or as a signatory — each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Served live from the multisigs store; until the engine's Multisig call/event capture lands the state holds no rows and the response is the schema-stable decline — an empty multisigs array with multisig_count null, never 0, because an empty list is not a measured multisig-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountMultisigs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/parents": {
         parameters: {
             query?: never;
@@ -1106,7 +1126,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows and its child-keyed ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read. */
         get: operations["accountParents"];
         put?: never;
         post?: never;
@@ -1159,6 +1179,26 @@ export interface paths {
         };
         /** @description Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream. A successfully read quiet window returns measured zeros; an unavailable source carries `degraded.reason=unavailable`. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
         get: operations["accountPrometheus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/proxies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's proxy delegations
+         * @description Fetch one account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (the chain's 23-and-growing enum, spelled as the chain spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve (u64 atomic units as a decimal string). Served live from the proxies store; until the engine's Proxy.Proxies capture lands the state holds no rows and the response is the schema-stable decline — an empty proxies array with proxy_count null, never 0, because an empty list is not a measured delegation-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountProxies"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5655,6 +5695,7 @@ export interface components {
         /** @description Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children. */
         AccountChildrenArtifact: {
             account: string;
+            child_key_detail?: components["schemas"]["ChildKeyDetail"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -5972,9 +6013,37 @@ export interface components {
             schema_version: number;
             ss58: string;
         };
+        /** @description One multisig an account belongs to: the multisig account, its resolved composition and the capture stamp. */
+        AccountMultisig: {
+            captured_at: string | null;
+            /** @description The multisig account itself (ss58). */
+            multisig: string;
+            /**
+             * @description Which side of the membership matched: the queried account IS this multisig account, or it signs for it.
+             * @enum {string}
+             */
+            role: "multisig" | "signatory";
+            /** @description The signatory set behind the multisig account, as resolved from the call decode. Null when the capture has not resolved it -- never an empty list, which would claim a measured signatory-less multisig. */
+            signatories: string[] | null;
+            /** @description `signatories.length`, null exactly when signatories is null. */
+            signatory_count: number | null;
+            /** @description How many signatory approvals the multisig requires. Null when the capture has not resolved the composition. */
+            threshold: number | null;
+        };
+        /** @description One account's Multisig-pallet membership (#13166). Empty with a null multisig_count until the engine's multisig capture lands. Mirrors GET /api/v1/accounts/{ss58}/multisigs. */
+        AccountMultisigsArtifact: {
+            captured_at: string | null;
+            /** @description How many multisigs this account belongs to here -- `multisigs.length`. NULL when the state holds no rows for this account (store unbound, or the multisig capture has not run): a zero count is never a measurement and is not published. */
+            multisig_count: number | null;
+            /** @description The multisigs the account belongs to -- as the multisig account itself or as a signatory -- ordered by multisig address, store-capped. */
+            multisigs: components["schemas"]["AccountMultisig"][];
+            schema_version: number;
+            ss58: string;
+        };
         /** @description Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents. */
         AccountParentsArtifact: {
             account: string;
+            child_key_detail?: components["schemas"]["ParentKeyDetail"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -6116,6 +6185,28 @@ export interface components {
             }[];
             total_announcements: number;
             window: ("7d" | "30d" | "90d") | null;
+        };
+        /** @description One account's Proxy-pallet delegation state (#13166). Empty with a null proxy_count until the engine's proxy capture lands. Mirrors GET /api/v1/accounts/{ss58}/proxies. */
+        AccountProxiesArtifact: {
+            captured_at: string | null;
+            /** @description The account-level reserve held against its proxy vector (u64 atomic units as a decimal string, stored once per delegating account). Null when the capture did not carry it. */
+            deposit: string | null;
+            /** @description The account's proxy definitions, ordered by (delegate, proxy_type, delay). */
+            proxies: components["schemas"]["AccountProxy"][];
+            /** @description How many proxy definitions this account holds -- `proxies.length`. NULL when the state holds no rows for this account (store unbound, or the proxy capture has not run): a zero count is never a measurement and is not published. */
+            proxy_count: number | null;
+            schema_version: number;
+            ss58: string;
+        };
+        /** @description One proxy definition of an account: the delegate it runs to, its variant, its announcement delay and the capture stamp. */
+        AccountProxy: {
+            captured_at: string | null;
+            /** @description The announcement delay in blocks before this proxy's calls execute. 0 is the chain's own value for an undelayed proxy, read from storage -- not a fabricated default. */
+            delay: number;
+            /** @description The account the delegation runs to (ss58). */
+            delegate: string;
+            /** @description The proxy variant, spelled as the chain's enum spells it (Any / Owner / Staking / Registration ... GammaSpend) -- not pinned to an enum the runtime still extends (23 variants on v490). */
+            proxy_type: string;
         };
         AccountRegistrationsArtifact: {
             address: string;
@@ -8177,6 +8268,48 @@ export interface components {
                 netuid_removed_count: number;
                 netuid_renamed_count: number;
             };
+        };
+        /** @description The stored child-key detail beside the live children graph (#13166): takes, the pending queue, threshold bookkeeping and capture history, from the child-keys store. Every count is NULL over an empty list until the engine's child-key capture lands. */
+        ChildKeyDetail: {
+            /** @description The account's parent-keyed relation history, newest capture first, store-capped. */
+            history: components["schemas"]["ChildKeysHistoryEntry"][];
+            history_count: number | null;
+            /** @description The account's scheduled child relations, ordered by (netuid, child). */
+            pending: components["schemas"]["PendingChildKeyEntry"][];
+            pending_count: number | null;
+            take_count: number | null;
+            /** @description The account's own per-subnet take rows, ordered by netuid. */
+            takes: components["schemas"]["ChildkeyTakeEntry"][];
+            /** @description The account's threshold bookkeeping, null when the capture holds none. */
+            threshold: components["schemas"]["ChildkeyThreshold"] | null;
+        };
+        /** @description One captured (parent, netuid, child, proportion) relation observation from the ChildKeys history. */
+        ChildKeysHistoryEntry: {
+            captured_at: string | null;
+            child: string;
+            netuid: number;
+            parent: string;
+            /** @description The raw stringified u64 proportion at the capture. */
+            proportion: string;
+            /** @description The same value pre-divided to a 0..1 float. */
+            proportion_fraction: number;
+        };
+        /** @description One subnet's stored child-key take for the account. */
+        ChildkeyTakeEntry: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description The take this hotkey charges its parents on the subnet, in PerU16 parts of 65535 (SubtensorModule.ChildkeyTake). */
+            take: number;
+            /** @description The same take pre-divided to a 0..1 float. */
+            take_fraction: number;
+        };
+        /** @description The account's stored child-key threshold bookkeeping. */
+        ChildkeyThreshold: {
+            captured_at: string | null;
+            /** @description Whether the account sits in SubtensorModule.ChildkeyThresholdChecks (stake changed; re-check queued for on_idle). Null when the capture did not carry that map's answer. */
+            pending_check: boolean | null;
+            /** @description Whether the account sits in SubtensorModule.ChildkeyThresholdSuspended (total stake below StakeThreshold; its child relations stay stored but are inert). Null when the capture did not carry that map's answer -- never a fabricated false. */
+            suspended: boolean | null;
         };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
@@ -10332,6 +10465,15 @@ export interface components {
             sort?: string | null;
             total: number;
         };
+        /** @description The stored child-key detail beside the live parents graph (#13166): the account's takes and its child-keyed capture history. The pending queue and threshold bookkeeping are parent-keyed state and live on the children surface. */
+        ParentKeyDetail: {
+            /** @description The account's child-keyed relation history, newest capture first, store-capped. */
+            history: components["schemas"]["ChildKeysHistoryEntry"][];
+            history_count: number | null;
+            take_count: number | null;
+            /** @description The account's own per-subnet take rows, ordered by netuid. */
+            takes: components["schemas"]["ChildkeyTakeEntry"][];
+        };
         PartnershipMetadata: {
             /** Format: date */
             since: string;
@@ -10343,6 +10485,18 @@ export interface components {
          * @enum {string}
          */
         PartnershipTier: "pilot";
+        /** @description One scheduled-but-unapplied child relation of the account (SubtensorModule.PendingChildKeys). */
+        PendingChildKeyEntry: {
+            captured_at: string | null;
+            child: string;
+            /** @description The block the pending relations apply at (SubtensorModule.PendingChildKeys' cool-down). Null when the capture did not carry it. */
+            cool_down_block: number | null;
+            netuid: number;
+            /** @description The scheduled stake-weight proportion -- the raw stringified u64 (0..u64::MAX represents 0..100%). */
+            proportion: string;
+            /** @description The same value pre-divided to a 0..1 float. */
+            proportion_fraction: number;
+        };
         /** @description Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
         PendingColdkeySwapsArtifact: {
             captured_at: string | null;
@@ -15588,6 +15742,44 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "pending": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "cool_down_block": 5000000,
+                     *               "netuid": 7,
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "pending_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "threshold": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "pending_check": false,
+                     *             "suspended": false
+                     *           }
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -15720,6 +15912,28 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ]
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -22993,6 +23207,44 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "pending": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "cool_down_block": 5000000,
+                     *               "netuid": 7,
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "pending_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "threshold": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "pending_check": false,
+                     *             "suspended": false
+                     *           }
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -24493,6 +24745,131 @@ export interface operations {
             };
         };
     };
+    accountMultisigs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "multisig_count": 1,
+                     *         "multisigs": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "multisig": "example",
+                     *             "role": "multisig",
+                     *             "signatories": [
+                     *               "example"
+                     *             ],
+                     *             "signatory_count": 1,
+                     *             "threshold": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountMultisigsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountParents: {
         parameters: {
             query?: never;
@@ -24521,6 +24898,28 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ]
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -24977,6 +25376,128 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountPrometheusArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountProxies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "deposit": "example",
+                     *         "proxies": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "delay": 1,
+                     *             "delegate": "example",
+                     *             "proxy_type": "example"
+                     *           }
+                     *         ],
+                     *         "proxy_count": 1,
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountProxiesArtifact"];
                     };
                 };
             };

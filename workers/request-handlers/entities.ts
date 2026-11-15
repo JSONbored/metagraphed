@@ -105,6 +105,14 @@ import {
   loadAccountColdkeySwap,
 } from "../../src/coldkey-swaps.ts";
 import {
+  buildAccountProxies,
+  loadAccountProxies,
+} from "../../src/account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "../../src/account-multisigs.ts";
+import {
   basketAccountHex,
   buildValidatorBasket,
   buildValidatorBaskets,
@@ -3256,6 +3264,75 @@ export async function handleAccountColdkeySwap(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/coldkey-swap.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/proxies (#13166): one account's Proxy-pallet
+// delegation state, read through the native proxies-store seam. Same ss58
+// validation as the sibling account routes; no store bound -- today's
+// deployed Workers -- or a failed read is the same schema-stable decline: an
+// empty `proxies` with `proxy_count: null`, never a zero count (an empty
+// list is not a measured delegation-free account), marked as a tier
+// fallback.
+export async function handleAccountProxies(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountProxies(env, ss58);
+  const data = buildAccountProxies(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/proxies.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/multisigs (#13166): every multisig the account
+// belongs to -- as the multisig account itself or as a signatory -- read
+// through the native multisigs-store seam. Same decline contract as the
+// proxies handler above.
+export async function handleAccountMultisigs(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountMultisigs(env, ss58);
+  const data = buildAccountMultisigs(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/multisigs.json`,
         data.captured_at,
       ),
     },

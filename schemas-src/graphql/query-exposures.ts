@@ -1591,6 +1591,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.",
   },
   {
+    field: "account_proxies",
+    operation: "account-proxies",
+    returns: "AccountProxies!",
+    description:
+      "One account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (spelled as the chain's enum spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve. Until the engine's Proxy.Proxies capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty proxies array with proxy_count NULL, never 0, because an empty list is not a measured delegation-free account. Mirrors GET /api/v1/accounts/{ss58}/proxies.",
+  },
+  {
+    field: "account_multisigs",
+    operation: "account-multisigs",
+    returns: "AccountMultisigs!",
+    description:
+      "Every multisig an account belongs to (#13166) -- as the multisig account itself or as a signatory -- each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Until the engine's Multisig call/event capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty multisigs array with multisig_count NULL, never 0, because an empty list is not a measured multisig-free account. Mirrors GET /api/v1/accounts/{ss58}/multisigs.",
+  },
+  {
     field: "account_children",
     operation: "account-children",
     returns: "AccountChildren",

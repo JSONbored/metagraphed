@@ -181,8 +181,13 @@ describe("the named prose-only exemption (#10517)", () => {
     // (accounts/pending-coldkey-swaps, accounts/{ss58}/coldkey-swap) --
     // every table behind them is empty until the engine's swap and lineage
     // captures land. Same discipline as above.
+    //
+    // 17 -> 19 (#13166): the proxies/multisigs serving slice publishes two
+    // more routes of the same engine-gated class (accounts/{ss58}/proxies,
+    // accounts/{ss58}/multisigs) -- both tables are empty until the engine's
+    // Proxy/Multisig captures land. Same discipline as above.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 17,
+      PROSE_ONLY_ROUTES.length <= 19,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

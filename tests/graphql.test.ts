@@ -26629,3 +26629,102 @@ describe("graphql — account_coldkey_swap (#13166)", () => {
     assert.match(errors[0]?.message ?? "", /ss58/);
   });
 });
+
+// The account_proxies / account_multisigs fields (#13166): same
+// loader/builder as the REST routes and the MCP tools, so the declines and
+// the served rows match exactly.
+describe("graphql — account_proxies / account_multisigs (#13166)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const OTHER = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  test("no bound store resolves to the schema-stable declines, never null", async () => {
+    const { status, body } = await gql(`{
+      account_proxies(ss58: "${SS58}") {
+        schema_version ss58 proxy_count deposit captured_at
+        proxies { delegate proxy_type delay captured_at }
+      }
+      account_multisigs(ss58: "${SS58}") {
+        schema_version ss58 multisig_count captured_at
+        multisigs { multisig threshold signatories signatory_count role captured_at }
+      }
+    }`);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_proxies, {
+      schema_version: 1,
+      ss58: SS58,
+      proxy_count: null,
+      deposit: null,
+      captured_at: null,
+      proxies: [],
+    });
+    assert.deepEqual(body.data.account_multisigs, {
+      schema_version: 1,
+      ss58: SS58,
+      multisig_count: null,
+      captured_at: null,
+      multisigs: [],
+    });
+  });
+
+  test("bound stores serve the rows", async () => {
+    const env = {
+      ACCOUNT_PROXIES_STORE: {
+        rows: async () => [
+          {
+            delegate: OTHER,
+            proxy_type: "Staking",
+            delay: "0",
+            deposit: "1000000000",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+      ACCOUNT_MULTISIGS_STORE: {
+        byMember: async () => [
+          {
+            multisig: OTHER,
+            threshold: "2",
+            signatories: [SS58, OTHER],
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(
+      `{
+        account_proxies(ss58: "${SS58}") { proxy_count deposit proxies { delegate proxy_type delay } }
+        account_multisigs(ss58: "${SS58}") { multisig_count multisigs { multisig threshold signatories signatory_count role } }
+      }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_proxies.proxy_count, 1);
+    assert.equal(body.data.account_proxies.deposit, "1000000000");
+    assert.deepEqual(body.data.account_proxies.proxies, [
+      { delegate: OTHER, proxy_type: "Staking", delay: 0 },
+    ]);
+    assert.deepEqual(body.data.account_multisigs.multisigs, [
+      {
+        multisig: OTHER,
+        threshold: 2,
+        signatories: [SS58, OTHER],
+        signatory_count: 2,
+        role: "signatory",
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT on both fields", async () => {
+    for (const field of ["account_proxies", "account_multisigs"]) {
+      const { body } = await gql(`{ ${field}(ss58: "nope") { ss58 } }`);
+      const errors = (body.errors ?? []) as Array<{
+        message?: string;
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", field);
+      assert.match(errors[0]?.message ?? "", /ss58/);
+    }
+  });
+});

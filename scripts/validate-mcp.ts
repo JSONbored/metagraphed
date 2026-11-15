@@ -2454,6 +2454,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   // #13166: the coldkey-swap announcement plane has no producer until the
   // engine's swap capture lands, so the harness can only see the decline.
   ["get_pending_coldkey_swaps", HARNESS_SERVES_NO_ROWS],
+  // #13166: the proxy and multisig state has no producer until the engine's
+  // Proxy/Multisig capture lands, so the harness can only see the decline.
+  ["get_account_proxies", HARNESS_SERVES_NO_ROWS],
+  ["get_account_multisigs", HARNESS_SERVES_NO_ROWS],
   // #13163: no capture store is bound in the harness, so the baskets tool can
   // only see the null-capture decline.
   ["get_validator_baskets", HARNESS_SERVES_NO_ROWS],

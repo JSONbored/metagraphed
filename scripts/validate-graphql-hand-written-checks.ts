@@ -89,7 +89,9 @@ import { readFileSync } from "node:fs";
 // resolvers' guards.
 // 180 -> 181 (#13166): account_coldkey_swap hand-checks its ss58 PATH
 // parameter, same class as account_locks above.
-const CEILING = 181;
+// 181 -> 183 (#13166): account_proxies and account_multisigs hand-check
+// their ss58 PATH parameters, same class again.
+const CEILING = 183;
 
 const SOURCE = "src/graphql.ts";
 

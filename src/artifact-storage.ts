@@ -294,6 +294,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // copy would freeze a state the engine has yet to fill.
   /^accounts\/pending-coldkey-swaps\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/coldkey-swap\.json$/,
+  // #13166: one account's Proxy-pallet delegation state and multisig
+  // membership, computed live from the proxies/multisigs stores -- a baked
+  // copy would freeze a state the engine has yet to fill.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/proxies\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/multisigs\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,

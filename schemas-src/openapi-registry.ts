@@ -372,6 +372,14 @@ import {
   AccountColdkeySwapArtifactSchema,
 } from "./routes/coldkey-swaps.ts";
 import {
+  AccountProxySchema,
+  AccountProxiesArtifactSchema,
+} from "./routes/account-proxies.ts";
+import {
+  AccountMultisigSchema,
+  AccountMultisigsArtifactSchema,
+} from "./routes/account-multisigs.ts";
+import {
   BasketCaptureSchema,
   BasketHoldingSchema,
   BasketTargetSchema,
@@ -423,6 +431,12 @@ import { AccountEntitiesArtifactSchema } from "./routes/account-entities.ts";
 import {
   AccountChildrenArtifactSchema,
   AccountParentsArtifactSchema,
+  ChildKeyDetailSchema,
+  ParentKeyDetailSchema,
+  ChildkeyTakeEntrySchema,
+  PendingChildKeyEntrySchema,
+  ChildkeyThresholdSchema,
+  ChildKeysHistoryEntrySchema,
 } from "./routes/account-child-delegation.ts";
 import {
   EvmAssociationSchema,
@@ -953,6 +967,10 @@ register(ColdkeyLineageSchema, "ColdkeyLineage");
 register(HotkeyLineageEntrySchema, "HotkeyLineageEntry");
 register(AccountKeyLineageSchema, "AccountKeyLineage");
 register(AccountColdkeySwapArtifactSchema, "AccountColdkeySwapArtifact");
+register(AccountProxySchema, "AccountProxy");
+register(AccountProxiesArtifactSchema, "AccountProxiesArtifact");
+register(AccountMultisigSchema, "AccountMultisig");
+register(AccountMultisigsArtifactSchema, "AccountMultisigsArtifact");
 register(BasketCaptureSchema, "BasketCapture");
 register(ValidatorBasketSchema, "ValidatorBasket");
 register(BasketHoldingSchema, "BasketHolding");
@@ -975,6 +993,12 @@ register(AccountCounterpartiesArtifactSchema, "AccountCounterpartiesArtifact");
 register(AccountEntitiesArtifactSchema, "AccountEntitiesArtifact");
 register(AccountChildrenArtifactSchema, "AccountChildrenArtifact");
 register(AccountParentsArtifactSchema, "AccountParentsArtifact");
+register(ChildKeyDetailSchema, "ChildKeyDetail");
+register(ParentKeyDetailSchema, "ParentKeyDetail");
+register(ChildkeyTakeEntrySchema, "ChildkeyTakeEntry");
+register(PendingChildKeyEntrySchema, "PendingChildKeyEntry");
+register(ChildkeyThresholdSchema, "ChildkeyThreshold");
+register(ChildKeysHistoryEntrySchema, "ChildKeysHistoryEntry");
 register(EvmAssociationSchema, "EvmAssociation");
 register(EvmAddressMappingArtifactSchema, "EvmAddressMappingArtifact");
 register(NetworkParametersArtifactSchema, "NetworkParametersArtifact");
