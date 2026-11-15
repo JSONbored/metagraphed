@@ -200,9 +200,9 @@
       "id": "sn-2-dsperse-circuit-repository-openapi",
       "kind": "openapi",
       "name": "DSperse circuit repository OpenAPI",
-      "notes": "Public no-auth OpenAPI 3.1 schema for the SN2 circuit repository API (title \"Circuit Repository API\", 11 paths) on repository.inferencelabs.com. Validators and miners fetch active ZK circuits from this host; the official subnet-2 client sets CIRCUIT_API_URL to https://repository.inferencelabs.com in crates/sn2-types/src/constants.rs.",
+      "notes": "Public no-auth OpenAPI 3.1 schema for the SN2 circuit repository API (title \"Circuit Repository API\", 11 paths) on repository.inferencelabs.com. Validators and miners fetch active ZK circuits from this host; the official subnet-2 client sets CIRCUIT_API_URL to https://repository.inferencelabs.com in crates/sn2-types/src/constants.rs. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 15000
@@ -229,9 +229,9 @@
       "id": "sn-2-dsperse-circuit-list",
       "kind": "subnet-api",
       "name": "DSperse circuit repository circuit list",
-      "notes": "Public no-auth GET returning the list of registered ZK circuits (observed: {\"circuits\":[]} when empty). Documented in the circuit repository's own OpenAPI schema (path /circuits); same host as the already-tracked openapi surface.",
+      "notes": "Public no-auth GET returning the list of registered ZK circuits (observed: {\"circuits\":[]} when empty). Documented in the circuit repository's own OpenAPI schema (path /circuits); same host as the already-tracked openapi surface. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -251,9 +251,9 @@
       "id": "sn-2-dsperse-component-list",
       "kind": "subnet-api",
       "name": "DSperse circuit repository component list",
-      "notes": "Public no-auth GET returning registered circuit components (sha256, name, proof_system, file URLs). Documented in the circuit repository's own OpenAPI schema (path /components); same host as the already-tracked openapi surface.",
+      "notes": "Public no-auth GET returning registered circuit components (sha256, name, proof_system, file URLs). Documented in the circuit repository's own OpenAPI schema (path /components); same host as the already-tracked openapi surface. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -273,9 +273,9 @@
       "id": "sn-2-dsperse-model-list",
       "kind": "subnet-api",
       "name": "DSperse circuit repository model list",
-      "notes": "Public no-auth GET returning registered ML models (id, name, author, version, input/output schema). Documented in the circuit repository's own OpenAPI schema (path /models); same host as the already-tracked openapi surface.",
+      "notes": "Public no-auth GET returning registered ML models (id, name, author, version, input/output schema). Documented in the circuit repository's own OpenAPI schema (path /models); same host as the already-tracked openapi surface. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -295,7 +295,7 @@
       "id": "sn-2-dsperse-circuit-detail",
       "kind": "subnet-api",
       "name": "DSperse circuit repository circuit detail",
-      "notes": "Public no-auth GET returning a single registered circuit's metadata record by repository id; path-parameterized sibling of the already-tracked circuit list on the same host. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}) with no security declared. Live-verified 2026-07-22: a placeholder path value returns a clean HTTP 400 JSON validation error naming the id path field (the circuit collection is currently empty, so no stored record id exists to fetch); the confirmed-live collection root is served by the same routing layer. probe.enabled:false -- percent-encoded path template, no stable canonical id to probe.",
+      "notes": "Public no-auth GET returning a single registered circuit's metadata record by repository id; path-parameterized sibling of the already-tracked circuit list on the same host. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}) with no security declared. Live-verified 2026-07-22: a placeholder path value returns a clean HTTP 400 JSON validation error naming the id path field (the circuit collection is currently empty, so no stored record id exists to fetch); the confirmed-live collection root is served by the same routing layer. probe.enabled:false -- percent-encoded path template, no stable canonical id to probe. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -317,7 +317,7 @@
       "id": "sn-2-dsperse-circuit-download",
       "kind": "subnet-api",
       "name": "DSperse circuit repository circuit artifact download",
-      "notes": "Public no-auth GET streaming a registered circuit's packaged artifact by repository id. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}/download) with no security declared. Live-verified 2026-07-22: a placeholder path value returns a clean HTTP 400 JSON validation error naming the id path field (circuit collection currently empty; the equivalent component file route on this host serves real bytes -- see sn-2-dsperse-component-file-by-name). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET streaming a registered circuit's packaged artifact by repository id. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}/download) with no security declared. Live-verified 2026-07-22: a placeholder path value returns a clean HTTP 400 JSON validation error naming the id path field (circuit collection currently empty; the equivalent component file route on this host serves real bytes -- see sn-2-dsperse-component-file-by-name). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -339,7 +339,7 @@
       "id": "sn-2-dsperse-circuit-file-by-name",
       "kind": "subnet-api",
       "name": "DSperse circuit repository circuit file by name",
-      "notes": "Public no-auth GET returning a named file within a registered circuit. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/files/{circuitId}/{filename}) with no security declared. Live-verified 2026-07-22: placeholder path values return a clean HTTP 400 JSON validation error naming the circuitId path field (circuit collection currently empty). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET returning a named file within a registered circuit. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/files/{circuitId}/{filename}) with no security declared. Live-verified 2026-07-22: placeholder path values return a clean HTTP 400 JSON validation error naming the circuitId path field (circuit collection currently empty). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -361,7 +361,7 @@
       "id": "sn-2-dsperse-circuit-metrics",
       "kind": "subnet-api",
       "name": "DSperse circuit repository circuit metrics",
-      "notes": "Public no-auth GET returning a registered circuit's usage metrics by repository id. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}/metrics); the GET read declares no security. The same path also accepts POST metric submissions, which the schema marks as protected (security: true) -- one URL registers once, so this entry tracks the public GET read and notes the write route here (observed 2026-07-22: a bare POST returns HTTP 503 'Metrics submission not configured'). Live-verified 2026-07-22: a placeholder path value on the GET returns a clean HTTP 400 JSON validation error naming the id path field. probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET returning a registered circuit's usage metrics by repository id. Documented in the circuit repository's own OpenAPI 3.1 schema (path /circuits/{id}/metrics); the GET read declares no security. The same path also accepts POST metric submissions, which the schema marks as protected (security: true) -- one URL registers once, so this entry tracks the public GET read and notes the write route here (observed 2026-07-22: a bare POST returns HTTP 503 'Metrics submission not configured'). Live-verified 2026-07-22: a placeholder path value on the GET returns a clean HTTP 400 JSON validation error naming the id path field. probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -383,7 +383,7 @@
       "id": "sn-2-dsperse-component-detail",
       "kind": "subnet-api",
       "name": "DSperse circuit repository component detail",
-      "notes": "Public no-auth GET returning a single circuit component's metadata record by its content digest; path-parameterized sibling of the already-tracked component list. Documented in the circuit repository's own OpenAPI 3.1 schema (path /components/{sha256}) with no security declared. Live-verified 2026-07-22: a real digest taken from the live component list returns HTTP 200 application/json with the matching component record (name, proof_system, file listing). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET returning a single circuit component's metadata record by its content digest; path-parameterized sibling of the already-tracked component list. Documented in the circuit repository's own OpenAPI 3.1 schema (path /components/{sha256}) with no security declared. Live-verified 2026-07-22: a real digest taken from the live component list returns HTTP 200 application/json with the matching component record (name, proof_system, file listing). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -405,7 +405,7 @@
       "id": "sn-2-dsperse-component-file-by-name",
       "kind": "subnet-api",
       "name": "DSperse circuit repository component file by name",
-      "notes": "Public no-auth GET returning a named file within a circuit component, addressed by the component's content digest. Documented in the circuit repository's own OpenAPI 3.1 schema (path /components/{sha256}/files/{filename}) with no security declared. Live-verified 2026-07-22: a real digest and filename taken from the live component list return HTTP 200 application/octet-stream with the file bytes (circuit.bin, ~6.7 MB). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET returning a named file within a circuit component, addressed by the component's content digest. Documented in the circuit repository's own OpenAPI 3.1 schema (path /components/{sha256}/files/{filename}) with no security declared. Live-verified 2026-07-22: a real digest and filename taken from the live component list return HTTP 200 application/octet-stream with the file bytes (circuit.bin, ~6.7 MB). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -427,7 +427,7 @@
       "id": "sn-2-dsperse-model-detail",
       "kind": "subnet-api",
       "name": "DSperse circuit repository model detail",
-      "notes": "Public no-auth GET returning a single registered model's metadata and composition record by repository id; path-parameterized sibling of the already-tracked model list. Documented in the circuit repository's own OpenAPI 3.1 schema (path /models/{id}) with no security declared. Live-verified 2026-07-22: a real id taken from the live model list returns HTTP 200 application/json with the matching model record (metadata, composition, component slices). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET returning a single registered model's metadata and composition record by repository id; path-parameterized sibling of the already-tracked model list. Documented in the circuit repository's own OpenAPI 3.1 schema (path /models/{id}) with no security declared. Live-verified 2026-07-22: a real id taken from the live model list returns HTTP 200 application/json with the matching model record (metadata, composition, component slices). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -449,7 +449,7 @@
       "id": "sn-2-dsperse-model-weights-by-digest",
       "kind": "subnet-api",
       "name": "DSperse circuit repository model weights by digest",
-      "notes": "Public no-auth GET streaming a model weights artifact addressed by its content digest. Documented in the circuit repository's own OpenAPI 3.1 schema (path /models/wb/{sha256}) with no security declared. Live-verified 2026-07-22: a real artifact digest taken from a live model record's composition returns HTTP 200 application/octet-stream streaming the weights file (~109 MB, transfer confirmed in progress and cut off locally). probe.enabled:false -- percent-encoded path template.",
+      "notes": "Public no-auth GET streaming a model weights artifact addressed by its content digest. Documented in the circuit repository's own OpenAPI 3.1 schema (path /models/wb/{sha256}) with no security declared. Live-verified 2026-07-22: a real artifact digest taken from a live model record's composition returns HTTP 200 application/octet-stream streaming the weights file (~109 MB, transfer confirmed in progress and cut off locally). probe.enabled:false -- percent-encoded path template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "any",

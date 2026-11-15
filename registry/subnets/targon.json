@@ -120,7 +120,7 @@
       "kind": "subnet-api",
       "name": "Targon inventory API",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -132,7 +132,8 @@
         "submitted_by": "nickmopen"
       },
       "source_urls": ["https://docs.targon.com/api/inventory"],
-      "url": "https://api.targon.com/tha/v2/inventory"
+      "url": "https://api.targon.com/tha/v2/inventory",
+      "notes": "[2026-11-15 infra#873 p3b] HTTP 410: provider-confirmed gone; retired from the callable set."
     },
     {
       "auth_required": false,
@@ -140,9 +141,9 @@
       "id": "sn-4-targon-version-api",
       "kind": "subnet-api",
       "name": "Targon Hub API version",
-      "notes": "Public no-auth GET /tha/v2/version on api.targon.com returning the Targon Hub API's own release metadata (name, version, gitHash, buildDate). Documented in the official Targon API docs.",
+      "notes": "Public no-auth GET /tha/v2/version on api.targon.com returning the Targon Hub API's own release metadata (name, version, gitHash, buildDate). Documented in the official Targon API docs. [2026-11-15 infra#873 p3b] HTTP 410: provider-confirmed gone; retired from the callable set.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -237,9 +238,9 @@
       "id": "sn-4-targon-healthz-api",
       "kind": "subnet-api",
       "name": "Targon Hub API healthz",
-      "notes": "Public no-auth GET /tha/v2/healthz on api.targon.com documented at docs.targon.com/api/health. Live-verified 2026-07-21: HTTP 500 application/json (INTERNAL_SERVER_ERROR) - registered so probe monitoring reflects current endpoint state.",
+      "notes": "Public no-auth GET /tha/v2/healthz on api.targon.com documented at docs.targon.com/api/health. Live-verified 2026-07-21: HTTP 500 application/json (INTERNAL_SERVER_ERROR) - registered so probe monitoring reflects current endpoint state. [2026-11-15 infra#873 p3b] HTTP 410: provider-confirmed gone; retired from the callable set.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000

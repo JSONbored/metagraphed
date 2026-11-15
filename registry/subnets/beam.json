@@ -115,9 +115,9 @@
       "id": "sn-105-beam-routing-orchestrators",
       "kind": "subnet-api",
       "name": "Beam routing orchestrators",
-      "notes": "Public no-auth GET returning active orchestrator nodes (hotkey, url, region). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning active orchestrator nodes (hotkey, url, region). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -137,9 +137,9 @@
       "id": "sn-105-beam-worker-capacity",
       "kind": "subnet-api",
       "name": "Beam worker capacity",
-      "notes": "Public no-auth GET returning total and per-orchestrator worker capacity. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning total and per-orchestrator worker capacity. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -195,9 +195,9 @@
       "id": "sn-105-beam-validators-orchestrators",
       "kind": "subnet-api",
       "name": "Beam validator orchestrator list",
-      "notes": "Public no-auth GET /validators/orchestrators on beamcore.b1m.ai returning the orchestrator list as seen by validators (uid, hotkey, name, url, status, worker_count, bandwidth_mbps). Documented in the subnet's own OpenAPI schema. Distinct from the already-registered /routing/orchestrators surface (a different endpoint on the same host).",
+      "notes": "Public no-auth GET /validators/orchestrators on beamcore.b1m.ai returning the orchestrator list as seen by validators (uid, hotkey, name, url, status, worker_count, bandwidth_mbps). Documented in the subnet's own OpenAPI schema. Distinct from the already-registered /routing/orchestrators surface (a different endpoint on the same host). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -217,9 +217,9 @@
       "id": "sn-105-beam-orchestrator-relays",
       "kind": "data-artifact",
       "name": "Beam orchestrator relay hotkeys",
-      "notes": "Public no-auth GET /status/orchestrator-relays on beamcore.b1m.ai returning the list of orchestrator relay hotkeys. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET /status/orchestrator-relays on beamcore.b1m.ai returning the list of orchestrator relay hotkeys. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -373,7 +373,7 @@
       "id": "sn-105-beam-orchestrators-pending-transfers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators pending transfers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/pending-transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/pending-transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -399,7 +399,7 @@
       "id": "sn-105-beam-orchestrators-workers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators workers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/workers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/workers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -464,7 +464,7 @@
         "provenance": "operator-attested",
         "source_url": "https://beamcore.b1m.ai/openapi.json"
       },
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -490,7 +490,7 @@
       "id": "sn-105-beam-internal-routing-live",
       "kind": "subnet-api",
       "name": "Beam GET internal routing live",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /internal/routing/live on beamcore.b1m.ai — query param: pool. Live-verified 2026-07-21: a bare unauthenticated request returns HTTP 401 {\"error\":\"unauthorized\"}, and ?pool=x returns HTTP 400 FST_ERR_VALIDATION listing the allowed pool values — both consistent with a live, gated route. Registered auth_required:true per this file's own gap_notes finding, flagged for a contributor with a credential to confirm with a real pool value. Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /internal/routing/live on beamcore.b1m.ai — query param: pool. Live-verified 2026-07-21: a bare unauthenticated request returns HTTP 401 {\"error\":\"unauthorized\"}, and ?pool=x returns HTTP 400 FST_ERR_VALIDATION listing the allowed pool values — both consistent with a live, gated route. Registered auth_required:true per this file's own gap_notes finding, flagged for a contributor with a credential to confirm with a real pool value. Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -568,7 +568,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id",
-      "notes": "GET /orchestrators/{orchestrator_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"orchestrator not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "GET /orchestrators/{orchestrator_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"orchestrator not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -594,7 +594,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-workers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id workers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/workers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/workers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -620,7 +620,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-pending-transfers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id pending transfers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/pending-transfers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/pending-transfers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -724,7 +724,7 @@
       "id": "sn-105-beam-workers-workerid",
       "kind": "subnet-api",
       "name": "Beam GET workers by worker_id",
-      "notes": "GET /workers/{worker_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"worker not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "GET /workers/{worker_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"worker not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -776,7 +776,7 @@
       "id": "sn-105-beam-jobs-jobid",
       "kind": "subnet-api",
       "name": "Beam GET jobs by job_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -802,7 +802,7 @@
       "id": "sn-105-beam-logs-stream-source",
       "kind": "sse",
       "name": "Beam GET logs stream by source",
-      "notes": "SSE log stream: GET /logs/stream/{source} on beamcore.b1m.ai — the path-parameterized stream this file's own gap_notes already mention. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"error\":\"Unknown log source: test-source\"} — a clean validation error, confirming the route is real. Registered auth_required:true per the issue's grouping of the path-param siblings with the auth-gated group (metagraphed#7116), flagged for confirmation with a real source. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "SSE log stream: GET /logs/stream/{source} on beamcore.b1m.ai — the path-parameterized stream this file's own gap_notes already mention. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"error\":\"Unknown log source: test-source\"} — a clean validation error, confirming the route is real. Registered auth_required:true per the issue's grouping of the path-param siblings with the auth-gated group (metagraphed#7116), flagged for confirmation with a real source. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "sse",
@@ -919,7 +919,7 @@
         "state": "community-submitted",
         "submitted_by": "jsonbored"
       },
-      "notes": "Declared mutation (#11146 phase 3): POST /orchestrators/register on beamcore.b1m.ai, the mandatory registration step before an orchestrator can connect (the missing route named by the SN105 field report). Verified against the subnet's live OpenAPI schema 2026-08-14: POST-only, JSON body requiring `hotkey` with a wallet `signature` (the body IS the credential; the spec declares no per-operation security). Never probed -- the manifest schema forbids an enabled probe on a non-GET surface -- so it carries no probe-derived health; reach it through call_subnet_surface's schema-gated execution."
+      "notes": "Declared mutation (#11146 phase 3): POST /orchestrators/register on beamcore.b1m.ai, the mandatory registration step before an orchestrator can connect (the missing route named by the SN105 field report). Verified against the subnet's live OpenAPI schema 2026-08-14: POST-only, JSON body requiring `hotkey` with a wallet `signature` (the body IS the credential; the spec declares no per-operation security). Never probed -- the manifest schema forbids an enabled probe on a non-GET surface -- so it carries no probe-derived health; reach it through call_subnet_surface's schema-gated execution. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review."
     }
   ],
   "website_url": "https://b1m.ai"

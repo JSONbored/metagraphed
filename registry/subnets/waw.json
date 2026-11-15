@@ -69,9 +69,9 @@
       "id": "sn-78-vocence-subnet-api",
       "kind": "subnet-api",
       "name": "Vocence developer API health endpoint",
-      "notes": "Public health endpoint for the official Vocence developer API. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"ok\",\"service\":\"vocence-developer-api\"}.",
+      "notes": "Public health endpoint for the official Vocence developer API. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"ok\",\"service\":\"vocence-developer-api\"}. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -94,9 +94,9 @@
       "id": "sn-78-vocence-openapi",
       "kind": "openapi",
       "name": "Vocence Developer API OpenAPI",
-      "notes": "Official machine-readable OpenAPI spec for the Vocence developer API. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title Vocence Developer API).",
+      "notes": "Official machine-readable OpenAPI spec for the Vocence developer API. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title Vocence Developer API). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -153,7 +153,7 @@
       "id": "sn-78-vocence-api-account",
       "kind": "subnet-api",
       "name": "Vocence account info (auth-gated)",
-      "notes": "GET + POST /v1/account on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false.",
+      "notes": "GET + POST /v1/account on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -182,7 +182,7 @@
       "id": "sn-78-vocence-api-account-keys",
       "kind": "subnet-api",
       "name": "Vocence account API keys (auth-gated)",
-      "notes": "GET + POST /v1/account/keys on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/account/keys on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -211,7 +211,7 @@
       "id": "sn-78-vocence-api-account-keys-item-revoke",
       "kind": "subnet-api",
       "name": "Vocence account API key revoke (auth-gated)",
-      "notes": "POST /v1/account/keys/{key_id}/revoke on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/account/keys/{key_id}/revoke on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -245,7 +245,7 @@
         "provenance": "operator-attested",
         "source_url": "https://api.vocence.ai/openapi.json"
       },
-      "notes": "GET /v1/account/usage on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/account/usage on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -274,7 +274,7 @@
       "id": "sn-78-vocence-api-agent-tools",
       "kind": "subnet-api",
       "name": "Vocence agent tools library (auth-gated)",
-      "notes": "GET + POST /v1/agent-tools on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/agent-tools on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -303,7 +303,7 @@
       "id": "sn-78-vocence-api-agent-tools-item",
       "kind": "subnet-api",
       "name": "Vocence agent tool by ID (auth-gated)",
-      "notes": "GET + PATCH + DELETE /v1/agent-tools/{tool_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + PATCH + DELETE /v1/agent-tools/{tool_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -332,7 +332,7 @@
       "id": "sn-78-vocence-api-agents",
       "kind": "subnet-api",
       "name": "Vocence agents list (auth-gated)",
-      "notes": "GET + POST /v1/agents on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/agents on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -361,7 +361,7 @@
       "id": "sn-78-vocence-api-agents-architect-chat",
       "kind": "subnet-api",
       "name": "Vocence agent architect chat (auth-gated)",
-      "notes": "POST /v1/agents/architect/chat on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/architect/chat on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -390,7 +390,7 @@
       "id": "sn-78-vocence-api-agents-draft",
       "kind": "subnet-api",
       "name": "Vocence agent draft (auth-gated)",
-      "notes": "POST /v1/agents/draft on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/draft on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -419,7 +419,7 @@
       "id": "sn-78-vocence-api-agents-models",
       "kind": "subnet-api",
       "name": "Vocence available agent models (auth-gated)",
-      "notes": "GET /v1/agents/models on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/models on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -448,7 +448,7 @@
       "id": "sn-78-vocence-api-agents-templates",
       "kind": "subnet-api",
       "name": "Vocence agent templates (auth-gated)",
-      "notes": "GET /v1/agents/templates on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false.",
+      "notes": "GET /v1/agents/templates on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -477,7 +477,7 @@
       "id": "sn-78-vocence-api-agents-templates-item",
       "kind": "subnet-api",
       "name": "Vocence agent template by ID (auth-gated)",
-      "notes": "GET /v1/agents/templates/{template_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/templates/{template_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -506,7 +506,7 @@
       "id": "sn-78-vocence-api-agents-tools-builtin",
       "kind": "subnet-api",
       "name": "Vocence agent built-in tools (auth-gated)",
-      "notes": "GET /v1/agents/tools/builtin on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/tools/builtin on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -535,7 +535,7 @@
       "id": "sn-78-vocence-api-agents-item",
       "kind": "subnet-api",
       "name": "Vocence agent by ID (auth-gated)",
-      "notes": "GET + PATCH + DELETE /v1/agents/{agent_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + PATCH + DELETE /v1/agents/{agent_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -564,7 +564,7 @@
       "id": "sn-78-vocence-api-agents-item-calls",
       "kind": "subnet-api",
       "name": "Vocence agent call sessions (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/calls on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/calls on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -593,7 +593,7 @@
       "id": "sn-78-vocence-api-agents-item-calls-item-recording",
       "kind": "subnet-api",
       "name": "Vocence agent call recording (auth-gated)",
-      "notes": "GET + DELETE /v1/agents/{agent_id}/calls/{session_id}/recording on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + DELETE /v1/agents/{agent_id}/calls/{session_id}/recording on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -622,7 +622,7 @@
       "id": "sn-78-vocence-api-agents-item-calls-item-transcript",
       "kind": "subnet-api",
       "name": "Vocence agent call transcript (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/calls/{session_id}/transcript on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/calls/{session_id}/transcript on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -651,7 +651,7 @@
       "id": "sn-78-vocence-api-agents-item-embed-tokens",
       "kind": "subnet-api",
       "name": "Vocence agent embed tokens (auth-gated)",
-      "notes": "GET + POST /v1/agents/{agent_id}/embed-tokens on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/agents/{agent_id}/embed-tokens on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -680,7 +680,7 @@
       "id": "sn-78-vocence-api-agents-item-embed-tokens-item",
       "kind": "subnet-api",
       "name": "Vocence agent embed token by ID (auth-gated)",
-      "notes": "DELETE /v1/agents/{agent_id}/embed-tokens/{token_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "DELETE /v1/agents/{agent_id}/embed-tokens/{token_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -709,7 +709,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-ingest-markdown",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest markdown (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/markdown on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/markdown on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -738,7 +738,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-ingest-pdf",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest PDF (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/pdf on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/pdf on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -767,7 +767,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-ingest-sitemap",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest sitemap (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/sitemap on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/sitemap on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -796,7 +796,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-ingest-text",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest text (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/text on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/text on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -825,7 +825,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-ingest-url",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest URL (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/url on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/knowledge/ingest/url on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -854,7 +854,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-jobs-item",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge ingest job status (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/knowledge/jobs/{job_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/knowledge/jobs/{job_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -883,7 +883,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-sources",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge sources (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/knowledge/sources on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/knowledge/sources on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -912,7 +912,7 @@
       "id": "sn-78-vocence-api-agents-item-knowledge-sources-item",
       "kind": "subnet-api",
       "name": "Vocence agent knowledge source by ID (auth-gated)",
-      "notes": "DELETE /v1/agents/{agent_id}/knowledge/sources/{source_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "DELETE /v1/agents/{agent_id}/knowledge/sources/{source_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -941,7 +941,7 @@
       "id": "sn-78-vocence-api-agents-item-runs",
       "kind": "subnet-api",
       "name": "Vocence agent runs (auth-gated)",
-      "notes": "GET + POST /v1/agents/{agent_id}/runs on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/agents/{agent_id}/runs on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -970,7 +970,7 @@
       "id": "sn-78-vocence-api-agents-item-runs-item",
       "kind": "subnet-api",
       "name": "Vocence agent run by ID (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/runs/{run_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/runs/{run_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -999,7 +999,7 @@
       "id": "sn-78-vocence-api-agents-item-runs-item-cancel",
       "kind": "subnet-api",
       "name": "Vocence agent run cancel (auth-gated)",
-      "notes": "POST /v1/agents/{agent_id}/runs/{run_id}/cancel on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/agents/{agent_id}/runs/{run_id}/cancel on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1028,7 +1028,7 @@
       "id": "sn-78-vocence-api-agents-item-tools",
       "kind": "subnet-api",
       "name": "Vocence agent attached tools (auth-gated)",
-      "notes": "GET /v1/agents/{agent_id}/tools on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/agents/{agent_id}/tools on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1057,7 +1057,7 @@
       "id": "sn-78-vocence-api-agents-item-tools-item",
       "kind": "subnet-api",
       "name": "Vocence agent tool attachment (auth-gated)",
-      "notes": "POST + DELETE /v1/agents/{agent_id}/tools/{tool_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST + DELETE /v1/agents/{agent_id}/tools/{tool_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1086,7 +1086,7 @@
       "id": "sn-78-vocence-api-audio-noise-remover",
       "kind": "subnet-api",
       "name": "Vocence audio noise remover (auth-gated)",
-      "notes": "POST /v1/audio/noise-remover on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/audio/noise-remover on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1115,7 +1115,7 @@
       "id": "sn-78-vocence-api-feedback",
       "kind": "subnet-api",
       "name": "Vocence feedback (auth-gated)",
-      "notes": "GET + POST /v1/feedback on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + POST /v1/feedback on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1144,7 +1144,7 @@
       "id": "sn-78-vocence-api-stt-transcribe",
       "kind": "subnet-api",
       "name": "Vocence speech-to-text transcribe (auth-gated)",
-      "notes": "POST /v1/stt/transcribe on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/stt/transcribe on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1173,7 +1173,7 @@
       "id": "sn-78-vocence-api-tts-generate",
       "kind": "subnet-api",
       "name": "Vocence text-to-speech generate (auth-gated)",
-      "notes": "POST /v1/tts/generate on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/tts/generate on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1202,7 +1202,7 @@
       "id": "sn-78-vocence-api-tts-speak",
       "kind": "subnet-api",
       "name": "Vocence text-to-speech speak (auth-gated)",
-      "notes": "POST /v1/tts/speak on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/tts/speak on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1231,7 +1231,7 @@
       "id": "sn-78-vocence-api-voice-clone",
       "kind": "subnet-api",
       "name": "Vocence voice clone (auth-gated)",
-      "notes": "POST /v1/voice/clone on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/voice/clone on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1260,7 +1260,7 @@
       "id": "sn-78-vocence-api-voice-clone-save",
       "kind": "subnet-api",
       "name": "Vocence voice clone save (auth-gated)",
-      "notes": "POST /v1/voice/clone/save on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/voice/clone/save on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1289,7 +1289,7 @@
       "id": "sn-78-vocence-api-voice-design-preview",
       "kind": "subnet-api",
       "name": "Vocence voice design preview (auth-gated)",
-      "notes": "POST /v1/voice/design/preview on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/voice/design/preview on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1318,7 +1318,7 @@
       "id": "sn-78-vocence-api-voice-design-save",
       "kind": "subnet-api",
       "name": "Vocence voice design save (auth-gated)",
-      "notes": "POST /v1/voice/design/save on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/voice/design/save on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1347,7 +1347,7 @@
       "id": "sn-78-vocence-api-voices",
       "kind": "subnet-api",
       "name": "Vocence voices library (auth-gated)",
-      "notes": "GET /v1/voices on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET /v1/voices on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1376,7 +1376,7 @@
       "id": "sn-78-vocence-api-voices-builtin",
       "kind": "subnet-api",
       "name": "Vocence built-in voices (auth-gated)",
-      "notes": "GET /v1/voices/builtin on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false.",
+      "notes": "GET /v1/voices/builtin on api.vocence.ai — live-verified 2026-07-21: HTTP 401 without bearer token. Schema declares no security block but bearer auth is enforced empirically. probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1405,7 +1405,7 @@
       "id": "sn-78-vocence-api-voices-item",
       "kind": "subnet-api",
       "name": "Vocence voice by ID (auth-gated)",
-      "notes": "GET + DELETE /v1/voices/{voice_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "GET + DELETE /v1/voices/{voice_id} on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1434,7 +1434,7 @@
       "id": "sn-78-vocence-api-voices-item-speak",
       "kind": "subnet-api",
       "name": "Vocence voice speak (auth-gated)",
-      "notes": "POST /v1/voices/{voice_id}/speak on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
+      "notes": "POST /v1/voices/{voice_id}/speak on api.vocence.ai — auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",

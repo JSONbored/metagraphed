@@ -98,9 +98,9 @@
       "id": "sn-103-djinn-min-compute-spec",
       "kind": "data-artifact",
       "name": "Djinn minimum compute requirements",
-      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official Djinn-Inc/djinn repository as min_compute.yml. Documents SN103 operator requirements for TLSNotary proof miners and MPC validators without GPU.",
+      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official Djinn-Inc/djinn repository as min_compute.yml. Documents SN103 operator requirements for TLSNotary proof miners and MPC validators without GPU. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

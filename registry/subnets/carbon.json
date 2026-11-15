@@ -83,9 +83,9 @@
       "id": "sn-116-taolend-contract-constants",
       "kind": "data-artifact",
       "name": "TaoLend contract and precompile constants",
-      "notes": "Public no-auth TypeScript constants file from the official oxylok/116-taolend repository publishing SN116 TaoLend deployed LendingPoolV1 address (0xE41852a75e51812adA39C8D0aae18c7c59935C0d) and Bittensor EVM precompile addresses (metagraph, neuron, staking, alpha, subnet, balance transfer) used by the lending protocol CLI and validator.",
+      "notes": "Public no-auth TypeScript constants file from the official oxylok/116-taolend repository publishing SN116 TaoLend deployed LendingPoolV1 address (0xE41852a75e51812adA39C8D0aae18c7c59935C0d) and Bittensor EVM precompile addresses (metagraph, neuron, staking, alpha, subnet, balance transfer) used by the lending protocol CLI and validator. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

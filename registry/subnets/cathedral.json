@@ -75,9 +75,9 @@
       "id": "sn-94-alveus-labs-subnet-api",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator API",
-      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
+      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -97,9 +97,9 @@
       "id": "sn-94-alveus-labs-openapi",
       "kind": "openapi",
       "name": "Bitsota AutoResearch coordinator OpenAPI spec",
-      "notes": "OpenAPI 3.1 spec for the Bitsota AutoResearch coordinator API. Host autoresearch.bitsota.com is the SN94 coordinator operated by Alveus Labs (referenced across the official AlveusLabs/SN94-BitSota repo docs); same host as the existing subnet-api surface.",
+      "notes": "OpenAPI 3.1 spec for the Bitsota AutoResearch coordinator API. Host autoresearch.bitsota.com is the SN94 coordinator operated by Alveus Labs (referenced across the official AlveusLabs/SN94-BitSota repo docs); same host as the existing subnet-api surface. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -124,9 +124,9 @@
       "id": "sn-94-bitsota-idea-rewards",
       "kind": "data-artifact",
       "name": "Bitsota idea rewards",
-      "notes": "Public no-auth JSON feed of Bitsota's idea-reward allocations (rewarded research improvements per task), served by the official Bitsota API and defined in its OpenAPI spec. Distinct endpoint from the registered /api/v1/tasks route.",
+      "notes": "Public no-auth JSON feed of Bitsota's idea-reward allocations (rewarded research improvements per task), served by the official Bitsota API and defined in its OpenAPI spec. Distinct endpoint from the registered /api/v1/tasks route. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -146,9 +146,9 @@
       "id": "sn-94-bitsota-healthz",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator healthz",
-      "notes": "Public no-auth GET /healthz on autoresearch.bitsota.com returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the registered tasks and idea-rewards surfaces.",
+      "notes": "Public no-auth GET /healthz on autoresearch.bitsota.com returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the registered tasks and idea-rewards surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -171,9 +171,9 @@
       "id": "sn-94-bitsota-dashboard-api",
       "kind": "subnet-api",
       "name": "Bitsota dashboard snapshot API",
-      "notes": "Public no-auth GET returning an aggregate dashboard snapshot (task counts, active claims, submission and verification pipeline totals). Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/dashboard); same host as the existing tasks and idea-rewards surfaces.",
+      "notes": "Public no-auth GET returning an aggregate dashboard snapshot (task counts, active claims, submission and verification pipeline totals). Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/dashboard); same host as the existing tasks and idea-rewards surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -196,9 +196,9 @@
       "id": "sn-94-bitsota-claims-api",
       "kind": "subnet-api",
       "name": "Bitsota research claims API",
-      "notes": "Public no-auth GET returning research task claims with task IDs, status, descriptions, and participation metadata. Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/claims); same host as the existing tasks, dashboard, and idea-rewards surfaces.",
+      "notes": "Public no-auth GET returning research task claims with task IDs, status, descriptions, and participation metadata. Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/claims); same host as the existing tasks, dashboard, and idea-rewards surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -221,9 +221,9 @@
       "id": "sn-94-bitsota-disclaimer-api",
       "kind": "subnet-api",
       "name": "Bitsota disclaimer API",
-      "notes": "Public no-auth GET returning the Bitsota no-reward-guarantee disclaimer payload (code, version, title, summary, must_display, url). Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/disclaimer); same host as the existing tasks, dashboard, and claims surfaces.",
+      "notes": "Public no-auth GET returning the Bitsota no-reward-guarantee disclaimer payload (code, version, title, summary, must_display, url). Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/disclaimer); same host as the existing tasks, dashboard, and claims surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -296,9 +296,9 @@
       "id": "sn-94-bitsota-work-items",
       "kind": "subnet-api",
       "name": "Bitsota work items",
-      "notes": "Public no-auth GET returning active research work items (id, task_id, kind, strategy_key). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning active research work items (id, task_id, kind, strategy_key). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -318,9 +318,9 @@
       "id": "sn-94-bitsota-peer-evaluations",
       "kind": "subnet-api",
       "name": "Bitsota peer evaluations",
-      "notes": "Public no-auth GET returning peer evaluation records. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning peer evaluation records. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -342,9 +342,9 @@
       "id": "sn-94-bitsota-verifications",
       "kind": "subnet-api",
       "name": "Bitsota verifications",
-      "notes": "Public no-auth GET returning submission verification records (id, submission_id, validator_hotkey). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning submission verification records (id, submission_id, validator_hotkey). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -364,9 +364,9 @@
       "id": "sn-94-bitsota-onchain-status",
       "kind": "subnet-api",
       "name": "Bitsota on-chain status",
-      "notes": "Public no-auth GET returning on-chain connectivity status (configured, ws_url, contract, metadata_path). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning on-chain connectivity status (configured, ws_url, contract, metadata_path). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -386,9 +386,9 @@
       "id": "sn-94-bitsota-reward-snapshot",
       "kind": "data-artifact",
       "name": "Bitsota reward snapshot",
-      "notes": "Public no-auth GET /api/v1/reward-snapshot on autoresearch.bitsota.com returning the current reward-policy snapshot (score_ema_days, competition_count, pool config, validator weight mode). Documented in the subnet's own OpenAPI schema on the same host as the existing dashboard and reward-related surfaces.",
+      "notes": "Public no-auth GET /api/v1/reward-snapshot on autoresearch.bitsota.com returning the current reward-policy snapshot (score_ema_days, competition_count, pool config, validator weight mode). Documented in the subnet's own OpenAPI schema on the same host as the existing dashboard and reward-related surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -408,9 +408,9 @@
       "id": "sn-94-bitsota-readyz",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator readyz",
-      "notes": "Public no-auth GET /readyz on autoresearch.bitsota.com returning coordinator readiness (observed: HTTP 204 No Content). Only supports GET (HEAD returns 405 Method Not Allowed). Distinct from the existing /healthz liveness surface.",
+      "notes": "Public no-auth GET /readyz on autoresearch.bitsota.com returning coordinator readiness (observed: HTTP 204 No Content). Only supports GET (HEAD returns 405 Method Not Allowed). Distinct from the existing /healthz liveness surface. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -452,7 +452,7 @@
       "id": "sn-94-bitsota-claims-claim-id-cancel",
       "kind": "subnet-api",
       "name": "Bitsota claims claim id cancel",
-      "notes": "Cancel Claim Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/claims/{claim_id}/cancel), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {claim_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Cancel Claim Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/claims/{claim_id}/cancel), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {claim_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -474,7 +474,7 @@
       "id": "sn-94-bitsota-planner-run",
       "kind": "subnet-api",
       "name": "Bitsota planner run",
-      "notes": "Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -496,7 +496,7 @@
       "id": "sn-94-bitsota-planner-run-agentic",
       "kind": "subnet-api",
       "name": "Bitsota planner run agentic",
-      "notes": "Agentic Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run-agentic), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Agentic Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run-agentic), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -524,7 +524,7 @@
       "id": "sn-94-bitsota-reward-policy",
       "kind": "subnet-api",
       "name": "Bitsota reward policy",
-      "notes": "Reward Policy Route operation on the Bitsota autoresearch coordinator API (GET, PUT /api/v1/reward-policy), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"invalid admin token\"} -- so it is registered auth_required:true, correcting what the schema implies.",
+      "notes": "Reward Policy Route operation on the Bitsota autoresearch coordinator API (GET, PUT /api/v1/reward-policy), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"invalid admin token\"} -- so it is registered auth_required:true, correcting what the schema implies. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -552,7 +552,7 @@
       "id": "sn-94-bitsota-submissions",
       "kind": "subnet-api",
       "name": "Bitsota submissions",
-      "notes": "List Submissions Route operation on the Bitsota autoresearch coordinator API (GET, POST /api/v1/submissions), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"missing auth headers\"} -- so it is registered auth_required:true, correcting what the schema implies.",
+      "notes": "List Submissions Route operation on the Bitsota autoresearch coordinator API (GET, POST /api/v1/submissions), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"missing auth headers\"} -- so it is registered auth_required:true, correcting what the schema implies. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -574,7 +574,7 @@
       "id": "sn-94-bitsota-submissions-submission-id",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id",
-      "notes": "Get Submission Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Get Submission Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -596,7 +596,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-artifact",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id artifact",
-      "notes": "Submission Artifact Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/artifact), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Submission Artifact Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/artifact), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -618,7 +618,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-detail",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id detail",
-      "notes": "Get Submission Detail Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/detail), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Get Submission Detail Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/detail), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -640,7 +640,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-execution-log",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id execution log",
-      "notes": "Submission Execution Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/execution.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Submission Execution Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/execution.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -662,7 +662,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-peer-consensus",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id peer consensus",
-      "notes": "Peer Consensus Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/peer-consensus), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Peer Consensus Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/peer-consensus), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -684,7 +684,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-peer-evaluate",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id peer evaluate",
-      "notes": "Peer Evaluate Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/peer-evaluate), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Peer Evaluate Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/peer-evaluate), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -706,7 +706,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-replay-log",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id replay log",
-      "notes": "Submission Replay Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/replay.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Submission Replay Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/replay.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -728,7 +728,7 @@
       "id": "sn-94-bitsota-submissions-submission-id-verify",
       "kind": "subnet-api",
       "name": "Bitsota submissions submission id verify",
-      "notes": "Verify Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/verify), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Verify Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/verify), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -750,7 +750,7 @@
       "id": "sn-94-bitsota-tasks-task-id",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id",
-      "notes": "Get Task Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Get Task Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -772,7 +772,7 @@
       "id": "sn-94-bitsota-tasks-task-id-best",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id best",
-      "notes": "Best Result Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/best), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Best Result Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/best), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -794,7 +794,7 @@
       "id": "sn-94-bitsota-tasks-task-id-claim",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id claim",
-      "notes": "Claim Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Claim Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -816,7 +816,7 @@
       "id": "sn-94-bitsota-tasks-task-id-close",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id close",
-      "notes": "Close Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/close), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Close Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/close), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -838,7 +838,7 @@
       "id": "sn-94-bitsota-tasks-task-id-onboard-md",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id onboard md",
-      "notes": "Task Onboarding Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/onboard.md), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Task Onboarding Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/onboard.md), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -860,7 +860,7 @@
       "id": "sn-94-bitsota-tasks-task-id-pause",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id pause",
-      "notes": "Pause Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/pause), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Pause Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/pause), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -882,7 +882,7 @@
       "id": "sn-94-bitsota-tasks-task-id-resume",
       "kind": "subnet-api",
       "name": "Bitsota tasks task id resume",
-      "notes": "Resume Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/resume), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Resume Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/resume), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -909,7 +909,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Claim Validator Job Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Claim Validator Job Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -931,7 +931,7 @@
       "id": "sn-94-bitsota-validator-jobs-job-id-result",
       "kind": "subnet-api",
       "name": "Bitsota validator jobs job id result",
-      "notes": "Submit Validator Job Result Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/{job_id}/result), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {job_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Submit Validator Job Result Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/{job_id}/result), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {job_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -953,7 +953,7 @@
       "id": "sn-94-bitsota-validator-submissions-scan",
       "kind": "subnet-api",
       "name": "Bitsota validator submissions scan",
-      "notes": "Scan Validator Submissions Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/submissions/scan), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Scan Validator Submissions Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/submissions/scan), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -975,7 +975,7 @@
       "id": "sn-94-bitsota-work-items-work-item-id-claim",
       "kind": "subnet-api",
       "name": "Bitsota work items work item id claim",
-      "notes": "Claim Work Item Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/work-items/{work_item_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {work_item_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "notes": "Claim Work Item Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/work-items/{work_item_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {work_item_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",

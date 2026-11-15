@@ -146,9 +146,9 @@
       "id": "sn-51-lium-reclaims-api",
       "kind": "subnet-api",
       "name": "Lium reclaims API",
-      "notes": "Public no-auth GET /reclaims on the Lium Backend API (served at /api/reclaims) returning a JSON array of collateral reclaims with status, expiration, executor_id, and collateral_amount for the SN51 lium.io compute marketplace. Documented in the registered OpenAPI spec on the same host as the existing machines and version subnet-api surfaces.",
+      "notes": "Public no-auth GET /reclaims on the Lium Backend API (served at /api/reclaims) returning a JSON array of collateral reclaims with status, expiration, executor_id, and collateral_amount for the SN51 lium.io compute marketplace. Documented in the registered OpenAPI spec on the same host as the existing machines and version subnet-api surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -1180,7 +1180,7 @@
       "id": "sn-51-lium-cli-auth-poll-session-id",
       "kind": "subnet-api",
       "name": "Lium cli auth poll session id",
-      "notes": "Poll Cli Auth Session operation on the Lium Backend API (GET /cli-auth/poll/{session_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Poll Cli Auth Session operation on the Lium Backend API (GET /cli-auth/poll/{session_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1208,7 +1208,7 @@
       "id": "sn-51-lium-coinbase-create-charge",
       "kind": "subnet-api",
       "name": "Lium coinbase create charge",
-      "notes": "Create Charge operation on the Lium Backend API (POST /coinbase/create-charge), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Create Charge operation on the Lium Backend API (POST /coinbase/create-charge), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1230,7 +1230,7 @@
       "id": "sn-51-lium-coinbase-webhook",
       "kind": "subnet-api",
       "name": "Lium coinbase webhook",
-      "notes": "Webhooks operation on the Lium Backend API (POST /coinbase/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "notes": "Webhooks operation on the Lium Backend API (POST /coinbase/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1549,12 +1549,12 @@
       "url": "https://lium.io/api/executors/deployment-estimate"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-51-lium-executors-executor-uuid-hardware-utilization",
       "kind": "subnet-api",
       "name": "Lium executors executor uuid hardware utilization",
-      "notes": "Get CPU and other hardware utilization for a node operation on the Lium Backend API (GET /executors/{executor_uuid}/hardware-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get CPU and other hardware utilization for a node operation on the Lium Backend API (GET /executors/{executor_uuid}/hardware-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1568,7 +1568,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://lium.io/api/openapi.json"],
-      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/hardware-utilization"
+      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/hardware-utilization",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth": {
@@ -1660,7 +1664,7 @@
       "id": "sn-51-lium-gpu-allocation",
       "kind": "subnet-api",
       "name": "Lium gpu allocation",
-      "notes": "Gpu Allocation operation on the Lium Backend API (POST /gpu-allocation), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "notes": "Gpu Allocation operation on the Lium Backend API (POST /gpu-allocation), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1839,12 +1843,12 @@
       "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/achieve"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-51-lium-machine-requests-request-id-executors",
       "kind": "subnet-api",
       "name": "Lium machine requests request id executors",
-      "notes": "Get nodes assigned to machine request operation on the Lium Backend API (GET /machine-requests/{request_id}/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get nodes assigned to machine request operation on the Lium Backend API (GET /machine-requests/{request_id}/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1858,7 +1862,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://lium.io/api/openapi.json"],
-      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/executors"
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/executors",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth_required": false,
@@ -1894,7 +1902,7 @@
       "id": "sn-51-lium-nowpayments-create-invoice",
       "kind": "subnet-api",
       "name": "Lium nowpayments create invoice",
-      "notes": "Create Invoice operation on the Lium Backend API (POST /nowpayments/create-invoice), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Create Invoice operation on the Lium Backend API (POST /nowpayments/create-invoice), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1922,7 +1930,7 @@
       "id": "sn-51-lium-nowpayments-currencies",
       "kind": "subnet-api",
       "name": "Lium nowpayments currencies",
-      "notes": "Get Currencies operation on the Lium Backend API (GET /nowpayments/currencies), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Get Currencies operation on the Lium Backend API (GET /nowpayments/currencies), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1944,7 +1952,7 @@
       "id": "sn-51-lium-nowpayments-webhook",
       "kind": "subnet-api",
       "name": "Lium nowpayments webhook",
-      "notes": "Nowpayments Webhook operation on the Lium Backend API (POST /nowpayments/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "notes": "Nowpayments Webhook operation on the Lium Backend API (POST /nowpayments/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2325,12 +2333,12 @@
       "url": "https://lium.io/api/pods/%7Bpod_id%7D/feedback"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-51-lium-pods-pod-id-gpu-utilization",
       "kind": "subnet-api",
       "name": "Lium pods pod id gpu utilization",
-      "notes": "Get GPU utilization for a specific pod operation on the Lium Backend API (GET /pods/{pod_id}/gpu-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get GPU utilization for a specific pod operation on the Lium Backend API (GET /pods/{pod_id}/gpu-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2344,7 +2352,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://lium.io/api/openapi.json"],
-      "url": "https://lium.io/api/pods/%7Bpod_id%7D/gpu-utilization"
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/gpu-utilization",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth": {
@@ -2436,7 +2448,7 @@
       "id": "sn-51-lium-provider-stats-mineroperator-account",
       "kind": "subnet-api",
       "name": "Lium provider stats miner operator-account",
-      "notes": "Get comprehensive statistics for a provider operation on the Lium Backend API (GET /provider-stats/{mineroperator-account}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get comprehensive statistics for a provider operation on the Lium Backend API (GET /provider-stats/{mineroperator-account}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2703,12 +2715,12 @@
       "url": "https://lium.io/api/"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-51-lium-sleep-seconds",
       "kind": "subnet-api",
       "name": "Lium sleep seconds",
-      "notes": "Sleep Endpoint operation on the Lium Backend API (GET /sleep/{seconds}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Sleep Endpoint operation on the Lium Backend API (GET /sleep/{seconds}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2722,7 +2734,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://lium.io/api/openapi.json"],
-      "url": "https://lium.io/api/sleep/%7Bseconds%7D"
+      "url": "https://lium.io/api/sleep/%7Bseconds%7D",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth": {
@@ -3254,7 +3270,7 @@
       "id": "sn-51-lium-users-get-ip",
       "kind": "subnet-api",
       "name": "Lium users get ip",
-      "notes": "Get Client Ip Endpoint operation on the Lium Backend API (GET /users/get-ip), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "notes": "Get Client Ip Endpoint operation on the Lium Backend API (GET /users/get-ip), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -3840,7 +3856,7 @@
       "id": "sn-51-lium-validator-validatoroperator-account-latest-set-weights",
       "kind": "subnet-api",
       "name": "Lium validator validator operator-account latest set weights",
-      "notes": "Get Latest Set Weights operation on the Lium Backend API (GET, POST /validator/{validatoroperator-account}/latest-set-weights), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Latest Set Weights operation on the Lium Backend API (GET, POST /validator/{validatoroperator-account}/latest-set-weights), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

@@ -690,7 +690,7 @@
       "id": "sn-7-allways-miners-hotkey",
       "kind": "subnet-api",
       "name": "Allways GET miners by hotkey",
-      "notes": "GET /miners/{hotkey} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy hotkey: HTTP 404 -- a real route with real not-found handling, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "notes": "GET /miners/{hotkey} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy hotkey: HTTP 404 -- a real route with real not-found handling, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -712,7 +712,7 @@
       "id": "sn-7-allways-miners-hotkey-stats",
       "kind": "subnet-api",
       "name": "Allways GET miners by hotkey stats",
-      "notes": "GET /miners/{hotkey}/stats on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "notes": "GET /miners/{hotkey}/stats on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -888,7 +888,7 @@
       "id": "sn-7-allways-reservations-requesthash",
       "kind": "subnet-api",
       "name": "Allways GET reservations by requestHash",
-      "notes": "GET /reservations/{requestHash} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "notes": "GET /reservations/{requestHash} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

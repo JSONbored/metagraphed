@@ -207,12 +207,12 @@
       "url": "https://huggingface.co/datasets/ReadyAi/organic_query_results_dataset"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-33-readyai-priorityqueue-request-api",
       "kind": "subnet-api",
       "name": "ReadyAI priority queue domain request API",
-      "notes": "Public no-auth PUT /api/v1/priorityqueue/request on api.readyai.ai for users to request a domain for priority Common Crawl processing (upserts requested_domains). Documented in the subnet OpenAPI spec with no security requirement on PUT; GET on the same path is admin-authenticated, so recurring read probes are intentionally disabled.",
+      "notes": "Public no-auth PUT /api/v1/priorityqueue/request on api.readyai.ai for users to request a domain for priority Common Crawl processing (upserts requested_domains). Documented in the subnet OpenAPI spec with no security requirement on PUT; GET on the same path is admin-authenticated, so recurring read probes are intentionally disabled. [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -229,7 +229,11 @@
         "https://api.readyai.ai/openapi.json",
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "url": "https://api.readyai.ai/api/v1/priorityqueue/request"
+      "url": "https://api.readyai.ai/api/v1/priorityqueue/request",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth": {

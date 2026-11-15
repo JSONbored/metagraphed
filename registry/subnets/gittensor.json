@@ -153,10 +153,10 @@
       "id": "gittensor-master-repositories",
       "kind": "data-artifact",
       "name": "Gittensor master repository weights",
-      "notes": "Documented source for public repository emission_share, issue_discovery_share, and maintainer_cut config.",
+      "notes": "Documented source for public repository emission_share, issue_discovery_share, and maintainer_cut config. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET"
       },
       "provider": "gittensor",
@@ -509,10 +509,10 @@
       "id": "sn-74-gittensor-language-weights",
       "kind": "data-artifact",
       "name": "Gittensor programming-language scoring weights",
-      "notes": "Public no-auth machine-readable JSON from the official SN74 Gittensor repository (entrius/gittensor), pinned to an immutable commit. Maps each programming language to the scoring weight the validators apply when evaluating miners' code contributions (e.g. per-language weight multipliers). Static data artifact documenting the subnet's language-weighting scoring parameters.",
+      "notes": "Public no-auth machine-readable JSON from the official SN74 Gittensor repository (entrius/gittensor), pinned to an immutable commit. Maps each programming language to the scoring weight the validators apply when evaluating miners' code contributions (e.g. per-language weight multipliers). Static data artifact documenting the subnet's language-weighting scoring parameters. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -864,7 +864,7 @@
       "id": "sn-74-gittensor-repos-repo-impact",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo impact",
-      "notes": "GET /repos/{repo}/impact on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/impact on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -886,7 +886,7 @@
       "id": "sn-74-gittensor-repos-repo-prs",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo prs",
-      "notes": "GET /repos/{repo}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -908,7 +908,7 @@
       "id": "sn-74-gittensor-repos-repo-badge-svg",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo badge svg",
-      "notes": "GET /repos/{repo}/badge.svg on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/badge.svg on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -930,7 +930,7 @@
       "id": "sn-74-gittensor-repos-repo",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo",
-      "notes": "GET /repos/{repo} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

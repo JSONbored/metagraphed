@@ -194,7 +194,7 @@
       "id": "sn-71-leadpoet-contact-api",
       "kind": "subnet-api",
       "name": "Leadpoet contact form API",
-      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired.",
+      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

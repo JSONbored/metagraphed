@@ -105,10 +105,10 @@
       "id": "sn-89-infinitehash-runtime-version",
       "kind": "data-artifact",
       "name": "InfiniteHash validator runtime version spec",
-      "notes": "Public no-auth JSON runtime-version specification (node-subtensor spec/impl names, spec version, transaction/apis versions) used by the InfiniteHash SN89 validator/consensus simulator, published in the official backend-developers-ltd/InfiniteHash repository. Documents the on-chain runtime version the subnet's consensus targets.",
+      "notes": "Public no-auth JSON runtime-version specification (node-subtensor spec/impl names, spec version, transaction/apis versions) used by the InfiniteHash SN89 validator/consensus simulator, published in the official backend-developers-ltd/InfiniteHash repository. Documents the on-chain runtime version the subnet's consensus targets. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

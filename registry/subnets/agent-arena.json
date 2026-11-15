@@ -77,9 +77,9 @@
       "id": "sn-59-babelbit-openapi",
       "kind": "openapi",
       "name": "Babelbit Utterance Engine OpenAPI",
-      "notes": "Machine-readable OpenAPI schema for the Babelbit utterance engine API; the official README points validators at api.babelbit.ai and the hosted Swagger UI loads this schema.",
+      "notes": "Machine-readable OpenAPI schema for the Babelbit utterance engine API; the official README points validators at api.babelbit.ai and the hosted Swagger UI loads this schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -104,9 +104,9 @@
       "id": "sn-59-babelbit-health",
       "kind": "subnet-api",
       "name": "Babelbit utterance engine health",
-      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON. Documented as a no-security operation in the registered OpenAPI schema on the same host; distinct from validator-authenticated challenge endpoints. Rejects HEAD (405); probe uses GET.",
+      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON. Documented as a no-security operation in the registered OpenAPI schema on the same host; distinct from validator-authenticated challenge endpoints. Rejects HEAD (405); probe uses GET. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -154,9 +154,9 @@
       "id": "sn-59-babelbit-service-info",
       "kind": "subnet-api",
       "name": "Babelbit service info",
-      "notes": "Public no-auth GET returning the service self-description (service, version, description, authentication requirements). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the service self-description (service, version, description, authentication requirements). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -176,9 +176,9 @@
       "id": "sn-59-babelbit-debug-network",
       "kind": "subnet-api",
       "name": "Babelbit network debug info",
-      "notes": "Public no-auth GET /debug/network on api.babelbit.ai returning chain connectivity status, network name, total neuron count, and a sample of already-public on-chain hotkeys/validator permits. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "notes": "Public no-auth GET /debug/network on api.babelbit.ai returning chain connectivity status, network name, total neuron count, and a sample of already-public on-chain hotkeys/validator permits. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -194,7 +194,7 @@
       "id": "sn-59-babelbit-auth",
       "kind": "subnet-api",
       "name": "Babelbit auth",
-      "notes": "Authenticate operation on the Babelbit API (POST /auth), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Authenticate operation on the Babelbit API (POST /auth), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -216,7 +216,7 @@
       "id": "sn-59-babelbit-auth-verify",
       "kind": "subnet-api",
       "name": "Babelbit auth verify",
-      "notes": "Verify Authentication operation on the Babelbit API (POST /auth/verify), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Verify Authentication operation on the Babelbit API (POST /auth/verify), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -245,7 +245,7 @@
       "id": "sn-59-babelbit-challenge",
       "kind": "subnet-api",
       "name": "Babelbit challenge",
-      "notes": "Get Active Challenge View operation on the Babelbit API (GET /challenge), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "notes": "Get Active Challenge View operation on the Babelbit API (GET /challenge), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -274,7 +274,7 @@
       "id": "sn-59-babelbit-challenge-challenge-uid-n-utterances",
       "kind": "subnet-api",
       "name": "Babelbit challenge challenge uid n utterances",
-      "notes": "Get Challenge Utterance Count operation on the Babelbit API (GET /challenge/{challenge_uid}/n_utterances), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {challenge_uid}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Challenge Utterance Count operation on the Babelbit API (GET /challenge/{challenge_uid}/n_utterances), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {challenge_uid}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -303,7 +303,7 @@
       "id": "sn-59-babelbit-solo-next",
       "kind": "subnet-api",
       "name": "Babelbit solo next",
-      "notes": "Next Solo Audio Utterance operation on the Babelbit API (POST /solo/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Next Solo Audio Utterance operation on the Babelbit API (POST /solo/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -332,7 +332,7 @@
       "id": "sn-59-babelbit-solo-session-session-id",
       "kind": "subnet-api",
       "name": "Babelbit solo session session id",
-      "notes": "Delete Solo Session operation on the Babelbit API (DELETE /solo/session/{session_id}), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {session_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Delete Solo Session operation on the Babelbit API (DELETE /solo/session/{session_id}), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {session_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -361,7 +361,7 @@
       "id": "sn-59-babelbit-solo-sessions",
       "kind": "subnet-api",
       "name": "Babelbit solo sessions",
-      "notes": "List Solo Sessions operation on the Babelbit API (GET /solo/sessions), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "notes": "List Solo Sessions operation on the Babelbit API (GET /solo/sessions), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -390,7 +390,7 @@
       "id": "sn-59-babelbit-solo-start",
       "kind": "subnet-api",
       "name": "Babelbit solo start",
-      "notes": "Start Solo Session operation on the Babelbit API (GET /solo/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "notes": "Start Solo Session operation on the Babelbit API (GET /solo/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -419,7 +419,7 @@
       "id": "sn-59-babelbit-source-audio-next",
       "kind": "subnet-api",
       "name": "Babelbit source audio next",
-      "notes": "Next Source Audio Utterance operation on the Babelbit API (POST /source-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Next Source Audio Utterance operation on the Babelbit API (POST /source-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -448,7 +448,7 @@
       "id": "sn-59-babelbit-source-audio-start",
       "kind": "subnet-api",
       "name": "Babelbit source audio start",
-      "notes": "Start Source Audio Session operation on the Babelbit API (POST /source-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Start Source Audio Session operation on the Babelbit API (POST /source-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -477,7 +477,7 @@
       "id": "sn-59-babelbit-target-audio-next",
       "kind": "subnet-api",
       "name": "Babelbit target audio next",
-      "notes": "Next Target Audio Utterance operation on the Babelbit API (POST /target-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Next Target Audio Utterance operation on the Babelbit API (POST /target-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -506,7 +506,7 @@
       "id": "sn-59-babelbit-target-audio-start",
       "kind": "subnet-api",
       "name": "Babelbit target audio start",
-      "notes": "Start Target Audio Session operation on the Babelbit API (POST /target-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Start Target Audio Session operation on the Babelbit API (POST /target-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -535,7 +535,7 @@
       "id": "sn-59-babelbit-transcription",
       "kind": "subnet-api",
       "name": "Babelbit transcription",
-      "notes": "Get Active Challenge Transcription View operation on the Babelbit API (GET /transcription), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "notes": "Get Active Challenge Transcription View operation on the Babelbit API (GET /transcription), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",

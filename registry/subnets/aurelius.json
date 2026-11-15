@@ -81,9 +81,9 @@
       "id": "sn-37-aurelius-openapi",
       "kind": "openapi",
       "name": "Aurelius Central API (OpenAPI)",
-      "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455).",
+      "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -108,9 +108,9 @@
       "id": "sn-37-aurelius-subnet-api",
       "kind": "subnet-api",
       "name": "Aurelius Central API health",
-      "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks.",
+      "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -133,9 +133,9 @@
       "id": "sn-37-aurelius-work-token-designated-address",
       "kind": "subnet-api",
       "name": "Aurelius work-token designated address API",
-      "notes": "Public no-auth GET returning the Central API work-token designated receiving address. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /work-token/designated-address); same host as the existing openapi, docs, and /health subnet-api surfaces. The official README documents this production host as the finney/mainnet api_url.",
+      "notes": "Public no-auth GET returning the Central API work-token designated receiving address. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /work-token/designated-address); same host as the existing openapi, docs, and /health subnet-api surfaces. The official README documents this production host as the finney/mainnet api_url. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -158,9 +158,9 @@
       "id": "sn-37-aurelius-deposit-address-verify",
       "kind": "subnet-api",
       "name": "Aurelius work-token deposit-address verification",
-      "notes": "Public no-auth GET /work-token/deposit-address/verify on new-collector-api-production.up.railway.app returning the designated multisig deposit address, threshold, and verification instructions (public on-chain address only, no secrets). Documented as GET /work-token/deposit-address/verify in the subnet's own OpenAPI schema; distinct from the already-registered work-token/designated-address surface.",
+      "notes": "Public no-auth GET /work-token/deposit-address/verify on new-collector-api-production.up.railway.app returning the designated multisig deposit address, threshold, and verification instructions (public on-chain address only, no secrets). Documented as GET /work-token/deposit-address/verify in the subnet's own OpenAPI schema; distinct from the already-registered work-token/designated-address surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -178,9 +178,9 @@
       "id": "sn-37-aurelius-health-live",
       "kind": "subnet-api",
       "name": "Aurelius Central API liveness health",
-      "notes": "Public no-auth GET /health/live returning {\"status\":\"ok\"} for lightweight liveness checks. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/live); same host as the existing openapi, docs, /health, and work-token subnet-api surfaces. Distinct from the richer /health endpoint that reports db, db_pool, classifier, and novelty subsystems.",
+      "notes": "Public no-auth GET /health/live returning {\"status\":\"ok\"} for lightweight liveness checks. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/live); same host as the existing openapi, docs, /health, and work-token subnet-api surfaces. Distinct from the richer /health endpoint that reports db, db_pool, classifier, and novelty subsystems. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -203,9 +203,9 @@
       "id": "sn-37-aurelius-health-ready",
       "kind": "subnet-api",
       "name": "Aurelius Central API readiness health",
-      "notes": "Public no-auth GET /health/ready returning readiness JSON (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/ready); same host as the existing openapi, docs, /health, /health/live, and work-token subnet-api surfaces. Distinct from the lightweight /health/live liveness endpoint.",
+      "notes": "Public no-auth GET /health/ready returning readiness JSON (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/ready); same host as the existing openapi, docs, /health, /health/live, and work-token subnet-api surfaces. Distinct from the lightweight /health/live liveness endpoint. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -228,9 +228,9 @@
       "id": "sn-37-aurelius-data-artifact",
       "kind": "data-artifact",
       "name": "Aurelius seed dataset",
-      "notes": "Public no-auth JSONL dataset committed in SN37 Aurelius's official repository — the seed corpus of moral-reasoning dilemma scenario configs (one JSON object per line: {config:{name,tension_archetype,morebench_context,premise,...}}) that bootstraps the validator scoring pipeline. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Distinct from the existing Aurelius Central API subnet-api surfaces.",
+      "notes": "Public no-auth JSONL dataset committed in SN37 Aurelius's official repository — the seed corpus of moral-reasoning dilemma scenario configs (one JSON object per line: {config:{name,tension_archetype,morebench_context,premise,...}}) that bootstraps the validator scoring pipeline. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Distinct from the existing Aurelius Central API subnet-api surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -252,9 +252,9 @@
       "id": "sn-37-aurelius-scenario-schema",
       "kind": "data-artifact",
       "name": "Aurelius ScenarioConfig JSON Schema",
-      "notes": "Public no-auth JSON Schema (title \"ScenarioConfig\", \"Aurelius moral dilemma scenario configuration v1\") committed at aurelius/common/schema_v1.json in SN37 Aurelius's official Aurelius-Protocol repository. It is the formal machine-readable contract every moral-dilemma scenario config in the subnet's scoring pipeline conforms to — the schema the existing seed_dataset.jsonl records validate against. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; distinct from that seed-dataset artifact (this is the schema, that is the data).",
+      "notes": "Public no-auth JSON Schema (title \"ScenarioConfig\", \"Aurelius moral dilemma scenario configuration v1\") committed at aurelius/common/schema_v1.json in SN37 Aurelius's official Aurelius-Protocol repository. It is the formal machine-readable contract every moral-dilemma scenario config in the subnet's scoring pipeline conforms to — the schema the existing seed_dataset.jsonl records validate against. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; distinct from that seed-dataset artifact (this is the schema, that is the data). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -276,7 +276,7 @@
       "id": "sn-37-aurelius-auth-validator-challenge",
       "kind": "subnet-api",
       "name": "Aurelius POST auth validator challenge",
-      "notes": "POST /auth/validator/challenge on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "POST /auth/validator/challenge on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -300,7 +300,7 @@
       "id": "sn-37-aurelius-auth-validator-verify",
       "kind": "subnet-api",
       "name": "Aurelius POST auth validator verify",
-      "notes": "POST /auth/validator/verify on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "POST /auth/validator/verify on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -331,7 +331,7 @@
       "id": "sn-37-aurelius-work-token-deposit",
       "kind": "subnet-api",
       "name": "Aurelius POST work token deposit",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -355,7 +355,7 @@
       "id": "sn-37-aurelius-work-token-balance-hotkey",
       "kind": "subnet-api",
       "name": "Aurelius GET work token balance by hotkey",
-      "notes": "GET /work-token/balance/{hotkey} on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "GET /work-token/balance/{hotkey} on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -386,7 +386,7 @@
       "id": "sn-37-aurelius-work-token-rate-limit-hotkey",
       "kind": "subnet-api",
       "name": "Aurelius GET work token rate limit by hotkey",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/rate-limit/{hotkey} on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/rate-limit/{hotkey} on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -417,7 +417,7 @@
       "id": "sn-37-aurelius-work-token-consume",
       "kind": "subnet-api",
       "name": "Aurelius POST work token consume",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/consume on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/consume on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -448,7 +448,7 @@
       "id": "sn-37-aurelius-work-token-status-work-id",
       "kind": "subnet-api",
       "name": "Aurelius GET work token status by work id",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/status/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/status/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -479,7 +479,7 @@
       "id": "sn-37-aurelius-work-token-deposit-address-rotate",
       "kind": "subnet-api",
       "name": "Aurelius POST work token deposit address rotate",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit-address/rotate on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit-address/rotate on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -510,7 +510,7 @@
       "id": "sn-37-aurelius-work-token-deposit-address",
       "kind": "subnet-api",
       "name": "Aurelius PATCH work token deposit address",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) PATCH /work-token/deposit-address on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) PATCH /work-token/deposit-address on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -541,7 +541,7 @@
       "id": "sn-37-aurelius-work-token-deposit-address-history",
       "kind": "subnet-api",
       "name": "Aurelius GET work token deposit address history",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/deposit-address/history on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/deposit-address/history on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -572,7 +572,7 @@
       "id": "sn-37-aurelius-work-token-admin-onchain-transfers",
       "kind": "subnet-api",
       "name": "Aurelius GET work token admin onchain transfers",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/onchain-transfers on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/onchain-transfers on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -603,7 +603,7 @@
       "id": "sn-37-aurelius-work-token-admin-repair-balances",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin repair balances",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/repair-balances on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/repair-balances on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -634,7 +634,7 @@
       "id": "sn-37-aurelius-work-token-admin-credit-onchain-transfer-id",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin credit onchain by transfer id",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/credit-onchain/{transfer_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/credit-onchain/{transfer_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -665,7 +665,7 @@
       "id": "sn-37-aurelius-work-token-admin-onchain-backfill",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin onchain backfill",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/backfill on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/backfill on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -696,7 +696,7 @@
       "id": "sn-37-aurelius-work-token-admin-onchain-skip-poison-block",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin onchain skip poison block",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/skip-poison-block on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/skip-poison-block on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -727,7 +727,7 @@
       "id": "sn-37-aurelius-work-token-admin-synthetic-credit",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin synthetic credit",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-credit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-credit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -758,7 +758,7 @@
       "id": "sn-37-aurelius-work-token-admin-synthetic-debit",
       "kind": "subnet-api",
       "name": "Aurelius POST work token admin synthetic debit",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-debit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-debit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -789,7 +789,7 @@
       "id": "sn-37-aurelius-work-token-admin-synthetic-balance-hotkey",
       "kind": "subnet-api",
       "name": "Aurelius GET work token admin synthetic balance by hotkey",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/synthetic-balance/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/synthetic-balance/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -820,7 +820,7 @@
       "id": "sn-37-aurelius-config",
       "kind": "subnet-api",
       "name": "Aurelius GET config",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /config on new-collector-api-production.up.railway.app (this path also supports PUT — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /config on new-collector-api-production.up.railway.app (this path also supports PUT — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -851,7 +851,7 @@
       "id": "sn-37-aurelius-submissions",
       "kind": "subnet-api",
       "name": "Aurelius GET submissions",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -882,7 +882,7 @@
       "id": "sn-37-aurelius-submissions-work-id",
       "kind": "subnet-api",
       "name": "Aurelius GET submissions by work id",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -913,7 +913,7 @@
       "id": "sn-37-aurelius-benchmark-status",
       "kind": "subnet-api",
       "name": "Aurelius GET benchmark status",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/status on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/status on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -944,7 +944,7 @@
       "id": "sn-37-aurelius-benchmark-trigger",
       "kind": "subnet-api",
       "name": "Aurelius POST benchmark trigger",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/trigger on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/trigger on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -975,7 +975,7 @@
       "id": "sn-37-aurelius-benchmark-result",
       "kind": "subnet-api",
       "name": "Aurelius POST benchmark result",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/result on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/result on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1006,7 +1006,7 @@
       "id": "sn-37-aurelius-benchmark-history",
       "kind": "subnet-api",
       "name": "Aurelius GET benchmark history",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/history on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/history on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1037,7 +1037,7 @@
       "id": "sn-37-aurelius-novelty-check",
       "kind": "subnet-api",
       "name": "Aurelius POST novelty check",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/check on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/check on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1068,7 +1068,7 @@
       "id": "sn-37-aurelius-novelty-add",
       "kind": "subnet-api",
       "name": "Aurelius POST novelty add",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/add on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/add on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1099,7 +1099,7 @@
       "id": "sn-37-aurelius-novelty-remove",
       "kind": "subnet-api",
       "name": "Aurelius POST novelty remove",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/remove on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/remove on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1130,7 +1130,7 @@
       "id": "sn-37-aurelius-classifier-predict",
       "kind": "subnet-api",
       "name": "Aurelius POST classifier predict",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /classifier/predict on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /classifier/predict on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1161,7 +1161,7 @@
       "id": "sn-37-aurelius-classifier-model-version",
       "kind": "subnet-api",
       "name": "Aurelius GET classifier model version",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model/version on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model/version on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1192,7 +1192,7 @@
       "id": "sn-37-aurelius-classifier-model",
       "kind": "subnet-api",
       "name": "Aurelius GET classifier model",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1228,7 +1228,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/deposits on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/deposits on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1264,7 +1264,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/submissions on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/submissions on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1300,7 +1300,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/validators on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/validators on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1336,7 +1336,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/pipeline on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/pipeline on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1372,7 +1372,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/transparency-report on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/transparency-report on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1408,7 +1408,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/consensus-deviation on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/consensus-deviation on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1444,7 +1444,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/version-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/version-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1480,7 +1480,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/archetypes on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/archetypes on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1516,7 +1516,7 @@
         "provenance": "none",
         "searched_at": "2026-08-10T00:00:00Z"
       },
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/influence-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/influence-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1547,7 +1547,7 @@
       "id": "sn-37-aurelius-reports",
       "kind": "subnet-api",
       "name": "Aurelius POST reports",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /reports on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /reports on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1578,7 +1578,7 @@
       "id": "sn-37-aurelius-reports-consistency",
       "kind": "subnet-api",
       "name": "Aurelius GET reports consistency",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1609,7 +1609,7 @@
       "id": "sn-37-aurelius-reports-consistency-hotkey",
       "kind": "subnet-api",
       "name": "Aurelius GET reports consistency by hotkey",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1640,7 +1640,7 @@
       "id": "sn-37-aurelius-reports-consensus-work-id",
       "kind": "subnet-api",
       "name": "Aurelius GET reports consensus by work id",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consensus/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consensus/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1670,7 +1670,7 @@
       "id": "sn-37-aurelius-admin-api-auth-login",
       "kind": "subnet-api",
       "name": "Aurelius POST admin api auth login",
-      "notes": "Auth-gated POST /admin/api/auth/login on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated POST /admin/api/auth/login on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1700,7 +1700,7 @@
       "id": "sn-37-aurelius-admin-api-auth-logout",
       "kind": "subnet-api",
       "name": "Aurelius POST admin api auth logout",
-      "notes": "Auth-gated POST /admin/api/auth/logout on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated POST /admin/api/auth/logout on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1730,7 +1730,7 @@
       "id": "sn-37-aurelius-admin-api-auth-me",
       "kind": "subnet-api",
       "name": "Aurelius GET admin api auth me",
-      "notes": "Auth-gated GET /admin/api/auth/me on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated GET /admin/api/auth/me on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1760,7 +1760,7 @@
       "id": "sn-37-aurelius-admin-api-config",
       "kind": "subnet-api",
       "name": "Aurelius GET admin api config",
-      "notes": "Auth-gated GET /admin/api/config on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated GET /admin/api/config on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1790,7 +1790,7 @@
       "id": "sn-37-aurelius-admin-api-config-schema",
       "kind": "subnet-api",
       "name": "Aurelius GET admin api config schema",
-      "notes": "Auth-gated GET /admin/api/config/schema on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated GET /admin/api/config/schema on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1820,7 +1820,7 @@
       "id": "sn-37-aurelius-admin-api-config-stage",
       "kind": "subnet-api",
       "name": "Aurelius POST admin api config stage",
-      "notes": "Auth-gated POST /admin/api/config/stage on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated POST /admin/api/config/stage on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1850,7 +1850,7 @@
       "id": "sn-37-aurelius-admin-api-config-commit",
       "kind": "subnet-api",
       "name": "Aurelius POST admin api config commit",
-      "notes": "Auth-gated POST /admin/api/config/commit on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated POST /admin/api/config/commit on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1880,7 +1880,7 @@
       "id": "sn-37-aurelius-admin-api-config-history",
       "kind": "subnet-api",
       "name": "Aurelius GET admin api config history",
-      "notes": "Auth-gated GET /admin/api/config/history on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated GET /admin/api/config/history on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1910,7 +1910,7 @@
       "id": "sn-37-aurelius-admin-api-config-revert",
       "kind": "subnet-api",
       "name": "Aurelius POST admin api config revert",
-      "notes": "Auth-gated POST /admin/api/config/revert on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "notes": "Auth-gated POST /admin/api/config/revert on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

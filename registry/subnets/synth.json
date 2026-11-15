@@ -170,7 +170,7 @@
       "id": "sn-50-synth-insights-limitless-15min",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless 15min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -199,7 +199,7 @@
       "id": "sn-50-synth-insights-limitless-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -228,7 +228,7 @@
       "id": "sn-50-synth-insights-limitless-hourly",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless hourly",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -257,7 +257,7 @@
       "id": "sn-50-synth-insights-liquidation",
       "kind": "subnet-api",
       "name": "Synth GET insights liquidation",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/liquidation on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/liquidation on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -286,7 +286,7 @@
       "id": "sn-50-synth-insights-lp-bounds",
       "kind": "subnet-api",
       "name": "Synth GET insights lp bounds",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-bounds on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-bounds on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -315,7 +315,7 @@
       "id": "sn-50-synth-insights-lp-probabilities",
       "kind": "subnet-api",
       "name": "Synth GET insights lp probabilities",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-probabilities on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-probabilities on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -349,7 +349,7 @@
         "provenance": "operator-attested",
         "source_url": "https://api.synthdata.co/swagger.json"
       },
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/option-pricing on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/option-pricing on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -378,7 +378,7 @@
       "id": "sn-50-synth-insights-polymarket-above-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket above daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/above/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/above/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -407,7 +407,7 @@
       "id": "sn-50-synth-insights-polymarket-hit-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket hit daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/hit/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/hit/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -436,7 +436,7 @@
       "id": "sn-50-synth-insights-polymarket-range",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket range",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -465,7 +465,7 @@
       "id": "sn-50-synth-insights-polymarket-range-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket range daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -494,7 +494,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-15min",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down 15min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -523,7 +523,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-5min",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down 5min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/5min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/5min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -552,7 +552,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -581,7 +581,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-hourly",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down hourly",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -610,7 +610,7 @@
       "id": "sn-50-synth-insights-prediction-percentiles",
       "kind": "subnet-api",
       "name": "Synth GET insights prediction percentiles",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/prediction-percentiles on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/prediction-percentiles on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -639,7 +639,7 @@
       "id": "sn-50-synth-insights-volatility",
       "kind": "subnet-api",
       "name": "Synth GET insights volatility",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/volatility on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/volatility on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -734,7 +734,7 @@
       "id": "sn-50-synth-v2-prediction-best",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction best",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/best on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/best on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -763,7 +763,7 @@
       "id": "sn-50-synth-v2-prediction-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction historical",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -792,7 +792,7 @@
       "id": "sn-50-synth-v2-prediction-latest",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction latest",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/latest on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/latest on api.synthdata.co. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 {\"message\":\"missing key in request header\"}. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -821,7 +821,7 @@
       "id": "sn-50-synth-v2-prediction-metamodel-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction metamodel historical",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/metamodel/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/metamodel/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

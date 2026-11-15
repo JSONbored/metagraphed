@@ -128,10 +128,10 @@
       "id": "sn-12-computehorde-collateral-abi",
       "kind": "data-artifact",
       "name": "ComputeHorde collateral contract ABI",
-      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow — a standalone machine-readable reference artifact the registry did not yet capture.",
+      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow — a standalone machine-readable reference artifact the registry did not yet capture. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
