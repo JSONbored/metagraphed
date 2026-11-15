@@ -297,6 +297,8 @@ export type AccountIdentity = {
   image?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
+  /** Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in `github`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated. */
+  storage_version?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -323,6 +325,8 @@ export type AccountIdentityHistoryEntry = {
   image?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   observed_at?: Maybe<Scalars['String']['output']>;
+  /** Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated. */
+  storage_version?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -10205,6 +10209,7 @@ export type AccountIdentityResolvers<ContextType = GqlContext, ParentType extend
   image?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  storage_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10227,6 +10232,7 @@ export type AccountIdentityHistoryEntryResolvers<ContextType = GqlContext, Paren
   image?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  storage_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 

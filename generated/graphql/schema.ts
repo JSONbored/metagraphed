@@ -7338,6 +7338,11 @@ type AccountIdentity {
   discord: String
   description: String
   additional: String
+
+  """
+  Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in \`github\`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated.
+  """
+  storage_version: Int
   captured_at: String
 }
 
@@ -7363,6 +7368,11 @@ type AccountIdentityHistoryEntry {
   discord: String
   description: String
   additional: String
+
+  """
+  Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated.
+  """
+  storage_version: Int
 
   """
   Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. Null on a row with no computed hash.

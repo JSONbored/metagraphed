@@ -18,6 +18,7 @@ import { historyJson, historySha256 } from "./history-sha256.ts";
 
 import {
   IDENTITY_FIELDS,
+  identityStorageVersion,
   sanitizeAccountIdentityFields,
 } from "./account-identity.ts";
 import { encodeCursor, decodeCursor } from "./cursor.ts";
@@ -65,6 +66,11 @@ export function formatAccountIdentityHistoryEntry(
     identity_hash: null,
   };
   for (const field of IDENTITY_FIELDS) entry[field] = sanitized[field] ?? null;
+  // #13166: the storage-version label (migration 0052), NULL on every entry
+  // the unlabelled capture appended -- READ_COLUMNS does not select it, so it
+  // stays null until the engine's labelled decode writes history rows that
+  // carry it.
+  entry.storage_version = identityStorageVersion(row.storage_version);
   entry.identity_hash = row.identity_hash ?? null;
   return entry;
 }

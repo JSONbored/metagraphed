@@ -59,6 +59,21 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+/**
+ * The identity storage-version label (#13166): which SubtensorModule identity
+ * map the capture decoded the row from (2 = IdentitiesV2, the live v490 map).
+ * NULL for a row the unlabelled capture wrote -- the engine's labelled decode
+ * is what writes the column (migration 0052), so today's rows truthfully
+ * carry no version and anything that is not a positive integer stays null
+ * rather than fabricating a label.
+ */
+export function identityStorageVersion(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 1 ? n : null;
+}
+
 // account_identity is operator-controlled untrusted chain data, same as
 // subnet identity — sanitize at serve time with the same primitives
 // src/subnet-identity-history.ts's sanitizeIdentityHistoryFields uses
@@ -112,6 +127,14 @@ export function buildAccountIdentity(
   for (const field of IDENTITY_FIELDS) {
     out[field] = identity ? (identity[field] ?? null) : null;
   }
+  // #13166: the storage-version label rides the row when the engine's
+  // labelled IdentitiesV2 decode has written it (migration 0052). Today's
+  // rows carry no label -- the column is not in ACCOUNT_IDENTITY_INSERT_
+  // COLUMNS, which the deployed sync write path still binds against stores
+  // that predate it -- so this is NULL everywhere until the engine lands.
+  out.storage_version = identity
+    ? identityStorageVersion(row?.storage_version)
+    : null;
   out.captured_at = identity ? toIso(row?.captured_at) : null;
   return out;
 }

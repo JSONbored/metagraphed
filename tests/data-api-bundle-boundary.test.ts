@@ -288,11 +288,16 @@ describe("data-api's bundle boundary", () => {
     // 85172bfa, for 4,932,047: the subnet-limit-orders builder and store
     // selector plus their route/tool prose. pg-subnet-limit-orders.ts stays
     // outside the graph; keep 2,453 source bytes of margin.
+    // The identity-v2 labelling slice (#13166) adds 1,501 source bytes over
+    // c5e4ecc9, for 4,934,674: the storage-version helper and its emission in
+    // the identity builders plus the grown identity schema prose. Nothing new
+    // enters the graph -- both identity modules were already in it; keep
+    // 2,526 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_934_500,
+      firstParty < 4_937_200,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

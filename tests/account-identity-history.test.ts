@@ -71,8 +71,18 @@ describe("formatAccountIdentityHistoryEntry", () => {
       discord: "examplehandle",
       description: "An example subnet operator.",
       additional: null,
+      // #13166: READ_COLUMNS does not select the label, so an entry the
+      // unlabelled capture appended declines it.
+      storage_version: null,
       identity_hash: "abc",
     });
+  });
+
+  test("carries the storage-version label when the row is labelled (#13166)", () => {
+    const out = formatAccountIdentityHistoryEntry(
+      historyRow({ storage_version: 2 }),
+    )!;
+    assert.equal(out.storage_version, 2);
   });
 
   test("returns null for invalid rows", () => {
