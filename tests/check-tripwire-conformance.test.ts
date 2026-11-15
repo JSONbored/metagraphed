@@ -24,11 +24,15 @@ const VALID_BODY = {
     schema_version: 1,
     window: "24h",
     point_count: 0,
+    // #13164: the provenance labels -- the composed index names itself, and
+    // the on-chain oracle block is null until the engine's capture lands.
+    source: "pool_composite",
     stale: true,
     stale_after_ms: 0,
     age_ms: null,
     priced_point_count: 0,
     latest: null,
+    oracle: null,
     oldest_observed_at: null,
     change_usd: null,
     change_pct: null,
