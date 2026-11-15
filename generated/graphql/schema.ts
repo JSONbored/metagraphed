@@ -1076,6 +1076,16 @@ type Query {
   account_coldkey_swap(ss58: String!): AccountColdkeySwap!
 
   """
+  One account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (spelled as the chain's enum spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve. Until the engine's Proxy.Proxies capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty proxies array with proxy_count NULL, never 0, because an empty list is not a measured delegation-free account. Mirrors GET /api/v1/accounts/{ss58}/proxies.
+  """
+  account_proxies(ss58: String!): AccountProxies!
+
+  """
+  Every multisig an account belongs to (#13166) -- as the multisig account itself or as a signatory -- each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Until the engine's Multisig call/event capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty multisigs array with multisig_count NULL, never 0, because an empty list is not a measured multisig-free account. Mirrors GET /api/v1/accounts/{ss58}/multisigs.
+  """
+  account_multisigs(ss58: String!): AccountMultisigs!
+
+  """
   Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children.
   """
   account_children(ss58: String!, network: Network): AccountChildren
@@ -9742,6 +9752,95 @@ type HotkeyLineageEntry {
 }
 
 """
+One account's Proxy-pallet delegation state (#13166). Empty with a null proxy_count until the engine's proxy capture lands. Mirrors GET /api/v1/accounts/{ss58}/proxies.
+"""
+type AccountProxies {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many proxy definitions this account holds -- \`proxies.length\`. NULL when the state holds no rows for this account (store unbound, or the proxy capture has not run): a zero count is never a measurement and is not published.
+  """
+  proxy_count: Int
+
+  """
+  The account-level reserve held against its proxy vector (u64 atomic units as a decimal string, stored once per delegating account). Null when the capture did not carry it.
+  """
+  deposit: String
+  captured_at: String
+
+  """
+  The account's proxy definitions, ordered by (delegate, proxy_type, delay).
+  """
+  proxies: [AccountProxy!]!
+}
+
+"""
+One proxy definition of an account: the delegate it runs to, its variant, its announcement delay and the capture stamp.
+"""
+type AccountProxy {
+  """The account the delegation runs to (ss58)."""
+  delegate: String!
+
+  """
+  The proxy variant, spelled as the chain's enum spells it (Any / Owner / Staking / Registration ... GammaSpend) -- not pinned to an enum the runtime still extends (23 variants on v490).
+  """
+  proxy_type: String!
+
+  """
+  The announcement delay in blocks before this proxy's calls execute. 0 is the chain's own value for an undelayed proxy, read from storage -- not a fabricated default.
+  """
+  delay: Int!
+  captured_at: String
+}
+
+"""
+One account's Multisig-pallet membership (#13166). Empty with a null multisig_count until the engine's multisig capture lands. Mirrors GET /api/v1/accounts/{ss58}/multisigs.
+"""
+type AccountMultisigs {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many multisigs this account belongs to here -- \`multisigs.length\`. NULL when the state holds no rows for this account (store unbound, or the multisig capture has not run): a zero count is never a measurement and is not published.
+  """
+  multisig_count: Int
+  captured_at: String
+
+  """
+  The multisigs the account belongs to -- as the multisig account itself or as a signatory -- ordered by multisig address, store-capped.
+  """
+  multisigs: [AccountMultisig!]!
+}
+
+"""
+One multisig an account belongs to: the multisig account, its resolved composition and the capture stamp.
+"""
+type AccountMultisig {
+  """The multisig account itself (ss58)."""
+  multisig: String!
+
+  """
+  How many signatory approvals the multisig requires. Null when the capture has not resolved the composition.
+  """
+  threshold: Int
+
+  """
+  The signatory set behind the multisig account, as resolved from the call decode. Null when the capture has not resolved it -- never an empty list, which would claim a measured signatory-less multisig.
+  """
+  signatories: [String!]
+
+  """\`signatories.length\`, null exactly when signatories is null."""
+  signatory_count: Int
+
+  """
+  Which side of the membership matched: the queried account IS this multisig account, or it signs for it.
+  """
+  role: String!
+  captured_at: String
+}
+
+"""
 Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children.
 """
 type AccountChildren {
@@ -9749,6 +9848,7 @@ type AccountChildren {
   account: String!
   subnets: [AccountChildSubnet!]
   queried_at: String
+  child_key_detail: ChildKeyDetail
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -9774,6 +9874,94 @@ type AccountChildEntry {
 }
 
 """
+The stored child-key detail beside the live children graph (#13166): takes, the pending queue, threshold bookkeeping and capture history, from the child-keys store. Every count is NULL over an empty list until the engine's child-key capture lands.
+"""
+type ChildKeyDetail {
+  """The account's own per-subnet take rows, ordered by netuid."""
+  takes: [ChildkeyTakeEntry!]!
+  take_count: Int
+
+  """The account's scheduled child relations, ordered by (netuid, child)."""
+  pending: [PendingChildKeyEntry!]!
+  pending_count: Int
+
+  """The account's threshold bookkeeping, null when the capture holds none."""
+  threshold: ChildkeyThreshold
+
+  """
+  The account's parent-keyed relation history, newest capture first, store-capped.
+  """
+  history: [ChildKeysHistoryEntry!]!
+  history_count: Int
+}
+
+"""One subnet's stored child-key take for the account."""
+type ChildkeyTakeEntry {
+  netuid: Int!
+
+  """
+  The take this hotkey charges its parents on the subnet, in PerU16 parts of 65535 (SubtensorModule.ChildkeyTake).
+  """
+  take: Int!
+
+  """The same take pre-divided to a 0..1 float."""
+  take_fraction: Float!
+  captured_at: String
+}
+
+"""
+One scheduled-but-unapplied child relation of the account (SubtensorModule.PendingChildKeys).
+"""
+type PendingChildKeyEntry {
+  netuid: Int!
+  child: String!
+
+  """
+  The scheduled stake-weight proportion -- the raw stringified u64 (0..u64::MAX represents 0..100%).
+  """
+  proportion: String!
+
+  """The same value pre-divided to a 0..1 float."""
+  proportion_fraction: Float!
+
+  """
+  The block the pending relations apply at (SubtensorModule.PendingChildKeys' cool-down). Null when the capture did not carry it.
+  """
+  cool_down_block: Int
+  captured_at: String
+}
+
+"""The account's stored child-key threshold bookkeeping."""
+type ChildkeyThreshold {
+  """
+  Whether the account sits in SubtensorModule.ChildkeyThresholdChecks (stake changed; re-check queued for on_idle). Null when the capture did not carry that map's answer.
+  """
+  pending_check: Boolean
+
+  """
+  Whether the account sits in SubtensorModule.ChildkeyThresholdSuspended (total stake below StakeThreshold; its child relations stay stored but are inert). Null when the capture did not carry that map's answer -- never a fabricated false.
+  """
+  suspended: Boolean
+  captured_at: String
+}
+
+"""
+One captured (parent, netuid, child, proportion) relation observation from the ChildKeys history.
+"""
+type ChildKeysHistoryEntry {
+  netuid: Int!
+  parent: String!
+  child: String!
+
+  """The raw stringified u64 proportion at the capture."""
+  proportion: String!
+
+  """The same value pre-divided to a 0..1 float."""
+  proportion_fraction: Float!
+  captured_at: String
+}
+
+"""
 Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents.
 """
 type AccountParents {
@@ -9781,6 +9969,7 @@ type AccountParents {
   account: String!
   subnets: [AccountParentSubnet!]
   queried_at: String
+  child_key_detail: ParentKeyDetail
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -9803,6 +9992,21 @@ type AccountParentEntry {
   parent: String
   proportion: String!
   proportion_fraction: Float!
+}
+
+"""
+The stored child-key detail beside the live parents graph (#13166): the account's takes and its child-keyed capture history. The pending queue and threshold bookkeeping are parent-keyed state and live on the children surface.
+"""
+type ParentKeyDetail {
+  """The account's own per-subnet take rows, ordered by netuid."""
+  takes: [ChildkeyTakeEntry!]!
+  take_count: Int
+
+  """
+  The account's child-keyed relation history, newest capture first, store-capped.
+  """
+  history: [ChildKeysHistoryEntry!]!
+  history_count: Int
 }
 
 """

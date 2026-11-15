@@ -1931,6 +1931,35 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/proxies",
+    (body) => {
+      // #13166: no proxies store is bound in this harness, so the one honest
+      // body is the decline -- an empty list with a NULL count (never 0: an
+      // empty list is not a measured delegation-free account).
+      assert.deepEqual(body.data.proxies, []);
+      assert.equal(body.data.proxy_count, null);
+      assert.equal(body.data.deposit, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/multisigs",
+    (body) => {
+      // #13166: same decline through the unbound multisigs seam.
+      assert.deepEqual(body.data.multisigs, []);
+      assert.equal(body.data.multisig_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
     "/api/v1/chain/subnet-price-share-composition",
     (body) => {
       assert.equal(body.data.quality, "estimated_observed_price_set");

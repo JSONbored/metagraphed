@@ -1643,7 +1643,29 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "One account's Proxy-pallet delegation state (#13166) — each proxy definition's delegate, variant (spelled as the chain's enum spells it) and announcement delay with its capture stamp, plus the account-level reserve — served live from the proxies store at /api/v1/accounts/{ss58}/proxies (no static file). Empty with a null proxy_count until the engine's proxy capture lands: an empty list is not a measured delegation-free account, so a zero count is never published.",
+      "id": "account-proxies",
+      "path": "/metagraph/accounts/{ss58}/proxies.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountProxiesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Every multisig an account belongs to (#13166) — as the multisig account itself or as a signatory — each with its resolved signatory set, approval threshold and capture stamp, served live from the multisigs store at /api/v1/accounts/{ss58}/multisigs (no static file). Empty with a null multisig_count until the engine's multisig capture lands: an empty list is not a measured multisig-free account, so a zero count is never published.",
+      "id": "account-multisigs",
+      "path": "/metagraph/accounts/{ss58}/multisigs.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountMultisigsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows, its PendingChildKeys queue, its threshold bookkeeping and the ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-children",
       "path": "/metagraph/accounts/{ss58}/children.json",
       "retirement": null,
@@ -1654,7 +1676,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows and its child-keyed ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-parents",
       "path": "/metagraph/accounts/{ss58}/parents.json",
       "retirement": null,
@@ -3244,7 +3266,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 189,
+    "mainnet_only_route_count": 191,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

@@ -57,6 +57,11 @@ import {
   buildAccountColdkeySwap,
   loadAccountColdkeySwap,
 } from "./coldkey-swaps.ts";
+import { buildAccountProxies, loadAccountProxies } from "./account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "./account-multisigs.ts";
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
@@ -9691,6 +9696,36 @@ const rootValue = {
     // GraphQL error.
     return buildAccountColdkeySwap(
       await loadAccountColdkeySwap(context.env, ss58),
+      ss58,
+    );
+  },
+
+  async account_proxies({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountProxies -> buildAccountProxies decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // proxies store is a schema-stable card with proxy_count null, never a
+    // GraphQL error.
+    return buildAccountProxies(
+      await loadAccountProxies(context.env, ss58),
+      ss58,
+    );
+  },
+
+  async account_multisigs({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountMultisigs -> buildAccountMultisigs decline
+    // contract the REST handler and the MCP tool share.
+    return buildAccountMultisigs(
+      await loadAccountMultisigs(context.env, ss58),
       ss58,
     );
   },

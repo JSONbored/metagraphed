@@ -43,6 +43,11 @@ import { isFinneySs58Address } from "./finney-ss58.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {
+  buildChildKeyDetail,
+  buildParentKeyDetail,
+  loadChildKeyDetail,
+} from "./child-key-detail.ts";
+import {
   type ChainNetworkId,
   networkKvKey,
   rpcUrlForNetwork,
@@ -390,11 +395,17 @@ async function loadChildHotkeyGraph(
  * than naming one item and implying a single lookup produced it.
  */
 export interface ChildHotkeyGraphResult extends ChildHotkeyGraphSnapshot {
+  child_key_detail: Record<string, unknown> | null;
   field_sources: FieldSources;
 }
 
 export const ACCOUNT_CHILDREN_FIELD_SOURCES = {
   subnets: { kind: "reconstructed", storage: null },
+  // #13166: assembled from four stored child-key maps (ChildkeyTake,
+  // PendingChildKeys, the two threshold maps, and the ChildKeys history) --
+  // many reads, one block, so `reconstructed` with storage null is the
+  // honest label, same reasoning as `subnets` above.
+  child_key_detail: { kind: "reconstructed", storage: null },
 } as const satisfies FieldSources;
 
 async function loadAccountChildrenSnapshot(
@@ -426,6 +437,10 @@ async function loadAccountChildrenSnapshot(
  */
 export const ACCOUNT_PARENTS_FIELD_SOURCES = {
   subnets: { kind: "reconstructed", storage: null },
+  // #13166: same honest label as the children map's entry above -- the
+  // parents view's block is the account's takes plus its child-keyed
+  // capture history.
+  child_key_detail: { kind: "reconstructed", storage: null },
 } as const satisfies FieldSources;
 
 async function loadAccountParentsSnapshot(
@@ -444,31 +459,42 @@ async function loadAccountParentsSnapshot(
 }
 
 /**
- * The served delegation graph plus its provenance map, attached outside the
- * loader so it never enters the KV blob (#9108).
+ * The served delegation graph plus the stored child-key detail (#13166) and
+ * its provenance map, both attached outside the loader so neither enters the
+ * KV blob (#9108; the detail is store-tier state with its own freshness, so
+ * caching it under the live graph's TTL would couple the two).
  */
 export async function loadAccountChildren(
   env: Env,
   ss58: string,
   network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphResult> {
+  const snapshot = await loadAccountChildrenSnapshot(env, ss58, network);
   return {
-    ...(await loadAccountChildrenSnapshot(env, ss58, network)),
+    ...snapshot,
+    child_key_detail: buildChildKeyDetail(
+      await loadChildKeyDetail(env, ss58, "children", network !== "testnet"),
+    ),
     field_sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
   };
 }
 
 /**
- * The served delegation graph plus its provenance map, attached outside the
- * loader so it never enters the KV blob (#9108).
+ * The served delegation graph plus the stored child-key detail (#13166) and
+ * its provenance map, both attached outside the loader so neither enters the
+ * KV blob (#9108).
  */
 export async function loadAccountParents(
   env: Env,
   ss58: string,
   network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphResult> {
+  const snapshot = await loadAccountParentsSnapshot(env, ss58, network);
   return {
-    ...(await loadAccountParentsSnapshot(env, ss58, network)),
+    ...snapshot,
+    child_key_detail: buildParentKeyDetail(
+      await loadChildKeyDetail(env, ss58, "parents", network !== "testnet"),
+    ),
     field_sources: ACCOUNT_PARENTS_FIELD_SOURCES,
   };
 }

@@ -255,6 +255,12 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_pending_coldkey_swaps: {
     operation: "pending-coldkey-swaps",
   },
+  get_account_proxies: {
+    operation: "account-proxies",
+  },
+  get_account_multisigs: {
+    operation: "account-multisigs",
+  },
   get_validator_baskets: {
     operation: "chain-baskets",
   },

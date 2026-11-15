@@ -1346,6 +1346,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-proxies",
+      "path": "/metagraph/accounts/{ss58}/proxies.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountProxiesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-multisigs",
+      "path": "/metagraph/accounts/{ss58}/multisigs.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountMultisigsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-children",
       "path": "/metagraph/accounts/{ss58}/children.json",
       "retirement": null,
@@ -2741,7 +2759,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 189,
+    "mainnet_only_route_count": 191,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -10662,9 +10680,41 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/accounts/{ss58}/proxies.json",
+      "cache": "short",
+      "description": "Fetch one account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (the chain's 23-and-growing enum, spelled as the chain spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve (u64 atomic units as a decimal string). Served live from the proxies store; until the engine's Proxy.Proxies capture lands the state holds no rows and the response is the schema-stable decline — an empty proxies array with proxy_count null, never 0, because an empty list is not a measured delegation-free account. Returns 400 on invalid ss58.",
+      "id": "account-proxies",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/proxies",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/multisigs.json",
+      "cache": "short",
+      "description": "Fetch every multisig an account belongs to (#13166) — as the multisig account itself or as a signatory — each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Served live from the multisigs store; until the engine's Multisig call/event capture lands the state holds no rows and the response is the schema-stable decline — an empty multisigs array with multisig_count null, never 0, because an empty list is not a measured multisig-free account. Returns 400 on invalid ss58.",
+      "id": "account-multisigs",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/multisigs",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/accounts/{ss58}/children.json",
       "cache": "short",
-      "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows, its PendingChildKeys queue, its threshold bookkeeping and the ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-children",
       "mainnet_only": false,
       "method": "GET",
@@ -10683,7 +10733,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/parents.json",
       "cache": "short",
-      "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows and its child-keyed ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-parents",
       "mainnet_only": false,
       "method": "GET",

@@ -109,7 +109,9 @@ describe("checkQueryArguments", () => {
     // #13165 adds one more (subnet_limit_orders), the same way.
     // #13166 adds two more (pending_coldkey_swaps, account_coldkey_swap),
     // the same way.
-    assert.equal(report.exact, 219);
+    // #13166 adds two more (account_proxies, account_multisigs), the same
+    // way.
+    assert.equal(report.exact, 221);
     assert.equal(report.skipped, 0);
   });
 

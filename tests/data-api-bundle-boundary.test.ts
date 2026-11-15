@@ -297,11 +297,16 @@ describe("data-api's bundle boundary", () => {
     // 8c9ad938, for 4,940,351: the coldkey-swaps builders and store selector
     // plus their route/tool prose. The PostgreSQL store (pg-coldkey-swaps.ts)
     // stays outside the graph; keep 2,649 source bytes of margin.
+    // The account-plane serving slice (#13166) adds 6,155 source bytes over
+    // 91bd43f1, for 4,946,506: the proxies/multisigs/child-key-detail
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-proxies.ts, pg-multisigs.ts, pg-child-keys.ts)
+    // stay outside the graph; keep 2,494 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_943_000,
+      firstParty < 4_949_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

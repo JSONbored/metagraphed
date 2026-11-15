@@ -184,6 +184,24 @@ test("INGESTED_EVENT_KINDS accepts the coldkey-swap v2 kinds (#13166)", () => {
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts the Proxy and Multisig pallet kinds (#13166)", () => {
+  // Same forward-compat footing: the structured decode (into app.proxies /
+  // app.multisigs) lands with the engine. Every name verified against live
+  // Finney v490 metadata.
+  for (const kind of [
+    "ProxyAdded",
+    "ProxyRemoved",
+    "PureCreated",
+    "PureKilled",
+    "NewMultisig",
+    "MultisigApproval",
+    "MultisigExecuted",
+    "MultisigCancelled",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("basket and collateral kinds support public filters and meaningful summary categories", () => {
   const categories = {
     BasketDeposited: "stake",

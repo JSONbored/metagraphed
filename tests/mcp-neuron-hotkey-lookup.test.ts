@@ -1017,3 +1017,82 @@ describe("get_pending_coldkey_swaps (#13166)", () => {
     assert.equal((data.policy as Row).announcement_delay, 36_000);
   });
 });
+
+// The get_account_proxies / get_account_multisigs tools (#13166): same
+// loaders/builders as the REST routes and the GraphQL fields.
+describe("get_account_proxies / get_account_multisigs (#13166)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const OTHER = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  test("no bound store answers the schema-stable declines", async () => {
+    const env = createLocalArtifactEnv() as unknown as ReturnType<
+      typeof neuronsTierEnv
+    >;
+    assert.deepEqual(
+      structured(await callTool("get_account_proxies", { ss58: SS58 }, env)),
+      {
+        schema_version: 1,
+        ss58: SS58,
+        proxy_count: null,
+        deposit: null,
+        captured_at: null,
+        proxies: [],
+      },
+    );
+    assert.deepEqual(
+      structured(await callTool("get_account_multisigs", { ss58: SS58 }, env)),
+      {
+        schema_version: 1,
+        ss58: SS58,
+        multisig_count: null,
+        captured_at: null,
+        multisigs: [],
+      },
+    );
+  });
+
+  test("bound stores serve the rows", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      ACCOUNT_PROXIES_STORE: {
+        rows: async () => [
+          {
+            delegate: OTHER,
+            proxy_type: "Any",
+            delay: "10",
+            deposit: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+      ACCOUNT_MULTISIGS_STORE: {
+        byMember: async () => [
+          {
+            multisig: SS58,
+            threshold: null,
+            signatories: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as ReturnType<typeof neuronsTierEnv>;
+    const proxies = structured(
+      await callTool("get_account_proxies", { ss58: SS58 }, env),
+    );
+    assert.equal(proxies.proxy_count, 1);
+    assert.equal((proxies.proxies as Row[])[0].proxy_type, "Any");
+    const multisigs = structured(
+      await callTool("get_account_multisigs", { ss58: SS58 }, env),
+    );
+    assert.equal(multisigs.multisig_count, 1);
+    assert.equal((multisigs.multisigs as Row[])[0].role, "multisig");
+  });
+
+  test("an invalid ss58 is invalid_params on both tools", async () => {
+    for (const tool of ["get_account_proxies", "get_account_multisigs"]) {
+      const body = await callTool(tool, { ss58: "nope" });
+      assert.match(errorText(body), /invalid_params/);
+      assert.match(errorText(body), /ss58/);
+    }
+  });
+});

@@ -1451,6 +1451,14 @@ import {
   GetPendingColdkeySwapsOutputSchema,
 } from "../schemas-src/mcp-tools/get-pending-coldkey-swaps.ts";
 import {
+  GetAccountProxiesInputSchema,
+  GetAccountProxiesOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-proxies.ts";
+import {
+  GetAccountMultisigsInputSchema,
+  GetAccountMultisigsOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-multisigs.ts";
+import {
   GetValidatorBasketsInputSchema,
   GetValidatorBasketsOutputSchema,
 } from "../schemas-src/mcp-tools/get-validator-baskets.ts";
@@ -1508,6 +1516,11 @@ import {
   buildPendingColdkeySwaps,
   loadPendingColdkeySwaps,
 } from "./coldkey-swaps.ts";
+import { buildAccountProxies, loadAccountProxies } from "./account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "./account-multisigs.ts";
 import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
@@ -9575,6 +9588,62 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_account_proxies",
+    title: "Get an account's proxy delegations",
+    description:
+      "Fetch one account's Proxy-pallet delegation state (#13166): each " +
+      "proxy definition's delegate, variant (spelled as the chain's enum " +
+      "spells it -- 23 variants on v490 and growing) and announcement delay " +
+      "with its capture stamp, ordered by (delegate, proxy_type, delay), " +
+      "plus the account-level reserve (u64 atomic units as a decimal " +
+      "string). Until the engine's Proxy.Proxies capture lands, the state " +
+      "holds no rows and the response is the schema-stable decline: an " +
+      "empty proxies array with proxy_count NULL -- never 0, because an " +
+      "empty list is not a measured delegation-free account. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/proxies.",
+    inputSchema: inputJsonSchema(GetAccountProxiesInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountProxiesInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountProxies -> buildAccountProxies decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildAccountProxies(await loadAccountProxies(ctx.env, ss58), ss58);
+    },
+  },
+  {
+    name: "get_account_multisigs",
+    title: "List every multisig an account belongs to",
+    description:
+      "Fetch every multisig an account belongs to (#13166) -- as the " +
+      "multisig account itself or as a signatory -- each with its resolved " +
+      "signatory set, approval threshold, which side of the membership " +
+      "matched and the capture stamp, ordered by multisig address and " +
+      "store-capped. Until the engine's Multisig call/event capture lands, " +
+      "the state holds no rows and the response is the schema-stable " +
+      "decline: an empty multisigs array with multisig_count NULL -- never " +
+      "0, because an empty list is not a measured multisig-free account. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/multisigs.",
+    inputSchema: inputJsonSchema(GetAccountMultisigsInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountMultisigsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountMultisigs -> buildAccountMultisigs decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildAccountMultisigs(
+        await loadAccountMultisigs(ctx.env, ss58),
+        ss58,
+      );
+    },
+  },
+  {
     name: "get_validator_baskets",
     title: "Get every validator's Root basket fund",
     description:
@@ -16103,6 +16172,9 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
   get_pending_coldkey_swaps: () =>
     outputJsonSchema(GetPendingColdkeySwapsOutputSchema),
+  get_account_proxies: () => outputJsonSchema(GetAccountProxiesOutputSchema),
+  get_account_multisigs: () =>
+    outputJsonSchema(GetAccountMultisigsOutputSchema),
   get_validator_baskets: () =>
     outputJsonSchema(GetValidatorBasketsOutputSchema),
   get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),
