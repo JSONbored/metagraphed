@@ -279,11 +279,16 @@ describe("data-api's bundle boundary", () => {
     // e635a993, for 4,924,359: the tao-usd-oracle builder and store selector
     // plus the grown tao-usd route/tool prose. pg-tao-usd-oracle.ts stays
     // outside the graph; keep 2,641 source bytes of margin.
+    // The Swap/AlphaAssets serving slice (#13165) adds 4,689 source bytes
+    // over 803e22b7, for 4,929,048: the subnet-swap / subnet-alpha-assets
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-swap.ts, pg-subnet-alpha-assets.ts) stay
+    // outside the graph; keep 2,452 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_927_000,
+      firstParty < 4_931_500,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

@@ -1463,12 +1463,25 @@ import {
   GetSubnetServicesOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-services.ts";
 import {
+  GetSubnetSwapInputSchema,
+  GetSubnetSwapOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-swap.ts";
+import {
+  GetSubnetAlphaAssetsInputSchema,
+  GetSubnetAlphaAssetsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-alpha-assets.ts";
+import {
   buildValidatorBaskets,
   loadValidatorBaskets,
 } from "./validator-baskets.ts";
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "./subnet-alpha-assets.ts";
 import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildSubnetMechanisms,
@@ -9622,6 +9635,55 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_swap",
+    title: "Get a subnet's balancer Swap state",
+    description:
+      "Fetch one subnet's current balancer-based Swap state (#13165, " +
+      "runtime v490): the pool's TAO and alpha reservoirs " +
+      "(Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 " +
+      "atomic units in decimal strings, and the raw u16 fee rate " +
+      "(Swap.FeeRate, served verbatim -- the engine's decode owns the " +
+      "scaling), with their capture stamp. Until the engine's balancer " +
+      "capture lands, the store holds no rows and the response is the " +
+      "schema-stable decline: swap NULL -- never a zeroed state, because an " +
+      "absent capture is not a measured empty pool. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/swap.",
+    inputSchema: inputJsonSchema(GetSubnetSwapInputSchema),
+    async handler(args: z.infer<typeof GetSubnetSwapInputSchema>, ctx: McpCtx) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetSwap -> buildSubnetSwap decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildSubnetSwap(await loadSubnetSwap(ctx.env, netuid), netuid);
+    },
+  },
+  {
+    name: "get_subnet_alpha_assets",
+    title: "Get a subnet's alpha-asset accounting",
+    description:
+      "Fetch one subnet's current AlphaAssets accounting (#13165, runtime " +
+      "v490): total alpha issuance and its burn/recycle sinks " +
+      "(AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / " +
+      "AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal " +
+      "strings, with their capture stamp. Until the engine's alpha-assets " +
+      "capture lands, the store holds no rows and the response is the " +
+      "schema-stable decline: alpha_assets NULL -- never a zeroed state, " +
+      "because an absent capture is not a measured zero issuance. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/alpha-assets.",
+    inputSchema: inputJsonSchema(GetSubnetAlphaAssetsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetAlphaAssetsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetAlphaAssets -> buildSubnetAlphaAssets decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildSubnetAlphaAssets(
+        await loadSubnetAlphaAssets(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -15973,6 +16035,9 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),
   get_gamma_deposits: () => outputJsonSchema(GetGammaDepositsOutputSchema),
   get_subnet_services: () => outputJsonSchema(GetSubnetServicesOutputSchema),
+  get_subnet_swap: () => outputJsonSchema(GetSubnetSwapOutputSchema),
+  get_subnet_alpha_assets: () =>
+    outputJsonSchema(GetSubnetAlphaAssetsOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

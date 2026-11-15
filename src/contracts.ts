@@ -1376,6 +1376,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-swap",
+    "/metagraph/subnets/{netuid}/swap.json",
+    "One subnet's current balancer-based Swap state (#13165, runtime v490) — the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate, served verbatim because the engine's decode owns the scaling) with their capture stamp — served live from the swap store at /api/v1/subnets/{netuid}/swap (no static file). swap: null until the engine's balancer capture lands: an absent capture is not a measured empty pool, so a zeroed state is never published.",
+    "SubnetSwapArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-alpha-assets",
+    "/metagraph/subnets/{netuid}/alpha-assets.json",
+    "One subnet's current AlphaAssets accounting (#13165, runtime v490) — total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp — served live from the alpha-assets store at /api/v1/subnets/{netuid}/alpha-assets (no static file). alpha_assets: null until the engine's alpha-assets capture lands: an absent capture is not a measured zero issuance, so a zeroed state is never published.",
+    "SubnetAlphaAssetsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-weight-setters",
     "/metagraph/subnets/{netuid}/weights/setters.json",
     "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
@@ -3277,6 +3291,28 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/services",
     "/metagraph/subnets/{netuid}/services.json",
     "Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-swap",
+    "GET",
+    "/api/v1/subnets/{netuid}/swap",
+    "/metagraph/subnets/{netuid}/swap.json",
+    "Fetch one subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 atomic units in decimal strings, and the raw u16 fee rate (Swap.FeeRate, served verbatim — the engine's decode owns the scaling), with their capture stamp. Served live from the swap store; until the engine's balancer capture lands the store holds no rows and the response is the schema-stable decline — swap null, never a zeroed state, because an absent capture is not a measured empty pool.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-alpha-assets",
+    "GET",
+    "/api/v1/subnets/{netuid}/alpha-assets",
+    "/metagraph/subnets/{netuid}/alpha-assets.json",
+    "Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp. Served live from the alpha-assets store; until the engine's alpha-assets capture lands the store holds no rows and the response is the schema-stable decline — alpha_assets null, never a zeroed state, because an absent capture is not a measured zero issuance.",
     "short",
     ["subnets"],
     [],
@@ -5697,6 +5733,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/chain/gamma",
   "/api/v1/gamma/deposits",
   "/api/v1/subnets/{netuid}/services",
+  // #13165: app.swap_balancer and app.alpha_assets have no network column --
+  // a testnet-addressed request would be served MAINNET balancer state the
+  // day the captures fill.
+  "/api/v1/subnets/{netuid}/swap",
+  "/api/v1/subnets/{netuid}/alpha-assets",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6600,6 +6641,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "subnet-gamma": "Fetch one subnet's current Gamma state",
   "subnet-gamma-history": "Fetch one subnet's Gamma capture series",
   "subnet-services": "Fetch one subnet's on-chain service URLs",
+  "subnet-swap": "Fetch one subnet's balancer Swap state",
+  "subnet-alpha-assets": "Fetch one subnet's alpha-asset accounting",
   "chain-gamma": "Fetch the chain-wide Gamma state",
   "gamma-deposits": "Fetch the chain's Gamma deposits",
   "account-locks": "Fetch one account's conviction-lock state",

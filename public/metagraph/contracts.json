@@ -807,6 +807,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's current balancer-based Swap state (#13165, runtime v490) — the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate, served verbatim because the engine's decode owns the scaling) with their capture stamp — served live from the swap store at /api/v1/subnets/{netuid}/swap (no static file). swap: null until the engine's balancer capture lands: an absent capture is not a measured empty pool, so a zeroed state is never published.",
+      "id": "subnet-swap",
+      "path": "/metagraph/subnets/{netuid}/swap.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetSwapArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "One subnet's current AlphaAssets accounting (#13165, runtime v490) — total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp — served live from the alpha-assets store at /api/v1/subnets/{netuid}/alpha-assets (no static file). alpha_assets: null until the engine's alpha-assets capture lands: an absent capture is not a measured zero issuance, so a zeroed state is never published.",
+      "id": "subnet-alpha-assets",
+      "path": "/metagraph/subnets/{netuid}/alpha-assets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetAlphaAssetsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
@@ -3189,7 +3211,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 184,
+    "mainnet_only_route_count": 186,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

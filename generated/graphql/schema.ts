@@ -281,6 +281,16 @@ type Query {
   subnet_services(netuid: Int!): SubnetServices!
 
   """
+  One subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate) with their capture stamp. Until the engine's balancer capture lands, the store holds no rows and this resolves to the schema-stable decline -- swap NULL, never a zeroed state, because an absent capture is not a measured empty pool. Mirrors GET /api/v1/subnets/{netuid}/swap.
+  """
+  subnet_swap(netuid: Int!): SubnetSwap!
+
+  """
+  One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.
+  """
+  subnet_alpha_assets(netuid: Int!): SubnetAlphaAssets!
+
+  """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
   """
   subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
@@ -2601,6 +2611,76 @@ type SubnetService {
   The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis.
   """
   set_at: Int
+  captured_at: String
+}
+
+"""
+One subnet's current balancer-based Swap state (#13165). Null \`swap\` until the engine's balancer capture lands. Mirrors GET /api/v1/subnets/{netuid}/swap.
+"""
+type SubnetSwap {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured balancer state. NULL when the store holds no capture for this subnet (store unbound, or the balancer capture has not run): an absent state is never served as a zeroed one.
+  """
+  swap: SubnetSwapState
+  captured_at: String
+}
+
+"""
+One captured balancer state of a subnet's Swap pool: the TAO and alpha reservoirs and the raw fee rate with their capture stamp.
+"""
+type SubnetSwapState {
+  """
+  The subnet pool's TAO reservoir (Swap.BalancerTaoReservoir) -- u64 atomic units (rao) as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  tao_reservoir: String
+
+  """
+  The subnet pool's alpha reservoir (Swap.BalancerAlphaReservoir) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  alpha_reservoir: String
+
+  """
+  The pool's swap fee rate (Swap.FeeRate) -- the chain's raw u16 as stored, served verbatim because the engine's decode owns the scaling. Null when the capture did not carry it -- never coalesced to 0, which would claim a measured fee-free pool.
+  """
+  fee_rate: Int
+  captured_at: String
+}
+
+"""
+One subnet's current AlphaAssets accounting (#13165). Null \`alpha_assets\` until the engine's alpha-assets capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.
+"""
+type SubnetAlphaAssets {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured alpha-asset accounting. NULL when the store holds no capture for this subnet (store unbound, or the alpha-assets capture has not run): an absent state is never served as a zeroed one.
+  """
+  alpha_assets: SubnetAlphaAssetsState
+  captured_at: String
+}
+
+"""
+One captured alpha-asset accounting state of a subnet: total issuance and its burn/recycle sinks with their capture stamp.
+"""
+type SubnetAlphaAssetsState {
+  """
+  The subnet's total alpha issuance (AlphaAssets.TotalAlphaIssuance) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  total_issuance: String
+
+  """
+  Alpha burned on this subnet (AlphaAssets.AlphaBurned) -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  burned: String
+
+  """
+  Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  recycled: String
   captured_at: String
 }
 

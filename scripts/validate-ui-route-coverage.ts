@@ -152,6 +152,12 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   "/api/v1/chain/gamma",
   "/api/v1/gamma/deposits",
   "/api/v1/subnets/{netuid}/services",
+  // #13165 publishes the v490 balancer Swap state and AlphaAssets
+  // accounting; both tables behind them are empty until the engine's capture
+  // lands, so no UI consumes them yet. Remove the entries when a real
+  // consumer lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/swap",
+  "/api/v1/subnets/{netuid}/alpha-assets",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

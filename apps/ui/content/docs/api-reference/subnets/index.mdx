@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-75 endpoints.
+77 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -19,6 +19,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots rollup.
 - [Emission Pipeline](/docs/api-reference/subnets/emission-pipeline) — `GET /api/v1/chain/emission-pipeline`\
   Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`.
+- [Subnet Alpha Assets](/docs/api-reference/subnets/subnet-alpha-assets) — `GET /api/v1/subnets/{netuid}/alpha-assets`\
+  Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp.
 - [Subnet Alpha Dividends](/docs/api-reference/subnets/subnet-alpha-dividends) — `GET /api/v1/subnets/{netuid}/alpha-dividends`\
   Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first.
 - [Subnet Alpha Volume](/docs/api-reference/subnets/subnet-alpha-volume) — `GET /api/v1/subnets/{netuid}/volume`\
@@ -129,6 +131,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream.
 - [Subnet Surface History](/docs/api-reference/subnets/subnet-surface-history) — `GET /api/v1/subnets/{netuid}/surface-history`\
   Fetch one subnet's surface audit trail.
+- [Subnet Swap](/docs/api-reference/subnets/subnet-swap) — `GET /api/v1/subnets/{netuid}/swap`\
+  Fetch one subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 atomic units in decimal strings, and the raw u16 fee rate (Swap.FeeRate, served verbatim — the engine's decode owns the scaling), with their capture stamp.
 - [Subnet Trajectory](/docs/api-reference/subnets/subnet-trajectory) — `GET /api/v1/subnets/{netuid}/trajectory`\
   Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from the store).
 - [Subnet Treasury](/docs/api-reference/subnets/subnet-treasury) — `GET /api/v1/subnets/{netuid}/treasury`\

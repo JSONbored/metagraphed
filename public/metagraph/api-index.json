@@ -662,6 +662,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-swap",
+      "path": "/metagraph/subnets/{netuid}/swap.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetSwapArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-alpha-assets",
+      "path": "/metagraph/subnets/{netuid}/alpha-assets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetAlphaAssetsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
       "retirement": null,
@@ -2696,7 +2714,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 184,
+    "mainnet_only_route_count": 186,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7959,6 +7977,38 @@
         "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/services",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/swap.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 atomic units in decimal strings, and the raw u16 fee rate (Swap.FeeRate, served verbatim — the engine's decode owns the scaling), with their capture stamp. Served live from the swap store; until the engine's balancer capture lands the store holds no rows and the response is the schema-stable decline — swap null, never a zeroed state, because an absent capture is not a measured empty pool.",
+      "id": "subnet-swap",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/swap",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/alpha-assets.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp. Served live from the alpha-assets store; until the engine's alpha-assets capture lands the store holds no rows and the response is the schema-stable decline — alpha_assets null, never a zeroed state, because an absent capture is not a measured zero issuance.",
+      "id": "subnet-alpha-assets",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/alpha-assets",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

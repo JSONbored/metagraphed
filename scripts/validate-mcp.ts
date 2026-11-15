@@ -2460,6 +2460,11 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_subnet_gamma", HARNESS_SERVES_NO_ROWS],
   ["get_gamma_deposits", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_services", HARNESS_SERVES_NO_ROWS],
+  // #13165: the balancer Swap state and AlphaAssets accounting have no
+  // producer until the engine's capture lands, so the harness can only see
+  // the decline.
+  ["get_subnet_swap", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_alpha_assets", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

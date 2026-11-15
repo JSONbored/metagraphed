@@ -430,6 +430,8 @@ import {
   handleChainGamma,
   handleGammaDeposits,
   handleSubnetServices,
+  handleSubnetSwap,
+  handleSubnetAlphaAssets,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -864,6 +866,8 @@ import {
   CHAIN_GAMMA_PATH,
   GAMMA_DEPOSITS_PATH,
   SUBNET_SERVICES_PATH_PATTERN,
+  SUBNET_SWAP_PATH_PATTERN,
+  SUBNET_ALPHA_ASSETS_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7162,6 +7166,21 @@ async function dispatchRequest(
       // native services store seam.
       return handleSubnetServices(request, env, Number(servicesMatch[1]));
     }
+    const swapMatch = SUBNET_SWAP_PATH_PATTERN.exec(resolved.url.pathname);
+    if (swapMatch) {
+      // #13165: one subnet's current balancer-based Swap state -- one bounded
+      // read through the native swap store seam, dispatched directly like the
+      // sibling gamma card (no edge-cache wrapper).
+      return handleSubnetSwap(request, env, Number(swapMatch[1]));
+    }
+    const alphaAssetsMatch = SUBNET_ALPHA_ASSETS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (alphaAssetsMatch) {
+      // #13165: one subnet's current AlphaAssets accounting, through the
+      // native alpha-assets store seam.
+      return handleSubnetAlphaAssets(request, env, Number(alphaAssetsMatch[1]));
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8214,6 +8233,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === CHAIN_GAMMA_PATH ||
     pathname === GAMMA_DEPOSITS_PATH ||
     SUBNET_SERVICES_PATH_PATTERN.test(pathname) ||
+    // #13165: app.swap_balancer / app.alpha_assets carry no network
+    // dimension.
+    SUBNET_SWAP_PATH_PATTERN.test(pathname) ||
+    SUBNET_ALPHA_ASSETS_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

@@ -54,6 +54,11 @@ import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "./subnet-alpha-assets.ts";
 import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildValidatorBaskets,
@@ -3756,6 +3761,29 @@ const rootValue = {
     // GraphQL error.
     return buildSubnetServices(
       await loadSubnetServices(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_swap({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetSwap -> buildSubnetSwap decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled swap
+    // store is a schema-stable card with swap null, never a GraphQL error.
+    return buildSubnetSwap(await loadSubnetSwap(context.env, netuid), netuid);
+  },
+
+  async subnet_alpha_assets(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetAlphaAssets -> buildSubnetAlphaAssets decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled alpha-assets store is a schema-stable card with alpha_assets
+    // null, never a GraphQL error.
+    return buildSubnetAlphaAssets(
+      await loadSubnetAlphaAssets(context.env, netuid),
       netuid,
     );
   },

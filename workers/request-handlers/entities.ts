@@ -121,6 +121,11 @@ import {
   buildSubnetServices,
   loadSubnetServices,
 } from "../../src/subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "../../src/subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "../../src/subnet-alpha-assets.ts";
 import {
   buildTaoUsdOracle,
   loadTaoUsdOracle,
@@ -3373,6 +3378,60 @@ export async function handleSubnetServices(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/services.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/swap (#13165): one subnet's current
+// balancer-based Swap state, read through the native swap store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: `swap: null`, never a zeroed state (an absent
+// capture is not a measured empty pool), marked as a tier fallback.
+export async function handleSubnetSwap(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetSwap(env, netuid);
+  const data = buildSubnetSwap(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/swap.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/alpha-assets (#13165): one subnet's current
+// AlphaAssets accounting, read through the native alpha-assets store seam.
+// No store bound or a failed read is the same schema-stable decline:
+// `alpha_assets: null`, never a zeroed state (an absent capture is not a
+// measured zero issuance), marked as a tier fallback.
+export async function handleSubnetAlphaAssets(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetAlphaAssets(env, netuid);
+  const data = buildSubnetAlphaAssets(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/alpha-assets.json`,
         data.captured_at,
       ),
     },

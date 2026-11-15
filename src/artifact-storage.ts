@@ -191,6 +191,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13164: one subnet's on-chain service-URL registry, computed live from
   // the services store, same reasoning.
   /^subnets\/(?:\d+|\{netuid\})\/services\.json$/,
+  // #13165: one subnet's balancer Swap state and AlphaAssets accounting,
+  // computed live from their stores -- a baked copy would freeze a state the
+  // engine has yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/swap\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/alpha-assets\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.

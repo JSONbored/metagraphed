@@ -784,3 +784,113 @@ describe("get_subnet_services (#13164)", () => {
     assert.match(errorText(body), /netuid/);
   });
 });
+
+// The get_subnet_swap tool (#13165): same loader/builder as the REST route
+// and the GraphQL field, so the decline and the state match exactly.
+describe("get_subnet_swap (#13165)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_swap",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      swap: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_SWAP_STORE: {
+        latest: async () => [
+          {
+            tao_reservoir: "5000000000",
+            alpha_reservoir: "12500",
+            fee_rate: 300,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_swap",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal((data.swap as Row).tao_reservoir, "5000000000");
+    assert.equal((data.swap as Row).fee_rate, 300);
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_swap", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});
+
+// The get_subnet_alpha_assets tool (#13165): same loader/builder as the REST
+// route and the GraphQL field, so the decline and the accounting match
+// exactly.
+describe("get_subnet_alpha_assets (#13165)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_alpha_assets",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      alpha_assets: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the accounting", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_ALPHA_ASSETS_STORE: {
+        latest: async () => [
+          {
+            total_issuance: "18446744073709551615",
+            burned: "900",
+            recycled: "0",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_alpha_assets",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(
+      (data.alpha_assets as Row).total_issuance,
+      "18446744073709551615",
+    );
+    assert.equal((data.alpha_assets as Row).recycled, "0");
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_alpha_assets", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});
