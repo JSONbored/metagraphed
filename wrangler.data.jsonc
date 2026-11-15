@@ -785,17 +785,17 @@
   // Found by adversarial review (#4984 Part 3): ALERT_TRIGGER_CREATE_TOKEN
   // alone doesn't bound REQUEST VOLUME from a legitimate token holder --
   // every created row becomes a permanent per-event cost in AlerterHub's
-  // O(active triggers) match scan. Namespace id is local to THIS Worker's
-  // own bindings (Cloudflare's Workers-native rate-limiting API, not the
-  // older account-wide Rate Limiting Rules product) -- reusing "1001" here
-  // does not collide with wrangler.jsonc's own RPC_RATE_LIMITER using the
-  // same id, since ratelimit namespaces are scoped per Worker script.
-  // Skipped when unbound (local dev/CI), matching every other optional
-  // rate-limiter's convention in this codebase.
+  // O(active triggers) match scan. Namespace ids here are unique across ALL
+  // of this repo's wrangler configs (wrangler.jsonc holds 1001-1027), not
+  // just within this Worker: ratelimit namespaces are scoped per Worker
+  // script today, but the #13143 fold merges these bindings into the one
+  // surviving Worker, where a shared id would silently merge two different
+  // limits into one counter (#13159). Skipped when unbound (local dev/CI),
+  // matching every other optional rate-limiter's convention in this codebase.
   "ratelimits": [
     {
       "name": "ALERT_TRIGGER_CREATE_RATE_LIMITER",
-      "namespace_id": "1001",
+      "namespace_id": "1028",
       "simple": {
         "limit": 10,
         "period": 60,
@@ -807,7 +807,7 @@
     // above. Skipped when unbound (local dev/CI).
     {
       "name": "WALLET_AUTH_RATE_LIMITER",
-      "namespace_id": "1002",
+      "namespace_id": "1029",
       "simple": {
         "limit": 10,
         "period": 60,
@@ -821,7 +821,7 @@
     // Skipped when unbound (local dev/CI).
     {
       "name": "ACCOUNT_KEYS_MINT_RATE_LIMITER",
-      "namespace_id": "1003",
+      "namespace_id": "1030",
       "simple": {
         "limit": 10,
         "period": 60,

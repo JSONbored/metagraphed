@@ -123,15 +123,17 @@
   // registry. Mirrors ALERT_TRIGGER_CREATE_RATE_LIMITER's posture
   // (wrangler.data.jsonc) for the same shared-secret-write shape, but looser
   // than its 10/60s to tolerate scripts/backfill-registry-postgres.ts's
-  // legitimate chunked full-resync POSTs. Namespace id is local to THIS
-  // Worker's own bindings -- reusing an id already used elsewhere doesn't
-  // collide (ratelimit namespaces are scoped per Worker script). Skipped
-  // when unbound (local dev/CI), matching every other optional rate-limiter
-  // binding's convention in this codebase.
+  // legitimate chunked full-resync POSTs. Namespace id is unique across ALL
+  // of this repo's wrangler configs (wrangler.jsonc holds 1001-1027, data
+  // 1028-1030): per-script scoping makes a reused id benign today, but the
+  // #13143 fold merges these bindings into the one surviving Worker, where a
+  // shared id would silently merge two different limits into one counter
+  // (#13159). Skipped when unbound (local dev/CI), matching every other
+  // optional rate-limiter binding's convention in this codebase.
   "ratelimits": [
     {
       "name": "REGISTRY_SYNC_RATE_LIMITER",
-      "namespace_id": "1001",
+      "namespace_id": "1031",
       "simple": {
         "limit": 30,
         "period": 60,
