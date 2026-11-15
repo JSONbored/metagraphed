@@ -479,6 +479,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetSwapState: "SubnetSwapState",
   SubnetAlphaAssetsArtifact: "SubnetAlphaAssets",
   SubnetAlphaAssetsState: "SubnetAlphaAssetsState",
+  SubnetLimitOrdersArtifact: "SubnetLimitOrders",
+  SubnetLimitOrder: "SubnetLimitOrder",
   AccountLocksArtifact: "AccountLocks",
   StakeLock: "StakeLock",
   ValidatorBasketsArtifact: "ValidatorBaskets",

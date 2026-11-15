@@ -829,6 +829,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's LimitOrders order book (#13165, runtime v490) — each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state with its capture stamp, newest capture first and store-capped — served live from the limit-orders store at /api/v1/subnets/{netuid}/limit-orders (no static file). Empty with a null order_count until the engine's order-book capture lands: an empty book is not a measured order-less subnet, so a zero count is never published.",
+      "id": "subnet-limit-orders",
+      "path": "/metagraph/subnets/{netuid}/limit-orders.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLimitOrdersArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
@@ -3211,7 +3222,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 186,
+    "mainnet_only_route_count": 187,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

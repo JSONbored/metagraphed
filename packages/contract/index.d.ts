@@ -4650,6 +4650,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/limit-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's limit-order book
+         * @description Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.
+         */
+        get: operations["subnetLimitOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/mechanisms": {
         parameters: {
             query?: never;
@@ -12761,6 +12781,32 @@ export interface components {
             netuid: number;
             next_cursor?: string | null;
             offset?: number | null;
+            schema_version: number;
+        };
+        /** @description One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
+        SubnetLimitOrder: {
+            /** @description The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0. */
+            amount: string | null;
+            captured_at: string | null;
+            /** @description The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds. */
+            kind: string;
+            /** @description The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex. */
+            order_id: string;
+            /** @description The account that placed the order (ss58-encoded). */
+            owner: string;
+            /** @description The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order. */
+            status: string | null;
+        };
+        /** @description One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+        SubnetLimitOrdersArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description How many orders this answer carries -- `orders.length`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published. */
+            order_count: number | null;
+            /** @description The subnet's captured orders, newest capture first. */
+            orders: components["schemas"]["SubnetLimitOrder"][];
             schema_version: number;
         };
         /** @description One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp. */
@@ -50219,6 +50265,130 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetLimitOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "order_count": 1,
+                     *         "orders": [
+                     *           {
+                     *             "amount": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "kind": "example",
+                     *             "order_id": "example",
+                     *             "owner": "example",
+                     *             "price": "example",
+                     *             "status": "ok"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetLimitOrdersArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

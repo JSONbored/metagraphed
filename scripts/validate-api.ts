@@ -1848,6 +1848,18 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/limit-orders",
+    (body) => {
+      // #13165: no limit-orders store is bound in this harness, so the one
+      // honest body is the decline -- an empty book with a NULL count
+      // (never 0: an empty book is not a measured order-less subnet).
+      assert.deepEqual(body.data.orders, []);
+      assert.equal(body.data.order_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
     "/api/v1/chain/baskets",
     (body) => {
       // #13163: no capture store is bound in this harness, so the one honest

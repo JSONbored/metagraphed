@@ -196,6 +196,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // engine has yet to fill.
   /^subnets\/(?:\d+|\{netuid\})\/swap\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/alpha-assets\.json$/,
+  // #13165: one subnet's LimitOrders order book, computed live from the
+  // limit-orders store, same reasoning.
+  /^subnets\/(?:\d+|\{netuid\})\/limit-orders\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.

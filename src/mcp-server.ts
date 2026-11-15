@@ -1471,6 +1471,10 @@ import {
   GetSubnetAlphaAssetsOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-alpha-assets.ts";
 import {
+  GetSubnetLimitOrdersInputSchema,
+  GetSubnetLimitOrdersOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-limit-orders.ts";
+import {
   buildValidatorBaskets,
   loadValidatorBaskets,
 } from "./validator-baskets.ts";
@@ -1482,6 +1486,10 @@ import {
   buildSubnetAlphaAssets,
   loadSubnetAlphaAssets,
 } from "./subnet-alpha-assets.ts";
+import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "./subnet-limit-orders.ts";
 import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildSubnetMechanisms,
@@ -9684,6 +9692,34 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_limit_orders",
+    title: "Get a subnet's limit-order book",
+    description:
+      "Fetch one subnet's LimitOrders order book (#13165, runtime v490): " +
+      "each captured order's H256 key (LimitOrders.Orders), owner, " +
+      "OrderType variant (spelled as the chain spells it), amount (u64 " +
+      "atomic units as a decimal string), raw price (canonical decimal text " +
+      "-- the engine's decode owns the scaling) and state, newest capture " +
+      "first and store-capped. Until the engine's order-book capture lands, " +
+      "the book holds no rows and the response is the schema-stable " +
+      "decline: an empty orders array with order_count NULL -- never 0, " +
+      "because an empty book is not a measured order-less subnet. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/limit-orders.",
+    inputSchema: inputJsonSchema(GetSubnetLimitOrdersInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetLimitOrdersInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetLimitOrders -> buildSubnetLimitOrders decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetLimitOrders(
+        await loadSubnetLimitOrders(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -16038,6 +16074,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_subnet_swap: () => outputJsonSchema(GetSubnetSwapOutputSchema),
   get_subnet_alpha_assets: () =>
     outputJsonSchema(GetSubnetAlphaAssetsOutputSchema),
+  get_subnet_limit_orders: () =>
+    outputJsonSchema(GetSubnetLimitOrdersOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>

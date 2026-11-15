@@ -355,6 +355,10 @@ import {
   SubnetAlphaAssetsArtifactSchema,
 } from "./routes/subnet-alpha-assets.ts";
 import {
+  SubnetLimitOrderSchema,
+  SubnetLimitOrdersArtifactSchema,
+} from "./routes/subnet-limit-orders.ts";
+import {
   StakeLockSchema,
   AccountLocksArtifactSchema,
 } from "./routes/account-locks.ts";
@@ -928,6 +932,8 @@ register(SubnetSwapStateSchema, "SubnetSwapState");
 register(SubnetSwapArtifactSchema, "SubnetSwapArtifact");
 register(SubnetAlphaAssetsStateSchema, "SubnetAlphaAssetsState");
 register(SubnetAlphaAssetsArtifactSchema, "SubnetAlphaAssetsArtifact");
+register(SubnetLimitOrderSchema, "SubnetLimitOrder");
+register(SubnetLimitOrdersArtifactSchema, "SubnetLimitOrdersArtifact");
 register(StakeLockSchema, "StakeLock");
 register(AccountLocksArtifactSchema, "AccountLocksArtifact");
 register(BasketCaptureSchema, "BasketCapture");

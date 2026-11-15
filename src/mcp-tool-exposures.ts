@@ -270,6 +270,9 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_alpha_assets: {
     operation: "subnet-alpha-assets",
   },
+  get_subnet_limit_orders: {
+    operation: "subnet-limit-orders",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

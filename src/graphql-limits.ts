@@ -180,6 +180,8 @@ export const FIELD_COMPLEXITY = {
   subnet_swap: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13165: one bounded newest-capture read of app.alpha_assets.
   subnet_alpha_assets: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded read of app.limit_orders (store-capped).
+  subnet_limit_orders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of a handful of app.stake_locks rows.
   account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one completed capture's funds, capped by the receiver's own

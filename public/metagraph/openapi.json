@@ -11911,6 +11911,56 @@
           "schema_version": 1
         }
       },
+      "SubnetLimitOrdersArtifactResponse": {
+        "value": {
+          "data": {
+            "captured_at": "2026-06-01T00:00:00.000Z",
+            "netuid": 7,
+            "order_count": 1,
+            "orders": [
+              {
+                "amount": "example",
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "kind": "example",
+                "order_id": "example",
+                "owner": "example",
+                "price": "example",
+                "status": "ok"
+              }
+            ],
+            "schema_version": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SubnetMechanismsArtifactResponse": {
         "value": {
           "data": {
@@ -53070,6 +53120,111 @@
           "netuid",
           "entry_count",
           "entries"
+        ],
+        "type": "object"
+      },
+      "SubnetLimitOrder": {
+        "additionalProperties": false,
+        "description": "One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp.",
+        "properties": {
+          "amount": {
+            "description": "The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "description": "The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds.",
+            "type": "string"
+          },
+          "order_id": {
+            "description": "The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex.",
+            "type": "string"
+          },
+          "owner": {
+            "description": "The account that placed the order (ss58-encoded).",
+            "type": "string"
+          },
+          "price": {
+            "description": "The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "order_id",
+          "owner",
+          "kind",
+          "amount",
+          "price",
+          "status",
+          "captured_at"
+        ],
+        "type": "object"
+      },
+      "SubnetLimitOrdersArtifact": {
+        "additionalProperties": false,
+        "description": "One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "order_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many orders this answer carries -- `orders.length`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published."
+          },
+          "orders": {
+            "description": "The subnet's captured orders, newest capture first.",
+            "items": {
+              "$ref": "#/components/schemas/SubnetLimitOrder"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "order_count",
+          "captured_at",
+          "orders"
         ],
         "type": "object"
       },
@@ -102822,6 +102977,116 @@
         "tags": [
           "subnets",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/limit-orders": {
+      "get": {
+        "description": "Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.",
+        "operationId": "subnetLimitOrders",
+        "parameters": [
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetLimitOrdersArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetLimitOrdersArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetLimitOrdersArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one subnet's limit-order book",
+        "tags": [
+          "subnets"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

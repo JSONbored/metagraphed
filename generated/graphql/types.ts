@@ -3841,6 +3841,8 @@ export type Query = {
   subnet_lease_history: SubnetLeaseHistory;
   /** When one subnet was registered or deregistered, newest first. Entries with predates_capture=true are older than detection and carry a null block_number -- a real answer, not a missing one. A subnet with no recorded transition resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/lifecycle. */
   subnet_lifecycle: SubnetLifecycle;
+  /** One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+  subnet_limit_orders: SubnetLimitOrders;
   /** One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
   subnet_mechanisms: SubnetMechanisms;
   /** One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph. */
@@ -5152,6 +5154,11 @@ export type QuerySubnet_LifecycleArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QuerySubnet_Limit_OrdersArgs = {
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -7159,6 +7166,36 @@ export type SubnetLifecycleEntry = {
   netuid: Scalars['Int']['output'];
   observed_at: Scalars['String']['output'];
   predates_capture: Scalars['Boolean']['output'];
+};
+
+/** One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
+export type SubnetLimitOrder = {
+  __typename?: 'SubnetLimitOrder';
+  /** The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0. */
+  amount?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds. */
+  kind: Scalars['String']['output'];
+  /** The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex. */
+  order_id: Scalars['String']['output'];
+  /** The account that placed the order (ss58-encoded). */
+  owner: Scalars['String']['output'];
+  /** The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+  price?: Maybe<Scalars['String']['output']>;
+  /** The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order. */
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+/** One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+export type SubnetLimitOrders = {
+  __typename?: 'SubnetLimitOrders';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** How many orders this answer carries -- `orders.length`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published. */
+  order_count?: Maybe<Scalars['Int']['output']>;
+  /** The subnet's captured orders, newest capture first. */
+  orders: Array<SubnetLimitOrder>;
+  schema_version: Scalars['Int']['output'];
 };
 
 export type SubnetList = {
@@ -9301,6 +9338,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: ResolverTypeWrapper<SubnetLeaseHistoryArtifactLeaseEvents>;
   SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
   SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
+  SubnetLimitOrder: ResolverTypeWrapper<SubnetLimitOrder>;
+  SubnetLimitOrders: ResolverTypeWrapper<SubnetLimitOrders>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
   SubnetMechanism: ResolverTypeWrapper<SubnetMechanism>;
   SubnetMechanisms: ResolverTypeWrapper<SubnetMechanisms>;
@@ -9797,6 +9836,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: SubnetLeaseHistoryArtifactLeaseEvents;
   SubnetLifecycle: SubnetLifecycle;
   SubnetLifecycleEntry: SubnetLifecycleEntry;
+  SubnetLimitOrder: SubnetLimitOrder;
+  SubnetLimitOrders: SubnetLimitOrders;
   SubnetList: SubnetList;
   SubnetMechanism: SubnetMechanism;
   SubnetMechanisms: SubnetMechanisms;
@@ -12834,6 +12875,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_lease?: Resolver<Maybe<ResolversTypes['SubnetLease']>, ParentType, ContextType, RequireFields<QuerySubnet_LeaseArgs, 'netuid'>>;
   subnet_lease_history?: Resolver<ResolversTypes['SubnetLeaseHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Lease_HistoryArgs, 'netuid'>>;
   subnet_lifecycle?: Resolver<ResolversTypes['SubnetLifecycle'], ParentType, ContextType, RequireFields<QuerySubnet_LifecycleArgs, 'netuid'>>;
+  subnet_limit_orders?: Resolver<ResolversTypes['SubnetLimitOrders'], ParentType, ContextType, RequireFields<QuerySubnet_Limit_OrdersArgs, 'netuid'>>;
   subnet_mechanisms?: Resolver<ResolversTypes['SubnetMechanisms'], ParentType, ContextType, RequireFields<QuerySubnet_MechanismsArgs, 'netuid'>>;
   subnet_metagraph?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_MetagraphArgs, 'netuid'>>;
   subnet_miner_fairness?: Resolver<ResolversTypes['SubnetMinerFairness'], ParentType, ContextType, RequireFields<QuerySubnet_Miner_FairnessArgs, 'netuid'>>;
@@ -14157,6 +14199,24 @@ export type SubnetLifecycleEntryResolvers<ContextType = GqlContext, ParentType e
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   predates_capture?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+}>;
+
+export type SubnetLimitOrderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLimitOrder'] = ResolversParentTypes['SubnetLimitOrder']> = ResolversObject<{
+  amount?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  order_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  price?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetLimitOrdersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLimitOrders'] = ResolversParentTypes['SubnetLimitOrders']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  order_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  orders?: Resolver<Array<ResolversTypes['SubnetLimitOrder']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetList'] = ResolversParentTypes['SubnetList']> = ResolversObject<{
@@ -15811,6 +15871,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents?: SubnetLeaseHistoryArtifactLeaseEventsResolvers<ContextType>;
   SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
   SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
+  SubnetLimitOrder?: SubnetLimitOrderResolvers<ContextType>;
+  SubnetLimitOrders?: SubnetLimitOrdersResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;
   SubnetMechanism?: SubnetMechanismResolvers<ContextType>;
   SubnetMechanisms?: SubnetMechanismsResolvers<ContextType>;

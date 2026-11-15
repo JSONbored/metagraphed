@@ -40,6 +40,7 @@
     "subnet-lease-by-network",
     "subnet-lease-history",
     "subnet-lifecycle",
+    "subnet-limit-orders",
     "subnet-mechanisms",
     "subnet-metagraph",
     "subnet-miner-fairness",

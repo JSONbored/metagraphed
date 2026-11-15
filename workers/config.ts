@@ -722,6 +722,10 @@ export const SUBNET_SWAP_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/swap$/;
 // alpha-assets store, no static file.
 export const SUBNET_ALPHA_ASSETS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/alpha-assets$/;
+// One subnet's LimitOrders order book (#13165), live from the limit-orders
+// store, no static file.
+export const SUBNET_LIMIT_ORDERS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/limit-orders$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

@@ -59,6 +59,10 @@ import {
   buildSubnetAlphaAssets,
   loadSubnetAlphaAssets,
 } from "./subnet-alpha-assets.ts";
+import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "./subnet-limit-orders.ts";
 import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
 import {
   buildValidatorBaskets,
@@ -3784,6 +3788,21 @@ const rootValue = {
     // null, never a GraphQL error.
     return buildSubnetAlphaAssets(
       await loadSubnetAlphaAssets(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_limit_orders(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetLimitOrders -> buildSubnetLimitOrders decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled limit-orders store is a schema-stable card with order_count
+    // null, never a GraphQL error.
+    return buildSubnetLimitOrders(
+      await loadSubnetLimitOrders(context.env, netuid),
       netuid,
     );
   },

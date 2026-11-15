@@ -291,6 +291,11 @@ type Query {
   subnet_alpha_assets(netuid: Int!): SubnetAlphaAssets!
 
   """
+  One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.
+  """
+  subnet_limit_orders(netuid: Int!): SubnetLimitOrders!
+
+  """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
   """
   subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
@@ -2681,6 +2686,57 @@ type SubnetAlphaAssetsState {
   Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured.
   """
   recycled: String
+  captured_at: String
+}
+
+"""
+One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.
+"""
+type SubnetLimitOrders {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many orders this answer carries -- \`orders.length\`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published.
+  """
+  order_count: Int
+  captured_at: String
+
+  """The subnet's captured orders, newest capture first."""
+  orders: [SubnetLimitOrder!]!
+}
+
+"""
+One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp.
+"""
+type SubnetLimitOrder {
+  """
+  The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex.
+  """
+  order_id: String!
+
+  """The account that placed the order (ss58-encoded)."""
+  owner: String!
+
+  """
+  The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds.
+  """
+  kind: String!
+
+  """
+  The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0.
+  """
+  amount: String
+
+  """
+  The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured.
+  """
+  price: String
+
+  """
+  The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order.
+  """
+  status: String
   captured_at: String
 }
 

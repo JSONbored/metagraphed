@@ -306,6 +306,10 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/subnets/{netuid}/swap",
   // #13165: per-netuid AlphaAssets card -- one current state, not a series.
   "/api/v1/subnets/{netuid}/alpha-assets",
+  // #13165: per-netuid LimitOrders book -- the row bound lives in the store
+  // (SUBNET_LIMIT_ORDERS_ROW_CAP), not in a query parameter a caller could
+  // widen.
+  "/api/v1/subnets/{netuid}/limit-orders",
   // #13163: per-account lock card -- an account holds a handful of locks,
   // not a series.
   "/api/v1/accounts/{ss58}/locks",

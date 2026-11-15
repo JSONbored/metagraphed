@@ -474,6 +474,13 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.",
   },
   {
+    field: "subnet_limit_orders",
+    operation: "subnet-limit-orders",
+    returns: "SubnetLimitOrders!",
+    description:
+      "One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.",
+  },
+  {
     field: "subnet_stake_moves",
     operation: "subnet-stake-moves",
     returns: "SubnetStakeMoves!",
