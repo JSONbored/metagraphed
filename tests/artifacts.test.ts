@@ -237,7 +237,7 @@ test("registry validation warns but does not block on cross-netuid on-chain name
     "expected native fixture to include netuid 1",
   );
   attackerControlledSubnet.chain_identity ||= {};
-  attackerControlledSubnet.chain_identity.subnet_name = "Templar";
+  attackerControlledSubnet.chain_identity.subnet_name = "ansuz";
 
   let result;
   try {
@@ -255,11 +255,11 @@ test("registry validation warns but does not block on cross-netuid on-chain name
   const output = `${result.stdout || ""}\n${result.stderr || ""}`;
   assert.match(
     output,
-    /sn-3: curated name "Templar" .*possible mis-keyed overlay/,
+    /sn-84: curated name "ansuz" .*possible mis-keyed overlay/,
   );
   assert.doesNotMatch(
     output,
-    /Validation failed[^]*- sn-3: curated name "Templar"/,
+    /Validation failed[^]*- sn-84: curated name "ansuz"/,
   );
 });
 
