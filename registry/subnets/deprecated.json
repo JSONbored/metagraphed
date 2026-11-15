@@ -25,7 +25,6 @@
   "notes": "Reviewed overlay for SN39 using the live One Covenant Basilica repository and website. Native chain identity currently reports a deprecated placeholder (re-confirmed live this pass, native_name_quality: chain -- a genuine on-chain read, not a fallback), so this remains an explicit identity-drift entry rather than a silent rename. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema on api.basilica.ai (/openapi.json, /docs both still 404) -- gap_notes remain accurate. All 7 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-39",
-  "source_repo": "https://github.com/deprecated/deprecated",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
