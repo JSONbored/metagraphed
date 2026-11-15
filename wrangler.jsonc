@@ -110,6 +110,16 @@
     // Absent entirely -> src/x402.ts resolves no config and no 402 is ever
     // emitted, which is how this shipped before an address existed.
     "X402_PAY_TO": "0x224809C91CF942d00ef04b23f7BaB87d5DA5013f",
+    // MOVED FROM THE RETIRED WORKER CONFIGS AT CUTOVER (#13143). UNKEY_API_ID
+    // and SYNC_QUEUE_LANES are read by the folded data tier's handlers and
+    // keep wrangler.data.jsonc's exact values. POSTHOG_TRACES_SAMPLE_RATE
+    // takes data-api's 0.002 -- the per-script rates (registry-sync ran 1.0
+    // over ~830 req/month; see wrangler.registry.jsonc's history) cannot
+    // survive a fold into one script, and the merged Worker's volume is the
+    // data/api volume, so the budget-driven rate wins.
+    "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
+    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions,chain-detail",
+    "POSTHOG_TRACES_SAMPLE_RATE": "0.002",
     "X402_NETWORK": "eip155:84532",
     // The SVM leg, and the one that takes REAL money: the public facilitator
     // settles Solana mainnet and does not settle Base mainnet. Committed, not
@@ -711,6 +721,22 @@
       "migrations_dir": "migrations/retained-blocks",
     },
   ],
+  // THE FLEET POSTGRESQL, AT CUTOVER (#13145). The serving database is one
+  // PostgreSQL 18 on the subnet-ops build pool, reached through Hyperdrive
+  // over an outbound cloudflared tunnel; the read-only serving role comes
+  // from the fleet side. OWNER-DAY TODO: no Hyperdrive config existed on the
+  // account as of 2026-11-15 -- create it once the tunnel hostname is live
+  // (see #13145 for the recorded creation steps + connection-string shape)
+  // and fill the id here before this PR leaves draft. The D1 bindings above
+  // stay until #13148's verified data migration; the store keys select
+  // PostgreSQL first and fall back to D1 while both exist (#13159's seam).
+  //
+  // "hyperdrive": [
+  //   {
+  //     "binding": "HYPERDRIVE",
+  //     "id": "<hyperdrive-config-id, created per #13145>",
+  //   },
+  // ],
   // RPC reverse-proxy usage telemetry (#9228). Both proxy entry points --
   // the public /rpc/v1/{network} proxy and the gated /rpc/v1/fullnode gate --
   // write one data point per proxied request here, tagged with which pool
@@ -966,15 +992,11 @@
       "binding": "HISTORY_ASSETS_f",
       "service": "metagraphed-history-extrinsics-2f33d8c5e292-f",
     },
-    // #4771: the write path into the chain-indexer Postgres's neurons/
-    // neuron_daily tables (POST /api/v1/internal/neurons-sync) also lives
-    // behind THIS binding -- workers/data-api.ts owns both read and write
-    // for this one Postgres instance, so there's no separate binding for it.
-    { "binding": "DATA_API", "service": "metagraphed-data-api" },
-    {
-      "binding": "REGISTRY_SYNC_API",
-      "service": "metagraphed-registry-sync-api",
-    },
+    // THE PROXY LAYER, RETIRED AT CUTOVER (#13143). The DATA_API and
+    // REGISTRY_SYNC_API service bindings carried the 26 proxy call sites to
+    // the two retired Workers; after the fold the same handlers run
+    // in-process (workers/data-api-tier.ts, #13156/#13157), so the bindings
+    // come off with the Workers. The route families stay identical.
   ],
   // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
   // in this codebase. One global instance (idFromName("global"), see
@@ -1052,6 +1074,10 @@
   "queues": {
     "producers": [
       { "binding": "WEBHOOK_DELIVERIES", "queue": "webhook-deliveries" },
+      // Moved from wrangler.data.jsonc at cutover (#13143): the bulk sync
+      // path's producer (metagraphed-infra#346/#347). Enqueueing routes live
+      // in the folded data tier, so the binding moves with them.
+      { "binding": "SYNC_BATCHES", "queue": "sync-batches" },
       // ONE QUEUE FOR FOUR PROBE LANES (#10894). attribution-sweep (#10709),
       // origin-reachability (#10715), revenue-probe and compute-declaration
       // (#10932) are the same shape -- enqueue a target, probe it, record the
@@ -1153,6 +1179,29 @@
         "max_batch_size": 100,
         "max_batch_timeout": 30,
         "max_retries": 0,
+        "max_concurrency": 1,
+      },
+      // THE SYNC-BATCH CONSUMERS, MOVED AT CUTOVER (#13143, #13159). A queue
+      // has ONE consumer Worker: these two attach here only after the
+      // cutover-day step that detaches them from the deployed
+      // metagraphed-data-api (git ordering cannot make that atomic -- see the
+      // runbook in #13159). Tuning and the branch-on-batch.queue discipline
+      // carry over verbatim from wrangler.data.jsonc; the DLQ retries only
+      // persistence to the recovery table, never the failed sync write.
+      {
+        "queue": "sync-batches",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "max_concurrency": 2,
+        "dead_letter_queue": "sync-batches-dlq",
+      },
+      {
+        "queue": "sync-batches-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 100,
+        "retry_delay": 600,
         "max_concurrency": 1,
       },
     ],
@@ -1396,6 +1445,22 @@
       // queue-backed lane would go silent until the triggers deploy landed.
       // Appending is safe in either order.
       "17,56 * * * *",
+      // THE DATA-API CRONS, MOVED AT CUTOVER (#13143, #13159). Until the
+      // cutover merge these two expressions ran on metagraphed-data-api
+      // (wrangler.data.jsonc) and ONLY there -- declared on both Workers they
+      // would double-run, which is why they move in the cutover PR and not
+      // before. Dispatch is on the literal string in workers/data-api.ts's
+      // scheduled handler, reached in-process after the fold.
+      //   * * * * *  = TAO_USD_INDEX_CRON (workers/config.ts): the per-minute
+      //                TAO/USD composed-index capture.
+      //   46 * * * * = TABLE_FRESHNESS_CRON: the table-freshness +
+      //                tao-usd-index watchdog.
+      // Data-api's third expression, "52 * * * *" (NEON_PRUNE_CRON), does NOT
+      // move: it has been a production no-op since D1 chain data left
+      // (src/neon-prune.ts always answers {attempted:false}) and is deleted
+      // with the cutover per #13159's redesign list.
+      "* * * * *",
+      "46 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
@@ -1750,6 +1815,44 @@
       "namespace_id": "1012",
       "simple": {
         "limit": 100000,
+        "period": 60,
+      },
+    },
+    // MOVED FROM THE RETIRED WORKER CONFIGS AT CUTOVER (#13143). Namespace
+    // ids 1028-1031 were made account-unique ahead of the fold (#13159's
+    // shared-id item) so these carry over verbatim: same names, same limits,
+    // same periods, now enforced inside the one surviving Worker.
+    // wrangler.wss-lb.jsonc's WSS_CONNECT_RATE_LIMITER (1032) does NOT move
+    // -- #13151 decides that Worker's fate separately.
+    {
+      "name": "ALERT_TRIGGER_CREATE_RATE_LIMITER",
+      "namespace_id": "1028",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+    {
+      "name": "WALLET_AUTH_RATE_LIMITER",
+      "namespace_id": "1029",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+    {
+      "name": "ACCOUNT_KEYS_MINT_RATE_LIMITER",
+      "namespace_id": "1030",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+    {
+      "name": "REGISTRY_SYNC_RATE_LIMITER",
+      "namespace_id": "1031",
+      "simple": {
+        "limit": 30,
         "period": 60,
       },
     },
