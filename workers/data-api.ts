@@ -3872,13 +3872,18 @@ export const ACCOUNT_STATE_TABLES = [
   "api_usage_rollup",
 ] as const;
 
-/** Select the configured owner of the whole user-state group. Both runners
- * retain the tagged-SQL contract; null keeps the caller's unavailable response. */
+/** Select the configured owner of the whole user-state group. The native
+ * owner is consulted first and, once selected, never falls through to a
+ * different database (#13145) — the same seam every other family already has.
+ * Every runner retains the tagged-SQL contract; null keeps the caller's
+ * unavailable response. */
 export function userStateRunner(
   env: DataApiEnv,
   ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | null {
+  const native = selectedNativeProducerSql(env, tables);
+  if (native) return native;
   const d1 = selectedD1Store(env, tables);
   if (d1) return createD1Sql(d1);
   if (env.HYPERDRIVE?.connectionString) {
