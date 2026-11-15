@@ -48,6 +48,7 @@ import {
   type NativeBackgroundOptions,
 } from "./native-background-loops.ts";
 import type { NativeOAuthModule } from "./native-oauth-provider.ts";
+import { NATIVE_CONFORMANCE_CONTRACT } from "./native-conformance-contract.ts";
 
 type Application = Awaited<ReturnType<typeof createNativeApplication>>;
 type Actors = Awaited<ReturnType<typeof createNativeActorBindings>>;
@@ -327,6 +328,9 @@ export async function createNativeEnvironment(
     get state() {
       return current().state;
     },
+    // The executing side's declared cross-repo fixture identity, readable by
+    // the fleet conformance producer instead of a second literal there.
+    conformance: NATIVE_CONFORMANCE_CONTRACT,
     fetch: (request: Request) => current().fetch(request),
     owners: current().owners,
     background,
