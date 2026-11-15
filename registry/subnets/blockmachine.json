@@ -25,7 +25,7 @@
   "social": {
     "x": "https://x.com/blockmachine_io"
   },
-  "source_repo": "https://github.com/taostat/blockmachine",
+  "source_repo": "https://github.com/taostat/blockmachine/",
   "status": "active",
   "surfaces": [
     {
@@ -187,7 +187,7 @@
       "id": "sn-19-blockmachine-epochs-catalog",
       "kind": "data-artifact",
       "name": "BlockMachine epochs catalog",
-      "notes": "Public no-auth BlockMachine epochs listing \u2014 every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
+      "notes": "Public no-auth BlockMachine epochs listing — every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
       "probe": {
         "enabled": true,
         "expect": "json",

@@ -4,7 +4,7 @@
 // wiring, metagraphed#7103. The surface config was verified live against
 // https://updates.bitstarter.ai/api/health: a no-auth GET returning
 // `application/json; charset=utf-8` with an operational-status body
-// (`{status, message}`), so nothing in registry/subnets/bitstarter-1.json's
+// (`{status, message}`), so nothing in registry/subnets/cascade.json's
 // sn-91-bitstarter-updates-health-api entry needed fixing (probe GET/json,
 // auth_required:false, and the fixed single endpoint all match reality). This
 // pins that contract through the tool -- surface resolution by real id/key,
@@ -16,7 +16,7 @@ import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 // The SN91 health surface exactly as the build emits it into
-// operational-surfaces.json (registry/subnets/bitstarter-1.json ->
+// operational-surfaces.json (registry/subnets/cascade.json ->
 // sn-91-bitstarter-updates-health-api).
 const SN91_HEALTH_SURFACE = {
   surface_id: "sn-91-bitstarter-updates-health-api",

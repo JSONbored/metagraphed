@@ -456,6 +456,5 @@
       "source_urls": ["https://api.readyai.ai/openapi.json"],
       "url": "https://api.readyai.ai/api/v1/priorityqueue/reserve"
     }
-  ],
-  "website_url": "https://readyai.ai/"
+  ]
 }

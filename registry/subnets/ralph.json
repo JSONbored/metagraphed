@@ -26,7 +26,7 @@
   "notes": "This netuid was previously tracked under the \"Chunking\" identity (VectorChat's text-chunking/RAG subnet, github.com/salahawk/chunking_subnet). On-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's decentralized, autonomous AI training-recipe research subnet) -- the same pivot pattern as SN3 Templar/Crusades, but more conclusively corroborated: the old chunking_subnet repo has been dead for 2+ years (last push 2024-05-26), subnet.chunking.com has an expired TLS certificate, and RalphLabsAI/ralph's own README explicitly self-identifies as \"Live on Bittensor mainnet, netuid 40\" and was pushed 13 days before this review. This is a full identity/ownership pivot, not cosmetic drift, so the old Chunking-era surfaces are retired rather than kept alongside the new ones. File renamed from chunking.json to ralph.json to match slugify(name). Ralph funds an open, continuously-improving training recipe (a canonical recipe repo miners patch, a public knowledge corpus of every evaluated change, and open-weights demonstration models) verified via attested execution (TDX + nvtrust hardware attestation). No public API, OpenAPI schema, or hosted dashboard found.",
   "schema_version": 1,
   "slug": "ralph",
-  "source_repo": "https://github.com/RalphLabsAI/ralph-v2",
+  "source_repo": "https://github.com/RalphLabsAI/ralph",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -172,5 +172,5 @@
       "url": "https://api.taomarketcap.com/public/v1/subnets/40/"
     }
   ],
-  "website_url": "https://www.ralphlabs.ai/"
+  "website_url": "https://ralphlabs.ai"
 }

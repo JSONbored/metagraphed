@@ -229,7 +229,7 @@
       "id": "sn-96-verathos-examples",
       "kind": "example",
       "name": "Verathos code examples",
-      "notes": "Official Verathos examples \u2014 OpenAI-compatible, streaming, and x402 client quickstarts.",
+      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -1659,5 +1659,5 @@
       }
     }
   ],
-  "website_url": "https://verathos.ai/"
+  "website_url": "https://verathos.ai"
 }
