@@ -87,7 +87,9 @@ import { readFileSync } from "node:fs";
 // (isFinneySs58Address, #10036) is not expressible in the published
 // { type: "string" } schema. Same live class as the sibling account
 // resolvers' guards.
-const CEILING = 180;
+// 180 -> 181 (#13166): account_coldkey_swap hand-checks its ss58 PATH
+// parameter, same class as account_locks above.
+const CEILING = 181;
 
 const SOURCE = "src/graphql.ts";
 

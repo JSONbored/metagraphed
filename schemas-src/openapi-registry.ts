@@ -363,6 +363,15 @@ import {
   AccountLocksArtifactSchema,
 } from "./routes/account-locks.ts";
 import {
+  ColdkeySwapAnnouncementSchema,
+  ColdkeySwapPolicySchema,
+  PendingColdkeySwapsArtifactSchema,
+  ColdkeyLineageSchema,
+  HotkeyLineageEntrySchema,
+  AccountKeyLineageSchema,
+  AccountColdkeySwapArtifactSchema,
+} from "./routes/coldkey-swaps.ts";
+import {
   BasketCaptureSchema,
   BasketHoldingSchema,
   BasketTargetSchema,
@@ -937,6 +946,13 @@ register(SubnetLimitOrderSchema, "SubnetLimitOrder");
 register(SubnetLimitOrdersArtifactSchema, "SubnetLimitOrdersArtifact");
 register(StakeLockSchema, "StakeLock");
 register(AccountLocksArtifactSchema, "AccountLocksArtifact");
+register(ColdkeySwapAnnouncementSchema, "ColdkeySwapAnnouncement");
+register(ColdkeySwapPolicySchema, "ColdkeySwapPolicy");
+register(PendingColdkeySwapsArtifactSchema, "PendingColdkeySwapsArtifact");
+register(ColdkeyLineageSchema, "ColdkeyLineage");
+register(HotkeyLineageEntrySchema, "HotkeyLineageEntry");
+register(AccountKeyLineageSchema, "AccountKeyLineage");
+register(AccountColdkeySwapArtifactSchema, "AccountColdkeySwapArtifact");
 register(BasketCaptureSchema, "BasketCapture");
 register(ValidatorBasketSchema, "ValidatorBasket");
 register(BasketHoldingSchema, "BasketHolding");

@@ -1447,6 +1447,10 @@ import {
   GetAccountLocksOutputSchema,
 } from "../schemas-src/mcp-tools/get-account-locks.ts";
 import {
+  GetPendingColdkeySwapsInputSchema,
+  GetPendingColdkeySwapsOutputSchema,
+} from "../schemas-src/mcp-tools/get-pending-coldkey-swaps.ts";
+import {
   GetValidatorBasketsInputSchema,
   GetValidatorBasketsOutputSchema,
 } from "../schemas-src/mcp-tools/get-validator-baskets.ts";
@@ -1500,6 +1504,10 @@ import {
   loadSubnetAlphaDividends,
 } from "./subnet-alpha-dividends.ts";
 import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+} from "./coldkey-swaps.ts";
 import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
@@ -9540,6 +9548,33 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_pending_coldkey_swaps",
+    title: "List every in-flight coldkey-swap announcement",
+    description:
+      "Fetch every in-flight v2 coldkey-swap announcement (#13166): each " +
+      "announcing account with its reserved destination " +
+      "(SubtensorModule.ColdkeySwapReservedDestination), commitment hash " +
+      "and execute block (ColdkeySwapAnnouncements), dispute state " +
+      "(ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) " +
+      "and capture stamp, soonest-executable first, beside the chain-wide " +
+      "announcement/reannouncement delays. Until the engine's swap capture " +
+      "lands, the state holds no rows and the response is the schema-stable " +
+      "decline: an empty swaps array with swap_count NULL (never 0, because " +
+      "an empty list is not a measured swap-free chain) and a null policy. " +
+      "The per-account drill-in with key successor lineage is the REST card " +
+      "/api/v1/accounts/{ss58}/coldkey-swap. Mirrors GET " +
+      "/api/v1/accounts/pending-coldkey-swaps.",
+    inputSchema: inputJsonSchema(GetPendingColdkeySwapsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetPendingColdkeySwapsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadPendingColdkeySwaps -> buildPendingColdkeySwaps decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildPendingColdkeySwaps(await loadPendingColdkeySwaps(ctx.env));
+    },
+  },
+  {
     name: "get_validator_baskets",
     title: "Get every validator's Root basket fund",
     description:
@@ -16066,6 +16101,8 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_subnet_alpha_dividends: () =>
     outputJsonSchema(GetSubnetAlphaDividendsOutputSchema),
   get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
+  get_pending_coldkey_swaps: () =>
+    outputJsonSchema(GetPendingColdkeySwapsOutputSchema),
   get_validator_baskets: () =>
     outputJsonSchema(GetValidatorBasketsOutputSchema),
   get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),

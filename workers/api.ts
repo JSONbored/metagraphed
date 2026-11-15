@@ -423,6 +423,8 @@ import {
   handleSubnetMechanisms,
   handleSubnetAlphaDividends,
   handleAccountLocks,
+  handlePendingColdkeySwaps,
+  handleAccountColdkeySwap,
   handleChainBaskets,
   handleValidatorBasket,
   handleSubnetGamma,
@@ -860,6 +862,8 @@ import {
   SUBNET_MECHANISMS_PATH_PATTERN,
   SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN,
   ACCOUNT_LOCKS_PATH_PATTERN,
+  PENDING_COLDKEY_SWAPS_PATH,
+  ACCOUNT_COLDKEY_SWAP_PATH_PATTERN,
   CHAIN_BASKETS_PATH,
   VALIDATOR_BASKET_PATH_PATTERN,
   SUBNET_GAMMA_HISTORY_PATH_PATTERN,
@@ -7118,6 +7122,21 @@ async function dispatchRequest(
       // sibling subnet cards above (no edge-cache wrapper).
       return handleAccountLocks(request, env, accountLocksMatch[1]);
     }
+    if (resolved.url.pathname === PENDING_COLDKEY_SWAPS_PATH) {
+      // #13166: every in-flight v2 coldkey-swap announcement -- one bounded
+      // read through the native coldkey-swaps store seam. An exact path,
+      // checked BEFORE ACCOUNT_PATH_PATTERN below so the literal segment is
+      // never read as an ss58.
+      return handlePendingColdkeySwaps(request, env);
+    }
+    const accountColdkeySwapMatch = ACCOUNT_COLDKEY_SWAP_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountColdkeySwapMatch) {
+      // #13166: one account's v2 swap state and key successor lineage,
+      // through the same seam.
+      return handleAccountColdkeySwap(request, env, accountColdkeySwapMatch[1]);
+    }
     if (resolved.url.pathname === CHAIN_BASKETS_PATH) {
       // #13163: every validator's Root basket fund at the newest completed
       // capture -- one bounded read through the capture store seam,
@@ -8233,6 +8252,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // dimension.
     SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_LOCKS_PATH_PATTERN.test(pathname) ||
+    // #13166: app.coldkey_swap_announcements / app.coldkey_swap_policy /
+    // app.key_successors carry no network dimension.
+    pathname === PENDING_COLDKEY_SWAPS_PATH ||
+    ACCOUNT_COLDKEY_SWAP_PATH_PATTERN.test(pathname) ||
     // #13163: the basket loaders pin network='finney' by construction.
     pathname === CHAIN_BASKETS_PATH ||
     VALIDATOR_BASKET_PATH_PATTERN.test(pathname) ||

@@ -952,3 +952,68 @@ describe("get_subnet_limit_orders (#13165)", () => {
     assert.match(errorText(body), /netuid/);
   });
 });
+
+// The get_pending_coldkey_swaps tool (#13166): same loader/builder as the
+// REST route and the GraphQL field, so the decline and the swaps match
+// exactly.
+describe("get_pending_coldkey_swaps (#13166)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_pending_coldkey_swaps",
+        {},
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      swap_count: null,
+      captured_at: null,
+      policy: null,
+      swaps: [],
+    });
+  });
+
+  test("a bound store serves the pending swaps", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      COLDKEY_SWAPS_STORE: {
+        pending: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            new_coldkey: null,
+            announcement_hash: null,
+            announced_at: null,
+            execute_at: "5036000",
+            disputed: null,
+            disputed_at: null,
+            policy_snapshot: null,
+            status: "announced",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        announcement: async () => [],
+        policy: async () => [
+          {
+            announcement_delay: "36000",
+            reannouncement_delay: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        lineage: async () => [],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_pending_coldkey_swaps",
+        {},
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.swap_count, 1);
+    assert.equal((data.swaps as Row[])[0].execute_at, 5_036_000);
+    assert.equal((data.policy as Row).announcement_delay, 36_000);
+  });
+});

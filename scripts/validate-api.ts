@@ -1901,6 +1901,36 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/accounts/pending-coldkey-swaps",
+    (body) => {
+      // #13166: no coldkey-swaps store is bound in this harness, so the one
+      // honest body is the decline -- an empty list with a NULL count (never
+      // 0: an empty list is not a measured swap-free chain) and a null
+      // policy.
+      assert.deepEqual(body.data.swaps, []);
+      assert.equal(body.data.swap_count, null);
+      assert.equal(body.data.policy, null);
+      assert.equal(body.data.captured_at, null);
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/coldkey-swap",
+    (body) => {
+      // #13166: same decline through the same unbound seam -- a null
+      // announcement and coldkey-swap lineage, an empty hotkey lineage with a
+      // NULL count.
+      assert.equal(body.data.announcement, null);
+      assert.equal(body.data.lineage.coldkey, null);
+      assert.deepEqual(body.data.lineage.hotkey, []);
+      assert.equal(body.data.lineage.hotkey_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
     "/api/v1/chain/subnet-price-share-composition",
     (body) => {
       assert.equal(body.data.quality, "estimated_observed_price_set");

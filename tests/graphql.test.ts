@@ -26471,3 +26471,161 @@ describe("graphql — subnet_limit_orders (#13165)", () => {
     assert.match(errors[0]?.message ?? "", /netuid/);
   });
 });
+
+// The pending_coldkey_swaps field (#13166): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served swaps match exactly.
+describe("graphql — pending_coldkey_swaps (#13166)", () => {
+  const SELECTION = `{ pending_coldkey_swaps {
+      schema_version swap_count captured_at
+      policy { announcement_delay reannouncement_delay captured_at }
+      swaps { coldkey new_coldkey announcement_hash announced_at execute_at disputed disputed_at policy_snapshot status captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.pending_coldkey_swaps, {
+      schema_version: 1,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // swap-free chain.
+      swap_count: null,
+      captured_at: null,
+      policy: null,
+      swaps: [],
+    });
+  });
+
+  test("a bound store serves the pending swaps and the policy", async () => {
+    const env = {
+      COLDKEY_SWAPS_STORE: {
+        pending: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            new_coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            announcement_hash: `0x${"ab".repeat(32)}`,
+            announced_at: "5000000",
+            execute_at: "5036000",
+            disputed: false,
+            disputed_at: null,
+            policy_snapshot: true,
+            status: "announced",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        announcement: async () => [],
+        policy: async () => [
+          {
+            announcement_delay: "36000",
+            reannouncement_delay: "7200",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        lineage: async () => [],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.pending_coldkey_swaps.swap_count, 1);
+    assert.deepEqual(body.data.pending_coldkey_swaps.policy, {
+      announcement_delay: 36000,
+      reannouncement_delay: 7200,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+    assert.deepEqual(body.data.pending_coldkey_swaps.swaps, [
+      {
+        coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        new_coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        announcement_hash: `0x${"ab".repeat(32)}`,
+        announced_at: 5_000_000,
+        execute_at: 5_036_000,
+        disputed: false,
+        disputed_at: null,
+        policy_snapshot: true,
+        status: "announced",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+});
+
+// The account_coldkey_swap field (#13166): same loader/builder as the REST
+// route, so the decline and the served state match exactly.
+describe("graphql — account_coldkey_swap (#13166)", () => {
+  const COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const SELECTION = `{ account_coldkey_swap(ss58: "${COLDKEY}") {
+      schema_version ss58 captured_at
+      announcement { coldkey execute_at }
+      lineage {
+        coldkey { successor root captured_at }
+        hotkey { netuid successor root captured_at }
+        hotkey_count
+      }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_coldkey_swap, {
+      schema_version: 1,
+      ss58: COLDKEY,
+      captured_at: null,
+      announcement: null,
+      lineage: { coldkey: null, hotkey: [], hotkey_count: null },
+    });
+  });
+
+  test("a bound store serves the announcement and lineage", async () => {
+    const env = {
+      COLDKEY_SWAPS_STORE: {
+        pending: async () => [],
+        announcement: async () => [
+          {
+            coldkey: COLDKEY,
+            new_coldkey: null,
+            announcement_hash: null,
+            announced_at: null,
+            execute_at: "5036000",
+            disputed: null,
+            disputed_at: null,
+            policy_snapshot: null,
+            status: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        policy: async () => [],
+        lineage: async () => [
+          {
+            kind: "hotkey",
+            netuid: 7,
+            successor: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            root: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const card = body.data.account_coldkey_swap;
+    assert.equal(card.announcement.execute_at, 5_036_000);
+    assert.equal(card.lineage.hotkey_count, 1);
+    assert.equal(card.lineage.hotkey[0].netuid, 7);
+    assert.equal(card.lineage.coldkey, null);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      '{ account_coldkey_swap(ss58: "nope") { ss58 } }',
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /ss58/);
+  });
+});

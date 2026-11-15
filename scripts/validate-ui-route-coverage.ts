@@ -163,6 +163,13 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // the entry when a real consumer lands, which the stale-entry check
   // enforces.
   "/api/v1/subnets/{netuid}/limit-orders",
+  // #13166 publishes the v2 coldkey-swap announcement plane and key
+  // successor lineage; every table behind them is empty until the engine's
+  // swap and lineage captures land, so no UI consumes them yet. Remove the
+  // entries when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/accounts/pending-coldkey-swaps",
+  "/api/v1/accounts/{ss58}/coldkey-swap",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

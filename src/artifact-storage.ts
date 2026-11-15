@@ -289,6 +289,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13163: one account's conviction-lock state, computed live from the locks
   // store -- a baked copy would freeze a state the engine has yet to fill.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/locks\.json$/,
+  // #13166: the chain-wide pending v2 coldkey-swap list and the per-account
+  // swap/lineage card, computed live from the coldkey-swaps store -- a baked
+  // copy would freeze a state the engine has yet to fill.
+  /^accounts\/pending-coldkey-swaps\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/coldkey-swap\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,

@@ -19,6 +19,7 @@ import { createPgSubnetEnrichmentStore } from "./pg-subnet-enrichment.ts";
 import { createPgSubnetMechanismsStore } from "./pg-subnet-mechanisms.ts";
 import { createPgSubnetAlphaDividendsStore } from "./pg-subnet-alpha-dividends.ts";
 import { createPgAccountLocksStore } from "./pg-stake-locks.ts";
+import { createPgColdkeySwapsStore } from "./pg-coldkey-swaps.ts";
 import { createPgSubnetGammaStore } from "./pg-subnet-gamma.ts";
 import { createPgGammaDepositsStore } from "./pg-gamma-deposits.ts";
 import { createPgSubnetServicesStore } from "./pg-subnet-services.ts";
@@ -91,6 +92,7 @@ export function createNativeStateBindings(
     SUBNET_MECHANISMS_STORE: createPgSubnetMechanismsStore(app),
     SUBNET_ALPHA_DIVIDENDS_STORE: createPgSubnetAlphaDividendsStore(app),
     ACCOUNT_LOCKS_STORE: createPgAccountLocksStore(app),
+    COLDKEY_SWAPS_STORE: createPgColdkeySwapsStore(app),
     SUBNET_GAMMA_STORE: createPgSubnetGammaStore(app),
     GAMMA_DEPOSITS_STORE: createPgGammaDepositsStore(app),
     SUBNET_SERVICES_STORE: createPgSubnetServicesStore(app),

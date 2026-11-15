@@ -166,6 +166,24 @@ test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("TaoUsdPriceFed"));
 });
 
+test("INGESTED_EVENT_KINDS accepts the coldkey-swap v2 kinds (#13166)", () => {
+  // Same forward-compat footing: the structured decode (into
+  // app.coldkey_swap_announcements / app.key_successors) lands with the
+  // engine. Every name verified against live Finney v490 metadata.
+  for (const kind of [
+    "ColdkeySwapAnnounced",
+    "ColdkeySwapReset",
+    "ColdkeySwapDisputed",
+    "ColdkeySwapCleared",
+    "ColdkeySwapAnnouncementDelaySet",
+    "ColdkeySwapReannouncementDelaySet",
+    "AllBalanceUnstakedAndTransferredToNewColdkey",
+    "HotkeySwappedOnSubnet",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("basket and collateral kinds support public filters and meaningful summary categories", () => {
   const categories = {
     BasketDeposited: "stake",

@@ -3,7 +3,7 @@ title: Accounts
 description: Every Accounts endpoint in the metagraphed API, with its method and path.
 ---
 
-42 endpoints.
+44 endpoints.
 
 - [Account Axon Removals](/docs/api-reference/accounts/account-axon-removals) — `GET /api/v1/accounts/{ss58}/axon-removals`\
   Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero.
@@ -15,6 +15,8 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
   Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache.
 - [Account Children By Network](/docs/api-reference/accounts/account-children-by-network) — `GET /api/v1/{network}/accounts/{ss58}/children`\
   Network-scoped form of /api/v1/accounts/\{ss58}/children — prefix the route with a network to choose which chain answers it.
+- [Account Coldkey Swap](/docs/api-reference/accounts/account-coldkey-swap) — `GET /api/v1/accounts/{ss58}/coldkey-swap`\
+  Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps.
 - [Account Counterparties](/docs/api-reference/accounts/account-counterparties) — `GET /api/v1/accounts/{ss58}/counterparties`\
   Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=\<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store.
 - [Account Deregistrations](/docs/api-reference/accounts/account-deregistrations) — `GET /api/v1/accounts/{ss58}/deregistrations`\
@@ -77,6 +79,8 @@ description: Every Accounts endpoint in the metagraphed API, with its method and
   Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache.
 - [Network Parameters By Network](/docs/api-reference/accounts/network-parameters-by-network) — `GET /api/v1/{network}/network/parameters`\
   Network-scoped form of /api/v1/network/parameters — prefix the route with a network to choose which chain answers it.
+- [Pending Coldkey Swaps](/docs/api-reference/accounts/pending-coldkey-swaps) — `GET /api/v1/accounts/pending-coldkey-swaps`\
+  Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays.
 - [Randomness](/docs/api-reference/accounts/randomness) — `GET /api/v1/network/randomness`\
   Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache.
 - [Randomness By Network](/docs/api-reference/accounts/randomness-by-network) — `GET /api/v1/{network}/network/randomness`\

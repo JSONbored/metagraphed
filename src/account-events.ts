@@ -178,6 +178,23 @@ export const INGESTED_EVENT_KINDS = [
   // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
   // -- same forward-compat footing again.
   "TaoUsdPriceFed",
+  // The v2 coldkey-swap announcement plane (#13166, runtime v490) -- same
+  // forward-compat footing as the kinds above: these land raw-only in
+  // chain_detail_chain_events today, and the structured decode (into
+  // app.coldkey_swap_announcements / the shared account_events columns)
+  // lands with the engine. Named here so ?kind= accepts them the day the
+  // producer emits them instead of 400ing on kinds the chain demonstrably
+  // fires.
+  "ColdkeySwapAnnounced",
+  "ColdkeySwapReset",
+  "ColdkeySwapDisputed",
+  "ColdkeySwapCleared",
+  "ColdkeySwapAnnouncementDelaySet",
+  "ColdkeySwapReannouncementDelaySet",
+  "AllBalanceUnstakedAndTransferredToNewColdkey",
+  // The per-subnet hotkey swap (#13166, writing the HotkeySuccessor /
+  // HotkeyRoot lineage this slice serves) -- same forward-compat footing.
+  "HotkeySwappedOnSubnet",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {

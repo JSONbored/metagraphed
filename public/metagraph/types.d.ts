@@ -923,6 +923,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/coldkey-swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's coldkey-swap state and lineage
+         * @description Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps. Served live from the coldkey-swaps store; until the engine's swap and lineage captures land every block declines to null and hotkey_count stays null over an empty list — never 0, because an empty capture is not a measured never-swapped account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountColdkeySwap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/counterparties": {
         parameters: {
             query?: never;
@@ -1309,6 +1329,26 @@ export interface paths {
         };
         /** @description Fetch the compact account directory: bounded emission and subnet-reach rankings from one complete neuron snapshot. Capital and dominance are null, rankings.stake is empty and priced_registered_stake_tao is null because voting weight does not establish holdings or stake shares. Legacy financial rankings decline until the source recomputes independent evidence. */
         get: operations["accountHolderDirectory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/pending-coldkey-swaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every in-flight v2 coldkey-swap announcement
+         * @description Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Served live from the coldkey-swaps store; until the engine's swap capture lands the state holds no rows and the response is the schema-stable decline — an empty swaps array with swap_count null (never 0, because an empty list is not a measured swap-free chain) and a null policy.
+         */
+        get: operations["pendingColdkeySwaps"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5636,6 +5676,15 @@ export interface components {
                 netuid: number;
             }[] | null;
         };
+        /** @description One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+        AccountColdkeySwapArtifact: {
+            /** @description The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run. */
+            announcement: components["schemas"]["ColdkeySwapAnnouncement"] | null;
+            captured_at: string | null;
+            lineage: components["schemas"]["AccountKeyLineage"];
+            schema_version: number;
+            ss58: string;
+        };
         AccountCounterpartiesArtifact: {
             counterparties: {
                 address: string;
@@ -5903,6 +5952,15 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
+        };
+        /** @description The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage. */
+        AccountKeyLineage: {
+            /** @description The global coldkey-swap lineage, null when the capture holds none for this account. */
+            coldkey: components["schemas"]["ColdkeyLineage"] | null;
+            /** @description The per-subnet hotkey lineage rows, ordered by netuid. */
+            hotkey: components["schemas"]["HotkeyLineageEntry"][];
+            /** @description How many per-subnet hotkey lineage rows the capture holds -- `hotkey.length`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published. */
+            hotkey_count: number | null;
         };
         /** @description One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks. */
         AccountLocksArtifact: {
@@ -8122,6 +8180,44 @@ export interface components {
         };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+        /** @description The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history. */
+        ColdkeyLineage: {
+            captured_at: string | null;
+            /** @description SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into). */
+            root: string | null;
+            /** @description SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage. */
+            successor: string | null;
+        };
+        /** @description One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp. */
+        ColdkeySwapAnnouncement: {
+            /** @description The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis. */
+            announced_at: number | null;
+            /** @description The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried. */
+            announcement_hash: string | null;
+            captured_at: string | null;
+            /** @description The announcing account (ss58). */
+            coldkey: string;
+            /** @description The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record. */
+            disputed: boolean | null;
+            /** @description The dispute block itself when one is recorded, else null. */
+            disputed_at: number | null;
+            /** @description The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried. */
+            execute_at: number | null;
+            /** @description The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation. */
+            new_coldkey: string | null;
+            /** @description The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot. */
+            policy_snapshot: boolean | null;
+            /** @description The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried. */
+            status: string | null;
+        };
+        /** @description The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced. */
+        ColdkeySwapPolicy: {
+            /** @description SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it. */
+            announcement_delay: number | null;
+            captured_at: string | null;
+            /** @description SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it. */
+            reannouncement_delay: number | null;
+        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -9838,6 +9934,15 @@ export interface components {
                 };
             };
         };
+        /** @description One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
+        HotkeyLineageEntry: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there. */
+            root: string | null;
+            /** @description SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there. */
+            successor: string | null;
+        };
         IndexerLagArtifact: {
             /** @description Blocks the distribution was computed over. Null only on a decline. */
             block_count: number | null;
@@ -10238,6 +10343,17 @@ export interface components {
          * @enum {string}
          */
         PartnershipTier: "pilot";
+        /** @description Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+        PendingColdkeySwapsArtifact: {
+            captured_at: string | null;
+            /** @description The chain-wide delays at the newest capture, null until the policy capture lands. */
+            policy: components["schemas"]["ColdkeySwapPolicy"] | null;
+            schema_version: number;
+            /** @description How many in-flight announcements the capture holds -- `swaps.length`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published. */
+            swap_count: number | null;
+            /** @description The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account). */
+            swaps: components["schemas"]["ColdkeySwapAnnouncement"][];
+        };
         PipelineHistoryArtifact: {
             /** @description Present ONLY on a decline. An empty series is a measurement. */
             degraded?: components["schemas"]["UnavailableDegraded"];
@@ -22979,6 +23095,146 @@ export interface operations {
             };
         };
     };
+    accountColdkeySwap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "announcement": {
+                     *           "announced_at": 1,
+                     *           "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "coldkey": "example",
+                     *           "disputed": false,
+                     *           "disputed_at": 1,
+                     *           "execute_at": 1,
+                     *           "new_coldkey": "example",
+                     *           "policy_snapshot": false,
+                     *           "status": "ok"
+                     *         },
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "lineage": {
+                     *           "coldkey": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "root": "example",
+                     *             "successor": "example"
+                     *           },
+                     *           "hotkey": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "root": "example",
+                     *               "successor": "example"
+                     *             }
+                     *           ],
+                     *           "hotkey_count": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountColdkeySwapArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountCounterparties: {
         parameters: {
             query?: {
@@ -26075,6 +26331,131 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHolderDirectoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    pendingColdkeySwaps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "policy": {
+                     *           "announcement_delay": 1,
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "reannouncement_delay": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "swap_count": 1,
+                     *         "swaps": [
+                     *           {
+                     *             "announced_at": 1,
+                     *             "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "coldkey": "example",
+                     *             "disputed": false,
+                     *             "disputed_at": 1,
+                     *             "execute_at": 1,
+                     *             "new_coldkey": "example",
+                     *             "policy_snapshot": false,
+                     *             "status": "ok"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["PendingColdkeySwapsArtifact"];
                     };
                 };
             };

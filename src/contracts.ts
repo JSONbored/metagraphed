@@ -1894,6 +1894,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "pending-coldkey-swaps",
+    "/metagraph/accounts/pending-coldkey-swaps.json",
+    "Every in-flight v2 coldkey-swap announcement (#13166) — each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, beside the chain-wide announcement/reannouncement delays — served live from the coldkey-swaps store at /api/v1/accounts/pending-coldkey-swaps (no static file). Empty with a null swap_count and a null policy until the engine's swap capture lands: an empty list is not a measured swap-free chain, so a zero count is never published.",
+    "PendingColdkeySwapsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "account-coldkey-swap",
+    "/metagraph/accounts/{ss58}/coldkey-swap.json",
+    "One account's v2 coldkey-swap state and key successor lineage (#13166) — its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage with capture stamps — served live from the coldkey-swaps store at /api/v1/accounts/{ss58}/coldkey-swap (no static file). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land.",
+    "AccountColdkeySwapArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "account-children",
     "/metagraph/accounts/{ss58}/children.json",
     "Live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
@@ -4164,6 +4178,28 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "pending-coldkey-swaps",
+    "GET",
+    "/api/v1/accounts/pending-coldkey-swaps",
+    "/metagraph/accounts/pending-coldkey-swaps.json",
+    "Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Served live from the coldkey-swaps store; until the engine's swap capture lands the state holds no rows and the response is the schema-stable decline — an empty swaps array with swap_count null (never 0, because an empty list is not a measured swap-free chain) and a null policy.",
+    "short",
+    ["accounts"],
+    [],
+    [],
+  ),
+  route(
+    "account-coldkey-swap",
+    "GET",
+    "/api/v1/accounts/{ss58}/coldkey-swap",
+    "/metagraph/accounts/{ss58}/coldkey-swap.json",
+    "Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps. Served live from the coldkey-swaps store; until the engine's swap and lineage captures land every block declines to null and hotkey_count stays null over an empty list — never 0, because an empty capture is not a measured never-swapped account. Returns 400 on invalid ss58.",
+    "short",
+    ["accounts"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "account-children",
     "GET",
     "/api/v1/accounts/{ss58}/children",
@@ -5738,6 +5774,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // and locks the day the captures fill.
   "/api/v1/subnets/{netuid}/alpha-dividends",
   "/api/v1/accounts/{ss58}/locks",
+  // #13166: app.coldkey_swap_announcements, app.coldkey_swap_policy and
+  // app.key_successors have no network column -- a testnet-addressed request
+  // would be served MAINNET swap state the day the captures fill.
+  "/api/v1/accounts/pending-coldkey-swaps",
+  "/api/v1/accounts/{ss58}/coldkey-swap",
   // #13163: the basket routes serve the newest completed FINNEY capture by
   // construction (the loader pins network='finney'); a testnet twin would
   // advertise captures the lane does not take for it.
@@ -6667,6 +6708,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "chain-gamma": "Fetch the chain-wide Gamma state",
   "gamma-deposits": "Fetch the chain's Gamma deposits",
   "account-locks": "Fetch one account's conviction-lock state",
+  "pending-coldkey-swaps": "List every in-flight v2 coldkey-swap announcement",
+  "account-coldkey-swap": "Fetch one account's coldkey-swap state and lineage",
   "chain-baskets": "Fetch every validator's Root basket fund",
   "validator-basket": "Fetch one validator's Root basket detail",
   "subnet-health": "Fetch probe-derived health for one subnet",

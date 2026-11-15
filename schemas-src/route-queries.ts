@@ -313,6 +313,12 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #13163: per-account lock card -- an account holds a handful of locks,
   // not a series.
   "/api/v1/accounts/{ss58}/locks",
+  // #13166: the chain-wide pending-swap list is one bounded store read (the
+  // row bound lives in PENDING_COLDKEY_SWAPS_ROW_CAP, not in a query
+  // parameter a caller could widen), and the per-account swap/lineage card
+  // is a handful of rows.
+  "/api/v1/accounts/pending-coldkey-swaps",
+  "/api/v1/accounts/{ss58}/coldkey-swap",
   // #13163: the newest completed basket capture is one capture -- the row
   // bound lives in the capture receiver's own fund ceiling, not in a query
   // parameter a caller could widen; the per-validator card takes none either.

@@ -72,6 +72,15 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "switch) is not worth a second tool that restates every per-subnet row; " +
     "the chain card is an HTTP/UI surface. Add a tool when an agent " +
     "workflow needs the global switch on its own.",
+  "/api/v1/accounts/{ss58}/coldkey-swap":
+    "The per-account drill-in of /api/v1/accounts/pending-coldkey-swaps " +
+    "(#13166). get_pending_coldkey_swaps already hands an agent EVERY " +
+    "in-flight announcement in one call (the chain map holds at most one " +
+    "per announcing account, store-capped), so a per-account twin would " +
+    "restate a row the list already serves; the key successor lineage block " +
+    "is an HTTP/UI drill-in until an agent workflow actually needs to walk " +
+    "swap lineage, and both blocks are empty until the engine's captures " +
+    "land. Add the tool when a real agent workflow asks per-account.",
 };
 
 /** `.atom`/`.rss`/`.json` feed variants: get_feed serves the JSON one. */

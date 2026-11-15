@@ -293,11 +293,15 @@ describe("data-api's bundle boundary", () => {
     // the identity builders plus the grown identity schema prose. Nothing new
     // enters the graph -- both identity modules were already in it; keep
     // 2,526 source bytes of margin.
+    // The coldkey-swap serving slice (#13166) adds 5,677 source bytes over
+    // 8c9ad938, for 4,940,351: the coldkey-swaps builders and store selector
+    // plus their route/tool prose. The PostgreSQL store (pg-coldkey-swaps.ts)
+    // stays outside the graph; keep 2,649 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_937_200,
+      firstParty < 4_943_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
