@@ -53,11 +53,15 @@ const TAO_USD_WITHOUT_POINTS = {
     schema_version: 1,
     window: "24h",
     point_count: 0,
+    // #13164: the provenance labels -- carried so the absent points array
+    // stays this body's ONLY defect.
+    source: "pool_composite",
     stale: true,
     stale_after_ms: 0,
     age_ms: null,
     priced_point_count: 0,
     latest: null,
+    oracle: null,
     oldest_observed_at: null,
     change_usd: null,
     change_pct: null,
