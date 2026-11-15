@@ -26402,3 +26402,72 @@ describe("graphql — subnet_alpha_assets (#13165)", () => {
     assert.match(errors[0]?.message ?? "", /netuid/);
   });
 });
+
+// The subnet_limit_orders field (#13165): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served book match exactly.
+describe("graphql — subnet_limit_orders (#13165)", () => {
+  const SELECTION = `{ subnet_limit_orders(netuid: 64) {
+      schema_version netuid order_count captured_at
+      orders { order_id owner kind amount price status captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_limit_orders, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty book is "not captured", not a measured
+      // order-less subnet.
+      order_count: null,
+      captured_at: null,
+      orders: [],
+    });
+  });
+
+  test("a bound store serves the book", async () => {
+    const env = {
+      SUBNET_LIMIT_ORDERS_STORE: {
+        rows: async () => [
+          {
+            order_id: `0x${"ab".repeat(32)}`,
+            owner: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            kind: "Buy",
+            amount: "65802619318",
+            price: "12500",
+            status: "PartiallyFilled",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_limit_orders.order_count, 1);
+    assert.deepEqual(body.data.subnet_limit_orders.orders, [
+      {
+        order_id: `0x${"ab".repeat(32)}`,
+        owner: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        kind: "Buy",
+        amount: "65802619318",
+        price: "12500",
+        status: "PartiallyFilled",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_limit_orders(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});

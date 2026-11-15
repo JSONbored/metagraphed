@@ -2465,6 +2465,8 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   // the decline.
   ["get_subnet_swap", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_alpha_assets", HARNESS_SERVES_NO_ROWS],
+  // #13165: the LimitOrders order book is engine-gated the same way.
+  ["get_subnet_limit_orders", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

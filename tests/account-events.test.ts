@@ -133,6 +133,24 @@ test("INGESTED_EVENT_KINDS accepts FeeRateSet (#13165)", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("FeeRateSet"), "missing FeeRateSet");
 });
 
+test("INGESTED_EVENT_KINDS accepts the nine LimitOrders kinds (#13165)", () => {
+  // Same forward-compat footing: OrderExecuted has 8.4M-block-range live
+  // history already, and the structured decode lands with the engine.
+  for (const kind of [
+    "OrderExecuted",
+    "OrderSkipped",
+    "OrderCancelled",
+    "OrderApproved",
+    "GroupExecutionSummary",
+    "LimitOrdersPalletStatusChanged",
+    "LinkedOutputRecorded",
+    "LinkedOutputConsumed",
+    "LinkedOutputPruned",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
   // Same forward-compat footing as the Gamma kinds: the oracle-feed decode
   // lands with the engine.

@@ -127,6 +127,10 @@ import {
   loadSubnetAlphaAssets,
 } from "../../src/subnet-alpha-assets.ts";
 import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "../../src/subnet-limit-orders.ts";
+import {
   buildTaoUsdOracle,
   loadTaoUsdOracle,
 } from "../../src/tao-usd-oracle.ts";
@@ -3432,6 +3436,34 @@ export async function handleSubnetAlphaAssets(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/alpha-assets.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/limit-orders (#13165): one subnet's
+// LimitOrders order book, read through the native limit-orders store seam.
+// No store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `orders` with `order_count: null`, never a
+// zero count (an empty book is not a measured order-less subnet), marked as
+// a tier fallback.
+export async function handleSubnetLimitOrders(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetLimitOrders(env, netuid);
+  const data = buildSubnetLimitOrders(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/limit-orders.json`,
         data.captured_at,
       ),
     },

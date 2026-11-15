@@ -284,11 +284,15 @@ describe("data-api's bundle boundary", () => {
     // builders and store selectors plus their route/tool prose. The
     // PostgreSQL stores (pg-subnet-swap.ts, pg-subnet-alpha-assets.ts) stay
     // outside the graph; keep 2,452 source bytes of margin.
+    // The LimitOrders serving slice (#13165) adds 2,999 source bytes over
+    // 85172bfa, for 4,932,047: the subnet-limit-orders builder and store
+    // selector plus their route/tool prose. pg-subnet-limit-orders.ts stays
+    // outside the graph; keep 2,453 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_931_500,
+      firstParty < 4_934_500,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

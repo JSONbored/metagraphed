@@ -155,6 +155,21 @@ export const INGESTED_EVENT_KINDS = [
   // producer emits it instead of 400ing on a kind the chain demonstrably
   // fires.
   "FeeRateSet",
+  // The LimitOrders pallet's nine event kinds (#13165, runtime v490) -- same
+  // forward-compat footing as the Gamma kinds above: they land raw-only in
+  // chain_detail_chain_events today (OrderExecuted has 8.4M-block-range
+  // live history -- see docs/block-explorer-data-model.md's census), and the
+  // structured decode (into app.limit_order_events / the shared
+  // account_events columns) lands with the engine.
+  "OrderExecuted",
+  "OrderSkipped",
+  "OrderCancelled",
+  "OrderApproved",
+  "GroupExecutionSummary",
+  "LimitOrdersPalletStatusChanged",
+  "LinkedOutputRecorded",
+  "LinkedOutputConsumed",
+  "LinkedOutputPruned",
   // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
   // -- same forward-compat footing again.
   "TaoUsdPriceFed",

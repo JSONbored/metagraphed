@@ -44,6 +44,8 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "hotkey_alpha_passes",
     "iceberg_catalog_namespaces",
     "iceberg_catalog_tables",
+    "limit_order_events",
+    "limit_orders",
     "lane_health",
     "lane_health_clocks",
     "lane_health_current",

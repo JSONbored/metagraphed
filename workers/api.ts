@@ -432,6 +432,7 @@ import {
   handleSubnetServices,
   handleSubnetSwap,
   handleSubnetAlphaAssets,
+  handleSubnetLimitOrders,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -868,6 +869,7 @@ import {
   SUBNET_SERVICES_PATH_PATTERN,
   SUBNET_SWAP_PATH_PATTERN,
   SUBNET_ALPHA_ASSETS_PATH_PATTERN,
+  SUBNET_LIMIT_ORDERS_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7181,6 +7183,14 @@ async function dispatchRequest(
       // native alpha-assets store seam.
       return handleSubnetAlphaAssets(request, env, Number(alphaAssetsMatch[1]));
     }
+    const limitOrdersMatch = SUBNET_LIMIT_ORDERS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (limitOrdersMatch) {
+      // #13165: one subnet's LimitOrders order book, through the native
+      // limit-orders store seam.
+      return handleSubnetLimitOrders(request, env, Number(limitOrdersMatch[1]));
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8237,6 +8247,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // dimension.
     SUBNET_SWAP_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_ASSETS_PATH_PATTERN.test(pathname) ||
+    SUBNET_LIMIT_ORDERS_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||

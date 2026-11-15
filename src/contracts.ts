@@ -1390,6 +1390,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-limit-orders",
+    "/metagraph/subnets/{netuid}/limit-orders.json",
+    "One subnet's LimitOrders order book (#13165, runtime v490) — each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state with its capture stamp, newest capture first and store-capped — served live from the limit-orders store at /api/v1/subnets/{netuid}/limit-orders (no static file). Empty with a null order_count until the engine's order-book capture lands: an empty book is not a measured order-less subnet, so a zero count is never published.",
+    "SubnetLimitOrdersArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-weight-setters",
     "/metagraph/subnets/{netuid}/weights/setters.json",
     "Per-subnet weight-setter leaderboard over a 7d or 30d window — the individual validators behind /weights, each with its WeightsSet count, share of the subnet total, and first/last set time, ranked by activity — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file). The setter-level drill-in of /api/v1/subnets/{netuid}/weights.",
@@ -3313,6 +3320,17 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/alpha-assets",
     "/metagraph/subnets/{netuid}/alpha-assets.json",
     "Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp. Served live from the alpha-assets store; until the engine's alpha-assets capture lands the store holds no rows and the response is the schema-stable decline — alpha_assets null, never a zeroed state, because an absent capture is not a measured zero issuance.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-limit-orders",
+    "GET",
+    "/api/v1/subnets/{netuid}/limit-orders",
+    "/metagraph/subnets/{netuid}/limit-orders.json",
+    "Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.",
     "short",
     ["subnets"],
     [],
@@ -5738,6 +5756,8 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // day the captures fill.
   "/api/v1/subnets/{netuid}/swap",
   "/api/v1/subnets/{netuid}/alpha-assets",
+  // #13165: app.limit_orders has no network column either.
+  "/api/v1/subnets/{netuid}/limit-orders",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
   // #9717: `neurons` has no network column (verified against the live table:
@@ -6643,6 +6663,7 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "subnet-services": "Fetch one subnet's on-chain service URLs",
   "subnet-swap": "Fetch one subnet's balancer Swap state",
   "subnet-alpha-assets": "Fetch one subnet's alpha-asset accounting",
+  "subnet-limit-orders": "Fetch one subnet's limit-order book",
   "chain-gamma": "Fetch the chain-wide Gamma state",
   "gamma-deposits": "Fetch the chain's Gamma deposits",
   "account-locks": "Fetch one account's conviction-lock state",

@@ -680,6 +680,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-limit-orders",
+      "path": "/metagraph/subnets/{netuid}/limit-orders.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLimitOrdersArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
       "retirement": null,
@@ -2714,7 +2723,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 186,
+    "mainnet_only_route_count": 187,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8009,6 +8018,22 @@
         "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/alpha-assets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/limit-orders.json",
+      "cache": "short",
+      "description": "Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.",
+      "id": "subnet-limit-orders",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/limit-orders",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

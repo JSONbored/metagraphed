@@ -170,8 +170,13 @@ describe("the named prose-only exemption (#10517)", () => {
     // subnets/{netuid}/alpha-assets) -- both tables are empty until the
     // engine's balancer and alpha-assets captures land. Same discipline as
     // above.
+    //
+    // 14 -> 15 (#13165): the LimitOrders serving slice publishes one more
+    // route of the same engine-gated class
+    // (subnets/{netuid}/limit-orders) -- its table is empty until the
+    // engine's order-book capture lands. Same discipline as above.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 14,
+      PROSE_ONLY_ROUTES.length <= 15,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

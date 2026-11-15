@@ -158,6 +158,11 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // consumer lands, which the stale-entry check enforces.
   "/api/v1/subnets/{netuid}/swap",
   "/api/v1/subnets/{netuid}/alpha-assets",
+  // #13165 publishes the LimitOrders order book; its table is empty until
+  // the engine's order-book capture lands, so no UI consumes it yet. Remove
+  // the entry when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/subnets/{netuid}/limit-orders",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

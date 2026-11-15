@@ -894,3 +894,61 @@ describe("get_subnet_alpha_assets (#13165)", () => {
     assert.match(errorText(body), /netuid/);
   });
 });
+
+// The get_subnet_limit_orders tool (#13165): same loader/builder as the REST
+// route and the GraphQL field, so the decline and the book match exactly.
+describe("get_subnet_limit_orders (#13165)", () => {
+  test("no bound store answers the schema-stable decline", async () => {
+    const data = structured(
+      await callTool(
+        "get_subnet_limit_orders",
+        { netuid: 64 },
+        createLocalArtifactEnv() as unknown as ReturnType<
+          typeof neuronsTierEnv
+        >,
+      ),
+    );
+    assert.deepEqual(data, {
+      schema_version: 1,
+      netuid: 64,
+      order_count: null,
+      captured_at: null,
+      orders: [],
+    });
+  });
+
+  test("a bound store serves the book", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      SUBNET_LIMIT_ORDERS_STORE: {
+        rows: async () => [
+          {
+            order_id: `0x${"ab".repeat(32)}`,
+            owner: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            kind: "Buy",
+            amount: "65802619318",
+            price: "12500",
+            status: "PartiallyFilled",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    };
+    const data = structured(
+      await callTool(
+        "get_subnet_limit_orders",
+        { netuid: 64 },
+        env as unknown as ReturnType<typeof neuronsTierEnv>,
+      ),
+    );
+    assert.equal(data.order_count, 1);
+    assert.equal((data.orders as Row[])[0].kind, "Buy");
+    assert.equal((data.orders as Row[])[0].amount, "65802619318");
+  });
+
+  test("a missing netuid is invalid_params", async () => {
+    const body = await callTool("get_subnet_limit_orders", {});
+    assert.match(errorText(body), /invalid_params/);
+    assert.match(errorText(body), /netuid/);
+  });
+});
