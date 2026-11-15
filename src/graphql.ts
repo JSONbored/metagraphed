@@ -51,6 +51,12 @@ import {
   loadSubnetAlphaDividends,
 } from "./subnet-alpha-dividends.ts";
 import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+  buildAccountColdkeySwap,
+  loadAccountColdkeySwap,
+} from "./coldkey-swaps.ts";
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
@@ -9663,6 +9669,30 @@ const rootValue = {
     // store is a schema-stable card with lock_count null, never a GraphQL
     // error.
     return buildAccountLocks(await loadAccountLocks(context.env, ss58), ss58);
+  },
+
+  async pending_coldkey_swaps(_args: unknown, context: GqlContext) {
+    // #13166: same loadPendingColdkeySwaps -> buildPendingColdkeySwaps
+    // decline contract the REST handler and the MCP tool share -- an unbound
+    // or unfilled coldkey-swaps store is a schema-stable card with
+    // swap_count null, never a GraphQL error.
+    return buildPendingColdkeySwaps(await loadPendingColdkeySwaps(context.env));
+  },
+
+  async account_coldkey_swap({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountColdkeySwap -> buildAccountColdkeySwap decline
+    // contract the REST handler shares -- an unbound or unfilled store is a
+    // schema-stable card with a null announcement and lineage, never a
+    // GraphQL error.
+    return buildAccountColdkeySwap(
+      await loadAccountColdkeySwap(context.env, ss58),
+      ss58,
+    );
   },
 
   async validator_baskets(_args: unknown, context: GqlContext) {

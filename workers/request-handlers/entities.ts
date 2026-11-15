@@ -99,6 +99,12 @@ import {
   loadAccountLocks,
 } from "../../src/account-locks.ts";
 import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+  buildAccountColdkeySwap,
+  loadAccountColdkeySwap,
+} from "../../src/coldkey-swaps.ts";
+import {
   basketAccountHex,
   buildValidatorBasket,
   buildValidatorBaskets,
@@ -3190,6 +3196,66 @@ export async function handleAccountLocks(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/locks.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/pending-coldkey-swaps (#13166): every in-flight v2
+// coldkey-swap announcement plus the chain-wide delays, read through the
+// native coldkey-swaps store seam. No store bound -- today's deployed
+// Workers -- or a failed read is the same schema-stable decline: an empty
+// `swaps` with `swap_count: null` and a null `policy`, never a zero count
+// (an empty list is not a measured swap-free chain), marked as a tier
+// fallback.
+export async function handlePendingColdkeySwaps(request: Request, env: Env) {
+  const rows = await loadPendingColdkeySwaps(env);
+  const data = buildPendingColdkeySwaps(rows);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts/pending-coldkey-swaps.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/coldkey-swap (#13166): one account's v2 swap
+// state and key successor lineage, read through the same seam. Same ss58
+// validation as the sibling account routes; no store bound or a failed read
+// is the same schema-stable decline: a null `announcement`, a null
+// coldkey-swap lineage and an empty hotkey lineage with `hotkey_count: null`, marked as a
+// tier fallback.
+export async function handleAccountColdkeySwap(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountColdkeySwap(env, ss58);
+  const data = buildAccountColdkeySwap(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/coldkey-swap.json`,
         data.captured_at,
       ),
     },

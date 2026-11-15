@@ -156,6 +156,72 @@
           "schema_version": 1
         }
       },
+      "AccountColdkeySwapArtifactResponse": {
+        "value": {
+          "data": {
+            "announcement": {
+              "announced_at": 1,
+              "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "captured_at": "2026-06-01T00:00:00.000Z",
+              "coldkey": "example",
+              "disputed": false,
+              "disputed_at": 1,
+              "execute_at": 1,
+              "new_coldkey": "example",
+              "policy_snapshot": false,
+              "status": "ok"
+            },
+            "captured_at": "2026-06-01T00:00:00.000Z",
+            "lineage": {
+              "coldkey": {
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "root": "example",
+                "successor": "example"
+              },
+              "hotkey": [
+                {
+                  "captured_at": "2026-06-01T00:00:00.000Z",
+                  "netuid": 7,
+                  "root": "example",
+                  "successor": "example"
+                }
+              ],
+              "hotkey_count": 1
+            },
+            "schema_version": 1,
+            "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "AccountCounterpartiesArtifactResponse": {
         "value": {
           "data": {
@@ -7919,6 +7985,63 @@
             "x-metagraphed": {
               "example": null
             }
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
+      "PendingColdkeySwapsArtifactResponse": {
+        "value": {
+          "data": {
+            "captured_at": "2026-06-01T00:00:00.000Z",
+            "policy": {
+              "announcement_delay": 1,
+              "captured_at": "2026-06-01T00:00:00.000Z",
+              "reannouncement_delay": 1
+            },
+            "schema_version": 1,
+            "swap_count": 1,
+            "swaps": [
+              {
+                "announced_at": 1,
+                "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "coldkey": "example",
+                "disputed": false,
+                "disputed_at": 1,
+                "execute_at": 1,
+                "new_coldkey": "example",
+                "policy_snapshot": false,
+                "status": "ok"
+              }
+            ]
           },
           "meta": {
             "artifact_path": "example",
@@ -16182,6 +16305,48 @@
         ],
         "type": "object"
       },
+      "AccountColdkeySwapArtifact": {
+        "additionalProperties": false,
+        "description": "One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.",
+        "properties": {
+          "announcement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ColdkeySwapAnnouncement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run."
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/AccountKeyLineage"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "announcement",
+          "lineage",
+          "captured_at"
+        ],
+        "type": "object"
+      },
       "AccountCounterpartiesArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -17758,6 +17923,49 @@
           "account",
           "entry_count",
           "entries"
+        ],
+        "type": "object"
+      },
+      "AccountKeyLineage": {
+        "additionalProperties": false,
+        "description": "The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage.",
+        "properties": {
+          "coldkey": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ColdkeyLineage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The global coldkey-swap lineage, null when the capture holds none for this account."
+          },
+          "hotkey": {
+            "description": "The per-subnet hotkey lineage rows, ordered by netuid.",
+            "items": {
+              "$ref": "#/components/schemas/HotkeyLineageEntry"
+            },
+            "type": "array"
+          },
+          "hotkey_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many per-subnet hotkey lineage rows the capture holds -- `hotkey.length`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published."
+          }
+        },
+        "required": [
+          "coldkey",
+          "hotkey",
+          "hotkey_count"
         ],
         "type": "object"
       },
@@ -29854,6 +30062,185 @@
         ],
         "type": "string"
       },
+      "ColdkeyLineage": {
+        "additionalProperties": false,
+        "description": "The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "root": {
+            "description": "SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successor": {
+            "description": "SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "successor",
+          "root",
+          "captured_at"
+        ],
+        "type": "object"
+      },
+      "ColdkeySwapAnnouncement": {
+        "additionalProperties": false,
+        "description": "One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp.",
+        "properties": {
+          "announced_at": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis."
+          },
+          "announcement_hash": {
+            "description": "The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "description": "The announcing account (ss58).",
+            "type": "string"
+          },
+          "disputed": {
+            "description": "The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "disputed_at": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The dispute block itself when one is recorded, else null."
+          },
+          "execute_at": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried."
+          },
+          "new_coldkey": {
+            "description": "The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_snapshot": {
+            "description": "The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "coldkey",
+          "new_coldkey",
+          "announcement_hash",
+          "announced_at",
+          "execute_at",
+          "disputed",
+          "disputed_at",
+          "policy_snapshot",
+          "status",
+          "captured_at"
+        ],
+        "type": "object"
+      },
+      "ColdkeySwapPolicy": {
+        "additionalProperties": false,
+        "description": "The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced.",
+        "properties": {
+          "announcement_delay": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it."
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reannouncement_delay": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it."
+          }
+        },
+        "required": [
+          "announcement_delay",
+          "reannouncement_delay",
+          "captured_at"
+        ],
+        "type": "object"
+      },
       "CompareArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -38386,6 +38773,44 @@
         ],
         "type": "object"
       },
+      "HotkeyLineageEntry": {
+        "additionalProperties": false,
+        "description": "One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "root": {
+            "description": "SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successor": {
+            "description": "SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "successor",
+          "root",
+          "captured_at"
+        ],
+        "type": "object"
+      },
       "IndexerLagArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -40168,6 +40593,62 @@
           "pilot"
         ],
         "type": "string"
+      },
+      "PendingColdkeySwapsArtifact": {
+        "additionalProperties": false,
+        "description": "Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ColdkeySwapPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The chain-wide delays at the newest capture, null until the policy capture lands."
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "swap_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many in-flight announcements the capture holds -- `swaps.length`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published."
+          },
+          "swaps": {
+            "description": "The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account).",
+            "items": {
+              "$ref": "#/components/schemas/ColdkeySwapAnnouncement"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "swap_count",
+          "captured_at",
+          "policy",
+          "swaps"
+        ],
+        "type": "object"
       },
       "PipelineHistoryArtifact": {
         "additionalProperties": false,
@@ -72765,6 +73246,115 @@
         ]
       }
     },
+    "/api/v1/accounts/{ss58}/coldkey-swap": {
+      "get": {
+        "description": "Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps. Served live from the coldkey-swaps store; until the engine's swap and lineage captures land every block declines to null and hotkey_count stays null over an empty list — never 0, because an empty capture is not a measured never-swapped account. Returns 400 on invalid ss58.",
+        "operationId": "accountColdkeySwap",
+        "parameters": [
+          {
+            "description": "An SS58-encoded account address -- a hotkey or coldkey.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AccountColdkeySwapArtifactResponse": {
+                    "$ref": "#/components/examples/AccountColdkeySwapArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountColdkeySwapArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one account's coldkey-swap state and lineage",
+        "tags": [
+          "accounts"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
     "/api/v1/accounts/{ss58}/counterparties": {
       "get": {
         "description": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events store. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows.",
@@ -75912,6 +76502,104 @@
         "tags": [
           "accounts",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/accounts/pending-coldkey-swaps": {
+      "get": {
+        "description": "Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Served live from the coldkey-swaps store; until the engine's swap capture lands the state holds no rows and the response is the schema-stable decline — an empty swaps array with swap_count null (never 0, because an empty list is not a measured swap-free chain) and a null policy.",
+        "operationId": "pendingColdkeySwaps",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PendingColdkeySwapsArtifactResponse": {
+                    "$ref": "#/components/examples/PendingColdkeySwapsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PendingColdkeySwapsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List every in-flight v2 coldkey-swap announcement",
+        "tags": [
+          "accounts"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

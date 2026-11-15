@@ -693,6 +693,16 @@ export const SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN =
 // sibling account routes above.
 export const ACCOUNT_LOCKS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([^/]+)\/locks$/;
+// Every in-flight v2 coldkey-swap announcement (#13166), live from the
+// coldkey-swaps store, no static file. An exact path, dispatched BEFORE any
+// /accounts/([^/]+) pattern so the literal segment is never read as an ss58.
+export const PENDING_COLDKEY_SWAPS_PATH =
+  "/api/v1/accounts/pending-coldkey-swaps";
+// One account's v2 coldkey-swap state and key successor lineage (#13166),
+// live from the same store. The handler validates the ss58 itself, same as
+// the sibling account routes above.
+export const ACCOUNT_COLDKEY_SWAP_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/coldkey-swap$/;
 // Every validator's Root basket fund at the newest completed capture
 // (#13163), live from the Root basket capture store, no static file.
 export const CHAIN_BASKETS_PATH = "/api/v1/chain/baskets";

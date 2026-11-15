@@ -84,6 +84,17 @@ export type AccountChildren = {
   subnets?: Maybe<Array<AccountChildSubnet>>;
 };
 
+/** One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+export type AccountColdkeySwap = {
+  __typename?: 'AccountColdkeySwap';
+  /** The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run. */
+  announcement?: Maybe<ColdkeySwapAnnouncement>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  lineage: AccountKeyLineage;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
+};
+
 export type AccountCounterparties = {
   __typename?: 'AccountCounterparties';
   counterparties: Array<AccountCounterparty>;
@@ -328,6 +339,17 @@ export type AccountIdentityHistoryEntry = {
   /** Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated. */
   storage_version?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
+};
+
+/** The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage. */
+export type AccountKeyLineage = {
+  __typename?: 'AccountKeyLineage';
+  /** The global coldkey-swap lineage, null when the capture holds none for this account. */
+  coldkey?: Maybe<ColdkeyLineage>;
+  /** The per-subnet hotkey lineage rows, ordered by netuid. */
+  hotkey: Array<HotkeyLineageEntry>;
+  /** How many per-subnet hotkey lineage rows the capture holds -- `hotkey.length`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published. */
+  hotkey_count?: Maybe<Scalars['Int']['output']>;
 };
 
 /** A community-contributed entity label for an address (exchange/foundation/operator/other). */
@@ -2066,6 +2088,50 @@ export type ChangelogArtifactSummary = {
   netuid_renamed_count: Scalars['Int']['output'];
 };
 
+/** The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history. */
+export type ColdkeyLineage = {
+  __typename?: 'ColdkeyLineage';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into). */
+  root?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage. */
+  successor?: Maybe<Scalars['String']['output']>;
+};
+
+/** One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp. */
+export type ColdkeySwapAnnouncement = {
+  __typename?: 'ColdkeySwapAnnouncement';
+  /** The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis. */
+  announced_at?: Maybe<Scalars['Int']['output']>;
+  /** The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried. */
+  announcement_hash?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The announcing account (ss58). */
+  coldkey: Scalars['String']['output'];
+  /** The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record. */
+  disputed?: Maybe<Scalars['Boolean']['output']>;
+  /** The dispute block itself when one is recorded, else null. */
+  disputed_at?: Maybe<Scalars['Int']['output']>;
+  /** The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried. */
+  execute_at?: Maybe<Scalars['Int']['output']>;
+  /** The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation. */
+  new_coldkey?: Maybe<Scalars['String']['output']>;
+  /** The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot. */
+  policy_snapshot?: Maybe<Scalars['Boolean']['output']>;
+  /** The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried. */
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+/** The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced. */
+export type ColdkeySwapPolicy = {
+  __typename?: 'ColdkeySwapPolicy';
+  /** SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it. */
+  announcement_delay?: Maybe<Scalars['Int']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it. */
+  reannouncement_delay?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Compare = {
   __typename?: 'Compare';
   dimensions?: Maybe<Array<Scalars['String']['output']>>;
@@ -3058,6 +3124,17 @@ export type HealthTrends = {
   windows: Scalars['JSON']['output'];
 };
 
+/** One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
+export type HotkeyLineageEntry = {
+  __typename?: 'HotkeyLineageEntry';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there. */
+  root?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there. */
+  successor?: Maybe<Scalars['String']['output']>;
+};
+
 /** One subnet's on-chain hyperparameter block. Every field is nullable: a value absent from the captured row stays null rather than being coerced. *_ratio fields are 0..1 U16-derived ratios; *_tao fields are rao-exact (9dp); bonds_moving_avg_raw is the unscaled on-chain integer. */
 export type Hyperparameters = {
   __typename?: 'Hyperparameters';
@@ -3449,6 +3526,19 @@ export type OpportunityEntry = {
   validator_headroom?: Maybe<Scalars['Int']['output']>;
 };
 
+/** Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+export type PendingColdkeySwaps = {
+  __typename?: 'PendingColdkeySwaps';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The chain-wide delays at the newest capture, null until the policy capture lands. */
+  policy?: Maybe<ColdkeySwapPolicy>;
+  schema_version: Scalars['Int']['output'];
+  /** How many in-flight announcements the capture holds -- `swaps.length`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published. */
+  swap_count?: Maybe<Scalars['Int']['output']>;
+  /** The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account). */
+  swaps: Array<ColdkeySwapAnnouncement>;
+};
+
 export type PipelineHistoryPoint = {
   __typename?: 'PipelineHistoryPoint';
   alpha_in_emission?: Maybe<Scalars['Float']['output']>;
@@ -3543,6 +3633,8 @@ export type Query = {
   account_balance?: Maybe<AccountBalance>;
   /** Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children. */
   account_children?: Maybe<AccountChildren>;
+  /** One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+  account_coldkey_swap: AccountColdkeySwap;
   /** Rank who one account transacts native TAO with, by total transfer volume, from the Balances.Transfer feed: per counterparty the sent/received/net TAO, transfer count, and last block, plus scan totals. Pass counterparty=<ss58> (must differ from ss58) to drill into a single relationship instead -- its fund-flow totals plus direction-aware transfer evidence under relationship, newest first. limit caps the ranked list (default 20) or the relationship's transfer evidence (default 50); 1-100. An address with no transfers resolves to a schema-stable zero card, never null. Mirrors GET /api/v1/accounts/{ss58}/counterparties. */
   account_counterparties: AccountCounterparties;
   /** One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d) -- the slots where this hotkey was the PREVIOUS holder, DERIVED from UID reuse (#9307): eviction count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. An address with no evictions resolves to a schema-stable zeroed card, never null; the 90d window is not precomputed, so it carries a degraded block instead of a confident zero. Mirrors GET /api/v1/accounts/{ss58}/deregistrations. */
@@ -3751,6 +3843,8 @@ export type Query = {
   neuron_history: NeuronHistory;
   /** Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). Each board is a FIELD here, so the route's board selector is the selection set's job. Mirrors GET /api/v1/registry/leaderboards. */
   opportunity_boards: OpportunityBoards;
+  /** Every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Until the engine's swap capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty swaps array with swap_count NULL (never 0, because an empty list is not a measured swap-free chain) and a null policy. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+  pending_coldkey_swaps: PendingColdkeySwaps;
   /** Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles. */
   profiles: ProfileList;
   /** One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}. */
@@ -3985,6 +4079,11 @@ export type QueryAccount_BalanceArgs = {
 
 export type QueryAccount_ChildrenArgs = {
   network?: InputMaybe<Network>;
+  ss58: Scalars['String']['input'];
+};
+
+
+export type QueryAccount_Coldkey_SwapArgs = {
   ss58: Scalars['String']['input'];
 };
 
@@ -8986,6 +9085,7 @@ export type ResolversTypes = ResolversObject<{
   AccountChildEntry: ResolverTypeWrapper<AccountChildEntry>;
   AccountChildSubnet: ResolverTypeWrapper<AccountChildSubnet>;
   AccountChildren: ResolverTypeWrapper<AccountChildren>;
+  AccountColdkeySwap: ResolverTypeWrapper<AccountColdkeySwap>;
   AccountCounterparties: ResolverTypeWrapper<AccountCounterparties>;
   AccountCounterparty: ResolverTypeWrapper<AccountCounterparty>;
   AccountCounterpartyRelationship: ResolverTypeWrapper<AccountCounterpartyRelationship>;
@@ -9004,6 +9104,7 @@ export type ResolversTypes = ResolversObject<{
   AccountIdentity: ResolverTypeWrapper<AccountIdentity>;
   AccountIdentityHistory: ResolverTypeWrapper<AccountIdentityHistory>;
   AccountIdentityHistoryEntry: ResolverTypeWrapper<AccountIdentityHistoryEntry>;
+  AccountKeyLineage: ResolverTypeWrapper<AccountKeyLineage>;
   AccountLabel: ResolverTypeWrapper<AccountLabel>;
   AccountList: ResolverTypeWrapper<AccountList>;
   AccountLocks: ResolverTypeWrapper<AccountLocks>;
@@ -9142,6 +9243,9 @@ export type ResolversTypes = ResolversObject<{
   ChangelogArtifactSubnetsRemoved: ResolverTypeWrapper<ChangelogArtifactSubnetsRemoved>;
   ChangelogArtifactSubnetsRenamed: ResolverTypeWrapper<ChangelogArtifactSubnetsRenamed>;
   ChangelogArtifactSummary: ResolverTypeWrapper<ChangelogArtifactSummary>;
+  ColdkeyLineage: ResolverTypeWrapper<ColdkeyLineage>;
+  ColdkeySwapAnnouncement: ResolverTypeWrapper<ColdkeySwapAnnouncement>;
+  ColdkeySwapPolicy: ResolverTypeWrapper<ColdkeySwapPolicy>;
   Compare: ResolverTypeWrapper<Compare>;
   CompareEconomics: ResolverTypeWrapper<CompareEconomics>;
   CompareHealth: ResolverTypeWrapper<CompareHealth>;
@@ -9216,6 +9320,7 @@ export type ResolversTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: ResolverTypeWrapper<HealthPercentilesArtifactSurfacesLatencyMs>;
   HealthProbeSummary: ResolverTypeWrapper<HealthProbeSummary>;
   HealthTrends: ResolverTypeWrapper<HealthTrends>;
+  HotkeyLineageEntry: ResolverTypeWrapper<HotkeyLineageEntry>;
   Hyperparameters: ResolverTypeWrapper<Hyperparameters>;
   HyperparamsHistoryEntry: ResolverTypeWrapper<HyperparamsHistoryEntry>;
   Identity: ResolverTypeWrapper<Identity>;
@@ -9241,6 +9346,7 @@ export type ResolversTypes = ResolversObject<{
   NominatorPosition: ResolverTypeWrapper<NominatorPosition>;
   OpportunityBoards: ResolverTypeWrapper<OpportunityBoards>;
   OpportunityEntry: ResolverTypeWrapper<OpportunityEntry>;
+  PendingColdkeySwaps: ResolverTypeWrapper<PendingColdkeySwaps>;
   PipelineHistoryPoint: ResolverTypeWrapper<PipelineHistoryPoint>;
   PoolList: ResolverTypeWrapper<PoolList>;
   ProfileList: ResolverTypeWrapper<ProfileList>;
@@ -9487,6 +9593,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountChildEntry: AccountChildEntry;
   AccountChildSubnet: AccountChildSubnet;
   AccountChildren: AccountChildren;
+  AccountColdkeySwap: AccountColdkeySwap;
   AccountCounterparties: AccountCounterparties;
   AccountCounterparty: AccountCounterparty;
   AccountCounterpartyRelationship: AccountCounterpartyRelationship;
@@ -9505,6 +9612,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountIdentity: AccountIdentity;
   AccountIdentityHistory: AccountIdentityHistory;
   AccountIdentityHistoryEntry: AccountIdentityHistoryEntry;
+  AccountKeyLineage: AccountKeyLineage;
   AccountLabel: AccountLabel;
   AccountList: AccountList;
   AccountLocks: AccountLocks;
@@ -9642,6 +9750,9 @@ export type ResolversParentTypes = ResolversObject<{
   ChangelogArtifactSubnetsRemoved: ChangelogArtifactSubnetsRemoved;
   ChangelogArtifactSubnetsRenamed: ChangelogArtifactSubnetsRenamed;
   ChangelogArtifactSummary: ChangelogArtifactSummary;
+  ColdkeyLineage: ColdkeyLineage;
+  ColdkeySwapAnnouncement: ColdkeySwapAnnouncement;
+  ColdkeySwapPolicy: ColdkeySwapPolicy;
   Compare: Compare;
   CompareEconomics: CompareEconomics;
   CompareHealth: CompareHealth;
@@ -9716,6 +9827,7 @@ export type ResolversParentTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: HealthPercentilesArtifactSurfacesLatencyMs;
   HealthProbeSummary: HealthProbeSummary;
   HealthTrends: HealthTrends;
+  HotkeyLineageEntry: HotkeyLineageEntry;
   Hyperparameters: Hyperparameters;
   HyperparamsHistoryEntry: HyperparamsHistoryEntry;
   Identity: Identity;
@@ -9740,6 +9852,7 @@ export type ResolversParentTypes = ResolversObject<{
   NominatorPosition: NominatorPosition;
   OpportunityBoards: OpportunityBoards;
   OpportunityEntry: OpportunityEntry;
+  PendingColdkeySwaps: PendingColdkeySwaps;
   PipelineHistoryPoint: PipelineHistoryPoint;
   PoolList: PoolList;
   ProfileList: ProfileList;
@@ -10032,6 +10145,14 @@ export type AccountChildrenResolvers<ContextType = GqlContext, ParentType extend
   subnets?: Resolver<Maybe<Array<ResolversTypes['AccountChildSubnet']>>, ParentType, ContextType>;
 }>;
 
+export type AccountColdkeySwapResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountColdkeySwap'] = ResolversParentTypes['AccountColdkeySwap']> = ResolversObject<{
+  announcement?: Resolver<Maybe<ResolversTypes['ColdkeySwapAnnouncement']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lineage?: Resolver<ResolversTypes['AccountKeyLineage'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type AccountCounterpartiesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountCounterparties'] = ResolversParentTypes['AccountCounterparties']> = ResolversObject<{
   counterparties?: Resolver<Array<ResolversTypes['AccountCounterparty']>, ParentType, ContextType>;
   counterparty_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10234,6 +10355,12 @@ export type AccountIdentityHistoryEntryResolvers<ContextType = GqlContext, Paren
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   storage_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AccountKeyLineageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountKeyLineage'] = ResolversParentTypes['AccountKeyLineage']> = ResolversObject<{
+  coldkey?: Resolver<Maybe<ResolversTypes['ColdkeyLineage']>, ParentType, ContextType>;
+  hotkey?: Resolver<Array<ResolversTypes['HotkeyLineageEntry']>, ParentType, ContextType>;
+  hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type AccountLabelResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountLabel'] = ResolversParentTypes['AccountLabel']> = ResolversObject<{
@@ -11571,6 +11698,31 @@ export type ChangelogArtifactSummaryResolvers<ContextType = GqlContext, ParentTy
   netuid_renamed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type ColdkeyLineageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeyLineage'] = ResolversParentTypes['ColdkeyLineage']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  root?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  successor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ColdkeySwapAnnouncementResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeySwapAnnouncement'] = ResolversParentTypes['ColdkeySwapAnnouncement']> = ResolversObject<{
+  announced_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  announcement_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  disputed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  disputed_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  execute_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  new_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  policy_snapshot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ColdkeySwapPolicyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeySwapPolicy'] = ResolversParentTypes['ColdkeySwapPolicy']> = ResolversObject<{
+  announcement_delay?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reannouncement_delay?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
 export type CompareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Compare'] = ResolversParentTypes['Compare']> = ResolversObject<{
   dimensions?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12373,6 +12525,13 @@ export type HealthTrendsResolvers<ContextType = GqlContext, ParentType extends R
   windows?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
 }>;
 
+export type HotkeyLineageEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HotkeyLineageEntry'] = ResolversParentTypes['HotkeyLineageEntry']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  root?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  successor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type HyperparametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Hyperparameters'] = ResolversParentTypes['Hyperparameters']> = ResolversObject<{
   activity_cutoff?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   activity_cutoff_factor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -12677,6 +12836,14 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type PendingColdkeySwapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PendingColdkeySwaps'] = ResolversParentTypes['PendingColdkeySwaps']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  policy?: Resolver<Maybe<ResolversTypes['ColdkeySwapPolicy']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  swap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  swaps?: Resolver<Array<ResolversTypes['ColdkeySwapAnnouncement']>, ParentType, ContextType>;
+}>;
+
 export type PipelineHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryPoint'] = ResolversParentTypes['PipelineHistoryPoint']> = ResolversObject<{
   alpha_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_out_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -12753,6 +12920,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   account_axon_removals?: Resolver<ResolversTypes['AccountAxonRemovals'], ParentType, ContextType, RequireFields<QueryAccount_Axon_RemovalsArgs, 'ss58'>>;
   account_balance?: Resolver<Maybe<ResolversTypes['AccountBalance']>, ParentType, ContextType, RequireFields<QueryAccount_BalanceArgs, 'ss58'>>;
   account_children?: Resolver<Maybe<ResolversTypes['AccountChildren']>, ParentType, ContextType, RequireFields<QueryAccount_ChildrenArgs, 'ss58'>>;
+  account_coldkey_swap?: Resolver<ResolversTypes['AccountColdkeySwap'], ParentType, ContextType, RequireFields<QueryAccount_Coldkey_SwapArgs, 'ss58'>>;
   account_counterparties?: Resolver<ResolversTypes['AccountCounterparties'], ParentType, ContextType, RequireFields<QueryAccount_CounterpartiesArgs, 'ss58'>>;
   account_deregistrations?: Resolver<ResolversTypes['AccountDeregistrations'], ParentType, ContextType, RequireFields<QueryAccount_DeregistrationsArgs, 'ss58'>>;
   account_entities?: Resolver<ResolversTypes['AccountEntities'], ParentType, ContextType, RequireFields<QueryAccount_EntitiesArgs, 'ss58'>>;
@@ -12857,6 +13025,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   neuron?: Resolver<ResolversTypes['Neuron'], ParentType, ContextType, RequireFields<QueryNeuronArgs, 'netuid' | 'uid'>>;
   neuron_history?: Resolver<ResolversTypes['NeuronHistory'], ParentType, ContextType, RequireFields<QueryNeuron_HistoryArgs, 'netuid' | 'uid'>>;
   opportunity_boards?: Resolver<ResolversTypes['OpportunityBoards'], ParentType, ContextType, Partial<QueryOpportunity_BoardsArgs>>;
+  pending_coldkey_swaps?: Resolver<ResolversTypes['PendingColdkeySwaps'], ParentType, ContextType>;
   profiles?: Resolver<ResolversTypes['ProfileList'], ParentType, ContextType, Partial<QueryProfilesArgs>>;
   provider?: Resolver<Maybe<ResolversTypes['Provider']>, ParentType, ContextType, RequireFields<QueryProviderArgs, 'id'>>;
   provider_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryProvider_EndpointsArgs, 'slug'>>;
@@ -15540,6 +15709,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountChildEntry?: AccountChildEntryResolvers<ContextType>;
   AccountChildSubnet?: AccountChildSubnetResolvers<ContextType>;
   AccountChildren?: AccountChildrenResolvers<ContextType>;
+  AccountColdkeySwap?: AccountColdkeySwapResolvers<ContextType>;
   AccountCounterparties?: AccountCounterpartiesResolvers<ContextType>;
   AccountCounterparty?: AccountCounterpartyResolvers<ContextType>;
   AccountCounterpartyRelationship?: AccountCounterpartyRelationshipResolvers<ContextType>;
@@ -15558,6 +15728,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountIdentity?: AccountIdentityResolvers<ContextType>;
   AccountIdentityHistory?: AccountIdentityHistoryResolvers<ContextType>;
   AccountIdentityHistoryEntry?: AccountIdentityHistoryEntryResolvers<ContextType>;
+  AccountKeyLineage?: AccountKeyLineageResolvers<ContextType>;
   AccountLabel?: AccountLabelResolvers<ContextType>;
   AccountList?: AccountListResolvers<ContextType>;
   AccountLocks?: AccountLocksResolvers<ContextType>;
@@ -15694,6 +15865,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChangelogArtifactSubnetsRemoved?: ChangelogArtifactSubnetsRemovedResolvers<ContextType>;
   ChangelogArtifactSubnetsRenamed?: ChangelogArtifactSubnetsRenamedResolvers<ContextType>;
   ChangelogArtifactSummary?: ChangelogArtifactSummaryResolvers<ContextType>;
+  ColdkeyLineage?: ColdkeyLineageResolvers<ContextType>;
+  ColdkeySwapAnnouncement?: ColdkeySwapAnnouncementResolvers<ContextType>;
+  ColdkeySwapPolicy?: ColdkeySwapPolicyResolvers<ContextType>;
   Compare?: CompareResolvers<ContextType>;
   CompareEconomics?: CompareEconomicsResolvers<ContextType>;
   CompareHealth?: CompareHealthResolvers<ContextType>;
@@ -15767,6 +15941,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs?: HealthPercentilesArtifactSurfacesLatencyMsResolvers<ContextType>;
   HealthProbeSummary?: HealthProbeSummaryResolvers<ContextType>;
   HealthTrends?: HealthTrendsResolvers<ContextType>;
+  HotkeyLineageEntry?: HotkeyLineageEntryResolvers<ContextType>;
   Hyperparameters?: HyperparametersResolvers<ContextType>;
   HyperparamsHistoryEntry?: HyperparamsHistoryEntryResolvers<ContextType>;
   Identity?: IdentityResolvers<ContextType>;
@@ -15790,6 +15965,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   NominatorPosition?: NominatorPositionResolvers<ContextType>;
   OpportunityBoards?: OpportunityBoardsResolvers<ContextType>;
   OpportunityEntry?: OpportunityEntryResolvers<ContextType>;
+  PendingColdkeySwaps?: PendingColdkeySwapsResolvers<ContextType>;
   PipelineHistoryPoint?: PipelineHistoryPointResolvers<ContextType>;
   PoolList?: PoolListResolvers<ContextType>;
   ProfileList?: ProfileListResolvers<ContextType>;

@@ -184,6 +184,11 @@ export const FIELD_COMPLEXITY = {
   subnet_limit_orders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of a handful of app.stake_locks rows.
   account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded (store-capped) read of app.coldkey_swap_announcements
+  // plus the single-row policy capture.
+  pending_coldkey_swaps: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one announcement row plus a handful of app.key_successors rows.
+  account_coldkey_swap: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one completed capture's funds, capped by the receiver's own
   // fund ceiling.
   validator_baskets: RELATIONSHIP_FIELD_COMPLEXITY,

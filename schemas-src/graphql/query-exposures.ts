@@ -1577,6 +1577,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks.",
   },
   {
+    field: "pending_coldkey_swaps",
+    operation: "pending-coldkey-swaps",
+    returns: "PendingColdkeySwaps!",
+    description:
+      "Every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Until the engine's swap capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty swaps array with swap_count NULL (never 0, because an empty list is not a measured swap-free chain) and a null policy. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.",
+  },
+  {
+    field: "account_coldkey_swap",
+    operation: "account-coldkey-swap",
+    returns: "AccountColdkeySwap!",
+    description:
+      "One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.",
+  },
+  {
     field: "account_children",
     operation: "account-children",
     returns: "AccountChildren",

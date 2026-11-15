@@ -1066,6 +1066,16 @@ type Query {
   account_locks(ss58: String!): AccountLocks!
 
   """
+  Every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Until the engine's swap capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty swaps array with swap_count NULL (never 0, because an empty list is not a measured swap-free chain) and a null policy. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.
+  """
+  pending_coldkey_swaps: PendingColdkeySwaps!
+
+  """
+  One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.
+  """
+  account_coldkey_swap(ss58: String!): AccountColdkeySwap!
+
+  """
   Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children.
   """
   account_children(ss58: String!, network: Network): AccountChildren
@@ -9575,6 +9585,159 @@ type StakeLock {
   The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis.
   """
   maturity_block: Int
+  captured_at: String
+}
+
+"""
+Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.
+"""
+type PendingColdkeySwaps {
+  schema_version: Int!
+
+  """
+  How many in-flight announcements the capture holds -- \`swaps.length\`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published.
+  """
+  swap_count: Int
+  captured_at: String
+
+  """
+  The chain-wide delays at the newest capture, null until the policy capture lands.
+  """
+  policy: ColdkeySwapPolicy
+
+  """
+  The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account).
+  """
+  swaps: [ColdkeySwapAnnouncement!]!
+}
+
+"""
+The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced.
+"""
+type ColdkeySwapPolicy {
+  """
+  SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it.
+  """
+  announcement_delay: Int
+
+  """
+  SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it.
+  """
+  reannouncement_delay: Int
+  captured_at: String
+}
+
+"""
+One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp.
+"""
+type ColdkeySwapAnnouncement {
+  """The announcing account (ss58)."""
+  coldkey: String!
+
+  """
+  The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation.
+  """
+  new_coldkey: String
+
+  """
+  The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried.
+  """
+  announcement_hash: String
+
+  """
+  The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis.
+  """
+  announced_at: Int
+
+  """
+  The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried.
+  """
+  execute_at: Int
+
+  """
+  The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record.
+  """
+  disputed: Boolean
+
+  """The dispute block itself when one is recorded, else null."""
+  disputed_at: Int
+
+  """
+  The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot.
+  """
+  policy_snapshot: Boolean
+
+  """
+  The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried.
+  """
+  status: String
+  captured_at: String
+}
+
+"""
+One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.
+"""
+type AccountColdkeySwap {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run.
+  """
+  announcement: ColdkeySwapAnnouncement
+  lineage: AccountKeyLineage!
+  captured_at: String
+}
+
+"""
+The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage.
+"""
+type AccountKeyLineage {
+  """
+  The global coldkey-swap lineage, null when the capture holds none for this account.
+  """
+  coldkey: ColdkeyLineage
+
+  """The per-subnet hotkey lineage rows, ordered by netuid."""
+  hotkey: [HotkeyLineageEntry!]!
+
+  """
+  How many per-subnet hotkey lineage rows the capture holds -- \`hotkey.length\`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published.
+  """
+  hotkey_count: Int
+}
+
+"""
+The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history.
+"""
+type ColdkeyLineage {
+  """
+  SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage.
+  """
+  successor: String
+
+  """
+  SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into).
+  """
+  root: String
+  captured_at: String
+}
+
+"""
+One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet.
+"""
+type HotkeyLineageEntry {
+  netuid: Int!
+
+  """
+  SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there.
+  """
+  successor: String
+
+  """
+  SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there.
+  """
+  root: String
   captured_at: String
 }
 
