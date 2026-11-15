@@ -1622,6 +1622,10 @@ export interface AccountIdentity {
   discord: string | null;
   description: string | null;
   additional: string | null;
+  /** Which SubtensorModule identity storage map the capture decoded this
+   * identity from (2 = IdentitiesV2, the live v490 map). Null until the
+   * engine's labelled decode lands (#13166). */
+  storage_version: number | null;
   captured_at: string | null;
 }
 
@@ -2101,6 +2105,8 @@ export interface AccountIdentityHistoryEntry {
   discord: string | null;
   description: string | null;
   additional: string | null;
+  /** Same storage-version label as AccountIdentity, per revision (#13166). */
+  storage_version: number | null;
 }
 
 /** Append-only on-chain identity timeline for one account, newest first. */

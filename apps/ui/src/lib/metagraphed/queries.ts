@@ -3084,6 +3084,7 @@ export const accountIdentityQuery = (ss58: string) =>
           discord: firstString(d.discord) ?? null,
           description: firstString(d.description) ?? null,
           additional: firstString(d.additional) ?? null,
+          storage_version: firstFiniteNumber(d.storage_version) ?? null,
           captured_at: firstString(d.captured_at) ?? null,
         } as AccountIdentity,
         meta: res.meta,
@@ -7796,6 +7797,7 @@ export function normalizeAccountIdentityHistoryEntry(
     discord: firstString(raw.discord) ?? null,
     description: firstString(raw.description) ?? null,
     additional: firstString(raw.additional) ?? null,
+    storage_version: firstFiniteNumber(raw.storage_version) ?? null,
   };
 }
 
