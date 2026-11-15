@@ -116,6 +116,55 @@ test("native tagged SQL binds in order, preserves imported sequences, and refuse
   );
 });
 
+test("a selected native owner is consulted ahead of D1 and never falls through", async () => {
+  const calls: { text: string; values?: unknown[] }[] = [];
+  const store = {
+    async query(text: string, values?: unknown[]) {
+      calls.push({ text, values });
+      return [{ ss58: "native-owned" }];
+    },
+    async first() {
+      return null;
+    },
+    async run() {
+      return {};
+    },
+    async transaction() {
+      return [];
+    },
+  };
+  const native = dataApiEnv({
+    ...env(),
+    D1_STATE: {
+      prepare() {
+        throw new Error("legacy D1 touched");
+      },
+      batch() {
+        throw new Error("legacy D1 touched");
+      },
+    },
+    NATIVE_PRODUCER_STORE: {
+      tables: [...ACCOUNT_STATE_TABLES, ...ALERT_TRIGGER_TABLES],
+      store,
+    },
+  });
+  const sql = userStateRunner(native, ctx, ALERT_TRIGGER_TABLES)!;
+  assert.deepEqual(await sql`SELECT ss58 FROM rpc_accounts WHERE id = ${42}`, [
+    { ss58: "native-owned" },
+  ]);
+  assert.deepEqual(await sql.unsafe("SELECT 1", [7]), [
+    { ss58: "native-owned" },
+  ]);
+  assert.deepEqual(calls, [
+    { text: "SELECT ss58 FROM rpc_accounts WHERE id = $1", values: [42] },
+    { text: "SELECT 1", values: [7] },
+  ]);
+  assert.throws(
+    () => userStateRunner(native, ctx, ["rpc_accounts", "neurons"]),
+    /does not own/,
+  );
+});
+
 test("GitHub upsert preserves identity and creation time across login changes", async () => {
   const first = await call("/api/v1/auth/github/upsert-account", {
     github_user_id: 501,
