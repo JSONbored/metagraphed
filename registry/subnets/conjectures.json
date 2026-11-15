@@ -1,0 +1,230 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "software-engineering",
+    "workflow"
+  ],
+  "contact": "tau@arbos.life",
+  "curation": {
+    "gap_notes": [
+      "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T06:20:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T06:20:00.000Z"
+  },
+  "dashboard_url": "https://ninja66.ai/",
+  "docs_url": "https://github.com/ninja-subnet/ninja/blob/main/README.md",
+  "links": [
+    {
+      "label": "Miner harness",
+      "source_url": "https://github.com/ninja-subnet/ninja",
+      "url": "https://github.com/ninja-subnet/katana-cli"
+    }
+  ],
+  "name": "conjectures",
+  "netuid": 66,
+  "notes": "Reviewed overlay for SN66. Migrated from the unarbos/ninja.arbos.life identity to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15 (ninja.arbos.life now 404s site-wide; ninja66.ai's own page links to github.com/ninja-subnet/ninja and ninja-validator, both actively pushed the same day). Official website, source repositories, and health endpoint verified live under the new identity. The obvious OpenAPI JSON paths currently serve HTML or 404, so schema-backed status remains a gap. This re-review pass fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932 -- and re-confirmed the migrated identity, on-chain identity match, and OpenAPI gap all still hold as of 2026-07-16.",
+  "schema_version": 1,
+  "slug": "sn-66",
+  "source_repo": "https://github.com/conjectures-io/conjectures-validator",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:billing, docs:pricing, docs:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-website",
+      "kind": "website",
+      "name": "Ninja website",
+      "notes": "Official Ninja SN66 public website. Migrated from ninja.arbos.life (now 404) to ninja66.ai -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": ["https://ninja66.ai/"],
+      "url": "https://ninja66.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-tau-source",
+      "kind": "source-repo",
+      "name": "Conjectures validator source repository",
+      "notes": "Official SN66 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651 and verified live 2026-08-13; the README says \"conjectures.io -- Bittensor Subnet 66 Validator\", repeats \"Bittensor Subnet 66\", and sets BOUNTY_NETUID=66. Replaces ninja-subnet/ninja: the chain records a SubnetOwnerChanged transfer on netuid 66 observed 2026-08-12, and ninja66.ai returns 521. The two remaining ninja-subnet surfaces are kept as the previous holder's published repositories.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://ninja66.ai/",
+        "https://github.com/conjectures-io/conjectures-validator"
+      ],
+      "url": "https://github.com/conjectures-io/conjectures-validator"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-harness-source",
+      "kind": "source-repo",
+      "name": "Ninja CLI harness source repository",
+      "notes": "Official SN66 miner CLI harness repository. Migrated from unarbos/ninja to the ninja-subnet org's \"katana-cli\" repo (description: \"Claude Code-style CLI harness for the Subnet 66 ninja agent\") -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/ninja-subnet/ninja",
+        "https://github.com/ninja-subnet/katana-cli"
+      ],
+      "url": "https://github.com/ninja-subnet/katana-cli"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-readme-docs",
+      "kind": "docs",
+      "name": "Ninja README docs",
+      "notes": "Official README documentation for Ninja task generation, execution, validation, and scoring workflow. Migrated from unarbos/tau to ninja-subnet/ninja -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/ninja-subnet/ninja",
+        "https://github.com/ninja-subnet/ninja/blob/main/README.md"
+      ],
+      "url": "https://github.com/ninja-subnet/ninja/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-health",
+      "kind": "subnet-api",
+      "name": "Ninja health endpoint",
+      "notes": "Public no-auth GET returning HTTP 200 on the new ninja66.ai host -- verified live 2026-07-15 (the old ninja.arbos.life/health always 404'd; that whole domain is now dead). Re-enabled probing under the migrated identity.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": ["https://ninja66.ai/"],
+      "url": "https://ninja66.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-66-ninja-validator-source",
+      "kind": "source-repo",
+      "name": "Ninja validator source repository",
+      "notes": "Official validator/task code repository for Ninja SN66, under the same ninja-subnet org as the migrated agent/harness repos -- verified live 2026-07-15, pushed same day.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ninja-subnet/ninja"],
+      "url": "https://github.com/ninja-subnet/ninja-validator"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-taopedia-article",
+      "kind": "docs",
+      "name": "ninja Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-tensorplex-docs",
+      "kind": "docs",
+      "name": "ninja Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-66-unarbos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ninja accepted private-submission metadata dataset",
+      "notes": "Public no-auth GET https://ninja66.ai/api/submissions returning application/json with an updated_at timestamp and the accepted public submission metadata ledger (submission_id, uid, hotkey, submitted_block, submitted_at, status) for SN66 private miner harness submissions. The official miner CLI harness README (migrated from unarbos/ninja to ninja-subnet/katana-cli) documents this route as the public visibility endpoint for accepted submission metadata and explicitly states it does not expose agent.py contents or hotkey signatures.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "unarbos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/ninja-subnet/katana-cli/blob/main/README.md"
+      ],
+      "url": "https://ninja66.ai/api/submissions"
+    }
+  ],
+  "website_url": "https://conjectures.io"
+}

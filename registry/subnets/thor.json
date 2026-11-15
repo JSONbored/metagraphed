@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "netuid": 112,
+  "name": "THOR",
+  "slug": "sn-112",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet -- api.minotaursubnet.com/openapi.json and /docs both 404.",
+      "No verified SSE/event stream yet.",
+      "The app-management API doc describes several genuinely public reads (v1/apps/{app_id}/status, /admin-state, /auth-nonce) that are all path-parameterized, not bare no-param routes -- not promoted as their own surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "social": {
+    "x": "https://x.com/minotaursubnet"
+  },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-health",
+      "kind": "subnet-api",
+      "name": "Minotaur API health",
+      "notes": "Public no-auth GET /health on api.minotaursubnet.com returning application liveness JSON (observed: {\"status\":\"ok\",\"service\":\"app-intents-api\"}). Documented as the production API health probe in the official minotaur_subnet check_validator.sh script and served on the SN112 API host listed in docs/operator/network-reference.md.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/main/docs/operator/network-reference.md",
+        "https://github.com/subnet112/minotaur_subnet/blob/main/scripts/check_validator.sh"
+      ],
+      "url": "https://api.minotaursubnet.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-network-reference",
+      "kind": "data-artifact",
+      "name": "Minotaur operator network reference",
+      "notes": "Public no-auth Markdown operator network reference (netuid 112, finney subtensor endpoint, production API host, mainnet contract addresses on Base and BT EVM, quorum targets) published in the official subnet112/minotaur_subnet repository at docs/operator/network-reference.md. Documented as the authoritative operator network reference and cited by scripts/check_validator.sh for ValidatorRegistry configuration.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/operator/network-reference.md",
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/scripts/check_validator.sh"
+      ],
+      "url": "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/operator/network-reference.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-dashboard",
+      "kind": "dashboard",
+      "name": "Minotaur App dashboard",
+      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App — Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://docs.minotaursubnet.com/",
+        "https://github.com/subnet112/minotaur_subnet"
+      ],
+      "url": "https://app.minotaursubnet.com"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-112-minotaur-website",
+      "kind": "website",
+      "name": "Minotaur website",
+      "notes": "Official SN112 Minotaur website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
+      "url": "https://minotaursubnet.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-112-minotaur-source-repo",
+      "kind": "source-repo",
+      "name": "Minotaur source repository",
+      "notes": "Official SN112 Minotaur source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
+      "url": "https://github.com/subnet112/minotaur_subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-chains",
+      "kind": "data-artifact",
+      "name": "Minotaur chain registry addresses",
+      "notes": "Public no-auth GET /v1/chains on api.minotaursubnet.com returning per-chain registry contract addresses (chain_id, name, rpc_available, registry_address, app_registry_address) for Ethereum, Base, and BT EVM. Documented in the app-management API reference (docs/api/app-management.md).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/chains"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-apps-list",
+      "kind": "subnet-api",
+      "name": "Minotaur deployed apps list",
+      "notes": "Public no-auth GET /v1/apps/ on api.minotaursubnet.com returning the list of deployed intent-processing apps, each carrying a per-chain deployments map and source (JS scoring module + Solidity). Documented in the app-management API reference (docs/api/app-management.md) as an intentionally open read.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-status",
+      "kind": "subnet-api",
+      "name": "minotaur app deployment status",
+      "notes": "GET /v1/apps/{app_id}/status -- per-app + per-chain deployment status (the deploy-poll target), listed in the official app-management doc's Reads table. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id taken from the already-registered /v1/apps/ list: HTTP 200 JSON returning the app record + status, no credential required. Path-parameterized (percent-encoded template), so probe.enabled:false per the linked issue's own instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-auth-nonce",
+      "kind": "subnet-api",
+      "name": "minotaur app auth-nonce read",
+      "notes": "GET /v1/apps/{app_id}/auth-nonce (optional deployer query param) -- issues the next single-use nonce used to sign app-management writes; necessarily callable without a credential, per the official doc and the linked issue. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id: HTTP 200 JSON {app_id, deployer, next_nonce} both bare (defaults to the app's registered deployer) and with an explicit placeholder deployer query value. Path-parameterized, probe.enabled:false per the linked issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/auth-nonce"
+    },
+    {
+      "auth": {
+        "scheme": "signature",
+        "scopes_note": "Requires an EIP-712 wallet-signed request: the X-App-Auth-Signer, X-App-Auth-Signature, and X-App-Auth-Deadline headers, documented in the subnet's own official app-management API reference (docs/api/app-management.md) -- reads (this route among them) are deadline-bound only, unlike writes which additionally need a single-use X-App-Auth-Nonce. The signature must be an EIP-712 signature from an allowed signer (the app's own deployer or an operator admin address) over a paramsHash binding this request's specific parameters -- computing it is the caller's own responsibility. Live-verified 2026-07-22: an unauthenticated request returns HTTP 403. No admin key or bearer token is accepted for this route.",
+        "location": "header",
+        "names": [
+          "X-App-Auth-Signer",
+          "X-App-Auth-Signature",
+          "X-App-Auth-Deadline"
+        ]
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-admin-state",
+      "kind": "subnet-api",
+      "name": "minotaur app operator state (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/admin-state -- full operator view (store record, live per-chain config, fee-settlement balances, registry status), listed in the official doc's Reads table under its signature-gated App-management auth class. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id: HTTP 403 JSON rejected unauthenticated -- auth-gated in practice, exactly as the linked issue's own live test found. Registered auth_required:true, probe.enabled:false per the issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/admin-state"
+    },
+    {
+      "auth": {
+        "scheme": "signature",
+        "scopes_note": "Requires an EIP-712 wallet-signed request: the X-App-Auth-Signer, X-App-Auth-Signature, and X-App-Auth-Deadline headers, documented in the subnet's own official app-management API reference (docs/api/app-management.md) -- reads (this route among them) are deadline-bound only, unlike writes which additionally need a single-use X-App-Auth-Nonce. The signature must be an EIP-712 signature from an allowed signer (the app's own deployer or an operator admin address) over a paramsHash binding this request's specific parameters -- computing it is the caller's own responsibility. Live-verified 2026-07-22: an unauthenticated request returns HTTP 403. No admin key or bearer token is accepted for this route.",
+        "location": "header",
+        "names": [
+          "X-App-Auth-Signer",
+          "X-App-Auth-Signature",
+          "X-App-Auth-Deadline"
+        ]
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-registry-calldata",
+      "kind": "subnet-api",
+      "name": "minotaur app registry calldata (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/deployments/{chain_id}/registry-calldata -- prepared transaction calldata for external signing, documented in the same signature-gated auth class as admin-state (deadline-bound reads). Live-verified 2026-07-22 (~08:25 UTC) with a real app_id and a real chain_id from the already-registered /v1/chains surface: HTTP 403 JSON rejected unauthenticated (stronger than the linked issue's own evidence, which did not spot-verify this route). Registered auth_required:true, probe.enabled:false per the issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/deployments/%7Bchain_id%7D/registry-calldata"
+    }
+  ],
+  "website_url": "https://thormachines.ai/",
+  "notes": "First maintainer review for SN112. Added website + source-repo surfaces (previously only cited via top-level fields) and fixed 3 missing probe blocks on the existing surfaces. Read the official app-management API doc and added 2 new no-param surfaces (v1/chains, v1/apps/); the other documented reads (status, admin-state, auth-nonce) are all path-parameterized, not bare routes."
+}

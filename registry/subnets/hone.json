@@ -40,7 +40,7 @@
   "notes": "Reviewed overlay for SN5 Hone using the official Hone website, source repository, and public network pages. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational interfaces.",
   "schema_version": 1,
   "slug": "sn-5",
-  "source_repo": "https://github.com/manifold-inc/hone",
+  "source_repo": "https://github.com/hone-subnet-org/hone-subnet",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -147,7 +147,7 @@
       "id": "sn-5-hone-subnet-api",
       "kind": "subnet-api",
       "name": "Hone API health",
-      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training \u2014 a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap.",
+      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -194,7 +194,7 @@
       "id": "sn-5-hone-sandbox-runner-config",
       "kind": "data-artifact",
       "name": "Hone sandbox runner configuration",
-      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance \u2014 runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
+      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance — runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
       "provider": "hone",
       "public_safe": true,
       "review": {
@@ -208,5 +208,5 @@
       "url": "https://raw.githubusercontent.com/manifold-inc/hone/786d1d457b30319080885ce742c94b21185eaafc/sandbox_runner/config.yaml"
     }
   ],
-  "website_url": "https://www.hone.training/"
+  "website_url": "https://honedashboard.com"
 }

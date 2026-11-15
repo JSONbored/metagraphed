@@ -119,7 +119,7 @@
       "id": "sn-41-almanac-wandb",
       "kind": "dashboard",
       "name": "Almanac validator Weights & Biases dashboard",
-      "notes": "Public Weights & Biases project the SN41 Almanac validators log to (wandb.ai/sportstensor/sportstensor-vali-logs) \u2014 live validator run logs and sports-prediction scoring metrics. Validators import wandb and start runs under entity 'sportstensor' / project 'sportstensor-vali-logs' in the official sportstensor/sn41 validator.py. Publicly readable via the W&B API. Distinct host from the api.almanac.market API.",
+      "notes": "Public Weights & Biases project the SN41 Almanac validators log to (wandb.ai/sportstensor/sportstensor-vali-logs) — live validator run logs and sports-prediction scoring metrics. Validators import wandb and start runs under entity 'sportstensor' / project 'sportstensor-vali-logs' in the official sportstensor/sn41 validator.py. Publicly readable via the W&B API. Distinct host from the api.almanac.market API.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -138,5 +138,5 @@
       "url": "https://wandb.ai/sportstensor/sportstensor-vali-logs"
     }
   ],
-  "website_url": "https://almanac.market/"
+  "website_url": "https://almnc.ai"
 }

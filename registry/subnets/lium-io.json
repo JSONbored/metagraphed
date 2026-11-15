@@ -27,7 +27,7 @@
   "social": {
     "x": "https://x.com/lium_io"
   },
-  "website_url": "https://lium.io/",
+  "website_url": "https://lium.io",
   "surfaces": [
     {
       "auth_required": false,

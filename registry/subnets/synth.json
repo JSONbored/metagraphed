@@ -23,7 +23,7 @@
   "notes": "First maintainer-reviewed pass for SN50 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932; two of them (leaderboard, validation-scores) reject HEAD (405/404) so their probes use GET. Diffed the full 48-path Swagger 2.0 schema: found the 17 /insights/* GET routes are undocumented-auth-gated in practice despite the schema declaring no security (see gap_notes); the /v2/prediction/*, /rewards/scores, /validation/miner|prompts|realized-path|scores/historical, and /v2/leaderboard/historical|meta-leaderboard/historical routes all require query parameters with no stable canonical value. Added one new no-auth no-param surface: /v2/meta-leaderboard/latest. The on-chain-declared source_repo (github.com/mode-network/synth-subnet) now permanently redirects (301) to github.com/synthdataco/synth-subnet -- same repo, org renamed; updated the tracked source_repo/provider github_url to the current URL since on-chain native_name/description/website_url are otherwise unchanged (not a full identity pivot).",
   "schema_version": 1,
   "slug": "sn-50",
-  "source_repo": "https://github.com/synthdataco/synth-subnet",
+  "source_repo": "https://github.com/mode-network/synth-subnet",
   "status": "active",
   "surfaces": [
     {
@@ -68,7 +68,7 @@
       "id": "sn-50-synth-openapi",
       "kind": "openapi",
       "name": "Synth API OpenAPI spec",
-      "notes": "Public Swagger 2.0 spec for the Synth API (48 unauthenticated GET endpoints \u2014 probabilistic price forecasts, market insights, leaderboards). The official synth-subnet README documents the API docs at api.synthdata.co/docs.",
+      "notes": "Public Swagger 2.0 spec for the Synth API (48 unauthenticated GET endpoints — probabilistic price forecasts, market insights, leaderboards). The official synth-subnet README documents the API docs at api.synthdata.co/docs.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -162,7 +162,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -170,7 +170,7 @@
       "id": "sn-50-synth-insights-limitless-15min",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless 15min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/15min on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -191,7 +191,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -199,7 +199,7 @@
       "id": "sn-50-synth-insights-limitless-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/daily on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -220,7 +220,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -228,7 +228,7 @@
       "id": "sn-50-synth-insights-limitless-hourly",
       "kind": "subnet-api",
       "name": "Synth GET insights limitless hourly",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/hourly on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/limitless/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -249,7 +249,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -257,7 +257,7 @@
       "id": "sn-50-synth-insights-liquidation",
       "kind": "subnet-api",
       "name": "Synth GET insights liquidation",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/liquidation on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/liquidation on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -278,7 +278,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -307,7 +307,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -315,7 +315,7 @@
       "id": "sn-50-synth-insights-lp-probabilities",
       "kind": "subnet-api",
       "name": "Synth GET insights lp probabilities",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-probabilities on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/lp-probabilities on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -336,7 +336,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -349,7 +349,7 @@
         "provenance": "operator-attested",
         "source_url": "https://api.synthdata.co/swagger.json"
       },
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/option-pricing on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/option-pricing on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10. REVENUE ROLE (#10456): not-revenue. This is a data PRODUCT (option pricing insights) behind an API key, not a report of what the subnet earns. No public surface carries an external-revenue figure as of 2026-08-10.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -370,7 +370,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -378,7 +378,7 @@
       "id": "sn-50-synth-insights-polymarket-above-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket above daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/above/daily on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/above/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -399,7 +399,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -407,7 +407,7 @@
       "id": "sn-50-synth-insights-polymarket-hit-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket hit daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/hit/daily on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/hit/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -428,7 +428,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -436,7 +436,7 @@
       "id": "sn-50-synth-insights-polymarket-range",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket range",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -457,7 +457,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -465,7 +465,7 @@
       "id": "sn-50-synth-insights-polymarket-range-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket range daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range/daily on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/range/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -486,7 +486,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -494,7 +494,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-15min",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down 15min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/15min on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/15min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -515,7 +515,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -523,7 +523,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-5min",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down 5min",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/5min on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/5min on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -544,7 +544,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -552,7 +552,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-daily",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down daily",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/daily on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/daily on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -573,7 +573,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -581,7 +581,7 @@
       "id": "sn-50-synth-insights-polymarket-up-down-hourly",
       "kind": "subnet-api",
       "name": "Synth GET insights polymarket up down hourly",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/hourly on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/polymarket/up-down/hourly on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -602,7 +602,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -610,7 +610,7 @@
       "id": "sn-50-synth-insights-prediction-percentiles",
       "kind": "subnet-api",
       "name": "Synth GET insights prediction percentiles",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/prediction-percentiles on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /insights/prediction-percentiles on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -631,7 +631,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\".",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\".",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -661,7 +661,7 @@
       "id": "sn-50-synth-rewards-scores",
       "kind": "subnet-api",
       "name": "Synth GET rewards scores",
-      "notes": "GET /rewards/scores on api.synthdata.co \u2014 public, no auth. Required query params: from, to. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /rewards/scores on api.synthdata.co — public, no auth. Required query params: from, to. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -683,7 +683,7 @@
       "id": "sn-50-synth-v2-leaderboard-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 leaderboard historical",
-      "notes": "GET /v2/leaderboard/historical on api.synthdata.co \u2014 public, no auth. Required query params: start_time, end_time. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /v2/leaderboard/historical on api.synthdata.co — public, no auth. Required query params: start_time, end_time. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -705,7 +705,7 @@
       "id": "sn-50-synth-v2-meta-leaderboard-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 meta leaderboard historical",
-      "notes": "GET /v2/meta-leaderboard/historical on api.synthdata.co \u2014 public, no auth. Required query params: start_time. Not individually curled \u2014 no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /v2/meta-leaderboard/historical on api.synthdata.co — public, no auth. Required query params: start_time. Not individually curled — no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -726,7 +726,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: asset, time_increment, time_length.",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: asset, time_increment, time_length.",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -755,7 +755,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: miner, asset, start_time, time_increment, time_length.",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: miner, asset, start_time, time_increment, time_length.",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -763,7 +763,7 @@
       "id": "sn-50-synth-v2-prediction-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction historical",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/historical on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -784,7 +784,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: miner, asset, time_increment, time_length.",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: miner, asset, time_increment, time_length.",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -813,7 +813,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block \u2014 Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: asset.",
+        "scopes_note": "Derived from the subnet's own Swagger 2.0 schema: a required `Authorization` header parameter (not a formal OpenAPI `security` block — Synth's own convention), example value \"Apikey MY_API_KEY\". Also requires query params: asset.",
         "value_format": "Apikey <key>"
       },
       "auth_required": true,
@@ -821,7 +821,7 @@
       "id": "sn-50-synth-v2-prediction-metamodel-historical",
       "kind": "subnet-api",
       "name": "Synth GET v2 prediction metamodel historical",
-      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/metamodel/historical on api.synthdata.co. Not individually curled \u2014 same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key via required Authorization header, Phase 3 credential passthrough, not built yet) GET /v2/prediction/metamodel/historical on api.synthdata.co. Not individually curled — same required `Authorization` header as the verified `sn-50-synth-insights-volatility` (400 \"missing key in request header\"), declared identically in the schema. Path/shape from the subnet's own Swagger schema; registered per the registry's full-API-parity policy (metagraphed#7063) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -843,7 +843,7 @@
       "id": "sn-50-synth-validation-miner",
       "kind": "subnet-api",
       "name": "Synth GET validation miner",
-      "notes": "GET /validation/miner on api.synthdata.co \u2014 public, no auth. Required query params: uid. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /validation/miner on api.synthdata.co — public, no auth. Required query params: uid. Live-verified 2026-07-21 with a real, valid parameter set. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -865,7 +865,7 @@
       "id": "sn-50-synth-validation-prompts",
       "kind": "subnet-api",
       "name": "Synth GET validation prompts",
-      "notes": "GET /validation/prompts on api.synthdata.co \u2014 public, no auth. Required query params: from, to, time_increment, time_length. Not individually curled \u2014 no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /validation/prompts on api.synthdata.co — public, no auth. Required query params: from, to, time_increment, time_length. Not individually curled — no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -887,7 +887,7 @@
       "id": "sn-50-synth-validation-realized-path",
       "kind": "subnet-api",
       "name": "Synth GET validation realized path",
-      "notes": "GET /validation/realized-path on api.synthdata.co \u2014 public, no auth. Required query params: start_time, time_increment, time_length. Not individually curled \u2014 no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /validation/realized-path on api.synthdata.co — public, no auth. Required query params: start_time, time_increment, time_length. Not individually curled — no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -909,7 +909,7 @@
       "id": "sn-50-synth-validation-scores-historical",
       "kind": "subnet-api",
       "name": "Synth GET validation scores historical",
-      "notes": "GET /validation/scores/historical on api.synthdata.co \u2014 public, no auth. Required query params: from, to. Not individually curled \u2014 no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) \u2014 already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
+      "notes": "GET /validation/scores/historical on api.synthdata.co — public, no auth. Required query params: from, to. Not individually curled — no auth declared in the schema, same as the verified public query-param endpoints above. Registered with the fixed base url (no query string baked in) per the registry's full-API-parity policy (metagraphed#7063) — already callable today via call_subnet_surface's own query argument. probe.enabled:false is the safer default here: an auto-probe with no query params would just 400.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -926,5 +926,5 @@
       "url": "https://api.synthdata.co/validation/scores/historical"
     }
   ],
-  "website_url": "https://synthdata.co/"
+  "website_url": "https://synthdata.co"
 }
