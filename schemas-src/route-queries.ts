@@ -302,6 +302,10 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #13164: per-netuid service registry -- a subnet carries a handful of
   // service bindings, not a series.
   "/api/v1/subnets/{netuid}/services",
+  // #13165: per-netuid balancer Swap card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/swap",
+  // #13165: per-netuid AlphaAssets card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/alpha-assets",
   // #13163: per-account lock card -- an account holds a handful of locks,
   // not a series.
   "/api/v1/accounts/{ss58}/locks",

@@ -3777,6 +3777,8 @@ export type Query = {
   source_snapshots: SourceSnapshotList;
   /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}. */
   subnet?: Maybe<Subnet>;
+  /** One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets. */
+  subnet_alpha_assets: SubnetAlphaAssets;
   /** One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
   subnet_alpha_dividends: SubnetAlphaDividends;
   /** Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals. */
@@ -3885,6 +3887,8 @@ export type Query = {
   subnet_stake_transfers: SubnetStakeTransfers;
   /** When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history. */
   subnet_surface_history: SubnetSurfaceHistory;
+  /** One subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate) with their capture stamp. Until the engine's balancer capture lands, the store holds no rows and this resolves to the schema-stable decline -- swap NULL, never a zeroed state, because an absent capture is not a measured empty pool. Mirrors GET /api/v1/subnets/{netuid}/swap. */
+  subnet_swap: SubnetSwap;
   /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   subnet_trajectory: SubnetTrajectory;
   /** What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), `found: false` (read at a commit and found nothing — evidence), and a reviewed share. `declared_matches_observed` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
@@ -4913,6 +4917,11 @@ export type QuerySubnetArgs = {
 };
 
 
+export type QuerySubnet_Alpha_AssetsArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_Alpha_DividendsArgs = {
   netuid: Scalars['Int']['input'];
 };
@@ -5277,6 +5286,11 @@ export type QuerySubnet_Stake_TransfersArgs = {
 
 export type QuerySubnet_Surface_HistoryArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_SwapArgs = {
   netuid: Scalars['Int']['input'];
 };
 
@@ -6317,6 +6331,28 @@ export type SubnetSurfacesArgs = {
   order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** One subnet's current AlphaAssets accounting (#13165). Null `alpha_assets` until the engine's alpha-assets capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets. */
+export type SubnetAlphaAssets = {
+  __typename?: 'SubnetAlphaAssets';
+  /** The subnet's newest captured alpha-asset accounting. NULL when the store holds no capture for this subnet (store unbound, or the alpha-assets capture has not run): an absent state is never served as a zeroed one. */
+  alpha_assets?: Maybe<SubnetAlphaAssetsState>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
+/** One captured alpha-asset accounting state of a subnet: total issuance and its burn/recycle sinks with their capture stamp. */
+export type SubnetAlphaAssetsState = {
+  __typename?: 'SubnetAlphaAssetsState';
+  /** Alpha burned on this subnet (AlphaAssets.AlphaBurned) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  burned?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  recycled?: Maybe<Scalars['String']['output']>;
+  /** The subnet's total alpha issuance (AlphaAssets.TotalAlphaIssuance) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  total_issuance?: Maybe<Scalars['String']['output']>;
 };
 
 /** One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp. */
@@ -7920,6 +7956,28 @@ export type SubnetSurfaceHistory = {
   surface_count: Scalars['Int']['output'];
 };
 
+/** One subnet's current balancer-based Swap state (#13165). Null `swap` until the engine's balancer capture lands. Mirrors GET /api/v1/subnets/{netuid}/swap. */
+export type SubnetSwap = {
+  __typename?: 'SubnetSwap';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** The subnet's newest captured balancer state. NULL when the store holds no capture for this subnet (store unbound, or the balancer capture has not run): an absent state is never served as a zeroed one. */
+  swap?: Maybe<SubnetSwapState>;
+};
+
+/** One captured balancer state of a subnet's Swap pool: the TAO and alpha reservoirs and the raw fee rate with their capture stamp. */
+export type SubnetSwapState = {
+  __typename?: 'SubnetSwapState';
+  /** The subnet pool's alpha reservoir (Swap.BalancerAlphaReservoir) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  alpha_reservoir?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The pool's swap fee rate (Swap.FeeRate) -- the chain's raw u16 as stored, served verbatim because the engine's decode owns the scaling. Null when the capture did not carry it -- never coalesced to 0, which would claim a measured fee-free pool. */
+  fee_rate?: Maybe<Scalars['Int']['output']>;
+  /** The subnet pool's TAO reservoir (Swap.BalancerTaoReservoir) -- u64 atomic units (rao) as a decimal string. Null when not captured, never fabricated as 0. */
+  tao_reservoir?: Maybe<Scalars['String']['output']>;
+};
+
 /** One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
 export type SubnetTrajectory = {
   __typename?: 'SubnetTrajectory';
@@ -9185,6 +9243,8 @@ export type ResolversTypes = ResolversObject<{
   StakeLock: ResolverTypeWrapper<StakeLock>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subnet: ResolverTypeWrapper<Subnet>;
+  SubnetAlphaAssets: ResolverTypeWrapper<SubnetAlphaAssets>;
+  SubnetAlphaAssetsState: ResolverTypeWrapper<SubnetAlphaAssetsState>;
   SubnetAlphaDividend: ResolverTypeWrapper<SubnetAlphaDividend>;
   SubnetAlphaDividends: ResolverTypeWrapper<SubnetAlphaDividends>;
   SubnetAxonRemovals: ResolverTypeWrapper<SubnetAxonRemovals>;
@@ -9295,6 +9355,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetStakeQuote: ResolverTypeWrapper<SubnetStakeQuote>;
   SubnetStakeTransfers: ResolverTypeWrapper<SubnetStakeTransfers>;
   SubnetSurfaceHistory: ResolverTypeWrapper<SubnetSurfaceHistory>;
+  SubnetSwap: ResolverTypeWrapper<SubnetSwap>;
+  SubnetSwapState: ResolverTypeWrapper<SubnetSwapState>;
   SubnetTrajectory: ResolverTypeWrapper<SubnetTrajectory>;
   SubnetTrajectoryDelta: ResolverTypeWrapper<SubnetTrajectoryDelta>;
   SubnetTrajectoryPoint: ResolverTypeWrapper<SubnetTrajectoryPoint>;
@@ -9677,6 +9739,8 @@ export type ResolversParentTypes = ResolversObject<{
   StakeLock: StakeLock;
   String: Scalars['String']['output'];
   Subnet: Subnet;
+  SubnetAlphaAssets: SubnetAlphaAssets;
+  SubnetAlphaAssetsState: SubnetAlphaAssetsState;
   SubnetAlphaDividend: SubnetAlphaDividend;
   SubnetAlphaDividends: SubnetAlphaDividends;
   SubnetAxonRemovals: SubnetAxonRemovals;
@@ -9787,6 +9851,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetStakeQuote: SubnetStakeQuote;
   SubnetStakeTransfers: SubnetStakeTransfers;
   SubnetSurfaceHistory: SubnetSurfaceHistory;
+  SubnetSwap: SubnetSwap;
+  SubnetSwapState: SubnetSwapState;
   SubnetTrajectory: SubnetTrajectory;
   SubnetTrajectoryDelta: SubnetTrajectoryDelta;
   SubnetTrajectoryPoint: SubnetTrajectoryPoint;
@@ -12736,6 +12802,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   source_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   source_snapshots?: Resolver<ResolversTypes['SourceSnapshotList'], ParentType, ContextType, Partial<QuerySource_SnapshotsArgs>>;
   subnet?: Resolver<Maybe<ResolversTypes['Subnet']>, ParentType, ContextType, RequireFields<QuerySubnetArgs, 'netuid'>>;
+  subnet_alpha_assets?: Resolver<ResolversTypes['SubnetAlphaAssets'], ParentType, ContextType, RequireFields<QuerySubnet_Alpha_AssetsArgs, 'netuid'>>;
   subnet_alpha_dividends?: Resolver<ResolversTypes['SubnetAlphaDividends'], ParentType, ContextType, RequireFields<QuerySubnet_Alpha_DividendsArgs, 'netuid'>>;
   subnet_axon_removals?: Resolver<ResolversTypes['SubnetAxonRemovals'], ParentType, ContextType, RequireFields<QuerySubnet_Axon_RemovalsArgs, 'netuid'>>;
   subnet_burn?: Resolver<Maybe<ResolversTypes['SubnetBurn']>, ParentType, ContextType, RequireFields<QuerySubnet_BurnArgs, 'netuid'>>;
@@ -12790,6 +12857,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_stake_quote?: Resolver<ResolversTypes['SubnetStakeQuote'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_QuoteArgs, 'amount' | 'netuid'>>;
   subnet_stake_transfers?: Resolver<ResolversTypes['SubnetStakeTransfers'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_TransfersArgs, 'netuid'>>;
   subnet_surface_history?: Resolver<ResolversTypes['SubnetSurfaceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Surface_HistoryArgs, 'netuid'>>;
+  subnet_swap?: Resolver<ResolversTypes['SubnetSwap'], ParentType, ContextType, RequireFields<QuerySubnet_SwapArgs, 'netuid'>>;
   subnet_trajectory?: Resolver<ResolversTypes['SubnetTrajectory'], ParentType, ContextType, RequireFields<QuerySubnet_TrajectoryArgs, 'netuid'>>;
   subnet_treasury?: Resolver<ResolversTypes['SubnetTreasury'], ParentType, ContextType, RequireFields<QuerySubnet_TreasuryArgs, 'netuid'>>;
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
@@ -13479,6 +13547,20 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   surfaces?: Resolver<Array<ResolversTypes['Surface']>, ParentType, ContextType, Partial<SubnetSurfacesArgs>>;
   symbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaAssetsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaAssets'] = ResolversParentTypes['SubnetAlphaAssets']> = ResolversObject<{
+  alpha_assets?: Resolver<Maybe<ResolversTypes['SubnetAlphaAssetsState']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaAssetsStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaAssetsState'] = ResolversParentTypes['SubnetAlphaAssetsState']> = ResolversObject<{
+  burned?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  recycled?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total_issuance?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetAlphaDividendResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaDividend'] = ResolversParentTypes['SubnetAlphaDividend']> = ResolversObject<{
@@ -14696,6 +14778,20 @@ export type SubnetSurfaceHistoryResolvers<ContextType = GqlContext, ParentType e
   surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetSwapResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetSwap'] = ResolversParentTypes['SubnetSwap']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  swap?: Resolver<Maybe<ResolversTypes['SubnetSwapState']>, ParentType, ContextType>;
+}>;
+
+export type SubnetSwapStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetSwapState'] = ResolversParentTypes['SubnetSwapState']> = ResolversObject<{
+  alpha_reservoir?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  fee_rate?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  tao_reservoir?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SubnetTrajectoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTrajectory'] = ResolversParentTypes['SubnetTrajectory']> = ResolversObject<{
   deltas?: Resolver<Array<ResolversTypes['SubnetTrajectoryDelta']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -15657,6 +15753,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SourceSnapshotsArtifactSummary?: SourceSnapshotsArtifactSummaryResolvers<ContextType>;
   StakeLock?: StakeLockResolvers<ContextType>;
   Subnet?: SubnetResolvers<ContextType>;
+  SubnetAlphaAssets?: SubnetAlphaAssetsResolvers<ContextType>;
+  SubnetAlphaAssetsState?: SubnetAlphaAssetsStateResolvers<ContextType>;
   SubnetAlphaDividend?: SubnetAlphaDividendResolvers<ContextType>;
   SubnetAlphaDividends?: SubnetAlphaDividendsResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;
@@ -15767,6 +15865,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetStakeQuote?: SubnetStakeQuoteResolvers<ContextType>;
   SubnetStakeTransfers?: SubnetStakeTransfersResolvers<ContextType>;
   SubnetSurfaceHistory?: SubnetSurfaceHistoryResolvers<ContextType>;
+  SubnetSwap?: SubnetSwapResolvers<ContextType>;
+  SubnetSwapState?: SubnetSwapStateResolvers<ContextType>;
   SubnetTrajectory?: SubnetTrajectoryResolvers<ContextType>;
   SubnetTrajectoryDelta?: SubnetTrajectoryDeltaResolvers<ContextType>;
   SubnetTrajectoryPoint?: SubnetTrajectoryPointResolvers<ContextType>;

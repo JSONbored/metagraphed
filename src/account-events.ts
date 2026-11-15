@@ -148,6 +148,13 @@ export const INGESTED_EVENT_KINDS = [
   // same forward-compat footing as the Gamma kinds above.
   "ServiceSet",
   "ServiceRemoved",
+  // The v490 balancer-based Swap pallet's one event (#13165, Swap.FeeRateSet)
+  // -- same forward-compat footing as the Gamma kinds above: it lands
+  // raw-only in chain_detail_chain_events today, and the structured decode
+  // lands with the engine. Named here so ?kind= accepts it the day the
+  // producer emits it instead of 400ing on a kind the chain demonstrably
+  // fires.
+  "FeeRateSet",
   // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
   // -- same forward-compat footing again.
   "TaoUsdPriceFed",

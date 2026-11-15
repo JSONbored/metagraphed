@@ -126,6 +126,13 @@ test("INGESTED_EVENT_KINDS accepts the Gamma and Services kinds (#13164)", () =>
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts FeeRateSet (#13165)", () => {
+  // Same forward-compat footing as the Gamma kinds: the v490 Swap pallet's
+  // one event lands raw-only today, and ?kind= must accept a kind the
+  // runtime demonstrably fires instead of 400ing on it.
+  assert.ok(INGESTED_EVENT_KINDS.includes("FeeRateSet"), "missing FeeRateSet");
+});
+
 test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
   // Same forward-compat footing as the Gamma kinds: the oracle-feed decode
   // lands with the engine.

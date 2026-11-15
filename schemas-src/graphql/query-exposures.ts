@@ -460,6 +460,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
   },
   {
+    field: "subnet_swap",
+    operation: "subnet-swap",
+    returns: "SubnetSwap!",
+    description:
+      "One subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate) with their capture stamp. Until the engine's balancer capture lands, the store holds no rows and this resolves to the schema-stable decline -- swap NULL, never a zeroed state, because an absent capture is not a measured empty pool. Mirrors GET /api/v1/subnets/{netuid}/swap.",
+  },
+  {
+    field: "subnet_alpha_assets",
+    operation: "subnet-alpha-assets",
+    returns: "SubnetAlphaAssets!",
+    description:
+      "One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.",
+  },
+  {
     field: "subnet_stake_moves",
     operation: "subnet-stake-moves",
     returns: "SubnetStakeMoves!",

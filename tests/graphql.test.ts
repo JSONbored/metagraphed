@@ -26285,3 +26285,120 @@ describe("graphql — subnet_services (#13164)", () => {
     assert.match(errors[0]?.message ?? "", /netuid/);
   });
 });
+
+// The subnet_swap field (#13165): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served state match exactly.
+describe("graphql — subnet_swap (#13165)", () => {
+  const SELECTION = `{ subnet_swap(netuid: 64) {
+      schema_version netuid captured_at
+      swap { tao_reservoir alpha_reservoir fee_rate captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_swap, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured empty pool.
+      swap: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      SUBNET_SWAP_STORE: {
+        latest: async () => [
+          {
+            tao_reservoir: "5000000000",
+            alpha_reservoir: "12500",
+            fee_rate: 300,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_swap.swap, {
+      tao_reservoir: "5000000000",
+      alpha_reservoir: "12500",
+      fee_rate: 300,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_swap(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The subnet_alpha_assets field (#13165): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served accounting match
+// exactly.
+describe("graphql — subnet_alpha_assets (#13165)", () => {
+  const SELECTION = `{ subnet_alpha_assets(netuid: 64) {
+      schema_version netuid captured_at
+      alpha_assets { total_issuance burned recycled captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_assets, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured zero issuance.
+      alpha_assets: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the accounting", async () => {
+    const env = {
+      SUBNET_ALPHA_ASSETS_STORE: {
+        latest: async () => [
+          {
+            total_issuance: "18446744073709551615",
+            burned: "900",
+            recycled: "0",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_assets.alpha_assets, {
+      total_issuance: "18446744073709551615",
+      burned: "900",
+      recycled: "0",
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_alpha_assets(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});

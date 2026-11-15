@@ -176,6 +176,10 @@ export const FIELD_COMPLEXITY = {
   gamma_deposits: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13164: one bounded read of a handful of app.subnet_services rows.
   subnet_services: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded newest-capture read of app.swap_balancer.
+  subnet_swap: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded newest-capture read of app.alpha_assets.
+  subnet_alpha_assets: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one bounded read of a handful of app.stake_locks rows.
   account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
   // #13163: one completed capture's funds, capped by the receiver's own

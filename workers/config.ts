@@ -715,6 +715,13 @@ export const GAMMA_DEPOSITS_PATH = "/api/v1/gamma/deposits";
 // services store.
 export const SUBNET_SERVICES_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/services$/;
+// One subnet's current balancer-based Swap state (#13165), live from the
+// swap store, no static file.
+export const SUBNET_SWAP_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/swap$/;
+// One subnet's current AlphaAssets accounting (#13165), live from the
+// alpha-assets store, no static file.
+export const SUBNET_ALPHA_ASSETS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/alpha-assets$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

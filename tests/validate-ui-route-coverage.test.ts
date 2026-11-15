@@ -164,8 +164,14 @@ describe("the named prose-only exemption (#10517)", () => {
     // lands. Same discipline: the stale-entry check forces removal the
     // moment one is rendered, and a route that is NOT engine-gated must
     // render instead of widening this.
+    //
+    // 12 -> 14 (#13165): the Swap/AlphaAssets serving slice publishes two
+    // more routes of the same engine-gated class (subnets/{netuid}/swap,
+    // subnets/{netuid}/alpha-assets) -- both tables are empty until the
+    // engine's balancer and alpha-assets captures land. Same discipline as
+    // above.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 12,
+      PROSE_ONLY_ROUTES.length <= 14,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

@@ -347,6 +347,14 @@ import {
   SubnetServicesArtifactSchema,
 } from "./routes/subnet-services.ts";
 import {
+  SubnetSwapStateSchema,
+  SubnetSwapArtifactSchema,
+} from "./routes/subnet-swap.ts";
+import {
+  SubnetAlphaAssetsStateSchema,
+  SubnetAlphaAssetsArtifactSchema,
+} from "./routes/subnet-alpha-assets.ts";
+import {
   StakeLockSchema,
   AccountLocksArtifactSchema,
 } from "./routes/account-locks.ts";
@@ -916,6 +924,10 @@ register(GammaDepositSchema, "GammaDeposit");
 register(GammaDepositsArtifactSchema, "GammaDepositsArtifact");
 register(SubnetServiceSchema, "SubnetService");
 register(SubnetServicesArtifactSchema, "SubnetServicesArtifact");
+register(SubnetSwapStateSchema, "SubnetSwapState");
+register(SubnetSwapArtifactSchema, "SubnetSwapArtifact");
+register(SubnetAlphaAssetsStateSchema, "SubnetAlphaAssetsState");
+register(SubnetAlphaAssetsArtifactSchema, "SubnetAlphaAssetsArtifact");
 register(StakeLockSchema, "StakeLock");
 register(AccountLocksArtifactSchema, "AccountLocksArtifact");
 register(BasketCaptureSchema, "BasketCapture");

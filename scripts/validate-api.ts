@@ -1826,6 +1826,28 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/swap",
+    (body) => {
+      // #13165: no swap store is bound in this harness, so the one honest
+      // body is the decline -- a NULL state (never a zeroed one: an absent
+      // capture is not a measured empty pool).
+      assert.equal(body.data.swap, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/alpha-assets",
+    (body) => {
+      // #13165: same decline for the AlphaAssets accounting -- a NULL state
+      // (never a zeroed one: an absent capture is not a measured zero
+      // issuance).
+      assert.equal(body.data.alpha_assets, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
     "/api/v1/chain/baskets",
     (body) => {
       // #13163: no capture store is bound in this harness, so the one honest
