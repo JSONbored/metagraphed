@@ -2,7 +2,7 @@
 // tool (metagraphed#7083, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN70's *real* registry surface configs
-// (registry/subnets/nexisgen.json) to the tool's contract, so a future edit
+// (registry/subnets/fugal.json) to the tool's contract, so a future edit
 // that regresses their callability (flipping to HEAD, marking one
 // auth_required, disabling a probe) is caught here.
 //
@@ -40,9 +40,7 @@ const NETUID = 70;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/nexisgen.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/fugal.json", import.meta.url)),
     "utf8",
   ),
 );

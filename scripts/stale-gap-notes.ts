@@ -72,7 +72,7 @@ export function classifyGapNote(note: unknown): string | null {
 // A surface only contradicts a gap note if it is the subnet's OWN first-party
 // surface. A third-party aggregator's wrapper around a subnet's data (e.g.
 // TaoMarketCap's generic per-subnet API) is not the same claim as "the subnet
-// publishes its own API" — see registry/subnets/oneoneone.json (#5738).
+// publishes its own API" — see registry/subnets/claims.json (#5738).
 export function isFirstPartySurface(
   surface: Row,
   providersById: Map<unknown, Row>,

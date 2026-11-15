@@ -77,24 +77,6 @@
     },
     {
       "auth_required": false,
-      "authority": "official",
-      "id": "sn-125-eightball-docs",
-      "kind": "docs",
-      "name": "8 Ball miner documentation",
-      "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "eightball",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Barbariandev/8Ball_miner"],
-      "url": "https://github.com/Barbariandev/8Ball_miner#readme"
-    },
-    {
-      "auth_required": false,
       "authority": "community",
       "id": "sn-125-eightball-subnet-api",
       "kind": "subnet-api",

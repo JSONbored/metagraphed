@@ -2,7 +2,7 @@
 // tool (metagraphed#7135, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN127's *real* registry surface config
-// (registry/subnets/astrid.json) to the tool's contract, so a future edit
+// (registry/subnets/zils.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping method, marking it auth_required,
 // disabling its probe, changing the path) is caught here.
 //
@@ -26,7 +26,7 @@ const SURFACE_ID = "sn-127-astrid-subnet-api";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/astrid.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/zils.json", import.meta.url)),
     "utf8",
   ),
 );

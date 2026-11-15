@@ -7,7 +7,7 @@
 // on-chain snapshot (`id`/`netuid` 116, `created_at_block` 5699219,
 // `registered_at` 2025-06-03T09:58:48+00:00), HEAD is rejected with 405, and
 // the non-slash path 301s to the canonical trailing-slash form. Nothing in
-// registry/subnets/taolend.json's sn-116-taomarketcap-subnet-api entry needed
+// registry/subnets/carbon.json's sn-116-taomarketcap-subnet-api entry needed
 // fixing (probe GET/json, auth_required:false, and the fixed single endpoint
 // all match reality). This pins that contract through the tool -- surface
 // resolution by real id/key, the declared GET/json probe, and JSON body
@@ -19,7 +19,7 @@ import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 // The SN116 TaoMarketCap surface exactly as the build emits it into
-// operational-surfaces.json (registry/subnets/taolend.json ->
+// operational-surfaces.json (registry/subnets/carbon.json ->
 // sn-116-taomarketcap-subnet-api).
 const SN116_SURFACE = {
   surface_id: "sn-116-taomarketcap-subnet-api",

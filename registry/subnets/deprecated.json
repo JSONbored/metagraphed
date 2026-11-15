@@ -3,6 +3,7 @@
     "baseline-curated",
     "compute",
     "identity-drift",
+    "identity-placeholder",
     "identity-reviewed",
     "official-source-repo"
   ],

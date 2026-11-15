@@ -2,7 +2,7 @@
 // (metagraphed#7058, MCP execute Phase 1 follow-up #7014/#7215; issue #7040).
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN24's *real* registry surface
-// config (registry/subnets/quasar.json) to the tool's contract, so a future
+// config (registry/subnets/ms-computer.json) to the tool's contract, so a future
 // edit that regresses its callability (flipping to HEAD, marking it
 // auth_required, disabling its probe, moving the url) is caught here.
 //
@@ -27,7 +27,9 @@ const NETUID = 24;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/quasar.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/ms-computer.json", import.meta.url),
+    ),
     "utf8",
   ),
 );
