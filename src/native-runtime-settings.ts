@@ -16,7 +16,10 @@ export const NATIVE_ROLE_DEFAULTS = Object.freeze({
     METAGRAPH_VALIDATE_RESPONSES: "true",
     METAGRAPH_AUDIT_RESPONSES: "enforce",
     METAGRAPH_ENABLE_AI: "true",
-    RAW_CAPTURE_ENABLED: "true",
+    // "false" since #13187 paused the two D1-burning lanes in wrangler.jsonc;
+    // the native defaults mirror the deployed vars (the native-environment
+    // contract test enforces the equality).
+    RAW_CAPTURE_ENABLED: "false",
     ICEBERG_BLOCKS_MAX: "8759336",
     METAGRAPH_NEURONS_SOURCE: "data-api",
     POSTHOG_TRACES_SAMPLE_RATE_MCP: "0.25",
@@ -27,7 +30,8 @@ export const NATIVE_ROLE_DEFAULTS = Object.freeze({
     METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "data-api",
     METAGRAPH_SUBNET_IDENTITY_SOURCE: "retired",
     METAGRAPH_HEALTH_SOURCE: "data-api",
-    CHAIN_HEAD_POLL_ENABLED: "true",
+    // "false" since #13187 -- see RAW_CAPTURE_ENABLED above.
+    CHAIN_HEAD_POLL_ENABLED: "false",
     CHAIN_HEAD_RPC_URL: "https://archive.chain.opentensor.ai",
     CHAIN_HEAD_POLL_INTERVAL_MS: "6000",
     CHAIN_HEAD_EVENT_COUNT_ENABLED: "true",
