@@ -2725,15 +2725,35 @@ export type EvidenceList = {
   total: Scalars['Int']['output'];
 };
 
-/** Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
+/** EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- `source` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
 export type EvmAddressMapping = {
   __typename?: 'EvmAddressMapping';
+  /** How many stored associations this answer carries -- `associations.length`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published. */
+  association_count?: Maybe<Scalars['Int']['output']>;
+  /** The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands. */
+  associations: Array<EvmAssociation>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   h160: Scalars['String']['output'];
   queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
+  /** Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands. */
+  source: Scalars['String']['output'];
   ss58?: Maybe<Scalars['String']['output']>;
+};
+
+/** One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp. */
+export type EvmAssociation = {
+  __typename?: 'EvmAssociation';
+  /** The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis. */
+  associated_at?: Maybe<Scalars['Int']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet the association names. */
+  netuid: Scalars['Int']['output'];
+  /** The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it. */
+  ss58?: Maybe<Scalars['String']['output']>;
+  /** The UID the EVM key is associated to. */
+  uid: Scalars['Int']['output'];
 };
 
 export type Extrinsic = {
@@ -9166,6 +9186,7 @@ export type ResolversTypes = ResolversObject<{
   EvidenceLedgerArtifactSummary: ResolverTypeWrapper<EvidenceLedgerArtifactSummary>;
   EvidenceList: ResolverTypeWrapper<EvidenceList>;
   EvmAddressMapping: ResolverTypeWrapper<EvmAddressMapping>;
+  EvmAssociation: ResolverTypeWrapper<EvmAssociation>;
   Extrinsic: ResolverTypeWrapper<Extrinsic>;
   ExtrinsicDetail: ResolverTypeWrapper<ExtrinsicDetail>;
   ExtrinsicList: ResolverTypeWrapper<ExtrinsicList>;
@@ -9665,6 +9686,7 @@ export type ResolversParentTypes = ResolversObject<{
   EvidenceLedgerArtifactSummary: EvidenceLedgerArtifactSummary;
   EvidenceList: EvidenceList;
   EvmAddressMapping: EvmAddressMapping;
+  EvmAssociation: EvmAssociation;
   Extrinsic: Extrinsic;
   ExtrinsicDetail: ExtrinsicDetail;
   ExtrinsicList: ExtrinsicList;
@@ -12085,11 +12107,22 @@ export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends R
 }>;
 
 export type EvmAddressMappingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvmAddressMapping'] = ResolversParentTypes['EvmAddressMapping']> = ResolversObject<{
+  association_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  associations?: Resolver<Array<ResolversTypes['EvmAssociation']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   h160?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   ss58?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type EvmAssociationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvmAssociation'] = ResolversParentTypes['EvmAssociation']> = ResolversObject<{
+  associated_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ExtrinsicResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Extrinsic'] = ResolversParentTypes['Extrinsic']> = ResolversObject<{
@@ -15703,6 +15736,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   EvidenceLedgerArtifactSummary?: EvidenceLedgerArtifactSummaryResolvers<ContextType>;
   EvidenceList?: EvidenceListResolvers<ContextType>;
   EvmAddressMapping?: EvmAddressMappingResolvers<ContextType>;
+  EvmAssociation?: EvmAssociationResolvers<ContextType>;
   Extrinsic?: ExtrinsicResolvers<ContextType>;
   ExtrinsicDetail?: ExtrinsicDetailResolvers<ContextType>;
   ExtrinsicList?: ExtrinsicListResolvers<ContextType>;

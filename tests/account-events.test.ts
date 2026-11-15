@@ -151,6 +151,15 @@ test("INGESTED_EVENT_KINDS accepts the nine LimitOrders kinds (#13165)", () => {
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts EvmKeyAssociated (#13165)", () => {
+  // Same forward-compat footing: the structured decode (into
+  // app.evm_associations) lands with the engine.
+  assert.ok(
+    INGESTED_EVENT_KINDS.includes("EvmKeyAssociated"),
+    "missing EvmKeyAssociated",
+  );
+});
+
 test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
   // Same forward-compat footing as the Gamma kinds: the oracle-feed decode
   // lands with the engine.

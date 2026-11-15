@@ -2552,7 +2552,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure. */
+        /** @description Fetch the H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated) answers when the engine's capture holds the key's owning ss58 — with its capture history in `associations`, newest first and store-capped — otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache; `source` says which path answered. ss58 is null when neither resolves. associations is empty with association_count null until the engine's capture lands: an empty list is not a measured never-associated key, so a zero count is never published. */
         get: operations["evmAddressMapping"];
         put?: never;
         post?: never;
@@ -9159,8 +9159,12 @@ export interface components {
                 surface_claim_count: number;
             };
         };
-        /** @description Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
+        /** @description EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- `source` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
         EvmAddressMappingArtifact: {
+            /** @description How many stored associations this answer carries -- `associations.length`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published. */
+            association_count: number | null;
+            /** @description The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands. */
+            associations: components["schemas"]["EvmAssociation"][];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -9174,7 +9178,24 @@ export interface components {
             h160: string;
             queried_at?: string | null;
             schema_version: number;
+            /**
+             * @description Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands.
+             * @enum {string}
+             */
+            source: "storage" | "precompile";
             ss58?: string | null;
+        };
+        /** @description One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp. */
+        EvmAssociation: {
+            /** @description The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis. */
+            associated_at: number | null;
+            captured_at: string | null;
+            /** @description The subnet the association names. */
+            netuid: number;
+            /** @description The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it. */
+            ss58: string | null;
+            /** @description The UID the EVM key is associated to. */
+            uid: number;
         };
         ExtrinsicDetailArtifact: {
             events: components["schemas"]["AccountEvent"][];
@@ -20170,6 +20191,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "association_count": 1,
+                     *         "associations": [
+                     *           {
+                     *             "associated_at": 1,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7,
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "uid": 1
+                     *           }
+                     *         ],
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -20179,6 +20210,7 @@ export interface operations {
                      *         "h160": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "source": "storage",
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
                      *       },
                      *       "meta": {
@@ -36454,6 +36486,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "association_count": 1,
+                     *         "associations": [
+                     *           {
+                     *             "associated_at": 1,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7,
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "uid": 1
+                     *           }
+                     *         ],
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -36463,6 +36505,7 @@ export interface operations {
                      *         "h160": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "source": "storage",
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
                      *       },
                      *       "meta": {

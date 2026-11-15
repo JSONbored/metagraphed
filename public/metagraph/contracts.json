@@ -1643,7 +1643,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache (deterministic given h160, never changes). ss58 is null on RPC failure.",
+      "description": "H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress, read through the association store with its capture history in `associations`) answers when the engine's capture holds the key's owning ss58; otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache (deterministic given h160, never changes) — `source` says which path answered. ss58 is null when neither resolves; associations is empty with association_count null until the engine's capture lands (an empty list is not a measured never-associated key).",
       "id": "evm-address-mapping",
       "path": "/metagraph/evm/address/{h160}.json",
       "retirement": null,

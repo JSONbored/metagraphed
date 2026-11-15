@@ -9696,7 +9696,7 @@ type NetworkRandomness {
 }
 
 """
-Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.
+EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- \`source\` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.
 """
 type EvmAddressMapping {
   schema_version: Int!
@@ -9705,9 +9705,46 @@ type EvmAddressMapping {
   queried_at: String
 
   """
+  Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands.
+  """
+  source: String!
+
+  """
+  How many stored associations this answer carries -- \`associations.length\`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published.
+  """
+  association_count: Int
+
+  """
+  The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands.
+  """
+  associations: [EvmAssociation!]!
+
+  """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON!
+}
+
+"""
+One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp.
+"""
+type EvmAssociation {
+  """
+  The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it.
+  """
+  ss58: String
+
+  """The subnet the association names."""
+  netuid: Int!
+
+  """The UID the EVM key is associated to."""
+  uid: Int!
+
+  """
+  The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis.
+  """
+  associated_at: Int
+  captured_at: String
 }
 
 type Subscription {
