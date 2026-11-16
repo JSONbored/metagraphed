@@ -52,11 +52,26 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       (await control.query("SELECT 1 FROM pg_namespace WHERE nspname='auth'"))
         .rowCount === 0;
     assert.ok(ownApp && ownAuth, "requires disposable fixture");
+    // Composed reality (infra#820, producer-first): app.api_keys is the
+    // PRODUCER'S shape before the serving load phase lands, 0010 skips its
+    // staging twin where it exists, and 0056's shape-guard leaves the
+    // producer table standing. This suite proves account parity on that
+    // schema, not the retired one.
+    await control.query("CREATE SCHEMA app");
+    await control.query(
+      `CREATE TABLE app.api_keys (
+         key_id uuid PRIMARY KEY,
+         account_id uuid NOT NULL,
+         token_digest text NOT NULL UNIQUE,
+         expires_at timestamptz NOT NULL
+       )`,
+    );
     for (const name of [
       "0010_account_state.sql",
       "0033_account_numeric.sql",
       "0035_usage_row_identity.sql",
       "0036_usage_row_identity_activate.sql",
+      "0056_identity_plane_handoff.sql",
       "0009_auth_kv.sql",
     ])
       await control.query(
@@ -348,6 +363,24 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       200,
     );
     assert.equal((await both("keys/status", undefined, session)).status, 200);
+    // The native block path wrote the blocklist snapshot into the control KV
+    // (auth.kv_entries) with the bounded TTL -- the durable stored effect,
+    // not just the handler's response bytes. Asserted here, between block and
+    // unblock, where the entry exists.
+    const snapshot = await control.query(
+      "SELECT convert_from(value,'utf8') AS value, expires_at FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+      ["api-key-blocklist"],
+    );
+    assert.equal(snapshot.rowCount, 1);
+    assert.match(String(snapshot.rows[0].value), /"accountKind":"rpc"/);
+    // KV expiration is epoch SECONDS (Workers KV semantics, preserved by the
+    // pg-backed store); the fixture's clock is frozen at `now` milliseconds.
+    const ttlSeconds =
+      Number(snapshot.rows[0].expires_at) - Math.floor(now / 1000);
+    assert.ok(
+      ttlSeconds > 0 && ttlSeconds <= 61,
+      `snapshot TTL ${ttlSeconds}s must be bounded by BLOCKLIST_KV_TTL`,
+    );
     assert.equal(
       (
         await both(
@@ -369,6 +402,60 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
     failRevocation = false;
     await keysInterim(200, "keys/key_fixture", undefined, session, "DELETE");
     await keysInterim(200, "keys", undefined, session);
+    // The producer shape came through the whole suite untouched: the drop in
+    // 0056 fired on nothing, and no account statement reached its table.
+    assert.equal(
+      (
+        await control.query(
+          "SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='app' AND table_name='api_keys' AND column_name='token_digest'",
+        )
+      ).rows[0].n,
+      1,
+    );
+    // Unblock refreshed the snapshot to the empty list -- stale block
+    // entries do not outlive the ledger state that produced them.
+    const cleared = await control.query(
+      "SELECT convert_from(value,'utf8') AS value FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+      ["api-key-blocklist"],
+    );
+    assert.equal(cleared.rowCount, 1);
+    assert.match(String(cleared.rows[0].value), /"blocks":\[\]/);
+    // Pool exhaustion fails identity handlers CLOSED within the connection
+    // timeout, never hanging and never leaking a half-applied write.
+    const releases: (() => void)[] = [];
+    const held = Array.from({ length: 4 }, () =>
+      runtime.transaction(
+        (scope) =>
+          new Promise<void>((resolve) => {
+            releases.push(resolve);
+            void scope;
+          }),
+      ),
+    );
+    while (releases.length < 4) await new Promise((r) => setTimeout(r, 10));
+    const exhausted = await call(
+      nativeEnv,
+      "auth/github/upsert-account",
+      {
+        github_user_id: 2,
+        github_login: "exhausted",
+      },
+      internal,
+    );
+    assert.equal(exhausted.status, 502);
+    for (const release of releases) release();
+    await Promise.all(held);
+    // The pool recovers: the same write succeeds afterwards.
+    const recovered = await call(
+      nativeEnv,
+      "auth/github/upsert-account",
+      {
+        github_user_id: 2,
+        github_login: "exhausted",
+      },
+      internal,
+    );
+    assert.equal(recovered.status, 200);
   } finally {
     Date.now = originalNow;
     globalThis.fetch = originalFetch;
