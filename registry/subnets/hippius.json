@@ -506,6 +506,12 @@
       "kind": "subnet-api",
       "name": "Hippius VM instances",
       "notes": "The caller's VM instance fleet (distinct from the public /vm/flavors/ catalog). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -529,6 +535,12 @@
       "kind": "subnet-api",
       "name": "Hippius VM instance detail",
       "notes": "Path-param template (instance_id) — per-instance detail; same auth gate as the verified /vm/instances/ collection. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -552,6 +564,12 @@
       "kind": "subnet-api",
       "name": "Hippius VM images",
       "notes": "The caller's VM image list. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -575,6 +593,12 @@
       "kind": "subnet-api",
       "name": "Hippius VM applications",
       "notes": "The caller's VM application deployments. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
