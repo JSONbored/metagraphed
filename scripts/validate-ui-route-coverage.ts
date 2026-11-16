@@ -128,6 +128,55 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // exception. The current UI does not consume this route; remove the entry
   // when a real consumer lands, which the stale-entry check below enforces.
   "/api/v1/chain/subnet-price-share-composition",
+  // #13162 publishes the mechanism registry; the registry is empty until the
+  // engine's per-mechanism capture lands, so no UI consumes it yet. Remove the
+  // entry when a real consumer lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/mechanisms",
+  // #13163 publishes the dividend accrual and lock state; both are empty
+  // until the engine's stake-v2 capture lands, so no UI consumes them yet.
+  // Remove the entries when a real consumer lands, which the stale-entry
+  // check enforces.
+  "/api/v1/subnets/{netuid}/alpha-dividends",
+  "/api/v1/accounts/{ss58}/locks",
+  // #13163 serves the stored Root basket captures; no UI consumes them yet.
+  // Remove the entries when a real consumer lands, which the stale-entry
+  // check enforces.
+  "/api/v1/chain/baskets",
+  "/api/v1/validators/{hotkey}/basket",
+  // #13164 publishes the Gamma subsystem and the on-chain service registry;
+  // every table behind them is empty until the engine's Gamma capture lands,
+  // so no UI consumes them yet. Remove the entries when a real consumer
+  // lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/gamma",
+  "/api/v1/subnets/{netuid}/gamma/history",
+  "/api/v1/chain/gamma",
+  "/api/v1/gamma/deposits",
+  "/api/v1/subnets/{netuid}/services",
+  // #13165 publishes the v490 balancer Swap state and AlphaAssets
+  // accounting; both tables behind them are empty until the engine's capture
+  // lands, so no UI consumes them yet. Remove the entries when a real
+  // consumer lands, which the stale-entry check enforces.
+  "/api/v1/subnets/{netuid}/swap",
+  "/api/v1/subnets/{netuid}/alpha-assets",
+  // #13165 publishes the LimitOrders order book; its table is empty until
+  // the engine's order-book capture lands, so no UI consumes it yet. Remove
+  // the entry when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/subnets/{netuid}/limit-orders",
+  // #13166 publishes the v2 coldkey-swap announcement plane and key
+  // successor lineage; every table behind them is empty until the engine's
+  // swap and lineage captures land, so no UI consumes them yet. Remove the
+  // entries when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/accounts/pending-coldkey-swaps",
+  "/api/v1/accounts/{ss58}/coldkey-swap",
+  // #13166 publishes the Proxy-pallet delegation state and the multisig
+  // membership; both tables behind them are empty until the engine's
+  // Proxy/Multisig captures land, so no UI consumes them yet. Remove the
+  // entries when a real consumer lands, which the stale-entry check
+  // enforces.
+  "/api/v1/accounts/{ss58}/proxies",
+  "/api/v1/accounts/{ss58}/multisigs",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */

@@ -2,7 +2,7 @@
 // tool (metagraphed#7071, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN58's *real* registry surface configs
-// (registry/subnets/handshake58.json) to the tool's contract, so a future edit
+// (registry/subnets/attune.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // All six surfaces listed in #7071 were verified live on 2026-07-21 against
@@ -46,9 +46,7 @@ const NETUID = 58;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/handshake58.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/attune.json", import.meta.url)),
     "utf8",
   ),
 );

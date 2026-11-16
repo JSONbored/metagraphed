@@ -40,7 +40,7 @@
   "social": {
     "x": "https://x.com/heydittoai"
   },
-  "source_repo": "https://github.com/ditto-assistant/dittobench-starter-kit",
+  "source_repo": "https://github.com/orgs/ditto-assistant/repositories",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -696,5 +696,5 @@
       "url": "https://api.heyditto.ai/api/admin/v1/users"
     }
   ],
-  "website_url": "https://heyditto.ai/"
+  "website_url": "https://heyditto.ai"
 }

@@ -2,7 +2,7 @@
 // tool (metagraphed#7061, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN47's *real* registry surface config
-// (registry/subnets/evolai.json) to the tool's contract, so a future edit that
+// (registry/subnets/condense.json) to the tool's contract, so a future edit that
 // regresses its callability is caught here.
 //
 // The surface is the public no-auth EvolAI Proxy /datasets list endpoint
@@ -28,7 +28,9 @@ const NETUID = 47;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/evolai.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/condense.json", import.meta.url),
+    ),
     "utf8",
   ),
 );

@@ -1,0 +1,201 @@
+{
+  "baseline_excluded_surface_ids": [
+    "sn-91-taomarketcap-website",
+    "sn-91-website-common-api",
+    "sn-91-website-common-docs",
+    "sn-91-website-common-health",
+    "sn-91-website-common-openapi-json",
+    "sn-91-website-common-swagger",
+    "sn-91-website-common-swagger-json",
+    "sn-91-website-link-bitstarter-ai-website-1",
+    "sn-91-website-link-bitstarter-ai-website-2",
+    "sn-91-website-link-bitstarter-ai-website-3",
+    "sn-91-website-link-bitstarter-ai-website-4",
+    "sn-91-website-link-bitstarter-ai-website-5"
+  ],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "hello@bitstarter.ai",
+  "curation": {
+    "gap_notes": [
+      "Official website, app, how-it-works, and project submission pages are live and verified.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
+      "Generic email-protection and terms-of-service pages are not listed as subnet interfaces.",
+      "Bitstarter currently identifies AlphaCore as the project behind this subnet and links its public source repository.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-15T00:00:00.000Z"
+  },
+  "dashboard_url": "https://app.bitstarter.ai/",
+  "name": "cascade",
+  "netuid": 91,
+  "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, how-it-works page, project submission page, AlphaCore source repository, and universal TaoMarketCap dashboard. Common docs/API/OpenAPI paths currently return 404 and no verified machine-readable schema, safe public subnet API endpoint, or SSE surface has been found yet. Re-review pass (2026-07-15): updated the website surface to the canonical www.bitstarter.ai URL after bitstarter.ai started 307-redirecting.",
+  "schema_version": 1,
+  "slug": "sn-91",
+  "social": {
+    "x": "https://x.com/bitstarterai"
+  },
+  "source_repo": "https://github.com/TensorLink-AI/cascade",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-website",
+      "kind": "website",
+      "name": "Bitstarter website",
+      "notes": "Public Bitstarter website. bitstarter.ai now 307-redirects to www.bitstarter.ai (previously served directly); tracked URL updated to the canonical resolved form to avoid redirect ambiguity, per the same pattern applied across other subnets in this audit.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": ["https://bitstarter.ai/", "https://www.bitstarter.ai/"],
+      "url": "https://www.bitstarter.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-alphacore-source",
+      "kind": "source-repo",
+      "name": "Cascade source repository",
+      "notes": "Official SN91 source repository. Chain-declared in SubnetIdentitiesV3 at block 8823651, where the subnet also now names itself cascade, and verified live 2026-08-13; chain.toml pins netuid 91. Replaces AlphaCoreBittensor/alphacore, which describes a retired mechanism.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "alphacore",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitstarter.ai/",
+        "https://github.com/TensorLink-AI/cascade"
+      ],
+      "url": "https://github.com/TensorLink-AI/cascade"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-app",
+      "kind": "dashboard",
+      "name": "Bitstarter app",
+      "notes": "Public Bitstarter app surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": ["https://app.bitstarter.ai/"],
+      "url": "https://app.bitstarter.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-how-it-works",
+      "kind": "docs",
+      "name": "Bitstarter how it works",
+      "notes": "Public Bitstarter app information page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/how-it-works/"
+      ],
+      "url": "https://app.bitstarter.ai/how-it-works/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-91-bitstarter-submit-project",
+      "kind": "dashboard",
+      "name": "Bitstarter project submission",
+      "notes": "Public Bitstarter app workflow for incubator project submissions.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "source_urls": [
+        "https://app.bitstarter.ai/",
+        "https://app.bitstarter.ai/submit-a-project/incubator/"
+      ],
+      "url": "https://app.bitstarter.ai/submit-a-project/incubator/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-91-bitstarter-updates-health-api",
+      "kind": "subnet-api",
+      "name": "Bitstarter updates platform health API",
+      "notes": "Public no-auth GET returning operational status JSON on the official Bitstarter updates/crowdfund host linked from app.bitstarter.ai project pages.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://bitstarter.ai/",
+        "https://app.bitstarter.ai/",
+        "https://updates.bitstarter.ai/api/health"
+      ],
+      "url": "https://updates.bitstarter.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-91-alphacore-task-config",
+      "kind": "data-artifact",
+      "name": "AlphaCore task-generation config",
+      "notes": "Public no-auth static YAML data file committed in SN91 Bitstarter's official AlphaCoreBittensor/alphacore repository — the validator's task-generation configuration (providers, resource families, and task banks) loaded by the TaskGenerationPipeline via ALPHACORE_CONFIG to construct miner tasks. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo.",
+      "provider": "alphacore",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/AlphaCoreBittensor/alphacore/blob/main/modules/task_config.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/AlphaCoreBittensor/alphacore/main/modules/task_config.yaml"
+    }
+  ],
+  "website_url": "https://www.cascade.industries/"
+}

@@ -221,6 +221,7 @@ import {
   kindSchema,
   kindStringSchema,
   limitSchema,
+  mechidSchema,
   netuidListSchema,
   netuidSchema,
   offsetSchema,
@@ -278,6 +279,56 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #10933: per-netuid card, no window and no paging -- a subnet has a handful
   // of source repos, not a series.
   "/api/v1/subnets/{netuid}/treasury",
+  // #13162: per-netuid registry card -- a subnet has a handful of mechanisms,
+  // not a series; the mechid filter lives on the per-UID surfaces instead.
+  "/api/v1/subnets/{netuid}/mechanisms",
+  // #13163: per-netuid accrual card over one bounded store read -- the row
+  // bound lives in the store (SUBNET_ALPHA_DIVIDENDS_ROW_CAP), not in a
+  // query parameter a caller could widen.
+  "/api/v1/subnets/{netuid}/alpha-dividends",
+  // #13164: per-netuid Gamma card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/gamma",
+  // #13164: the Gamma capture series -- the row bound lives in the store
+  // (SUBNET_GAMMA_HISTORY_ROW_CAP), not in a query parameter a caller could
+  // widen; the capture cadence is the engine's, so a window vocabulary here
+  // would promise a density nothing guarantees yet.
+  "/api/v1/subnets/{netuid}/gamma/history",
+  // #13164: the chain-wide Gamma card -- one newest state per subnet, store
+  // capped (CHAIN_GAMMA_ROW_CAP).
+  "/api/v1/chain/gamma",
+  // #13164: the chain-wide deposit card -- largest-first and store-capped
+  // (GAMMA_DEPOSITS_ROW_CAP), not a query parameter a caller could widen.
+  "/api/v1/gamma/deposits",
+  // #13164: per-netuid service registry -- a subnet carries a handful of
+  // service bindings, not a series.
+  "/api/v1/subnets/{netuid}/services",
+  // #13165: per-netuid balancer Swap card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/swap",
+  // #13165: per-netuid AlphaAssets card -- one current state, not a series.
+  "/api/v1/subnets/{netuid}/alpha-assets",
+  // #13165: per-netuid LimitOrders book -- the row bound lives in the store
+  // (SUBNET_LIMIT_ORDERS_ROW_CAP), not in a query parameter a caller could
+  // widen.
+  "/api/v1/subnets/{netuid}/limit-orders",
+  // #13163: per-account lock card -- an account holds a handful of locks,
+  // not a series.
+  "/api/v1/accounts/{ss58}/locks",
+  // #13166: the chain-wide pending-swap list is one bounded store read (the
+  // row bound lives in PENDING_COLDKEY_SWAPS_ROW_CAP, not in a query
+  // parameter a caller could widen), and the per-account swap/lineage card
+  // is a handful of rows.
+  "/api/v1/accounts/pending-coldkey-swaps",
+  "/api/v1/accounts/{ss58}/coldkey-swap",
+  // #13166: per-account delegation/membership cards -- an account holds a
+  // handful of proxies and multisigs, not a series (the membership read is
+  // store-capped, not a query parameter a caller could widen).
+  "/api/v1/accounts/{ss58}/proxies",
+  "/api/v1/accounts/{ss58}/multisigs",
+  // #13163: the newest completed basket capture is one capture -- the row
+  // bound lives in the capture receiver's own fund ceiling, not in a query
+  // parameter a caller could widen; the per-validator card takes none either.
+  "/api/v1/chain/baskets",
+  "/api/v1/validators/{hotkey}/basket",
   // #10932: per-netuid card. The earnings block it carries is projected from
   // miner-fairness at that route's own default window, so exposing a window
   // here would be a second place to set one.
@@ -584,6 +635,10 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
         ANALYTICS_WINDOWS as [string, ...string[]],
         "7d",
       ).optional(),
+      // #13162: the mechanism dimension. Accepted-and-echoed rather than
+      // ignored, and bounded to the one mechanism the WeightsSet stream can
+      // honestly answer for -- see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/weights/setters": () =>
     z.object({
@@ -888,11 +943,16 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
       // and answering it with all 256 rows is the silent wrong answer. A caller
       // who wants the complement omits the parameter and filters the rows.
       validator_permit: z.enum(["true"] as const).optional(),
+      // #13162: the mechanism dimension, same enforce-what-you-publish posture
+      // as validator_permit above -- see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
       fields: fieldsSchema().optional(),
       format: formatSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/neurons/{uid}": () =>
     z.object({
+      // #13162: see mechidSchema's own header.
+      mechid: mechidSchema().optional(),
       fields: fieldsSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/hyperparameters/history": () =>

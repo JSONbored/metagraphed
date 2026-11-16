@@ -680,6 +680,70 @@ export const CROWDLOAN_DETAIL_PATH_PATTERN = /^\/api\/v1\/crowdloans\/(\d+)$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;
+// One subnet's mechanism (sub-subnet) registry (#13162), live from the
+// mechanisms store, no static file.
+export const SUBNET_MECHANISMS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/mechanisms$/;
+// One subnet's pending alpha dividend accrual (#13163), live from the
+// dividends store, no static file.
+export const SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/alpha-dividends$/;
+// One account's conviction-lock state (#13163), live from the locks store,
+// no static file. The handler validates the ss58 itself, same as the
+// sibling account routes above.
+export const ACCOUNT_LOCKS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/locks$/;
+// Every in-flight v2 coldkey-swap announcement (#13166), live from the
+// coldkey-swaps store, no static file. An exact path, dispatched BEFORE any
+// /accounts/([^/]+) pattern so the literal segment is never read as an ss58.
+export const PENDING_COLDKEY_SWAPS_PATH =
+  "/api/v1/accounts/pending-coldkey-swaps";
+// One account's v2 coldkey-swap state and key successor lineage (#13166),
+// live from the same store. The handler validates the ss58 itself, same as
+// the sibling account routes above.
+export const ACCOUNT_COLDKEY_SWAP_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/coldkey-swap$/;
+// One account's Proxy-pallet delegation state (#13166), live from the
+// proxies store, no static file. The handler validates the ss58 itself.
+export const ACCOUNT_PROXIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/proxies$/;
+// Every multisig an account belongs to (#13166), live from the multisigs
+// store, no static file. The handler validates the ss58 itself.
+export const ACCOUNT_MULTISIGS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/multisigs$/;
+// Every validator's Root basket fund at the newest completed capture
+// (#13163), live from the Root basket capture store, no static file.
+export const CHAIN_BASKETS_PATH = "/api/v1/chain/baskets";
+// One validator's Root basket fund with holdings/targets (#13163), live from
+// the same store. The handler validates the ss58 itself.
+export const VALIDATOR_BASKET_PATH_PATTERN =
+  /^\/api\/v1\/validators\/([^/]+)\/basket$/;
+// One subnet's Gamma capture series (#13164), live from the Gamma store, no
+// static file. Dispatched BEFORE SUBNET_GAMMA (same ordering convention as
+// SUBNET_WEIGHT_SETTERS before SUBNET_WEIGHTS).
+export const SUBNET_GAMMA_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/gamma\/history$/;
+// One subnet's current Gamma state (#13164), live from the same store.
+export const SUBNET_GAMMA_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/gamma$/;
+// The chain-wide Gamma state (#13164), live from the same store.
+export const CHAIN_GAMMA_PATH = "/api/v1/chain/gamma";
+// The chain's Gamma deposits (#13164), live from the deposits store.
+export const GAMMA_DEPOSITS_PATH = "/api/v1/gamma/deposits";
+// One subnet's on-chain service-URL registry (#13164), live from the
+// services store.
+export const SUBNET_SERVICES_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/services$/;
+// One subnet's current balancer-based Swap state (#13165), live from the
+// swap store, no static file.
+export const SUBNET_SWAP_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/swap$/;
+// One subnet's current AlphaAssets accounting (#13165), live from the
+// alpha-assets store, no static file.
+export const SUBNET_ALPHA_ASSETS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/alpha-assets$/;
+// One subnet's LimitOrders order book (#13165), live from the limit-orders
+// store, no static file.
+export const SUBNET_LIMIT_ORDERS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/limit-orders$/;
 // Per-subnet weight-setter leaderboard (the individual validators behind /weights) over the
 // window, live from account_events, no static file. Dispatched BEFORE SUBNET_WEIGHTS.
 export const SUBNET_WEIGHT_SETTERS_PATH_PATTERN =

@@ -2,6 +2,12 @@
 
 `GET /api/v1/accounts/{ss58}/root-claim` and MCP `get_account_root_claim` describe the retired per-subnet claim system. They do not describe current Root basket holdings, beta shares, owed entitlement or a claim quote. The existing GraphQL field uses the same loader during its planned retirement; this change adds no query or transaction operation.
 
+## The ≥v441 basket-claim era (#13163)
+
+Root Reborn (v441) retired the per-subnet claim path; on the live runtime, claims flow through `Basket*` events. The same route now carries an additive `basket_claims` block beside the legacy compatibility read: the account's newest `BasketClaimed` / `BasketClaimDustSkipped` events (at most 100), assembled fresh from the already-ingested event stream — no new chain decode — with the event store's own coverage floor (`covered_since`) so a bounded window is never mistaken for lifetime history. `basket_claims` is `null` when no event store is bound, a read fails, or the request addresses a non-finney network; an empty `claims` from a bound store is a measurement over the stated window. The block never enters the legacy KV cache: it is attached at serve time, like `field_sources`. Basket STATE — shares, NAV, holdings, target allocations — is served by `GET /api/v1/chain/baskets` and `GET /api/v1/validators/{hotkey}/basket` (GraphQL `validator_baskets`, MCP `get_validator_baskets`). The AlphaV2 / deferred-basket state decode itself lands with the engine.
+
+Everything below describes the legacy compatibility read, which is unchanged.
+
 The reader obtains a finalized block hash and calls `state_getRuntimeVersion` at that hash before consulting its KV cache. Supported storage reads use that same hash, so an upgrade between requests cannot mix legacy storage with a newer runtime. Compatibility is evaluated independently for each requested network.
 
 | `compatibility.status` | Meaning                                                                                               | Claim fields                                                                    |

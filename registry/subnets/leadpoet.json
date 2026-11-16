@@ -128,7 +128,7 @@
       "id": "sn-71-leadpoet-geo-countries",
       "kind": "data-artifact",
       "name": "Leadpoet country reference list",
-      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) \u2014 the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
+      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) — the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -211,5 +211,5 @@
       "url": "https://leadpoet.com/api/contact"
     }
   ],
-  "website_url": "https://leadpoet.com/"
+  "website_url": "https://leadpoet.com"
 }

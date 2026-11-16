@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildAccountIdentity,
+  identityStorageVersion,
   loadAccountIdentity,
   loadIdentityByColdkeyMap,
   sanitizeAccountIdentityFields,
@@ -83,6 +84,7 @@ describe("buildAccountIdentity", () => {
     assert.equal(data.discord, null);
     assert.equal(data.description, null);
     assert.equal(data.additional, null);
+    assert.equal(data.storage_version, null);
     assert.equal(data.captured_at, null);
   });
 
@@ -96,7 +98,23 @@ describe("buildAccountIdentity", () => {
     assert.equal(data.discord, "examplehandle");
     assert.equal(data.description, "An example subnet operator.");
     assert.equal(data.additional, null);
+    // #13166: an unlabelled row (no storage_version cell) declines the label.
+    assert.equal(data.storage_version, null);
     assert.equal(data.captured_at, new Date(1_700_000_000_000).toISOString());
+  });
+
+  test("carries the storage-version label when the row is labelled (#13166)", () => {
+    const data = buildAccountIdentity(
+      identityRow({ storage_version: 2 }),
+      "5Acc0",
+    );
+    assert.equal(data.storage_version, 2);
+    // A store can hand the bigint column back as text.
+    assert.equal(
+      buildAccountIdentity(identityRow({ storage_version: "2" }), "5Acc0")
+        .storage_version,
+      2,
+    );
   });
 
   test("sanitizes the row before serving it", () => {
@@ -118,6 +136,30 @@ describe("buildAccountIdentity", () => {
     ]) {
       const data = buildAccountIdentity(identityRow({ captured_at }), "5Acc0");
       assert.equal(data.captured_at, null, `captured_at=${captured_at}`);
+    }
+  });
+});
+
+describe("identityStorageVersion", () => {
+  test("accepts a positive integer label, number or store text", () => {
+    assert.equal(identityStorageVersion(2), 2);
+    assert.equal(identityStorageVersion("2"), 2);
+    assert.equal(identityStorageVersion(1), 1);
+  });
+
+  test("anything that is not a positive integer stays null, never fabricated", () => {
+    for (const value of [
+      null,
+      undefined,
+      "",
+      " ",
+      0,
+      -1,
+      1.5,
+      "zero",
+      "9007199254740993", // past Number.MAX_SAFE_INTEGER
+    ]) {
+      assert.equal(identityStorageVersion(value), null, `value=${value}`);
     }
   });
 });

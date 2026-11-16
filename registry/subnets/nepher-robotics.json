@@ -405,7 +405,7 @@
       "id": "sn-49-nepher-evaluations-api",
       "kind": "subnet-api",
       "name": "Nepher tournament evaluations API",
-      "notes": "Public no-auth GET /api/v1/evaluations \u2014 per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -427,7 +427,7 @@
       "id": "sn-49-nepher-common-config",
       "kind": "data-artifact",
       "name": "Nepher common configuration",
-      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners \u2014 it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
+      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners — it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -4532,5 +4532,5 @@
       }
     }
   ],
-  "website_url": "https://nepher.ai"
+  "website_url": "https://www.nepher.ai/"
 }

@@ -225,6 +225,8 @@ import {
 import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
+  TaoUsdOracleFeedSchema,
+  TaoUsdOracleSchema,
   TaoUsdArtifactSchema,
 } from "./routes/tao-usd.ts";
 import {
@@ -320,6 +322,72 @@ import {
   SubnetWeightSettersArtifactSchema,
 } from "./routes/subnet-weights.ts";
 import {
+  SubnetMechanismSchema,
+  SubnetMechanismsArtifactSchema,
+} from "./routes/subnet-mechanisms.ts";
+import {
+  SubnetAlphaDividendSchema,
+  SubnetAlphaDividendsArtifactSchema,
+} from "./routes/subnet-alpha-dividends.ts";
+import {
+  SubnetGammaStateSchema,
+  SubnetGammaArtifactSchema,
+  SubnetGammaHistoryArtifactSchema,
+} from "./routes/subnet-gamma.ts";
+import {
+  ChainGammaSubnetSchema,
+  ChainGammaArtifactSchema,
+} from "./routes/chain-gamma.ts";
+import {
+  GammaDepositSchema,
+  GammaDepositsArtifactSchema,
+} from "./routes/gamma-deposits.ts";
+import {
+  SubnetServiceSchema,
+  SubnetServicesArtifactSchema,
+} from "./routes/subnet-services.ts";
+import {
+  SubnetSwapStateSchema,
+  SubnetSwapArtifactSchema,
+} from "./routes/subnet-swap.ts";
+import {
+  SubnetAlphaAssetsStateSchema,
+  SubnetAlphaAssetsArtifactSchema,
+} from "./routes/subnet-alpha-assets.ts";
+import {
+  SubnetLimitOrderSchema,
+  SubnetLimitOrdersArtifactSchema,
+} from "./routes/subnet-limit-orders.ts";
+import {
+  StakeLockSchema,
+  AccountLocksArtifactSchema,
+} from "./routes/account-locks.ts";
+import {
+  ColdkeySwapAnnouncementSchema,
+  ColdkeySwapPolicySchema,
+  PendingColdkeySwapsArtifactSchema,
+  ColdkeyLineageSchema,
+  HotkeyLineageEntrySchema,
+  AccountKeyLineageSchema,
+  AccountColdkeySwapArtifactSchema,
+} from "./routes/coldkey-swaps.ts";
+import {
+  AccountProxySchema,
+  AccountProxiesArtifactSchema,
+} from "./routes/account-proxies.ts";
+import {
+  AccountMultisigSchema,
+  AccountMultisigsArtifactSchema,
+} from "./routes/account-multisigs.ts";
+import {
+  BasketCaptureSchema,
+  BasketHoldingSchema,
+  BasketTargetSchema,
+  ValidatorBasketSchema,
+  ValidatorBasketsArtifactSchema,
+  ValidatorBasketArtifactSchema,
+} from "./routes/validator-baskets.ts";
+import {
   AccountSummaryArtifactSchema,
   AccountSubnetsArtifactSchema,
 } from "./routes/account-summary.ts";
@@ -336,7 +404,10 @@ import {
   AccountPositionsArtifactSchema,
   AccountPositionHistoryArtifactSchema,
 } from "./routes/account-positions.ts";
-import { AccountRootClaimArtifactSchema } from "./routes/account-root-claim.ts";
+import {
+  AccountRootClaimArtifactSchema,
+  RootClaimBasketClaimsSchema,
+} from "./routes/account-root-claim.ts";
 import {
   AccountServingArtifactSchema,
   AccountPrometheusArtifactSchema,
@@ -360,8 +431,15 @@ import { AccountEntitiesArtifactSchema } from "./routes/account-entities.ts";
 import {
   AccountChildrenArtifactSchema,
   AccountParentsArtifactSchema,
+  ChildKeyDetailSchema,
+  ParentKeyDetailSchema,
+  ChildkeyTakeEntrySchema,
+  PendingChildKeyEntrySchema,
+  ChildkeyThresholdSchema,
+  ChildKeysHistoryEntrySchema,
 } from "./routes/account-child-delegation.ts";
 import {
+  EvmAssociationSchema,
   EvmAddressMappingArtifactSchema,
   NetworkParametersArtifactSchema,
   RandomnessArtifactSchema,
@@ -680,6 +758,8 @@ register(ResolvedIdentifierSchema, "ResolvedIdentifier");
 register(SearchResolveArtifactSchema, "SearchResolveArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
+register(TaoUsdOracleFeedSchema, "TaoUsdOracleFeed");
+register(TaoUsdOracleSchema, "TaoUsdOracle");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");
 register(SurfaceHistoryChangeSchema, "SurfaceHistoryChange");
 register(SubnetSurfaceHistoryArtifactSchema, "SubnetSurfaceHistoryArtifact");
@@ -796,6 +876,7 @@ register(
   AccountPositionHistoryArtifactSchema,
   "AccountPositionHistoryArtifact",
 );
+register(RootClaimBasketClaimsSchema, "RootClaimBasketClaims");
 register(AccountRootClaimArtifactSchema, "AccountRootClaimArtifact");
 register(AccountServingArtifactSchema, "AccountServingArtifact");
 register(AccountPrometheusArtifactSchema, "AccountPrometheusArtifact");
@@ -858,6 +939,44 @@ register(
 );
 register(SubnetPrometheusArtifactSchema, "SubnetPrometheusArtifact");
 register(SubnetWeightsArtifactSchema, "SubnetWeightsArtifact");
+register(SubnetMechanismSchema, "SubnetMechanism");
+register(SubnetMechanismsArtifactSchema, "SubnetMechanismsArtifact");
+register(SubnetAlphaDividendSchema, "SubnetAlphaDividend");
+register(SubnetAlphaDividendsArtifactSchema, "SubnetAlphaDividendsArtifact");
+register(SubnetGammaStateSchema, "SubnetGammaState");
+register(SubnetGammaArtifactSchema, "SubnetGammaArtifact");
+register(SubnetGammaHistoryArtifactSchema, "SubnetGammaHistoryArtifact");
+register(ChainGammaSubnetSchema, "ChainGammaSubnet");
+register(ChainGammaArtifactSchema, "ChainGammaArtifact");
+register(GammaDepositSchema, "GammaDeposit");
+register(GammaDepositsArtifactSchema, "GammaDepositsArtifact");
+register(SubnetServiceSchema, "SubnetService");
+register(SubnetServicesArtifactSchema, "SubnetServicesArtifact");
+register(SubnetSwapStateSchema, "SubnetSwapState");
+register(SubnetSwapArtifactSchema, "SubnetSwapArtifact");
+register(SubnetAlphaAssetsStateSchema, "SubnetAlphaAssetsState");
+register(SubnetAlphaAssetsArtifactSchema, "SubnetAlphaAssetsArtifact");
+register(SubnetLimitOrderSchema, "SubnetLimitOrder");
+register(SubnetLimitOrdersArtifactSchema, "SubnetLimitOrdersArtifact");
+register(StakeLockSchema, "StakeLock");
+register(AccountLocksArtifactSchema, "AccountLocksArtifact");
+register(ColdkeySwapAnnouncementSchema, "ColdkeySwapAnnouncement");
+register(ColdkeySwapPolicySchema, "ColdkeySwapPolicy");
+register(PendingColdkeySwapsArtifactSchema, "PendingColdkeySwapsArtifact");
+register(ColdkeyLineageSchema, "ColdkeyLineage");
+register(HotkeyLineageEntrySchema, "HotkeyLineageEntry");
+register(AccountKeyLineageSchema, "AccountKeyLineage");
+register(AccountColdkeySwapArtifactSchema, "AccountColdkeySwapArtifact");
+register(AccountProxySchema, "AccountProxy");
+register(AccountProxiesArtifactSchema, "AccountProxiesArtifact");
+register(AccountMultisigSchema, "AccountMultisig");
+register(AccountMultisigsArtifactSchema, "AccountMultisigsArtifact");
+register(BasketCaptureSchema, "BasketCapture");
+register(ValidatorBasketSchema, "ValidatorBasket");
+register(BasketHoldingSchema, "BasketHolding");
+register(BasketTargetSchema, "BasketTarget");
+register(ValidatorBasketsArtifactSchema, "ValidatorBasketsArtifact");
+register(ValidatorBasketArtifactSchema, "ValidatorBasketArtifact");
 register(SubnetWeightSettersArtifactSchema, "SubnetWeightSettersArtifact");
 register(AccountAxonRemovalsArtifactSchema, "AccountAxonRemovalsArtifact");
 register(
@@ -874,6 +993,13 @@ register(AccountCounterpartiesArtifactSchema, "AccountCounterpartiesArtifact");
 register(AccountEntitiesArtifactSchema, "AccountEntitiesArtifact");
 register(AccountChildrenArtifactSchema, "AccountChildrenArtifact");
 register(AccountParentsArtifactSchema, "AccountParentsArtifact");
+register(ChildKeyDetailSchema, "ChildKeyDetail");
+register(ParentKeyDetailSchema, "ParentKeyDetail");
+register(ChildkeyTakeEntrySchema, "ChildkeyTakeEntry");
+register(PendingChildKeyEntrySchema, "PendingChildKeyEntry");
+register(ChildkeyThresholdSchema, "ChildkeyThreshold");
+register(ChildKeysHistoryEntrySchema, "ChildKeysHistoryEntry");
+register(EvmAssociationSchema, "EvmAssociation");
 register(EvmAddressMappingArtifactSchema, "EvmAddressMappingArtifact");
 register(NetworkParametersArtifactSchema, "NetworkParametersArtifact");
 register(RandomnessArtifactSchema, "RandomnessArtifact");

@@ -2,7 +2,7 @@
 // (metagraphed#7073, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN60's *real* registry surface configs
-// (registry/subnets/bitsec.json) to the tool's contract, so a future edit that
+// (registry/subnets/bitsec-ai.json) to the tool's contract, so a future edit that
 // regresses their callability is caught here.
 //
 // All ten surfaces listed in #7073 were verified live on 2026-07-21 against
@@ -60,7 +60,9 @@ const NETUID = 60;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/bitsec.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/bitsec-ai.json", import.meta.url),
+    ),
     "utf8",
   ),
 );

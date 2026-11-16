@@ -149,9 +149,12 @@ test("GET /accounts/{ss58}/root-claim validates runtime before a KV hit", async 
     res,
     successEnvelopeSchema(AccountRootClaimArtifactSchema),
   );
-  // Cached body plus provenance (#9108), attached outside the cache.
+  // Cached body plus provenance (#9108) and the basket-claim era block
+  // (#13163; null here: no event store is bound), both attached outside the
+  // cache.
   assert.deepEqual(body.data, {
     ...cached,
+    basket_claims: null,
     field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
   });
   assert.equal(fetchSpy.mock.calls.length, 2);

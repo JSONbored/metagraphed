@@ -105,6 +105,103 @@ test("INGESTED_EVENT_KINDS accepts child-hotkey delegation kinds (#6722)", () =>
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts the Gamma and Services kinds (#13164)", () => {
+  // Forward-compat like AxonInfoRemoved: the structured decode lands with
+  // the engine, and ?kind= must accept a kind the runtime demonstrably
+  // fires instead of 400ing on it.
+  for (const kind of [
+    "GammaMinted",
+    "GammaMoved",
+    "GammaDepositClosed",
+    "GammaDepositSpenderSet",
+    "GammaDepositDailySpendCapSet",
+    "GammaSpent",
+    "GammaSpendSkipped",
+    "SubnetGammaEmissionSet",
+    "GammaEmissionMinted",
+    "ServiceSet",
+    "ServiceRemoved",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
+test("INGESTED_EVENT_KINDS accepts FeeRateSet (#13165)", () => {
+  // Same forward-compat footing as the Gamma kinds: the v490 Swap pallet's
+  // one event lands raw-only today, and ?kind= must accept a kind the
+  // runtime demonstrably fires instead of 400ing on it.
+  assert.ok(INGESTED_EVENT_KINDS.includes("FeeRateSet"), "missing FeeRateSet");
+});
+
+test("INGESTED_EVENT_KINDS accepts the nine LimitOrders kinds (#13165)", () => {
+  // Same forward-compat footing: OrderExecuted has 8.4M-block-range live
+  // history already, and the structured decode lands with the engine.
+  for (const kind of [
+    "OrderExecuted",
+    "OrderSkipped",
+    "OrderCancelled",
+    "OrderApproved",
+    "GroupExecutionSummary",
+    "LimitOrdersPalletStatusChanged",
+    "LinkedOutputRecorded",
+    "LinkedOutputConsumed",
+    "LinkedOutputPruned",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
+test("INGESTED_EVENT_KINDS accepts EvmKeyAssociated (#13165)", () => {
+  // Same forward-compat footing: the structured decode (into
+  // app.evm_associations) lands with the engine.
+  assert.ok(
+    INGESTED_EVENT_KINDS.includes("EvmKeyAssociated"),
+    "missing EvmKeyAssociated",
+  );
+});
+
+test("INGESTED_EVENT_KINDS accepts TaoUsdPriceFed (#13164)", () => {
+  // Same forward-compat footing as the Gamma kinds: the oracle-feed decode
+  // lands with the engine.
+  assert.ok(INGESTED_EVENT_KINDS.includes("TaoUsdPriceFed"));
+});
+
+test("INGESTED_EVENT_KINDS accepts the coldkey-swap v2 kinds (#13166)", () => {
+  // Same forward-compat footing: the structured decode (into
+  // app.coldkey_swap_announcements / app.key_successors) lands with the
+  // engine. Every name verified against live Finney v490 metadata.
+  for (const kind of [
+    "ColdkeySwapAnnounced",
+    "ColdkeySwapReset",
+    "ColdkeySwapDisputed",
+    "ColdkeySwapCleared",
+    "ColdkeySwapAnnouncementDelaySet",
+    "ColdkeySwapReannouncementDelaySet",
+    "AllBalanceUnstakedAndTransferredToNewColdkey",
+    "HotkeySwappedOnSubnet",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
+test("INGESTED_EVENT_KINDS accepts the Proxy and Multisig pallet kinds (#13166)", () => {
+  // Same forward-compat footing: the structured decode (into app.proxies /
+  // app.multisigs) lands with the engine. Every name verified against live
+  // Finney v490 metadata.
+  for (const kind of [
+    "ProxyAdded",
+    "ProxyRemoved",
+    "PureCreated",
+    "PureKilled",
+    "NewMultisig",
+    "MultisigApproval",
+    "MultisigExecuted",
+    "MultisigCancelled",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("basket and collateral kinds support public filters and meaningful summary categories", () => {
   const categories = {
     BasketDeposited: "stake",

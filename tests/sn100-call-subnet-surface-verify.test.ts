@@ -2,7 +2,7 @@
 // (metagraphed#7112, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN100's *real* registry surface config
-// (registry/subnets/pla-form.json) to the tool's contract, so a future edit that
+// (registry/subnets/cortex.json) to the tool's contract, so a future edit that
 // regresses its callability (flipping to HEAD, marking it auth_required,
 // disabling its probe) is caught here.
 //
@@ -25,9 +25,7 @@ const SURFACE_ID = "sn-100-platform-network-subnet-api";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/pla-form.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/cortex.json", import.meta.url)),
     "utf8",
   ),
 );

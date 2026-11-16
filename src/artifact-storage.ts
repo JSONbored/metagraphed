@@ -52,6 +52,19 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Validator staked-over-time + rewards history (#4334/7.3): computed live
   // from the neuron_daily rollup.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/history\.json$/,
+  // #13163: one validator's Root basket fund with holdings/targets, computed
+  // live from the Root basket capture store -- a baked copy would freeze a
+  // capture the lane supersedes.
+  /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\/basket\.json$/,
+  // #13163: every validator's Root basket fund at the newest completed
+  // capture, computed live from the same store.
+  /^chain\/baskets\.json$/,
+  // #13164: the chain-wide Gamma state, computed live from the Gamma store --
+  // a baked copy would freeze a state the engine has yet to fill.
+  /^chain\/gamma\.json$/,
+  // #13164: the chain's Gamma deposits, computed live from the deposits
+  // store, same reasoning.
+  /^gamma\/deposits\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,
@@ -163,6 +176,29 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/validator-economics-history\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
+  // #13162: one subnet's mechanism registry, computed live from the mechanisms
+  // store -- a baked copy would freeze a registry the engine has yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/mechanisms\.json$/,
+  // #13163: one subnet's pending dividend accrual, computed live from the
+  // dividends store -- a baked copy would freeze an accrual the engine has
+  // yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/alpha-dividends\.json$/,
+  // #13164: one subnet's Gamma card and its capture series, computed live
+  // from the Gamma store -- a baked copy would freeze a state the engine has
+  // yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/gamma\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/gamma\/history\.json$/,
+  // #13164: one subnet's on-chain service-URL registry, computed live from
+  // the services store, same reasoning.
+  /^subnets\/(?:\d+|\{netuid\})\/services\.json$/,
+  // #13165: one subnet's balancer Swap state and AlphaAssets accounting,
+  // computed live from their stores -- a baked copy would freeze a state the
+  // engine has yet to fill.
+  /^subnets\/(?:\d+|\{netuid\})\/swap\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/alpha-assets\.json$/,
+  // #13165: one subnet's LimitOrders order book, computed live from the
+  // limit-orders store, same reasoning.
+  /^subnets\/(?:\d+|\{netuid\})\/limit-orders\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.
@@ -250,6 +286,19 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Live root-claim current state (#7229): computed from RPC at request time,
   // never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-claim\.json$/,
+  // #13163: one account's conviction-lock state, computed live from the locks
+  // store -- a baked copy would freeze a state the engine has yet to fill.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/locks\.json$/,
+  // #13166: the chain-wide pending v2 coldkey-swap list and the per-account
+  // swap/lineage card, computed live from the coldkey-swaps store -- a baked
+  // copy would freeze a state the engine has yet to fill.
+  /^accounts\/pending-coldkey-swaps\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/coldkey-swap\.json$/,
+  // #13166: one account's Proxy-pallet delegation state and multisig
+  // membership, computed live from the proxies/multisigs stores -- a baked
+  // copy would freeze a state the engine has yet to fill.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/proxies\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/multisigs\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,

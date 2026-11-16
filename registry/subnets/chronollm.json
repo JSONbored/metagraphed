@@ -154,7 +154,7 @@
       "id": "sn-38-chronoinstruct-sft-dataset",
       "kind": "data-artifact",
       "name": "ChronoInstruct SFT dataset",
-      "notes": "Public ManelaLab (WashU) HuggingFace ChronoInstruct-SFT dataset \u2014 647,944 chronologically-consistent instruction-response pairs (conversation/label/source columns; label marks pre-2000 vs post-1999) built to remove lookahead bias, the SFT corpus for the ChronoGPT architecture the ChronoLLM (SN38) subnet mandates; ODC-BY-1.0, not gated. The chronollm/sn38 repo README (source) declares Subnet 38 and links the manelalab HF org (already the subnet's registered ChronoGPT model-collection org).",
+      "notes": "Public ManelaLab (WashU) HuggingFace ChronoInstruct-SFT dataset — 647,944 chronologically-consistent instruction-response pairs (conversation/label/source columns; label marks pre-2000 vs post-1999) built to remove lookahead bias, the SFT corpus for the ChronoGPT architecture the ChronoLLM (SN38) subnet mandates; ODC-BY-1.0, not gated. The chronollm/sn38 repo README (source) declares Subnet 38 and links the manelalab HF org (already the subnet's registered ChronoGPT model-collection org).",
       "probe": {
         "enabled": true,
         "method": "HEAD",
@@ -286,7 +286,7 @@
       "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-4",
       "kind": "subnet-api",
       "name": "ChronoLLM round submissions",
-      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /submissions/4 \u2192 200 application/json (round + per-uid submissions).",
+      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /submissions/4 → 200 application/json (round + per-uid submissions).",
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -302,7 +302,7 @@
       "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-5",
       "kind": "subnet-api",
       "name": "ChronoLLM submission by uid",
-      "notes": "Path-param template (round_num, uid). Live-verified 2026-07-22: GET /submissions/4/113 \u2192 200 application/json (single submission).",
+      "notes": "Path-param template (round_num, uid). Live-verified 2026-07-22: GET /submissions/4/113 → 200 application/json (single submission).",
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -318,7 +318,7 @@
       "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-6",
       "kind": "subnet-api",
       "name": "ChronoLLM evaluation results",
-      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /eval/results/3 \u2192 200 application/json (array).",
+      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /eval/results/3 → 200 application/json (array).",
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -338,7 +338,7 @@
       "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-7",
       "kind": "subnet-api",
       "name": "ChronoLLM quality questions",
-      "notes": "Live-verified 2026-07-22: unauthenticated GET \u2192 401 {\"detail\":\"Client certificate required\"} \u2014 mTLS client-cert gated (the schema declares no security).",
+      "notes": "Live-verified 2026-07-22: unauthenticated GET → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated (the schema declares no security).",
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -358,7 +358,7 @@
       "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-8",
       "kind": "subnet-api",
       "name": "ChronoLLM leak-detection benchmark",
-      "notes": "Path-param template (cutoff_year). Live-verified 2026-07-22: GET /benchmark/2020 \u2192 401 {\"detail\":\"Client certificate required\"} \u2014 mTLS client-cert gated.",
+      "notes": "Path-param template (cutoff_year). Live-verified 2026-07-22: GET /benchmark/2020 → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated.",
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -371,7 +371,7 @@
   ],
   "source_repo": "https://github.com/chronollm/sn38",
   "contact": "crew@crunchdao.com",
-  "website_url": "https://chronollm.com/",
+  "website_url": "https://chronollm.crunchdao.com/",
   "social": {
     "x": "https://x.com/chronollm"
   }

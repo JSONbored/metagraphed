@@ -13,6 +13,15 @@ export const SubnetWeightsArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
+    // #13162: echo of the request's `mechid=` scope -- present exactly when
+    // the caller passed one, so an unscoped response stays byte-identical.
+    mechid: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
+      ),
     window: z.enum(["7d", "30d"]).nullable(),
     observed_at: z.string().nullable(),
     distinct_setters: z.int().min(0),

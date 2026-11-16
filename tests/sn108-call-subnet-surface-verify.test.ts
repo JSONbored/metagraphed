@@ -2,7 +2,7 @@
 // tool (metagraphed#7119, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN108's *real* registry surface config
-// (registry/subnets/talkhead.json) to the tool's contract, so a future edit
+// (registry/subnets/chipforge.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping method, marking it auth_required,
 // disabling its probe, changing expect away from `any`) is caught here.
 //
@@ -26,7 +26,7 @@ const SURFACE_ID = "sn-108-talkhead-health";
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/talkhead.json", import.meta.url),
+      new URL("../registry/subnets/chipforge.json", import.meta.url),
     ),
     "utf8",
   ),
