@@ -19,6 +19,11 @@
 // answered 200 again (the stale-declaration tripwire in the 02:11Z publish).
 export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
   ["/api/v1/accounts/{ss58}", "account_summary_unavailable"],
+  // Declared 2026-11-16T04:3xZ: backfill-era load broke this route's heavy
+  // windowed D1 read consistently; it answers the classified 503 the #13211
+  // structured path gives it. Expires like every row: a 200 fails the
+  // publish as stale and the row comes off.
+  ["/api/v1/chain/axon-removals", "data_tier_unavailable"],
   ...[
     "/api/v1/accounts/{ss58}/counterparties",
     "/api/v1/accounts/{ss58}/events",
