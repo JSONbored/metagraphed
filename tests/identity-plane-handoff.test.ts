@@ -71,3 +71,26 @@ test("re-applying over an already-composed schema is a no-op, not a failure", as
   await db.exec(migration("0056_identity_plane_handoff.sql"));
   await db.exec(migration("0056_identity_plane_handoff.sql"));
 });
+
+test("a producer-shaped api_keys under the same name is never dropped, even empty", async () => {
+  // Engine review on the handoff: the name alone does not identify the twin.
+  // On an out-of-order or replayed apply the producer's own app.api_keys
+  // (uuid/token_digest) can already stand here; the drop must fire only on
+  // the staging shape.
+  db = new PGlite();
+  await applyThrough0033(db);
+  await db.exec("DROP TABLE app.api_keys");
+  await db.exec(
+    `CREATE TABLE app.api_keys (
+       key_id uuid PRIMARY KEY,
+       account_id uuid NOT NULL,
+       token_digest text NOT NULL UNIQUE,
+       expires_at timestamptz NOT NULL
+     )`,
+  );
+  await db.exec(migration("0056_identity_plane_handoff.sql"));
+  const survived = await db.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema='app' AND table_name='api_keys' AND column_name='token_digest'",
+  );
+  assert.equal(survived.rows.length, 1, "the producer shape must survive");
+});

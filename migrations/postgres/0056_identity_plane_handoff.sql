@@ -33,19 +33,36 @@
 -- The twin is load-phase staging (0010 "Load phase"); on the composed apply
 -- it is created empty by 0010 and retired here before the producer tree
 -- runs. A row in it means the ordering above was violated -- import data
--- would be dropped -- so this migration refuses rather than deletes.
+-- would be dropped -- so this migration refuses rather than deletes. And the
+-- name alone does not identify the twin (engine review, #13224): on an
+-- out-of-order or replayed apply the producer's own app.api_keys
+-- (uuid/token_digest) can already stand under this name, and dropping THAT --
+-- even empty -- would destroy the modern plane's shape. So the drop fires
+-- only on the staging shape (legacy secret_hash column, no token_digest);
+-- a producer-shaped table is left exactly as it stands.
 DO $$
 DECLARE
+    twin_shape boolean;
     occupied boolean;
 BEGIN
     IF EXISTS(SELECT FROM pg_tables WHERE schemaname = 'app' AND tablename = 'api_keys') THEN
-        SELECT EXISTS(SELECT FROM app.api_keys LIMIT 1) INTO STRICT occupied;
-        IF occupied THEN
-            RAISE EXCEPTION 'identity staging twin app.api_keys holds rows; move them through the infra#820 mapping before retiring the shape'
-                USING ERRCODE = '55000';
+        SELECT EXISTS(
+                   SELECT FROM information_schema.columns
+                   WHERE table_schema = 'app' AND table_name = 'api_keys'
+                     AND column_name = 'secret_hash')
+               AND NOT EXISTS(
+                   SELECT FROM information_schema.columns
+                   WHERE table_schema = 'app' AND table_name = 'api_keys'
+                     AND column_name = 'token_digest')
+            INTO STRICT twin_shape;
+        IF twin_shape THEN
+            SELECT EXISTS(SELECT FROM app.api_keys LIMIT 1) INTO STRICT occupied;
+            IF occupied THEN
+                RAISE EXCEPTION 'identity staging twin app.api_keys holds rows; move them through the infra#820 mapping before retiring the shape'
+                    USING ERRCODE = '55000';
+            END IF;
+            DROP TABLE app.api_keys;
         END IF;
     END IF;
 END;
 $$;
-
-DROP TABLE IF EXISTS app.api_keys;
