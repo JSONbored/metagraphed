@@ -139,8 +139,15 @@ async function compare() {
         return result;
       });
     const actual = (await control.query(`SELECT * FROM app.${table}`)).rows.map(
-      (value) =>
-        Object.fromEntries(
+      (value) => {
+        // The composed tree keys the rekeyed families by mechid (0044); the
+        // D1-source writer owns exactly the mechid-0 plane, so parity pins
+        // the value and then compares the SOURCE columns D1 carries.
+        if ("mechid" in value) {
+          assert.equal(Number(value.mechid), 0, `${table} mechid-0 plane`);
+          delete value.mechid;
+        }
+        return Object.fromEntries(
           Object.entries(value).map(([key, item]) => [
             key,
             key === "axon_index"
@@ -160,7 +167,8 @@ async function compare() {
                   ? Number(item)
                   : item,
           ]),
-        ),
+        );
+      },
     );
     const canonical = (value: Record<string, unknown>) =>
       JSON.stringify(
@@ -197,6 +205,7 @@ describe("native neuron capture transactions", { concurrency: false }, () => {
     await control.query("BEGIN");
     try {
       await control.query(sql("0025_neuron_documents_activate.sql"));
+      await control.query(sql("0044_mechanisms.sql"));
       await control.query(sql("0027_closed_day_revisions_activate.sql"));
       await control.query("COMMIT");
     } catch (error) {

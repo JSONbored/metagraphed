@@ -194,8 +194,16 @@ export function createPgNeuronCaptureStore(
                       value.decoderSourceId,
                     ],
                   );
+                  // 0044 rekeyed neurons_documents by (netuid,mechid,day,shard).
+                  // This writer is the D1-source path and owns exactly the
+                  // mechid-0 plane per 0044's recorded contract; the engine's
+                  // mechid>0 writer extends the receipt key in its own change.
                   await run(
-                    `INSERT INTO app.${table}(netuid,day,shard,stamp,payload)
+                    table === "neurons_documents"
+                      ? `INSERT INTO app.${table}(netuid,mechid,day,shard,stamp,payload)
+                VALUES($1,0,$2,$3,$4,$5) ON CONFLICT(netuid,mechid,day,shard)
+                DO UPDATE SET stamp=excluded.stamp,payload=excluded.payload`
+                      : `INSERT INTO app.${table}(netuid,day,shard,stamp,payload)
                 VALUES($1,$2,$3,$4,$5) ON CONFLICT(netuid,day,shard)
                 DO UPDATE SET stamp=excluded.stamp,payload=excluded.payload`,
                     [doc.netuid, doc.day, doc.shard, stamp.toString(), payload],
@@ -284,10 +292,10 @@ export function createPgNeuronCaptureStore(
                         });
                       const writeMembers = async (batch: typeof members) =>
                         run(
-                          `INSERT INTO app.${family}_members(netuid,uid,${daily ? "snapshot_date," : ""}hotkey,coldkey,shard${daily ? ",axon_index,axon_indexed" : ""})
-                      SELECT netuid,uid,${daily ? "day," : ""}hotkey,coldkey,shard${daily ? ",axon_index,true" : ""} FROM json_to_recordset($1::json)
+                          `INSERT INTO app.${family}_members(netuid,mechid,uid,${daily ? "snapshot_date," : ""}hotkey,coldkey,shard${daily ? ",axon_index,axon_indexed" : ""})
+                      SELECT netuid,0,uid,${daily ? "day," : ""}hotkey,coldkey,shard${daily ? ",axon_index,true" : ""} FROM json_to_recordset($1::json)
                         AS incoming(netuid bigint,uid bigint,day text,hotkey text,coldkey text,shard bigint,axon_index json)
-                      ON CONFLICT(netuid,uid${daily ? ",snapshot_date" : ""}) DO UPDATE SET hotkey=excluded.hotkey,coldkey=excluded.coldkey
+                      ON CONFLICT(netuid,mechid,uid${daily ? ",snapshot_date" : ""}) DO UPDATE SET hotkey=excluded.hotkey,coldkey=excluded.coldkey
                       WHERE app.${family}_members.hotkey IS DISTINCT FROM excluded.hotkey
                         OR app.${family}_members.coldkey IS DISTINCT FROM excluded.coldkey`,
                           [JSON.stringify(batch)],

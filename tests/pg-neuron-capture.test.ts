@@ -127,7 +127,7 @@ async function seedDocument(json: string, stamp = at + 1000, shard = 0) {
       ],
     );
     await tx.query(
-      "INSERT INTO app.neurons_documents(netuid,day,shard,stamp,payload) VALUES(1,'',$1,$2,$3) ON CONFLICT(netuid,day,shard) DO UPDATE SET stamp=excluded.stamp,payload=excluded.payload",
+      "INSERT INTO app.neurons_documents(netuid,mechid,day,shard,stamp,payload) VALUES(1,0,'',$1,$2,$3) ON CONFLICT(netuid,mechid,day,shard) DO UPDATE SET stamp=excluded.stamp,payload=excluded.payload",
       [shard, stamp, payload],
     );
   });
@@ -149,6 +149,7 @@ beforeAll(async () => {
   await db.transaction(async (tx) => {
     for (const name of [
       "0025_neuron_documents_activate.sql",
+      "0044_mechanisms.sql",
       "0027_closed_day_revisions_activate.sql",
     ])
       await tx.exec(
