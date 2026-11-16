@@ -9,7 +9,10 @@ import { createServer } from "node:http";
 import { WebSocket } from "ws";
 import { before, after, afterEach, describe, it } from "node:test";
 import { Client, Pool, type PoolConfig } from "pg";
-import { createNativeEnvironment } from "../src/native-environment.ts";
+import {
+  createNativeEnvironment,
+  requireComposedChain,
+} from "../src/native-environment.ts";
 import { NativeStartupCleanupError } from "../src/native-api-process.ts";
 import { createPgStoreRuntime } from "../src/pg-store-runtime.ts";
 import { createPgOAuthProvider } from "../src/pg-oauth-provider.ts";
@@ -143,12 +146,15 @@ describe(
         maxRequestBytes: 1048576,
         requestTimeoutMillis: 1000,
         headersTimeoutMillis: 1000,
-        upgrade: createNativeChainWebSocketTransport(application.chain, {
-          closeGraceMillis: 100,
-          onError(error) {
-            throw error;
+        upgrade: createNativeChainWebSocketTransport(
+          requireComposedChain(application.chain),
+          {
+            closeGraceMillis: 100,
+            onError(error) {
+              throw error;
+            },
           },
-        }),
+        ),
         onError(error) {
           throw error;
         },
@@ -369,7 +375,7 @@ describe(
       const admitted = application.background("api", async () => {
         await gate;
         assert.equal(
-          application.chain.state,
+          requireComposedChain(application.chain).state,
           "ready",
           "socket closure must not close an adapter used by admitted work",
         );
@@ -378,7 +384,7 @@ describe(
       assert.equal(listener.close(), closing);
       try {
         await socketClosed;
-        assert.equal(application.chain.state, "ready");
+        assert.equal(requireComposedChain(application.chain).state, "ready");
       } finally {
         release();
       }

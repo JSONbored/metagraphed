@@ -95,6 +95,20 @@ export interface NativeEnvironmentOptions extends Pick<
   loops: LoopPolicy;
 }
 
+/** The chain surface when (and only when) the composition owns the actor.
+ * The producer profile's refusal lacks the owner surface by design; callers
+ * that need the full actor narrow through this runtime guard instead of an
+ * assertion. */
+export function requireComposedChain(
+  chain: Awaited<ReturnType<typeof createNativeEnvironment>>["chain"],
+): Actors["chain"] {
+  if (!("openSocket" in chain))
+    throw new Error(
+      "Native chain actor is not composed in this process (infra#882 split)",
+    );
+  return chain;
+}
+
 /** Concrete native assembly. Configuration may supply values and resource
  * budgets, never replacement stores or an environment-validation callback. */
 export async function createNativeEnvironment(
@@ -108,12 +122,17 @@ export async function createNativeEnvironment(
     );
   const profile = requested.profile ?? "trusted";
   const sources = nativeSourceDefinitions(requested.owners, profile);
-  const refusal = (surface: string) => () =>
-    Promise.reject(
-      new Error(
-        `Native ${surface} is not composed in the ${profile} process (infra#882 split)`,
-      ),
-    );
+  // A surface the profile does not own refuses by name. Typed as honest
+  // wide-parameter functions so every caller shape type-checks against the
+  // union with the real surface -- no assertion erases the relationship.
+  const refusal =
+    (surface: string) =>
+    (..._ignored: readonly unknown[]): Promise<never> =>
+      Promise.reject(
+        new Error(
+          `Native ${surface} is not composed in the ${profile} process (infra#882 split)`,
+        ),
+      );
   const settings = nativeSettingsByOwner(requested.settings);
   const exportIdentity = requested.exportIdentity;
   const headRequestTimeoutMillis = requested.headRequestTimeoutMillis;
@@ -154,8 +173,16 @@ export async function createNativeEnvironment(
     ...requested.loops,
     cadence: { ...requested.loops.cadence },
   };
+  interface RefusingService {
+    fetch(...request: readonly unknown[]): Promise<Response>;
+  }
+  interface ProducerActorRefusals {
+    bindings: Readonly<Record<keyof Actors["bindings"], RefusingService>>;
+    chain: RefusingService;
+    maintenance?: undefined;
+  }
   let application: Application | undefined = undefined;
-  let actors!: Actors;
+  let actors!: Actors | ProducerActorRefusals;
   let loops!: ReturnType<typeof createNativeBackgroundLoops>;
   let authentication!: ReturnType<typeof createNativeAuthControls>;
   const current = (): Application => {
@@ -247,8 +274,8 @@ export async function createNativeEnvironment(
         if (profile === "producer") {
           // The realtime actor component is serving-owned whole (the #882
           // owner-split correction); every actor surface refuses by name.
-          const refuse = (name: string) =>
-            Object.freeze({ fetch: refusal(name) }) as never;
+          const refuse = (name: string): RefusingService =>
+            Object.freeze({ fetch: refusal(name) });
           actors = {
             bindings: Object.freeze({
               SUBNET_STATUS_SERVICE: refuse("subnet-status actor"),
@@ -258,7 +285,7 @@ export async function createNativeEnvironment(
             }),
             chain: refuse("chain-firehose actor"),
             maintenance: undefined,
-          } as unknown as Actors;
+          };
         } else {
           const head = createNativeChainHeadSource(app, {
             rpcUrl: settings.api.CHAIN_HEAD_RPC_URL!,
@@ -368,6 +395,7 @@ export async function createNativeEnvironment(
     poolFactory,
   );
   const refuseOwner = (owner: string) => ({
+    fetch: refusal(`${owner} owner fetch`),
     scheduled: refusal(`${owner} scheduled owner`),
     queue: refusal(`${owner} queue owner`),
   });
@@ -380,17 +408,18 @@ export async function createNativeEnvironment(
     conformance: NATIVE_CONFORMANCE_CONTRACT,
     fetch:
       profile === "producer"
-        ? (refusal("public HTTP listener") as unknown as (
-            request: Request,
-          ) => Promise<Response>)
+        ? refusal("public HTTP listener")
         : (request: Request) => current().fetch(request),
     owners:
       profile === "serving"
-        ? ({
+        ? {
             api: refuseOwner("api"),
             data: refuseOwner("data"),
-            registry: { scheduled: refusal("registry scheduled owner") },
-          } as unknown as ReturnType<typeof current>["owners"])
+            registry: {
+              fetch: refusal("registry owner fetch"),
+              scheduled: refusal("registry scheduled owner"),
+            },
+          }
         : current().owners,
     background,
     chain: actors.chain,
