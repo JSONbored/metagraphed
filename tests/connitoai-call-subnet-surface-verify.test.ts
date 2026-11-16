@@ -3,9 +3,14 @@
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool
 // wiring with synthetic surfaces -- this file pins SN102's six
 // issue-scoped registry surfaces (registry/subnets/connitoai.json) to the
-// tool's contract, so a future edit that regresses their callability
-// (flipping to HEAD, marking them auth_required, disabling their probe)
-// is caught here.
+// tool's contract, so a future edit that changes their availability class
+// without updating these pins is caught here.
+//
+// The 2026-11-15 infra#873 availability sweep found /get_init_peer_id
+// answering 404 on the (alive) cycle-api host, so sn-102-connito-init-peer-id
+// is probe-disabled (retired from the callable set pending url
+// re-verification -- not deleted) and this file pins that non-callable state
+// for it; the other five surfaces remain callable with their original pins.
 //
 // All six are public no-auth GET JSON endpoints on the official cycle-api
 // host. Live-verified 2026-07-21:
@@ -52,6 +57,7 @@ const CASES = [
     id: "sn-102-connito-phase-openapi",
     url: OPENAPI_URL,
     kind: "openapi",
+    retired: false,
     schemaUrl: OPENAPI_URL,
     body: { openapi: "3.1.0", info: { title: "Connito Cycle API" } },
   },
@@ -59,6 +65,7 @@ const CASES = [
     id: "sn-102-connito-phase-get-phase",
     url: "https://cycle-api.connito.ai/get_phase",
     kind: "subnet-api",
+    retired: false,
     schemaUrl: undefined,
     body: {
       block: 8_668_719,
@@ -72,6 +79,7 @@ const CASES = [
     id: "sn-102-connito-blocks-until-next-phase",
     url: "https://cycle-api.connito.ai/blocks_until_next_phase",
     kind: "subnet-api",
+    retired: false,
     schemaUrl: undefined,
     body: {
       Distribute: [8_669_056, 8_669_075, 337],
@@ -82,6 +90,7 @@ const CASES = [
     id: "sn-102-connito-init-peer-id",
     url: "https://cycle-api.connito.ai/get_init_peer_id",
     kind: "subnet-api",
+    retired: true,
     schemaUrl: undefined,
     body: [],
   },
@@ -89,6 +98,7 @@ const CASES = [
     id: "sn-102-connito-validator-whitelist",
     url: "https://cycle-api.connito.ai/get_validator_whitelist",
     kind: "subnet-api",
+    retired: false,
     schemaUrl: undefined,
     body: ["5EEinUEy3cfBCUyhbvCcYfWU713QCsDoVXqbbRLKFtEqKkC9"],
   },
@@ -96,25 +106,38 @@ const CASES = [
     id: "sn-102-connito-phase-status",
     url: "https://cycle-api.connito.ai/",
     kind: "subnet-api",
+    retired: false,
     schemaUrl: undefined,
     body: { message: "Phase service is running", cycle_length: 524 },
   },
 ];
 
-for (const { id, url, kind, schemaUrl, body } of CASES) {
+for (const { id, url, kind, retired, schemaUrl, body } of CASES) {
   describe(`SN102 ConnitoAI call_subnet_surface verification: ${id} (#7114)`, () => {
     const SURFACE = surfaceById(id);
 
-    test("the registry surface exists and is configured to be callable", () => {
-      assert.ok(SURFACE, `registry surface ${id} is present`);
-      assert.equal(SURFACE.kind, kind);
-      assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
-      assert.equal(SURFACE.probe?.method, "GET");
-      assert.equal(SURFACE.probe?.expect, "json");
-      assert.equal(SURFACE.url, url);
-      assert.equal(SURFACE.schema_url, schemaUrl);
-    });
+    test(
+      retired
+        ? "the registry surface is pinned to its retired (probe-disabled) config"
+        : "the registry surface exists and is configured to be callable",
+      () => {
+        assert.ok(SURFACE, `registry surface ${id} is present`);
+        assert.equal(SURFACE.kind, kind);
+        assert.equal(SURFACE.auth_required, false);
+        if (retired) {
+          // [2026-11-15 infra#873 p3b] route 404s on an alive host: retired
+          // from the callable set pending url re-verification.
+          assert.equal(SURFACE.probe?.enabled, false);
+          assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+        } else {
+          assert.equal(SURFACE.probe?.enabled, true);
+        }
+        assert.equal(SURFACE.probe?.method, "GET");
+        assert.equal(SURFACE.probe?.expect, "json");
+        assert.equal(SURFACE.url, url);
+        assert.equal(SURFACE.schema_url, schemaUrl);
+      },
+    );
 
     test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
       let requestedUrl: string | undefined;
@@ -139,55 +162,68 @@ for (const { id, url, kind, schemaUrl, body } of CASES) {
       assert.deepEqual(result.body, body);
     });
 
-    test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
-      const catalog = {
-        surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 102 }],
-      };
-      const deps = {
-        readArtifact: async (_env: Row, path: string) =>
-          path === "/metagraph/operational-surfaces.json"
-            ? { ok: true, data: catalog }
-            : { ok: false, status: 404 },
-      };
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = async (input) => {
-        const reqUrl = String(input);
-        if (reqUrl.startsWith("https://cloudflare-dns.com/dns-query")) {
-          return new Response(JSON.stringify({ Status: 0 }), {
-            headers: { "content-type": "application/dns-json" },
-          });
-        }
-        return new Response(JSON.stringify(body), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
-      };
-      try {
-        const response = await handleMcpRequest(
-          new Request("https://metagraph.sh/mcp", {
-            method: "POST",
+    test(
+      retired
+        ? "the call_subnet_surface MCP tool refuses the retired surface without fetching upstream"
+        : "end-to-end through the call_subnet_surface MCP tool, resolved by surface id",
+      async () => {
+        const catalog = {
+          surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 102 }],
+        };
+        const deps = {
+          readArtifact: async (_env: Row, path: string) =>
+            path === "/metagraph/operational-surfaces.json"
+              ? { ok: true, data: catalog }
+              : { ok: false, status: 404 },
+        };
+        let upstreamFetched = false;
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (input) => {
+          const reqUrl = String(input);
+          if (reqUrl.startsWith("https://cloudflare-dns.com/dns-query")) {
+            return new Response(JSON.stringify({ Status: 0 }), {
+              headers: { "content-type": "application/dns-json" },
+            });
+          }
+          upstreamFetched = true;
+          return new Response(JSON.stringify(body), {
+            status: 200,
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "tools/call",
-              params: {
-                name: "call_subnet_surface",
-                arguments: { surface_id: id },
-              },
+          });
+        };
+        try {
+          const response = await handleMcpRequest(
+            new Request("https://metagraph.sh/mcp", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "tools/call",
+                params: {
+                  name: "call_subnet_surface",
+                  arguments: { surface_id: id },
+                },
+              }),
             }),
-          }),
-          {} as unknown as Env,
-          deps,
-        );
-        const result = ((await response.json()) as Row).result;
-        assert.equal(result.isError, false);
-        assert.equal(result.structuredContent.surface_id, id);
-        assert.equal(result.structuredContent.status_code, 200);
-        assert.deepEqual(result.structuredContent.body, body);
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
+            {} as unknown as Env,
+            deps,
+          );
+          const result = ((await response.json()) as Row).result;
+          if (retired) {
+            assert.equal(result.isError, true);
+            assert.match(result.content[0].text, /probe\.enabled:false/);
+            assert.equal(upstreamFetched, false);
+          } else {
+            assert.equal(result.isError, false);
+            assert.equal(result.structuredContent.surface_id, id);
+            assert.equal(result.structuredContent.status_code, 200);
+            assert.deepEqual(result.structuredContent.body, body);
+          }
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      },
+    );
   });
 }

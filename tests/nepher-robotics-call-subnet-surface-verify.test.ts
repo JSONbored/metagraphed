@@ -19,6 +19,13 @@
 //   evaluations    GET  /api/v1/evaluations -> {items:[...]}
 //   ready          GET  /ready -> {"status":"ready",checks:{database:"ok"}}
 //   pricing        GET  /api/v1/tournaments/pricing?subnet_uid=49 -> {network,subnet_uid,...}
+//
+// 2026-11-15: the infra#873 availability sweep found tournament-api.nepher.ai
+// dns-gone (NXDOMAIN x2) and retired every surface on that host from the
+// callable set (probe.enabled:false, dated note; re-add only on new identity
+// evidence). This file now pins that retired state: the MCP tool must refuse
+// each surface without fetching upstream. The hermetic fixtures keep the last
+// live-verified body shapes for the transport-level tests.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -71,6 +78,7 @@ async function callToolWithSurface(
         : { ok: false, status: 404 },
   };
   const originalFetch = globalThis.fetch;
+  let upstreamFetched = false;
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -78,6 +86,7 @@ async function callToolWithSurface(
         headers: { "content-type": "application/dns-json" },
       });
     }
+    upstreamFetched = true;
     return upstreamResponse();
   }) as typeof fetch;
   try {
@@ -98,7 +107,8 @@ async function callToolWithSurface(
       mockEnv(),
       deps,
     );
-    return ((await response.json()) as Row).result;
+    const result = ((await response.json()) as Row).result;
+    return { result, upstreamFetched };
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -223,11 +233,15 @@ describe("SN49 Nepher Robotics call_subnet_surface verification (#7062)", () => 
   for (const fixture of GET_JSON_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface exists and is configured to be callable`, () => {
+    test(`${fixture.id}: registry surface exists and pins its sweep-retired (non-callable) state`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
       assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
+      // Retired from the callable set by the 2026-11-15 infra#873 sweep
+      // (dns-gone); probe-disabled = retired pending re-verification, not
+      // broken-and-forgotten.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p2\] dns-gone/);
       assert.equal(SURFACE.probe?.method, "GET");
       assert.equal(SURFACE.probe?.expect, "json");
       assert.equal(SURFACE.url, fixture.url);
@@ -254,28 +268,34 @@ describe("SN49 Nepher Robotics call_subnet_surface verification (#7062)", () => 
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end through the call_subnet_surface MCP tool, resolved by surface id`, async () => {
-      const result = await callToolWithSurface(SURFACE, () =>
-        jsonResponse(fixture.body),
+    test(`${fixture.id}: the MCP tool refuses the retired surface without fetching upstream`, async () => {
+      // In production the operational catalog filters probe.enabled:false
+      // surfaces out entirely; injecting the real config pins the tool's own
+      // surface_unavailable guard.
+      const { result, upstreamFetched } = await callToolWithSurface(
+        SURFACE,
+        () => jsonResponse(fixture.body),
       );
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, fixture.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      fixture.assertBody(result.structuredContent.body as Row);
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     });
   }
 
   describe("sn-49-nepher-tournament-openapi (direct-call only, HEAD probe)", () => {
     const SURFACE = surfaceOf("sn-49-nepher-tournament-openapi");
 
-    test("registry surface exists, is no-auth HEAD, and carries its captured schema", () => {
+    test("registry surface exists, is no-auth HEAD, sweep-retired, and carries its captured schema", () => {
       assert.ok(
         SURFACE,
         "registry surface sn-49-nepher-tournament-openapi is present",
       );
       assert.equal(SURFACE.kind, "openapi");
       assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
+      // Retired with the rest of the dns-gone host by the 2026-11-15
+      // infra#873 sweep.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p2\] dns-gone/);
       // Live HEAD /openapi.json -> 200 application/json (body empty on HEAD).
       assert.equal(SURFACE.probe?.method, "HEAD");
       assert.equal(SURFACE.probe?.expect, "json");
@@ -333,11 +353,10 @@ describe("SN49 Nepher Robotics call_subnet_surface verification (#7062)", () => 
     });
 
     test("the call_subnet_surface MCP tool rejects it outright without fetching upstream", async () => {
-      let upstreamFetched = false;
-      const result = await callToolWithSurface(SURFACE, () => {
-        upstreamFetched = true;
-        return jsonResponse({});
-      });
+      const { result, upstreamFetched } = await callToolWithSurface(
+        SURFACE,
+        () => jsonResponse({}),
+      );
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /auth_required/);
       assert.equal(upstreamFetched, false);

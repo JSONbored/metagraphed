@@ -14,6 +14,12 @@
 // Fixtures below mirror those live response shapes rather than fetching them,
 // keeping the test hermetic (the bodies are live data, so the test asserts the
 // stable shape, not exact contents).
+//
+// 2026-11-15: the infra#873 availability sweep found the health and both
+// scores routes answering 404 on an alive host and probe-disabled them
+// pending url re-verification. This file now pins that non-callable state
+// for those three (probe-disabled = retired from the callable set, not
+// broken); the openapi surface stays callable.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -51,6 +57,7 @@ async function callThroughMcpTool(surface: Row, body: Row) {
         : { ok: false, status: 404 },
   };
   const originalFetch = globalThis.fetch;
+  let upstreamFetched = false;
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -58,6 +65,7 @@ async function callThroughMcpTool(surface: Row, body: Row) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    upstreamFetched = true;
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -78,20 +86,23 @@ async function callThroughMcpTool(surface: Row, body: Row) {
       mockEnv(),
       deps,
     );
-    return ((await httpResponse.json()) as Row).result;
+    const result = ((await httpResponse.json()) as Row).result;
+    return { result, upstreamFetched };
   } finally {
     globalThis.fetch = originalFetch;
   }
 }
 
-// The four callable surfaces #7129 lists, with the kind/schema each is
-// configured as and a faithful subset of its live 200 JSON body.
+// The four surfaces #7129 lists, with the kind/schema each is configured as,
+// a faithful subset of its live 200 JSON body (as of 2026-07-21), and whether
+// the 2026-11-15 infra#873 sweep left it callable.
 const SURFACES = [
   {
     id: "sn-120-affine-openapi",
     kind: "openapi",
     url: "https://api.affine.io/openapi.json",
     hasSchema: true,
+    callable: true,
     body: {
       openapi: "3.1.0",
       info: { title: "Affine API", version: "1.0.0" },
@@ -107,6 +118,7 @@ const SURFACES = [
     kind: "subnet-api",
     url: "https://api.affine.io/api/v1/health",
     hasSchema: false,
+    callable: false,
     body: { status: "ok", service: "affine-api" },
     assertShape: (body: Row) => {
       assert.equal(body.status, "ok");
@@ -117,6 +129,7 @@ const SURFACES = [
     kind: "subnet-api",
     url: "https://api.affine.io/api/v1/scores/latest",
     hasSchema: false,
+    callable: false,
     body: {
       block_number: 8629773,
       calculated_at: 1784153229,
@@ -132,6 +145,7 @@ const SURFACES = [
     kind: "subnet-api",
     url: "https://api.affine.io/api/v1/scores/weights/latest",
     hasSchema: false,
+    callable: false,
     body: {
       block_number: 8629773,
       config: { window_id: 8629773 },
@@ -148,20 +162,28 @@ for (const spec of SURFACES) {
   describe(`SN120 Affine ${spec.id} call_subnet_surface verification (#7129)`, () => {
     const SURFACE = surfaceById(spec.id);
 
-    test("the registry surface exists and is configured to be callable", () => {
-      assert.ok(SURFACE, `registry surface ${spec.id} is present`);
-      assert.equal(SURFACE.kind, spec.kind);
-      assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
-      assert.equal(SURFACE.probe?.method, "GET");
-      assert.equal(SURFACE.probe?.expect, "json");
-      assert.equal(SURFACE.url, spec.url);
-      if (spec.hasSchema) {
-        assert.equal(typeof SURFACE.schema_url, "string");
-      } else {
-        assert.equal(SURFACE.schema_url, undefined);
-      }
-    });
+    test(
+      spec.callable
+        ? "the registry surface exists and is configured to be callable"
+        : "the registry surface exists and pins its sweep-retired (non-callable) state",
+      () => {
+        assert.ok(SURFACE, `registry surface ${spec.id} is present`);
+        assert.equal(SURFACE.kind, spec.kind);
+        assert.equal(SURFACE.auth_required, false);
+        assert.equal(SURFACE.probe?.enabled, spec.callable);
+        if (!spec.callable) {
+          assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+        }
+        assert.equal(SURFACE.probe?.method, "GET");
+        assert.equal(SURFACE.probe?.expect, "json");
+        assert.equal(SURFACE.url, spec.url);
+        if (spec.hasSchema) {
+          assert.equal(typeof SURFACE.schema_url, "string");
+        } else {
+          assert.equal(SURFACE.schema_url, undefined);
+        }
+      },
+    );
 
     test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
       let requestedUrl: string | undefined;
@@ -182,12 +204,29 @@ for (const spec of SURFACES) {
       spec.assertShape(result.body as Row);
     });
 
-    test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
-      const result = await callThroughMcpTool(SURFACE, spec.body);
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, spec.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      spec.assertShape(result.structuredContent.body);
-    });
+    test(
+      spec.callable
+        ? "end-to-end through the call_subnet_surface MCP tool, resolved by surface id"
+        : "the call_subnet_surface MCP tool refuses the retired surface without fetching upstream",
+      async () => {
+        const { result, upstreamFetched } = await callThroughMcpTool(
+          SURFACE,
+          spec.body,
+        );
+        if (!spec.callable) {
+          // In production the operational catalog filters
+          // probe.enabled:false surfaces out entirely; injecting the real
+          // config pins the tool's own surface_unavailable guard.
+          assert.equal(result.isError, true);
+          assert.match(result.content[0].text, /probe\.enabled:false/);
+          assert.equal(upstreamFetched, false);
+          return;
+        }
+        assert.equal(result.isError, false);
+        assert.equal(result.structuredContent.surface_id, spec.id);
+        assert.equal(result.structuredContent.status_code, 200);
+        spec.assertShape(result.structuredContent.body);
+      },
+    );
   });
 }

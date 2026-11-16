@@ -32,6 +32,7 @@ const SURFACES = [
   {
     id: "sn-89-taomarketcap-subnet-api",
     kind: "subnet-api",
+    expect: "json",
     url: "https://api.taomarketcap.com/public/v1/subnets/89/",
     body: {
       id: "89",
@@ -47,6 +48,10 @@ const SURFACES = [
   {
     id: "sn-89-infinitehash-runtime-version",
     kind: "data-artifact",
+    // [2026-11-15 infra#873 p3b] GitHub raw serves this JSON body under a
+    // text/* header; the sweep relaxed the probe expectation to "any". Still
+    // callable -- only the expectation pin changed.
+    expect: "any",
     url: "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/testutils/simulator/runtime_version_318.json",
     body: {
       specName: "node-subtensor",
@@ -83,7 +88,7 @@ describe("SN89 InfiniteHash call_subnet_surface verification (#7101)", () => {
       assert.equal(surface.auth_required, false);
       assert.equal(surface.probe?.enabled, true);
       assert.equal(surface.probe?.method, "GET");
-      assert.equal(surface.probe?.expect, "json");
+      assert.equal(surface.probe?.expect, fixture.expect);
       assert.equal(surface.url, fixture.url);
       assert.equal(surface.schema_url, undefined);
     });
