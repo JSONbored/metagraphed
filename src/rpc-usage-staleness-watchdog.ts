@@ -31,6 +31,7 @@ import {
   isAnalyticsSqlConfigured,
 } from "./analytics-engine-sql.ts";
 import { RPC_USAGE_DATASET } from "./rpc-usage-capture.ts";
+import { RPC_USAGE_STALENESS_LOOKBACK_MS } from "./rpc-usage-store.ts";
 
 /**
  * Two hours without a single captured request.
@@ -53,10 +54,10 @@ import { RPC_USAGE_DATASET } from "./rpc-usage-capture.ts";
 // exception is recorded rather than inferred.
 export const RPC_USAGE_STALENESS_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
-/** How far back the freshness query looks. Bounded so a lane that has been
- * dead for weeks still runs a cheap query rather than scanning AE's whole
- * three-month retention to confirm what the first hour already showed. */
-const LOOKBACK_HOURS = 24;
+/** How far back the freshness query looks -- the declaration lives with the
+ * store seam (RPC_USAGE_STALENESS_LOOKBACK_MS) so the PG `latest` reader and
+ * this module's Analytics Engine fallback cannot drift to two windows. */
+const LOOKBACK_HOURS = RPC_USAGE_STALENESS_LOOKBACK_MS / (60 * 60 * 1000);
 
 export interface RpcUsageStalenessVerdict {
   stale: boolean;
@@ -118,39 +119,71 @@ export async function runRpcUsageStalenessWatchdog(
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
   const query = deps.query ?? analyticsSqlQuery;
-  // Unconfigured is a missed report, not an alert: a deployment without the
-  // read token cannot distinguish "the writer stopped" from "I cannot see
-  // the writer", and alerting on the second one every hour would train
-  // whoever watches the channel to ignore the first.
-  if (!isAnalyticsSqlConfigured(env)) {
-    return { ok: false, reason: "analytics sql not configured" };
+
+  // #13150: the selected native store answers for its own writer -- the same
+  // explicit-selection rule as the serving read (rpc-usage-hot-tier): when
+  // RPC_USAGE_STORE is bound, this watchdog watches the PostgreSQL lane and
+  // never falls through to Analytics Engine, whose writer is no longer the
+  // one serving answers. Without it, the AE read below stands unchanged.
+  let latestObservedAtMs: number | null;
+  let source: "postgresql" | "analytics-engine";
+  if (env?.RPC_USAGE_STORE) {
+    source = "postgresql";
+    try {
+      latestObservedAtMs = await env.RPC_USAGE_STORE.latest(now());
+    } catch (error) {
+      // Mirrors the AE client's posture one branch down: "the query failed"
+      // is a different claim from "the lane is stale", reported once.
+      await record(env, {
+        error:
+          error instanceof Error
+            ? error
+            : new Error("rpc-usage staleness read failed"),
+        route: "watchdog:rpc-usage-staleness",
+        // The read failing and the lane being stale are different faults; a
+        // shared fingerprint would let one throttle the other's alert.
+        fingerprintDetail: "native-read-failed",
+        errorCode: "query_failed",
+      });
+      return { ok: false, reason: "query_failed", source };
+    }
+  } else {
+    source = "analytics-engine";
+    // Unconfigured is a missed report, not an alert: a deployment without the
+    // read token cannot distinguish "the writer stopped" from "I cannot see
+    // the writer", and alerting on the second one every hour would train
+    // whoever watches the channel to ignore the first.
+    if (!isAnalyticsSqlConfigured(env)) {
+      return { ok: false, reason: "analytics sql not configured" };
+    }
+
+    const rows = await query(
+      env,
+      `SELECT toUnixTimestamp(max(timestamp)) AS latest` +
+        ` FROM ${RPC_USAGE_DATASET}` +
+        ` WHERE timestamp > now() - INTERVAL '${LOOKBACK_HOURS}' HOUR`,
+    );
+    // The client already reported the failure to the exception channel; a
+    // second alert here would double-report one fault, and "the query failed"
+    // is a different claim from "the lane is stale".
+    if (!rows) return { ok: false, reason: "query_failed", source };
+
+    const latestSeconds = Number(rows[0]?.latest);
+    // AE returns MAX() over an empty window as 0 (and toUnixTimestamp of the
+    // zero DateTime likewise), not as a missing row -- so zero/non-finite is
+    // the "no data points" signal here, not a 1970 timestamp to compute an
+    // age against.
+    latestObservedAtMs =
+      Number.isFinite(latestSeconds) && latestSeconds > 0
+        ? latestSeconds * 1000
+        : null;
   }
 
   const thresholdMs =
     Number(env?.RPC_USAGE_STALENESS_THRESHOLD_MS) ||
     RPC_USAGE_STALENESS_THRESHOLD_MS;
-
-  const rows = await query(
-    env,
-    `SELECT toUnixTimestamp(max(timestamp)) AS latest` +
-      ` FROM ${RPC_USAGE_DATASET}` +
-      ` WHERE timestamp > now() - INTERVAL '${LOOKBACK_HOURS}' HOUR`,
-  );
-  // The client already reported the failure to the exception channel; a
-  // second alert here would double-report one fault, and "the query failed"
-  // is a different claim from "the lane is stale".
-  if (!rows) return { ok: false, reason: "query_failed" };
-
-  const latestSeconds = Number(rows[0]?.latest);
   const verdict = evaluateRpcUsageStaleness({
-    // AE returns MAX() over an empty window as 0 (and toUnixTimestamp of the
-    // zero DateTime likewise), not as a missing row -- so zero/non-finite is
-    // the "no data points" signal here, not a 1970 timestamp to compute an
-    // age against.
-    latestObservedAtMs:
-      Number.isFinite(latestSeconds) && latestSeconds > 0
-        ? latestSeconds * 1000
-        : null,
+    latestObservedAtMs,
     nowMs: now(),
     thresholdMs,
   });
@@ -166,6 +199,7 @@ export async function runRpcUsageStalenessWatchdog(
           `/api/v1/rpc/usage is answering from data that stopped advancing`,
       ),
       route: "watchdog:rpc-usage-staleness",
+      fingerprintDetail: "stale-lane",
       errorCode: "stale_lane",
     });
   }
@@ -182,5 +216,5 @@ export async function runRpcUsageStalenessWatchdog(
     checked_at: now(),
   });
   // `ok` describes whether the TICK ran, not whether the lane is fresh.
-  return { ok: true, alerted: verdict.stale, ...verdict };
+  return { ok: true, alerted: verdict.stale, source, ...verdict };
 }

@@ -3,7 +3,11 @@ import type { PgStoreRuntime } from "./pg-store-runtime.ts";
 import type { RpcUsageEvent } from "./rpc-usage-capture.ts";
 import { usageDataPoint } from "./rpc-usage-capture.ts";
 import { createNativeWorkGroup } from "./native-work-group.ts";
-import { createPgRpcUsageReader } from "./pg-rpc-usage-reader.ts";
+import {
+  createPgRpcUsageLatestReader,
+  createPgRpcUsageReader,
+} from "./pg-rpc-usage-reader.ts";
+import { RPC_USAGE_STALENESS_LOOKBACK_MS } from "./rpc-usage-store.ts";
 
 export interface PgRpcUsageOptions {
   maxPending: number;
@@ -99,6 +103,10 @@ export function createPgRpcUsageStore(
   };
   return {
     load: createPgRpcUsageReader(runtime),
+    latest: createPgRpcUsageLatestReader(
+      runtime,
+      RPC_USAGE_STALENESS_LOOKBACK_MS,
+    ),
     stats,
     record(event: RpcUsageEvent): boolean {
       try {
