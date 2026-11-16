@@ -53,7 +53,18 @@ const FreshnessSourceSchema = z
     // Not an integer since the live-RPC lane's window is minutes, not hours.
     stale_after_hours: z.number().min(0),
     stale_behavior: z.enum(["block", "warn"]),
-    status: z.enum(["captured", "current", "degraded", "missing", "stale"]),
+    // "failed" entered the vocabulary when the 2026-11-15 availability sweep
+    // retired adapter hosts mid-window: a capture ATTEMPT that errored is a
+    // distinct, honest state -- neither degraded (partial) nor missing (never
+    // attempted). Additive per #869.
+    status: z.enum([
+      "captured",
+      "current",
+      "degraded",
+      "failed",
+      "missing",
+      "stale",
+    ]),
     timestamp: z.string().nullable(),
     timestamp_field: z.string().nullable(),
   })

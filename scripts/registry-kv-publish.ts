@@ -16,8 +16,10 @@ import { requireCloudflareCredentials } from "./r2-rest.ts";
 import {
   cloudflareRegistryKvStore,
   collectRegistryKv,
+  KV_BURST_GRACE_MS,
   publishRegistryKv,
   registryDigest,
+  RegistryStorageBudgetError,
 } from "./registry-kv-store.ts";
 
 export async function publishRegistryMain(
@@ -106,7 +108,7 @@ export async function publishRegistryMain(
   // A normal publication can only follow the separately qualified initial
   // migration. Never infer an empty retained-history set from a failed read.
   const collected = await collectRegistryKv(store);
-  const receipt = await publishRegistryKv(store, {
+  const publishInput = {
     artifacts: manifest.artifacts,
     load,
     pointer: {
@@ -119,8 +121,34 @@ export async function publishRegistryMain(
         freshness.summary.native_snapshot_captured_at,
       health_surface_count: freshness.summary.health_surface_count,
     },
-  });
-  console.log(stableStringify({ ...receipt, collected, backend: "kv" }));
+  };
+  let burstCollected = 0;
+  let receipt;
+  try {
+    receipt = await publishRegistryKv(store, publishInput);
+  } catch (error) {
+    if (!(error instanceof RegistryStorageBudgetError)) throw error;
+    // A day of unusually many generations can exceed the budget with every
+    // manifest still inside the full grace window. Re-collect with the burst
+    // floor (current + previous always survive) and retry exactly once.
+    console.warn(
+      "registry KV publication over budget after normal collection; burst-collecting intermediate generations",
+    );
+    burstCollected = await collectRegistryKv(
+      store,
+      Date.now(),
+      KV_BURST_GRACE_MS,
+    );
+    receipt = await publishRegistryKv(store, publishInput);
+  }
+  console.log(
+    stableStringify({
+      ...receipt,
+      collected,
+      burst_collected: burstCollected,
+      backend: "kv",
+    }),
+  );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)

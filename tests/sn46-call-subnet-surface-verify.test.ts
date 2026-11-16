@@ -23,8 +23,9 @@
 // Registry already matched reality -- no registry edit needed.
 //
 // 2026-11-15: the infra#873 availability sweep found every zipcode.ai route
-// here answering HTTP 402 (payment required) on a declared-open route: the
-// registry now carries auth_required:true with a curated custom-scheme
+// here answering HTTP 402 -- which custody's #13204 verification traced to
+// Vercel DEPLOYMENT_DISABLED: the HOST is suspended, not paywalled. The
+// registry keeps the surfaces declared-open with probes disabled pending
 // placeholder on all four surfaces (gated != broken -- the host is alive and
 // the API is now a paid tier, pending re-review for the credential
 // mechanism). This file pins that gated state: the MCP tool must refuse the
@@ -151,19 +152,19 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
   for (const fixture of GATED_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface pins its sweep-gated (402 paywalled) state`, () => {
+    test(`${fixture.id}: registry surface pins its host-unavailable (corrected) state`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
-      // Paywalled since the 2026-11-15 infra#873 sweep; the custom-scheme
-      // placeholder records that the credential mechanism is still to be
-      // curated at re-review.
-      assert.equal(SURFACE.auth_required, true);
-      assert.equal(SURFACE.auth?.scheme, "custom");
+      // Custody correction: the 402 is Vercel DEPLOYMENT_DISABLED -- host
+      // unavailable, not a paywall. Declared-open stands; the probe is
+      // disabled pending redeploy evidence.
+      assert.equal(SURFACE.auth_required, false);
+      assert.equal(SURFACE.auth, undefined);
       assert.match(
         SURFACE.notes,
-        /\[2026-11-15 infra#873 p3b\] payment-required \(402\)/,
+        /custody correction\] the 402 is Vercel DEPLOYMENT_DISABLED/,
       );
-      assert.equal(SURFACE.probe?.enabled, true);
+      assert.equal(SURFACE.probe?.enabled, false);
       assert.equal(SURFACE.probe?.method, "GET");
       assert.equal(SURFACE.probe?.expect, "json");
       assert.equal(SURFACE.url, fixture.url);
@@ -190,13 +191,13 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: the MCP tool refuses the gated surface without a credential or upstream fetch`, async () => {
+    test(`${fixture.id}: the MCP tool refuses the retired surface without fetching upstream`, async () => {
       const { result, upstreamFetched } = await callToolWithSurface(
         SURFACE,
         fixture.body,
       );
       assert.equal(result.isError, true);
-      assert.match(result.content[0].text, /credential|auth_required/);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
       assert.equal(upstreamFetched, false);
     });
   }
@@ -247,18 +248,18 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
     for (const fixture of OPENAPI_SURFACES) {
       const SURFACE = surfaceOf(fixture.id);
 
-      test(`${fixture.id}: registry surface exists, is sweep-gated GET, carries schema`, () => {
+      test(`${fixture.id}: registry surface pins its host-unavailable (corrected) state`, () => {
         assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
         assert.equal(SURFACE.kind, "openapi");
-        // Paywalled since the 2026-11-15 infra#873 sweep, same 402 class as
-        // the dashboard surfaces above.
-        assert.equal(SURFACE.auth_required, true);
-        assert.equal(SURFACE.auth?.scheme, "custom");
+        // Custody correction: Vercel DEPLOYMENT_DISABLED, same host class as
+        // the dashboard surfaces above -- declared-open, probe disabled.
+        assert.equal(SURFACE.auth_required, false);
+        assert.equal(SURFACE.auth, undefined);
         assert.match(
           SURFACE.notes,
-          /\[2026-11-15 infra#873 p3b\] payment-required \(402\)/,
+          /custody correction\] the 402 is Vercel DEPLOYMENT_DISABLED/,
         );
-        assert.equal(SURFACE.probe?.enabled, true);
+        assert.equal(SURFACE.probe?.enabled, false);
         assert.equal(SURFACE.probe?.method, "GET");
         assert.equal(SURFACE.probe?.expect, "json");
         assert.equal(SURFACE.url, fixture.url);

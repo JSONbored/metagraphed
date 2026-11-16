@@ -36,9 +36,9 @@
       "id": "sn-127-astrid-subnet-api",
       "kind": "subnet-api",
       "name": "Astrid Arena API",
-      "notes": "Public no-auth REST API for SN127 Astrid's trading Arena (arena-api.astrid.global) exposing completed competitions, trades, and execution runs; GET /public/arena/completed-competitions returns JSON with no authentication. Documented in the official astridintelligence/sn-127 README. The sibling executions/presence route additionally requires a participantIds query parameter and is not promotable.",
+      "notes": "Public no-auth REST API for SN127 Astrid's trading Arena (arena-api.astrid.global) exposing completed competitions, trades, and execution runs; GET /public/arena/completed-competitions returns JSON with no authentication. Documented in the official astridintelligence/sn-127 README. The sibling executions/presence route additionally requires a participantIds query parameter and is not promotable. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -60,9 +60,9 @@
       "id": "sn-127-astrid-data-artifact",
       "kind": "data-artifact",
       "name": "Astrid Arena competition wallet-activity dataset",
-      "notes": "Public no-auth GET returning the full wallet-activity dataset (totals plus orders/positions/trades records) for a completed SN127 Astrid Arena competition (Miners Showdown 3). The competitionId is sourced from the public completed-competitions endpoint already in this manifest, and the wallet-activity dataset path is documented in the official astridintelligence/sn-127 validator client (src/core/arena/api.ts, fetchAllTrades). Returns application/json; distinct from the completed-competitions API surface.",
+      "notes": "Public no-auth GET returning the full wallet-activity dataset (totals plus orders/positions/trades records) for a completed SN127 Astrid Arena competition (Miners Showdown 3). The competitionId is sourced from the public completed-competitions endpoint already in this manifest, and the wallet-activity dataset path is documented in the official astridintelligence/sn-127 validator client (src/core/arena/api.ts, fetchAllTrades). Returns application/json; distinct from the completed-competitions API surface. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -146,7 +146,7 @@
       "id": "sn-127-astrid-execution-presence",
       "kind": "subnet-api",
       "name": "Astrid Arena execution presence",
-      "notes": "Public no-auth GET returning execution presence records (participantId plus executionTime, with total/limit/offset pagination fields) for an SN127 Astrid Arena competition, per the official validator client (src/core/arena/api.ts, fetchExecutionPresence) — a plain fetch like the sibling completed-competitions call. Requires a participantIds query parameter (comma-joined list; optional limit/offset/after for pagination) in addition to the competitionId path parameter. Live-verified 2026-07-22: without the query parameter the route returns HTTP 400 JSON naming participantIds as required (confirms live validation, not auth); with participant ids taken from the completed-competitions surface already in this manifest it returns HTTP 200 JSON presence records. probe.enabled:false since the probe pipeline has no per-surface injection for the required query parameter.",
+      "notes": "Public no-auth GET returning execution presence records (participantId plus executionTime, with total/limit/offset pagination fields) for an SN127 Astrid Arena competition, per the official validator client (src/core/arena/api.ts, fetchExecutionPresence) — a plain fetch like the sibling completed-competitions call. Requires a participantIds query parameter (comma-joined list; optional limit/offset/after for pagination) in addition to the competitionId path parameter. Live-verified 2026-07-22: without the query parameter the route returns HTTP 400 JSON naming participantIds as required (confirms live validation, not auth); with participant ids taken from the completed-competitions surface already in this manifest it returns HTTP 200 JSON presence records. probe.enabled:false since the probe pipeline has no per-surface injection for the required query parameter. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
