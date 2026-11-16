@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-60 endpoints.
+63 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`\
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -15,6 +15,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Network-scoped form of /api/v1/chain/alpha-volume — prefix the route with a network to choose which chain answers it.
 - [Chain Axon Removals](/docs/api-reference/chain/chain-axon-removals) — `GET /api/v1/chain/axon-removals`\
   Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity.
+- [Chain Baskets](/docs/api-reference/chain/chain-baskets) — `GET /api/v1/chain/baskets`\
+  Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp.
 - [Chain Burn](/docs/api-reference/chain/chain-burn) — `GET /api/v1/chain/burn`\
   Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399).
 - [Chain Burn By Network](/docs/api-reference/chain/chain-burn-by-network) — `GET /api/v1/{network}/chain/burn`\
@@ -45,6 +47,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=.
 - [Chain Fees By Network](/docs/api-reference/chain/chain-fees-by-network) — `GET /api/v1/{network}/chain/fees`\
   Network-scoped form of /api/v1/chain/fees — prefix the route with a network to choose which chain answers it.
+- [Chain Gamma](/docs/api-reference/chain/chain-gamma) — `GET /api/v1/chain/gamma`\
+  Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/\{netuid}/gamma — ordered by netuid and store-capped.
 - [Chain Holders](/docs/api-reference/chain/chain-holders) — `GET /api/v1/chain/holders`\
   Fetch every subnet ranked by alpha-ownership concentration.
 - [Chain Identity History](/docs/api-reference/chain/chain-identity-history) — `GET /api/v1/chain/identity-history`\
@@ -121,6 +125,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch up to 25,000 chain events in one call -- the same rows, filters and ordering as /api/v1/chain-events, without the 100-row page ceiling or the cursor bookkeeping that comes with it.
 - [Export Chain Events By Network](/docs/api-reference/chain/export-chain-events-by-network) — `GET /api/v1/{network}/export/chain-events`\
   Network-scoped form of /api/v1/export/chain-events — prefix the route with a network to choose which chain answers it.
+- [Gamma Deposits](/docs/api-reference/chain/gamma-deposits) — `GET /api/v1/gamma/deposits`\
+  Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped.
 - [Indexer Lag](/docs/api-reference/chain/indexer-lag) — `GET /api/v1/chain/indexer-lag`\
   Fetch the block-indexing latency card.
 - [Subnet Price Share Composition](/docs/api-reference/chain/subnet-price-share-composition) — `GET /api/v1/chain/subnet-price-share-composition`\

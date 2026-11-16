@@ -196,6 +196,7 @@ interface RuntimeSecretEnv {
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_HEALTH_MAX_AGE_HOURS?: string;
+  METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS?: string;
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
   METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN?: string;
@@ -309,6 +310,7 @@ interface RawCaptureLaneEnv {
 // deployment without it must still type-check and still serve: the hot tier
 // declines and /api/v1/rpc/usage falls through to the lakehouse cold tier.
 interface RpcUsageAnalyticsEnv {
+  RPC_USAGE_STORE?: import("../src/rpc-usage-store.ts").RpcUsageStore;
   RPC_USAGE_ANALYTICS?: AnalyticsEngineDataset;
   /** `npx wrangler secret put ANALYTICS_ENGINE_SQL_TOKEN` */
   ANALYTICS_ENGINE_SQL_TOKEN?: string;
@@ -346,6 +348,16 @@ interface SubtleCryptoDeriveKeyAlgorithm {
  * fixtures do not make these bindings appear required or available on wss-lb. */
 interface LegacyStoreFixtureEnv {
   HYPERDRIVE?: Hyperdrive;
+  /** #13171 (part of #13142): selects the Hyperdrive-backed state assembly on
+   * the main Worker entry. Unset everywhere today — the seam lands dark, and
+   * only the exact value "hyperdrive" (plus the HYPERDRIVE binding above)
+   * activates it; see workers/api.entry.ts and
+   * src/hyperdrive-state-bindings.ts. Declared HERE, beside the binding it
+   * gates, and deliberately NOT in RuntimeSecretEnv: it is a Worker-entry
+   * selector, not a native-process scalar, so it must never join
+   * NATIVE_SETTING_KEYS (tests/native-environment-contracts.test.ts enforces
+   * that every RuntimeSecretEnv scalar is reviewed into that vocabulary). */
+  METAGRAPH_STATE_SOURCE?: string;
   NEON_WRITE_BUFFER_LANES?: string;
 }
 interface LegacyBufferFixtureEnv {
@@ -369,8 +381,22 @@ interface ArchiveObjectEnv {
 // `undefined` (#10186, #11339).
 
 /** The main API Worker (wrangler.jsonc) carries every concern. */
+interface NativeRealtimeEnv {
+  ALERTER_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
+  MCP_SESSION_SERVICE?: import("../src/mcp-session-service.ts").McpSessionService;
+  CHAIN_FIREHOSE_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
+  SUBNET_STATUS_SERVICE?: import("../src/subnet-status-service.ts").SubnetStatusService;
+}
+
+interface NativeProducerBindingEnv {
+  NATIVE_PRODUCER_STORE?: import("../src/native-producer-store.ts").NativeProducerSelection;
+  NATIVE_WRITE_RUNNERS?: import("../src/native-producer-store.ts").NativeProducerEnv["NATIVE_WRITE_RUNNERS"];
+}
+
 interface Env
   extends
+    NativeProducerBindingEnv,
+    NativeRealtimeEnv,
     RuntimeSecretEnv,
     ArchiveObjectEnv,
     LegacyStoreFixtureEnv,
@@ -388,6 +414,7 @@ interface Env
 /** data-api serves the authenticated surfaces, so it holds the secrets. */
 interface DataApiEnv
   extends
+    NativeProducerBindingEnv,
     RuntimeSecretEnv,
     ArchiveObjectEnv,
     LegacyStoreFixtureEnv,

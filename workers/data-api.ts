@@ -1,3 +1,13 @@
+import type {
+  AppExecutionContext,
+  AppScheduledEvent,
+} from "./runtime-context.ts";
+import {
+  selectedNativeWriteRunner,
+  selectedNativeProducerSql,
+  selectedNativeProducerStore,
+} from "../src/native-producer-store.ts";
+import { safeBlockNumber } from "../src/history-readers.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
@@ -17,8 +27,26 @@ import { sha256Hex } from "../src/sha256-hex.ts";
 // account/API-key state and the TAO/USD index. Read-store adapters preserve
 // compatibility for table families whose configured owner has not moved.
 import { DEFAULT_ACCOUNT_KIND, asAccountKind } from "../src/account-kind.ts";
+import { selectedDailyQuotaStore } from "../src/daily-quota-store.ts";
+import { appKv } from "../src/app-kv.ts";
+import { selectedAccountStateStore } from "../src/account-state-store.ts";
 import { withArchiveObjects } from "../src/archive-object-store.ts";
 import { createD1Sql, selectedD1Store } from "../src/d1-store.ts";
+import { selectedNeuronSnapshotStore } from "../src/neuron-snapshot-store.ts";
+import { selectedNeuronHistoryStore } from "../src/neuron-history-store.ts";
+import { selectedNeuronMetricStore } from "../src/neuron-metric-store.ts";
+import { selectedNativeRelationalSql } from "../src/native-relational-read.ts";
+import { selectedNeuronDailyViewStore } from "../src/neuron-daily-view-store.ts";
+import { selectedNeuronLiveStore } from "../src/neuron-live-store.ts";
+import { selectedNeuronSummaryStore } from "../src/neuron-summary-store.ts";
+import { selectedValidatorEnrichmentStore } from "../src/validator-enrichment-store.ts";
+import { selectedSubnetEnrichmentStore } from "../src/subnet-enrichment-store.ts";
+import { selectedValidatorHistoryStore } from "../src/validator-history-store.ts";
+import {
+  selectedNeuronViewStore,
+  ACCOUNT_REGISTRATION_COLUMNS,
+  type NeuronViewQuery,
+} from "../src/neuron-view-store.ts";
 import {
   writeUsageRollupD1,
   type UsageRollupBucket,
@@ -358,7 +386,7 @@ async function captureUncaughtDataApiError(
   error: unknown,
   route: string,
   env: DataApiEnv,
-  ctx: ExecutionContext | undefined,
+  ctx: AppExecutionContext | undefined,
 ): Promise<void> {
   const pending = recordExceptionEvent(env, {
     error,
@@ -448,6 +476,7 @@ import {
 import { buildValidatorOperatorDirectory } from "../src/validator-operator-directory.ts";
 import { createNeuronWriteReporter } from "../src/neuron-write-diagnostics.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import { selectedNeuronCaptureStore } from "../src/neuron-capture-store.ts";
 import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
@@ -760,7 +789,7 @@ const reportNeuronWriteFailure = createNeuronWriteReporter();
 async function handleNeuronsSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
@@ -1022,7 +1051,7 @@ function chainDetailSyncAuth(
 async function handleChainDetailSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
@@ -1169,14 +1198,18 @@ async function handleChainDetailSyncHead(request: Request, env: DataApiEnv) {
   if (!neonOwnsChainDetail(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
-  const d1 = selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES);
+  const native = selectedNativeProducerStore(env, CHAIN_DETAIL_HOT_TIER_TABLES);
+  const d1 = native ?? selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES);
   if (d1) {
     try {
       const row = await d1.first<{ head: number | null }>(
         "SELECT MAX(block_number) AS head FROM chain_detail_blocks",
       );
       if (!row) throw new Error("Missing chain detail resume result");
-      return writeJson({ head: row.head });
+      const head = native ? safeBlockNumber(row.head) : row.head;
+      if (native && row.head !== null && head === null)
+        throw new Error("Invalid native chain detail resume result");
+      return writeJson({ head });
     } catch {
       return writeJson({ error: "chain detail resume read failed" }, 503);
     }
@@ -1214,7 +1247,7 @@ const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
 async function handleNeuronDailyBackfill(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.NEURON_DAILY_BACKFILL_SECRET) {
     return writeJson(
@@ -1511,7 +1544,7 @@ function diffHyperparamsHistory(
 async function handleSubnetHyperparamsSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
     return writeJson(
@@ -1696,7 +1729,7 @@ const SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS = 500;
 async function handleSubnetHyperparamsBackfill(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<Response> {
   const provided =
     request.headers.get(SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER) || "";
@@ -1857,7 +1890,7 @@ function diffIdentityHistory(
 async function handleAccountIdentitySync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -2043,7 +2076,7 @@ const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
 async function handleSubnetIdentitySync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -2204,7 +2237,7 @@ const SUBNET_OWNERSHIP_SYNC_ROW_SCHEMA = subnetOwnershipSyncRowSchema({
 async function handleSubnetOwnershipSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SUBNET_OWNERSHIP_SYNC_SECRET) {
     return writeJson(
@@ -2380,7 +2413,7 @@ function coerceNominatorCountSyncRow(row: Row) {
 async function handleValidatorNominatorCountsSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
     return writeJson(
@@ -2597,7 +2630,7 @@ function coerceNominatorPositionSyncRow(row: Row) {
 async function handleNominatorPositionsSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
     return writeJson(
@@ -2823,7 +2856,7 @@ const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
 async function handleSelfStakeSync(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   if (!env.SELF_STAKE_SYNC_SECRET) {
     return writeJson(
@@ -3060,7 +3093,7 @@ async function handleAccountBalancesSync(
   // Kept in the signature, unused: the router passes it positionally to every
   // handler, and the Neon mirror this route used to run moved to the queue
   // consumer with the write (metagraphed-infra#353).
-  _ctx?: ExecutionContext,
+  _ctx?: AppExecutionContext,
 ) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
     return writeJson(
@@ -3292,7 +3325,7 @@ function coerceHotkeyAlphaSyncRow(row: Row) {
 async function handleHotkeyAlphaSync(
   request: Request,
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ) {
   if (!env.HOTKEY_ALPHA_SYNC_SECRET) {
     return writeJson(
@@ -3739,6 +3772,7 @@ export const NEURONS_SNAPSHOT_TABLES = [
 /** The selected store owns both snapshot rows and the completeness ledger.
  * The historical function name also covers D1 ownership. */
 export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
+  if (selectedNeuronCaptureStore(env)) return true;
   if (selectedD1Store(env, [...NEURONS_SNAPSHOT_TABLES, "neurons_passes"]))
     return true;
   // Without a D1 selection, the Postgres binding determines availability.
@@ -3749,6 +3783,7 @@ export function neonOwnsNeuronsSnapshot(env: DataApiEnv): boolean {
  * for hotkey-alpha. Shared writers must use the same store (#9728, #10056).
  * Lanes without a pass table select only their data table. */
 export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
+  if (selectedNativeWriteRunner(env, lane)) return true;
   const tables = [LEDGER_MIRROR_PLANS[lane]?.table, PASS_TABLES[lane]].filter(
     (t): t is string => Boolean(t),
   );
@@ -3766,6 +3801,7 @@ export function neonOwnsLedger(env: DataApiEnv, lane: string): boolean {
 }
 
 export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
+  if (selectedNativeWriteRunner(env, "nominator-positions")) return true;
   if (
     selectedD1Store(env, [
       "nominator_positions",
@@ -3783,11 +3819,13 @@ export function neonOwnsNominatorPositions(env: DataApiEnv): boolean {
  * lane's writers -- #9728 is the precedent for why covering one of two is worse
  * than covering neither: the row count looks nearly right. */
 export function neonOwnsChainDetail(env: DataApiEnv): boolean {
+  if (selectedNativeWriteRunner(env, "chain-detail")) return true;
   if (selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)) return true;
   return Boolean(env.HYPERDRIVE?.connectionString);
 }
 
 export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
+  if (selectedNativeWriteRunner(env, lane)) return true;
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
   if (selectedD1Store(env, [plan.latest.table, plan.history.table]))
@@ -3800,10 +3838,15 @@ export function neonOwnsFamily(env: DataApiEnv, lane: string): boolean {
 /** The diff read and its capture writer must select the same complete family. */
 function captureFamilyRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   lane: string,
 ): PgSql {
   const plan = FAMILY_MIRROR_PLANS[lane];
+  const native = selectedNativeProducerSql(env, [
+    plan.latest.table,
+    plan.history.table,
+  ]);
+  if (native) return native;
   const d1 = selectedD1Store(env, [plan.latest.table, plan.history.table]);
   return d1 ? createD1Sql(d1) : createPgSql(env.HYPERDRIVE!, ctx);
 }
@@ -3829,13 +3872,18 @@ export const ACCOUNT_STATE_TABLES = [
   "api_usage_rollup",
 ] as const;
 
-/** Select the configured owner of the whole user-state group. Both runners
- * retain the tagged-SQL contract; null keeps the caller's unavailable response. */
+/** Select the configured owner of the whole user-state group. The native
+ * owner is consulted first and, once selected, never falls through to a
+ * different database (#13145) — the same seam every other family already has.
+ * Every runner retains the tagged-SQL contract; null keeps the caller's
+ * unavailable response. */
 export function userStateRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | null {
+  const native = selectedNativeProducerSql(env, tables);
+  if (native) return native;
   const d1 = selectedD1Store(env, tables);
   if (d1) return createD1Sql(d1);
   if (env.HYPERDRIVE?.connectionString) {
@@ -3846,7 +3894,7 @@ export function userStateRunner(
 
 async function withAlertTriggersSql(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   fn: (sql: PgSql) => Promise<Response>,
 ) {
   const sql = userStateRunner(env, ctx, ALERT_TRIGGER_TABLES);
@@ -3986,7 +4034,7 @@ async function resolveAlertTriggerCreateAuth(
 async function handleAlertTriggerCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await resolveAlertTriggerCreateAuth(request, env);
   if (!auth.ok) return auth.response;
@@ -4073,7 +4121,7 @@ async function handleAlertTriggerCreate(
 async function handleAlertTriggerGet(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4172,7 +4220,7 @@ async function runAlertTriggerUpdate(sql: PgSql, id: string, merged: Row) {
 async function handleAlertTriggerUpdate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4200,7 +4248,7 @@ async function handleAlertTriggerUpdate(
 async function handleAlertTriggerDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4224,7 +4272,7 @@ async function handleAlertTriggerDelete(
 async function handleAlertTriggersActiveList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4270,7 +4318,7 @@ async function handleAlertTriggersActiveList(
 async function handleAlertTriggersMatchedWriteback(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4352,7 +4400,7 @@ const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
 async function handleAlertTriggersDeliveryLogWrite(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
@@ -4433,7 +4481,7 @@ async function handleAlertTriggersDeliveryLogWrite(
 async function handleAlertTriggersRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4512,7 +4560,7 @@ async function requireVerifiedWatchSs58(
 async function handleWatchTriggersList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4532,7 +4580,7 @@ async function handleWatchTriggersList(
 async function handleWatchTriggerUpdate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4562,7 +4610,7 @@ async function handleWatchTriggerUpdate(
 async function handleWatchTriggerDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4585,7 +4633,7 @@ async function handleWatchTriggerDelete(
 async function handleWatchTriggerDeliveries(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -4616,7 +4664,7 @@ async function handleWatchTriggerDeliveries(
 async function handleWatchTriggersRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4675,7 +4723,7 @@ function pushSubscriptionView(row: Record<string, unknown>) {
 async function handleWatchPushSubscriptionsList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4701,7 +4749,7 @@ async function handleWatchPushSubscriptionsList(
 async function handleWatchPushSubscriptionCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
@@ -4812,7 +4860,7 @@ async function handleWatchPushSubscriptionCreate(
 async function handleWatchPushSubscriptionDelete(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   id: string,
 ) {
   if (!/^[0-9]{1,19}$/.test(id)) {
@@ -4843,7 +4891,7 @@ async function handleWatchPushSubscriptionDelete(
 async function handleInternalPushSubscription(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   // Same inline gate the sibling internal routes use (no shared helper
@@ -4912,7 +4960,7 @@ async function handleInternalPushSubscription(
 async function handleWatchPushSubscriptionsRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -4975,21 +5023,44 @@ const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql<T>(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   fn: (sql: PgSql) => Promise<T>,
 ): Promise<T | Response> {
-  const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-  if (!sql) {
-    // Store-neutral, same as withAlertTriggersSql above.
-    return writeJson({ error: "no user-state store bound" }, 503);
-  }
   try {
+    const sql =
+      selectedAccountStateStore(env)?.sql ??
+      userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
+    if (!sql) return writeJson({ error: "no user-state store bound" }, 503);
     return await fn(sql);
   } catch (err) {
     console.error("data-api wallet-auth/keys write failed:", err);
     await captureDataApiError(err, "wallet-auth-keys", env);
     return writeJson({ error: "write failed" }, 502);
   }
+}
+
+/** Key management targets the retired api_keys staging shape. On the native
+ * path that shape is gone -- the composed database's app.api_keys is the
+ * PRODUCER'S (uuid/token_digest, no serving grant), and key operations
+ * re-point onto the producer plane's functions at infra#820 step 3 (#13040).
+ * Until that lands, the native selection refuses EXPLICITLY and BEFORE any
+ * side effect: never a 502 after an external provider mint, never a
+ * half-applied promote. The Worker default (legacy database) is unchanged. */
+async function withAccountKeysSql<T>(
+  env: DataApiEnv,
+  ctx: AppExecutionContext,
+  fn: (sql: PgSql) => Promise<T>,
+): Promise<T | Response> {
+  if (selectedAccountStateStore(env)) {
+    return writeJson(
+      {
+        error:
+          "native key management is pending the producer-plane re-point (infra#820 step 3)",
+      },
+      503,
+    );
+  }
+  return withAccountsSql(env, ctx, fn);
 }
 
 const ACCOUNT_ROUTES_MAX_BODY_BYTES = 4096;
@@ -5085,7 +5156,7 @@ async function handleWalletChallenge(request: Request, env: DataApiEnv) {
 async function handleWalletVerify(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
@@ -5226,7 +5297,7 @@ async function handleWatchTokenMint(request: Request, env: DataApiEnv) {
 async function handleGithubAccountUpsert(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5296,7 +5367,7 @@ async function handleGithubAccountUpsert(
 async function handleGithubAccountTier(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5372,7 +5443,7 @@ async function requireAccountSession(request: Request, env: DataApiEnv) {
 async function handleAccountKeyCreate(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -5405,7 +5476,7 @@ async function handleAccountKeyCreate(
     }
   }
 
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
     // rather than mint an orphaned key. Tier is the account's OWN tier
@@ -5453,15 +5524,15 @@ async function handleAccountKeyCreate(
 async function handleAccountKeysList(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, ctx, async (sql) => {
-    const rows = await sql<{
+  return withAccountKeysSql(env, ctx, async (sql) => {
+    type KeyListRow = {
       key_id: ApiKeys["unkey_key_id"];
       tier: ApiKeys["tier"];
       created_at: ApiKeys["created_at"];
@@ -5469,7 +5540,15 @@ async function handleAccountKeysList(
       // Additive 0038 column shares the existing nullable BIGINT timestamp type.
       revocation_requested_at: ApiKeys["revoked_at"];
       last_used_at: ApiKeys["last_used_at"];
-    }>`
+    };
+    const rows = selectedAccountStateStore(env)
+      ? await sql.unsafe<KeyListRow>(
+          `SELECT unkey_key_id AS key_id,tier,created_at,revoked_at,
+           revocation_requested_at,last_used_at FROM api_keys
+           WHERE account_id=$1::bigint ORDER BY created_at DESC,id`,
+          [session.accountId],
+        )
+      : await sql<KeyListRow>`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at,
              revocation_requested_at, last_used_at
       FROM api_keys
@@ -5495,7 +5574,7 @@ const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 async function handleAccountKeyRevoke(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   keyId: string,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -5506,7 +5585,7 @@ async function handleAccountKeyRevoke(
   if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
     return writeJson({ error: "malformed key id" }, 400);
   }
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // Persist intent atomically with ownership before any provider mutation.
     // Retries retain the first timestamp. The independently deployed state
     // readers deny pending rows, even if provider confirmation later fails.
@@ -5598,7 +5677,7 @@ async function readApiKeyLedgerState(
 async function handleApiKeyState(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured)
@@ -5617,7 +5696,7 @@ async function handleApiKeyState(
   if (error) return error;
   if (!isUnkeyKeyId(body?.keyId))
     return writeJson({ error: "provide a valid key id" }, 400);
-  return withAccountsSql(env, ctx, async (sql) =>
+  return withAccountKeysSql(env, ctx, async (sql) =>
     writeJson(
       {
         state: await readApiKeyLedgerState(sql, body.keyId, body.accountId),
@@ -5645,7 +5724,7 @@ async function handleApiKeyState(
 async function handleApiKeyVerify(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5684,7 +5763,7 @@ async function handleApiKeyVerify(
   if (!isUnkeyKeyId(result.keyId))
     return writeJson({ valid: false, code: "NOT_FOUND" });
   const keyId = result.keyId;
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // The guard follows provider verification so an earlier in-flight lookup
     // cannot restore access after revocation intent commits.
     const state = await readApiKeyLedgerState(sql, keyId, result.accountId);
@@ -5732,7 +5811,7 @@ async function handleApiKeyVerify(
 async function handleApiKeyUsageIncrement(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5775,6 +5854,15 @@ async function handleApiKeyUsageIncrement(
   try {
     await withAccountsSql(env, ctx, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
+      const native = selectedAccountStateStore(env);
+      if (native)
+        return native.usage.increment({
+          accountKind,
+          accountId,
+          day,
+          route,
+          rejected,
+        });
       await sql<never>`
         INSERT INTO api_key_usage_daily
           (account_kind, account_id, day, route, request_count, rejected_count)
@@ -5811,7 +5899,7 @@ async function handleApiKeyUsageIncrement(
 async function handleApiQuotaSpend(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5863,6 +5951,20 @@ async function handleApiQuotaSpend(
   // INSERT would otherwise succeed and bank an over-limit balance.
   if (cost > limit) {
     return writeJson(applyQuotaSpend(0, cost, limit, now));
+  }
+
+  const native =
+    selectedDailyQuotaStore(env) ?? selectedAccountStateStore(env)?.quota;
+  if (native) {
+    try {
+      return writeJson(
+        await native.spend({ accountId, accountKind, cost, limit, nowMs: now }),
+      );
+    } catch (err) {
+      console.error("data-api wallet-auth/keys write failed:", err);
+      await captureDataApiError(err, "wallet-auth-keys", env);
+      return writeJson({ error: "write failed" }, 502);
+    }
   }
 
   const result = await withAccountsSql(env, ctx, async (sql) => {
@@ -5920,7 +6022,7 @@ async function handleApiQuotaSpend(
 async function handleUsageRollupIncrement(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -5941,7 +6043,8 @@ async function handleUsageRollupIncrement(
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
     await withAccountsSql(env, ctx, async (sql) => {
-      const d1 = selectedD1Store(env, ["api_usage_rollup"]);
+      const native = selectedAccountStateStore(env);
+      const d1 = native ? null : selectedD1Store(env, ["api_usage_rollup"]);
       const nativeBuckets: UsageRollupBucket[] = [];
       for (const bucket of buckets as Row[]) {
         const day = typeof bucket?.day === "string" ? bucket.day : null;
@@ -5965,7 +6068,7 @@ async function handleUsageRollupIncrement(
         ) {
           continue;
         }
-        if (d1) {
+        if (d1 || native) {
           nativeBuckets.push({
             day,
             family,
@@ -5984,7 +6087,8 @@ async function handleUsageRollupIncrement(
             request_count = api_usage_rollup.request_count + EXCLUDED.request_count,
             keyed_count = api_usage_rollup.keyed_count + EXCLUDED.keyed_count`;
       }
-      if (d1) await writeUsageRollupD1(d1, nativeBuckets);
+      if (native) await native.usage.writeRollup(nativeBuckets);
+      else if (d1) await writeUsageRollupD1(d1, nativeBuckets);
     });
   } catch {
     // Best-effort counter -- see header.
@@ -5999,7 +6103,7 @@ async function handleUsageRollupIncrement(
 async function handleUsageRollupRead(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
@@ -6025,8 +6129,10 @@ async function handleUsageRollupRead(
   const groupBy =
     url.searchParams.get("group_by") === "shape" ? "shape" : "family";
   const result = await withAccountsSql(env, ctx, async (sql) => {
-    const rows =
-      groupBy === "shape"
+    const native = selectedAccountStateStore(env);
+    const rows = native
+      ? await native.usage.rollupRows(since, groupBy)
+      : groupBy === "shape"
         ? await sql<{
             route_family?: undefined;
             cost_shape: ApiUsageRollup["cost_shape"];
@@ -6103,7 +6209,7 @@ const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 async function handleAccountTierPromote(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
   if (!configured) {
@@ -6126,7 +6232,7 @@ async function handleAccountTierPromote(
   if (!ss58 || !tier) {
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     const [account] = await sql<{ id: RpcAccounts["id"] }>`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
@@ -6163,8 +6269,8 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * BLOCKLIST_KV_TTL. The TTL then only bounds how stale things can get if THIS
  * write fails -- it is the safety net, not the mechanism.
  *
- * Best-effort: a KV hiccup must not fail the block itself. The row is the
- * source of truth and the next refresh will pick it up.
+ * Best-effort: a KV hiccup must not fail the block itself. Native readers use
+ * the durable ledger whenever the cached snapshot is absent or malformed.
  */
 async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
   const rows = await sql<{
@@ -6196,13 +6302,11 @@ async function refreshBlocklistSnapshot(env: DataApiEnv, sql: PgSql) {
     })),
   };
   try {
-    await env.METAGRAPH_CONTROL?.put(
-      BLOCKLIST_KV_KEY,
-      JSON.stringify(snapshot),
-      { expirationTtl: BLOCKLIST_KV_TTL },
-    );
+    await appKv(env)?.put?.(BLOCKLIST_KV_KEY, JSON.stringify(snapshot), {
+      expirationTtl: BLOCKLIST_KV_TTL,
+    });
   } catch {
-    // Ledger already written; the periodic refresh is the backstop.
+    // Ledger already written; native readers can consult it after cache expiry.
   }
   return snapshot.blocks.length;
 }
@@ -6238,7 +6342,7 @@ function requireBlockToken(request: Request, env: DataApiEnv) {
 async function handleApiKeyBlock(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6304,7 +6408,7 @@ async function handleApiKeyBlock(
 async function handleApiKeyUnblock(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6358,7 +6462,7 @@ async function handleApiKeyUnblock(
 async function handleApiKeyAnomalies(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
@@ -6371,29 +6475,45 @@ async function handleApiKeyAnomalies(
     .toISOString()
     .slice(0, 10);
   return withAccountsSql(env, ctx, async (sql) => {
-    const usage = await sql<{
-      account_id: ApiKeyUsageDaily["account_id"];
-      day: ApiKeyUsageDaily["day"];
-      route: ApiKeyUsageDaily["route"];
-      request_count: ApiKeyUsageDaily["request_count"];
-    }>`
-      SELECT account_id, day, route, request_count
+    const native = selectedAccountStateStore(env);
+    const usage = native
+      ? await native.usage.anomalyRows(since)
+      : await sql<{
+          account_id: ApiKeyUsageDaily["account_id"];
+          account_kind: ApiKeyUsageDaily["account_kind"];
+          day: ApiKeyUsageDaily["day"];
+          route: ApiKeyUsageDaily["route"];
+          request_count: ApiKeyUsageDaily["request_count"];
+        }>`
+      SELECT account_id, account_kind, day, route, request_count
       FROM api_key_usage_daily
       WHERE day >= ${since}
-      ORDER BY account_id, day`;
-    const blocked = await sql<{
-      account_id: ApiKeyBlocks["account_id"];
-      reason_code: ApiKeyBlocks["reason_code"];
-    }>`
-      SELECT account_id, reason_code FROM api_key_blocks
+      ORDER BY account_kind, account_id, day`;
+    const blocked = native
+      ? await sql<{
+          account_id: ApiKeyBlocks["account_id"];
+          account_kind: ApiKeyBlocks["account_kind"];
+          reason_code: ApiKeyBlocks["reason_code"];
+        }>`SELECT account_id,account_kind,reason_code FROM api_key_blocks WHERE unblocked_at IS NULL ORDER BY id`
+      : await sql<{
+          account_id: ApiKeyBlocks["account_id"];
+          account_kind: ApiKeyBlocks["account_kind"];
+          reason_code: ApiKeyBlocks["reason_code"];
+        }>`
+      SELECT account_id, account_kind, reason_code FROM api_key_blocks
       WHERE unblocked_at IS NULL`;
+    // #11573's collision class: github id N and rpc id N are different
+    // accounts. Every map in this view keys by (kind, id).
     const blockedBy = new Map(
-      blocked.map((row) => [Number(row.account_id), row.reason_code]),
+      blocked.map((row) => [
+        `${row.account_kind}:${Number(row.account_id)}`,
+        row.reason_code,
+      ]),
     );
 
-    const byAccount = new Map<number, Map<string, Record<string, number>>>();
+    const byAccount = new Map<string, Map<string, Record<string, number>>>();
     for (const row of usage) {
-      const id = Number(row.account_id);
+      const id = `${row.account_kind}:${Number(row.account_id)}`;
       const perDay = byAccount.get(id) ?? new Map();
       const routes = perDay.get(row.day) ?? {};
       routes[String(row.route)] = Number(row.request_count);
@@ -6402,7 +6522,10 @@ async function handleApiKeyAnomalies(
     }
 
     const flagged = [];
-    for (const [accountId, perDay] of byAccount) {
+    for (const [accountKey, perDay] of byAccount) {
+      const separator = accountKey.indexOf(":");
+      const accountKind = accountKey.slice(0, separator);
+      const accountId = Number(accountKey.slice(separator + 1));
       const usageDays = [...perDay].map(([day, routes]) => ({ day, routes }));
       // The tier ceiling as a per-DAY number. MCP's keyed tier is the widest
       // surface a key can spend against, so it is the honest denominator for
@@ -6414,9 +6537,10 @@ async function handleApiKeyAnomalies(
       if (signals.length === 0) continue;
       flagged.push({
         account_id: accountId,
+        account_kind: accountKind,
         signals,
         top_score: signals[0].score,
-        blocked_reason_code: blockedBy.get(accountId) ?? null,
+        blocked_reason_code: blockedBy.get(accountKey) ?? null,
       });
     }
     flagged.sort((a, b) => b.top_score - a.top_score);
@@ -6450,7 +6574,7 @@ const USAGE_DASHBOARD_WINDOW_DAYS = 7;
 async function handleAccountKeyStatus(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -6463,7 +6587,8 @@ async function handleAccountKeyStatus(
       blocked_at: ApiKeyBlocks["blocked_at"];
     }>`
       SELECT reason_code, blocked_at FROM api_key_blocks
-      WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND unblocked_at IS NULL
       LIMIT 1`;
     if (!row) return writeJson({ blocked: false });
     const reasonCode = isBlockReasonCode(row.reason_code)
@@ -6483,7 +6608,7 @@ async function handleAccountKeyStatus(
 async function handleAccountKeyUsage(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -6497,15 +6622,19 @@ async function handleAccountKeyUsage(
     )
       .toISOString()
       .slice(0, 10);
-    const rows = await sql<{
-      day: ApiKeyUsageDaily["day"];
-      route: ApiKeyUsageDaily["route"];
-      request_count: ApiKeyUsageDaily["request_count"];
-      rejected_count: ApiKeyUsageDaily["rejected_count"];
-    }>`
+    const native = selectedAccountStateStore(env);
+    const rows = native
+      ? await native.usage.accountRows(session.accountId, since, "rpc")
+      : await sql<{
+          day: ApiKeyUsageDaily["day"];
+          route: ApiKeyUsageDaily["route"];
+          request_count: ApiKeyUsageDaily["request_count"];
+          rejected_count: ApiKeyUsageDaily["rejected_count"];
+        }>`
       SELECT day, route, request_count, rejected_count
       FROM api_key_usage_daily
-      WHERE account_id = ${session.accountId} AND day >= ${since}
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND day >= ${since}
       ORDER BY day DESC`;
     const byDay = new Map<string, { count: number; rejected: number }>();
     const byRoute = new Map<string, { count: number; rejected: number }>();
@@ -6536,7 +6665,8 @@ async function handleAccountKeyUsage(
     const today = new Date().toISOString().slice(0, 10);
     const [quotaRow] = await sql<{ units_spent: ApiQuotaDaily["units_spent"] }>`
       SELECT units_spent FROM api_quota_daily
-      WHERE account_id = ${session.accountId} AND day = ${today}`;
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND day = ${today}`;
     const unitsSpent = Number(quotaRow?.units_spent ?? 0) || 0;
     // The tier is NOT on the session token -- it is server-side state that can
     // change without re-issuing a key (#8608), so reading it from the session
@@ -6598,7 +6728,7 @@ async function handleAccountKeyUsage(
 async function handleAccountKeysRoute(
   request: Request,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -6697,7 +6827,7 @@ async function handleAccountKeysRoute(
 type NeuronsStoreRouteHandler = (
   sql: PgSql,
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
@@ -6733,15 +6863,24 @@ type NeuronsStoreRouteHandler = (
 // which counts root among "subnets" when root is not one. That name predates this
 // fix and renaming a published field is a contract change, not a bug fix -- so it
 // is left alone and called out rather than quietly redefined here.
+function requiredEnrichmentSql(sql: PgSql | undefined): PgSql {
+  if (!sql)
+    throw new Error("Native validator enrichment capability is required");
+  return sql;
+}
+
 async function loadSubnetTemposFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
 ): Promise<Map<number, number>> {
   try {
-    const rows = await sql<{
-      netuid: SubnetHyperparams["netuid"];
-      tempo: SubnetHyperparams["tempo"];
-    }>`SELECT netuid, tempo FROM subnet_hyperparams`;
+    const native = selectedValidatorEnrichmentStore(env);
+    const rows = native
+      ? await native.tempos()
+      : await requiredEnrichmentSql(sql)<{
+          netuid: SubnetHyperparams["netuid"];
+          tempo: SubnetHyperparams["tempo"];
+        }>`SELECT netuid, tempo FROM subnet_hyperparams`;
     return tempoByNetuid(rows as Array<Record<string, unknown>>);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
@@ -6751,16 +6890,19 @@ async function loadSubnetTemposFromStore(
 }
 
 async function loadStoreAlphaPricesByNetuid(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
 ): Promise<Map<number, number | null>> {
   try {
-    const rows = await sql<{
-      netuid: SubnetSnapshots["netuid"];
-      alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
-      tao_in_pool_tao: SubnetSnapshots["tao_in_pool_tao"];
-      alpha_in_pool: SubnetSnapshots["alpha_in_pool"];
-    }>`
+    const native = selectedValidatorEnrichmentStore(env);
+    const rows = native
+      ? await native.prices()
+      : await requiredEnrichmentSql(sql)<{
+          netuid: SubnetSnapshots["netuid"];
+          alpha_price_tao: SubnetSnapshots["alpha_price_tao"];
+          tao_in_pool_tao: SubnetSnapshots["tao_in_pool_tao"];
+          alpha_in_pool: SubnetSnapshots["alpha_in_pool"];
+        }>`
       SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao,
         s.tao_in_pool_tao AS tao_in_pool_tao, s.alpha_in_pool AS alpha_in_pool
       FROM subnet_snapshots s
@@ -6837,7 +6979,7 @@ async function loadStoreAlphaPricesByNetuid(
 // threshold the staleness watchdog alarms on, imported rather than restated so
 // the two can never disagree about what "fresh" means.
 async function loadNominatorCountsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   hotkeys: readonly string[],
 ): Promise<Map<string, number>> {
@@ -6845,7 +6987,14 @@ async function loadNominatorCountsFromStore(
     // LEFT JOIN from the permitted set, not an inner read of the counts table:
     // the rows with no match are precisely the ones the zero-fill is about, so
     // they have to survive the query to be seen at all.
-    const rows = await readDirectoryNominatorCounts(sql, env, hotkeys);
+    const native = selectedNeuronSummaryStore(env);
+    const rows = native
+      ? await native.nominatorCounts(hotkeys)
+      : await readDirectoryNominatorCounts(
+          requiredEnrichmentSql(sql),
+          env,
+          hotkeys,
+        );
     return fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -6863,25 +7012,28 @@ async function loadNominatorCountsFromStore(
 // rule: a real row wins, absence from a FRESH scan is a confirmed zero, and
 // absence from a stale one stays null.
 async function loadNominatorCountFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   hotkeys: readonly string[],
   env: DataApiEnv,
 ): Promise<Map<string, number>> {
   try {
-    const rows = await sql.unsafe<{
-      hotkey: ValidatorNominatorCounts["hotkey"];
-      nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
-      scan_at: ValidatorNominatorCounts["captured_at"] | null;
-    }>(
-      hotkeys.length === 1
-        ? "SELECT ? AS hotkey," +
-            " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
-            " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
-        : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
+    const native = selectedNeuronSummaryStore(env);
+    const rows = native
+      ? await native.nominatorCounts(hotkeys)
+      : await requiredEnrichmentSql(sql).unsafe<{
+          hotkey: ValidatorNominatorCounts["hotkey"];
+          nominator_count: ValidatorNominatorCounts["nominator_count"] | null;
+          scan_at: ValidatorNominatorCounts["captured_at"] | null;
+        }>(
+          hotkeys.length === 1
+            ? "SELECT ? AS hotkey," +
+                " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+                " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at"
+            : `WITH requested(hotkey) AS (VALUES ${hotkeys.map(() => "(?)").join(",")}), scan AS (SELECT MAX(captured_at) AS scan_at FROM validator_nominator_counts)
           SELECT r.hotkey,c.nominator_count,scan.scan_at FROM requested r CROSS JOIN scan
           LEFT JOIN validator_nominator_counts c ON c.hotkey=r.hotkey`,
-      hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
-    );
+          hotkeys.length === 1 ? [hotkeys[0], hotkeys[0]] : [...hotkeys],
+        );
     const counts = fillConfirmedZeros(
       rows,
       nominatorCountsByHotkey(rows),
@@ -6908,7 +7060,9 @@ export async function loadSubnetSnapshotCards(
   netuid: number,
 ) {
   const rows = await readSubnetNeuronRows(sql, env, netuid);
-  const native = Boolean(selectedD1Store(env, ["neurons"]));
+  const native = Boolean(
+    selectedNeuronSnapshotStore(env) || selectedD1Store(env, ["neurons"]),
+  );
   const validators = rows
     .filter((r) => r.validator_permit === true || r.validator_permit === 1)
     .sort((a, b) => {
@@ -6934,26 +7088,44 @@ export async function loadSubnetSnapshotCards(
  * one read each for prices, counts, tempos and identities. Builders retain the
  * exact single-detail formatting and per-key ordering. */
 export async function loadValidatorDetailsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   hotkeys: readonly string[],
 ) {
   if (hotkeys.length < 1 || hotkeys.length > COMPARE_VALIDATORS_MAX)
     throw new RangeError("Validator detail batch exceeds its public bound");
   const unique = [...new Set(hotkeys)];
+  const native = selectedNeuronViewStore(env);
+  const enrichment = selectedValidatorEnrichmentStore(env);
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
-      sql.unsafe<NeuronColumnsRow>(
-        unique.length === 1
-          ? `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`
-          : `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey IN (${unique.map(() => "?").join(",")}) AND validator_permit = TRUE ORDER BY hotkey ASC, netuid ASC, uid ASC`,
-        unique,
-      ),
+      native
+        ? native.rows({
+            columns: [...NEURON_COLUMNS.split(", "), "netuid"],
+            hotkeys: unique,
+            validatorsOnly: true,
+            order: [
+              { column: "hotkey" },
+              { column: "netuid" },
+              { column: "uid" },
+            ],
+          })
+        : requiredEnrichmentSql(sql).unsafe<NeuronColumnsRow>(
+            unique.length === 1
+              ? `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`
+              : `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey IN (${unique.map(() => "?").join(",")}) AND validator_permit = TRUE ORDER BY hotkey ASC, netuid ASC, uid ASC`,
+            unique,
+          ),
       loadStoreAlphaPricesByNetuid(sql, env),
       loadNominatorCountFromStore(sql, unique, env),
       loadSubnetTemposFromStore(sql, env),
       loadIdentityByColdkeyMap((text, params) =>
-        sql.unsafe<AccountIdentityStoreRow>(text, params),
+        enrichment
+          ? enrichment.identities()
+          : requiredEnrichmentSql(sql).unsafe<AccountIdentityStoreRow>(
+              text,
+              params,
+            ),
       ),
     ]);
   return hotkeys.map((hotkey) =>
@@ -6998,9 +7170,11 @@ const IDENTITY_ROUTE_TABLES = [
 ] as const;
 function routeRunner(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   tables: readonly string[],
 ): PgSql | undefined {
+  const native = selectedNativeRelationalSql(env, tables);
+  if (native !== null) return native;
   const d1 = selectedD1Store(env, tables);
   return d1
     ? createD1Sql(d1)
@@ -7122,12 +7296,13 @@ async function resolveBurnHotkey(
 }
 
 async function loadGlobalValidatorsFromStore(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: DataApiEnv,
   sort: string,
   limit: number,
   includeAll = false,
 ) {
+  const enrichment = selectedValidatorEnrichmentStore(env);
   const memberships = readNeuronDirectoryRows(sql, env, true);
   const [rows, priceByNetuid, nominatorCounts, tempos, identityByColdkey] =
     await Promise.all([
@@ -7142,7 +7317,12 @@ async function loadGlobalValidatorsFromStore(
       ),
       loadSubnetTemposFromStore(sql, env),
       loadIdentityByColdkeyMap((statement, parameters) =>
-        sql.unsafe<AccountIdentityStoreRow>(statement, parameters),
+        enrichment
+          ? enrichment.identities()
+          : requiredEnrichmentSql(sql).unsafe<AccountIdentityStoreRow>(
+              statement,
+              parameters,
+            ),
       ),
     ]);
   return buildGlobalValidators(rows, {
@@ -7162,9 +7342,14 @@ async function loadGlobalValidatorsFromStore(
 export { materializationFromUnknown };
 
 async function latestCompletedNeuronSnapshot(
-  sql: PgSql,
+  sql: PgSql | undefined,
+  env: DataApiEnv,
 ): Promise<number | null> {
-  const rows = await sql<{ captured_at: number | string | null }>`
+  const native = selectedValidatorEnrichmentStore(env);
+  if (native) return native.latestCompletedCapture();
+  const rows = await requiredEnrichmentSql(sql)<{
+    captured_at: number | string | null;
+  }>`
     SELECT captured_at FROM neurons_passes
     WHERE completed_at IS NOT NULL
     ORDER BY completed_at DESC
@@ -7177,7 +7362,7 @@ async function latestCompletedNeuronSnapshot(
 // boundary check prevents an in-place partial pass from publishing mixed data.
 export async function refreshExplorerDirectoryMaterialization(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   capturedAt: number,
 ): Promise<boolean> {
   if (!env.METAGRAPH_CONTROL) return false;
@@ -7216,8 +7401,8 @@ export async function refreshExplorerDirectoryMaterialization(
       }
     }
     const sql = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
-    if (!sql) return false;
-    const latest = await latestCompletedNeuronSnapshot(sql);
+    if (!sql && !selectedValidatorEnrichmentStore(env)) return false;
+    const latest = await latestCompletedNeuronSnapshot(sql, env);
     // Every producer chunk requests a refresh. Decline incomplete or obsolete
     // passes before scanning the full metric snapshot for its boundary stamp.
     if (latest !== capturedAt) return false;
@@ -7246,7 +7431,7 @@ export async function refreshExplorerDirectoryMaterialization(
     const validators = buildValidatorOperatorDirectory(globalValidators);
 
     // Refuse publication if a newer in-place pass began during the fold.
-    const finalLatest = await latestCompletedNeuronSnapshot(sql);
+    const finalLatest = await latestCompletedNeuronSnapshot(sql, env);
     const finalCapturedAt = await readNewestNeuronCapture(sql, env);
     if (finalLatest !== capturedAt || finalCapturedAt !== capturedAt) {
       return false;
@@ -7307,7 +7492,7 @@ export async function refreshExplorerDirectoryMaterialization(
 
 function scheduleExplorerDirectoryRefresh(
   env: DataApiEnv,
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
   capturedAt: number | Promise<number>,
 ) {
   ctx.waitUntil(
@@ -7323,7 +7508,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
   // Internal freshness stamp, bounded by the latest complete pass.
   if (url.pathname === "/api/v1/internal/neurons-snapshot-stamp") {
     return async (sql, env, ctx) => {
-      const capturedAt = await latestCompletedNeuronSnapshot(sql);
+      const capturedAt = await latestCompletedNeuronSnapshot(sql, env);
       if (capturedAt === null) return json({ captured_at: null });
 
       // Keep the ready hot path to one tiny pointer read.
@@ -7620,7 +7805,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         scheduleExplorerDirectoryRefresh(
           env,
           ctx,
-          latestCompletedNeuronSnapshot(sql).then(
+          latestCompletedNeuronSnapshot(sql, env).then(
             (latest) => latest ?? materialized.captured_at,
           ),
         );
@@ -8458,7 +8643,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
         scheduleExplorerDirectoryRefresh(
           env,
           ctx,
-          latestCompletedNeuronSnapshot(sql).then(
+          latestCompletedNeuronSnapshot(sql, env).then(
             (latest) => latest ?? materialized.captured_at,
           ),
         );
@@ -8914,6 +9099,797 @@ function matchHyperparamsIdentityStoreRoute(
   return null;
 }
 
+// This explicit document capability does not make the SQL view routes native.
+async function readNativeSubnetSnapshot(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/metagraph$/);
+  if (!match) return null;
+  try {
+    const native = selectedNeuronSnapshotStore(env);
+    if (!native) return null;
+    const netuid = Number(match[1]);
+    const rows = await native.subnetRows(
+      netuid,
+      url.searchParams.get("validator_permit") === "true",
+    );
+    return json(
+      buildSubnetMetagraph(rows, netuid, {
+        immunityPeriod: null,
+        burnHotkey: await native.burnHotkey(netuid),
+      }),
+    );
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeDailyHistory(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const neuron = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
+  );
+  const account = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/subnets\/(\d+)\/history$/,
+  );
+  if (!neuron && !account) return null;
+  try {
+    const store = selectedNeuronHistoryStore(env);
+    if (!store) return null;
+    const range = {
+      lo: windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+      hi: null,
+    };
+    const window = windowLabelFor(
+      url,
+      HISTORY_WINDOW_DAYS,
+      DEFAULT_HISTORY_WINDOW,
+    );
+    if (neuron) {
+      const netuid = Number(neuron[1]),
+        uid = Number(neuron[2]);
+      const rows = await store.neuronRows(
+        netuid,
+        uid,
+        range,
+        MAX_HISTORY_POINTS,
+      );
+      return json(buildNeuronHistory(rows, netuid, uid, { window }));
+    }
+    const ss58 = decodeURIComponent(account![1]),
+      netuid = Number(account![2]);
+    const rows = await store.accountRows(
+      ss58,
+      netuid,
+      range,
+      MAX_HISTORY_POINTS,
+    );
+    return json(buildAccountPositionHistory(rows, ss58, netuid, { window }));
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeEnrichedRoutes(
+  url: URL,
+  env: DataApiEnv,
+  ctx: AppExecutionContext,
+): Promise<Response | null> {
+  const detail = url.pathname.match(/^\/api\/v1\/validators\/([^/]+)$/);
+  const portfolio = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/portfolio$/,
+  );
+  const validators = url.pathname === "/api/v1/validators";
+  const operators = url.pathname === "/api/v1/validators/operators";
+  const compare = url.pathname === "/api/v1/internal/validator-details";
+  const accounts = url.pathname === "/api/v1/accounts";
+  const directory = url.pathname === "/api/v1/accounts/directory";
+  const stamp = url.pathname === "/api/v1/internal/neurons-snapshot-stamp";
+  if (
+    !detail &&
+    !portfolio &&
+    !validators &&
+    !compare &&
+    !accounts &&
+    !directory &&
+    !stamp
+  )
+    return null;
+  try {
+    const view = selectedNeuronViewStore(env);
+    const live = selectedNeuronLiveStore(env);
+    const summary = selectedNeuronSummaryStore(env);
+    const enrichment = selectedValidatorEnrichmentStore(env);
+    if (!view || !live || !summary || !enrichment) return null;
+    if (compare) {
+      const hotkeys = parseCompareHotkeys(url.searchParams.get("hotkeys"));
+      return hotkeys
+        ? json({
+            details: await loadValidatorDetailsFromStore(
+              undefined,
+              env,
+              hotkeys,
+            ),
+          })
+        : json({ error: "Invalid bounded validator address list" }, 400);
+    }
+    if (detail && !operators)
+      return json(
+        (
+          await loadValidatorDetailsFromStore(undefined, env, [
+            decodeURIComponent(detail[1]),
+          ])
+        )[0],
+      );
+    if (portfolio) {
+      const hotkey = decodeURIComponent(portfolio[1]);
+      const [rows, priceByNetuid] = await Promise.all([
+        view.rows({
+          columns: [
+            "netuid",
+            "uid",
+            "stake_tao",
+            "emission_tao",
+            "rank",
+            "trust",
+            "incentive",
+            "dividends",
+            "validator_permit",
+            "active",
+            "captured_at",
+          ],
+          hotkey,
+          order: [{ column: "netuid" }],
+        }),
+        loadStoreAlphaPricesByNetuid(undefined, env),
+      ]);
+      return json(buildAccountPortfolio(rows, hotkey, { priceByNetuid }));
+    }
+    if (stamp) {
+      const capturedAt = await enrichment.latestCompletedCapture();
+      if (capturedAt === null) return json({ captured_at: null });
+      const pointer = await readExplorerDirectoryPointer(env.METAGRAPH_CONTROL);
+      if (pointer?.captured_at !== capturedAt || !pointer.route_values_ready)
+        scheduleExplorerDirectoryRefresh(env, ctx, capturedAt);
+      return json({ captured_at: capturedAt });
+    }
+    if (operators || directory) {
+      const materialized = await readExplorerDirectoryMaterialization(
+        env.METAGRAPH_CONTROL,
+      );
+      if (materialized) {
+        scheduleExplorerDirectoryRefresh(
+          env,
+          ctx,
+          enrichment
+            .latestCompletedCapture()
+            .then((latest) => latest ?? materialized.captured_at),
+        );
+        return json(
+          operators ? materialized.validators : materialized.accounts,
+        );
+      }
+    }
+    if (validators || operators) {
+      const sortParam = url.searchParams.get("sort");
+      const sort =
+        sortParam !== null && GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+          ? sortParam
+          : DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limitParam = Number(url.searchParams.get("limit"));
+      const limit =
+        Number.isInteger(limitParam) &&
+        limitParam >= 1 &&
+        limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
+          ? limitParam
+          : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+      const result = await loadGlobalValidatorsFromStore(
+        undefined,
+        env,
+        operators ? "total_stake" : sort,
+        operators ? GLOBAL_VALIDATOR_LIMIT_MAX : limit,
+        operators,
+      );
+      return json(operators ? buildValidatorOperatorDirectory(result) : result);
+    }
+    const [rows, priceByNetuid] = await Promise.all([
+      live.directoryRows(),
+      loadStoreAlphaPricesByNetuid(undefined, env),
+    ]);
+    const rawLimit = url.searchParams.get("limit");
+    return json(
+      directory
+        ? buildAccountHolderDirectory(rows, { priceByNetuid })
+        : buildAccountsList(rows, {
+            sort: url.searchParams.get("sort") || DEFAULT_ACCOUNTS_LIST_SORT,
+            limit:
+              rawLimit == null || rawLimit === ""
+                ? ACCOUNTS_LIST_LIMIT_DEFAULT
+                : Number(rawLimit),
+            priceByNetuid,
+          }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeValidatorHistory(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/v1\/validators\/([^/]+)\/history$/);
+  if (!match) return null;
+  try {
+    const store = selectedValidatorHistoryStore(env);
+    if (!store) return null;
+    const hotkey = decodeURIComponent(match[1]);
+    const rawNetuid = url.searchParams.get("netuid");
+    const parsedNetuid =
+      rawNetuid == null || rawNetuid.trim() === "" ? null : Number(rawNetuid);
+    const netuid =
+      parsedNetuid !== null &&
+      Number.isSafeInteger(parsedNetuid) &&
+      parsedNetuid >= 0
+        ? parsedNetuid
+        : undefined;
+    const rows = await store.rows(
+      hotkey,
+      windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+      MAX_HISTORY_POINTS,
+      netuid,
+    );
+    return json(
+      buildValidatorHistory(rows, hotkey, {
+        window: windowLabelFor(
+          url,
+          HISTORY_WINDOW_DAYS,
+          DEFAULT_HISTORY_WINDOW,
+        ),
+        ...(netuid === undefined ? {} : { netuid }),
+      }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeNeuronView(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  let query: NeuronViewQuery | undefined;
+  let build: ((rows: Record<string, unknown>[]) => unknown) | undefined;
+  const point = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/,
+  );
+  const validators = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/validators$/,
+  );
+  const subnet = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/(concentration|performance|idle-stake|yield)$/,
+  );
+  const account = url.pathname.match(/^\/api\/v1\/accounts\/([^/]+)\/subnets$/);
+  if (point) {
+    const netuid = Number(point[1]);
+    query = {
+      columns: NEURON_COLUMNS.split(", "),
+      netuid,
+      uid: Number(point[2]),
+      limit: 1,
+    };
+    build = (rows) =>
+      buildNeuronDetail(rows[0] ?? null, netuid, { immunityPeriod: null });
+  } else if (validators) {
+    const netuid = Number(validators[1]);
+    query = {
+      columns: NEURON_COLUMNS.split(", "),
+      netuid,
+      validatorsOnly: true,
+      order: [{ column: "stake_tao", descending: true }, { column: "uid" }],
+    };
+    build = (rows) =>
+      buildSubnetValidators(rows, netuid, {
+        featuredHotkeys: FEATURED_HOTKEY_SET,
+      });
+  } else if (subnet) {
+    const netuid = Number(subnet[1]);
+    if (subnet[2] === "concentration") {
+      query = {
+        columns: [
+          "stake_tao",
+          "emission_tao",
+          "coldkey",
+          "validator_permit",
+          "captured_at",
+        ],
+        netuid,
+      };
+      build = (rows) => buildConcentration(rows, netuid);
+    } else if (subnet[2] === "performance") {
+      query = {
+        columns: [
+          "incentive",
+          "dividends",
+          "trust",
+          "consensus",
+          "validator_trust",
+          "active",
+          "validator_permit",
+          "captured_at",
+        ],
+        netuid,
+      };
+      build = (rows) => buildSubnetPerformance(rows, netuid);
+    } else if (subnet[2] === "idle-stake") {
+      query = { columns: ["stake_tao", "dividends", "captured_at"], netuid };
+      build = (rows) => buildSubnetIdleStake(rows, netuid);
+    } else {
+      query = {
+        columns: [
+          "uid",
+          "hotkey",
+          "validator_permit",
+          "stake_tao",
+          "emission_tao",
+          "captured_at",
+          "block_number",
+        ],
+        netuid,
+        order: [{ column: "uid" }],
+      };
+      build = (rows) => buildSubnetYield(rows, netuid);
+    }
+  } else if (url.pathname === "/api/v1/chain/concentration") {
+    query = {
+      columns: [
+        "stake_tao",
+        "emission_tao",
+        "coldkey",
+        "validator_permit",
+        "netuid",
+        "captured_at",
+      ],
+    };
+    build = (rows) => buildChainConcentration(rows);
+  } else if (url.pathname === "/api/v1/chain/idle-stake") {
+    query = { columns: ["stake_tao", "dividends", "netuid", "captured_at"] };
+    build = (rows) => buildChainIdleStake(rows);
+  } else if (url.pathname === "/api/v1/chain/yield") {
+    query = {
+      columns: [
+        "validator_permit",
+        "stake_tao",
+        "emission_tao",
+        "netuid",
+        "captured_at",
+      ],
+      excludeRoot: true,
+    };
+    build = (rows) => buildChainYield(rows);
+  } else if (account) {
+    query = {
+      columns: ACCOUNT_REGISTRATION_COLUMNS,
+      hotkey: account[1],
+      order: [{ column: "netuid" }],
+    };
+    build = (rows) => buildAccountSubnets(rows, query!.hotkey!);
+  }
+  if (!query || !build) return null;
+  try {
+    const native = selectedNeuronViewStore(env);
+    if (!native) return null;
+    if (account) query = { ...query, hotkey: decodeURIComponent(account[1]) };
+    return json(build(await native.rows(query)));
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeSubnetEnrichmentRoutes(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const match = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/(miner-fairness|emission-split\/history|owner-capture|cost-to-participate|treasury)$/,
+  );
+  if (!match) return null;
+  try {
+    const store = selectedSubnetEnrichmentStore(env);
+    if (!store) return null;
+    const netuid = Number(match[1]);
+    const kind = match[2];
+    if (kind === "treasury")
+      return json(buildSubnetTreasury(await store.treasury(netuid), netuid));
+    const cutoff = windowCutoffDate(
+      url,
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    )!;
+    const window = windowLabelFor(
+      url,
+      SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
+      DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+    );
+    if (kind === "cost-to-participate") {
+      const metrics = selectedNeuronMetricStore(env);
+      if (!metrics) return null;
+      const rows = await store.declarations(netuid);
+      const defaultCutoff = new Date(
+        Date.now() -
+          SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS[
+            DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW
+          ] *
+            86400000,
+      )
+        .toISOString()
+        .slice(0, 10);
+      const fairnessRows = await metrics.dailyRows<
+        Pick<
+          NeuronDaily,
+          | "snapshot_date"
+          | "uid"
+          | "coldkey"
+          | "emission_tao"
+          | "validator_permit"
+        >
+      >(
+        netuid,
+        defaultCutoff,
+        ["snapshot_date", "uid", "coldkey", "emission_tao", "validator_permit"],
+        MINER_FAIRNESS_ROW_CAP,
+      );
+      return json(
+        buildSubnetCostToParticipate(rows, netuid, {
+          minerFairness: buildSubnetMinerFairness(fairnessRows, netuid, {
+            window: DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
+            capped: fairnessRows.length >= MINER_FAIRNESS_ROW_CAP,
+          }),
+        }),
+      );
+    }
+    if (kind === "owner-capture") {
+      const ownerColdkey = await store.ownerColdkey(netuid);
+      const rows = await store.dailyRows(
+        netuid,
+        cutoff,
+        "owner",
+        OWNER_CAPTURE_HISTORY_ROW_CAP,
+      );
+      const positions = ownerColdkey ? await store.ownerPositions(netuid) : [];
+      return json(
+        buildSubnetOwnerCapture(rows, netuid, {
+          window,
+          capped: rows.length >= OWNER_CAPTURE_HISTORY_ROW_CAP,
+          ownerColdkey,
+          positions,
+        }),
+      );
+    }
+    const snapshot = selectedNeuronSnapshotStore(env);
+    if (!snapshot) return null;
+    if (kind === "miner-fairness") {
+      const daily = selectedNeuronDailyViewStore(env);
+      const live = selectedNeuronViewStore(env);
+      if (!daily || !live) return null;
+      const rows = await daily.rows({
+        netuid,
+        fromDay: cutoff,
+        columns: [
+          "snapshot_date",
+          "uid",
+          "coldkey",
+          "hotkey",
+          "validator_permit",
+          "emission_tao",
+        ],
+        limit: MINER_FAIRNESS_ROW_CAP,
+      });
+      const burnHotkey = await snapshot.burnHotkey(netuid);
+      const liveRows = await live.rows({
+        netuid,
+        columns: [
+          "uid",
+          "coldkey",
+          "hotkey",
+          "validator_permit",
+          "incentive",
+          "captured_at",
+          "block_number",
+        ],
+        order: [{ column: "uid" }],
+      });
+      return json(
+        buildSubnetMinerFairness(rows, netuid, {
+          window,
+          capped: rows.length >= MINER_FAIRNESS_ROW_CAP,
+          liveRows,
+          burnHotkey,
+        }),
+      );
+    }
+    const rows = await store.dailyRows(
+      netuid,
+      cutoff,
+      "emission",
+      EMISSION_SPLIT_HISTORY_ROW_CAP,
+    );
+    const usdRows = await store.usdDays(
+      Date.parse(`${cutoff}T00:00:00Z`),
+      Math.floor(Date.now() / 86400000) * 86400000,
+    );
+    const burnHotkey = await snapshot.burnHotkey(netuid);
+    const usdPerTaoByDay = new Map<string, number>(
+      usdRows
+        .filter((row) => row.usd_per_tao !== null)
+        .map((row) => [
+          new Date(Number(row.observed_at)).toISOString().slice(0, 10),
+          Number(row.usd_per_tao),
+        ]),
+    );
+    return json(
+      buildSubnetEmissionSplitHistory(rows, netuid, {
+        window,
+        capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        burnHotkey,
+        usdPerTaoByDay,
+      }),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeDailyViewRoutes(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const concentration = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
+  );
+  const turnover = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/turnover$/);
+  const history = url.pathname.match(/^\/api\/v1\/subnets\/(\d+)\/history$/);
+  const yieldHistory = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
+  );
+  const chain = url.pathname === "/api/v1/chain/turnover";
+  const movers = url.pathname === "/api/v1/subnets/movers";
+  if (
+    !concentration &&
+    !turnover &&
+    !history &&
+    !yieldHistory &&
+    !chain &&
+    !movers
+  )
+    return null;
+  try {
+    if (history) {
+      const store = selectedNeuronSummaryStore(env);
+      if (!store) return null;
+      const netuid = Number(history[1]);
+      const rows = await store.subnetHistory(
+        netuid,
+        windowCutoffDate(url, HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW),
+        MAX_HISTORY_POINTS,
+      );
+      return json(
+        buildSubnetHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
+        }),
+      );
+    }
+    if (yieldHistory) {
+      const store = selectedNeuronMetricStore(env);
+      if (!store) return null;
+      const netuid = Number(yieldHistory[1]);
+      const rows = await store.dailyRows<
+        Pick<
+          NeuronDaily,
+          "snapshot_date" | "validator_permit" | "stake_tao" | "emission_tao"
+        >
+      >(
+        netuid,
+        windowCutoffDate(
+          url,
+          YIELD_HISTORY_WINDOWS,
+          DEFAULT_YIELD_HISTORY_WINDOW,
+        ),
+        ["snapshot_date", "validator_permit", "stake_tao", "emission_tao"],
+        YIELD_HISTORY_ROW_CAP,
+      );
+      return json(
+        buildSubnetYieldHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            YIELD_HISTORY_WINDOWS,
+            DEFAULT_YIELD_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= YIELD_HISTORY_ROW_CAP,
+        }),
+      );
+    }
+    const store = selectedNeuronDailyViewStore(env);
+    if (!store) return null;
+    if (concentration) {
+      const netuid = Number(concentration[1]);
+      const rows = await store.rows({
+        netuid,
+        columns: ["snapshot_date", "stake_tao", "emission_tao"],
+        fromDay: windowCutoffDate(
+          url,
+          CONCENTRATION_HISTORY_WINDOWS,
+          DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+        ),
+        sameDayOrder: "shard",
+        limit: CONCENTRATION_HISTORY_ROW_CAP,
+      });
+      return json(
+        buildConcentrationHistory(rows, netuid, {
+          window: windowLabelFor(
+            url,
+            CONCENTRATION_HISTORY_WINDOWS,
+            DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+          ),
+          capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+        }),
+      );
+    }
+    if (turnover) {
+      const netuid = Number(turnover[1]);
+      const rawWindow =
+        url.searchParams.get("window") || DEFAULT_HISTORY_WINDOW;
+      const window = Object.hasOwn(HISTORY_WINDOW_DAYS, rawWindow)
+        ? rawWindow
+        : DEFAULT_HISTORY_WINDOW;
+      const days = HISTORY_WINDOW_DAYS[window];
+      const { startDate, endDate } = await store.window(days, netuid);
+      const limit = 1000000;
+      const rows =
+        startDate == null || endDate == null
+          ? []
+          : await store.rows({
+              netuid,
+              columns: ["snapshot_date", "uid", "hotkey", "validator_permit"],
+              days: [startDate, endDate],
+              oldestFirst: true,
+              limit,
+            });
+      if (rows.length >= limit)
+        throw new Error("Native turnover exceeds its complete-row budget");
+      const options = {
+        window,
+        startDate,
+        endDate,
+        requestedDays: days ?? null,
+      };
+      const result = buildTurnover(rows, netuid, options);
+      return json(
+        url.searchParams.get("changes") === "true"
+          ? {
+              ...result,
+              changes: turnoverChangeDetail(
+                buildTurnoverChanges(rows, netuid, options),
+              ),
+            }
+          : result,
+      );
+    }
+    const summary = selectedNeuronSummaryStore(env);
+    if (!summary) return null;
+    if (chain) {
+      const rawWindow =
+        url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const window = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, rawWindow)
+        ? rawWindow
+        : DEFAULT_CHAIN_TURNOVER_WINDOW;
+      const rawLimit = url.searchParams.get("limit");
+      const limit =
+        rawLimit == null || rawLimit === ""
+          ? CHAIN_TURNOVER_LIMIT_DEFAULT
+          : Number(rawLimit);
+      const { startDate, endDate } = await store.window(
+        CHAIN_TURNOVER_WINDOWS[window],
+      );
+      const rows =
+        startDate == null || endDate == null || startDate === endDate
+          ? []
+          : await summary.dailyValidators(startDate, endDate);
+      return json(
+        buildChainTurnover(rows, { window, startDate, endDate, limit }),
+      );
+    }
+    const rawWindow = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+    const window = Object.hasOwn(MOVERS_WINDOWS, rawWindow)
+      ? rawWindow
+      : DEFAULT_MOVERS_WINDOW;
+    const sort = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+    const rawLimit = url.searchParams.get("limit");
+    const limit =
+      rawLimit == null || rawLimit === ""
+        ? MOVERS_LIMIT_DEFAULT
+        : Number(rawLimit);
+    const { startDate, endDate } = await store.window(MOVERS_WINDOWS[window]);
+    const rows =
+      startDate == null || endDate == null || startDate === endDate
+        ? []
+        : await summary.dailyTotals(startDate, endDate);
+    return json(
+      buildMovers(
+        rows.filter((row) => row.snapshot_date === startDate),
+        rows.filter((row) => row.snapshot_date === endDate),
+        { window, startDate, endDate, sort, limit },
+      ),
+    );
+  } catch (error) {
+    console.error("data-api neurons query failed:", error);
+    await captureDataApiError(error, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
+async function readNativeNeuronMetrics(
+  url: URL,
+  env: DataApiEnv,
+): Promise<Response | null> {
+  const history = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
+  );
+  const chain = url.pathname === "/api/v1/chain/performance";
+  if (!history && !chain) return null;
+  try {
+    const store = selectedNeuronMetricStore(env);
+    if (!store) return null;
+    if (chain)
+      return json(buildChainPerformance(await store.performanceRows()));
+    const netuid = Number(history![1]);
+    const cutoff = windowCutoffDate(
+      url,
+      PERFORMANCE_HISTORY_WINDOWS,
+      DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+    );
+    const rows = await store.dailyRows<PerformanceHistoryRow>(
+      netuid,
+      cutoff,
+      PERFORMANCE_HISTORY_READ_COLUMNS.split(",").map((name) => name.trim()),
+      PERFORMANCE_HISTORY_ROW_CAP,
+    );
+    return json(
+      buildSubnetPerformanceHistory(rows, netuid, {
+        window: windowLabelFor(
+          url,
+          PERFORMANCE_HISTORY_WINDOWS,
+          DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+        ),
+        capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+      }),
+    );
+  } catch (err) {
+    console.error("data-api neurons query failed:", err);
+    await captureDataApiError(err, maskRouteParams(url.pathname), env);
+    return json({ error: "data query failed" }, 502);
+  }
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -8923,7 +9899,7 @@ async function dispatchDataApiRequest(
   env: DataApiEnv,
   // Threaded through for createPgSql, which returns its Hyperdrive connection
   // via waitUntil rather than making the response wait on the teardown.
-  ctx: ExecutionContext,
+  ctx: AppExecutionContext,
 ): Promise<Response> {
   {
     const url = new URL(request.url);
@@ -9218,6 +10194,25 @@ async function dispatchDataApiRequest(
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
+    const nativeSnapshot = await readNativeSubnetSnapshot(url, env);
+    if (nativeSnapshot) return nativeSnapshot;
+    const nativeHistory = await readNativeDailyHistory(url, env);
+    if (nativeHistory) return nativeHistory;
+    const nativeSubnetEnrichment = await readNativeSubnetEnrichmentRoutes(
+      url,
+      env,
+    );
+    if (nativeSubnetEnrichment) return nativeSubnetEnrichment;
+    const nativeValidatorHistory = await readNativeValidatorHistory(url, env);
+    if (nativeValidatorHistory) return nativeValidatorHistory;
+    const nativeDailyViews = await readNativeDailyViewRoutes(url, env);
+    if (nativeDailyViews) return nativeDailyViews;
+    const nativeEnriched = await readNativeEnrichedRoutes(url, env, ctx);
+    if (nativeEnriched) return nativeEnriched;
+    const nativeMetrics = await readNativeNeuronMetrics(url, env);
+    if (nativeMetrics) return nativeMetrics;
+    const nativeView = await readNativeNeuronView(url, env);
+    if (nativeView) return nativeView;
     const neuronsStoreHandler = matchNeuronsStoreRoute(url);
     if (neuronsStoreHandler) {
       const store = routeRunner(env, ctx, NEURON_ROUTE_TABLES);
@@ -9369,24 +10364,22 @@ export function decodeBlockHeader(
 export async function writeTaoUsdIndexRow(
   env: DataApiEnv,
   row: TaoUsdIndexRow,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ): Promise<{ written: boolean; skipped?: boolean; reason?: string }> {
   // Both stores use the same observation, JSON provenance and conflict key.
   // D1 first acknowledges any existing commit after a lost reply; Neon retains
   // its deferred write-behind path and requires ctx to return its connection.
   // No RETURNING (#10677): `written` reports the issued write, including a
   // duplicate. The unchanged watchdog measures actual durable freshness.
-  const d1 = selectedD1Store(env, ["tao_usd_index"]);
+  const native = selectedNativeWriteRunner(env, TAO_USD_INDEX_NEON_LANE);
+  const d1 = native ? null : selectedD1Store(env, ["tao_usd_index"]);
   if (d1) {
     await writeTaoUsdIndexD1(d1, row);
     return { written: true };
   }
-  const sql = neonWriteRunner(
-    env,
-    ctx ?? null,
-    TAO_USD_INDEX_NEON_LANE,
-    env.HYPERDRIVE,
-  );
+  const sql =
+    native ??
+    neonWriteRunner(env, ctx ?? null, TAO_USD_INDEX_NEON_LANE, env.HYPERDRIVE);
   if (!sql) {
     return { written: false, skipped: true, reason: "no store bound" };
   }
@@ -9437,7 +10430,7 @@ async function writeTaoUsdCurrentKv(env: DataApiEnv, row: TaoUsdIndexRow) {
 
 export async function ingestTaoUsdIndex(
   env: DataApiEnv,
-  ctx?: ExecutionContext,
+  ctx?: AppExecutionContext,
 ): Promise<Row> {
   if (!env.ETH_RPC_URL) {
     return { ok: false, skipped: true, reason: "ETH_RPC_URL not configured" };
@@ -9521,9 +10514,9 @@ export default {
   // Hyperdrive) -- routing a write through a service binding to
   // reach another Worker is the hop #4832 removed, not one to add back.
   async scheduled(
-    controller: ScheduledController,
+    controller: AppScheduledEvent,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ) {
     env = withArchiveObjects(env);
     // Declined BEFORE the branches, against the declared set, so an expression
@@ -9572,7 +10565,7 @@ export default {
   async fetch(
     request: Request,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ): Promise<Response> {
     env = withArchiveObjects(env);
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
@@ -9666,7 +10659,7 @@ export default {
   async queue(
     batch: MessageBatch<unknown>,
     env: DataApiEnv,
-    ctx: ExecutionContext,
+    ctx: AppExecutionContext,
   ): Promise<void> {
     env = withArchiveObjects(env);
     // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ

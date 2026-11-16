@@ -40,7 +40,7 @@
         "https://sn2-docs.inferencelabs.com/",
         "https://github.com/inference-labs-inc/subnet-2"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/dsperse.json (reviewed_at 2026-06-08T16:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/danilabs.json (reviewed_at 2026-06-08T16:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 3,
@@ -55,7 +55,7 @@
         "https://wandb.ai/tplr/templar",
         "https://grafana.tplr.ai/d/ceia6bwlwn8qof/eval-metrics"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/templar.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/teutonic.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 4,
@@ -154,7 +154,7 @@
         "https://docs.taofi.com/",
         "https://github.com/Swap-Subnet/swap-subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/swap.json (reviewed_at 2026-06-08T20:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/pareton.json (reviewed_at 2026-06-08T20:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 11,
@@ -297,7 +297,7 @@
         "https://www.groundlayer.xyz/subnet",
         "https://www.groundlayer.xyz/roadmap"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/groundlayer.json (reviewed_at 2026-06-08T11:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/witness.json (reviewed_at 2026-06-08T11:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 21,
@@ -358,7 +358,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24",
         "https://taomarketcap.com/subnets/24"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/quasar.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ms-computer.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 25,
@@ -367,7 +367,7 @@
       "reviewed_at": "2026-06-08T09:50:00.000Z",
       "confidence": "high",
       "source_urls": ["https://github.com/macrocosm-os/mainframe"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mainframe.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ur.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 26,
@@ -417,7 +417,7 @@
       "reviewed_at": "2026-06-08T15:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/gm.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/saygm.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 29,
@@ -433,7 +433,7 @@
         "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2",
         "https://taostats.io/subnets/netuid-29"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/coldint.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ho-floa.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 30,
@@ -454,7 +454,7 @@
       "reviewed_at": "2026-06-08T15:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/recall.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/rec4ll.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 32,
@@ -495,7 +495,7 @@
         "https://github.com/BitMind-AI/bitmind-subnet",
         "https://app.bitmind.ai/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitmind.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/yugos.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 35,
@@ -562,7 +562,7 @@
         "https://www.basilica.ai/",
         "https://github.com/one-covenant/basilica/tree/main/examples"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/basilica.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/deprecated.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 40,
@@ -602,7 +602,7 @@
         "https://developers.gopher-ai.com/docs/subnet/miners",
         "https://github.com/gopher-lab/subnet-42"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/gopher.json (reviewed_at 2026-06-08T20:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/cadmind.json (reviewed_at 2026-06-08T20:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 43,
@@ -665,7 +665,7 @@
         "https://github.com/openevolai/evolai",
         "https://huggingface.co/datasets/evolai/universal_qa"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/evolai.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/condense.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 48,
@@ -804,7 +804,7 @@
         "https://sparket.ai/",
         "https://github.com/sparket-ai/sparket-ai"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/sparket.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/gaia.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 58,
@@ -822,7 +822,7 @@
         "https://handshake58.com/api/skills?status=published",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/handshake58.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/attune.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 59,
@@ -932,7 +932,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ninja.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/conjectures.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 67,
@@ -1021,7 +1021,7 @@
       "reviewed_at": "2026-06-08T14:15:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/metahash.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/elenost.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 74,
@@ -1127,7 +1127,7 @@
         "https://grail-grafana.tplr.ai/",
         "https://wandb.ai/tplr/grail"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/grail.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/reliquary.json (reviewed_at 2026-06-08T11:05:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 82,
@@ -1139,7 +1139,7 @@
         "https://compelle.com/",
         "https://github.com/compelle/compelle-validator"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/compelle.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/noah.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 83,
@@ -1185,7 +1185,7 @@
       "reviewed_at": "2026-06-08T15:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/subnet-86.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/onsale.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 87,
@@ -1473,7 +1473,7 @@
         "https://github.com/fx-integral/academia",
         "https://github.com/fx-integral/academia-archives"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/academia.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/finsight.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 110,
@@ -1575,7 +1575,7 @@
         "https://glyph-research.org",
         "https://github.com/glyph-research/glyph-subnet"
       ],
-      "notes": "Root->128 accuracy audit pass (#5903): resolved a prior identity-dispute flag. The on-chain SubnetIdentitiesV3 record now shows a complete Glyph Research identity that did not exist at the last review, and the glyph-subnet repository's README explicitly documents --netuid 117 for mainnet across every command example. Re-slugged from brainplay.json/sn-117 to glyph.json/glyph; the prior BrainPlay/shiftlayer-llc surfaces were removed as no longer associated with this netuid, not tracked as historical evidence of the same project."
+      "notes": "Root->128 accuracy audit pass (#5903): resolved a prior identity-dispute flag. The on-chain SubnetIdentitiesV3 record now shows a complete Glyph Research identity that did not exist at the last review, and the glyph-subnet repository's README explicitly documents --netuid 117 for mainnet across every command example. Re-slugged from brainplay.json/sn-117 to everyframe-studio.json/glyph; the prior BrainPlay/shiftlayer-llc surfaces were removed as no longer associated with this netuid, not tracked as historical evidence of the same project."
     },
     {
       "netuid": 118,
@@ -1601,7 +1601,7 @@
       "reviewed_at": "2026-06-08T15:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/satori.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/capabilityforge-next.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 120,

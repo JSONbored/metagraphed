@@ -148,8 +148,46 @@ describe("the named prose-only exemption (#10517)", () => {
     // backlog reach 35 unnoticed. A named list has the opposite property only
     // while it is short enough to read, so this bounds it rather than trusting
     // that nobody appends.
+    //
+    // 3 -> 7 (#13163): the stake-v2 and basket serving slices publish four
+    // routes whose producers land with the engine (alpha-dividends, locks,
+    // chain/baskets, validators/{hotkey}/basket) -- rendering an empty
+    // decline card would be building a surface for the checker. Each entry
+    // still names its consumer path and the stale-entry check still forces
+    // removal the moment one is rendered; the next route that is NOT
+    // engine-gated must render instead of widening this.
+    //
+    // 7 -> 12 (#13164): the Gamma serving slice publishes five more routes
+    // of exactly that engine-gated class (subnets/{netuid}/gamma and its
+    // /history, chain/gamma, gamma/deposits, subnets/{netuid}/services) --
+    // every table behind them is empty until the engine's Gamma capture
+    // lands. Same discipline: the stale-entry check forces removal the
+    // moment one is rendered, and a route that is NOT engine-gated must
+    // render instead of widening this.
+    //
+    // 12 -> 14 (#13165): the Swap/AlphaAssets serving slice publishes two
+    // more routes of the same engine-gated class (subnets/{netuid}/swap,
+    // subnets/{netuid}/alpha-assets) -- both tables are empty until the
+    // engine's balancer and alpha-assets captures land. Same discipline as
+    // above.
+    //
+    // 14 -> 15 (#13165): the LimitOrders serving slice publishes one more
+    // route of the same engine-gated class
+    // (subnets/{netuid}/limit-orders) -- its table is empty until the
+    // engine's order-book capture lands. Same discipline as above.
+    //
+    // 15 -> 17 (#13166): the coldkey-swap serving slice publishes two more
+    // routes of the same engine-gated class
+    // (accounts/pending-coldkey-swaps, accounts/{ss58}/coldkey-swap) --
+    // every table behind them is empty until the engine's swap and lineage
+    // captures land. Same discipline as above.
+    //
+    // 17 -> 19 (#13166): the proxies/multisigs serving slice publishes two
+    // more routes of the same engine-gated class (accounts/{ss58}/proxies,
+    // accounts/{ss58}/multisigs) -- both tables are empty until the engine's
+    // Proxy/Multisig captures land. Same discipline as above.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 3,
+      PROSE_ONLY_ROUTES.length <= 19,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

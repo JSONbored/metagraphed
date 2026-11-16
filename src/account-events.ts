@@ -129,6 +129,85 @@ export const INGESTED_EVENT_KINDS = [
   "CollateralLocked",
   "MinCollateralSet",
   "LiquidAlphaConsensusModeSet",
+  // The Gamma subsystem (#13164, runtime v490) -- forward-compat like the
+  // #2555 kinds above: these land raw-only in chain_detail_chain_events
+  // today, and the structured decode (into app.gamma_events / the shared
+  // account_events columns) lands with the engine. Named here so ?kind=
+  // accepts them the day the producer emits them instead of 400ing on a
+  // kind the chain demonstrably fires.
+  "GammaMinted",
+  "GammaMoved",
+  "GammaDepositClosed",
+  "GammaDepositSpenderSet",
+  "GammaDepositDailySpendCapSet",
+  "GammaSpent",
+  "GammaSpendSkipped",
+  "SubnetGammaEmissionSet",
+  "GammaEmissionMinted",
+  // The on-chain service-URL registry (#13164, SubtensorModule.Services) --
+  // same forward-compat footing as the Gamma kinds above.
+  "ServiceSet",
+  "ServiceRemoved",
+  // The v490 balancer-based Swap pallet's one event (#13165, Swap.FeeRateSet)
+  // -- same forward-compat footing as the Gamma kinds above: it lands
+  // raw-only in chain_detail_chain_events today, and the structured decode
+  // lands with the engine. Named here so ?kind= accepts it the day the
+  // producer emits it instead of 400ing on a kind the chain demonstrably
+  // fires.
+  "FeeRateSet",
+  // The LimitOrders pallet's nine event kinds (#13165, runtime v490) -- same
+  // forward-compat footing as the Gamma kinds above: they land raw-only in
+  // chain_detail_chain_events today (OrderExecuted has 8.4M-block-range
+  // live history -- see docs/block-explorer-data-model.md's census), and the
+  // structured decode (into app.limit_order_events / the shared
+  // account_events columns) lands with the engine.
+  "OrderExecuted",
+  "OrderSkipped",
+  "OrderCancelled",
+  "OrderApproved",
+  "GroupExecutionSummary",
+  "LimitOrdersPalletStatusChanged",
+  "LinkedOutputRecorded",
+  "LinkedOutputConsumed",
+  "LinkedOutputPruned",
+  // The on-chain EVM key association (#13165,
+  // SubtensorModule.AssociatedEvmAddress) -- same forward-compat footing as
+  // the kinds above: the structured decode (into app.evm_associations) lands
+  // with the engine.
+  "EvmKeyAssociated",
+  // The on-chain TAO/USD oracle feed (#13164, SubtensorModule.TaoUsdPrice)
+  // -- same forward-compat footing again.
+  "TaoUsdPriceFed",
+  // The v2 coldkey-swap announcement plane (#13166, runtime v490) -- same
+  // forward-compat footing as the kinds above: these land raw-only in
+  // chain_detail_chain_events today, and the structured decode (into
+  // app.coldkey_swap_announcements / the shared account_events columns)
+  // lands with the engine. Named here so ?kind= accepts them the day the
+  // producer emits them instead of 400ing on kinds the chain demonstrably
+  // fires.
+  "ColdkeySwapAnnounced",
+  "ColdkeySwapReset",
+  "ColdkeySwapDisputed",
+  "ColdkeySwapCleared",
+  "ColdkeySwapAnnouncementDelaySet",
+  "ColdkeySwapReannouncementDelaySet",
+  "AllBalanceUnstakedAndTransferredToNewColdkey",
+  // The per-subnet hotkey swap (#13166, writing the HotkeySuccessor /
+  // HotkeyRoot lineage this slice serves) -- same forward-compat footing.
+  "HotkeySwappedOnSubnet",
+  // The Proxy and Multisig pallets (#13166, runtime v490) -- same
+  // forward-compat footing as the kinds above: these land raw-only in
+  // chain_detail_chain_events today, and the structured decode (into
+  // app.proxies / app.multisigs / the shared account_events columns) lands
+  // with the engine. Every name verified against live Finney v490 metadata.
+  "ProxyAdded",
+  "ProxyRemoved",
+  "PureCreated",
+  "PureKilled",
+  "NewMultisig",
+  "MultisigApproval",
+  "MultisigExecuted",
+  "MultisigCancelled",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {

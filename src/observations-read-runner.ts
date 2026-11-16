@@ -36,6 +36,8 @@ import type { ObservationsReadDb } from "./analytics-live.ts";
 import {
   neonOwnsObservations,
   OBSERVATION_TABLES,
+  selectedObservationsStore,
+  type ObservationsSql,
 } from "./observations-neon.ts";
 import {
   createPgSql,
@@ -84,13 +86,18 @@ export interface ObservationsReadDeps {
  * the read helpers already treat as zero rows.
  */
 export function observationsReadDb(
-  env: NeonWriteEnv | null | undefined,
+  env:
+    | (NeonWriteEnv & { OBSERVATIONS_STORE?: ObservationsSql })
+    | null
+    | undefined,
   // Optional-`waitUntil` on purpose: the serving handlers pass an EdgeCacheCtx,
   // whose waitUntil is itself optional, and a ctx that cannot defer work is not
   // a ctx for this purpose -- see the guard below.
   ctx?: Partial<WaitUntilLike> | null,
   deps: ObservationsReadDeps = {},
 ): ObservationsReadDb | undefined {
+  const native = selectedObservationsStore(env);
+  if (native) return pgObservationsReadDb(native);
   const d1 = selectedD1Store(env, OBSERVATION_TABLES);
   if (d1) return d1;
   if (!neonOwnsObservations(env)) return undefined;

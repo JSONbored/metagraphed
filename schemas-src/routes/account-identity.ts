@@ -33,6 +33,18 @@ export const AccountIdentityArtifactSchema = z
     discord: z.string().max(200).nullable().optional(),
     description: z.string().nullable().optional(),
     additional: z.string().nullable().optional(),
+    // #13166: the storage-version label -- which SubtensorModule identity map
+    // the capture decoded this row from. Nullable on purpose: rows written by
+    // the unlabelled capture carry no version, and the engine's labelled
+    // IdentitiesV2 decode (migration 0052's writer) is what starts filling it.
+    storage_version: z
+      .int()
+      .min(1)
+      .nullable()
+      .optional()
+      .describe(
+        "Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in `github`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated.",
+      ),
     captured_at: z.string().nullable().optional(),
   })
   .strict();
@@ -50,6 +62,18 @@ const AccountIdentityHistoryEntrySchema = z
     discord: z.string().max(200).nullable().optional(),
     description: z.string().nullable().optional(),
     additional: z.string().nullable().optional(),
+    // #13166: same storage-version label as the latest-only artifact above,
+    // per history entry -- the map an entry was decoded from is part of what
+    // changed when the runtime migrated identities, so the diff timeline
+    // carries it too. NULL on every entry the unlabelled capture appended.
+    storage_version: z
+      .int()
+      .min(1)
+      .nullable()
+      .optional()
+      .describe(
+        "Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated.",
+      ),
     // NULLABLE, and for the reason #8055 already wrote down on the subnet
     // sibling: `formatIdentityHistoryEntry` builds this as
     // `row.identity_hash ?? null` (src/account-identity-history.ts), so a row

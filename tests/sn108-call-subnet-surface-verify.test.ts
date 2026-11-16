@@ -2,7 +2,7 @@
 // tool (metagraphed#7119, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN108's *real* registry surface config
-// (registry/subnets/talkhead.json) to the tool's contract, so a future edit
+// (registry/subnets/chipforge.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping method, marking it auth_required,
 // disabling its probe, changing expect away from `any`) is caught here.
 //
@@ -13,6 +13,11 @@
 // `probe.expect: "any"`. The fixture below mirrors that live response rather
 // than fetching it, keeping the test hermetic while still exercising the
 // non-JSON body path through the tool.
+//
+// [2026-11-15 infra#873 p3a] The availability sweep found the declared route
+// answering 404 on an alive host and retired it from the callable set pending
+// re-verification (probe.enabled:false -- retired, not merely broken), so this
+// file now pins the non-callable state and the tool's refusal to call it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -26,7 +31,7 @@ const SURFACE_ID = "sn-108-talkhead-health";
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/talkhead.json", import.meta.url),
+      new URL("../registry/subnets/chipforge.json", import.meta.url),
     ),
     "utf8",
   ),
@@ -43,11 +48,17 @@ function sn108Response() {
 }
 
 describe("SN108 TalkHead call_subnet_surface verification (#7119)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins the sweep-retired (non-callable) config", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
+    // [2026-11-15 infra#873 p3a] route answers 404 on an alive host; retired
+    // from the callable set pending url re-verification.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(
+      SURFACE.notes,
+      /\[2026-11-15 infra#873 p3a\] declared route answers 404 on an alive host/,
+    );
     assert.equal(SURFACE.probe?.method, "GET");
     // Live body is plain text under a text/html content-type -- not JSON.
     assert.equal(SURFACE.probe?.expect, "any");
@@ -75,7 +86,7 @@ describe("SN108 TalkHead call_subnet_surface verification (#7119)", () => {
     assert.match(result.content_type!, /^text\/html/i);
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool rejects the retired surface without fetching upstream", async () => {
     const catalog = {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 108 }],
     };
@@ -85,6 +96,7 @@ describe("SN108 TalkHead call_subnet_surface verification (#7119)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
@@ -93,6 +105,7 @@ describe("SN108 TalkHead call_subnet_surface verification (#7119)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return sn108Response();
     }) as typeof fetch;
     try {
@@ -114,10 +127,9 @@ describe("SN108 TalkHead call_subnet_surface verification (#7119)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body, "Healthy");
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -1,0 +1,126 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified official docs site yet beyond public directory/community pages.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet beyond the TaoMarketCap snapshot -- the README describes validators fetching posts from a centralized database via API but does not name a public host.",
+      "No verified SSE/event stream yet.",
+      "The official website (tag101.ai) only serves over plain HTTP -- https:// times out (no TLS)."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "dashboard_url": null,
+  "docs_url": null,
+  "name": "Tag101",
+  "netuid": 101,
+  "notes": "Reviewed overlay for SN101 eni. Public directories list the subnet. Root->128 accuracy audit re-review pass (#5903): the official website and source repository are now both live and added as tracked surfaces (previously only cited via top-level fields); no public API, OpenAPI schema, or docs site beyond what was already tracked.",
+  "schema_version": 1,
+  "slug": "eni",
+  "source_repo": "https://github.com/tag101-ai/tag101",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (website:billing, website:pricing, website:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-101-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "eni TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/101/ on api.taomarketcap.com returning machine-readable JSON for SN101 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Tag101 (eni) documents validator task flows in its official source repository but exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/101/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-101-eni-min-compute",
+      "kind": "data-artifact",
+      "name": "eni minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN101 eni source repository (tag101-ai/tag101) as min_compute.yml. Documents the subnet operator CPU/GPU/memory/storage/network floors (version 0.2.0, separate miner and validator specs). Pinned to an immutable commit. Fills the file's gap note for a verified standalone static data artifact.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eni",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/tag101-ai/tag101/blob/115f36da7c483d16018d4c16a14f8fb8d0433306/min_compute.yml",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "url": "https://raw.githubusercontent.com/tag101-ai/tag101/115f36da7c483d16018d4c16a14f8fb8d0433306/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-101-eni-website",
+      "kind": "website",
+      "name": "eni (Tag101) website",
+      "notes": "Official SN101 eni (Tag101) website -- verified live 2026-07-16. Only serves over plain HTTP; https:// times out (no TLS certificate on this host).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eni",
+      "public_safe": true,
+      "source_urls": ["https://github.com/tag101-ai/tag101"],
+      "url": "http://tag101.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-101-eni-source-repo",
+      "kind": "source-repo",
+      "name": "eni (Tag101) source repository",
+      "notes": "Official SN101 eni (Tag101) source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eni",
+      "public_safe": true,
+      "source_urls": ["https://github.com/tag101-ai/tag101"],
+      "url": "https://github.com/tag101-ai/tag101"
+    }
+  ],
+  "website_url": "http://tag101.ai"
+}

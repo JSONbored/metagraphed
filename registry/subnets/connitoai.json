@@ -175,9 +175,9 @@
       "id": "sn-102-connito-init-peer-id",
       "kind": "subnet-api",
       "name": "Connito init peer ID",
-      "notes": "Public no-auth GET returning the current initial peer ID list for the training swarm. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the current initial peer ID list for the training swarm. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000

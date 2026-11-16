@@ -320,6 +320,33 @@ export async function loadAccountEventsHotTier(
   );
 }
 
+/** The ≥v441 Root-claim flow (#13163): claims land as Basket* events, so the
+ * root-claim surface reads this account's claim events off the same store.
+ * The kind list is the CALLER's (account-root-claim.ts owns which kinds are
+ * claim flow); it is interpolated as quoted literals rather than bound
+ * because the D1 leg of this seam binds positionally and a variable-length
+ * IN list would change the statement shape per request. Every kind comes
+ * from a fixed in-repo constant, never from the request. */
+export async function loadAccountBasketClaimEventsHotTier(
+  env: unknown,
+  ss58: string,
+  kinds: readonly string[],
+  limit: number,
+): Promise<Row[] | null> {
+  const need = safeBlockNumber(limit);
+  if (need === null || need <= 0) return null;
+  if (kinds.length === 0 || kinds.some((kind) => !/^[A-Za-z0-9]+$/.test(kind)))
+    return null;
+  const list = kinds.map((kind) => `'${kind}'`).join(",");
+  return query(
+    env,
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+      `WHERE (hotkey = ? OR coldkey = ?) AND event_kind IN (${list}) ` +
+      "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
+    [ss58, ss58, need],
+  );
+}
+
 export async function loadBlockExtrinsicsHotTier(
   env: unknown,
   ref: string,

@@ -1,0 +1,138 @@
+{
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "identity-reviewed",
+    "macrocosmos",
+    "official-source-repo"
+  ],
+  "contact": "brian@macrocosmos.ai",
+  "curation": {
+    "gap_notes": [
+      "Previously discovered Mainframe docs URL currently returns 404.",
+      "Previously discovered Mainframe API documentation URL currently returns 404.",
+      "Previously discovered dashboard URL redirects to the general Macrocosmos homepage.",
+      "The registered website_url (macrocosmos.ai/sn25) now also redirects to the general Macrocosmos homepage rather than SN25-specific content, the same failure mode as the previously-flagged dashboard URL; not promoted as a website surface.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T09:50:00.000Z"
+  },
+  "dashboard_url": "https://wandb.ai/macrocosmos/folding-openmm",
+  "name": "UR",
+  "netuid": 25,
+  "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted. Re-tested live this pass: also found the registered website_url now redirects to the same generic homepage, so it is not promoted as a website surface either. 1 community-submitted surface (wandb dashboard) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 4 tracked surfaces re-verified live.",
+  "schema_version": 1,
+  "slug": "sn-25",
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  },
+  "source_repo": "https://github.com/urfoundation/sn",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-25-mainframe-source",
+      "kind": "source-repo",
+      "name": "Mainframe source repository",
+      "notes": "Official Mainframe source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/mainframe"],
+      "url": "https://github.com/macrocosm-os/mainframe"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
+      "kind": "data-artifact",
+      "name": "Macrocosmos Macrobench benchmark dataset",
+      "notes": "Public MIT-licensed benchmark data artifact published under the Macrocosmos (macrocosm-os) Hugging Face organization, the operator of SN25 Mainframe (github.com/macrocosm-os/mainframe, macrocosmos.ai). Daily parquet snapshots of a multiple-choice question benchmark with per-miner evaluation and voting records, spanning October 2024 through August 2025 in the 100K-1M row range.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01",
+        "https://huggingface.co/macrocosm-os"
+      ],
+      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-25-mainframe-pdb-file-api",
+      "kind": "subnet-api",
+      "name": "Mainframe PDB structure file API",
+      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe/blob/main/folding_api/utility_endpoints.py",
+        "https://github.com/macrocosm-os/mainframe/blob/main/README.md",
+        "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
+      ],
+      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-25-mainframe-wandb",
+      "kind": "dashboard",
+      "name": "Mainframe (folding-openmm) Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) — live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe/blob/main/folding/utils/config.py"
+      ],
+      "url": "https://wandb.ai/macrocosmos/folding-openmm"
+    }
+  ],
+  "website_url": "https://ur.xyz/"
+}

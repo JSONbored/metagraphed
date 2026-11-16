@@ -148,6 +148,12 @@ describe("store-neutral SQL", () => {
       // tests; shared readers remain dialect-neutral.
       if (
         [
+          // Format decoder owns its read-only :memory: DatabaseSync. These
+          // fixed statements never accept or execute through a store runner.
+          "src/sqlite-document-decoder.ts",
+          // Offline schema generation owns its in-memory SQLite connection;
+          // the native runtime imports only its generated static metadata.
+          "scripts/generate-export-projection.ts",
           "src/neuron-documents.ts",
           // The native branch has an explicit neurons owner check; the
           // portable branch is exercised by the PostgreSQL route suite.

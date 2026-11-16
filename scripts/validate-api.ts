@@ -1528,6 +1528,11 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       for (const p of body.data.points) {
         assert.notEqual(p.usd_per_tao, 0);
       }
+      // #13164: the provenance labels. The card's own series is the composed
+      // index, and the on-chain oracle block declines to null in this
+      // harness (no oracle store bound) -- never a fabricated price.
+      assert.equal(body.data.source, "pool_composite");
+      assert.equal(body.data.oracle, null);
       // priced_point_count can never exceed the points it counts.
       assert.equal(body.data.priced_point_count <= body.data.point_count, true);
       if (body.data.latest !== null) {
@@ -1739,6 +1744,219 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
       // Oldest first, so a caller plotting the series need not reverse it.
       const days = body.data.points.map((p: { day: string }) => p.day);
       assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
+    "/api/v1/subnets/64/mechanisms",
+    (body) => {
+      // #13162: no mechanisms store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: every subnet has at least mechanism 0).
+      assert.deepEqual(body.data.mechanisms, []);
+      assert.equal(body.data.mechanism_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/alpha-dividends",
+    (body) => {
+      // #13163: no dividends store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: an empty registry is not a measured zero accrual).
+      assert.deepEqual(body.data.dividends, []);
+      assert.equal(body.data.hotkey_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/gamma",
+    (body) => {
+      // #13164: no Gamma store is bound in this harness, so the one honest
+      // body is the decline -- a NULL state (never a zeroed one: an absent
+      // capture is not a measured Gamma-off subnet).
+      assert.equal(body.data.gamma, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/gamma/history",
+    (body) => {
+      // #13164: same decline through the series -- empty points with a NULL
+      // count (never 0: an empty series is not a measured history).
+      assert.deepEqual(body.data.points, []);
+      assert.equal(body.data.point_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/chain/gamma",
+    (body) => {
+      // #13164: same decline chain-wide -- the global flag NULL (never a
+      // measured off-switch) and an empty subnet list with a NULL count.
+      assert.equal(body.data.enabled, null);
+      assert.equal(body.data.subnet_count, null);
+      assert.deepEqual(body.data.subnets, []);
+    },
+  ],
+  [
+    "/api/v1/gamma/deposits",
+    (body) => {
+      // #13164: no deposits store is bound in this harness, so the one
+      // honest body is the decline -- an empty list with a NULL count
+      // (never 0: an empty list is not a measured deposit-free chain).
+      assert.deepEqual(body.data.deposits, []);
+      assert.equal(body.data.deposit_count, null);
+      assert.equal(body.data.captured_at, null);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/services",
+    (body) => {
+      // #13164: no services store is bound in this harness, so the one
+      // honest body is the decline -- an empty registry with a NULL count
+      // (never 0: an empty registry is not a measured service-less subnet).
+      assert.deepEqual(body.data.services, []);
+      assert.equal(body.data.service_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/swap",
+    (body) => {
+      // #13165: no swap store is bound in this harness, so the one honest
+      // body is the decline -- a NULL state (never a zeroed one: an absent
+      // capture is not a measured empty pool).
+      assert.equal(body.data.swap, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/alpha-assets",
+    (body) => {
+      // #13165: same decline for the AlphaAssets accounting -- a NULL state
+      // (never a zeroed one: an absent capture is not a measured zero
+      // issuance).
+      assert.equal(body.data.alpha_assets, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/limit-orders",
+    (body) => {
+      // #13165: no limit-orders store is bound in this harness, so the one
+      // honest body is the decline -- an empty book with a NULL count
+      // (never 0: an empty book is not a measured order-less subnet).
+      assert.deepEqual(body.data.orders, []);
+      assert.equal(body.data.order_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(body.data.netuid, 64);
+    },
+  ],
+  [
+    "/api/v1/chain/baskets",
+    (body) => {
+      // #13163: no capture store is bound in this harness, so the one honest
+      // body is the decline -- a NULL capture with a NULL fund count (0 is
+      // reserved for a completed capture's real measurement).
+      assert.equal(body.data.capture, null);
+      assert.equal(body.data.fund_count, null);
+      assert.deepEqual(body.data.baskets, []);
+    },
+  ],
+  [
+    "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/basket",
+    (body) => {
+      // #13163: same decline through the per-validator card -- capture and
+      // basket NULL, holdings/targets empty.
+      assert.equal(body.data.capture, null);
+      assert.equal(body.data.basket, null);
+      assert.deepEqual(body.data.holdings, []);
+      assert.deepEqual(body.data.targets, []);
+      assert.equal(
+        body.data.hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/locks",
+    (body) => {
+      // #13163: no locks store is bound in this harness, so the one honest
+      // body is the decline -- an empty list with a NULL count (never 0: an
+      // empty list is not a measured lock-free account).
+      assert.deepEqual(body.data.locks, []);
+      assert.equal(body.data.lock_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/pending-coldkey-swaps",
+    (body) => {
+      // #13166: no coldkey-swaps store is bound in this harness, so the one
+      // honest body is the decline -- an empty list with a NULL count (never
+      // 0: an empty list is not a measured swap-free chain) and a null
+      // policy.
+      assert.deepEqual(body.data.swaps, []);
+      assert.equal(body.data.swap_count, null);
+      assert.equal(body.data.policy, null);
+      assert.equal(body.data.captured_at, null);
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/coldkey-swap",
+    (body) => {
+      // #13166: same decline through the same unbound seam -- a null
+      // announcement and coldkey-swap lineage, an empty hotkey lineage with a
+      // NULL count.
+      assert.equal(body.data.announcement, null);
+      assert.equal(body.data.lineage.coldkey, null);
+      assert.deepEqual(body.data.lineage.hotkey, []);
+      assert.equal(body.data.lineage.hotkey_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/proxies",
+    (body) => {
+      // #13166: no proxies store is bound in this harness, so the one honest
+      // body is the decline -- an empty list with a NULL count (never 0: an
+      // empty list is not a measured delegation-free account).
+      assert.deepEqual(body.data.proxies, []);
+      assert.equal(body.data.proxy_count, null);
+      assert.equal(body.data.deposit, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/multisigs",
+    (body) => {
+      // #13166: same decline through the unbound multisigs seam.
+      assert.deepEqual(body.data.multisigs, []);
+      assert.equal(body.data.multisig_count, null);
+      assert.equal(body.data.captured_at, null);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
     },
   ],
   [

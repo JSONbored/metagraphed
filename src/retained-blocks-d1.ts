@@ -4,10 +4,15 @@ import type { ChainNetworkId } from "./chain-network.ts";
 import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
 import { BlocksRowSchema } from "../schemas-src/lakehouse.ts";
 import { timed, TIMING_D1 } from "./request-timing.ts";
+import type {
+  RetainedBlockReadOptions,
+  RetainedBlocksStore,
+} from "./retained-blocks-store.ts";
 
 export interface RetainedBlocksEnv {
   D1_RETAINED_BLOCKS?: D1StoreBinding;
   RETAINED_BLOCKS_NETWORKS?: string;
+  RETAINED_BLOCKS_STORE?: RetainedBlocksStore;
 }
 const integer = z.number().int().nonnegative().safe();
 const State = z.object({
@@ -52,7 +57,11 @@ function blockRange(where: readonly string[]) {
   if (upper !== undefined) clauses.push(`block_number <= ${upper}`);
   return { clauses, lower, upper };
 }
-function checkedState(value: unknown, net: number, now: number) {
+export function checkedRetainedBlockState(
+  value: unknown,
+  net: number,
+  now: number,
+) {
   const state = State.parse(value);
   if (
     state.network !== net ||
@@ -80,6 +89,8 @@ export async function readRetainedBlockCensus(
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
   try {
+    if (env.RETAINED_BLOCKS_STORE)
+      return await env.RETAINED_BLOCKS_STORE.census(network, now);
     const db = env.D1_RETAINED_BLOCKS;
     if (!db) return null;
     const net = network === "mainnet" ? 0 : 1;
@@ -108,7 +119,7 @@ export async function readRetainedBlockCensus(
       ]),
     );
     if (![receipt, sources, heights].every((r) => r!.success)) return null;
-    const state = checkedState(receipt!.results[0], net, now);
+    const state = checkedRetainedBlockState(receipt!.results[0], net, now);
     const counts = z
       .object({ files: integer, rows: integer, pending: integer })
       .parse(sources!.results[0]);
@@ -146,6 +157,8 @@ export async function readRetainedBlockObservedAt(
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
   try {
+    if (env.RETAINED_BLOCKS_STORE)
+      return await env.RETAINED_BLOCKS_STORE.observedAt(height, network, now);
     const db = env.D1_RETAINED_BLOCKS;
     if (!db) return null;
     const net = network === "mainnet" ? 0 : 1;
@@ -165,7 +178,7 @@ export async function readRetainedBlockObservedAt(
       ]),
     );
     if (!receipt!.success || !block!.success) return null;
-    checkedState(receipt!.results[0], net, now);
+    checkedRetainedBlockState(receipt!.results[0], net, now);
     const row = z
       .object({ observed_at: z.number().int().positive().safe() })
       .parse(block!.results[0]);
@@ -185,16 +198,19 @@ export async function readRetainedBlockRows(
   count: number,
   network: ChainNetworkId = "mainnet",
   now = Date.now(),
-  minimums: {
-    minEvents?: number | null;
-    minExtrinsics?: number | null;
-    heightOrder?: boolean;
-    heightUpper?: number;
-  } = {},
+  minimums: RetainedBlockReadOptions = {},
 ): Promise<Record<string, unknown>[] | null | undefined> {
   if (!env?.RETAINED_BLOCKS_NETWORKS?.split(",").includes(network))
     return undefined;
   try {
+    if (env.RETAINED_BLOCKS_STORE)
+      return await env.RETAINED_BLOCKS_STORE.rows(
+        where,
+        count,
+        network,
+        now,
+        minimums,
+      );
     const db = env.D1_RETAINED_BLOCKS;
     if (!db) return null;
     const net = network === "mainnet" ? 0 : 1;
@@ -283,7 +299,7 @@ export async function readRetainedBlockRows(
       ]);
       if (!receipt!.success || results.some((result) => !result.success))
         return null;
-      const state = checkedState(receipt!.results[0], net, now);
+      const state = checkedRetainedBlockState(receipt!.results[0], net, now);
       generation = state.generation;
       if (chooseHeight) {
         const bounds = HeightBounds.parse(results.at(-1)!.results[0]);
@@ -377,7 +393,7 @@ export async function readRetainedBlockRows(
         .bind(net, net, count, net, net, count, count),
     ]);
     if (!receipt!.success || !result!.success) return null;
-    const state = checkedState(receipt!.results[0], net, now);
+    const state = checkedRetainedBlockState(receipt!.results[0], net, now);
     if (generation !== state.generation) return null;
     return (
       heightOrder

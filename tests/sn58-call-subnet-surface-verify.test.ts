@@ -2,7 +2,7 @@
 // tool (metagraphed#7071, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN58's *real* registry surface configs
-// (registry/subnets/handshake58.json) to the tool's contract, so a future edit
+// (registry/subnets/attune.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // All six surfaces listed in #7071 were verified live on 2026-07-21 against
@@ -21,7 +21,8 @@
 //   sn-58-handshake58-validator-registry-api
 //     GET https://handshake58.com/api/validator/registry
 //     -> HTTP 200 {version, updated, providers, count, onlineCount, ...}
-//     (no probe block in the registry -- call_subnet_surface defaults to GET)
+//     (probe block added 2026-11-16 with the retirement gate backfill:
+//      a sweep-retired surface always carries probe.enabled:false)
 //   sn-58-handshake58-directory-providers
 //     GET https://handshake58.com/api/directory/providers
 //     -> HTTP 200 {success, providers, count} (~274 KB; exceeds
@@ -46,9 +47,7 @@ const NETUID = 58;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/handshake58.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/attune.json", import.meta.url)),
     "utf8",
   ),
 );
@@ -136,7 +135,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-subnet-api",
     url: "https://handshake58.com/api/agent",
-    hasProbe: true,
     schemaUrl: undefined,
     body: {
       name: "Handshake58",
@@ -153,9 +151,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-validator-registry-api",
     url: "https://handshake58.com/api/validator/registry",
-    // Issue listed method as "?" -- the registry has no probe block; the tool
-    // defaults to GET, which matches the live verified behavior.
-    hasProbe: false,
     schemaUrl: undefined,
     body: {
       version: "2.0",
@@ -176,7 +171,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-directory-providers",
     url: "https://handshake58.com/api/directory/providers",
-    hasProbe: true,
     schemaUrl: undefined,
     // Minimal fixture (live body is ~274 KB and over the tool cap).
     body: {
@@ -203,11 +197,14 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
   for (const fixture of HEAD_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface is callable via HEAD`, () => {
+    test(`${fixture.id}: registry surface pins its sweep-retired HEAD config`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
       assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
+      // [2026-11-15 infra#873 p3a] declared route 404 on the renamed host:
+      // sweep-retired from the callable set.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3a\]/);
       // Live HEAD returns 200 application/json; pin the declared method.
       assert.equal(SURFACE.probe?.method, "HEAD");
       assert.equal(SURFACE.probe?.expect, "json");
@@ -236,7 +233,7 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
       assert.equal(result.truncated, false);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call uses HEAD by surface id`, async () => {
+    test(`${fixture.id}: the MCP tool rejects the retired surface without fetching upstream`, async () => {
       let requestedMethod: string | undefined;
       const originalFetch = globalThis.fetch;
       const catalog = {
@@ -277,10 +274,10 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
           deps,
         );
         const result = ((await response.json()) as Row).result;
-        assert.equal(result.isError, false);
-        assert.equal(result.structuredContent.surface_id, fixture.id);
-        assert.equal(result.structuredContent.status_code, 200);
-        assert.equal(requestedMethod, "HEAD");
+        // [2026-11-15 infra#873 p3a] sweep-retired: refused before upstream.
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text as string, /probe\.enabled:false/);
+        assert.equal(requestedMethod, undefined);
       } finally {
         globalThis.fetch = originalFetch;
       }
@@ -290,20 +287,21 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
   for (const fixture of GET_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface is callable via GET`, () => {
+    test(`${fixture.id}: registry surface pins its sweep-retired GET config`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
       assert.equal(SURFACE.auth_required, false);
       assert.equal(SURFACE.url, fixture.url);
       assert.equal(SURFACE.schema_url, fixture.schemaUrl);
-      if (fixture.hasProbe) {
-        assert.equal(SURFACE.probe?.enabled, true);
-        assert.equal(SURFACE.probe?.method, "GET");
-        assert.equal(SURFACE.probe?.expect, "json");
-      } else {
-        // Validator registry has no probe block; tool defaults to GET.
-        assert.equal(SURFACE.probe, undefined);
-      }
+      assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3a\]/);
+      // [2026-11-15 infra#873 p3a] declared route 404 on the renamed host:
+      // sweep-retired from the callable set. Every retired surface carries a
+      // disabled probe block (the 2026-11-16 backfill closed the note-only
+      // gap recorded on infra#873); tests/retired-surface-probe-gate.test.ts
+      // refuses any future regression of this class.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.equal(SURFACE.probe?.method, "GET");
+      assert.equal(SURFACE.probe?.expect, "json");
     });
 
     test(`${fixture.id}: callSubnetSurface returns the real JSON body using GET`, async () => {
@@ -326,14 +324,16 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call by surface id`, async () => {
+    test(`${fixture.id}: the MCP tool honors the surface's retirement shape`, async () => {
       const result = await callToolWithSurface(SURFACE, () =>
         jsonResponse(fixture.body),
       );
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, fixture.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      fixture.assertBody(result.structuredContent.body as Row);
+      // [2026-11-15 infra#873 p3a] sweep-retired: refused before upstream.
+      // Note-only retirement no longer exists -- the 2026-11-16 backfill gave
+      // every retired surface a disabled probe block, so the tool's one gate
+      // (probe.enabled:false) now covers the whole class.
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text as string, /probe\.enabled:false/);
     });
   }
 
@@ -347,7 +347,9 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
       );
       assert.equal(SURFACE.kind, "openapi");
       assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
+      // [2026-11-15 infra#873 p3a] declared route 404 on the renamed host:
+      // sweep-retired from the callable set.
+      assert.equal(SURFACE.probe?.enabled, false);
       assert.equal(SURFACE.probe?.method, "HEAD");
       assert.equal(SURFACE.probe?.expect, "json");
       assert.equal(SURFACE.url, "https://handshake58.com/openapi.json");

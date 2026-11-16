@@ -38,6 +38,7 @@
 // eventually consistent; these TTLs bound local reuse, not global visibility.
 
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
+import { appKv } from "./app-kv.ts";
 import { recordOrNull } from "./read-store.ts";
 import {
   authLookupCacheWrite,
@@ -159,7 +160,7 @@ export async function resolveOAuthAccountTierWithStatus(
   const accountId = oauthAccountIdFrom(rawAccountId);
   if (accountId === null) return { found: false };
   if (typeof env !== "object" || env === null) return { found: false };
-  const kv = env?.METAGRAPH_CONTROL;
+  const kv = appKv(env);
   const cacheKey = cacheKeyFor(accountId);
   if (kv?.get) {
     try {

@@ -301,8 +301,18 @@ const patterns: SafetyPattern[] = [
     // (an extremely common idiom, not a one-off) false-positived. `coldkey\.` +
     // a lowercase identifier + `(` matches the method-call shape without
     // loosening the bare `\bcoldkey\b` trigger itself.
+    //
+    // Extended for #13166: "coldkey swap" / "coldkey-swap(s)" is the chain's
+    // own vocabulary for the swap_coldkey machinery (the ColdkeySwap* storage
+    // items and events; Taostats' accounts/pending-coldkey-swaps family), and
+    // the serving slice's route path + descriptions legitimately name it.
+    // EXACT phrase, same discipline as "coldkey-only": only the two-word
+    // swap concept is stripped, however separated, so a hyphen or space
+    // still cannot smuggle anything else ("coldkey-swap-seedphrase" leaves
+    // "-seedphrase" behind for the wallet/key-wording rule above, and
+    // "coldkey backup" still trips here).
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\b(?:hotkey(?:\s+or\s+|\s*\/\s*)coldkey|coldkey(?:\s+or\s+|\s*\/\s*)hotkey)\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|"coldkey\|hotkey\|netuid"|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\b(?:hotkey(?:\s+or\s+|\s*\/\s*)coldkey|coldkey(?:\s+or\s+|\s*\/\s*)hotkey)\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey[\s-]swaps?\b|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|"coldkey\|hotkey\|netuid"|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
     soft: true,
   },
   {

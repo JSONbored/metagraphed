@@ -240,7 +240,7 @@
       "id": "sn-11-trajectoryrl-miners",
       "kind": "data-artifact",
       "name": "TrajectoryRL miner directory",
-      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON \u2014 aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface.",
+      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON — aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -257,5 +257,5 @@
       "url": "https://trajrl.com/api/miners"
     }
   ],
-  "website_url": "https://trajrl.com/"
+  "website_url": "https://trajrl.com"
 }

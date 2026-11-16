@@ -922,7 +922,7 @@ const WEB_VITALS_SNIPPET =
 // Canonical is origin + path with the query stripped, so filter/sort permutations
 // (e.g. /subnets?sort=health&health=down) consolidate to the one indexable URL
 // instead of reading as duplicate content.
-function injectAnalytics(response: Response, request: Request): Response {
+async function injectAnalytics(response: Response, request: Request): Promise<Response> {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
   const pathname = new URL(request.url).pathname;
@@ -955,27 +955,38 @@ function injectAnalytics(response: Response, request: Request): Response {
       return `<meta ${attribute}="${escapeHtmlAttr(key)}" content="${escapeHtmlAttr(tag.content)}">`;
     })
     .join("");
-  // HTMLRewriter is a Cloudflare Workers runtime global; under local `vite dev`
-  // (Node) it's absent. Skip the streaming <head> injection there — these meta
-  // tags are a production SEO/unfurl concern — and pass the rendered HTML through
-  // unchanged. Production (workerd) keeps the full injection path.
-  const transformed =
-    typeof HTMLRewriter === "undefined"
-      ? response
-      : new HTMLRewriter()
-          .on("head", {
-            element(element) {
-              element.append(RESOURCE_HINTS, { html: true });
-              element.append(canonicalTag, { html: true });
-              element.append(ogUrlTag, { html: true });
-              element.append(jsonLdTag, { html: true });
-              if (apiAlternateTag) element.append(apiAlternateTag, { html: true });
-              element.append(SEO_DEFAULT_TAGS, { html: true });
-              if (!routeOwnsCard) element.append(ogImageTags, { html: true });
-              element.append(WEB_VITALS_SNIPPET, { html: true });
-            },
-          })
-          .transform(response);
+  // Both runtimes append the same markup. Load the Node parser only when the
+  // Worker global is absent, keeping the deployed Cloudflare transform intact.
+  let transformed = response;
+  if (typeof HTMLRewriter === "undefined") {
+    if (request.method !== "HEAD") {
+      const headHtml =
+        RESOURCE_HINTS +
+        canonicalTag +
+        ogUrlTag +
+        jsonLdTag +
+        apiAlternateTag +
+        SEO_DEFAULT_TAGS +
+        (routeOwnsCard ? "" : ogImageTags) +
+        WEB_VITALS_SNIPPET;
+      transformed = await (await import("./lib/html-head")).appendHtmlHead(response, headHtml);
+    }
+  } else {
+    transformed = new HTMLRewriter()
+      .on("head", {
+        element(element) {
+          element.append(RESOURCE_HINTS, { html: true });
+          element.append(canonicalTag, { html: true });
+          element.append(ogUrlTag, { html: true });
+          element.append(jsonLdTag, { html: true });
+          if (apiAlternateTag) element.append(apiAlternateTag, { html: true });
+          element.append(SEO_DEFAULT_TAGS, { html: true });
+          if (!routeOwnsCard) element.append(ogImageTags, { html: true });
+          element.append(WEB_VITALS_SNIPPET, { html: true });
+        },
+      })
+      .transform(response);
+  }
   const headers = new Headers(transformed.headers);
   headers.set("link", DISCOVERY_LINK_HEADER);
   // Conservative security headers for the HTML site (no CSP — an SPA CSP is
@@ -1087,7 +1098,7 @@ export default {
         request,
         await normalizeCatastrophicSsrResponse(response),
       );
-      return injectAnalytics(normalized, request);
+      return await injectAnalytics(normalized, request);
     } catch (error) {
       console.error(error);
       return applySignedBrowserAnalyticsPolicy(

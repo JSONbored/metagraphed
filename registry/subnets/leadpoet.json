@@ -128,7 +128,7 @@
       "id": "sn-71-leadpoet-geo-countries",
       "kind": "data-artifact",
       "name": "Leadpoet country reference list",
-      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) \u2014 the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
+      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) — the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -194,7 +194,7 @@
       "id": "sn-71-leadpoet-contact-api",
       "kind": "subnet-api",
       "name": "Leadpoet contact form API",
-      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired.",
+      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -211,5 +211,5 @@
       "url": "https://leadpoet.com/api/contact"
     }
   ],
-  "website_url": "https://leadpoet.com/"
+  "website_url": "https://leadpoet.com"
 }

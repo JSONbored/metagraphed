@@ -2,7 +2,7 @@
 // (metagraphed#7112, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN100's *real* registry surface config
-// (registry/subnets/pla-form.json) to the tool's contract, so a future edit that
+// (registry/subnets/cortex.json) to the tool's contract, so a future edit that
 // regresses its callability (flipping to HEAD, marking it auth_required,
 // disabling its probe) is caught here.
 //
@@ -13,6 +13,12 @@
 // challenges: [...] }. The fixture below mirrors that live response rather than
 // fetching it, keeping the test hermetic while still exercising the JSON
 // parse-and-return path.
+//
+// 2026-11-15: the infra#873 availability sweep found the declared route
+// answering 404 on an alive host and probe-disabled the surface pending url
+// re-verification. This file now pins that non-callable state (gated !=
+// broken; probe-disabled = retired from the callable set pending
+// re-verification).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,9 +31,7 @@ const SURFACE_ID = "sn-100-platform-network-subnet-api";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/pla-form.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/cortex.json", import.meta.url)),
     "utf8",
   ),
 );
@@ -57,12 +61,15 @@ function upstreamResponse() {
 }
 
 describe("SN100 Plaτform call_subnet_surface verification (#7112)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins its sweep-retired (non-callable) state", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
-    // No-auth GET returning JSON.
+    // Probe-disabled by the 2026-11-15 infra#873 sweep: the declared route
+    // answers 404 on an alive host; the dated note records why.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+    // Declared no-auth GET returning JSON, unchanged by the sweep.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
     assert.equal(SURFACE.url, "https://chain.joinbase.ai/v1/registry");
@@ -93,7 +100,11 @@ describe("SN100 Plaτform call_subnet_surface verification (#7112)", () => {
     assert.equal((result.body as Row).challenges[0].slug, "agent-challenge");
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool refuses the retired surface without fetching upstream", async () => {
+    // In production the operational catalog filters probe.enabled:false
+    // surfaces out entirely; this injects the real registry config into a
+    // catalog fixture to pin the tool's own guard (src/mcp-server.ts
+    // surface_unavailable) as the second line of defense.
     const catalog = {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 100 }],
     };
@@ -103,6 +114,7 @@ describe("SN100 Plaτform call_subnet_surface verification (#7112)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
       const url = String(input);
@@ -112,6 +124,7 @@ describe("SN100 Plaτform call_subnet_surface verification (#7112)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return upstreamResponse();
     };
     try {
@@ -133,10 +146,9 @@ describe("SN100 Plaτform call_subnet_surface verification (#7112)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.network, "base");
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

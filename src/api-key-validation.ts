@@ -1,4 +1,5 @@
 import { sha256Hex as hashKeyForCache } from "./sha256-hex.ts";
+import { appKv } from "./app-kv.ts";
 // KV-cache-fronted API key validation (freemium-API rework, 2026-07-19).
 // Resolves a caller-supplied mg_... key to its Unkey-verified identity
 // with cached provider verification for managed keys -- mirrors this file's
@@ -162,7 +163,7 @@ async function lookupApiKey(
   env: Env,
   bareKey: string,
 ): Promise<ApiKeyLookupRecord> {
-  const kv = env?.METAGRAPH_CONTROL;
+  const kv = appKv(env);
   const cacheKey = cacheKeyFor(await hashKeyForCache(bareKey));
   if (kv?.get) {
     try {

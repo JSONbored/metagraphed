@@ -2,7 +2,7 @@
 // tool (metagraphed#7079, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN66's *real* registry surface config
-// (registry/subnets/ninja.json) to the tool's contract.
+// (registry/subnets/conjectures.json) to the tool's contract.
 //
 // Live-verified 2026-07-21:
 //   sn-66-ninja-health  GET https://ninja66.ai/health
@@ -21,7 +21,9 @@ const NETUID = 66;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/ninja.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/conjectures.json", import.meta.url),
+    ),
     "utf8",
   ),
 );

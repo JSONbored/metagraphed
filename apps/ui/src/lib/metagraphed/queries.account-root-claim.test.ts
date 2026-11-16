@@ -42,6 +42,10 @@ const LEGACY: RootClaim = {
     block_hash: BLOCK_HASH,
     claim_type_source: "storage",
   },
+  // #13163: the basket-claim era block, attached at serve time beside
+  // field_sources. Null is the server's own decline (no event store bound),
+  // which is also the smallest schema-aligned fixture.
+  basket_claims: null,
   field_sources: {
     claim_type: { kind: "reconstructed", storage: null },
     hotkeys: { kind: "reconstructed", storage: null },

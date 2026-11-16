@@ -38,6 +38,13 @@
 // Registry already matched reality -- no registry edit needed. Additional
 // OpenAPI paths listed in #7075 are out of scope for this test-only PR.
 //
+// [2026-11-15 infra#873 p3b] The availability sweep found four routes
+// (benchmark-agents, perfectly-solved-over-time, top-scores-over-time,
+// latest-set-info) answering 404 on an alive host and retired them from the
+// callable set (probe.enabled:false pending url re-verification -- retired,
+// not merely broken). They moved to RETIRED_SURFACES below, which pins the
+// non-callable state and the tool's refusal to call them.
+//
 // Note on sn-62-ridges-openapi: kind "openapi" is not in
 // OPERATIONAL_SURFACE_KINDS, so it is pinned at the callSubnetSurface module
 // level only.
@@ -70,7 +77,11 @@ function jsonResponse(body: unknown) {
   });
 }
 
-async function callToolWithSurface(surface: Row, body: unknown) {
+async function callToolWithSurface(
+  surface: Row,
+  body: unknown,
+  onUpstream?: () => void,
+) {
   const catalog = {
     surfaces: [{ ...surface, surface_id: surface.id, netuid: NETUID }],
   };
@@ -88,6 +99,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    onUpstream?.();
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -145,6 +157,33 @@ const CALLABLE_SURFACES = [
     },
   },
   {
+    id: "sn-62-ridges-network-statistics",
+    url: "https://agent-upload.ridges.ai/retrieval/network-statistics",
+    schemaUrl: undefined,
+    body: {
+      score_improvement_24_hrs: 0.0,
+      agents_created_24_hrs: 7,
+      top_score: 0.4,
+    },
+    assertBody: (b: Row) => {
+      assert.equal(typeof b.score_improvement_24_hrs, "number");
+      assert.equal(typeof b.agents_created_24_hrs, "number");
+      assert.equal(typeof b.top_score, "number");
+    },
+  },
+  {
+    id: "sn-62-ridges-connected-validators",
+    url: "https://agent-upload.ridges.ai/validator/connected-validators-info",
+    schemaUrl: undefined,
+    body: [],
+    assertBody: (b: Row) => {
+      assert.ok(Array.isArray(b));
+    },
+  },
+];
+
+const RETIRED_SURFACES = [
+  {
     id: "sn-62-ridges-benchmark-agents",
     url: "https://agent-upload.ridges.ai/retrieval/benchmark-agents",
     schemaUrl: undefined,
@@ -160,21 +199,6 @@ const CALLABLE_SURFACES = [
       assert.ok(Array.isArray(b));
       assert.equal(typeof b[0].miner_hotkey, "string");
       assert.equal(typeof b[0].name, "string");
-    },
-  },
-  {
-    id: "sn-62-ridges-network-statistics",
-    url: "https://agent-upload.ridges.ai/retrieval/network-statistics",
-    schemaUrl: undefined,
-    body: {
-      score_improvement_24_hrs: 0.0,
-      agents_created_24_hrs: 7,
-      top_score: 0.4,
-    },
-    assertBody: (b: Row) => {
-      assert.equal(typeof b.score_improvement_24_hrs, "number");
-      assert.equal(typeof b.agents_created_24_hrs, "number");
-      assert.equal(typeof b.top_score, "number");
     },
   },
   {
@@ -222,15 +246,6 @@ const CALLABLE_SURFACES = [
       assert.equal(typeof b.latest_set_created_at, "string");
     },
   },
-  {
-    id: "sn-62-ridges-connected-validators",
-    url: "https://agent-upload.ridges.ai/validator/connected-validators-info",
-    schemaUrl: undefined,
-    body: [],
-    assertBody: (b: Row) => {
-      assert.ok(Array.isArray(b));
-    },
-  },
 ];
 
 describe("SN62 Ridges call_subnet_surface verification (#7075)", () => {
@@ -274,6 +289,33 @@ describe("SN62 Ridges call_subnet_surface verification (#7075)", () => {
       assert.equal(result.structuredContent.surface_id, fixture.id);
       assert.equal(result.structuredContent.status_code, 200);
       fixture.assertBody(result.structuredContent.body as Row);
+    });
+  }
+
+  for (const fixture of RETIRED_SURFACES) {
+    const SURFACE = surfaceOf(fixture.id);
+
+    test(`${fixture.id}: registry surface pins the sweep-retired (non-callable) config`, () => {
+      assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
+      assert.equal(SURFACE.kind, "subnet-api");
+      assert.equal(SURFACE.auth_required, false);
+      // [2026-11-15 infra#873 p3b] 404 on an alive host: retired from the
+      // callable set pending re-verification.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.equal(SURFACE.probe?.method, "GET");
+      assert.equal(SURFACE.probe?.expect, "json");
+      assert.equal(SURFACE.url, fixture.url);
+      assert.equal(SURFACE.schema_url, fixture.schemaUrl);
+    });
+
+    test(`${fixture.id}: the MCP tool rejects the retired surface without fetching upstream`, async () => {
+      let upstreamFetched = false;
+      const result = await callToolWithSurface(SURFACE, fixture.body, () => {
+        upstreamFetched = true;
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     });
   }
 

@@ -38,6 +38,7 @@ import { ALL_TABLES, pgMockEnv, toQuestionMarks } from "./helpers/pg-mock.ts";
 import {
   buildSubnetMetagraph,
   buildSubnetValidators,
+  buildNeuronDetail,
 } from "../src/metagraph-neurons.ts";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
@@ -7095,3 +7096,174 @@ describe("canonicalValidatorHistoryCachePath", () => {
 // Fixture documentation: each factory above mirrors the D1 column contracts used
 // by workers/request-handlers/entities.ts. When adding a new handler test,
 // prefer reusing these rows so formatters stay aligned with production schemas.
+
+// The mechanism (mechid) scope on the three neuron-family routes (#13162).
+// `mechid` is published bounded to 0 (mechidSchema's enforce-what-you-publish
+// posture) and rejected centrally by parseRouteQuery; an accepted scope stamps
+// the response top-level and -- where there are neuron rows -- per row, while
+// an unscoped request stays byte-identical to before the parameter existed.
+describe("mechanism scope (#13162)", () => {
+  test("mechid above 0 is rejected by the central query gate on all three routes", async () => {
+    for (const path of [
+      `/api/v1/subnets/${NETUID}/metagraph?mechid=1`,
+      `/api/v1/subnets/${NETUID}/neurons/${UID}?mechid=1`,
+      `/api/v1/subnets/${NETUID}/weights?mechid=1`,
+    ]) {
+      const body = await errorJson(await viaRouter(path));
+      assert.equal(body.error.code, "invalid_query", path);
+      assert.equal(body.meta.parameter, "mechid", path);
+    }
+  });
+
+  test("metagraph: mechid=0 stamps the artifact and every row; omission stamps nothing", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
+    };
+    const scopedPath = `/api/v1/subnets/${NETUID}/metagraph?mechid=0`;
+    const scoped = await json(
+      await handleSubnetMetagraph(
+        req(scopedPath),
+        env as unknown as Env,
+        NETUID,
+        url(scopedPath),
+      ),
+    );
+    assert.equal(scoped.data.mechid, 0);
+    assert.equal(scoped.data.neurons[0].mechid, 0);
+
+    const barePath = `/api/v1/subnets/${NETUID}/metagraph`;
+    const bare = await json(
+      await handleSubnetMetagraph(
+        req(barePath),
+        env as unknown as Env,
+        NETUID,
+        url(barePath),
+      ),
+    );
+    assert.equal("mechid" in bare.data, false);
+    assert.equal("mechid" in bare.data.neurons[0], false);
+  });
+
+  test("metagraph: the scoped row satisfies the published Neuron component", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph?mechid=0`;
+    const body = await json(
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    await assertValidComponent("SubnetMetagraphArtifact", body.data);
+  });
+
+  test("metagraph: mechid is a projectable field once the response is scoped", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json(buildSubnetMetagraph([neuronRow()], NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph?mechid=0&fields=uid,mechid`;
+    const body = await json(
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        url(path),
+      ),
+    );
+    assert.deepEqual(body.data.neurons, [{ uid: UID, mechid: 0 }]);
+  });
+
+  test("neuron detail: mechid=0 stamps the card and the row, and a null neuron stays null", async () => {
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "data-api";
+    env.DATA_API = {
+      fetch: async () => Response.json(buildNeuronDetail(neuronRow(), NETUID)),
+    };
+    const path = `/api/v1/subnets/${NETUID}/neurons/${UID}?mechid=0`;
+    const body = await json(
+      await handleNeuron(
+        req(path),
+        env as unknown as Env,
+        NETUID,
+        UID,
+        url(path),
+      ),
+    );
+    assert.equal(body.data.mechid, 0);
+    assert.equal(body.data.neuron.mechid, 0);
+    await assertValidComponent("NeuronDetailArtifact", body.data);
+
+    const coldPath = `/api/v1/subnets/${NETUID}/neurons/999?mechid=0`;
+    const cold = await json(
+      await handleNeuron(
+        req(coldPath),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        999,
+        url(coldPath),
+      ),
+    );
+    assert.equal(cold.data.mechid, 0);
+    assert.equal(cold.data.neuron, null);
+  });
+
+  test("weights: mechid=0 echoes on the card; omission stays byte-identical", async () => {
+    const scopedPath = `/api/v1/subnets/${NETUID}/weights?mechid=0`;
+    const scoped = await json(
+      await handleSubnetWeights(
+        req(scopedPath),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        url(scopedPath),
+      ),
+    );
+    assert.equal(scoped.data.mechid, 0);
+    await assertValidComponent("SubnetWeightsArtifact", scoped.data);
+
+    const barePath = `/api/v1/subnets/${NETUID}/weights`;
+    const bare = await json(
+      await handleSubnetWeights(
+        req(barePath),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        url(barePath),
+      ),
+    );
+    assert.equal("mechid" in bare.data, false);
+  });
+
+  test("the scope rides the cache key on both edge-cached routes", () => {
+    assert.equal(
+      canonicalSubnetMetagraphCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/1/metagraph?mechid=0"),
+      ),
+      "/api/v1/subnets/1/metagraph?mechid=0",
+    );
+    assert.equal(
+      canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?validator_permit=true&mechid=0",
+        ),
+      ),
+      "/api/v1/subnets/1/metagraph?validator_permit=true&mechid=0",
+    );
+    assert.equal(
+      canonicalSubnetWeightsCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/weights?mechid=0"),
+      ),
+      "/api/v1/subnets/7/weights?window=7d&mechid=0",
+    );
+  });
+});

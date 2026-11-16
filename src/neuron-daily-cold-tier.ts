@@ -27,6 +27,20 @@ import {
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
+import { selectedNeuronHistoryStore } from "./neuron-history-store.ts";
+import type { NeuronHistoryStore } from "./neuron-history-store.ts";
+
+async function readNativeDaily<Row>(
+  env: unknown,
+  load: (store: NeuronHistoryStore) => Promise<Row[]>,
+): Promise<Row[] | null | undefined> {
+  try {
+    const store = selectedNeuronHistoryStore(env);
+    return store ? await load(store) : undefined;
+  } catch {
+    return null;
+  }
+}
 
 /** Selected D1 failures cannot revive archive scans. */
 async function readOwnedDaily<Row>(
@@ -213,6 +227,10 @@ export async function loadNeuronHistoryColdTier(
   if (id == null || slot == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
+  const migrated = await readNativeDaily(env, (store) =>
+    store.neuronRows(id, slot, range, Math.max(1, Math.trunc(limit))),
+  );
+  if (migrated !== undefined) return migrated;
   const dates = nativeDates(range);
   const native = await readOwnedDaily(env, ["neuron_daily"], (store) =>
     store.query<ColdNeuronHistoryRow>(
@@ -443,6 +461,10 @@ export async function loadAccountPositionHistoryColdTier(
   if (account == null || id == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
+  const migrated = await readNativeDaily(env, (store) =>
+    store.accountRows(account, id, range, Math.max(1, Math.trunc(limit))),
+  );
+  if (migrated !== undefined) return migrated;
   const dates = nativeDates(range);
   const native = await readOwnedDaily(
     env,

@@ -48,7 +48,7 @@
   "social": {
     "x": "https://x.com/gittensor_io"
   },
-  "source_repo": "https://github.com/entrius/gittensor",
+  "source_repo": "https://github.com/entrius/gittensor/tree/main",
   "status": "active",
   "surfaces": [
     {
@@ -153,10 +153,10 @@
       "id": "gittensor-master-repositories",
       "kind": "data-artifact",
       "name": "Gittensor master repository weights",
-      "notes": "Documented source for public repository emission_share, issue_discovery_share, and maintainer_cut config.",
+      "notes": "Documented source for public repository emission_share, issue_discovery_share, and maintainer_cut config. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET"
       },
       "provider": "gittensor",
@@ -509,10 +509,10 @@
       "id": "sn-74-gittensor-language-weights",
       "kind": "data-artifact",
       "name": "Gittensor programming-language scoring weights",
-      "notes": "Public no-auth machine-readable JSON from the official SN74 Gittensor repository (entrius/gittensor), pinned to an immutable commit. Maps each programming language to the scoring weight the validators apply when evaluating miners' code contributions (e.g. per-language weight multipliers). Static data artifact documenting the subnet's language-weighting scoring parameters.",
+      "notes": "Public no-auth machine-readable JSON from the official SN74 Gittensor repository (entrius/gittensor), pinned to an immutable commit. Maps each programming language to the scoring weight the validators apply when evaluating miners' code contributions (e.g. per-language weight multipliers). Static data artifact documenting the subnet's language-weighting scoring parameters. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -688,7 +688,7 @@
       "id": "sn-74-gittensor-dash-lines-hotkey",
       "kind": "subnet-api",
       "name": "Gittensor GET dash lines hotkey",
-      "notes": "GET /dash/lines/hotkey on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: hotkey. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /dash/lines/hotkey on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: hotkey. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -710,7 +710,7 @@
       "id": "sn-74-gittensor-miners-githubid",
       "kind": "subnet-api",
       "name": "Gittensor GET miners by githubId",
-      "notes": "GET /miners/{githubId} on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /miners/{githubId} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -732,7 +732,7 @@
       "id": "sn-74-gittensor-miners-githubid-prs",
       "kind": "subnet-api",
       "name": "Gittensor GET miners by githubId prs",
-      "notes": "GET /miners/{githubId}/prs on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /miners/{githubId}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -754,7 +754,7 @@
       "id": "sn-74-gittensor-miners-githubid-github",
       "kind": "subnet-api",
       "name": "Gittensor GET miners by githubId github",
-      "notes": "GET /miners/{githubId}/github on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /miners/{githubId}/github on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -776,7 +776,7 @@
       "id": "sn-74-gittensor-miners-by-hotkey-hotkey-github",
       "kind": "subnet-api",
       "name": "Gittensor GET miners by hotkey by hotkey github",
-      "notes": "GET /miners/by-hotkey/{hotkey}/github on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /miners/by-hotkey/{hotkey}/github on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -798,7 +798,7 @@
       "id": "sn-74-gittensor-miners-by-github-id-githubid-hotkey",
       "kind": "subnet-api",
       "name": "Gittensor GET miners by github id by githubId hotkey",
-      "notes": "GET /miners/by-github-id/{githubId}/hotkey on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /miners/by-github-id/{githubId}/hotkey on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -820,7 +820,7 @@
       "id": "sn-74-gittensor-prs-details",
       "kind": "subnet-api",
       "name": "Gittensor GET prs details",
-      "notes": "GET /prs/details on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /prs/details on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -842,7 +842,7 @@
       "id": "sn-74-gittensor-prs-comments",
       "kind": "subnet-api",
       "name": "Gittensor GET prs comments",
-      "notes": "GET /prs/comments on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /prs/comments on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -864,7 +864,7 @@
       "id": "sn-74-gittensor-repos-repo-impact",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo impact",
-      "notes": "GET /repos/{repo}/impact on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/impact on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -886,7 +886,7 @@
       "id": "sn-74-gittensor-repos-repo-prs",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo prs",
-      "notes": "GET /repos/{repo}/prs on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -908,7 +908,7 @@
       "id": "sn-74-gittensor-repos-repo-badge-svg",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo badge svg",
-      "notes": "GET /repos/{repo}/badge.svg on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/badge.svg on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -930,7 +930,7 @@
       "id": "sn-74-gittensor-repos-repo",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo",
-      "notes": "GET /repos/{repo} on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -952,7 +952,7 @@
       "id": "sn-74-gittensor-repos-repo-issues",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo issues",
-      "notes": "GET /repos/{repo}/issues on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/issues on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -974,7 +974,7 @@
       "id": "sn-74-gittensor-repos-repo-maintainers",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo maintainers",
-      "notes": "GET /repos/{repo}/maintainers on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/maintainers on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -996,7 +996,7 @@
       "id": "sn-74-gittensor-repos-repo-miners",
       "kind": "subnet-api",
       "name": "Gittensor GET repos by repo miners",
-      "notes": "GET /repos/{repo}/miners on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /repos/{repo}/miners on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1018,7 +1018,7 @@
       "id": "sn-74-gittensor-og-image",
       "kind": "subnet-api",
       "name": "Gittensor GET og image",
-      "notes": "GET /og-image on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: type, id, repo, number. Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /og-image on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: type, id, repo, number. Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1040,7 +1040,7 @@
       "id": "sn-74-gittensor-issues-repo-repofullname-summary",
       "kind": "subnet-api",
       "name": "Gittensor GET issues repo by repoFullName summary",
-      "notes": "GET /issues/repo/{repoFullName}/summary on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled \u2014 same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /issues/repo/{repoFullName}/summary on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1062,7 +1062,7 @@
       "id": "sn-74-gittensor-issues-id",
       "kind": "subnet-api",
       "name": "Gittensor GET issues by id",
-      "notes": "GET /issues/{id} on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /issues/{id} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1084,7 +1084,7 @@
       "id": "sn-74-gittensor-issues-id-details",
       "kind": "subnet-api",
       "name": "Gittensor GET issues by id details",
-      "notes": "GET /issues/{id}/details on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /issues/{id}/details on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1106,7 +1106,7 @@
       "id": "sn-74-gittensor-issues-id-submissions",
       "kind": "subnet-api",
       "name": "Gittensor GET issues by id submissions",
-      "notes": "GET /issues/{id}/submissions on api.gittensor.io \u2014 public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "notes": "GET /issues/{id}/submissions on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1123,5 +1123,5 @@
       "url": "https://api.gittensor.io/issues/%7Bid%7D/submissions"
     }
   ],
-  "website_url": "https://gittensor.io/"
+  "website_url": "https://gittensor.io"
 }

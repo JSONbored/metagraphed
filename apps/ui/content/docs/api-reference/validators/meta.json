@@ -4,6 +4,7 @@
     "index",
     "compare-validators",
     "global-validators",
+    "validator-basket",
     "validator-detail",
     "validator-economics-ranking",
     "validator-history",

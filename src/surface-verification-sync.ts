@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 // Daily surface-verification capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the third retirement of a
 // PR-based sync lane.
@@ -188,7 +188,7 @@ export async function runSurfaceVerificationSync(
       "store_unavailable",
     );
   }
-  const store = generatedArtifactStore(env.D1_STATE);
+  const store = selectedGeneratedArtifactStore(env);
   if (!store) {
     return loud(
       "D1_STATE is not bound; the probe-evidence snapshot cannot be " +

@@ -2,7 +2,7 @@
 // tool (metagraphed#7120, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN109's *real* no-auth GET JSON
-// registry surface (registry/subnets/academia.json) to the tool's contract.
+// registry surface (registry/subnets/finsight.json) to the tool's contract.
 //
 // Live-verified 2026-07-21:
 //   sn-109-taomarketcap-subnet-api  GET https://api.taomarketcap.com/public/v1/subnets/109/
@@ -23,7 +23,7 @@ const NETUID = 109;
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/academia.json", import.meta.url),
+      new URL("../registry/subnets/finsight.json", import.meta.url),
     ),
     "utf8",
   ),

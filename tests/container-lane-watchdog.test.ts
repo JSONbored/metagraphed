@@ -257,6 +257,61 @@ describe("the bound", () => {
 });
 
 describe("runContainerLaneWatchdog", () => {
+  test("selected native snapshots are bounded and never fall back to older statuses", async () => {
+    const reads: [string, number | undefined][] = [];
+    let legacyReads = 0;
+    const env = {
+      GENERATED_ARTIFACT_STORE: {
+        async get(key: string, limit?: number) {
+          reads.push([key, limit]);
+          if (key.endsWith("decode-run-status.json")) return undefined;
+          if (key.endsWith("daily-rollup-status.json"))
+            throw new Error("unavailable");
+          if (key.endsWith("state-mirror-status.json"))
+            return { checked_at: FRESH, ok: true, padding: "x".repeat(70000) };
+          return { checked_at: FRESH, ok: true };
+        },
+        async put() {
+          throw new Error("watchdog must not write snapshots");
+        },
+      },
+      D1_STATE: {
+        prepare() {
+          legacyReads++;
+          throw new Error("legacy D1 must not be read");
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          legacyReads++;
+          throw new Error("legacy object must not be read");
+        },
+      },
+    } as unknown as Parameters<typeof runContainerLaneWatchdog>[0];
+    const result = await runContainerLaneWatchdog(env, {
+      now: () => NOW,
+      recordException: async () => false,
+      laneHealthDb: {
+        async query() {
+          return [];
+        },
+        async run() {
+          return { changes: 1 };
+        },
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.checked, 5);
+    assert.equal(reads.length, 5);
+    assert.equal(legacyReads, 0);
+    assert(
+      reads.every(
+        ([key, limit]) =>
+          key.startsWith("container-status/v1/") && limit === 65536,
+      ),
+    );
+  });
+
   test("D1 statuses preserve failures and run without an R2 binding", async () => {
     const sql = new DatabaseSync(":memory:");
     try {

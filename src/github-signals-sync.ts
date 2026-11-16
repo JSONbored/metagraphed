@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 // Daily GitHub signals are persisted in D1, retaining the last good capture.
 // The artifact build reads the same store and keeps its committed cold-start
 // seed. Cron failures remain visible rather than silently freezing enrichment.
@@ -186,7 +186,7 @@ export async function runGithubSignalsSync(
   if (typeof deps.readArtifact !== "function") {
     return { ok: false, reason: "reader_unavailable" };
   }
-  const store = generatedArtifactStore(env.D1_STATE);
+  const store = selectedGeneratedArtifactStore(env);
   if (!store) {
     return { ok: false, reason: "artifact_store_missing" };
   }

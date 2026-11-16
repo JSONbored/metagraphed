@@ -9035,6 +9035,7 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
     subscribeChainEvents(topics: unknown, _clientIp?: unknown) {
       const pending: unknown[] = [];
       let waitingResolve: AnyFn | null = null;
+      let finished = false;
       const repeater = {
         push(value: unknown) {
           if (waitingResolve) {
@@ -9045,14 +9046,22 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
             pending.push(value);
           }
         },
+        end() {
+          finished = true;
+          pending.length = 0;
+          waitingResolve?.({ value: undefined, done: true });
+          waitingResolve = null;
+        },
         [Symbol.asyncIterator]() {
           return {
             next: () =>
-              pending.length
-                ? Promise.resolve({ value: pending.shift(), done: false })
-                : new Promise((resolve) => {
-                    waitingResolve = resolve;
-                  }),
+              finished
+                ? Promise.resolve({ value: undefined, done: true })
+                : pending.length
+                  ? Promise.resolve({ value: pending.shift(), done: false })
+                  : new Promise((resolve) => {
+                      waitingResolve = resolve;
+                    }),
           };
         },
       };
@@ -9061,6 +9070,7 @@ function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
       return repeater;
     },
     unsubscribeChainEvents(repeater: Row) {
+      repeater.end();
       const index = subscriptions.findIndex((s) => s.repeater === repeater);
       if (index !== -1) subscriptions.splice(index, 1);
     },
@@ -20047,24 +20057,23 @@ describe("Subscription.chainEvents", () => {
     );
   });
 
-  test("unsubscribeChainEvents is called when the async generator is returned early (client disconnects/completes)", async () => {
-    // Calling .return() while a .next() is still unresolved deadlocks
-    // graphql-js's internal withConcurrentAbruptClose handling (it waits for
-    // the in-flight next() before honoring return()) -- push a value so the
-    // pending next() actually resolves first, matching how a real client
-    // completes a subscription only after having received at least one
-    // event, not mid-flight on an empty stream.
-    const hub = fakeChainFirehose((repeater: Row) => {
-      repeater.push({ table: "blocks" });
-    });
+  test("unsubscribeChainEvents releases a pending next when a quiet subscription completes", async () => {
+    const hub = fakeChainFirehose();
     const result = await subscribeChainEvents(
       "subscription { chainEvents { table } }",
       hub,
     );
     const it = result[Symbol.asyncIterator]();
-    await it.next(); // starts the generator body (-> subscribeChainEvents) and resolves with the pushed value
+    const pending = it.next();
     assert.equal(hub.subscriptions.length, 1);
     await it.return();
+    assert.equal((await pending).done, true);
+    assert.equal(hub.subscriptions.length, 0);
+    const unstarted = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    await unstarted[Symbol.asyncIterator]().return();
     assert.equal(hub.subscriptions.length, 0);
   });
 
@@ -25646,5 +25655,1076 @@ describe("deleted resolver guards: the dispatch still refuses, with its own sent
     }>;
     assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
     assert.match(errors[0]?.message ?? "", /must differ from ss58/);
+  });
+});
+
+// The mechanism (mechid) scope on the three mirrored fields (#13162): the
+// derived `mechid: Int` argument is validated with the same bound-to-0 posture
+// the REST contract publishes (mechidSchema), and an accepted scope stamps the
+// payload exactly as the REST handler does.
+describe("graphql — mechanism scope (#13162)", () => {
+  function neuronsTier(payload: Row) {
+    return {
+      METAGRAPH_NEURONS_SOURCE: "data-api",
+      DATA_API: { fetch: async () => Response.json(payload) },
+    } as unknown as Env;
+  }
+
+  test("subnet_metagraph(mechid: 0) stamps the artifact and every row", async () => {
+    const env = neuronsTier({
+      schema_version: 1,
+      netuid: 3,
+      neuron_count: 1,
+      neurons: [{ uid: 0 }],
+    });
+    const { status, body } = await gql(
+      "{ subnet_metagraph(netuid: 3, mechid: 0) }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_metagraph.mechid, 0);
+    assert.deepEqual(body.data.subnet_metagraph.neurons, [
+      { uid: 0, mechid: 0 },
+    ]);
+  });
+
+  test("neuron(mechid: 0) stamps the card, and a cold neuron stays null", async () => {
+    const { status, body } = await gql(
+      "{ neuron(netuid: 3, uid: 2, mechid: 0) { netuid mechid neuron { uid mechid } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.neuron.mechid, 0);
+    assert.equal(body.data.neuron.neuron, null);
+  });
+
+  test("subnet_weights(mechid: 0) echoes the scope on the card", async () => {
+    const { status, body } = await gql(
+      `{ subnet_weights(netuid: 5, mechid: 0) { netuid mechid weight_sets } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_weights.mechid, 0);
+  });
+
+  test("a scope above 0 is BAD_USER_INPUT on all three fields", async () => {
+    // Rejected by the dispatch-level argument parse, against the ROUTE'S OWN
+    // published bound (mechidSchema's 0..0) -- no resolver check to drift.
+    for (const query of [
+      "{ subnet_metagraph(netuid: 3, mechid: 1) }",
+      "{ neuron(netuid: 3, uid: 2, mechid: 1) { netuid } }",
+      "{ subnet_weights(netuid: 5, mechid: 1) { netuid } }",
+    ]) {
+      const { body } = await gql(query);
+      const errors = (body.errors ?? []) as Array<{
+        message?: string;
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", query);
+      assert.match(
+        errors[0]?.message ?? "",
+        /mechid must be an integer between 0 and 0/,
+        query,
+      );
+    }
+  });
+});
+
+// The subnet_mechanisms field (#13162): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served registry match exactly.
+describe("graphql — subnet_mechanisms (#13162)", () => {
+  const SELECTION = `{ subnet_mechanisms(netuid: 64) {
+      schema_version netuid mechanism_count captured_at
+      mechanisms { mechid emission_split consensus_mode captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_mechanisms, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: every subnet has at least mechanism 0, so a zero
+      // count would be a fabricated measurement.
+      mechanism_count: null,
+      captured_at: null,
+      mechanisms: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      SUBNET_MECHANISMS_STORE: {
+        rows: async () => [
+          {
+            mechid: 0,
+            emission_split: 0.75,
+            consensus_mode: "Yuma3",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_mechanisms.mechanism_count, 1);
+    assert.deepEqual(body.data.subnet_mechanisms.mechanisms, [
+      {
+        mechid: 0,
+        emission_split: 0.75,
+        consensus_mode: "Yuma3",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_mechanisms(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The subnet_alpha_dividends field (#13163): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served accruals match exactly.
+describe("graphql — subnet_alpha_dividends (#13163)", () => {
+  const SELECTION = `{ subnet_alpha_dividends(netuid: 64) {
+      schema_version netuid hotkey_count captured_at
+      dividends { hotkey alpha_divs root_alpha_divs captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_dividends, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty registry is "not captured", not a measured
+      // zero accrual.
+      hotkey_count: null,
+      captured_at: null,
+      dividends: [],
+    });
+  });
+
+  test("a bound store serves the accruals", async () => {
+    const env = {
+      SUBNET_ALPHA_DIVIDENDS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            alpha_divs: "12500",
+            root_alpha_divs: "300",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_alpha_dividends.hotkey_count, 1);
+    assert.deepEqual(body.data.subnet_alpha_dividends.dividends, [
+      {
+        hotkey: "5Hotkey_one",
+        alpha_divs: "12500",
+        root_alpha_divs: "300",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_alpha_dividends(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The account_locks field (#13163): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served locks match exactly.
+describe("graphql — account_locks (#13163)", () => {
+  const COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const SELECTION = `{ account_locks(ss58: "${COLDKEY}") {
+      schema_version ss58 lock_count captured_at
+      locks { hotkey netuid kind amount maturity_block captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_locks, {
+      schema_version: 1,
+      ss58: COLDKEY,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // lock-free account.
+      lock_count: null,
+      captured_at: null,
+      locks: [],
+    });
+  });
+
+  test("a bound store serves the locks", async () => {
+    const env = {
+      ACCOUNT_LOCKS_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            netuid: 7,
+            kind: "Lock",
+            amount: "5000000000",
+            maturity_block: 9_000_000,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_locks.lock_count, 1);
+    assert.deepEqual(body.data.account_locks.locks, [
+      {
+        hotkey: "5Hotkey_one",
+        netuid: 7,
+        kind: "Lock",
+        amount: "5000000000",
+        maturity_block: 9_000_000,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT", async () => {
+    const { body } = await gql('{ account_locks(ss58: "nope") { ss58 } }');
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /ss58/);
+  });
+});
+
+// The validator_baskets field (#13163): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served capture match exactly.
+describe("graphql — validator_baskets (#13163)", () => {
+  const SELECTION = `{ validator_baskets {
+      schema_version fund_count
+      capture { finalized_block finalized_block_hash runtime_spec_version decoder_version accepted_at }
+      baskets { hotkey account_id shares_atomic spot_nav_rao realizable_nav_rao deposited_rao redeemed_rao display_price_q64_bits stake_price_q64_bits staker_twr_q64_bits pending_entitlement_q64_bits provisional first_block holdings_count targets_count }
+    } }`;
+
+  test("no bound store resolves to the null-capture decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator_baskets, {
+      schema_version: 1,
+      capture: null,
+      // NULL, never 0: with no completed capture a zero fund count would be
+      // fabricated; 0 is reserved for a completed capture's measurement.
+      fund_count: null,
+      baskets: [],
+    });
+  });
+
+  test("a bound store serves the newest completed capture", async () => {
+    const env = {
+      ROOT_BASKET_STORE: {
+        write: async () => ({}),
+        read: {
+          async first(sql: string) {
+            return /FROM root_basket_captures/.test(sql)
+              ? {
+                  capture_id: "00000000-0000-4000-8000-000000000001",
+                  finalized_block: "6500000",
+                  finalized_block_hash: `0x${"02".repeat(32)}`,
+                  runtime_spec_version: 454,
+                  decoder_version: "subtensor-v454-14cde641-v1",
+                  accepted_at_ms: "1763000000000",
+                }
+              : null;
+          },
+          async query() {
+            return [
+              {
+                hotkey: `0x${"11".repeat(32)}`,
+                shares_atomic: "2000000000",
+                spot_nav_rao: "6000000000",
+                realizable_nav_rao: "5000000000",
+                deposited_rao: "4000000000",
+                redeemed_rao: "0",
+                display_price_q64_bits: "36893488147419103232",
+                stake_price_q64_bits: null,
+                staker_twr_q64_bits: null,
+                pending_entitlement_q64_bits: null,
+                provisional: 1,
+                first_block: "0",
+                holdings_count: 3,
+                targets_count: 2,
+              },
+            ];
+          },
+        },
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_baskets.fund_count, 1);
+    assert.equal(
+      body.data.validator_baskets.capture.finalized_block,
+      "6500000",
+    );
+    const [basket] = body.data.validator_baskets.baskets;
+    assert.equal(basket.account_id, `0x${"11".repeat(32)}`);
+    assert.equal(basket.provisional, true);
+    assert.equal(basket.first_block, null);
+    assert.equal(basket.spot_nav_rao, "6000000000");
+  });
+});
+
+// The ≥v441 basket-claim era block on account_root_claim (#13163): attached
+// by the shared loader beside field_sources, so GraphQL serves it with no
+// resolver change -- and the legacy compatibility read cannot take it down.
+describe("graphql — account_root_claim basket_claims (#13163)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("serves the era block from the event store while legacy RPC is down", async () => {
+    const env = {
+      NATIVE_READ_STORE: {
+        tables: [
+          "chain_detail_blocks",
+          "chain_detail_extrinsics",
+          "chain_detail_chain_events",
+          "chain_detail_account_events",
+        ],
+        store: {
+          async query(sql: string) {
+            if (/MIN\(observed_at\)/.test(sql))
+              return [{ floor_ms: 1_762_000_000_000 }];
+            return [
+              {
+                block_number: 6_500_000,
+                event_index: 2,
+                extrinsic_index: 1,
+                event_kind: "BasketClaimed",
+                hotkey: "5Hotkey_one",
+                coldkey: SS58,
+                netuid: 0,
+                uid: null,
+                amount_tao: 1.25,
+                alpha_amount: null,
+                observed_at: 1_763_000_000_000,
+              },
+            ];
+          },
+          async first() {
+            return null;
+          },
+        },
+      },
+    } as unknown as Env;
+    await withFetchStub(
+      async () => {
+        throw new Error("rpc down");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_root_claim(ss58: "${SS58}") {
+              compatibility { status }
+              basket_claims { claim_count covered_since
+                claims { event_kind amount_tao observed_at netuid } }
+            } }`,
+          env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const record = body.data.account_root_claim;
+        // The legacy read degraded without taking the era block with it.
+        assert.equal(record.compatibility.status, "unavailable");
+        assert.equal(record.basket_claims.claim_count, 1);
+        assert.equal(
+          record.basket_claims.covered_since,
+          new Date(1_762_000_000_000).toISOString(),
+        );
+        assert.deepEqual(record.basket_claims.claims, [
+          {
+            event_kind: "BasketClaimed",
+            amount_tao: 1.25,
+            observed_at: new Date(1_763_000_000_000).toISOString(),
+            netuid: 0,
+          },
+        ]);
+      },
+    );
+  });
+
+  test("no bound event store resolves the era block to null, never an error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("rpc down");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_root_claim(ss58: "${SS58}") { basket_claims { claim_count } } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.account_root_claim.basket_claims, null);
+      },
+    );
+  });
+});
+
+// The subnet_gamma field (#13164): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served state match exactly.
+describe("graphql — subnet_gamma (#13164)", () => {
+  const SELECTION = `{ subnet_gamma(netuid: 64) {
+      schema_version netuid captured_at
+      gamma { enabled price emission pending_emission unconverted_emission whitelisted captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_gamma, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured Gamma-off subnet.
+      gamma: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      SUBNET_GAMMA_STORE: {
+        latest: async () => [
+          {
+            enabled: true,
+            price: "12500",
+            emission: "900",
+            pending_emission: "0",
+            unconverted_emission: null,
+            whitelisted: false,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        history: async () => [],
+        chain: async () => [],
+        enabled: async () => [],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_gamma.gamma, {
+      enabled: true,
+      price: "12500",
+      emission: "900",
+      pending_emission: "0",
+      unconverted_emission: null,
+      whitelisted: false,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_gamma(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The gamma_deposits field (#13164): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served deposits match exactly.
+describe("graphql — gamma_deposits (#13164)", () => {
+  const SELECTION = `{ gamma_deposits {
+      schema_version deposit_count captured_at
+      deposits { coldkey hotkey netuid balance spender daily_cap closed_at captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.gamma_deposits, {
+      schema_version: 1,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // deposit-free chain.
+      deposit_count: null,
+      captured_at: null,
+      deposits: [],
+    });
+  });
+
+  test("a bound store serves the deposits", async () => {
+    const env = {
+      GAMMA_DEPOSITS_STORE: {
+        rows: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            hotkey: "5Hotkey_one",
+            netuid: 64,
+            balance: "5000000000",
+            spender: null,
+            daily_cap: "1000000000",
+            closed_at: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.gamma_deposits.deposit_count, 1);
+    assert.deepEqual(body.data.gamma_deposits.deposits, [
+      {
+        coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        hotkey: "5Hotkey_one",
+        netuid: 64,
+        balance: "5000000000",
+        spender: null,
+        daily_cap: "1000000000",
+        closed_at: null,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+});
+
+// The subnet_services field (#13164): same loader/builder as the REST route
+// and the MCP tool, so the decline and the served registry match exactly.
+describe("graphql — subnet_services (#13164)", () => {
+  const SELECTION = `{ subnet_services(netuid: 64) {
+      schema_version netuid service_count captured_at
+      services { hotkey service_url set_at captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_services, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty registry is "not captured", not a measured
+      // service-less subnet.
+      service_count: null,
+      captured_at: null,
+      services: [],
+    });
+  });
+
+  test("a bound store serves the registry", async () => {
+    const env = {
+      SUBNET_SERVICES_STORE: {
+        rows: async () => [
+          {
+            hotkey: "5Hotkey_one",
+            service_url: "https://sn64.example.com/v1",
+            set_at: 9_000_000,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_services.service_count, 1);
+    assert.deepEqual(body.data.subnet_services.services, [
+      {
+        hotkey: "5Hotkey_one",
+        service_url: "https://sn64.example.com/v1",
+        set_at: 9_000_000,
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_services(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The subnet_swap field (#13165): same loader/builder as the REST route and
+// the MCP tool, so the decline and the served state match exactly.
+describe("graphql — subnet_swap (#13165)", () => {
+  const SELECTION = `{ subnet_swap(netuid: 64) {
+      schema_version netuid captured_at
+      swap { tao_reservoir alpha_reservoir fee_rate captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_swap, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured empty pool.
+      swap: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the state", async () => {
+    const env = {
+      SUBNET_SWAP_STORE: {
+        latest: async () => [
+          {
+            tao_reservoir: "5000000000",
+            alpha_reservoir: "12500",
+            fee_rate: 300,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_swap.swap, {
+      tao_reservoir: "5000000000",
+      alpha_reservoir: "12500",
+      fee_rate: 300,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_swap(netuid: -1) { netuid } }");
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The subnet_alpha_assets field (#13165): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served accounting match
+// exactly.
+describe("graphql — subnet_alpha_assets (#13165)", () => {
+  const SELECTION = `{ subnet_alpha_assets(netuid: 64) {
+      schema_version netuid captured_at
+      alpha_assets { total_issuance burned recycled captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_assets, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never a zeroed state: an absent capture is "not captured", not
+      // a measured zero issuance.
+      alpha_assets: null,
+      captured_at: null,
+    });
+  });
+
+  test("a bound store serves the accounting", async () => {
+    const env = {
+      SUBNET_ALPHA_ASSETS_STORE: {
+        latest: async () => [
+          {
+            total_issuance: "18446744073709551615",
+            burned: "900",
+            recycled: "0",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_alpha_assets.alpha_assets, {
+      total_issuance: "18446744073709551615",
+      burned: "900",
+      recycled: "0",
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_alpha_assets(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The subnet_limit_orders field (#13165): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served book match exactly.
+describe("graphql — subnet_limit_orders (#13165)", () => {
+  const SELECTION = `{ subnet_limit_orders(netuid: 64) {
+      schema_version netuid order_count captured_at
+      orders { order_id owner kind amount price status captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_limit_orders, {
+      schema_version: 1,
+      netuid: 64,
+      // NULL, never 0: an empty book is "not captured", not a measured
+      // order-less subnet.
+      order_count: null,
+      captured_at: null,
+      orders: [],
+    });
+  });
+
+  test("a bound store serves the book", async () => {
+    const env = {
+      SUBNET_LIMIT_ORDERS_STORE: {
+        rows: async () => [
+          {
+            order_id: `0x${"ab".repeat(32)}`,
+            owner: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            kind: "Buy",
+            amount: "65802619318",
+            price: "12500",
+            status: "PartiallyFilled",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_limit_orders.order_count, 1);
+    assert.deepEqual(body.data.subnet_limit_orders.orders, [
+      {
+        order_id: `0x${"ab".repeat(32)}`,
+        owner: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        kind: "Buy",
+        amount: "65802619318",
+        price: "12500",
+        status: "PartiallyFilled",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_limit_orders(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /netuid/);
+  });
+});
+
+// The pending_coldkey_swaps field (#13166): same loader/builder as the REST
+// route and the MCP tool, so the decline and the served swaps match exactly.
+describe("graphql — pending_coldkey_swaps (#13166)", () => {
+  const SELECTION = `{ pending_coldkey_swaps {
+      schema_version swap_count captured_at
+      policy { announcement_delay reannouncement_delay captured_at }
+      swaps { coldkey new_coldkey announcement_hash announced_at execute_at disputed disputed_at policy_snapshot status captured_at }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.pending_coldkey_swaps, {
+      schema_version: 1,
+      // NULL, never 0: an empty list is "not captured", not a measured
+      // swap-free chain.
+      swap_count: null,
+      captured_at: null,
+      policy: null,
+      swaps: [],
+    });
+  });
+
+  test("a bound store serves the pending swaps and the policy", async () => {
+    const env = {
+      COLDKEY_SWAPS_STORE: {
+        pending: async () => [
+          {
+            coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+            new_coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            announcement_hash: `0x${"ab".repeat(32)}`,
+            announced_at: "5000000",
+            execute_at: "5036000",
+            disputed: false,
+            disputed_at: null,
+            policy_snapshot: true,
+            status: "announced",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        announcement: async () => [],
+        policy: async () => [
+          {
+            announcement_delay: "36000",
+            reannouncement_delay: "7200",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        lineage: async () => [],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.pending_coldkey_swaps.swap_count, 1);
+    assert.deepEqual(body.data.pending_coldkey_swaps.policy, {
+      announcement_delay: 36000,
+      reannouncement_delay: 7200,
+      captured_at: new Date(1_763_000_000_000).toISOString(),
+    });
+    assert.deepEqual(body.data.pending_coldkey_swaps.swaps, [
+      {
+        coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        new_coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        announcement_hash: `0x${"ab".repeat(32)}`,
+        announced_at: 5_000_000,
+        execute_at: 5_036_000,
+        disputed: false,
+        disputed_at: null,
+        policy_snapshot: true,
+        status: "announced",
+        captured_at: new Date(1_763_000_000_000).toISOString(),
+      },
+    ]);
+  });
+});
+
+// The account_coldkey_swap field (#13166): same loader/builder as the REST
+// route, so the decline and the served state match exactly.
+describe("graphql — account_coldkey_swap (#13166)", () => {
+  const COLDKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const SELECTION = `{ account_coldkey_swap(ss58: "${COLDKEY}") {
+      schema_version ss58 captured_at
+      announcement { coldkey execute_at }
+      lineage {
+        coldkey { successor root captured_at }
+        hotkey { netuid successor root captured_at }
+        hotkey_count
+      }
+    } }`;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const { status, body } = await gql(SELECTION);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_coldkey_swap, {
+      schema_version: 1,
+      ss58: COLDKEY,
+      captured_at: null,
+      announcement: null,
+      lineage: { coldkey: null, hotkey: [], hotkey_count: null },
+    });
+  });
+
+  test("a bound store serves the announcement and lineage", async () => {
+    const env = {
+      COLDKEY_SWAPS_STORE: {
+        pending: async () => [],
+        announcement: async () => [
+          {
+            coldkey: COLDKEY,
+            new_coldkey: null,
+            announcement_hash: null,
+            announced_at: null,
+            execute_at: "5036000",
+            disputed: null,
+            disputed_at: null,
+            policy_snapshot: null,
+            status: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+        policy: async () => [],
+        lineage: async () => [
+          {
+            kind: "hotkey",
+            netuid: 7,
+            successor: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            root: null,
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(SELECTION, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const card = body.data.account_coldkey_swap;
+    assert.equal(card.announcement.execute_at, 5_036_000);
+    assert.equal(card.lineage.hotkey_count, 1);
+    assert.equal(card.lineage.hotkey[0].netuid, 7);
+    assert.equal(card.lineage.coldkey, null);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      '{ account_coldkey_swap(ss58: "nope") { ss58 } }',
+    );
+    const errors = (body.errors ?? []) as Array<{
+      message?: string;
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(errors[0]?.message ?? "", /ss58/);
+  });
+});
+
+// The account_proxies / account_multisigs fields (#13166): same
+// loader/builder as the REST routes and the MCP tools, so the declines and
+// the served rows match exactly.
+describe("graphql — account_proxies / account_multisigs (#13166)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const OTHER = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  test("no bound store resolves to the schema-stable declines, never null", async () => {
+    const { status, body } = await gql(`{
+      account_proxies(ss58: "${SS58}") {
+        schema_version ss58 proxy_count deposit captured_at
+        proxies { delegate proxy_type delay captured_at }
+      }
+      account_multisigs(ss58: "${SS58}") {
+        schema_version ss58 multisig_count captured_at
+        multisigs { multisig threshold signatories signatory_count role captured_at }
+      }
+    }`);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_proxies, {
+      schema_version: 1,
+      ss58: SS58,
+      proxy_count: null,
+      deposit: null,
+      captured_at: null,
+      proxies: [],
+    });
+    assert.deepEqual(body.data.account_multisigs, {
+      schema_version: 1,
+      ss58: SS58,
+      multisig_count: null,
+      captured_at: null,
+      multisigs: [],
+    });
+  });
+
+  test("bound stores serve the rows", async () => {
+    const env = {
+      ACCOUNT_PROXIES_STORE: {
+        rows: async () => [
+          {
+            delegate: OTHER,
+            proxy_type: "Staking",
+            delay: "0",
+            deposit: "1000000000",
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+      ACCOUNT_MULTISIGS_STORE: {
+        byMember: async () => [
+          {
+            multisig: OTHER,
+            threshold: "2",
+            signatories: [SS58, OTHER],
+            captured_at: 1_763_000_000_000,
+          },
+        ],
+      },
+    } as unknown as Env;
+    const { status, body } = await gql(
+      `{
+        account_proxies(ss58: "${SS58}") { proxy_count deposit proxies { delegate proxy_type delay } }
+        account_multisigs(ss58: "${SS58}") { multisig_count multisigs { multisig threshold signatories signatory_count role } }
+      }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_proxies.proxy_count, 1);
+    assert.equal(body.data.account_proxies.deposit, "1000000000");
+    assert.deepEqual(body.data.account_proxies.proxies, [
+      { delegate: OTHER, proxy_type: "Staking", delay: 0 },
+    ]);
+    assert.deepEqual(body.data.account_multisigs.multisigs, [
+      {
+        multisig: OTHER,
+        threshold: 2,
+        signatories: [SS58, OTHER],
+        signatory_count: 2,
+        role: "signatory",
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT on both fields", async () => {
+    for (const field of ["account_proxies", "account_multisigs"]) {
+      const { body } = await gql(`{ ${field}(ss58: "nope") { ss58 } }`);
+      const errors = (body.errors ?? []) as Array<{
+        message?: string;
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", field);
+      assert.match(errors[0]?.message ?? "", /ss58/);
+    }
   });
 });

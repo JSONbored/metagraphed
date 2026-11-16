@@ -252,6 +252,19 @@ const COINCIDENT_BY_DESIGN: Record<string, string[]> = {
     "schemas-src/lakehouse.ts",
     "schemas-src/routes/tao-usd.ts",
   ],
+  // CAPTURE and WIRE, not a copy (#13163). root-basket-capture.ts is the
+  // receiver's WRITE contract for one basket holding -- strict, non-null,
+  // with the netuid-0 rao refinement enforced at acceptance time -- while
+  // validator-baskets.ts declares what the serving tier PUBLISHES for the
+  // same leg: every quantity nullable, because the builder degrades an
+  // unusable stored cell to null rather than refusing the whole basket.
+  // Importing the write contract into the route would make the route promise
+  // non-null quantities the decline path cannot keep; importing the route
+  // into the receiver would let an incomplete observation into the store.
+  "netuid,quantity_atomic,quantity_unit,realizable_value_rao,spot_value_rao": [
+    "schemas-src/root-basket-capture.ts",
+    "schemas-src/routes/validator-baskets.ts",
+  ],
 };
 
 function main(): void {

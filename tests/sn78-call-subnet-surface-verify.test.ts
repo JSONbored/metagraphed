@@ -2,7 +2,7 @@
 // tool (metagraphed#7091, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN78's *real* registry surface configs
-// (registry/subnets/vocence.json) to the tool's contract, so a future edit
+// (registry/subnets/waw.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // Live-verified 2026-07-21 (direct GET to the catalogued URLs):
@@ -13,6 +13,12 @@
 //     -> HTTP 200 application/json (~88 KB) OpenAPI 3.1.0
 //        info.title "Vocence Developer API", paths includes /health
 // Registry already matched reality -- no registry edit needed.
+//
+// [2026-11-15 infra#873 p2] The availability sweep found api.vocence.ai
+// dns-gone (NXDOMAIN x2) and retired both surfaces from the callable set
+// (probe.enabled:false; re-add only on new identity evidence -- retired, not
+// merely broken), so this file now pins the non-callable state and the tool's
+// refusal to call them.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,7 +31,7 @@ const NETUID = 78;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/vocence.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/waw.json", import.meta.url)),
     "utf8",
   ),
 );
@@ -89,12 +95,13 @@ function jsonResponse(body: unknown) {
 
 describe("SN78 Vocence call_subnet_surface verification (#7091)", () => {
   for (const fixture of SURFACES) {
-    test(`${fixture.id}: registry surface is callable`, () => {
+    test(`${fixture.id}: registry surface pins the sweep-retired (non-callable) config`, () => {
       const surface = surfaceOf(fixture.id)!;
       assert.ok(surface, `registry surface ${fixture.id} is present`);
       assert.equal(surface.kind, fixture.kind);
       assert.equal(surface.auth_required, false);
-      assert.equal(surface.probe?.enabled, true);
+      // [2026-11-15 infra#873 p2] dns-gone: retired from the callable set.
+      assert.equal(surface.probe?.enabled, false);
       assert.equal(surface.probe?.method, "GET");
       assert.equal(surface.probe?.expect, "json");
       assert.equal(surface.url, fixture.url);
@@ -122,7 +129,7 @@ describe("SN78 Vocence call_subnet_surface verification (#7091)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call by surface id`, async () => {
+    test(`${fixture.id}: the MCP tool rejects the retired surface without fetching upstream`, async () => {
       const surface = surfaceOf(fixture.id)!;
       const catalog = {
         surfaces: [{ ...surface, surface_id: surface.id, netuid: NETUID }],
@@ -133,6 +140,7 @@ describe("SN78 Vocence call_subnet_surface verification (#7091)", () => {
             ? { ok: true, data: catalog }
             : { ok: false, status: 404 },
       };
+      let upstreamFetched = false;
       const originalFetch = globalThis.fetch;
       globalThis.fetch = (async (input: string | URL | Request) => {
         const url = String(input);
@@ -141,6 +149,7 @@ describe("SN78 Vocence call_subnet_surface verification (#7091)", () => {
             headers: { "content-type": "application/dns-json" },
           });
         }
+        upstreamFetched = true;
         return jsonResponse(fixture.body);
       }) as typeof fetch;
       try {
@@ -162,10 +171,9 @@ describe("SN78 Vocence call_subnet_surface verification (#7091)", () => {
           deps,
         );
         const result = ((await response.json()) as Row).result;
-        assert.equal(result.isError, false);
-        assert.equal(result.structuredContent.surface_id, fixture.id);
-        assert.equal(result.structuredContent.status_code, 200);
-        fixture.assertBody(result.structuredContent.body as Row);
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text, /probe\.enabled:false/);
+        assert.equal(upstreamFetched, false);
       } finally {
         globalThis.fetch = originalFetch;
       }

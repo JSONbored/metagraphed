@@ -5,6 +5,7 @@ import { z } from "zod";
 import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { ROOT_BASKET_D1_TABLES } from "./root-basket-capture-d1.ts";
+import { selectedRootBasketStore } from "./root-basket-store.ts";
 
 const root = RootBasketCaptureSchema.shape;
 const fund = root.funds.element.shape;
@@ -78,7 +79,8 @@ export async function handleRootBasketExport(
     value.decoder_version,
   ];
   try {
-    const db = selectedD1Store(env, ROOT_BASKET_D1_TABLES);
+    const native = selectedRootBasketStore(env);
+    const db = native?.read ?? selectedD1Store(env, ROOT_BASKET_D1_TABLES);
     if (!db)
       return reply({ error: "basket export requires D1 ownership" }, 503);
     if (value.operation === "ceiling") {
@@ -114,7 +116,7 @@ export async function handleRootBasketExport(
     });
     const keys = plan.keys.map((key) => `t.${key}`).join(",");
     const rows = await db.query<ExportRow>(
-      `SELECT ${fields.join(",")},json_array(${keys}) AS _cursor
+      `SELECT ${fields.join(",")},${native ? `json_build_array(${keys})::text` : `json_array(${keys})`} AS _cursor
       FROM ${value.table} t JOIN root_basket_captures c ON c.capture_id=t.capture_id
       JOIN root_basket_capture_completions r ON r.capture_id=c.capture_id
       WHERE ${SCOPE} AND c.capture_id=?

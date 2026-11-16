@@ -17,13 +17,14 @@ import type {
   SubnetLifecycleArtifact,
   SubnetLifecycleEntry,
 } from "../schemas-src/routes/subnet-lifecycle.ts";
-import { readStore, type ReadStoreDb } from "./read-store.ts";
+import { readStore, recordOrNull, type ReadStoreDb } from "./read-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
 
-// Corrections retain the original event, timestamp and attribution. Only the
-// D1 owner has the internal invalidation columns; legacy reads stay portable.
+// Corrections retain the original event, timestamp and attribution. Native and
+// D1 owners have the invalidation columns; legacy reads stay portable.
 export function lifecycleValidityPredicate(env: unknown): string {
-  return selectedD1Store(env, ["subnet_lifecycle"])
+  return recordOrNull(env)?.NATIVE_READ_STORE !== undefined ||
+    selectedD1Store(env, ["subnet_lifecycle"])
     ? "_invalidated_at IS NULL"
     : "1=1";
 }

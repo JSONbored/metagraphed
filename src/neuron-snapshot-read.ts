@@ -11,8 +11,22 @@ import { JsonObjectBodySchema } from "../schemas-src/json-request.ts";
 import type { ReadStoreDb, UntypedRowQuerier } from "./read-store.ts";
 import { readRevisionedNeuronEconomics } from "./neuron-economics-cache.ts";
 import { CHAIN_PERFORMANCE_READ_COLUMNS } from "./chain-performance.ts";
+import { selectedNeuronSnapshotStore } from "./neuron-snapshot-store.ts";
+import { selectedNeuronMetricStore } from "./neuron-metric-store.ts";
+import { selectedNeuronAggregateStore } from "./neuron-aggregate-store.ts";
+import {
+  selectedNeuronLiveStore,
+  NEURON_ECONOMICS_FIELDS,
+  type NeuronDirectoryRow,
+} from "./neuron-live-store.ts";
 
-const EconomicsValuesSchema = z.array(z.unknown()).length(5);
+import {
+  selectedNeuronSummaryStore,
+  type DirectoryNominatorRow,
+  type NeuronDailyRollup,
+} from "./neuron-summary-store.ts";
+
+export const EconomicsValuesSchema = z.array(z.unknown()).length(5);
 const EconomicsShardSchema = z.array(
   z.tuple([z.number(), z.string().nullable(), EconomicsValuesSchema]),
 );
@@ -53,6 +67,8 @@ export async function readNeuronAggregates(
   db: UntypedRowQuerier,
   env: unknown,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronAggregateStore(env);
+  if (native) return native.aggregateRows();
   const store = selectedD1Store(env, ["neurons"]);
   return store
     ? store.query(NEURON_DOCUMENT_AGGREGATE_QUERY)
@@ -68,22 +84,24 @@ export const NEWEST_NEURON_CAPTURE_QUERY = `
     AND m.shard=d.shard`;
 
 export async function readNewestNeuronCapture(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: unknown,
 ): Promise<number> {
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.newestCapture();
   const store = selectedD1Store(env, ["neurons"]);
   const rows = store
     ? await store.query(NEWEST_NEURON_CAPTURE_QUERY)
-    : await sql.unsafe<{ captured_at: number | string | null }>(
-        "SELECT MAX(captured_at) AS captured_at FROM neurons",
-      );
+    : await requiredNeuronSql(sql).unsafe<{
+        captured_at: number | string | null;
+      }>("SELECT MAX(captured_at) AS captured_at FROM neurons");
   return Number(rows[0]?.captured_at);
 }
 
 // A multi-path extraction returns JSON, while individual SQLite columns turn
 // booleans into integers and structured values into JSON text. Restore those
 // same column values when unpacking the compact response.
-function sqliteJsonColumn(value: unknown): unknown {
+export function sqliteJsonColumn(value: unknown): unknown {
   if (typeof value === "boolean") return Number(value);
   if (value !== null && typeof value === "object") return JSON.stringify(value);
   return value;
@@ -97,13 +115,9 @@ export async function readNeuronEconomicsRows(
   env: unknown,
   netuid?: number,
 ): Promise<Record<string, unknown>[]> {
-  const metrics = [
-    "stake_tao",
-    "validator_permit",
-    "dividends",
-    "active",
-    "take",
-  ];
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.economicsRows(netuid);
+  const metrics = NEURON_ECONOMICS_FIELDS;
   const scoped = netuid !== undefined;
   const params = scoped ? [netuid] : [];
   const store = selectedD1Store(env, ["neurons"]);
@@ -161,7 +175,7 @@ export async function readNeuronEconomicsRows(
   );
 }
 
-interface SubnetSnapshotPart {
+export interface SubnetSnapshotPart {
   shard: number;
   payload: string | null;
   uid: number | null;
@@ -176,6 +190,8 @@ export async function readSubnetNeuronRows(
   netuid: number,
   validatorsOnly = false,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronSnapshotStore(env);
+  if (native) return native.subnetRows(netuid, validatorsOnly);
   const store = selectedD1Store(env, ["neurons"]);
   if (!store)
     return sql.unsafe(
@@ -194,6 +210,13 @@ export async function readSubnetNeuronRows(
      FROM neurons_members WHERE netuid=?`,
     [netuid, netuid],
   );
+  return subnetNeuronRowsFromParts(parts, validatorsOnly);
+}
+
+export function subnetNeuronRowsFromParts(
+  parts: SubnetSnapshotPart[],
+  validatorsOnly = false,
+): Record<string, unknown>[] {
   const documents = new Map<number, Record<string, unknown>>();
   for (const part of parts)
     if (part.payload !== null)
@@ -225,16 +248,13 @@ export async function readSubnetNeuronRows(
   return rows.sort((left, right) => Number(left.uid) - Number(right.uid));
 }
 
-interface NeuronDirectoryRow extends Record<string, unknown> {
-  // Both statements exclude NULL hotkeys before returning rows.
-  hotkey: string;
-}
-
 export async function readNeuronDirectoryRows(
-  sql: PgSql,
+  sql: PgSql | undefined,
   env: unknown,
   validatorsOnly = false,
 ): Promise<NeuronDirectoryRow[]> {
+  const native = selectedNeuronLiveStore(env);
+  if (native) return native.directoryRows(validatorsOnly);
   const metrics = validatorsOnly
     ? [
         "validator_trust",
@@ -264,15 +284,15 @@ export async function readNeuronDirectoryRows(
         ${validatorsOnly ? "AND json_extract(j.value,'$.validator_permit') = TRUE" : ""}
       ORDER BY m.hotkey ASC, stake_tao DESC, m.netuid ASC, m.uid ASC`);
   }
-  return sql.unsafe(`SELECT netuid, uid, hotkey, coldkey, ${metrics.join(", ")}
+  return requiredNeuronSql(sql)
+    .unsafe(`SELECT netuid, uid, hotkey, coldkey, ${metrics.join(", ")}
     FROM neurons WHERE ${validatorsOnly ? "validator_permit = TRUE AND " : ""}hotkey IS NOT NULL
     ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`);
 }
 
-interface DirectoryNominatorRow extends Record<string, unknown> {
-  hotkey: string;
-  nominator_count: number | null;
-  scan_at: number | null;
+function requiredNeuronSql(sql: PgSql | undefined): PgSql {
+  if (!sql) throw new Error("Native neuron read capability is required");
+  return sql;
 }
 
 // A partial pass can still exceed the lifecycle lane's netuid coverage floor.
@@ -282,6 +302,8 @@ interface DirectoryNominatorRow extends Record<string, unknown> {
 export async function readCompleteNeuronRows(
   env: unknown,
 ): Promise<Record<string, unknown>[] | null> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.completeRows();
   const store = selectedD1Store(env, ["neurons", "neurons_passes"]);
   if (!store) return null;
   return store.query(`WITH current AS MATERIALIZED (
@@ -314,6 +336,8 @@ export async function readDirectoryNominatorCounts(
   env: unknown,
   hotkeys: readonly string[],
 ): Promise<DirectoryNominatorRow[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.nominatorCounts(hotkeys);
   const store = selectedD1Store(env, ["neurons", "validator_nominator_counts"]);
   if (store) {
     return store.query(
@@ -342,6 +366,8 @@ export async function readNeuronDailyValidators(
   startDate: string,
   endDate: string,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.dailyValidators(startDate, endDate);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query(
@@ -359,19 +385,13 @@ export async function readNeuronDailyValidators(
       AND snapshot_date IN (${startDate},${endDate})`;
 }
 
-interface NeuronDailyRollup extends Record<string, unknown> {
-  snapshot_date: string;
-  neuron_count: string | number;
-  validator_count: string | number;
-  total_stake_tao: string | number | null;
-  total_emission_tao: string | number | null;
-}
-
 /** Preserve accepted members with missing metrics while expanding each shard once. */
 export async function readNeuronPerformanceRows(
   db: Pick<ReadStoreDb, "query">,
   env: unknown,
 ): Promise<Record<string, unknown>[]> {
+  const native = selectedNeuronMetricStore(env);
+  if (native) return native.performanceRows();
   const store = selectedD1Store(env, ["neurons"]);
   if (!store)
     return db.query(`SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons`);
@@ -412,6 +432,8 @@ export async function readNeuronDailyMetricRows<Row>(
     limit < 1
   )
     throw new Error("Invalid bounded neuron history projection");
+  const native = selectedNeuronMetricStore(env);
+  if (native) return native.dailyRows<Row>(netuid, cutoff, names, limit);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (!store)
     return db.query<Row>(
@@ -463,6 +485,8 @@ export async function readNeuronDailyTotals(
   startDate: string,
   endDate: string,
 ): Promise<NeuronDailyRollup[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.dailyTotals(startDate, endDate);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query<NeuronDailyRollup>(
@@ -487,6 +511,8 @@ export async function readSubnetDailyHistory(
   limit: number,
   before: string | null = null,
 ): Promise<NeuronDailyRollup[]> {
+  const native = selectedNeuronSummaryStore(env);
+  if (native) return native.subnetHistory(netuid, cutoff, limit, before);
   const store = selectedD1Store(env, ["neuron_daily"]);
   if (store)
     return store.query<NeuronDailyRollup>(

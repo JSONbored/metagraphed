@@ -26,6 +26,7 @@ import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent, type TelemetryEnv } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNativeRawCapture } from "./native-raw-capture.ts";
 import { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
 export { cronStepMinutes, watermarkRead } from "./raw-capture-contract.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
@@ -371,6 +372,8 @@ export function neonWatermark(
   network: string,
   now: () => number,
 ): WatermarkStore {
+  const native = selectedNativeRawCapture(env);
+  if (native) return native.watermark(network);
   const read = neonWatermarkRead(env, waitUntil, network);
   return {
     read: () => (read ? read() : Promise.resolve(null)),
@@ -453,13 +456,22 @@ export async function runRawCaptureSync(
     // Disabled is a deliberate state, not a fault: no capture, no noise.
     return { ok: false, skipped: true, reason: "disabled" };
   }
-  if (env.RAW_CAPTURE_STORAGE !== "d1") {
+  let native: ReturnType<typeof selectedNativeRawCapture>;
+  try {
+    native = selectedNativeRawCapture(env);
+  } catch {
+    return loud(
+      "store_unavailable",
+      "Native raw capture storage is not bound to a complete owner.",
+    );
+  }
+  if (!native && env.RAW_CAPTURE_STORAGE !== "d1") {
     return loud(
       "store_unavailable",
       "Raw capture requires explicit D1 storage; R2 capture is retired.",
     );
   }
-  if (!env.D1_STATE?.prepare || !deps.d1CaptureStore) {
+  if (!native && (!env.D1_STATE?.prepare || !deps.d1CaptureStore)) {
     return loud(
       "store_unavailable",
       "Raw capture D1 storage is not bound; no capture watermark can advance.",
@@ -471,6 +483,7 @@ export async function runRawCaptureSync(
   // The selected owner must hold both halves of this cursor. A validation-only
   // D1 binding does not move the lane; explicit ownership does.
   const hasCaptureState = Boolean(
+    native ||
     selectedD1Store(env, ["raw_capture_state"]) ||
     env?.HYPERDRIVE?.connectionString,
   );
@@ -481,7 +494,7 @@ export async function runRawCaptureSync(
     );
   }
 
-  const store = deps.d1CaptureStore;
+  const store = native?.store ?? deps.d1CaptureStore!;
 
   // Each lane is captured independently and IN ORDER, mainnet first.
   //

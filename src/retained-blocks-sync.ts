@@ -3,6 +3,7 @@ import { boundedInternalJson, internalJson } from "./internal-json.ts";
 import { z } from "zod";
 import type { D1StoreBinding } from "./d1-store.ts";
 import { timingSafeEqual } from "./webhooks.ts";
+import type { RetainedBlocksStore } from "./retained-blocks-store.ts";
 
 const integer = z.number().int().nonnegative().safe();
 const hash = z.string().regex(/^[0-9a-f]{64}$/);
@@ -45,9 +46,11 @@ const Input = z.discriminatedUnion("kind", [
     coverage: z.string().max(8192).nullable(),
   }),
 ]);
-type Input = z.infer<typeof Input>;
+export type RetainedBlocksSyncInput = z.infer<typeof Input>;
+type Input = RetainedBlocksSyncInput;
 interface SyncEnv {
   D1_RETAINED_BLOCKS?: D1StoreBinding;
+  RETAINED_BLOCKS_STORE?: RetainedBlocksStore;
   RETAINED_BLOCKS_SYNC_SECRET?: string;
 }
 interface Source {
@@ -58,7 +61,7 @@ interface Source {
   received_rows: number;
 }
 const fail = (status: number, error: string) => internalJson({ error }, status);
-function digest(value: unknown): string {
+export function retainedBlockDigest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
@@ -98,7 +101,7 @@ async function chunk(
   const end = input.start + input.rows.length;
   if (end > source.expected_rows || input.start > source.received_rows)
     return fail(409, "chunk exceeds source or skips rows");
-  const sha = digest(input.rows);
+  const sha = retainedBlockDigest(input.rows);
   const receipt = () =>
     db
       .prepare(
@@ -174,7 +177,7 @@ async function publish(
   input: Extract<Input, { kind: "publish" }>,
   now: number,
 ): Promise<Response> {
-  const generation = digest(input);
+  const generation = retainedBlockDigest(input);
   if (
     new Set(input.sources).size !== input.sources.length ||
     input.generated_at > now ||
@@ -268,7 +271,10 @@ export async function handleRetainedBlocksSync(
   env: SyncEnv,
   now = Date.now(),
 ): Promise<Response> {
-  if (!env.RETAINED_BLOCKS_SYNC_SECRET || !env.D1_RETAINED_BLOCKS)
+  if (
+    !env.RETAINED_BLOCKS_SYNC_SECRET ||
+    (!env.D1_RETAINED_BLOCKS && !env.RETAINED_BLOCKS_STORE)
+  )
     return fail(503, "retained blocks sync is not provisioned");
   if (
     !timingSafeEqual(
@@ -284,8 +290,10 @@ export async function handleRetainedBlocksSync(
   );
   if (!parsed.success) return fail(400, "invalid retained blocks sync request");
   try {
+    if (env.RETAINED_BLOCKS_STORE)
+      return await env.RETAINED_BLOCKS_STORE.sync(parsed.data, now);
     const input = parsed.data,
-      db = env.D1_RETAINED_BLOCKS;
+      db = env.D1_RETAINED_BLOCKS!;
     if (input.kind === "status") {
       const net = input.network === "mainnet" ? 0 : 1;
       const [state, rows] = await db.batch([

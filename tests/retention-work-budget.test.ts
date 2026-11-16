@@ -252,7 +252,7 @@ test("burn expiry keeps up with 396-row captures against a 380k-row fixture", as
           })),
         })) as never,
       });
-      assert.equal(result.ok, true);
+      assert.equal(result.ok, true, JSON.stringify(result));
       assert.equal(result.captured, 396);
       assert.equal(result.pruned, true);
       stamp += 900000;

@@ -85,6 +85,69 @@ import {
 } from "../../src/route-query.ts";
 import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
+import { stampMechanismScope } from "../../src/mechanism-scope.ts";
+import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "../../src/subnet-mechanisms.ts";
+import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "../../src/subnet-alpha-dividends.ts";
+import {
+  buildAccountLocks,
+  loadAccountLocks,
+} from "../../src/account-locks.ts";
+import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+  buildAccountColdkeySwap,
+  loadAccountColdkeySwap,
+} from "../../src/coldkey-swaps.ts";
+import {
+  buildAccountProxies,
+  loadAccountProxies,
+} from "../../src/account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "../../src/account-multisigs.ts";
+import {
+  basketAccountHex,
+  buildValidatorBasket,
+  buildValidatorBaskets,
+  loadValidatorBasket,
+  loadValidatorBaskets,
+} from "../../src/validator-baskets.ts";
+import {
+  buildChainGamma,
+  buildSubnetGamma,
+  buildSubnetGammaHistory,
+  loadChainGamma,
+  loadSubnetGamma,
+  loadSubnetGammaHistory,
+} from "../../src/subnet-gamma.ts";
+import {
+  buildGammaDeposits,
+  loadGammaDeposits,
+} from "../../src/gamma-deposits.ts";
+import {
+  buildSubnetServices,
+  loadSubnetServices,
+} from "../../src/subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "../../src/subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "../../src/subnet-alpha-assets.ts";
+import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "../../src/subnet-limit-orders.ts";
+import {
+  buildTaoUsdOracle,
+  loadTaoUsdOracle,
+} from "../../src/tao-usd-oracle.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,
@@ -195,6 +258,8 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadChainBurn } from "../../src/chain-burn.ts";
 import { readLatestSubnetBurns } from "../../src/subnet-burn-read.ts";
+import { selectedNeuronLiveStore } from "../../src/neuron-live-store.ts";
+import { selectedNeuronMetricStore } from "../../src/neuron-metric-store.ts";
 import {
   BURN_HISTORY_WINDOWS,
   buildSubnetBurnHistory,
@@ -969,6 +1034,10 @@ export async function handleSubnetMetagraph(
   // rather than a full 256-row fetch the caller never sees.
   const projection = parseNeuronFields(url.searchParams, "neurons");
   if (projection.error) return analyticsQueryError(projection.error);
+  // #13162: the mechanism scope, already bounded to 0 by the central
+  // parseRouteQuery gate. Read for the stamp -- null means unscoped, and the
+  // response then stays byte-identical to before the parameter existed.
+  const mechid = routeInt(url, "mechid");
   // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
   // table is dropped in production, so a store query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
@@ -976,13 +1045,15 @@ export async function handleSubnetMetagraph(
   // validator_permit is validated by the router against the route's published
   // one-value enum (#10060) and forwarded to Postgres via the proxied request
   // (tryDataApiTier passes the request through unchanged).
-  const data =
+  const data = stampMechanismScope(
     ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
-    buildSubnetMetagraph([], netuid);
+      buildSubnetMetagraph([], netuid),
+    mechid,
+  );
   // CSV keeps its own fixed column set (NEURON_CSV_COLUMNS): a projected CSV
   // would be a second, caller-defined column contract for the same download.
   if (csvRequested(url, request)) {
@@ -1066,13 +1137,17 @@ export async function handleNeuron(
   if (projection.error) return analyticsQueryError(projection.error);
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
-  const data =
+  // #13162: the mechanism scope rides the same stamp as the metagraph route --
+  // see handleSubnetMetagraph above.
+  const data = stampMechanismScope(
     ((await tryDataApiTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildNeuronDetail> | null) ??
-    buildNeuronDetail(null, netuid);
+      buildNeuronDetail(null, netuid),
+    routeInt(url, "mechid"),
+  );
   return envelopeResponse(
     request,
     {
@@ -2512,8 +2587,16 @@ export function canonicalSubnetMetagraphCachePath(
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const validatorsOnly = routeText(url, "validator_permit") === "true";
-  const canonicalPath = validatorsOnly
-    ? `${url.pathname}?validator_permit=true`
+  // #13162: a mechanism-scoped response carries the stamp, so the scope must
+  // ride the cache key -- a scoped body in the unscoped slot (or vice versa)
+  // would serve the wrong shape until the next bust.
+  const mechid = routeInt(url, "mechid");
+  const canonicalParams = [
+    ...(validatorsOnly ? ["validator_permit=true"] : []),
+    ...(mechid == null ? [] : [`mechid=${mechid}`]),
+  ];
+  const canonicalPath = canonicalParams.length
+    ? `${url.pathname}?${canonicalParams.join("&")}`
     : url.pathname;
   return neuronProjectionCacheVariant(url, request, canonicalPath, "neurons");
 }
@@ -2846,9 +2929,20 @@ export async function handleSubnetCostToParticipate(
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetCostToParticipate> | null) ??
     buildSubnetCostToParticipate([], Number(netuid));
-  data.entry_cost = entryCostFrom(
-    (await readEntryCost(env, Number(netuid))).data,
-  );
+  // The entry costs sit behind live RPC reads; a throw there escaped as a
+  // bare runtime 500 with no envelope (#13159, 2026-11-16). Fail structured.
+  try {
+    data.entry_cost = entryCostFrom(
+      (await readEntryCost(env, Number(netuid))).data,
+    );
+  } catch (error) {
+    console.error("cost-to-participate entry-cost read failed:", error);
+    return errorResponse(
+      "data_tier_unavailable",
+      "The entry-cost source did not answer; retry shortly.",
+      503,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -2982,7 +3076,12 @@ export async function handleSubnetTurnover(
 export function canonicalSubnetWeightsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam = routeValue<string>(url, "window");
-  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  // #13162: the mechanism scope changes the body (the stamp), so it rides the
+  // key; unscoped requests keep their exact pre-mechid slot.
+  const mechid = routeInt(url, "mechid");
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}${
+    mechid == null ? "" : `&mechid=${mechid}`
+  }`;
 }
 
 // GET /api/v1/subnets/{netuid}/weights?window=7d|30d: validator weight-setting activity for
@@ -3000,7 +3099,7 @@ export async function handleSubnetWeights(
     SUBNET_WEIGHTS_WINDOWS,
     DEFAULT_SUBNET_WEIGHTS_WINDOW,
   );
-  const data =
+  const data = stampMechanismScope(
     // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
     // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
     // resolved to null before it could touch DATA_API.
@@ -3011,7 +3110,12 @@ export async function handleSubnetWeights(
     (await loadSubnetWeightsColdTier(env, netuid, {
       windowLabel: windowParam,
       windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
-    })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+    })) ?? buildSubnetWeights(null, netuid, { window: windowParam }),
+    // #13162: the mechanism scope, already bounded to 0 by the central
+    // parseRouteQuery gate. The stream is attributed to mechanism 0 (the
+    // ingestion dedupe), so a scoped card is today's card plus the echo.
+    routeInt(url, "mechid"),
+  );
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -3026,6 +3130,500 @@ export async function handleSubnetWeights(
     },
     "short",
   );
+}
+
+// GET /api/v1/subnets/{netuid}/mechanisms (#13162): one subnet's mechanism
+// (sub-subnet) registry, read through the native mechanisms-store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `mechanisms` with `mechanism_count: null`,
+// never a zero count (every subnet has at least mechanism 0, so zero would be
+// a fabricated measurement), marked as a tier fallback.
+export async function handleSubnetMechanisms(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetMechanisms(env, netuid);
+  const data = buildSubnetMechanisms(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/mechanisms.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/alpha-dividends (#13163): one subnet's pending
+// alpha dividend accrual, read through the native dividends-store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `dividends` with `hotkey_count: null`,
+// never a zero count (an empty registry is not a measured zero accrual),
+// marked as a tier fallback.
+export async function handleSubnetAlphaDividends(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetAlphaDividends(env, netuid);
+  const data = buildSubnetAlphaDividends(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/alpha-dividends.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/locks (#13163): one account's conviction-lock
+// state, read through the native locks-store seam. Same ss58 validation as
+// the sibling account routes; no store bound -- today's deployed Workers --
+// or a failed read is the same schema-stable decline: an empty `locks` with
+// `lock_count: null`, never a zero count (an empty list is not a measured
+// lock-free account), marked as a tier fallback.
+export async function handleAccountLocks(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountLocks(env, ss58);
+  const data = buildAccountLocks(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/locks.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/pending-coldkey-swaps (#13166): every in-flight v2
+// coldkey-swap announcement plus the chain-wide delays, read through the
+// native coldkey-swaps store seam. No store bound -- today's deployed
+// Workers -- or a failed read is the same schema-stable decline: an empty
+// `swaps` with `swap_count: null` and a null `policy`, never a zero count
+// (an empty list is not a measured swap-free chain), marked as a tier
+// fallback.
+export async function handlePendingColdkeySwaps(request: Request, env: Env) {
+  const rows = await loadPendingColdkeySwaps(env);
+  const data = buildPendingColdkeySwaps(rows);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts/pending-coldkey-swaps.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/coldkey-swap (#13166): one account's v2 swap
+// state and key successor lineage, read through the same seam. Same ss58
+// validation as the sibling account routes; no store bound or a failed read
+// is the same schema-stable decline: a null `announcement`, a null
+// coldkey-swap lineage and an empty hotkey lineage with `hotkey_count: null`, marked as a
+// tier fallback.
+export async function handleAccountColdkeySwap(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountColdkeySwap(env, ss58);
+  const data = buildAccountColdkeySwap(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/coldkey-swap.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/proxies (#13166): one account's Proxy-pallet
+// delegation state, read through the native proxies-store seam. Same ss58
+// validation as the sibling account routes; no store bound -- today's
+// deployed Workers -- or a failed read is the same schema-stable decline: an
+// empty `proxies` with `proxy_count: null`, never a zero count (an empty
+// list is not a measured delegation-free account), marked as a tier
+// fallback.
+export async function handleAccountProxies(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountProxies(env, ss58);
+  const data = buildAccountProxies(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/proxies.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/accounts/{ss58}/multisigs (#13166): every multisig the account
+// belongs to -- as the multisig account itself or as a signatory -- read
+// through the native multisigs-store seam. Same decline contract as the
+// proxies handler above.
+export async function handleAccountMultisigs(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const rows = await loadAccountMultisigs(env, ss58);
+  const data = buildAccountMultisigs(rows, ss58);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/multisigs.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/chain/baskets (#13163): every validator's Root basket fund at
+// the newest completed capture, read through the ROOT_BASKET_STORE seam. No
+// store bound -- today's deployed Workers -- no completed capture, or a
+// failed read is the same schema-stable decline: capture null, fund_count
+// null, baskets empty, marked as a tier fallback. With a capture present an
+// empty list is a real measurement (a completed capture is a verified
+// complete enumeration), so only the null-capture body is marked degraded.
+export async function handleChainBaskets(request: Request, env: Env) {
+  const loaded = await loadValidatorBaskets(env);
+  const data = buildValidatorBaskets(loaded);
+  const capture = data.capture as Record<string, unknown> | null;
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/baskets.json",
+        capture?.accepted_at ?? null,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/validators/{hotkey}/basket (#13163): one validator's Root
+// basket fund with its holdings and target allocations, read through the same
+// seam. Same ss58 validation as the sibling account routes; `basket: null`
+// with a PRESENT capture is a measurement (the capture enumerates every
+// fund), while a null capture is the decline, marked as a tier fallback.
+export async function handleValidatorBasket(
+  request: Request,
+  env: Env,
+  hotkey: string,
+) {
+  const accountHex = isFinneySs58Address(hotkey)
+    ? basketAccountHex(hotkey)
+    : null;
+  if (accountHex === null) {
+    return errorResponse(
+      "invalid_ss58",
+      "hotkey must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+  const loaded = await loadValidatorBasket(env, accountHex);
+  const data = buildValidatorBasket(loaded, hotkey);
+  const capture = data.capture as Record<string, unknown> | null;
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/validators/${hotkey}/basket.json`,
+        capture?.accepted_at ?? null,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/gamma (#13164): one subnet's current Gamma
+// state, read through the native Gamma store seam. No store bound -- today's
+// deployed Workers -- or a failed read is the same schema-stable decline:
+// `gamma: null`, never a zeroed state (an absent capture is not a measured
+// Gamma-off subnet), marked as a tier fallback.
+export async function handleSubnetGamma(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetGamma(env, netuid);
+  const data = buildSubnetGamma(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/gamma.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/gamma/history (#13164): the capture series
+// behind the card above, newest first and store-capped. Same decline contract:
+// an empty `points` with `point_count: null`, never a zero count (an empty
+// series is not a measured history), marked as a tier fallback.
+export async function handleSubnetGammaHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetGammaHistory(env, netuid);
+  const data = buildSubnetGammaHistory(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/gamma/history.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/chain/gamma (#13164): the global GammaEnabled switch beside
+// every subnet's newest captured Gamma state, read through the same seam. No
+// store bound or a failed read is the same schema-stable decline: `enabled`
+// null (never a measured off-switch), `subnets` empty with `subnet_count`
+// null, marked as a tier fallback.
+export async function handleChainGamma(request: Request, env: Env) {
+  const loaded = await loadChainGamma(env);
+  const data = buildChainGamma(loaded);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/gamma.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return loaded === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/gamma/deposits (#13164): the chain's Gamma deposit state,
+// largest balance first and store-capped, read through the native deposits
+// store seam. No store bound or a failed read is the same schema-stable
+// decline: an empty `deposits` with `deposit_count: null`, never a zero count
+// (an empty list is not a measured deposit-free chain), marked as a tier
+// fallback.
+export async function handleGammaDeposits(request: Request, env: Env) {
+  const rows = await loadGammaDeposits(env);
+  const data = buildGammaDeposits(rows);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/gamma/deposits.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/services (#13164): one subnet's on-chain
+// service-URL registry, read through the native services store seam. No
+// store bound or a failed read is the same schema-stable decline: an empty
+// `services` with `service_count: null`, never a zero count (an empty
+// registry is not a measured service-less subnet), marked as a tier
+// fallback.
+export async function handleSubnetServices(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetServices(env, netuid);
+  const data = buildSubnetServices(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/services.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/swap (#13165): one subnet's current
+// balancer-based Swap state, read through the native swap store seam. No
+// store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: `swap: null`, never a zeroed state (an absent
+// capture is not a measured empty pool), marked as a tier fallback.
+export async function handleSubnetSwap(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetSwap(env, netuid);
+  const data = buildSubnetSwap(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/swap.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/alpha-assets (#13165): one subnet's current
+// AlphaAssets accounting, read through the native alpha-assets store seam.
+// No store bound or a failed read is the same schema-stable decline:
+// `alpha_assets: null`, never a zeroed state (an absent capture is not a
+// measured zero issuance), marked as a tier fallback.
+export async function handleSubnetAlphaAssets(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetAlphaAssets(env, netuid);
+  const data = buildSubnetAlphaAssets(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/alpha-assets.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/limit-orders (#13165): one subnet's
+// LimitOrders order book, read through the native limit-orders store seam.
+// No store bound -- today's deployed Workers -- or a failed read is the same
+// schema-stable decline: an empty `orders` with `order_count: null`, never a
+// zero count (an empty book is not a measured order-less subnet), marked as
+// a tier fallback.
+export async function handleSubnetLimitOrders(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const rows = await loadSubnetLimitOrders(env, netuid);
+  const data = buildSubnetLimitOrders(rows, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/limit-orders.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+  return rows === null ? markDataApiTierFallbackResponse(response) : response;
 }
 
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes
@@ -3817,9 +4415,16 @@ export async function buildSubnetValidatorEconomicsPayload(
   const readParams = deps.loadParams ?? loadNetworkParameters;
   const readBurn = deps.loadBurn ?? loadSubnetBurn;
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
-  const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
-    ReadStoreDb | undefined;
-  const rows = db ? await readNeuronEconomicsRows(db, env, netuid) : [];
+  const native = selectedNeuronLiveStore(env);
+  const db = readStore(
+    env,
+    native ? ["subnet_hyperparams"] : VALIDATOR_ECONOMICS_TABLES,
+  ) as ReadStoreDb | undefined;
+  const rows = native
+    ? await native.economicsRows(netuid)
+    : db
+      ? await readNeuronEconomicsRows(db, env, netuid)
+      : [];
 
   const hyperRow = db
     ? await db.first(
@@ -4035,21 +4640,40 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // empty series published for every subnet, edge-cached, with nothing marking
   // it a decline. readStore awaits its own teardown, so there is no ctx to
   // thread and no caller left that can forget one.
-  const db = readStore(env, VALIDATOR_ECONOMICS_HISTORY_TABLES) as
-    ReadStoreDb | undefined;
+  const native = selectedNeuronMetricStore(env);
+  const db = readStore(
+    env,
+    native
+      ? ["subnet_snapshots", "subnet_hyperparams_history"]
+      : VALIDATOR_ECONOMICS_HISTORY_TABLES,
+  ) as ReadStoreDb | undefined;
 
-  const neuronRows = db
-    ? await readNeuronDailyMetricRows<HistoryRow>(
-        db,
-        env,
+  const neuronRows = native
+    ? await native.dailyRows<HistoryRow>(
         netuid,
         cutoff,
-        // `hotkey` is selected only so the owner's unconditional permit can be kept
-        // out of the observed floor.
-        "snapshot_date, hotkey, stake_tao, validator_permit, dividends, active",
+        [
+          "snapshot_date",
+          "hotkey",
+          "stake_tao",
+          "validator_permit",
+          "dividends",
+          "active",
+        ],
         VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
       )
-    : [];
+    : db
+      ? await readNeuronDailyMetricRows<HistoryRow>(
+          db,
+          env,
+          netuid,
+          cutoff,
+          // `hotkey` is selected only so the owner's unconditional permit can be kept
+          // out of the observed floor.
+          "snapshot_date, hotkey, stake_tao, validator_permit, dividends, active",
+          VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
+        )
+      : [];
 
   const emissionRows = db
     ? await db.query<HistoryEmissionRow>(
@@ -4177,11 +4801,18 @@ export async function buildValidatorEconomicsRankingPayload(
       };
     });
 
-  const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
-    ReadStoreDb | undefined;
-  const neuronRead = db
-    ? readNeuronEconomicsRows(db, env)
-    : Promise.resolve([]);
+  const native = selectedNeuronLiveStore(env);
+  const db = readStore(
+    env,
+    native
+      ? ["subnet_burn_history", "subnet_hyperparams"]
+      : VALIDATOR_ECONOMICS_RANKING_TABLES,
+  ) as ReadStoreDb | undefined;
+  const neuronRead = native
+    ? native.economicsRows()
+    : db
+      ? readNeuronEconomicsRows(db, env)
+      : Promise.resolve([]);
   // Only the burn lookup depends on the accepted neuron identities. Start the
   // other bulk inputs together, preserving their existing freshness and reads.
   const [
@@ -6178,11 +6809,17 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
   const rows = await loadTaoUsdSeries(readStore(env, TAO_USD_TABLES), {
     windowHours,
   });
+  // #13164: the chain's own TaoUsdPrice block, through the native oracle
+  // seam -- null (no store bound on today's deployed Workers, no feed
+  // captured, or a failed read) is the schema-stable decline beside the
+  // composed index, never an error.
+  const oracle = buildTaoUsdOracle(await loadTaoUsdOracle(env));
   // A cold or unwritten table yields an EMPTY series with a null `latest`, not
   // a 404: "we have not priced this window" is a real state.
   const data = buildTaoUsdSeries(rows, {
     window: label,
     includePoints: includePoints.value,
+    oracle,
   });
   return envelopeResponse(
     request,

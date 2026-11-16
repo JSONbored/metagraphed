@@ -2003,6 +2003,43 @@ test("GRAPHQL_WS_SOCKET_TAG is the documented tag string", () => {
   assert.equal(GRAPHQL_WS_SOCKET_TAG, "graphql-ws");
 });
 
+test("the Worker protocol lazily loads its schema and disposes an active quiet subscription", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const frames: { type: string }[] = [];
+  let message!: (value: string) => Promise<void>;
+  const closed = hub.graphqlWsServer.opened(
+    {
+      protocol: "graphql-transport-ws",
+      send: (value) => {
+        frames.push(JSON.parse(value));
+      },
+      close: () => {},
+      onMessage: (callback) => {
+        message = callback;
+      },
+    },
+    { ip: "203.0.113.1", graphqlWsConnection: { activeSubscriptions: 0 } },
+  );
+  await message(JSON.stringify({ type: "connection_init" }));
+  const subscription = message(
+    JSON.stringify({
+      id: "worker",
+      type: "subscribe",
+      payload: { query: "subscription { chainEvents { table } }" },
+    }),
+  );
+  await vi.waitFor(() => assert.equal(hub.chainEventSubscribers.size, 1));
+  await hub.broadcast({ table: "blocks", block_number: 1 });
+  await vi.waitFor(() =>
+    assert.ok(frames.some((frame) => frame.type === "next")),
+  );
+  hub.disposeNativeConnections();
+  await subscription;
+  await closed(1000, "finished");
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  assert.ok(frames.some((frame) => frame.type === "complete"));
+});
+
 test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the documented constants", () => {
   assert.equal(
     CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
@@ -2184,6 +2221,29 @@ test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't t
   );
   const sessionIds = mcpHub.calls.map((c) => c.sessionId).sort();
   assert.deepEqual(sessionIds, ["s1", "s2"]);
+});
+
+test("broadcast selects native MCP sessions without falling back after a malformed selection", async () => {
+  const calls: { id: string; body: unknown }[] = [];
+  const native = {
+    fetch: async (id: string, request: Request) => {
+      calls.push({ id, body: await request.json() });
+      return new Response("{}");
+    },
+  };
+  for (const selected of [native, null]) {
+    const legacy = fakeMcpSessionHubBinding();
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv({ MCP_SESSION_SERVICE: selected, MCP_SESSION_HUB: legacy }),
+    );
+    hub.mcpSubscribeSession("native-session");
+    await hub.broadcast({ table: "blocks", block_number: 1 });
+    assert.equal(legacy.calls.length, 0);
+  }
+  assert.deepEqual(calls, [
+    { id: "native-session", body: { uri: MCP_CHAIN_STREAM_RESOURCE_URI } },
+  ]);
 });
 
 // --- ALERTER_HUB ping (#4984 Part 2) ---------------------------------------------

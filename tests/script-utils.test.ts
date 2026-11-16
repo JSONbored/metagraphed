@@ -1234,9 +1234,9 @@ describe("script utility contracts", () => {
     assert.throws(
       () =>
         assertNoSubnetFilePathCollision({
-          filePath: "/repo/registry/subnets/bitmind.json",
-          overlay: { netuid: 41, name: "BitMind" },
-          existingEntry: { overlay: { netuid: 34, name: "BitMind" } },
+          filePath: "/repo/registry/subnets/fixture-net.json",
+          overlay: { netuid: 41, name: "Fixture Net" },
+          existingEntry: { overlay: { netuid: 34, name: "Fixture Net" } },
           root: "/repo",
         }),
       /Refusing to materialize generated subnet netuid 41 .* already belongs to netuid 34/,
@@ -1246,8 +1246,8 @@ describe("script utility contracts", () => {
   test("allows materialization when no file already occupies the path", () => {
     assert.doesNotThrow(() =>
       assertNoSubnetFilePathCollision({
-        filePath: "/repo/registry/subnets/bitmind.json",
-        overlay: { netuid: 41, name: "BitMind" },
+        filePath: "/repo/registry/subnets/fixture-net.json",
+        overlay: { netuid: 41, name: "Fixture Net" },
         existingEntry: undefined,
         root: "/repo",
       }),
@@ -1257,9 +1257,9 @@ describe("script utility contracts", () => {
   test("allows materialization when the existing file already belongs to the same netuid", () => {
     assert.doesNotThrow(() =>
       assertNoSubnetFilePathCollision({
-        filePath: "/repo/registry/subnets/bitmind.json",
-        overlay: { netuid: 41, name: "BitMind" },
-        existingEntry: { overlay: { netuid: 41, name: "BitMind" } },
+        filePath: "/repo/registry/subnets/fixture-net.json",
+        overlay: { netuid: 41, name: "Fixture Net" },
+        existingEntry: { overlay: { netuid: 41, name: "Fixture Net" } },
         root: "/repo",
       }),
     );
@@ -1268,11 +1268,11 @@ describe("script utility contracts", () => {
   test("buildSubnetOverlaysByNetuid prefers the manual overlay for a shared netuid", () => {
     const manualOverlays = [
       {
-        filePath: "/repo/registry/subnets/bitmind.json",
-        overlay: { netuid: 41, name: "BitMind", curated: true },
+        filePath: "/repo/registry/subnets/fixture-net.json",
+        overlay: { netuid: 41, name: "Fixture Net", curated: true },
       },
     ];
-    const allOverlays = [{ netuid: 41, name: "BitMind" }];
+    const allOverlays = [{ netuid: 41, name: "Fixture Net" }];
 
     const byNetuid = buildSubnetOverlaysByNetuid({
       allOverlays,
@@ -1313,11 +1313,11 @@ describe("script utility contracts", () => {
   test("buildSubnetOverlaysByNetuid refuses a generated overlay that collides with a manual file", () => {
     const manualOverlays = [
       {
-        filePath: "/repo/registry/subnets/bitmind.json",
-        overlay: { netuid: 34, name: "BitMind" },
+        filePath: "/repo/registry/subnets/fixture-net.json",
+        overlay: { netuid: 34, name: "Fixture Net" },
       },
     ];
-    const allOverlays = [{ netuid: 41, name: "BitMind" }];
+    const allOverlays = [{ netuid: 41, name: "Fixture Net" }];
 
     assert.throws(
       () =>

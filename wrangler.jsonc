@@ -42,17 +42,23 @@
     "binding": "CF_VERSION_METADATA",
   },
   "upload_source_maps": true,
+  "logpush": false,
+  "tail_consumers": [],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1,
+    "enabled": false,
+    "head_sampling_rate": 0,
     "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "invocation_logs": false,
+      "persist": false,
+      "destinations": [],
     },
     "traces": {
-      "enabled": true,
-      "head_sampling_rate": 1,
+      "enabled": false,
+      "head_sampling_rate": 0,
+      "persist": false,
+      "destinations": [],
     },
   },
   "placement": {
@@ -185,7 +191,12 @@
     // Applied to the production D1 before this flip. Flip to anything but
     // "true" to stop the lane; the watermark persists, so re-enabling resumes
     // exactly where it stopped rather than skipping the interval.
-    "RAW_CAPTURE_ENABLED": "true",
+    // PAUSED 2026-11-14 (#13142 phase-0): metagraphed-state hit its 10 GB cap
+    // on 2026-10-12, so this lane's watermark write has failed on every tick
+    // since -- burning errors, never landing data. The watermark persists, so
+    // re-enabling after the PostgreSQL cutover (or a D1 prune) resumes exactly
+    // where it stopped, as the comment above has always promised.
+    "RAW_CAPTURE_ENABLED": "false",
     // D1 -> Postgres serving-cutover flags (ADR 0013 Sequencing step 3, the
     // deploy/README.md "Serving cutover" runbook). Set to "postgres" to route
     // /api/v1/blocks(/{ref}), /api/v1/extrinsics(/{ref}), or
@@ -612,7 +623,13 @@
     // production -- the box-side relay is gone, this IS the ingest source for
     // the blocks lane. Flip to "false" to stop the alarm chain within one tick
     // (kill switch; the alarm re-arms but exits immediately).
-    "CHAIN_HEAD_POLL_ENABLED": "true",
+    // PAUSED 2026-11-14 (#13142 phase-0): every blocks_head write has thrown
+    // "not committed" against the capped metagraphed-state D1 since 2026-10-12
+    // -- a 6-second error loop producing no data (the head froze at block
+    // 9,420,866 on 2026-11-02). /health already reports the stale heartbeat
+    // truthfully (#13173); this stops the burn. The kill switch acts within
+    // one tick and re-enabling resumes the alarm chain, per #204 above.
+    "CHAIN_HEAD_POLL_ENABLED": "false",
     "CHAIN_HEAD_RPC_URL": "https://archive.chain.opentensor.ai",
     "CHAIN_HEAD_POLL_INTERVAL_MS": "6000",
     // #9417: read each block's event count from the System.Events SCALE length

@@ -27,7 +27,7 @@
   "social": {
     "x": "https://x.com/sundae_bar_"
   },
-  "source_repo": "https://github.com/sundae-bar/sb-validator",
+  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
   "status": "active",
   "revenue_search": {
     "searched_at": "2026-08-10T00:00:00Z",
@@ -102,9 +102,9 @@
       "id": "sn-121-sundae-bar-sbc9-eval-dataset",
       "kind": "data-artifact",
       "name": "Sundae Bar SBC9 skill evaluation dataset",
-      "notes": "Public no-auth JSONL benchmark dataset of customer-email response scenarios with rubric ground-truth metadata, published in the official SN121 sb-validator repository at python/dataset_sbc9.jsonl. Loaded at grader runtime by skill_evaluation.py (_load_variant_specifics) for skill-integrity checks during validator evaluation flows.",
+      "notes": "Public no-auth JSONL benchmark dataset of customer-email response scenarios with rubric ground-truth metadata, published in the official SN121 sb-validator repository at python/dataset_sbc9.jsonl. Loaded at grader runtime by skill_evaluation.py (_load_variant_specifics) for skill-integrity checks during validator evaluation flows. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -152,7 +152,7 @@
       "id": "sn-121-sundae-bar-products-api",
       "kind": "subnet-api",
       "name": "Sundae Bar products catalog API",
-      "notes": "Public no-auth GET /api/products on www.sundaebar.ai returning the paginated JSON catalog of SN121 sundae_bar listings ({\"data\":[{type,name,description,...}]}) \u2014 the source-of-truth listings feed that the site's own llms.txt directs AI agents to query. Verified 200 application/json, distinct in host and path from the api.sundaebar.ai/api/v2/validators coordinator surface already registered.",
+      "notes": "Public no-auth GET /api/products on www.sundaebar.ai returning the paginated JSON catalog of SN121 sundae_bar listings ({\"data\":[{type,name,description,...}]}) — the source-of-truth listings feed that the site's own llms.txt directs AI agents to query. Verified 200 application/json, distinct in host and path from the api.sundaebar.ai/api/v2/validators coordinator surface already registered.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -177,9 +177,9 @@
       "id": "sn-121-sundae-bar-categories-api",
       "kind": "subnet-api",
       "name": "Sundae Bar categories API",
-      "notes": "Public no-auth GET /api/categories on www.sundaebar.ai returning the category tree for agents, workflows, and prompts. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\".",
+      "notes": "Public no-auth GET /api/categories on www.sundaebar.ai returning the category tree for agents, workflows, and prompts. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\". [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -199,9 +199,9 @@
       "id": "sn-121-sundae-bar-skill-categories-api",
       "kind": "subnet-api",
       "name": "Sundae Bar skill categories API",
-      "notes": "Public no-auth GET /api/skill-categories on www.sundaebar.ai returning the category list for skills. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\".",
+      "notes": "Public no-auth GET /api/skill-categories on www.sundaebar.ai returning the category list for skills. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\". [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -243,7 +243,7 @@
       "id": "sn-121-sundae-bar-product-detail",
       "kind": "subnet-api",
       "name": "Sundae Bar product detail",
-      "notes": "Public no-auth GET /api/products/{slug}/public on www.sundaebar.ai returning full public detail for one listing by slug. Explicitly documented in the site's llms.txt as Public, read-only, and unauthenticated. Path-parameterized template (percent-encoded {slug} for URI-format compliance). probe.enabled:false because there is no single fixed slug to auto-probe. Live-verified 2026-07-21: GET /api/products/youtube-automation/public -> 200 JSON.",
+      "notes": "Public no-auth GET /api/products/{slug}/public on www.sundaebar.ai returning full public detail for one listing by slug. Explicitly documented in the site's llms.txt as Public, read-only, and unauthenticated. Path-parameterized template (percent-encoded {slug} for URI-format compliance). probe.enabled:false because there is no single fixed slug to auto-probe. Live-verified 2026-07-21: GET /api/products/youtube-automation/public -> 200 JSON. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -309,7 +309,7 @@
       "id": "sn-121-sundae-bar-skill-download",
       "kind": "subnet-api",
       "name": "Sundae Bar skill download manifest",
-      "notes": "Public no-auth GET /api/skills/{slug}/download on www.sundaebar.ai returning skill file manifest with download URLs (optional ?format=download returns a zip). Documented in llms.txt as public/unauthenticated. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: GET /api/skills/youtube-automation/download -> 200 JSON.",
+      "notes": "Public no-auth GET /api/skills/{slug}/download on www.sundaebar.ai returning skill file manifest with download URLs (optional ?format=download returns a zip). Documented in llms.txt as public/unauthenticated. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: GET /api/skills/youtube-automation/download -> 200 JSON. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

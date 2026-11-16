@@ -45,6 +45,31 @@ export const netuidSchema = () =>
     .meta({ examples: [64, 0] });
 
 /**
+ * A mechanism (sub-subnet) id within a subnet (#13162).
+ *
+ * Bounded to 0 TODAY, and declared as what the server ENFORCES (the
+ * `validator_permit` precedent, #10096): ingestion dedupes
+ * `get_all_metagraphs_info(all_mechanisms=True)` to mechid 0, so 0 is the only
+ * mechanism any store holds and the only value these routes can answer
+ * honestly. A request for mechid 1 is a 400 -- never a fabricated empty
+ * snapshot, which would read as "mechanism 1 has no neurons" on the subnets
+ * where it genuinely does. The ceiling widens when mechanism-aware capture
+ * lands with the engine.
+ */
+export const mechidSchema = () =>
+  z
+    .int()
+    .min(0)
+    .max(0)
+    .describe(
+      "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the " +
+        "response. Omit it for the same rows unscoped. 0 -- today's only " +
+        "captured mechanism -- is the only accepted value until " +
+        "mechanism-aware capture lands (#13162); the ceiling widens then.",
+    )
+    .meta({ examples: [0] });
+
+/**
  * A comma-separated list of subnet ids, for the routes that filter on a SET.
  *
  * Both bounds are real and both matter: at most 128 ids, each at most 5 digits

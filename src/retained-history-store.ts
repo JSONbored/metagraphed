@@ -6,7 +6,9 @@ import { type HistoryReadEnv } from "./history-readers.ts";
 export function hasRetainedHistoryStore(
   env: (HistoryReadEnv & ArtifactStoreEnv) | null | undefined,
 ): boolean {
-  return env?.NATIVE_PROJECTIONS === "enabled";
+  return (
+    Boolean(env?.RETAINED_BLOCKS_STORE) || env?.NATIVE_PROJECTIONS === "enabled"
+  );
 }
 
 /** A configured history owner cannot turn an unqualified read into absence. */

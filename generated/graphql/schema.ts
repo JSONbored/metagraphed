@@ -258,7 +258,42 @@ type Query {
   """
   Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights.
   """
-  subnet_weights(netuid: Int!, window: String): SubnetWeights!
+  subnet_weights(netuid: Int!, window: String, mechid: Int): SubnetWeights!
+
+  """
+  One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+  """
+  subnet_mechanisms(netuid: Int!): SubnetMechanisms!
+
+  """
+  One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.
+  """
+  subnet_alpha_dividends(netuid: Int!): SubnetAlphaDividends!
+
+  """
+  One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+  """
+  subnet_gamma(netuid: Int!): SubnetGamma!
+
+  """
+  One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
+  """
+  subnet_services(netuid: Int!): SubnetServices!
+
+  """
+  One subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate) with their capture stamp. Until the engine's balancer capture lands, the store holds no rows and this resolves to the schema-stable decline -- swap NULL, never a zeroed state, because an absent capture is not a measured empty pool. Mirrors GET /api/v1/subnets/{netuid}/swap.
+  """
+  subnet_swap(netuid: Int!): SubnetSwap!
+
+  """
+  One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.
+  """
+  subnet_alpha_assets(netuid: Int!): SubnetAlphaAssets!
+
+  """
+  One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.
+  """
+  subnet_limit_orders(netuid: Int!): SubnetLimitOrders!
 
   """
   Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves.
@@ -391,7 +426,7 @@ type Query {
   indexer_lag: IndexerLag!
 
   """
-  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
+  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the \`oracle\` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
   """
   tao_usd(window: String, include_points: Boolean): TaoUsd!
 
@@ -408,7 +443,7 @@ type Query {
   """
   One neuron in a subnet by UID: hot/cold keys, stake, rank, trust, consensus, incentive, dividends, emission, validator permit, immunity, axon, and take. The nested neuron field is null when that UID is absent from the latest snapshot -- a schema-stable card, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}.
   """
-  neuron(netuid: Int!, uid: Int!): Neuron!
+  neuron(netuid: Int!, uid: Int!, mechid: Int): Neuron!
 
   """
   One neuron's per-day metagraph history in a subnet by UID from the neuron_daily rollup (window: 7d/30d/90d/1y/all, default 30d), newest first: stake, rank, trust, consensus, incentive, dividends, emission, validator permit, axon, and take per snapshot_date. A UID with no matching rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.
@@ -428,7 +463,7 @@ type Query {
   """
   One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph.
   """
-  subnet_metagraph(netuid: Int!, validator_permit: Boolean, fields: String): JSON
+  subnet_metagraph(netuid: Int!, validator_permit: Boolean, mechid: Int, fields: String): JSON
 
   """
   One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview.
@@ -694,6 +729,16 @@ type Query {
   One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history.
   """
   validator_history(hotkey: String!, window: String, netuid: Int): ValidatorHistory!
+
+  """
+  Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets.
+  """
+  validator_baskets: ValidatorBaskets!
+
+  """
+  The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.
+  """
+  gamma_deposits: GammaDeposits!
 
   """
   Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts.
@@ -1011,9 +1056,34 @@ type Query {
   account_balance(ss58: String!, network: Network): AccountBalance
 
   """
-  Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+  One account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility -- only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor -- claims flow through Basket* events since Root Reborn (v441), and basket state lives on validator_baskets. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
   """
   account_root_claim(ss58: String!, network: Network): AccountRootClaim
+
+  """
+  One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks.
+  """
+  account_locks(ss58: String!): AccountLocks!
+
+  """
+  Every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Until the engine's swap capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty swaps array with swap_count NULL (never 0, because an empty list is not a measured swap-free chain) and a null policy. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.
+  """
+  pending_coldkey_swaps: PendingColdkeySwaps!
+
+  """
+  One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.
+  """
+  account_coldkey_swap(ss58: String!): AccountColdkeySwap!
+
+  """
+  One account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (spelled as the chain's enum spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve. Until the engine's Proxy.Proxies capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty proxies array with proxy_count NULL, never 0, because an empty list is not a measured delegation-free account. Mirrors GET /api/v1/accounts/{ss58}/proxies.
+  """
+  account_proxies(ss58: String!): AccountProxies!
+
+  """
+  Every multisig an account belongs to (#13166) -- as the multisig account itself or as a signatory -- each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Until the engine's Multisig call/event capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty multisigs array with multisig_count NULL, never 0, because an empty list is not a measured multisig-free account. Mirrors GET /api/v1/accounts/{ss58}/multisigs.
+  """
+  account_multisigs(ss58: String!): AccountMultisigs!
 
   """
   Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children.
@@ -2240,6 +2310,11 @@ One UID's live metagraph state within a subnet (hot/cold keys, scores, stake/emi
 """
 type NeuronState {
   uid: Int!
+
+  """
+  The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via \`mechid=\`; every stored row today is mechanism 0 (#13162).
+  """
+  mechid: Int
   hotkey: String
   coldkey: String
   active: Boolean!
@@ -2391,12 +2466,298 @@ type SubnetAxonRemovals {
 type SubnetWeights {
   schema_version: Int!
   netuid: Int!
+
+  """
+  The mechanism (sub-subnet) this card is scoped to, echoed from the request's \`mechid=\`. Absent when the request did not scope a mechanism (#13162).
+  """
+  mechid: Int
   window: String
   observed_at: String
   distinct_setters: Int!
   weight_sets: Int!
   sets_per_setter: Float
   degraded: DegradedInfo
+}
+
+"""
+One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+"""
+type SubnetMechanisms {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many mechanisms this subnet has -- \`mechanisms.length\`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published.
+  """
+  mechanism_count: Int
+  captured_at: String
+
+  """The subnet's mechanisms, ordered by mechid."""
+  mechanisms: [SubnetMechanism!]!
+}
+
+"""
+One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp.
+"""
+type SubnetMechanism {
+  """
+  The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has.
+  """
+  mechid: Int!
+
+  """
+  This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share.
+  """
+  emission_split: Float
+
+  """
+  The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.
+  """
+  consensus_mode: String
+  captured_at: String
+}
+
+"""
+One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends.
+"""
+type SubnetAlphaDividends {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many hotkeys carry a pending accrual row here -- \`dividends.length\`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published.
+  """
+  hotkey_count: Int
+  captured_at: String
+
+  """The subnet's pending dividend accruals, largest alpha_divs first."""
+  dividends: [SubnetAlphaDividend!]!
+}
+
+"""
+One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp.
+"""
+type SubnetAlphaDividend {
+  """The hotkey this pending dividend accrual belongs to."""
+  hotkey: String!
+
+  """
+  Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0.
+  """
+  alpha_divs: String
+
+  """
+  Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  root_alpha_divs: String
+  captured_at: String
+}
+
+"""
+One subnet's current Gamma state (#13164). Null \`gamma\` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+"""
+type SubnetGamma {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one.
+  """
+  gamma: SubnetGammaState
+  captured_at: String
+}
+
+"""
+One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp.
+"""
+type SubnetGammaState {
+  """
+  Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch.
+  """
+  enabled: Boolean
+
+  """
+  The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured.
+  """
+  price: String
+
+  """
+  The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  emission: String
+
+  """
+  Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured.
+  """
+  pending_emission: String
+
+  """
+  Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured.
+  """
+  unconverted_emission: String
+
+  """
+  Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag.
+  """
+  whitelisted: Boolean
+  captured_at: String
+}
+
+"""
+One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services.
+"""
+type SubnetServices {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many service bindings this subnet carries -- \`services.length\`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published.
+  """
+  service_count: Int
+  captured_at: String
+
+  """The subnet's service bindings, ordered by hotkey."""
+  services: [SubnetService!]!
+}
+
+"""
+One on-chain service binding: the hotkey, the URL it published, and the capture stamp.
+"""
+type SubnetService {
+  """The hotkey this service URL is bound to."""
+  hotkey: String!
+
+  """
+  The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim.
+  """
+  service_url: String!
+
+  """
+  The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis.
+  """
+  set_at: Int
+  captured_at: String
+}
+
+"""
+One subnet's current balancer-based Swap state (#13165). Null \`swap\` until the engine's balancer capture lands. Mirrors GET /api/v1/subnets/{netuid}/swap.
+"""
+type SubnetSwap {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured balancer state. NULL when the store holds no capture for this subnet (store unbound, or the balancer capture has not run): an absent state is never served as a zeroed one.
+  """
+  swap: SubnetSwapState
+  captured_at: String
+}
+
+"""
+One captured balancer state of a subnet's Swap pool: the TAO and alpha reservoirs and the raw fee rate with their capture stamp.
+"""
+type SubnetSwapState {
+  """
+  The subnet pool's TAO reservoir (Swap.BalancerTaoReservoir) -- u64 atomic units (rao) as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  tao_reservoir: String
+
+  """
+  The subnet pool's alpha reservoir (Swap.BalancerAlphaReservoir) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  alpha_reservoir: String
+
+  """
+  The pool's swap fee rate (Swap.FeeRate) -- the chain's raw u16 as stored, served verbatim because the engine's decode owns the scaling. Null when the capture did not carry it -- never coalesced to 0, which would claim a measured fee-free pool.
+  """
+  fee_rate: Int
+  captured_at: String
+}
+
+"""
+One subnet's current AlphaAssets accounting (#13165). Null \`alpha_assets\` until the engine's alpha-assets capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets.
+"""
+type SubnetAlphaAssets {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The subnet's newest captured alpha-asset accounting. NULL when the store holds no capture for this subnet (store unbound, or the alpha-assets capture has not run): an absent state is never served as a zeroed one.
+  """
+  alpha_assets: SubnetAlphaAssetsState
+  captured_at: String
+}
+
+"""
+One captured alpha-asset accounting state of a subnet: total issuance and its burn/recycle sinks with their capture stamp.
+"""
+type SubnetAlphaAssetsState {
+  """
+  The subnet's total alpha issuance (AlphaAssets.TotalAlphaIssuance) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0.
+  """
+  total_issuance: String
+
+  """
+  Alpha burned on this subnet (AlphaAssets.AlphaBurned) -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  burned: String
+
+  """
+  Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured.
+  """
+  recycled: String
+  captured_at: String
+}
+
+"""
+One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders.
+"""
+type SubnetLimitOrders {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  How many orders this answer carries -- \`orders.length\`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published.
+  """
+  order_count: Int
+  captured_at: String
+
+  """The subnet's captured orders, newest capture first."""
+  orders: [SubnetLimitOrder!]!
+}
+
+"""
+One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp.
+"""
+type SubnetLimitOrder {
+  """
+  The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex.
+  """
+  order_id: String!
+
+  """The account that placed the order (ss58-encoded)."""
+  owner: String!
+
+  """
+  The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds.
+  """
+  kind: String!
+
+  """
+  The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0.
+  """
+  amount: String
+
+  """
+  The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured.
+  """
+  price: String
+
+  """
+  The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order.
+  """
+  status: String
+  captured_at: String
 }
 
 type SubnetStakeMoves {
@@ -3937,6 +4298,11 @@ type TaoUsd {
   point_count: Int!
 
   """
+  Always \`pool_composite\`: the price series and \`latest\` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate \`oracle\` block labelled \`chain_oracle\`.
+  """
+  source: String!
+
+  """
   True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh.
   """
   stale: Boolean!
@@ -3956,6 +4322,11 @@ type TaoUsd {
   """
   priced_point_count: Int!
   latest: TaoUsdLatest
+
+  """
+  The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source \`chain_oracle\`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price.
+  """
+  oracle: TaoUsdOracle
 
   """
   How far back the answer actually reaches -- the series began 2026-08-02.
@@ -3983,6 +4354,55 @@ type TaoUsdLatest {
 
   """Per-pool provenance as the producer stored it."""
   pools: [JSON!]!
+}
+
+"""
+The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price.
+"""
+type TaoUsdOracle {
+  """
+  Always \`chain_oracle\`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source \`pool_composite\`).
+  """
+  source: String!
+
+  """
+  The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price.
+  """
+  usd_per_tao: Float
+
+  """
+  The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived.
+  """
+  price_raw: String
+
+  """
+  The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it.
+  """
+  oracle: String
+  block_number: Int!
+  observed_at: String
+  captured_at: String
+
+  """
+  How many feeds this block carries -- \`feeds.length\`, store-capped. Never 0: with no captured feeds the whole block is null instead.
+  """
+  fed_count: Int!
+
+  """
+  The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price.
+  """
+  feeds: [TaoUsdOracleFeed!]!
+}
+
+"""One TaoUsdPriceFed reading, pinned to the block it landed at."""
+type TaoUsdOracleFeed {
+  block_number: Int!
+
+  """
+  The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price.
+  """
+  usd_per_tao: Float
+  observed_at: String
 }
 
 """One TAO/USD reading."""
@@ -4060,6 +4480,11 @@ One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{ne
 type Neuron {
   schema_version: Int!
   netuid: Int!
+
+  """
+  The mechanism (sub-subnet) this card is scoped to, echoed from the request's \`mechid=\`. Absent when the request did not scope a mechanism (#13162).
+  """
+  mechid: Int
   captured_at: String
   block_number: Int
 
@@ -4092,6 +4517,11 @@ type NeuronHistoryPoint {
   captured_at: String
   block_number: Int
   uid: Int!
+
+  """
+  The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via \`mechid=\`; every stored row today is mechanism 0 (#13162).
+  """
+  mechid: Int
   hotkey: String
   coldkey: String
   active: Boolean!
@@ -6220,6 +6650,137 @@ type ValidatorHistoryPoint {
   dividend_efficiency: Float
 }
 
+"""
+Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets.
+"""
+type ValidatorBaskets {
+  schema_version: Int!
+  capture: BasketCapture
+
+  """
+  How many funds the served capture holds -- \`baskets.length\`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture.
+  """
+  fund_count: Int
+
+  """The capture's funds, largest spot NAV first."""
+  baskets: [ValidatorBasket!]!
+}
+
+"""
+The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp.
+"""
+type BasketCapture {
+  """
+  The finalized block height the capture observed, as a u64 decimal string.
+  """
+  finalized_block: String!
+  finalized_block_hash: String!
+
+  """
+  The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder).
+  """
+  runtime_spec_version: Int!
+  decoder_version: String!
+
+  """
+  When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time.
+  """
+  accepted_at: String
+}
+
+"""
+One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state.
+"""
+type ValidatorBasket {
+  """
+  The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded.
+  """
+  hotkey: String
+
+  """The hotkey this fund belongs to, as the raw 0x account-id hex."""
+  account_id: String!
+  shares_atomic: String
+
+  """Spot net asset value in rao, as a u64 decimal string."""
+  spot_nav_rao: String
+  realizable_nav_rao: String
+  deposited_rao: String
+  redeemed_rao: String
+
+  """
+  Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented.
+  """
+  display_price_q64_bits: String
+  stake_price_q64_bits: String
+
+  """
+  The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return.
+  """
+  staker_twr_q64_bits: String
+  pending_entitlement_q64_bits: String
+
+  """
+  Whether the fund's pricing baseline is still provisional (no first_block stamped yet).
+  """
+  provisional: Boolean
+
+  """
+  The baseline's first block as a u64 decimal string; null while the baseline is provisional.
+  """
+  first_block: String
+  holdings_count: Int
+  targets_count: Int
+}
+
+"""
+The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits.
+"""
+type GammaDeposits {
+  schema_version: Int!
+
+  """
+  How many deposits this answer carries -- \`deposits.length\`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published.
+  """
+  deposit_count: Int
+  captured_at: String
+
+  """The chain's Gamma deposits, largest balance first."""
+  deposits: [GammaDeposit!]!
+}
+
+"""
+One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp.
+"""
+type GammaDeposit {
+  """
+  The ss58 address the deposit is keyed by on chain -- its owning account.
+  """
+  coldkey: String!
+
+  """The hotkey this deposit is bound to."""
+  hotkey: String!
+  netuid: Int!
+
+  """The deposit's Gamma balance -- u64 atomic units as a decimal string."""
+  balance: String!
+
+  """
+  The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set.
+  """
+  spender: String
+
+  """
+  The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling).
+  """
+  daily_cap: String
+
+  """
+  The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis.
+  """
+  closed_at: Int
+  captured_at: String
+}
+
 type AccountList {
   """
   Legacy total_stake and stake_dominance sorts remain accepted and use stable hotkey order while capital is unavailable. Other sorts retain their independent metrics.
@@ -6797,6 +7358,11 @@ type AccountIdentity {
   discord: String
   description: String
   additional: String
+
+  """
+  Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in \`github\`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated.
+  """
+  storage_version: Int
   captured_at: String
 }
 
@@ -6822,6 +7388,11 @@ type AccountIdentityHistoryEntry {
   discord: String
   description: String
   additional: String
+
+  """
+  Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated.
+  """
+  storage_version: Int
 
   """
   Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. Null on a row with no computed hash.
@@ -8908,7 +9479,7 @@ type AccountBalance {
 }
 
 """
-Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.
 """
 type AccountRootClaim {
   schema_version: Int!
@@ -8921,6 +9492,7 @@ type AccountRootClaim {
   Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here.
   """
   compatibility: RootClaimCompatibility!
+  basket_claims: RootClaimBasketClaims
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -8967,6 +9539,308 @@ type RootClaimCompatibility {
 }
 
 """
+The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket.
+"""
+type RootClaimBasketClaims {
+  """
+  This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface).
+  """
+  claims: [AccountEvent!]!
+
+  """
+  \`claims.length\` -- the returned page, capped at 100, not a lifetime total.
+  """
+  claim_count: Int!
+
+  """
+  The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read.
+  """
+  covered_since: String
+}
+
+"""
+One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks.
+"""
+type AccountLocks {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many locks this account holds here -- \`locks.length\`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published.
+  """
+  lock_count: Int
+  captured_at: String
+
+  """The account's locks, ordered by (netuid, hotkey, kind)."""
+  locks: [StakeLock!]!
+}
+
+"""
+One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp.
+"""
+type StakeLock {
+  """The hotkey this lock binds."""
+  hotkey: String!
+  netuid: Int!
+
+  """
+  The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends.
+  """
+  kind: String!
+
+  """The locked quantity -- u64 atomic units as a decimal string."""
+  amount: String!
+
+  """
+  The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis.
+  """
+  maturity_block: Int
+  captured_at: String
+}
+
+"""
+Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps.
+"""
+type PendingColdkeySwaps {
+  schema_version: Int!
+
+  """
+  How many in-flight announcements the capture holds -- \`swaps.length\`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published.
+  """
+  swap_count: Int
+  captured_at: String
+
+  """
+  The chain-wide delays at the newest capture, null until the policy capture lands.
+  """
+  policy: ColdkeySwapPolicy
+
+  """
+  The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account).
+  """
+  swaps: [ColdkeySwapAnnouncement!]!
+}
+
+"""
+The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced.
+"""
+type ColdkeySwapPolicy {
+  """
+  SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it.
+  """
+  announcement_delay: Int
+
+  """
+  SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it.
+  """
+  reannouncement_delay: Int
+  captured_at: String
+}
+
+"""
+One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp.
+"""
+type ColdkeySwapAnnouncement {
+  """The announcing account (ss58)."""
+  coldkey: String!
+
+  """
+  The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation.
+  """
+  new_coldkey: String
+
+  """
+  The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried.
+  """
+  announcement_hash: String
+
+  """
+  The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis.
+  """
+  announced_at: Int
+
+  """
+  The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried.
+  """
+  execute_at: Int
+
+  """
+  The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record.
+  """
+  disputed: Boolean
+
+  """The dispute block itself when one is recorded, else null."""
+  disputed_at: Int
+
+  """
+  The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot.
+  """
+  policy_snapshot: Boolean
+
+  """
+  The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried.
+  """
+  status: String
+  captured_at: String
+}
+
+"""
+One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap.
+"""
+type AccountColdkeySwap {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run.
+  """
+  announcement: ColdkeySwapAnnouncement
+  lineage: AccountKeyLineage!
+  captured_at: String
+}
+
+"""
+The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage.
+"""
+type AccountKeyLineage {
+  """
+  The global coldkey-swap lineage, null when the capture holds none for this account.
+  """
+  coldkey: ColdkeyLineage
+
+  """The per-subnet hotkey lineage rows, ordered by netuid."""
+  hotkey: [HotkeyLineageEntry!]!
+
+  """
+  How many per-subnet hotkey lineage rows the capture holds -- \`hotkey.length\`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published.
+  """
+  hotkey_count: Int
+}
+
+"""
+The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history.
+"""
+type ColdkeyLineage {
+  """
+  SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage.
+  """
+  successor: String
+
+  """
+  SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into).
+  """
+  root: String
+  captured_at: String
+}
+
+"""
+One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet.
+"""
+type HotkeyLineageEntry {
+  netuid: Int!
+
+  """
+  SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there.
+  """
+  successor: String
+
+  """
+  SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there.
+  """
+  root: String
+  captured_at: String
+}
+
+"""
+One account's Proxy-pallet delegation state (#13166). Empty with a null proxy_count until the engine's proxy capture lands. Mirrors GET /api/v1/accounts/{ss58}/proxies.
+"""
+type AccountProxies {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many proxy definitions this account holds -- \`proxies.length\`. NULL when the state holds no rows for this account (store unbound, or the proxy capture has not run): a zero count is never a measurement and is not published.
+  """
+  proxy_count: Int
+
+  """
+  The account-level reserve held against its proxy vector (u64 atomic units as a decimal string, stored once per delegating account). Null when the capture did not carry it.
+  """
+  deposit: String
+  captured_at: String
+
+  """
+  The account's proxy definitions, ordered by (delegate, proxy_type, delay).
+  """
+  proxies: [AccountProxy!]!
+}
+
+"""
+One proxy definition of an account: the delegate it runs to, its variant, its announcement delay and the capture stamp.
+"""
+type AccountProxy {
+  """The account the delegation runs to (ss58)."""
+  delegate: String!
+
+  """
+  The proxy variant, spelled as the chain's enum spells it (Any / Owner / Staking / Registration ... GammaSpend) -- not pinned to an enum the runtime still extends (23 variants on v490).
+  """
+  proxy_type: String!
+
+  """
+  The announcement delay in blocks before this proxy's calls execute. 0 is the chain's own value for an undelayed proxy, read from storage -- not a fabricated default.
+  """
+  delay: Int!
+  captured_at: String
+}
+
+"""
+One account's Multisig-pallet membership (#13166). Empty with a null multisig_count until the engine's multisig capture lands. Mirrors GET /api/v1/accounts/{ss58}/multisigs.
+"""
+type AccountMultisigs {
+  schema_version: Int!
+  ss58: String!
+
+  """
+  How many multisigs this account belongs to here -- \`multisigs.length\`. NULL when the state holds no rows for this account (store unbound, or the multisig capture has not run): a zero count is never a measurement and is not published.
+  """
+  multisig_count: Int
+  captured_at: String
+
+  """
+  The multisigs the account belongs to -- as the multisig account itself or as a signatory -- ordered by multisig address, store-capped.
+  """
+  multisigs: [AccountMultisig!]!
+}
+
+"""
+One multisig an account belongs to: the multisig account, its resolved composition and the capture stamp.
+"""
+type AccountMultisig {
+  """The multisig account itself (ss58)."""
+  multisig: String!
+
+  """
+  How many signatory approvals the multisig requires. Null when the capture has not resolved the composition.
+  """
+  threshold: Int
+
+  """
+  The signatory set behind the multisig account, as resolved from the call decode. Null when the capture has not resolved it -- never an empty list, which would claim a measured signatory-less multisig.
+  """
+  signatories: [String!]
+
+  """\`signatories.length\`, null exactly when signatories is null."""
+  signatory_count: Int
+
+  """
+  Which side of the membership matched: the queried account IS this multisig account, or it signs for it.
+  """
+  role: String!
+  captured_at: String
+}
+
+"""
 Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children.
 """
 type AccountChildren {
@@ -8974,6 +9848,7 @@ type AccountChildren {
   account: String!
   subnets: [AccountChildSubnet!]
   queried_at: String
+  child_key_detail: ChildKeyDetail
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -8999,6 +9874,94 @@ type AccountChildEntry {
 }
 
 """
+The stored child-key detail beside the live children graph (#13166): takes, the pending queue, threshold bookkeeping and capture history, from the child-keys store. Every count is NULL over an empty list until the engine's child-key capture lands.
+"""
+type ChildKeyDetail {
+  """The account's own per-subnet take rows, ordered by netuid."""
+  takes: [ChildkeyTakeEntry!]!
+  take_count: Int
+
+  """The account's scheduled child relations, ordered by (netuid, child)."""
+  pending: [PendingChildKeyEntry!]!
+  pending_count: Int
+
+  """The account's threshold bookkeeping, null when the capture holds none."""
+  threshold: ChildkeyThreshold
+
+  """
+  The account's parent-keyed relation history, newest capture first, store-capped.
+  """
+  history: [ChildKeysHistoryEntry!]!
+  history_count: Int
+}
+
+"""One subnet's stored child-key take for the account."""
+type ChildkeyTakeEntry {
+  netuid: Int!
+
+  """
+  The take this hotkey charges its parents on the subnet, in PerU16 parts of 65535 (SubtensorModule.ChildkeyTake).
+  """
+  take: Int!
+
+  """The same take pre-divided to a 0..1 float."""
+  take_fraction: Float!
+  captured_at: String
+}
+
+"""
+One scheduled-but-unapplied child relation of the account (SubtensorModule.PendingChildKeys).
+"""
+type PendingChildKeyEntry {
+  netuid: Int!
+  child: String!
+
+  """
+  The scheduled stake-weight proportion -- the raw stringified u64 (0..u64::MAX represents 0..100%).
+  """
+  proportion: String!
+
+  """The same value pre-divided to a 0..1 float."""
+  proportion_fraction: Float!
+
+  """
+  The block the pending relations apply at (SubtensorModule.PendingChildKeys' cool-down). Null when the capture did not carry it.
+  """
+  cool_down_block: Int
+  captured_at: String
+}
+
+"""The account's stored child-key threshold bookkeeping."""
+type ChildkeyThreshold {
+  """
+  Whether the account sits in SubtensorModule.ChildkeyThresholdChecks (stake changed; re-check queued for on_idle). Null when the capture did not carry that map's answer.
+  """
+  pending_check: Boolean
+
+  """
+  Whether the account sits in SubtensorModule.ChildkeyThresholdSuspended (total stake below StakeThreshold; its child relations stay stored but are inert). Null when the capture did not carry that map's answer -- never a fabricated false.
+  """
+  suspended: Boolean
+  captured_at: String
+}
+
+"""
+One captured (parent, netuid, child, proportion) relation observation from the ChildKeys history.
+"""
+type ChildKeysHistoryEntry {
+  netuid: Int!
+  parent: String!
+  child: String!
+
+  """The raw stringified u64 proportion at the capture."""
+  proportion: String!
+
+  """The same value pre-divided to a 0..1 float."""
+  proportion_fraction: Float!
+  captured_at: String
+}
+
+"""
 Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents.
 """
 type AccountParents {
@@ -9006,6 +9969,7 @@ type AccountParents {
   account: String!
   subnets: [AccountParentSubnet!]
   queried_at: String
+  child_key_detail: ParentKeyDetail
 
   """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -9028,6 +9992,21 @@ type AccountParentEntry {
   parent: String
   proportion: String!
   proportion_fraction: Float!
+}
+
+"""
+The stored child-key detail beside the live parents graph (#13166): the account's takes and its child-keyed capture history. The pending queue and threshold bookkeeping are parent-keyed state and live on the children surface.
+"""
+type ParentKeyDetail {
+  """The account's own per-subnet take rows, ordered by netuid."""
+  takes: [ChildkeyTakeEntry!]!
+  take_count: Int
+
+  """
+  The account's child-keyed relation history, newest capture first, store-capped.
+  """
+  history: [ChildKeysHistoryEntry!]!
+  history_count: Int
 }
 
 """
@@ -9094,7 +10073,7 @@ type NetworkRandomness {
 }
 
 """
-Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.
+EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- \`source\` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.
 """
 type EvmAddressMapping {
   schema_version: Int!
@@ -9103,9 +10082,46 @@ type EvmAddressMapping {
   queried_at: String
 
   """
+  Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands.
+  """
+  source: String!
+
+  """
+  How many stored associations this answer carries -- \`associations.length\`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published.
+  """
+  association_count: Int
+
+  """
+  The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands.
+  """
+  associations: [EvmAssociation!]!
+
+  """
   Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
   """
   field_sources: JSON!
+}
+
+"""
+One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp.
+"""
+type EvmAssociation {
+  """
+  The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it.
+  """
+  ss58: String
+
+  """The subnet the association names."""
+  netuid: Int!
+
+  """The UID the EVM key is associated to."""
+  uid: Int!
+
+  """
+  The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis.
+  """
+  associated_at: Int
+  captured_at: String
 }
 
 type Subscription {

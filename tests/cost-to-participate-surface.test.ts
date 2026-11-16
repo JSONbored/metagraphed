@@ -268,3 +268,25 @@ describe("the GraphQL field", () => {
     assert.equal((card.declared_compute as Row).validator, null);
   });
 });
+
+describe("cost-to-participate structured failure", () => {
+  test("a throwing entry-cost source fails structured, never a bare 500", async () => {
+    // #13159 (2026-11-16): a live-RPC throw escaped as a runtime 500 with no
+    // envelope. The handler now classifies it instead.
+    const res = await handleSubnetCostToParticipate(
+      req(PATH),
+      mockEnv(),
+      NETUID,
+      {
+        loadEntryCost: async () => {
+          throw new Error("rpc exploded");
+        },
+      },
+    );
+    assert.equal(res.status, 503);
+    assert.equal(
+      ((await jsonBody(res)).error as Row)?.code,
+      "data_tier_unavailable",
+    );
+  });
+});

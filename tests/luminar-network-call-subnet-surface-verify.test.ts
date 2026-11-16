@@ -2,7 +2,7 @@
 // MCP tool (metagraphed#7099, MCP execute Phase 1 follow-up #7014/#7215).
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN87's real registry surfaces
-// (registry/subnets/luminar-network.json) to the tool's contract, so a future
+// (registry/subnets/provenonce.json) to the tool's contract, so a future
 // edit that regresses their callability is caught here.
 //
 // Both live-verified 2026-07-21:
@@ -32,7 +32,7 @@ const NETUID = 87;
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/luminar-network.json", import.meta.url),
+      new URL("../registry/subnets/provenonce.json", import.meta.url),
     ),
     "utf8",
   ),

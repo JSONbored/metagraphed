@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "netuid": 108,
+  "name": "ChipForge",
+  "slug": "sn-108",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet -- api.talkhead.ai/openapi.json and /docs both 404.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "social": {
+    "x": "https://x.com/talkheadai"
+  },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-health",
+      "kind": "subnet-api",
+      "name": "TalkHead API health",
+      "notes": "Public no-auth GET /health on api.talkhead.ai returning application liveness (observed plain-text response: Healthy). Served on the TalkHead subnet API host documented in the talkhead-subnet repository README for miner and validator submission flows. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-subnet",
+        "https://www.talkhead.ai/"
+      ],
+      "url": "https://api.talkhead.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "TalkHead minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official talkheadai/talkhead-executor repository as min_compute.yml. Documents baseline CPU, GPU (10GB+ VRAM, CUDA 8.6+), memory, storage, OS, and bandwidth floors for SN108 TalkHead talking-head model evaluation. Linked from the talkhead-subnet README as the official executor/scoring repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-executor/blob/main/min_compute.yml",
+        "https://github.com/talkheadai/talkhead-subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-wandb",
+      "kind": "dashboard",
+      "name": "TalkHead validator W&B dashboard",
+      "notes": "Public Weights & Biases project for SN108 TalkHead validator runs (entity talkhead-ai, project talkhead-subnet; 650+ logged runs). Declared as the subnet's default W&B target in the official talkheadai/talkhead-subnet config.py (WANDB_ENTITY_DEFAULT = 'talkhead-ai', WANDB_PROJECT_NAME_DEFAULT = 'talkhead-subnet', netuid = 108). Publicly readable, no auth.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-subnet/blob/main/config.py"
+      ],
+      "url": "https://wandb.ai/talkhead-ai/talkhead-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-108-talkhead-website",
+      "kind": "website",
+      "name": "TalkHead website",
+      "notes": "Official SN108 TalkHead website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "source_urls": ["https://github.com/talkheadai/talkhead-subnet"],
+      "url": "https://www.talkhead.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-108-talkhead-source-repo",
+      "kind": "source-repo",
+      "name": "TalkHead source repository",
+      "notes": "Official SN108 TalkHead source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "source_urls": ["https://github.com/talkheadai/talkhead-subnet"],
+      "url": "https://github.com/talkheadai/talkhead-subnet"
+    }
+  ],
+  "source_repo": "https://github.com/TatsuProject/ChipForge_SN108",
+  "website_url": "https://www.chipforge.io/",
+  "contact": "contact@talkhead.ai",
+  "notes": "First maintainer review for SN108. Added website + source-repo surfaces (previously only cited via top-level fields) and fixed 3 missing probe blocks on the existing surfaces. No OpenAPI/Swagger schema or additional API routes found."
+}

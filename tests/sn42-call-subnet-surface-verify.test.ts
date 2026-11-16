@@ -2,7 +2,7 @@
 // tool (metagraphed#7056, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN42's *real* registry surface config
-// (registry/subnets/gopher.json) to the tool's contract, so a future edit that
+// (registry/subnets/cadmind.json) to the tool's contract, so a future edit that
 // regresses its auth gating is caught here.
 //
 // The surface is the credentialed Gopher Data API live search endpoint
@@ -25,7 +25,7 @@ const NETUID = 42;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/gopher.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/cadmind.json", import.meta.url)),
     "utf8",
   ),
 );

@@ -43,6 +43,10 @@ import {
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { readStore } from "./read-store.ts";
+import {
+  selectedNeuronViewStore,
+  ACCOUNT_REGISTRATION_COLUMNS,
+} from "./neuron-view-store.ts";
 import type { Neurons } from "../generated/db/types.ts";
 import { ArtifactReadTimeoutError } from "./artifact-read-budget.ts";
 
@@ -59,11 +63,11 @@ import { ArtifactReadTimeoutError } from "./artifact-read-budget.ts";
  * than a silently-missing field in the card. */
 export type AccountRegistrationRow = Pick<
   Neurons,
-  "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
+  (typeof ACCOUNT_REGISTRATION_COLUMNS)[number]
 >;
 
 export const ACCOUNT_REGISTRATIONS_SQL =
-  "SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons " +
+  `SELECT ${ACCOUNT_REGISTRATION_COLUMNS.join(", ")} FROM neurons ` +
   "WHERE hotkey = ? ORDER BY netuid";
 
 /**
@@ -78,10 +82,17 @@ export async function loadAccountRegistrationsFromStore(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<AccountRegistrationRow[] | null> {
-  const db = readStore(env, ["neurons"]);
-  if (!db?.query) return [];
+  const native = selectedNeuronViewStore(env);
+  const db = native ? null : readStore(env, ["neurons"]);
+  if (!native && !db?.query) return [];
   try {
-    return await db.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
+    if (native)
+      return (await native.rows({
+        columns: ACCOUNT_REGISTRATION_COLUMNS,
+        hotkey: ss58,
+        order: [{ column: "netuid" }],
+      })) as AccountRegistrationRow[];
+    return await db!.query<AccountRegistrationRow>(ACCOUNT_REGISTRATIONS_SQL, [
       ss58,
     ]);
   } catch {

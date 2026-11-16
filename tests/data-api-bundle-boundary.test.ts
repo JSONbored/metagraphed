@@ -86,8 +86,57 @@ describe("data-api's bundle boundary", () => {
   });
 
   for (const forbidden of [
+    "src/pg-rpc-usage.ts",
+    "src/pg-rpc-usage-reader.ts",
+    "src/pg-producer-store.ts",
+    "src/pg-raw-capture.ts",
+    "src/pg-state-export.ts",
+    "scripts/generate-export-projection.ts",
+    "src/semantic-index-pg.ts",
+    "src/sqlite-document-decoder.ts",
+    "src/neuron-document-preparation.ts",
+    "src/pg-neuron-snapshot.ts",
+    "src/pg-neuron-capture.ts",
+    "src/pg-neuron-live.ts",
+    "src/pg-neuron-summaries.ts",
+    "src/pg-neuron-view.ts",
+    "src/pg-validator-enrichment.ts",
+    "src/pg-subnet-enrichment.ts",
+    "src/pg-validator-history.ts",
+    "src/sqlite-metric-value.ts",
+    "src/pg-subnet-status-hub.ts",
+    "src/pg-rate-limits.ts",
+    "src/pg-daily-quota.ts",
+    "src/account-block-pg.ts",
+    "src/account-identity-pg.ts",
+    "src/account-usage-pg.ts",
+    "src/account-usage-read-pg.ts",
+    "src/native-account-state.ts",
+    "src/native-alerter.ts",
+    "src/native-alert-outbound.ts",
+    "src/native-buffered-response.ts",
+    "src/native-request.ts",
+    "src/pg-alerter-owner.ts",
+    "src/native-auth-controls.ts",
+    "src/pg-neuron-history.ts",
+    "src/pg-neuron-daily-view.ts",
+    "src/pg-neuron-metrics.ts",
+    "src/pg-neuron-aggregates.ts",
+    "src/archive-catalog-pg.ts",
+    "src/archive-content-fs.ts",
     "src/mcp-server.ts",
     "src/projection-write-store.ts",
+    "src/root-basket-pg.ts",
+    "src/pg-pool.ts",
+    "src/pg-store-runtime.ts",
+    "src/native-mcp-sessions.ts",
+    "src/pg-mcp-session-store.ts",
+    "src/native-ai-inference.ts",
+    "schemas-src/native-inference-http.ts",
+    "src/native-chain-firehose.ts",
+    "src/native-chain-head.ts",
+    "src/native-chain-websocket.ts",
+    "src/pg-chain-firehose-store.ts",
     "src/native-store-export.ts",
     "src/raw-capture-d1.ts",
     "src/raw-capture-sync.ts",
@@ -144,11 +193,124 @@ describe("data-api's bundle boundary", () => {
     // dependency; the named boundaries remain mandatory above.
     // The native neuron receipt adds 5,165 source bytes to that measured
     // graph (4,824,337 total), without adding any forbidden module.
+    // Explicit retained-store selection adds 2,647 source bytes (4,826,984
+    // total). The PostgreSQL implementation remains outside this Worker graph.
+    // Explicit Root basket selection measures 4,830,140 source bytes versus
+    // 4,829,554 on main (f6f4b681), with 571 minified / 182 gzip bytes added.
+    // Its PostgreSQL adapter and process pool remain outside this Worker.
+    // The combined subnet-status, archive-selection and auth-control helpers
+    // measure 4,837,225 source bytes on d69e34e2 versus 4,832,833 on 8a8ce69b:
+    // +4,392 source / 950 minified / 261 gzip bytes. All forbidden native
+    // implementations remain absent. Keep only 4,775 source bytes of margin.
+    // Daily history plus native metric selection measures 4,842,603 source
+    // bytes: metrics adds 2,610 source / 972 minified / 181 gzip bytes over
+    // the qualified daily-history head 4cdeb932. Native decoders and PostgreSQL
+    // adapters remain forbidden; keep 2,397 source bytes of margin.
+    // Complete account-family selection adds 4,932 source / 1,398 minified /
+    // 412 gzip bytes over dbc5eaee, for 4,847,535 source bytes total. Only its
+    // selectors enter the Worker; all PostgreSQL implementations stay absent.
+    // Keep 465 source bytes of margin for this independently measured change.
+    // Native aggregate selection adds 751 source bytes over 4585f5f9, to
+    // 4,848,286. The minified size is unchanged and gzip is 2 bytes smaller;
+    // the native implementation remains absent. Keep 1,714 source bytes spare.
+    // Native capture selection adds 1,803 source / 396 minified / 186 gzip
+    // bytes over f5ce2286, for 4,850,089 source bytes. Its PostgreSQL writer
+    // and SQLite codec remain absent. Keep 1,911 source bytes of margin.
+    // Native live selectors add 1,169 source / 371 minified / 96 gzip bytes
+    // on the aggregate-only base. Their codec and adapters stay outside the
+    // Worker graph; preserve the existing source cap after composition.
+    // Native summary selection adds 1,807 source / 512 minified / 129 gzip
+    // bytes over af34dc12, totaling 4,853,065 source bytes. Its PostgreSQL
+    // adapter and pinned codec remain absent; keep 1,935 bytes of margin.
+    // Native canonical-view selection adds 4,984 source / 2,271 minified /
+    // 515 gzip bytes over 728e0f12, for 4,858,423 source bytes. The native
+    // PostgreSQL adapter and SQLite decoder remain outside this graph.
+    // Native producer selection adds 5,132 source / 1,599 minified / 318 gzip
+    // bytes over 4de15dcf, totaling 4,863,555 source bytes. Its PostgreSQL
+    // factory and all existing forbidden implementations stay out of this
+    // graph; retain 1,445 source bytes of margin for this measured change.
+    // Initial native relational qualification added 3,760 source / 1,303 minified /
+    // 526 gzip bytes over decb73ba, for 4,867,315 source bytes. The native
+    // implementations remain excluded; only the bounded SQL selector joins.
+    // Native daily-view dispatch adds 7,542 source / 2,689 minified / 650 gzip
+    // bytes over 704ed13a, for 4,875,014 source bytes. PostgreSQL daily view
+    // implementation and the SQLite codec remain excluded from this graph.
+    // Native enrichment dispatch adds 8,668 source / 2,944 minified / 717 gzip
+    // bytes over a1bccf61, for 4,884,654 source bytes. The PostgreSQL
+    // enrichment implementation remains outside this graph.
+    // Native subnet economics dispatch adds 6,428 source / 2,209 minified /
+    // 479 gzip bytes over 1f53f990, for 4,891,082 source bytes. The native
+    // joined reader and SQLite decoder remain excluded from this graph.
+    // Native validator history selection adds 2,183 source / 825 minified /
+    // 151 gzip bytes over d2db7911, for 4,893,265 source bytes. The paged
+    // PostgreSQL reader and its scalar codec remain excluded from this graph.
+    // Native table-export selection adds 953 source / 386 minified / 63 gzip
+    // bytes over 347bc45a, for 4,894,218 source bytes. The PostgreSQL exporter
+    // and pinned decoder remain outside the Worker graph.
+    // The mechanism (mechid) dimension (#13162) adds 5,628 source bytes over
+    // a1263f71, for 4,899,846: the shared scope stamp (mechanism-scope.ts),
+    // the subnet-mechanisms builders and store selector, and the grown neuron
+    // schema prose. The PostgreSQL mechanisms store (pg-subnet-mechanisms.ts)
+    // and every previously forbidden native implementation remain outside this
+    // graph; keep 2,154 source bytes of margin for this measured change.
+    // The stake-v2 serving slices (#13163) add 4,551 source bytes over
+    // 59bff494, for 4,904,397: the subnet-alpha-dividends and account-locks
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-alpha-dividends.ts, pg-stake-locks.ts)
+    // stay outside the graph; keep 2,603 source bytes of margin.
+    // The basket serving slice (#13163) adds 6,091 source bytes over
+    // 2c2c18ca, for 4,910,488: the validator-baskets builders and loaders
+    // plus their route/tool prose. root-basket-pg.ts stays forbidden above,
+    // and the capture-write module (node:crypto) stays out -- the fund cap
+    // is restated as a pinned literal for exactly that reason. Keep 2,512
+    // source bytes of margin.
+    // The root-claim basket-claim era (#13163) adds 1,767 source bytes over
+    // 28a9c277, for 4,912,255: the basket_claims block in
+    // account-root-claim.ts, the kind-filtered hot-tier read, and the grown
+    // route/tool prose. Nothing new enters the graph -- both modules were
+    // already in it; keep 2,745 source bytes of margin.
+    // The Gamma serving slice (#13164) adds 10,707 source bytes over
+    // 4707fa14, for 4,922,962: the subnet-gamma / gamma-deposits /
+    // subnet-services builders and store selectors plus their route/tool
+    // prose. The PostgreSQL stores (pg-subnet-gamma.ts,
+    // pg-gamma-deposits.ts, pg-subnet-services.ts) stay outside the graph;
+    // keep 2,538 source bytes of margin.
+    // The on-chain TAO/USD oracle (#13164) adds 1,397 source bytes over
+    // e635a993, for 4,924,359: the tao-usd-oracle builder and store selector
+    // plus the grown tao-usd route/tool prose. pg-tao-usd-oracle.ts stays
+    // outside the graph; keep 2,641 source bytes of margin.
+    // The Swap/AlphaAssets serving slice (#13165) adds 4,689 source bytes
+    // over 803e22b7, for 4,929,048: the subnet-swap / subnet-alpha-assets
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-swap.ts, pg-subnet-alpha-assets.ts) stay
+    // outside the graph; keep 2,452 source bytes of margin.
+    // The LimitOrders serving slice (#13165) adds 2,999 source bytes over
+    // 85172bfa, for 4,932,047: the subnet-limit-orders builder and store
+    // selector plus their route/tool prose. pg-subnet-limit-orders.ts stays
+    // outside the graph; keep 2,453 source bytes of margin.
+    // The identity-v2 labelling slice (#13166) adds 1,501 source bytes over
+    // c5e4ecc9, for 4,934,674: the storage-version helper and its emission in
+    // the identity builders plus the grown identity schema prose. Nothing new
+    // enters the graph -- both identity modules were already in it; keep
+    // 2,526 source bytes of margin.
+    // The coldkey-swap serving slice (#13166) adds 5,677 source bytes over
+    // 8c9ad938, for 4,940,351: the coldkey-swaps builders and store selector
+    // plus their route/tool prose. The PostgreSQL store (pg-coldkey-swaps.ts)
+    // stays outside the graph; keep 2,649 source bytes of margin.
+    // The account-plane serving slice (#13166) adds 6,155 source bytes over
+    // 91bd43f1, for 4,946,506: the proxies/multisigs/child-key-detail
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-proxies.ts, pg-multisigs.ts, pg-child-keys.ts)
+    // stay outside the graph; keep 2,494 source bytes of margin.
+    // The #13040 interim slice adds 2,541 source bytes over 13a6dcd2a, for
+    // 4,949,047: the withAccountKeysSql refusal seam and its contract prose,
+    // and account-kind scoping on the four cross-kind reads (#11573). Nothing
+    // new enters the graph; keep 2,553 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_826_000,
+      firstParty < 4_951_600,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
