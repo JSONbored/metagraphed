@@ -47,3 +47,15 @@ export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
     "/api/v1/validators/{hotkey}/nominators",
   ].map((route): [string, string] => [route, "history_unavailable"]),
 ]);
+
+// Routes the fleet backfill is ACTIVELY converging: they oscillate between
+// recovered (200) and their declared degradation as backfill waves land --
+// observed on /api/v1/extrinsics across the 02:4xZ-05:1xZ publishes
+// (200, then 503, then 200 within single runs). Neither a plain-200 pin nor
+// a declared-503 row can hold an oscillating truth, so these pass on EITHER
+// exactly -- any other status or error code still fails the publish. Rows
+// here are removed when the route holds 200 across a full day of publishes,
+// and the whole file dies at cutover.
+export const CONVERGING_LIVE_ROUTES: ReadonlyMap<string, string> = new Map([
+  ["/api/v1/extrinsics", "history_unavailable"],
+]);

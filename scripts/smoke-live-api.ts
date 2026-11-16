@@ -7,7 +7,10 @@ import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { HISTORY_READ_TIMEOUT_MS } from "../src/history-readers.ts";
 import { X402_VERSION, x402RequiresPayment } from "../src/x402.ts";
 import { assertLiveApiStatus } from "./live-smoke-status.ts";
-import { DECLARED_LIVE_DEGRADATIONS } from "./lib/declared-live-degradations.ts";
+import {
+  CONVERGING_LIVE_ROUTES,
+  DECLARED_LIVE_DEGRADATIONS,
+} from "./lib/declared-live-degradations.ts";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --
 // every field below is read for assertion/reporting only, and an unexpected
@@ -110,9 +113,11 @@ async function runLiveSmoke(): Promise<void> {
         });
         continue;
       }
-      const declared = DECLARED_LIVE_DEGRADATIONS.get(check.route);
-      assertLiveApiStatus(result, declared);
-      if (declared) {
+      const converging = CONVERGING_LIVE_ROUTES.get(check.route);
+      const declared =
+        DECLARED_LIVE_DEGRADATIONS.get(check.route) ?? converging;
+      assertLiveApiStatus(result, declared, converging !== undefined);
+      if (declared && result.status !== 200) {
         // The declared 503 has no ok envelope, data payload, or cacheable
         // headers to assert -- the contract above already pinned its exact
         // status and error code. Record it visibly and move on.

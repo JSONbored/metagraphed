@@ -26,6 +26,9 @@ export function assertLiveApiStatus(
     body?: unknown;
   },
   declaredDegradation?: string,
+  /** A converging route passes on 200 OR exactly its declared 503 -- the
+   * backfill oscillation window's honest contract (see CONVERGING_LIVE_ROUTES). */
+  converging = false,
 ): void {
   const status =
     typeof result.status === "number" &&
@@ -37,13 +40,14 @@ export function assertLiveApiStatus(
   // A 200 never reads the diagnostic body: for an undeclared route it is the
   // pass, and for a declared one it is the stale-declaration failure -- both
   // decided on status alone.
-  if (declaredDegradation) {
+  if (converging && status === 200) return;
+  if (declaredDegradation && !converging) {
     assert.notEqual(
       status,
       200,
       `stale degradation declaration: the route answers 200 again -- remove it from DECLARED_LIVE_DEGRADATIONS`,
     );
-  } else if (status === 200) {
+  } else if (!declaredDegradation && status === 200) {
     return;
   }
   const code = ownDataProperty(ownDataProperty(result.body, "error"), "code");

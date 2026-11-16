@@ -200,3 +200,30 @@ test("a declared degradation is enforced exactly and expires loudly", () => {
     /expected HTTP 200 \(status=503; error_code=history_unavailable\)/,
   );
 });
+
+test("a converging route passes on 200 or exactly its declared 503, nothing else", () => {
+  const ok200 = { status: 200 };
+  const declared503 = {
+    status: 503,
+    body: { error: { code: "history_unavailable" } },
+  };
+  assert.doesNotThrow(() =>
+    assertLiveApiStatus(ok200, "history_unavailable", true),
+  );
+  assert.doesNotThrow(() =>
+    assertLiveApiStatus(declared503, "history_unavailable", true),
+  );
+  assert.throws(
+    () => assertLiveApiStatus({ status: 502 }, "history_unavailable", true),
+    /declared degraded \(history_unavailable\) but got status=502/,
+  );
+  assert.throws(
+    () =>
+      assertLiveApiStatus(
+        { status: 503, body: { error: { code: "data_tier_unavailable" } } },
+        "history_unavailable",
+        true,
+      ),
+    /the 503 carries error_code=data_tier_unavailable/,
+  );
+});
