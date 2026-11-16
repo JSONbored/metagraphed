@@ -205,6 +205,12 @@
       "kind": "openapi",
       "name": "ChronoLLM ChronoGPT backend OpenAPI",
       "notes": "Live-verified 2026-07-22: GET 200 application/json, OpenAPI 3.1 spec titled 'SN38 ChronoGPT Backend' (13 paths). First-party backend for SN38. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -223,6 +229,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM health",
       "notes": "Live-verified 2026-07-22: GET 200 application/json {\"status\":\"ok\"}. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -239,6 +251,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM current round",
       "notes": "Live-verified 2026-07-22: GET 200 application/json {\"current_round\":4,\"eval_round\":3}. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -255,6 +273,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM evaluation years",
       "notes": "Live-verified 2026-07-22: GET 200 application/json {\"years\":[2013..2024]}. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -271,6 +295,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM evaluation config",
       "notes": "Live-verified 2026-07-22: GET 200 application/json (max_parameters, max_model_bytes, max_eval_seconds, ...). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -287,6 +317,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM round submissions",
       "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /submissions/4 → 200 application/json (round + per-uid submissions). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -303,6 +339,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM submission by uid",
       "notes": "Path-param template (round_num, uid). Live-verified 2026-07-22: GET /submissions/4/113 → 200 application/json (single submission). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -319,6 +361,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM evaluation results",
       "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /eval/results/3 → 200 application/json (array). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -339,6 +387,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM quality questions",
       "notes": "Live-verified 2026-07-22: unauthenticated GET → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated (the schema declares no security). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -359,6 +413,12 @@
       "kind": "subnet-api",
       "name": "ChronoLLM leak-detection benchmark",
       "notes": "Path-param template (cutoff_year). Live-verified 2026-07-22: GET /benchmark/2020 → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {

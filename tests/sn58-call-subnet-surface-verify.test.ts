@@ -21,7 +21,8 @@
 //   sn-58-handshake58-validator-registry-api
 //     GET https://handshake58.com/api/validator/registry
 //     -> HTTP 200 {version, updated, providers, count, onlineCount, ...}
-//     (no probe block in the registry -- call_subnet_surface defaults to GET)
+//     (probe block added 2026-11-16 with the retirement gate backfill:
+//      a sweep-retired surface always carries probe.enabled:false)
 //   sn-58-handshake58-directory-providers
 //     GET https://handshake58.com/api/directory/providers
 //     -> HTTP 200 {success, providers, count} (~274 KB; exceeds
@@ -134,7 +135,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-subnet-api",
     url: "https://handshake58.com/api/agent",
-    hasProbe: true,
     schemaUrl: undefined,
     body: {
       name: "Handshake58",
@@ -151,9 +151,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-validator-registry-api",
     url: "https://handshake58.com/api/validator/registry",
-    // Issue listed method as "?" -- the registry has no probe block; the tool
-    // defaults to GET, which matches the live verified behavior.
-    hasProbe: false,
     schemaUrl: undefined,
     body: {
       version: "2.0",
@@ -174,7 +171,6 @@ const GET_SURFACES = [
   {
     id: "sn-58-handshake58-directory-providers",
     url: "https://handshake58.com/api/directory/providers",
-    hasProbe: true,
     schemaUrl: undefined,
     // Minimal fixture (live body is ~274 KB and over the tool cap).
     body: {
@@ -298,16 +294,14 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
       assert.equal(SURFACE.url, fixture.url);
       assert.equal(SURFACE.schema_url, fixture.schemaUrl);
       assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3a\]/);
-      if (fixture.hasProbe) {
-        // [2026-11-15 infra#873 p3a] declared route 404 on the renamed host:
-        // sweep-retired from the callable set.
-        assert.equal(SURFACE.probe?.enabled, false);
-        assert.equal(SURFACE.probe?.method, "GET");
-        assert.equal(SURFACE.probe?.expect, "json");
-      } else {
-        // Validator registry has no probe block; tool defaults to GET.
-        assert.equal(SURFACE.probe, undefined);
-      }
+      // [2026-11-15 infra#873 p3a] declared route 404 on the renamed host:
+      // sweep-retired from the callable set. Every retired surface carries a
+      // disabled probe block (the 2026-11-16 backfill closed the note-only
+      // gap recorded on infra#873); tests/retired-surface-probe-gate.test.ts
+      // refuses any future regression of this class.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.equal(SURFACE.probe?.method, "GET");
+      assert.equal(SURFACE.probe?.expect, "json");
     });
 
     test(`${fixture.id}: callSubnetSurface returns the real JSON body using GET`, async () => {
@@ -334,20 +328,12 @@ describe("SN58 Handshake58 call_subnet_surface verification (#7071)", () => {
       const result = await callToolWithSurface(SURFACE, () =>
         jsonResponse(fixture.body),
       );
-      if (fixture.hasProbe) {
-        // [2026-11-15 infra#873 p3a] sweep-retired with a probe block:
-        // refused before upstream.
-        assert.equal(result.isError, true);
-        assert.match(result.content[0].text as string, /probe\.enabled:false/);
-      } else {
-        // No probe block to disable, so the tool still proceeds -- the p3a
-        // note marks it for review, but note-only retirement does not gate
-        // the tool. Pinned as-is; the gating question is recorded on
-        // infra#873.
-        assert.equal(result.isError, false);
-        assert.equal(result.structuredContent.surface_id, fixture.id);
-        fixture.assertBody(result.structuredContent.body as Row);
-      }
+      // [2026-11-15 infra#873 p3a] sweep-retired: refused before upstream.
+      // Note-only retirement no longer exists -- the 2026-11-16 backfill gave
+      // every retired surface a disabled probe block, so the tool's one gate
+      // (probe.enabled:false) now covers the whole class.
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text as string, /probe\.enabled:false/);
     });
   }
 

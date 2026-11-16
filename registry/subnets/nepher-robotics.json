@@ -159,6 +159,12 @@
       "kind": "subnet-api",
       "name": "Nepher tournament API",
       "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review. Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "schema_status": "machine-readable",

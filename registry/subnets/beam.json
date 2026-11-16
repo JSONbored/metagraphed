@@ -919,7 +919,13 @@
         "state": "community-submitted",
         "submitted_by": "jsonbored"
       },
-      "notes": "Declared mutation (#11146 phase 3): POST /orchestrators/register on beamcore.b1m.ai, the mandatory registration step before an orchestrator can connect (the missing route named by the SN105 field report). Verified against the subnet's live OpenAPI schema 2026-08-14: POST-only, JSON body requiring `hotkey` with a wallet `signature` (the body IS the credential; the spec declares no per-operation security). Never probed -- the manifest schema forbids an enabled probe on a non-GET surface -- so it carries no probe-derived health; reach it through call_subnet_surface's schema-gated execution. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review."
+      "notes": "Declared mutation (#11146 phase 3): POST /orchestrators/register on beamcore.b1m.ai, the mandatory registration step before an orchestrator can connect (the missing route named by the SN105 field report). Verified against the subnet's live OpenAPI schema 2026-08-14: POST-only, JSON body requiring `hotkey` with a wallet `signature` (the body IS the credential; the spec declares no per-operation security). Never probed -- the manifest schema forbids an enabled probe on a non-GET surface -- so it carries no probe-derived health; reach it through call_subnet_surface's schema-gated execution. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     }
   ],
   "website_url": "https://b1m.ai"

@@ -405,6 +405,12 @@
       "kind": "sse",
       "name": "Chutes streaming chat completions",
       "notes": "POST /v1/chat/completions with `stream: true` yields line-streamed chunks. Endpoint requires an Authorization: Bearer token. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
