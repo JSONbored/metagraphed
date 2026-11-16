@@ -198,8 +198,9 @@ test("invalid options, clocks, identities, dimensions and byte budgets fail expl
 test("selected native capture and read paths never call Analytics Engine", async () => {
   const dataset = { writeDataPoint: vi.fn() };
   const record = vi.fn(() => false),
-    load = vi.fn(async () => null);
-  const native = { record, load };
+    load = vi.fn(async () => null),
+    latest = vi.fn(async () => null);
+  const native = { record, load, latest };
   expect(recordRpcUsageEvent(dataset, event, native)).toBe(false);
   expect(dataset.writeDataPoint).not.toHaveBeenCalled();
   record.mockImplementation(() => {
@@ -527,8 +528,8 @@ test("latest reads one bounded number: max(occurred_at) inside the lookback, eve
           async run() {
             return { changes: 0 };
           },
-          async first() {
-            return { latest: null };
+          async first<Row>() {
+            return { latest: null } as Row;
           },
           async query() {
             throw new Error("unused");
@@ -549,8 +550,8 @@ test("the store exposes latest through the seam", async () => {
         async run() {
           return { changes: 0 };
         },
-        async first() {
-          return { latest: "5" };
+        async first<Row>() {
+          return { latest: "5" } as Row;
         },
         async query() {
           throw new Error("unused");

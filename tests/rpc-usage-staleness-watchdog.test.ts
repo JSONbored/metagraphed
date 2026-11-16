@@ -291,6 +291,26 @@ describe("runRpcUsageStalenessWatchdog", () => {
     assert.equal(alerts[0]!.errorCode, "query_failed");
   });
 
+  test("a non-Error throw from the native read still reports a real Error", async () => {
+    // pg drivers and fetch layers can reject with strings or plain objects;
+    // the exception channel requires an Error, so the coercion arm matters.
+    const { alerts, recordException } = collector();
+    const result = await runRpcUsageStalenessWatchdog(
+      storeEnv(async () => {
+        throw "socket hang up";
+      }),
+      { now: () => NOW, recordException, query: refuseAeQuery },
+    );
+    assert.deepEqual(result, {
+      ok: false,
+      reason: "query_failed",
+      source: "postgresql",
+    });
+    assert.equal(alerts.length, 1);
+    assert.ok(alerts[0]!.error instanceof Error);
+    assert.equal(alerts[0]!.error.message, "rpc-usage staleness read failed");
+  });
+
   test("defaults to the real recorder and client when no seam is injected", async () => {
     // Unconfigured telemetry makes recordExceptionEvent a no-op returning
     // false; an unconfigured AE token makes the client decline. The tick
