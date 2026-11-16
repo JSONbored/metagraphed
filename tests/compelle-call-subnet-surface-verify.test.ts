@@ -58,16 +58,17 @@ function upstreamResponse() {
 }
 
 describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins its provider-confirmed retirement", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    // No-auth GET returning JSON. The surface declares no probe block, so the
-    // tool uses its default GET and the handler does not reject it -- the only
-    // callability regressions are an auth flip, a probe disable, or a HEAD flip
-    // (which would drop the body), all guarded below.
-    assert.notEqual(SURFACE.probe?.enabled, false);
-    assert.notEqual(SURFACE.probe?.method, "HEAD");
+    // [2026-11-16 infra#873 p3b] HTTP 410: provider-confirmed gone, retired
+    // from the callable set (#13207). The 2026-11-16 retirement-gate backfill
+    // gave it the disabled probe block the MCP tool refuses on;
+    // tests/retired-surface-probe-gate.test.ts holds the class invariant.
+    assert.match(SURFACE.notes, /provider-confirmed gone/);
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.url, "https://compelle.com/api/health");
     // Single fixed endpoint -- no machine-readable schema is expected.
     assert.equal(SURFACE.schema_url, undefined);
@@ -97,7 +98,7 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
     assert.equal(typeof (result.body as Row).miners, "number");
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("end-to-end through the MCP tool: the retired surface is refused by id", async () => {
     // operational-surfaces.json flattens each registry surface's `id` to a
     // top-level `surface_id`; build that catalog shape from the real surface.
     const catalog = {
@@ -139,10 +140,10 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal((result.structuredContent.body as Row).ok, true);
+      // Retired surface: refused before any upstream fetch (the DoH + upstream
+      // mocks above stay unreached for the tool call itself).
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text as string, /probe\.enabled:false/);
     } finally {
       globalThis.fetch = originalFetch;
     }

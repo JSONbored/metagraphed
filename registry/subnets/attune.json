@@ -280,6 +280,12 @@
       "kind": "subnet-api",
       "name": "Handshake58 validator miner registry API",
       "notes": "Public no-auth GET returning the lightweight validator miner registry (approved online miners with UID, categories, and model counts). Documented in the subnet's own OpenAPI (handshake58.com/openapi.json, path /api/validator/registry); same host as existing subnet-api surfaces. Distinct from the provider directory and skills endpoints. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "handshake58",
       "public_safe": true,
       "review": {
