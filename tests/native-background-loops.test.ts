@@ -34,7 +34,7 @@ function fixture() {
   };
   let nextOwner = 0;
   const owners = ["api", "data", "registry"] as const;
-  const options: NativeBackgroundOptions = {
+  const options: Required<Omit<NativeBackgroundOptions, "role">> = {
     cron: {
       async register(boundary) {
         calls.push(`register:${boundary}`);
@@ -467,4 +467,80 @@ test("reports synchronous and asynchronous turn failures with bounded retries", 
   assert.equal(errors.length, 4);
   assert(calls.includes("chain"));
   await loops.stop();
+});
+
+test("the serving role runs only its own loops and registers no cron", async () => {
+  const { options, calls } = fixture();
+  const loops = createNativeBackgroundLoops({
+    ...options,
+    role: "serving",
+    // The producer surfaces are not bound at all on this side.
+    cron: undefined,
+    queues: undefined,
+    owners: undefined,
+  });
+  await loops.start(7);
+  await vi.advanceTimersByTimeAsync(2000);
+  await loops.stop();
+  assert.ok(!calls.some((call) => call.startsWith("register")));
+  assert.ok(!calls.some((call) => call.startsWith("scheduled")));
+  assert.ok(
+    calls.some((call) => call.startsWith("mcp:")) ||
+      calls.includes("flush") ||
+      calls.length > 0,
+  );
+  assert.equal(loops.stats().loops, 4);
+});
+
+test("the producer role runs the cron/queue/prune side and skips serving loops", async () => {
+  const { options, calls } = fixture();
+  const loops = createNativeBackgroundLoops({
+    ...options,
+    role: "producer",
+    mcp: undefined,
+    chain: undefined,
+    auth: undefined,
+  });
+  await loops.start(7);
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("register")),
+    ["register:7"],
+  );
+  await loops.stop();
+  const names = loops.stats().loops;
+  // cron-plan + runners + queue workers + rpc-prune, none of the serving four.
+  assert.ok(names > 1);
+  const serving = createNativeBackgroundLoops({
+    ...options,
+    role: "serving",
+    cron: undefined,
+    queues: undefined,
+    owners: undefined,
+  });
+  assert.equal(
+    serving.stats().loops + names,
+    createNativeBackgroundLoops(options).stats().loops,
+  );
+});
+
+test("a role still refuses by name a dependency it owns", () => {
+  const { options } = fixture();
+  assert.throws(
+    () =>
+      createNativeBackgroundLoops({
+        ...options,
+        role: "serving",
+        mcp: undefined,
+      }),
+    /runDueAlarms is required/,
+  );
+  assert.throws(
+    () =>
+      createNativeBackgroundLoops({
+        ...options,
+        role: "producer",
+        cron: undefined,
+      }),
+    /register is required/,
+  );
 });
