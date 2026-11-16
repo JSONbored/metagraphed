@@ -2929,9 +2929,20 @@ export async function handleSubnetCostToParticipate(
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildSubnetCostToParticipate> | null) ??
     buildSubnetCostToParticipate([], Number(netuid));
-  data.entry_cost = entryCostFrom(
-    (await readEntryCost(env, Number(netuid))).data,
-  );
+  // The entry costs sit behind live RPC reads; a throw there escaped as a
+  // bare runtime 500 with no envelope (#13159, 2026-11-16). Fail structured.
+  try {
+    data.entry_cost = entryCostFrom(
+      (await readEntryCost(env, Number(netuid))).data,
+    );
+  } catch (error) {
+    console.error("cost-to-participate entry-cost read failed:", error);
+    return errorResponse(
+      "data_tier_unavailable",
+      "The entry-cost source did not answer; retry shortly.",
+      503,
+    );
+  }
   return envelopeResponse(
     request,
     {

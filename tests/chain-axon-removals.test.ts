@@ -595,3 +595,27 @@ describe("buildChainAxonRemovals — derived (#10805)", () => {
     assert.equal(unread.derivation, undefined);
   });
 });
+
+describe("structured store failure (#13159, 2026-11-16)", () => {
+  test("a throwing neuron_daily read fails as a classified 503, never a bare 500", async () => {
+    const { handleChainAxonRemovals } =
+      await import("../workers/request-handlers/analytics.ts");
+    const { mockEnv } = await import("./row-type.ts");
+    const env = mockEnv({
+      D1_STATE_TABLES: "neuron_daily,generated_artifacts",
+      D1_STATE: {
+        prepare() {
+          throw new Error("D1 is overloaded");
+        },
+        batch() {
+          throw new Error("D1 is overloaded");
+        },
+      },
+    });
+    const url = new URL("https://api.metagraph.sh/api/v1/chain/axon-removals");
+    const res = await handleChainAxonRemovals(new Request(url), env, url, {});
+    assert.equal(res.status, 503);
+    const body = (await res.json()) as Row;
+    assert.equal((body.error as Row)?.code, "data_tier_unavailable");
+  });
+});
