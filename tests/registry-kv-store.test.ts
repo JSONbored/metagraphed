@@ -10,8 +10,10 @@ import {
 import {
   publishRegistryKv,
   collectRegistryKv,
+  KV_BURST_GRACE_MS,
   readRegistryManifest,
   registryDigest,
+  RegistryStorageBudgetError,
   cloudflareRegistryKvStore,
 } from "../scripts/registry-kv-store.ts";
 
@@ -481,4 +483,48 @@ test("provider adapter uses native bulk APIs and checks partial-write failures",
     store.remove(["metagraph:latest"]),
     /Invalid registry collection keys/,
   );
+});
+
+test("a budget overflow fails typed, and the burst floor reclaims only mid-grace ballast", async () => {
+  const { store, metadata, put, pointer } = fixture();
+  // Generation A is selected and must survive every collection below.
+  await publishRegistryKv(store, input());
+  const selected = pointer().registry_manifest_sha256;
+  // Unreferenced ballast INSIDE the full grace window (3h old): invisible to
+  // the default collection, large enough to overflow the 700 MiB budget.
+  const ballast = registryObjectKey("b".repeat(64));
+  put(ballast, bytes({ ballast: true }));
+  metadata.set(ballast, {
+    size_bytes: 700 * 1024 * 1024,
+    uploaded_at: new Date(NOW - 3 * 3600_000).toISOString(),
+    utf8: true,
+  });
+  // A fresh intermediate manifest UNDER the burst floor (1h old) must survive
+  // burst collection exactly like the selected generation.
+  const youngBytes = bytes({ version: 1, artifacts: [hot] });
+  const young = registryManifestKey(registryDigest(youngBytes));
+  put(young, youngBytes);
+  metadata.set(young, {
+    size_bytes: 64,
+    uploaded_at: new Date(NOW - 1 * 3600_000).toISOString(),
+    utf8: true,
+  });
+  // Default grace: the ballast is too young to collect, so publication fails
+  // closed with the typed budget error.
+  assert.equal(await collectRegistryKv(store, NOW), 0);
+  await assert.rejects(
+    publishRegistryKv(store, { ...input(), pointer: { published_at: "x" } }),
+    RegistryStorageBudgetError,
+  );
+  // Burst floor: the mid-grace ballast goes; the selected generation and the
+  // under-floor manifest stay; publication then fits.
+  assert.equal(await collectRegistryKv(store, NOW, KV_BURST_GRACE_MS), 1);
+  assert.equal(await store.read(ballast), null);
+  assert.ok(await store.read(young));
+  assert.ok(await store.read(registryManifestKey(selected)));
+  const retried = await publishRegistryKv(store, {
+    ...input(),
+    pointer: { published_at: "after-burst" },
+  });
+  assert.equal(retried.activated, true);
 });
