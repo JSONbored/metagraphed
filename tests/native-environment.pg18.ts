@@ -9,8 +9,18 @@ import { createServer } from "node:http";
 import { WebSocket } from "ws";
 import { before, after, afterEach, describe, it } from "node:test";
 import { Client, Pool, type PoolConfig } from "pg";
-import { createNativeEnvironment } from "../src/native-environment.ts";
-import { NativeStartupCleanupError } from "../src/native-api-process.ts";
+import {
+  createNativeEnvironment,
+  requireComposedChain,
+} from "../src/native-environment.ts";
+import {
+  NativeStartupCleanupError,
+  verifyNativeSourceCapabilities,
+} from "../src/native-api-process.ts";
+import {
+  nativeSourceDefinitions,
+  type NativeProcessProfile,
+} from "../src/native-source-manifest.ts";
 import { createPgStoreRuntime } from "../src/pg-store-runtime.ts";
 import { createPgOAuthProvider } from "../src/pg-oauth-provider.ts";
 import { listenNativeApi } from "../src/native-http-server.ts";
@@ -143,12 +153,15 @@ describe(
         maxRequestBytes: 1048576,
         requestTimeoutMillis: 1000,
         headersTimeoutMillis: 1000,
-        upgrade: createNativeChainWebSocketTransport(application.chain, {
-          closeGraceMillis: 100,
-          onError(error) {
-            throw error;
+        upgrade: createNativeChainWebSocketTransport(
+          requireComposedChain(application.chain),
+          {
+            closeGraceMillis: 100,
+            onError(error) {
+              throw error;
+            },
           },
-        }),
+        ),
         onError(error) {
           throw error;
         },
@@ -369,7 +382,7 @@ describe(
       const admitted = application.background("api", async () => {
         await gate;
         assert.equal(
-          application.chain.state,
+          requireComposedChain(application.chain).state,
           "ready",
           "socket closure must not close an adapter used by admitted work",
         );
@@ -378,7 +391,7 @@ describe(
       assert.equal(listener.close(), closing);
       try {
         await socketClosed;
-        assert.equal(application.chain.state, "ready");
+        assert.equal(requireComposedChain(application.chain).state, "ready");
       } finally {
         release();
       }
@@ -463,10 +476,13 @@ describe(
             maxRequestBytes: 1048576,
             requestTimeoutMillis: 1000,
             headersTimeoutMillis: 1000,
-            upgrade: createNativeChainWebSocketTransport(application.chain, {
-              closeGraceMillis: 100,
-              onError() {},
-            }),
+            upgrade: createNativeChainWebSocketTransport(
+              requireComposedChain(application.chain),
+              {
+                closeGraceMillis: 100,
+                onError() {},
+              },
+            ),
             onError() {},
           }),
           /EADDRINUSE/,
@@ -477,6 +493,87 @@ describe(
         await new Promise<void>((resolve, reject) =>
           occupied.close((error) => (error ? reject(error) : resolve())),
         );
+      }
+    });
+
+    it("profile credentials hold at the database: each passes its own verification and is denied the other's writes", async () => {
+      // infra#882 slice 2c: the split proven under REAL grants derived from
+      // each profile's declarations, over the fully applied tree.
+      const owners = {
+        app: url.username,
+        auth: url.username,
+        jobs: url.username,
+        realtime: url.username,
+        retained: url.username,
+        search: url.username,
+      };
+      const roles: Partial<Record<NativeProcessProfile, string>> = {};
+      for (const profile of ["serving", "producer"] as const) {
+        const role = `${database}_${profile}`;
+        roles[profile] = role;
+        await control.query(
+          `CREATE ROLE ${role} LOGIN PASSWORD 'fixture-only'`,
+        );
+        for (const definition of nativeSourceDefinitions(owners, profile)) {
+          await control.query(
+            `GRANT USAGE ON SCHEMA ${definition.schema} TO ${role}`,
+          );
+          for (const relation of definition.relations)
+            await control.query(
+              `GRANT SELECT ON ${definition.schema}.${relation} TO ${role}`,
+            );
+          for (const relation of definition.writable ?? [])
+            await control.query(
+              `GRANT INSERT,UPDATE,DELETE ON ${definition.schema}.${relation} TO ${role}`,
+            );
+          await control.query(
+            `GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${definition.schema} TO ${role}`,
+          );
+        }
+      }
+      for (const profile of ["serving", "producer"] as const) {
+        const scoped = new URL(target);
+        scoped.username = roles[profile]!;
+        const runtime = createPgStoreRuntime(
+          {
+            connectionString: scoped.toString(),
+            maxConnections: 1,
+            connectionTimeoutMillis: 2000,
+            idleTimeoutMillis: 500,
+            statementTimeoutMillis: 5000,
+            onIdleError() {},
+          },
+          (config) => new Pool(config),
+        );
+        try {
+          // Its own declarations verify under its own credential...
+          await verifyNativeSourceCapabilities(
+            runtime,
+            nativeSourceDefinitions(owners, profile),
+          );
+          // ...and the OTHER side's write declarations fail closed by name.
+          const other = profile === "serving" ? "producer" : "serving";
+          await assert.rejects(
+            verifyNativeSourceCapabilities(
+              runtime,
+              nativeSourceDefinitions(owners, other),
+            ),
+            /not ready for/,
+          );
+          // The single-writer boundary at the database itself.
+          const denied =
+            profile === "serving"
+              ? "INSERT INTO app.neurons_capture_batches(batch_id,captured_at,sha256) VALUES (repeat('a',64), 1, repeat('b',64))"
+              : "INSERT INTO realtime.chain_firehose_actor(singleton) SELECT true WHERE false";
+          await assert.rejects(
+            runtime.transaction(async (tx) => {
+              await tx.run(denied);
+            }),
+            /permission denied/i,
+          );
+        } finally {
+          await runtime.close();
+        }
       }
     });
   },

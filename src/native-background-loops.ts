@@ -23,24 +23,32 @@ export interface NativeBackgroundCadence {
   rpcPrune: number;
   authPrune: number;
 }
+/** Which composition these loops belong to (infra#882 part 2). "all" is the
+ * trusted single-process shape, unchanged. "serving" runs only the loops the
+ * public composition owns (MCP/chain alarms, usage flush, rate prune) and
+ * never binds the cron/queue/owner surfaces; "producer" the complement. A
+ * role never silently skips a missing dependency it DOES own -- binding still
+ * refuses by name. */
+export type NativeBackgroundRole = "all" | "serving" | "producer";
 export interface NativeBackgroundOptions {
-  cron: Pick<
+  role?: NativeBackgroundRole;
+  cron?: Pick<
     Awaited<ReturnType<typeof createPgCronScheduler>>,
     "register" | "plan" | "run"
   >;
-  queues: Pick<Awaited<ReturnType<typeof createPgQueueTransport>>, "run">;
-  owners: Parameters<typeof createPgCronDispatcher>[1] &
+  queues?: Pick<Awaited<ReturnType<typeof createPgQueueTransport>>, "run">;
+  owners?: Parameters<typeof createPgCronDispatcher>[1] &
     Parameters<typeof createPgQueueDispatcher>[1];
-  mcp: Pick<
+  mcp?: Pick<
     Awaited<ReturnType<typeof createNativeMcpSessions>>,
     "runDueAlarms"
   >;
-  chain: Pick<
+  chain?: Pick<
     Awaited<ReturnType<typeof createNativeChainFirehose>>,
     "runDueAlarm"
   >;
   rpc: Pick<ReturnType<typeof createPgRpcUsageStore>, "flush" | "prune">;
-  auth: Pick<ReturnType<typeof createNativeAuthControls>, "pruneExpiredRates">;
+  auth?: Pick<ReturnType<typeof createNativeAuthControls>, "pruneExpiredRates">;
   cadence: NativeBackgroundCadence;
   cronRunners: number;
   mcpAlarmBatch: number;
@@ -59,7 +67,10 @@ function bounded(value: number, min: number, max: number, name: string) {
   if (!Number.isSafeInteger(value) || value < min || value > max)
     throw new RangeError(`Invalid native background ${name}`);
 }
-function method<T extends object, K extends keyof T>(object: T, key: K): T[K] {
+function method<T extends object, K extends keyof T>(
+  object: T | undefined,
+  key: K,
+): T[K] {
   const value = object?.[key];
   if (typeof value !== "function")
     throw new TypeError(`Native background ${String(key)} is required`);
@@ -69,6 +80,11 @@ function method<T extends object, K extends keyof T>(object: T, key: K): T[K] {
 /** Explicit loop owner. Construction performs no registration, work or timers.
  * Stop recurring admission before draining requests; close adapters afterward. */
 export function createNativeBackgroundLoops(options: NativeBackgroundOptions) {
+  const role = options.role ?? "all";
+  if (!["all", "serving", "producer"].includes(role))
+    throw new TypeError("Invalid native background role");
+  const producerSide = role !== "serving";
+  const servingSide = role !== "producer";
   const cadence = { ...options.cadence };
   for (const name of [
     "cronPlan",
@@ -89,67 +105,75 @@ export function createNativeBackgroundLoops(options: NativeBackgroundOptions) {
     throw new TypeError("Native background error reporter is required");
   const report = options.onError;
   const stopTimeout = options.stopTimeoutMillis;
-  const register = method(options.cron, "register");
-  const plan = method(options.cron, "plan");
-  const cron = createPgCronDispatcher(
-    { run: method(options.cron, "run") },
-    {
-      api: { scheduled: method(options.owners?.api, "scheduled") },
-      data: { scheduled: method(options.owners?.data, "scheduled") },
-      registry: { scheduled: method(options.owners?.registry, "scheduled") },
-    },
-  );
-  const queue = createPgQueueDispatcher(
-    { run: method(options.queues, "run") },
-    {
-      api: { queue: method(options.owners?.api, "queue") },
-      data: { queue: method(options.owners?.data, "queue") },
-    },
-  );
-  const alarms = method(options.mcp, "runDueAlarms");
-  const mcpBatch = options.mcpAlarmBatch;
-  const pruneRates = method(options.auth, "pruneExpiredRates");
-  const authBatch = options.authPruneBatch;
-  const loops: Loop[] = [
-    { name: "cron-plan", interval: cadence.cronPlan, run: plan },
-    ...Array.from({ length: options.cronRunners }, (_, index) => ({
-      name: `cron-run:${index}`,
-      interval: cadence.cronRun,
-      run: cron,
-    })),
-    ...PG_QUEUE_NAMES.flatMap((name) =>
-      Array.from({ length: PG_QUEUE_CONCURRENCY[name] }, (_, index) => ({
-        name: `queue:${name}:${index}`,
-        interval: cadence.queues,
-        run: () => queue.run(name),
+  const loops: Loop[] = [];
+  let register: ((boundary: number) => Promise<unknown>) | undefined;
+  if (producerSide) {
+    register = method(options.cron, "register");
+    const plan = method(options.cron, "plan");
+    const cron = createPgCronDispatcher(
+      { run: method(options.cron, "run") },
+      {
+        api: { scheduled: method(options.owners?.api, "scheduled") },
+        data: { scheduled: method(options.owners?.data, "scheduled") },
+        registry: { scheduled: method(options.owners?.registry, "scheduled") },
+      },
+    );
+    const queue = createPgQueueDispatcher(
+      { run: method(options.queues, "run") },
+      {
+        api: { queue: method(options.owners?.api, "queue") },
+        data: { queue: method(options.owners?.data, "queue") },
+      },
+    );
+    loops.push(
+      { name: "cron-plan", interval: cadence.cronPlan, run: plan },
+      ...Array.from({ length: options.cronRunners }, (_, index) => ({
+        name: `cron-run:${index}`,
+        interval: cadence.cronRun,
+        run: cron,
       })),
-    ),
-    {
-      name: "mcp-alarms",
-      interval: cadence.mcpAlarms,
-      run: () => alarms(mcpBatch),
-    },
-    {
-      name: "chain-alarm",
-      interval: cadence.chainAlarm,
-      run: method(options.chain, "runDueAlarm"),
-    },
-    {
-      name: "rpc-flush",
-      interval: cadence.rpcFlush,
-      run: method(options.rpc, "flush"),
-    },
-    {
-      name: "rpc-prune",
-      interval: cadence.rpcPrune,
-      run: method(options.rpc, "prune"),
-    },
-    {
-      name: "auth-prune",
-      interval: cadence.authPrune,
-      run: () => pruneRates(authBatch),
-    },
-  ];
+      ...PG_QUEUE_NAMES.flatMap((name) =>
+        Array.from({ length: PG_QUEUE_CONCURRENCY[name] }, (_, index) => ({
+          name: `queue:${name}:${index}`,
+          interval: cadence.queues,
+          run: () => queue.run(name),
+        })),
+      ),
+      {
+        name: "rpc-prune",
+        interval: cadence.rpcPrune,
+        run: method(options.rpc, "prune"),
+      },
+    );
+  }
+  if (servingSide) {
+    const alarms = method(options.mcp, "runDueAlarms");
+    const mcpBatch = options.mcpAlarmBatch;
+    const pruneRates = method(options.auth, "pruneExpiredRates");
+    const authBatch = options.authPruneBatch;
+    loops.push(
+      {
+        name: "mcp-alarms",
+        interval: cadence.mcpAlarms,
+        run: () => alarms(mcpBatch),
+      },
+      {
+        name: "chain-alarm",
+        interval: cadence.chainAlarm,
+        run: method(options.chain, "runDueAlarm"),
+      },
+      {
+        name: "rpc-flush",
+        interval: cadence.rpcFlush,
+        run: method(options.rpc, "flush"),
+      },
+      {
+        name: "auth-prune",
+        interval: cadence.authPrune,
+        run: () => pruneRates(authBatch),
+      },
+    );
+  }
   let state: "ready" | "starting" | "running" | "stopping" | "stopped" =
     "ready";
   let startBoundary: number | undefined;
@@ -210,7 +234,11 @@ export function createNativeBackgroundLoops(options: NativeBackgroundOptions) {
         );
       state = "starting";
       startBoundary = boundary;
-      starting = track("cron-register", () => register(boundary)).then(
+      // The serving composition registers no cron: registration is the
+      // producer side's one start-time write.
+      starting = track("cron-register", () =>
+        register ? register(boundary) : Promise.resolve(),
+      ).then(
         () => {
           if (state !== "starting") return;
           state = "running";

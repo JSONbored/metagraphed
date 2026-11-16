@@ -9,7 +9,10 @@ import type {
 import type { NativeBackgroundOptions } from "../src/native-background-loops.ts";
 import type { NativeSubnetStatusOptions } from "../src/pg-subnet-status-hub.ts";
 import type { NativeOAuthModule } from "../src/native-oauth-provider.ts";
-import { createNativeEnvironment } from "../src/native-environment.ts";
+import {
+  createNativeEnvironment,
+  requireComposedChain,
+} from "../src/native-environment.ts";
 import { nativeEnvironmentFixture } from "./helpers/native-environment-fixture.ts";
 
 const state = vi.hoisted(() => ({
@@ -168,6 +171,7 @@ vi.mock("../src/native-chain-firehose.ts", () => ({
   createNativeChainFirehose: async () => ({
     fetch: async () => new Response("chain"),
     runDueAlarm: async () => 1,
+    openSocket: async () => null,
     close: close("chain"),
   }),
 }));
@@ -199,7 +203,7 @@ vi.mock("../src/native-background-loops.ts", () => ({
     if (state.beforeReady)
       assert.throws(
         () =>
-          options.owners.api.scheduled({ cron: "fixture", scheduledTime: 0 }),
+          options.owners!.api.scheduled({ cron: "fixture", scheduledTime: 0 }),
         /not bound/,
       );
     return { start: async () => {}, stop: close("loops") };
@@ -261,24 +265,24 @@ test("constructs a fixed complete environment and keeps internal owners guarded 
     ).text(),
     "main",
   );
-  await state.loops!.owners.api.scheduled({
+  await state.loops!.owners!.api.scheduled({
     cron: "fixture",
     scheduledTime: 0,
   });
-  await state.loops!.owners.data.scheduled({
+  await state.loops!.owners!.data.scheduled({
     cron: "fixture",
     scheduledTime: 0,
   });
-  await state.loops!.owners.registry.scheduled({
+  await state.loops!.owners!.registry.scheduled({
     cron: "fixture",
     scheduledTime: 0,
   });
-  await state.loops!.owners.api.queue({} as MessageBatch<unknown>);
-  await state.loops!.owners.data.queue({} as MessageBatch<unknown>);
+  await state.loops!.owners!.api.queue({} as MessageBatch<unknown>);
+  await state.loops!.owners!.data.queue({} as MessageBatch<unknown>);
   assert.equal(state.scheduled.mock.calls.length, 3);
   assert.equal(state.queued.mock.calls.length, 2);
-  await state.loops!.mcp.runDueAlarms(3);
-  await state.loops!.chain.runDueAlarm();
+  await state.loops!.mcp!.runDueAlarms(3);
+  await state.loops!.chain!.runDueAlarm();
   assert.deepEqual(state.background.mock.calls, [["api"], ["api"]]);
   await state.status!.notify("session", "uri", new AbortController().signal);
   state.mcpStatus = 500;
@@ -370,4 +374,99 @@ test("retains failed cleanup for retry rather than closing remaining adapters", 
   assert.equal(application.state, "closed");
   assert.equal(state.closed.filter((name) => name === "queues").length, 2);
   assert(state.closed.includes("decoder"));
+});
+
+test("the serving profile composes no producer surface and refuses them by name", async () => {
+  const application = await createNativeEnvironment({
+    ...options(),
+    profile: "serving",
+  });
+  assert.equal(state.loops!.role, "serving");
+  assert.equal(state.loops!.cron, undefined);
+  assert.equal(state.loops!.queues, undefined);
+  assert.equal(state.loops!.owners, undefined);
+  // Serving still serves.
+  assert.equal(
+    await (
+      await application.fetch(new Request("https://fixture.example"))
+    ).text(),
+    "main",
+  );
+  await assert.rejects(
+    application.owners.api.scheduled(
+      { cron: "fixture", scheduledTime: 0 },
+      new AbortController().signal,
+    ),
+    /not composed in the serving process/,
+  );
+  await application.close();
+});
+
+test("the producer profile composes no actor or listener and refuses them by name", async () => {
+  const application = await createNativeEnvironment({
+    ...options(),
+    profile: "producer",
+  });
+  assert.equal(state.loops!.role, "producer");
+  assert.equal(state.loops!.mcp, undefined);
+  assert.equal(state.loops!.chain, undefined);
+  await assert.rejects(
+    application.fetch(new Request("https://fixture.example")),
+    /public HTTP listener is not composed in the producer process/,
+  );
+  await assert.rejects(
+    application.chain.fetch(new Request("https://chain.internal/")),
+    /not composed in the producer process/,
+  );
+  // The producer side's own owners remain callable.
+  await application.owners.api.scheduled(
+    { cron: "fixture", scheduledTime: 0 },
+    new AbortController().signal,
+  );
+  await application.close();
+});
+
+test("every refusal surface rejects by name, and the chain guard narrows only a composed actor", async () => {
+  const producer = await createNativeEnvironment({
+    ...options(),
+    profile: "producer",
+  });
+  assert.throws(
+    () => requireComposedChain(producer.chain),
+    /not composed in this process/,
+  );
+  await producer.close();
+  const serving = await createNativeEnvironment({
+    ...options(),
+    profile: "serving",
+  });
+  assert.equal(requireComposedChain(serving.chain), serving.chain);
+  await assert.rejects(
+    serving.owners.api.queue({} as MessageBatch<unknown>),
+    /queue owner is not composed in the serving process/,
+  );
+  await assert.rejects(
+    serving.owners.api.fetch(new Request("https://fixture.example")),
+    /owner fetch is not composed in the serving process/,
+  );
+  await assert.rejects(
+    serving.owners.registry.scheduled(
+      { cron: "fixture", scheduledTime: 0 },
+      new AbortController().signal,
+    ),
+    /registry scheduled owner is not composed/,
+  );
+  await serving.close();
+});
+
+test("the explicit trusted profile is the default composition", async () => {
+  const application = await createNativeEnvironment({
+    ...options(),
+    profile: "trusted",
+  });
+  assert.equal(state.loops!.role, "all");
+  assert.ok(state.loops!.cron);
+  assert.ok(state.loops!.owners);
+  assert.ok(state.loops!.mcp);
+  await application.close();
 });

@@ -6,6 +6,7 @@ import {
   nativeSourceDefinitions,
   nativeSource,
   assertNativeSequencePrivileges,
+  type NativeProcessProfile,
   type NativeSourceOwners,
 } from "./native-source-manifest.ts";
 import { nativeSettingsByOwner } from "./native-runtime-settings.ts";
@@ -71,6 +72,13 @@ export interface NativeEnvironmentOptions extends Pick<
   | "onBackgroundError"
 > {
   owners: NativeSourceOwners;
+  /** Which composition this process is (infra#882 part 2). "trusted" (the
+   * default) is today's single-process shape. "serving" composes the public
+   * HTTP app, the realtime actor component and the serving loops under the
+   * narrow credential; the producer surfaces refuse by name. "producer"
+   * composes the cron/queue/prune side under the writer credential; the
+   * public listener and every actor refuse by name. */
+  profile?: NativeProcessProfile;
   settings: unknown;
   exportIdentity: string;
   headRequestTimeoutMillis: number;
@@ -87,6 +95,20 @@ export interface NativeEnvironmentOptions extends Pick<
   loops: LoopPolicy;
 }
 
+/** The chain surface when (and only when) the composition owns the actor.
+ * The producer profile's refusal lacks the owner surface by design; callers
+ * that need the full actor narrow through this runtime guard instead of an
+ * assertion. */
+export function requireComposedChain(
+  chain: Awaited<ReturnType<typeof createNativeEnvironment>>["chain"],
+): Actors["chain"] {
+  if (!("openSocket" in chain))
+    throw new Error(
+      "Native chain actor is not composed in this process (infra#882 split)",
+    );
+  return chain;
+}
+
 /** Concrete native assembly. Configuration may supply values and resource
  * budgets, never replacement stores or an environment-validation callback. */
 export async function createNativeEnvironment(
@@ -98,7 +120,19 @@ export async function createNativeEnvironment(
     throw new RangeError(
       "Native environment requires at least five PostgreSQL connections for its enabled read fanout",
     );
-  const sources = nativeSourceDefinitions(requested.owners);
+  const profile = requested.profile ?? "trusted";
+  const sources = nativeSourceDefinitions(requested.owners, profile);
+  // A surface the profile does not own refuses by name. Typed as honest
+  // wide-parameter functions so every caller shape type-checks against the
+  // union with the real surface -- no assertion erases the relationship.
+  const refusal =
+    (surface: string) =>
+    (..._ignored: readonly unknown[]): Promise<never> =>
+      Promise.reject(
+        new Error(
+          `Native ${surface} is not composed in the ${profile} process (infra#882 split)`,
+        ),
+      );
   const settings = nativeSettingsByOwner(requested.settings);
   const exportIdentity = requested.exportIdentity;
   const headRequestTimeoutMillis = requested.headRequestTimeoutMillis;
@@ -139,8 +173,16 @@ export async function createNativeEnvironment(
     ...requested.loops,
     cadence: { ...requested.loops.cadence },
   };
+  interface RefusingService {
+    fetch(...request: readonly unknown[]): Promise<Response>;
+  }
+  interface ProducerActorRefusals {
+    bindings: Readonly<Record<keyof Actors["bindings"], RefusingService>>;
+    chain: RefusingService;
+    maintenance?: undefined;
+  }
   let application: Application | undefined = undefined;
-  let actors!: Actors;
+  let actors!: Actors | ProducerActorRefusals;
   let loops!: ReturnType<typeof createNativeBackgroundLoops>;
   let authentication!: ReturnType<typeof createNativeAuthControls>;
   const current = (): Application => {
@@ -229,41 +271,72 @@ export async function createNativeEnvironment(
           nativeSource(providers.sources, "search"),
           indexOptions,
         );
-        const head = createNativeChainHeadSource(app, {
-          rpcUrl: settings.api.CHAIN_HEAD_RPC_URL!,
-          requestTimeoutMillis: headRequestTimeoutMillis,
-          withAuthor: settings.api.CHAIN_HEAD_AUTHOR_ENABLED === "true",
-          withEventCount:
-            settings.api.CHAIN_HEAD_EVENT_COUNT_ENABLED === "true",
-          fetch,
-          now: Date.now,
-          laneHealthDb: state.bindings.LANE_HEALTH_STORE,
-        });
-        actors = await createNativeActorBindings(
-          providers.sources,
-          providers.services.data,
-          head,
-          settings.api,
-          actorOptions,
-          background,
-          own,
-          report,
-        );
+        if (profile === "producer") {
+          // The realtime actor component is serving-owned whole (the #882
+          // owner-split correction); every actor surface refuses by name.
+          const refuse = (name: string): RefusingService =>
+            Object.freeze({ fetch: refusal(name) });
+          actors = {
+            bindings: Object.freeze({
+              SUBNET_STATUS_SERVICE: refuse("subnet-status actor"),
+              ALERTER_SERVICE: refuse("alerter actor"),
+              CHAIN_FIREHOSE_SERVICE: refuse("chain-firehose actor"),
+              MCP_SESSION_SERVICE: refuse("MCP session actor"),
+            }),
+            chain: refuse("chain-firehose actor"),
+            maintenance: undefined,
+          };
+        } else {
+          const head = createNativeChainHeadSource(app, {
+            rpcUrl: settings.api.CHAIN_HEAD_RPC_URL!,
+            requestTimeoutMillis: headRequestTimeoutMillis,
+            withAuthor: settings.api.CHAIN_HEAD_AUTHOR_ENABLED === "true",
+            withEventCount:
+              settings.api.CHAIN_HEAD_EVENT_COUNT_ENABLED === "true",
+            fetch,
+            now: Date.now,
+            laneHealthDb: state.bindings.LANE_HEALTH_STORE,
+          });
+          actors = await createNativeActorBindings(
+            providers.sources,
+            providers.services.data,
+            head,
+            settings.api,
+            actorOptions,
+            background,
+            own,
+            report,
+          );
+        }
         const jobs = nativeSource(providers.sources, "jobs");
         const queues = await createPgQueueTransport(jobs, queueOptions);
         own(() => queues.close());
-        const cron = await createPgCronScheduler(
-          jobs,
-          NATIVE_CRON_DEFINITIONS,
-          cronOptions,
-        );
-        own(() => cron.close());
+        // The serving composition never schedules: cron registration and the
+        // plan/run surfaces are the producer side's.
+        const cron =
+          profile === "serving"
+            ? undefined
+            : await (async () => {
+                const scheduler = await createPgCronScheduler(
+                  jobs,
+                  NATIVE_CRON_DEFINITIONS,
+                  cronOptions,
+                );
+                own(() => scheduler.close());
+                return scheduler;
+              })();
         loops = createNativeBackgroundLoops({
           ...loopOptions,
+          role:
+            profile === "trusted"
+              ? "all"
+              : profile === "serving"
+                ? "serving"
+                : "producer",
           cron,
-          queues,
-          owners,
-          ...actors.maintenance,
+          queues: profile === "serving" ? undefined : queues,
+          owners: profile === "serving" ? undefined : owners,
+          ...(actors.maintenance ?? {}),
           rpc: state.rpcUsage,
           auth: authentication,
           onError: (error, loop) =>
@@ -324,6 +397,11 @@ export async function createNativeEnvironment(
     },
     poolFactory,
   );
+  const refuseOwner = (owner: string) => ({
+    fetch: refusal(`${owner} owner fetch`),
+    scheduled: refusal(`${owner} scheduled owner`),
+    queue: refusal(`${owner} queue owner`),
+  });
   return {
     get state() {
       return current().state;
@@ -331,8 +409,21 @@ export async function createNativeEnvironment(
     // The executing side's declared cross-repo fixture identity, readable by
     // the fleet conformance producer instead of a second literal there.
     conformance: NATIVE_CONFORMANCE_CONTRACT,
-    fetch: (request: Request) => current().fetch(request),
-    owners: current().owners,
+    fetch:
+      profile === "producer"
+        ? refusal("public HTTP listener")
+        : (request: Request) => current().fetch(request),
+    owners:
+      profile === "serving"
+        ? {
+            api: refuseOwner("api"),
+            data: refuseOwner("data"),
+            registry: {
+              fetch: refusal("registry owner fetch"),
+              scheduled: refusal("registry scheduled owner"),
+            },
+          }
+        : current().owners,
     background,
     chain: actors.chain,
     startBackground(boundary: number) {
