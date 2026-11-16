@@ -363,6 +363,21 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       200,
     );
     assert.equal((await both("keys/status", undefined, session)).status, 200);
+    // The native block path wrote the blocklist snapshot into the control KV
+    // (auth.kv_entries) with the bounded TTL -- the durable stored effect,
+    // not just the handler's response bytes. Asserted here, between block and
+    // unblock, where the entry exists.
+    const snapshot = await control.query(
+      "SELECT convert_from(value,'utf8') AS value, expires_at FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+      ["api-key-blocklist"],
+    );
+    assert.equal(snapshot.rowCount, 1);
+    assert.match(String(snapshot.rows[0].value), /"accountKind":"rpc"/);
+    const ttlMs = Number(snapshot.rows[0].expires_at) - now;
+    assert.ok(
+      ttlMs > 0 && ttlMs <= 61_000,
+      `snapshot TTL ${ttlMs}ms must be bounded by BLOCKLIST_KV_TTL`,
+    );
     assert.equal(
       (
         await both(
@@ -394,20 +409,14 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       ).rows[0].n,
       1,
     );
-    // The native block path wrote the blocklist snapshot into the control KV
-    // (auth.kv_entries) with the bounded TTL -- the durable stored effect,
-    // not just the handler's response bytes.
-    const snapshot = await control.query(
-      "SELECT convert_from(value,'utf8') AS value, expires_at FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+    // Unblock refreshed the snapshot to the empty list -- stale block
+    // entries do not outlive the ledger state that produced them.
+    const cleared = await control.query(
+      "SELECT convert_from(value,'utf8') AS value FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
       ["api-key-blocklist"],
     );
-    assert.equal(snapshot.rowCount, 1);
-    assert.match(String(snapshot.rows[0].value), /"accountKind":"rpc"/);
-    const ttlMs = Number(snapshot.rows[0].expires_at) - now;
-    assert.ok(
-      ttlMs > 0 && ttlMs <= 61_000,
-      `snapshot TTL ${ttlMs}ms must be bounded by BLOCKLIST_KV_TTL`,
-    );
+    assert.equal(cleared.rowCount, 1);
+    assert.match(String(cleared.rows[0].value), /"blocks":\[\]/);
     // Pool exhaustion fails identity handlers CLOSED within the connection
     // timeout, never hanging and never leaking a half-applied write.
     const releases: (() => void)[] = [];
