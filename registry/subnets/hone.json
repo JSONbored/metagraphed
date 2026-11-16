@@ -194,7 +194,7 @@
       "id": "sn-5-hone-sandbox-runner-config",
       "kind": "data-artifact",
       "name": "Hone sandbox runner configuration",
-      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance — runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
+      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance — runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "hone",
       "public_safe": true,
       "review": {

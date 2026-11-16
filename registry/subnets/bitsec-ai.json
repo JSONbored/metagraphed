@@ -125,9 +125,9 @@
       "id": "sn-60-bitsec-ai-known-solutions",
       "kind": "data-artifact",
       "name": "Bitsec.ai known-solutions dataset",
-      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
+      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -360,9 +360,9 @@
       "id": "sn-60-bitsec-jobs-leaderboard-old",
       "kind": "subnet-api",
       "name": "Bitsec.ai legacy jobs leaderboard",
-      "notes": "GET /api/jobs/leaderboard_old on bitsec.ai — legacy sibling of the already-registered /api/jobs/leaderboard, documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21 (~22:05 UTC): HTTP 500 text/plain (currently erroring in production). Registered anyway, matching the registry's existing precedent of cataloguing real documented endpoints in their actual live state (e.g. Targon SN4's /tha/v2/healthz); probe expect:any since the current error body is not JSON.",
+      "notes": "GET /api/jobs/leaderboard_old on bitsec.ai — legacy sibling of the already-registered /api/jobs/leaderboard, documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21 (~22:05 UTC): HTTP 500 text/plain (currently erroring in production). Registered anyway, matching the registry's existing precedent of cataloguing real documented endpoints in their actual live state (e.g. Targon SN4's /tha/v2/healthz); probe expect:any since the current error body is not JSON. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -448,7 +448,7 @@
       "id": "sn-60-bitsec-agent-known-solutions",
       "kind": "subnet-api",
       "name": "Bitsec.ai per-agent known-solutions",
-      "notes": "GET /api/agents/{agent_id}/known-solutions on bitsec.ai — per-agent sibling of the already-registered project-set-wide /api/projects/known-solutions, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error, not an auth rejection. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check).",
+      "notes": "GET /api/agents/{agent_id}/known-solutions on bitsec.ai — per-agent sibling of the already-registered project-set-wide /api/projects/known-solutions, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error, not an auth rejection. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

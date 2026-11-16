@@ -128,9 +128,9 @@
       "id": "sn-49-nepher-tournament-openapi",
       "kind": "openapi",
       "name": "Nepher tournament OpenAPI schema",
-      "notes": "Machine-readable OpenAPI schema for the Nepher tournament backend.",
+      "notes": "Machine-readable OpenAPI schema for the Nepher tournament backend. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -158,7 +158,7 @@
       "id": "sn-49-nepher-tournament-api",
       "kind": "subnet-api",
       "name": "Nepher tournament API",
-      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review. Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches.",
+      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review. Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "schema_status": "machine-readable",
@@ -234,7 +234,7 @@
       "kind": "data-artifact",
       "name": "Nepher Robotics community data-artifact",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -247,7 +247,8 @@
         "submitted_by": "kiannidev"
       },
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
-      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list",
+      "notes": "[2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence."
     },
     {
       "auth_required": false,
@@ -255,9 +256,9 @@
       "id": "sn-49-nepher-tournament-health",
       "kind": "subnet-api",
       "name": "Nepher tournament API health",
-      "notes": "Public no-auth GET /health returning tournament-backend service health (status, timestamp, service, version). Documented in the subnet's OpenAPI spec on the same host as the existing tournament subnet-api surfaces.",
+      "notes": "Public no-auth GET /health returning tournament-backend service health (status, timestamp, service, version). Documented in the subnet's OpenAPI spec on the same host as the existing tournament subnet-api surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -280,9 +281,9 @@
       "id": "sn-49-nepher-current-block-api",
       "kind": "subnet-api",
       "name": "Nepher tournament current block API",
-      "notes": "Public no-auth GET returning the current finney chain block height used for tournament scheduling (current_block, network). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/current-block); same host as existing tournament surfaces. Distinct from the active-tournaments list and health endpoints.",
+      "notes": "Public no-auth GET returning the current finney chain block height used for tournament scheduling (current_block, network). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/current-block); same host as existing tournament surfaces. Distinct from the active-tournaments list and health endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -305,9 +306,9 @@
       "id": "sn-49-nepher-tournaments-list-api",
       "kind": "subnet-api",
       "name": "Nepher tournaments list API",
-      "notes": "Public no-auth GET returning the full tournament catalog with task names, versions, stages, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/list); same host as existing tournament surfaces. Distinct from the active-tournaments list and current-block endpoints.",
+      "notes": "Public no-auth GET returning the full tournament catalog with task names, versions, stages, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/list); same host as existing tournament surfaces. Distinct from the active-tournaments list and current-block endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -330,9 +331,9 @@
       "id": "sn-49-nepher-active-tournament-id-api",
       "kind": "subnet-api",
       "name": "Nepher active tournament ID API",
-      "notes": "Public no-auth GET returning the UUID of the currently active tournament. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/id); same host as existing tournament surfaces. Distinct from the tournaments list, active-tournaments list, and current-block endpoints.",
+      "notes": "Public no-auth GET returning the UUID of the currently active tournament. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/id); same host as existing tournament surfaces. Distinct from the tournaments list, active-tournaments list, and current-block endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -355,9 +356,9 @@
       "id": "sn-49-nepher-active-tournament-ids-api",
       "kind": "subnet-api",
       "name": "Nepher active tournament IDs API",
-      "notes": "Public no-auth GET returning the UUIDs of all currently active tournaments (tournament_ids array). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/ids); same host as existing tournament surfaces. Distinct from the singular active/id endpoint and the active-tournaments list.",
+      "notes": "Public no-auth GET returning the UUIDs of all currently active tournaments (tournament_ids array). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/ids); same host as existing tournament surfaces. Distinct from the singular active/id endpoint and the active-tournaments list. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -380,9 +381,9 @@
       "id": "sn-49-nepher-active-tournament-api",
       "kind": "subnet-api",
       "name": "Nepher active tournament API",
-      "notes": "Public no-auth GET returning the single newest active tournament with task name, version, stage, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active); same host as existing tournament surfaces. Distinct from the active/id, active/ids, and active/list endpoints.",
+      "notes": "Public no-auth GET returning the single newest active tournament with task name, version, stage, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active); same host as existing tournament surfaces. Distinct from the active/id, active/ids, and active/list endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -405,9 +406,9 @@
       "id": "sn-49-nepher-evaluations-api",
       "kind": "subnet-api",
       "name": "Nepher tournament evaluations API",
-      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -452,9 +453,9 @@
       "id": "sn-49-nepher-tournament-readiness",
       "kind": "subnet-api",
       "name": "Nepher tournament API readiness",
-      "notes": "Public no-auth GET /ready on the tournament backend, returning readiness including a database connectivity check -- distinct from the liveness-only /health surface already tracked. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints.",
+      "notes": "Public no-auth GET /ready on the tournament backend, returning readiness including a database connectivity check -- distinct from the liveness-only /health surface already tracked. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -472,11 +473,12 @@
       "name": "Nepher tournament alpha/TAO pricing API",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "probe-derived"
+        "provenance": "none",
+        "searched_at": "2026-11-15T00:00:00Z"
       },
-      "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty.",
+      "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -492,7 +494,7 @@
       "id": "sn-49-nepher-api-v1-admin-agents-agent-id-disqualify",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin agents agent id disqualify",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/agents/{agent_id}/disqualify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/agents/{agent_id}/disqualify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -524,7 +526,7 @@
       "id": "sn-49-nepher-api-v1-admin-agents-agent-id-hotkey",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin agents agent id hotkey",
-      "notes": "Auth-gated tournament API route PATCH /api/v1/admin/agents/{agent_id}/hotkey on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH /api/v1/admin/agents/{agent_id}/hotkey on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -556,7 +558,7 @@
       "id": "sn-49-nepher-api-v1-admin-audit-logs",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin audit logs",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/audit/logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/audit/logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -588,7 +590,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-agents-superseded-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup agents superseded tournament id",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/agents/superseded/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/agents/superseded/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -620,7 +622,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-agents-superseded-tournament-id-list",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup agents superseded tournament id list",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/cleanup/agents/superseded/{tournament_id}/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/cleanup/agents/superseded/{tournament_id}/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -652,7 +654,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-agents-unevaluated-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup agents unevaluated tournament id",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/agents/unevaluated/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/agents/unevaluated/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -684,7 +686,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-agents-unevaluated-tournament-id-list",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup agents unevaluated tournament id list",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/cleanup/agents/unevaluated/{tournament_id}/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/cleanup/agents/unevaluated/{tournament_id}/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -716,7 +718,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-eligible-miners",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup eligible miners",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/cleanup/eligible-miners on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/cleanup/eligible-miners on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -748,7 +750,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-evaluations-failed-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup evaluations failed tournament id",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/evaluations/failed/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/evaluations/failed/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -780,7 +782,7 @@
       "id": "sn-49-nepher-api-v1-admin-cleanup-evaluations-stale-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin cleanup evaluations stale tournament id",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/evaluations/stale/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/cleanup/evaluations/stale/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -812,7 +814,7 @@
       "id": "sn-49-nepher-api-v1-admin-clone-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin clone tournament id",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/clone/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/clone/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -844,7 +846,7 @@
       "id": "sn-49-nepher-api-v1-admin-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin config",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated GET returns HTTP 401. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated GET returns HTTP 401. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -876,7 +878,7 @@
       "id": "sn-49-nepher-api-v1-admin-emergency-deactivate-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin emergency deactivate tournament id",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/deactivate/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/deactivate/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -908,7 +910,7 @@
       "id": "sn-49-nepher-api-v1-admin-emergency-pause-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin emergency pause tournament id",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/pause/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/pause/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -940,7 +942,7 @@
       "id": "sn-49-nepher-api-v1-admin-emergency-unpause-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin emergency unpause tournament id",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/unpause/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/emergency/unpause/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -972,7 +974,7 @@
       "id": "sn-49-nepher-api-v1-admin-evaluations-evaluation-id-exclude",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin evaluations evaluation id exclude",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/evaluations/{evaluation_id}/exclude on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/evaluations/{evaluation_id}/exclude on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1004,7 +1006,7 @@
       "id": "sn-49-nepher-api-v1-admin-export-audit-logs",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin export audit logs",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/audit-logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/audit-logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1036,7 +1038,7 @@
       "id": "sn-49-nepher-api-v1-admin-export-evaluations-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin export evaluations tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/evaluations/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/evaluations/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1068,7 +1070,7 @@
       "id": "sn-49-nepher-api-v1-admin-export-leaderboard-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin export leaderboard tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/leaderboard/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/leaderboard/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1100,7 +1102,7 @@
       "id": "sn-49-nepher-api-v1-admin-export-summary-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin export summary tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/summary/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/export/summary/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1132,7 +1134,7 @@
       "id": "sn-49-nepher-api-v1-admin-gallery",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin gallery",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/gallery on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/gallery on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1164,7 +1166,7 @@
       "id": "sn-49-nepher-api-v1-admin-gallery-media-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin gallery media id",
-      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/gallery/{media_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/gallery/{media_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1196,7 +1198,7 @@
       "id": "sn-49-nepher-api-v1-admin-gallery-media-id-download",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin gallery media id download",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/gallery/{media_id}/download on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/gallery/{media_id}/download on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1228,7 +1230,7 @@
       "id": "sn-49-nepher-api-v1-admin-integrity-duplicate-hashes-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin integrity duplicate hashes tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/integrity/duplicate-hashes/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/integrity/duplicate-hashes/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1260,7 +1262,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-blockchain",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring blockchain",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/blockchain on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/blockchain on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1292,7 +1294,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-database",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring database",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/database on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/database on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1324,7 +1326,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-health",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring health",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/health on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/health on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1356,7 +1358,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-miners-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring miners tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/miners/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/miners/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1388,7 +1390,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-storage",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring storage",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/storage on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/storage on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1420,7 +1422,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-sync-status",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring sync status",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/sync-status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/sync-status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1452,7 +1454,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-tournament-tournament-id-dashboard",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring tournament tournament id dashboard",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/tournament/{tournament_id}/dashboard on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/tournament/{tournament_id}/dashboard on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1484,7 +1486,7 @@
       "id": "sn-49-nepher-api-v1-admin-monitoring-validators",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin monitoring validators",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/monitoring/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1516,7 +1518,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-status",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications status",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1548,7 +1550,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id config",
-      "notes": "Auth-gated tournament API route GET and PUT /api/v1/admin/notifications/{tournament_id}/config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and PUT on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and PUT /api/v1/admin/notifications/{tournament_id}/config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and PUT on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1580,7 +1582,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-discard",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id discard",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/discard on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/discard on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1612,7 +1614,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-logs",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id logs",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/{tournament_id}/logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/{tournament_id}/logs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1644,7 +1646,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-manual-send",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id manual send",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/manual-send on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/manual-send on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1676,7 +1678,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-preview",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id preview",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/notifications/{tournament_id}/preview on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/notifications/{tournament_id}/preview on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1708,7 +1710,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-queued",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id queued",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/{tournament_id}/queued on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/notifications/{tournament_id}/queued on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1740,7 +1742,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-retry-failed",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id retry failed",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/retry-failed on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/retry-failed on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1772,7 +1774,7 @@
       "id": "sn-49-nepher-api-v1-admin-notifications-tournament-id-send",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin notifications tournament id send",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/send on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/notifications/{tournament_id}/send on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1804,7 +1806,7 @@
       "id": "sn-49-nepher-api-v1-admin-platform-faqs",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin platform faqs",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/platform-faqs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/platform-faqs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1836,7 +1838,7 @@
       "id": "sn-49-nepher-api-v1-admin-platform-faqs-faq-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin platform faqs faq id",
-      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/platform-faqs/{faq_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/platform-faqs/{faq_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1868,7 +1870,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports",
-      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/admin/reports on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/admin/reports on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1900,7 +1902,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports-count",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports count",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/count on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/count on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1932,7 +1934,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports-filters",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports filters",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/filters on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/filters on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1964,7 +1966,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports-report-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports report id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/{report_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/reports/{report_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -1996,7 +1998,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports-report-id-block",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports report id block",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reports/{report_id}/block on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reports/{report_id}/block on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2028,7 +2030,7 @@
       "id": "sn-49-nepher-api-v1-admin-reports-report-id-review",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reports report id review",
-      "notes": "Auth-gated tournament API route PATCH /api/v1/admin/reports/{report_id}/review on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH /api/v1/admin/reports/{report_id}/review on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2060,7 +2062,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-blockchain-sync",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset blockchain sync",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/blockchain-sync on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/blockchain-sync on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2092,7 +2094,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-evaluations-in-progress",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset evaluations in progress",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/evaluations/in-progress on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/evaluations/in-progress on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2124,7 +2126,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-tournament-tournament-id-eligible-miners",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset tournament tournament id eligible miners",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/eligible-miners on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/eligible-miners on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2156,7 +2158,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-tournament-tournament-id-evaluations",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset tournament tournament id evaluations",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/evaluations on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/evaluations on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2188,7 +2190,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-tournament-tournament-id-full",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset tournament tournament id full",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/full on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/full on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2220,7 +2222,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-tournament-tournament-id-scores",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset tournament tournament id scores",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/scores on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/tournament/{tournament_id}/scores on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2252,7 +2254,7 @@
       "id": "sn-49-nepher-api-v1-admin-reset-user-user-id-cooldown",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin reset user user id cooldown",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/user/{user_id}/cooldown on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/reset/user/{user_id}/cooldown on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2284,7 +2286,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-agents-agent-id-flag",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security agents agent id flag",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/agents/{agent_id}/flag on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/agents/{agent_id}/flag on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2316,7 +2318,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-agents-agent-id-violations",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security agents agent id violations",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/agents/{agent_id}/violations on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/agents/{agent_id}/violations on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2348,7 +2350,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-queue",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security queue",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2380,7 +2382,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-queue-count",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security queue count",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue/count on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue/count on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2412,7 +2414,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-queue-queue-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security queue queue id",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue/{queue_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/queue/{queue_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2444,7 +2446,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-queue-queue-id-block",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security queue queue id block",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/queue/{queue_id}/block on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/queue/{queue_id}/block on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2476,7 +2478,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-queue-queue-id-clear",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security queue queue id clear",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/queue/{queue_id}/clear on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/queue/{queue_id}/clear on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2508,7 +2510,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-tournament-tournament-id-rescan",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security tournament tournament id rescan",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/tournament/{tournament_id}/rescan on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/security/tournament/{tournament_id}/rescan on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2540,7 +2542,7 @@
       "id": "sn-49-nepher-api-v1-admin-security-tournaments",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin security tournaments",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/tournaments on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/security/tournaments on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2572,7 +2574,7 @@
       "id": "sn-49-nepher-api-v1-admin-tournaments-tournament-id-faqs",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin tournaments tournament id faqs",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/tournaments/{tournament_id}/faqs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/tournaments/{tournament_id}/faqs on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2604,7 +2606,7 @@
       "id": "sn-49-nepher-api-v1-admin-tournaments-tournament-id-faqs-faq-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin tournaments tournament id faqs faq id",
-      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/tournaments/{tournament_id}/faqs/{faq_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/tournaments/{tournament_id}/faqs/{faq_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2636,7 +2638,7 @@
       "id": "sn-49-nepher-api-v1-admin-tournaments-tournament-id-gallery",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin tournaments tournament id gallery",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/tournaments/{tournament_id}/gallery on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/tournaments/{tournament_id}/gallery on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2668,7 +2670,7 @@
       "id": "sn-49-nepher-api-v1-admin-tournaments-tournament-id-gallery-upload",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin tournaments tournament id gallery upload",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/tournaments/{tournament_id}/gallery/upload on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/tournaments/{tournament_id}/gallery/upload on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2700,7 +2702,7 @@
       "id": "sn-49-nepher-api-v1-admin-tournaments-tournament-id-gallery-media-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin tournaments tournament id gallery media id",
-      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/tournaments/{tournament_id}/gallery/{media_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/tournaments/{tournament_id}/gallery/{media_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2732,7 +2734,7 @@
       "id": "sn-49-nepher-api-v1-admin-validators-available",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin validators available",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/available on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/available on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2764,7 +2766,7 @@
       "id": "sn-49-nepher-api-v1-admin-validators-hotkeys",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin validators hotkeys",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/hotkeys on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/hotkeys on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2796,7 +2798,7 @@
       "id": "sn-49-nepher-api-v1-admin-validators-link",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin validators link",
-      "notes": "Auth-gated tournament API route POST /api/v1/admin/validators/link on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/admin/validators/link on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2828,7 +2830,7 @@
       "id": "sn-49-nepher-api-v1-admin-validators-link-link-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin validators link link id",
-      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/validators/link/{link_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH and DELETE /api/v1/admin/validators/link/{link_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares PATCH and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2860,7 +2862,7 @@
       "id": "sn-49-nepher-api-v1-admin-validators-links",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin validators links",
-      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/links on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/admin/validators/links on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2892,7 +2894,7 @@
       "id": "sn-49-nepher-api-v1-admin-whitelist-domains",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin whitelist domains",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/whitelist/domains on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/whitelist/domains on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2924,7 +2926,7 @@
       "id": "sn-49-nepher-api-v1-admin-whitelist-domains-domain-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin whitelist domains domain id",
-      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/whitelist/domains/{domain_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/whitelist/domains/{domain_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2956,7 +2958,7 @@
       "id": "sn-49-nepher-api-v1-admin-whitelist-ips",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin whitelist ips",
-      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/whitelist/ips on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and POST /api/v1/admin/whitelist/ips on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and POST on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -2988,7 +2990,7 @@
       "id": "sn-49-nepher-api-v1-admin-whitelist-ips-ip-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 admin whitelist ips ip id",
-      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/whitelist/ips/{ip_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET, PATCH, and DELETE /api/v1/admin/whitelist/ips/{ip_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET, PATCH, and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3020,7 +3022,7 @@
       "id": "sn-49-nepher-api-v1-agents-delete-unevaluated-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents delete unevaluated tournament id",
-      "notes": "Auth-gated tournament API route DELETE /api/v1/agents/delete-unevaluated/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route DELETE /api/v1/agents/delete-unevaluated/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3052,7 +3054,7 @@
       "id": "sn-49-nepher-api-v1-agents-download-agent-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents download agent id",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/download/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/download/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3084,7 +3086,7 @@
       "id": "sn-49-nepher-api-v1-agents-eligible-miners-status-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents eligible miners status tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/eligible-miners-status/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/eligible-miners-status/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3116,7 +3118,7 @@
       "id": "sn-49-nepher-api-v1-agents-list",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents list",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3148,7 +3150,7 @@
       "id": "sn-49-nepher-api-v1-agents-list-public",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents list public",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/public on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/public on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3180,7 +3182,7 @@
       "id": "sn-49-nepher-api-v1-agents-list-unevaluated",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents list unevaluated",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/unevaluated on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/unevaluated on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3212,7 +3214,7 @@
       "id": "sn-49-nepher-api-v1-agents-list-validators",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents list validators",
-      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/agents/list/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3244,7 +3246,7 @@
       "id": "sn-49-nepher-api-v1-agents-upload-verify",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents upload verify",
-      "notes": "Auth-gated tournament API route POST /api/v1/agents/upload/verify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/agents/upload/verify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3276,7 +3278,7 @@
       "id": "sn-49-nepher-api-v1-agents-upload-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents upload tournament id",
-      "notes": "Auth-gated tournament API route POST /api/v1/agents/upload/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/agents/upload/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3308,7 +3310,7 @@
       "id": "sn-49-nepher-api-v1-agents-agent-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 agents agent id",
-      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/agents/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/agents/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3340,7 +3342,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-eligible-miners-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations eligible miners tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/eligible-miners/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/eligible-miners/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3372,7 +3374,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-in-progress-cli",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations in progress cli",
-      "notes": "Auth-gated tournament API route POST /api/v1/evaluations/in-progress/cli on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/evaluations/in-progress/cli on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3404,7 +3406,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-progress-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations progress tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/progress/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/progress/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3436,7 +3438,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-submit",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations submit",
-      "notes": "Public tournament API route POST /api/v1/evaluations/submit on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: empty POST returns HTTP 422 validation error, not 401 -- genuinely no-auth but requires a request body. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route POST /api/v1/evaluations/submit on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: empty POST returns HTTP 422 validation error, not 401 -- genuinely no-auth but requires a request body. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3461,7 +3463,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-submit-verify",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations submit verify",
-      "notes": "Auth-gated tournament API route POST /api/v1/evaluations/submit/verify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/evaluations/submit/verify on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3493,7 +3495,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-evaluation-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations evaluation id",
-      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/evaluations/{evaluation_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and DELETE /api/v1/evaluations/{evaluation_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and DELETE on this URL; one surface per URL per registry collision policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3525,7 +3527,7 @@
       "id": "sn-49-nepher-api-v1-evaluations-evaluation-id-log",
       "kind": "subnet-api",
       "name": "Nepher api v1 evaluations evaluation id log",
-      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/{evaluation_id}/log on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/evaluations/{evaluation_id}/log on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3557,7 +3559,7 @@
       "id": "sn-49-nepher-api-v1-notifications-preferences",
       "kind": "subnet-api",
       "name": "Nepher api v1 notifications preferences",
-      "notes": "Auth-gated tournament API route GET and PUT /api/v1/notifications/preferences on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and PUT on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET and PUT /api/v1/notifications/preferences on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. OpenAPI declares GET and PUT on this URL; one surface per URL per registry collision policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3589,7 +3591,7 @@
       "id": "sn-49-nepher-api-v1-notifications-unsubscribe",
       "kind": "subnet-api",
       "name": "Nepher api v1 notifications unsubscribe",
-      "notes": "Public tournament API route GET /api/v1/notifications/unsubscribe on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: GET without user_id returns HTTP 422, not 401. Registered with bare base URL (no query baked in). probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/notifications/unsubscribe on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: GET without user_id returns HTTP 422, not 401. Registered with bare base URL (no query baked in). probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3614,7 +3616,7 @@
       "id": "sn-49-nepher-api-v1-reports",
       "kind": "subnet-api",
       "name": "Nepher api v1 reports",
-      "notes": "Auth-gated tournament API route POST /api/v1/reports on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/reports on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3646,7 +3648,7 @@
       "id": "sn-49-nepher-api-v1-scores-agent-agent-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores agent agent id",
-      "notes": "Auth-gated tournament API route GET /api/v1/scores/agent/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/scores/agent/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3678,7 +3680,7 @@
       "id": "sn-49-nepher-api-v1-scores-bulk",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores bulk",
-      "notes": "Auth-gated tournament API route POST /api/v1/scores/bulk on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated POST returns HTTP 401 despite missing security block in schema. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/scores/bulk on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated POST returns HTTP 401 despite missing security block in schema. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3710,7 +3712,7 @@
       "id": "sn-49-nepher-api-v1-scores-leaderboard-active",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores leaderboard active",
-      "notes": "Auth-gated tournament API route GET /api/v1/scores/leaderboard/active on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/scores/leaderboard/active on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3742,7 +3744,7 @@
       "id": "sn-49-nepher-api-v1-scores-leaderboard-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores leaderboard tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/scores/leaderboard/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/scores/leaderboard/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3774,7 +3776,7 @@
       "id": "sn-49-nepher-api-v1-scores-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores tournament id",
-      "notes": "Auth-gated tournament API route GET /api/v1/scores/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/scores/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3806,7 +3808,7 @@
       "id": "sn-49-nepher-api-v1-scores-tournament-id-aggregate",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores tournament id aggregate",
-      "notes": "Auth-gated tournament API route POST /api/v1/scores/{tournament_id}/aggregate on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/scores/{tournament_id}/aggregate on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3838,7 +3840,7 @@
       "id": "sn-49-nepher-api-v1-scores-tournament-id-aggregated",
       "kind": "subnet-api",
       "name": "Nepher api v1 scores tournament id aggregated",
-      "notes": "Auth-gated tournament API route GET /api/v1/scores/{tournament_id}/aggregated on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/scores/{tournament_id}/aggregated on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3870,7 +3872,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-create",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments create",
-      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/create on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/create on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3902,7 +3904,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-preload-cache",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments preload cache",
-      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/preload-cache on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/preload-cache on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3934,7 +3936,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id",
-      "notes": "Public tournament API route GET, PATCH, and DELETE /api/v1/tournaments/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Public read once a tournament ID is known; PATCH/DELETE/status/auto-start siblings on the same path template are auth-gated. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET, PATCH, and DELETE /api/v1/tournaments/{tournament_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Public read once a tournament ID is known; PATCH/DELETE/status/auto-start siblings on the same path template are auth-gated. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3959,7 +3961,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-approve-winner-agent-id",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id approve winner agent id",
-      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/approve-winner/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/approve-winner/{agent_id} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -3991,7 +3993,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-auto-start",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id auto start",
-      "notes": "Auth-gated tournament API route PATCH /api/v1/tournaments/{tournament_id}/auto-start on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH /api/v1/tournaments/{tournament_id}/auto-start on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4023,7 +4025,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-config-active-eval-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id config active eval config",
-      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/active_eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/active_eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4048,7 +4050,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-config-eval-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id config eval config",
-      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4073,7 +4075,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-config-public-eval-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id config public eval config",
-      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/public_eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/public_eval_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4098,7 +4100,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-config-subnet-config",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id config subnet config",
-      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/subnet_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/config/subnet_config on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4123,7 +4125,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-confirm-no-winner",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id confirm no winner",
-      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/confirm-no-winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/confirm-no-winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4155,7 +4157,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-gallery-media-type-index",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id gallery media type index",
-      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/gallery/{media_type}/{index} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Public tournament API route GET /api/v1/tournaments/{tournament_id}/gallery/{media_type}/{index} on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4180,7 +4182,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-preliminary-leader",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id preliminary leader",
-      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/preliminary-leader on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/preliminary-leader on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4212,7 +4214,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-reset-winner",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id reset winner",
-      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/reset-winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/tournaments/{tournament_id}/reset-winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4244,7 +4246,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-status",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id status",
-      "notes": "Auth-gated tournament API route PATCH /api/v1/tournaments/{tournament_id}/status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route PATCH /api/v1/tournaments/{tournament_id}/status on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4276,7 +4278,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-winner",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id winner",
-      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/winner on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4308,7 +4310,7 @@
       "id": "sn-49-nepher-api-v1-tournaments-tournament-id-winner-hotkey",
       "kind": "subnet-api",
       "name": "Nepher api v1 tournaments tournament id winner hotkey",
-      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/winner-hotkey on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/tournaments/{tournament_id}/winner-hotkey on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Path-parameterized; template uses literal placeholders URI-encoded in url. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4340,7 +4342,7 @@
       "id": "sn-49-nepher-api-v1-users-list",
       "kind": "subnet-api",
       "name": "Nepher api v1 users list",
-      "notes": "Auth-gated tournament API route GET /api/v1/users/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/users/list on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4372,7 +4374,7 @@
       "id": "sn-49-nepher-api-v1-users-me",
       "kind": "subnet-api",
       "name": "Nepher api v1 users me",
-      "notes": "Auth-gated tournament API route GET /api/v1/users/me on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/users/me on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4409,7 +4411,7 @@
         "provenance": "operator-attested",
         "source_url": "https://tournament-api.nepher.ai/openapi.json"
       },
-      "notes": "Auth-gated tournament API route GET /api/v1/users/me/dashboard-stats on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/users/me/dashboard-stats on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4441,7 +4443,7 @@
       "id": "sn-49-nepher-api-v1-users-validators",
       "kind": "subnet-api",
       "name": "Nepher api v1 users validators",
-      "notes": "Auth-gated tournament API route GET /api/v1/users/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/users/validators on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4473,7 +4475,7 @@
       "id": "sn-49-nepher-api-v1-weight-commits",
       "kind": "subnet-api",
       "name": "Nepher api v1 weight commits",
-      "notes": "Auth-gated tournament API route POST /api/v1/weight-commits on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Same host/family as weight-commits/latest; registered auth_required:true per sibling auth behavior (metagraphed#7062). probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route POST /api/v1/weight-commits on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Same host/family as weight-commits/latest; registered auth_required:true per sibling auth behavior (metagraphed#7062). probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -4505,7 +4507,7 @@
       "id": "sn-49-nepher-api-v1-weight-commits-latest",
       "kind": "subnet-api",
       "name": "Nepher api v1 weight commits latest",
-      "notes": "Auth-gated tournament API route GET /api/v1/weight-commits/latest on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated GET returns HTTP 401 despite missing security block in schema. probe.enabled:false -- not suitable for anonymous recurring probes.",
+      "notes": "Auth-gated tournament API route GET /api/v1/weight-commits/latest on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. Live-verified 2026-07-21: unauthenticated GET returns HTTP 401 despite missing security block in schema. probe.enabled:false -- not suitable for anonymous recurring probes. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {

@@ -260,10 +260,10 @@
       "id": "sn-118-ditto-memory-cases",
       "kind": "data-artifact",
       "name": "DittoBench LongMemEval memory cases",
-      "notes": "Public no-auth JSON benchmark of LongMemEval memory-recall questions (question_id, question_type, query, answer, answer_pair_ids) bundled in the official SN118 DittoBench starter kit at fixtures/seed-user/memory_cases.json. Loaded at runtime by seed.rs (MEMORY_CASES_JSON) for local mem-eval and evaluate flows over the bundled seed user.",
+      "notes": "Public no-auth JSON benchmark of LongMemEval memory-recall questions (question_id, question_type, query, answer, answer_pair_ids) bundled in the official SN118 DittoBench starter kit at fixtures/seed-user/memory_cases.json. Loaded at runtime by seed.rs (MEMORY_CASES_JSON) for local mem-eval and evaluate flows over the bundled seed user. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

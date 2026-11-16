@@ -11,6 +11,11 @@
 // 2026-07-21 to return HTTP 200 application/json {"status":"ok"}. The
 // fixture below mirrors that live response rather than fetching it, keeping the
 // test hermetic while still exercising the JSON parse-and-return path.
+//
+// 2026-11-15: the infra#873 availability sweep found api.cartha.finance
+// dns-gone (NXDOMAIN x2) and retired the surface from the callable set
+// (probe.enabled:false, dated note). This file now pins that retired state --
+// re-add only on new identity evidence.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -42,12 +47,16 @@ function upstreamResponse() {
 }
 
 describe("SN35 OxMarkets call_subnet_surface verification (#7050)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins its sweep-retired (non-callable) state", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
-    // No-auth GET returning JSON.
+    // Retired from the callable set by the 2026-11-15 infra#873 sweep
+    // (dns-gone); probe-disabled means retired pending re-verification, not
+    // broken-and-forgotten -- the dated note records why.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p2\] dns-gone/);
+    // Declared no-auth GET returning JSON, unchanged by the sweep.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
     assert.equal(SURFACE.url, "https://api.cartha.finance/health");
@@ -75,7 +84,11 @@ describe("SN35 OxMarkets call_subnet_surface verification (#7050)", () => {
     assert.equal((result.body as Row).status, "ok");
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool refuses the retired surface without fetching upstream", async () => {
+    // In production the operational catalog filters probe.enabled:false
+    // surfaces out entirely; this injects the real registry config into a
+    // catalog fixture to pin the tool's own guard (src/mcp-server.ts
+    // surface_unavailable) as the second line of defense.
     const catalog = {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 35 }],
     };
@@ -85,6 +98,7 @@ describe("SN35 OxMarkets call_subnet_surface verification (#7050)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
       const url = String(input);
@@ -93,6 +107,7 @@ describe("SN35 OxMarkets call_subnet_surface verification (#7050)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return upstreamResponse();
     };
     try {
@@ -114,10 +129,9 @@ describe("SN35 OxMarkets call_subnet_surface verification (#7050)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.status, "ok");
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

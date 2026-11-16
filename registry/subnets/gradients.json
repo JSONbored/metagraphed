@@ -191,7 +191,7 @@
       "id": "sn-56-gradients-examples",
       "kind": "example",
       "name": "Gradients code examples",
-      "notes": "Official Gradients (G.O.D) examples \u2014 DPO / GRPO / environment task quickstarts.",
+      "notes": "Official Gradients (G.O.D) examples — DPO / GRPO / environment task quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -233,9 +233,9 @@
       "id": "sn-56-gradients-healthz",
       "kind": "subnet-api",
       "name": "Gradients API healthz",
-      "notes": "Public no-auth GET /healthz on api.gradients.io returning API liveness JSON (observed: {\"ok\":true}). Served on the Gradients API host documented by the subnet OpenAPI spec alongside the existing performance and network-status subnet-api surfaces.",
+      "notes": "Public no-auth GET /healthz on api.gradients.io returning API liveness JSON (observed: {\"ok\":true}). Served on the Gradients API host documented by the subnet OpenAPI spec alongside the existing performance and network-status subnet-api surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -283,7 +283,7 @@
       "id": "sn-56-gradients-auditing-tasks-api",
       "kind": "subnet-api",
       "name": "Gradients auditing tasks API",
-      "notes": "Public no-auth GET /auditing/tasks \u2014 audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /auditing/tasks — audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -305,7 +305,7 @@
       "id": "sn-56-gradients-challenger-review-config",
       "kind": "data-artifact",
       "name": "Gradients challenger code-review config",
-      "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament \u2014 the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
+      "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament — the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -858,7 +858,7 @@
       "id": "sn-56-gradients-v1-chutes-deploy",
       "kind": "subnet-api",
       "name": "Gradients v1 chutes deploy",
-      "notes": "Deploy Chute operation on the Gradients API (POST /v1/chutes/deploy), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Deploy Chute operation on the Gradients API (POST /v1/chutes/deploy), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -886,7 +886,7 @@
       "id": "sn-56-gradients-v1-chutes-status-chute-id",
       "kind": "subnet-api",
       "name": "Gradients v1 chutes status chute id",
-      "notes": "Get Chute Status operation on the Gradients API (GET /v1/chutes/status/{chute_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Get Chute Status operation on the Gradients API (GET /v1/chutes/status/{chute_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1154,12 +1154,12 @@
       "url": "https://api.gradients.io/v1/tasks/account/%7Baccount_id%7D"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-56-gradients-v1-tasks-breakdown-task-id",
       "kind": "subnet-api",
       "name": "Gradients v1 tasks breakdown task id",
-      "notes": "Get Task Breakdown operation on the Gradients API (GET /v1/tasks/breakdown/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Task Breakdown operation on the Gradients API (GET /v1/tasks/breakdown/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1173,7 +1173,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://api.gradients.io/openapi.json"],
-      "url": "https://api.gradients.io/v1/tasks/breakdown/%7Btask_id%7D"
+      "url": "https://api.gradients.io/v1/tasks/breakdown/%7Btask_id%7D",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth": {
@@ -1478,12 +1482,12 @@
       "url": "https://api.gradients.io/v1/tasks/organic/completed"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-56-gradients-v1-tasks-task-id",
       "kind": "subnet-api",
       "name": "Gradients v1 tasks task id",
-      "notes": "Get Task Details operation on the Gradients API (GET /v1/tasks/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Task Details operation on the Gradients API (GET /v1/tasks/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1497,7 +1501,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://api.gradients.io/openapi.json"],
-      "url": "https://api.gradients.io/v1/tasks/%7Btask_id%7D"
+      "url": "https://api.gradients.io/v1/tasks/%7Btask_id%7D",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth_required": false,
@@ -1577,7 +1585,7 @@
       "id": "sn-56-gradients-validator-signup",
       "kind": "subnet-api",
       "name": "Gradients validator signup",
-      "notes": "Validator Signup operation on the Gradients API (POST /validator-signup), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "notes": "Validator Signup operation on the Gradients API (POST /validator-signup), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

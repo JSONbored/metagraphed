@@ -59,7 +59,10 @@ describe("SN29 Coldint call_subnet_surface verification (#7045)", () => {
     assert.equal(SURFACE.auth_required, false);
     assert.equal(SURFACE.probe?.enabled, true);
     assert.equal(SURFACE.probe?.method, "GET");
-    assert.equal(SURFACE.probe?.expect, "json");
+    // [2026-11-15 infra#873 p3b] the endpoint serves its JSON body under a
+    // text/* content-type header, so the probe expectation is "any" -- the
+    // surface stays callable and still returns JSON.
+    assert.equal(SURFACE.probe?.expect, "any");
     assert.equal(
       SURFACE.url,
       "https://github.com/coldint/sn29/raw/main/competitions.json",

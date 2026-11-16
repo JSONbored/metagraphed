@@ -22,6 +22,16 @@
 //     -> HTTP 200 {"dailyEmissions":127.5,"subnet":46,"blockHeight":...}
 // Registry already matched reality -- no registry edit needed.
 //
+// 2026-11-15: the infra#873 availability sweep found every zipcode.ai route
+// here answering HTTP 402 (payment required) on a declared-open route: the
+// registry now carries auth_required:true with a curated custom-scheme
+// placeholder on all four surfaces (gated != broken -- the host is alive and
+// the API is now a paid tier, pending re-review for the credential
+// mechanism). This file pins that gated state: the MCP tool must refuse the
+// two subnet-api surfaces without a credential and without touching upstream.
+// Probes stay enabled, so the transport-level fixtures below still exercise
+// the parse paths.
+//
 // Note on the two openapi surfaces: kind "openapi" is not in
 // OPERATIONAL_SURFACE_KINDS (src/health-probe-core.ts), so those surfaces are
 // absent from public/metagraph/operational-surfaces.json and cannot be
@@ -68,6 +78,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         : { ok: false, status: 404 },
   };
   const originalFetch = globalThis.fetch;
+  let upstreamFetched = false;
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -75,6 +86,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    upstreamFetched = true;
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -95,13 +107,16 @@ async function callToolWithSurface(surface: Row, body: unknown) {
       mockEnv(),
       deps,
     );
-    return ((await response.json()) as Row).result;
+    const result = ((await response.json()) as Row).result;
+    return { result, upstreamFetched };
   } finally {
     globalThis.fetch = originalFetch;
   }
 }
 
-const CALLABLE_SURFACES = [
+// The two dashboard surfaces, paywalled (402) since the 2026-11-15 infra#873
+// sweep; fixtures keep the pre-paywall body shapes for the transport tests.
+const GATED_SURFACES = [
   {
     id: "sn-46-zipcode-subnet-api",
     url: "https://zipcode.ai/api/dashboard/stats",
@@ -133,13 +148,21 @@ const CALLABLE_SURFACES = [
 ];
 
 describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
-  for (const fixture of CALLABLE_SURFACES) {
+  for (const fixture of GATED_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface is callable`, () => {
+    test(`${fixture.id}: registry surface pins its sweep-gated (402 paywalled) state`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
-      assert.equal(SURFACE.auth_required, false);
+      // Paywalled since the 2026-11-15 infra#873 sweep; the custom-scheme
+      // placeholder records that the credential mechanism is still to be
+      // curated at re-review.
+      assert.equal(SURFACE.auth_required, true);
+      assert.equal(SURFACE.auth?.scheme, "custom");
+      assert.match(
+        SURFACE.notes,
+        /\[2026-11-15 infra#873 p3b\] payment-required \(402\)/,
+      );
       assert.equal(SURFACE.probe?.enabled, true);
       assert.equal(SURFACE.probe?.method, "GET");
       assert.equal(SURFACE.probe?.expect, "json");
@@ -167,12 +190,14 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call by surface id`, async () => {
-      const result = await callToolWithSurface(SURFACE, fixture.body);
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, fixture.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      fixture.assertBody(result.structuredContent.body as Row);
+    test(`${fixture.id}: the MCP tool refuses the gated surface without a credential or upstream fetch`, async () => {
+      const { result, upstreamFetched } = await callToolWithSurface(
+        SURFACE,
+        fixture.body,
+      );
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential|auth_required/);
+      assert.equal(upstreamFetched, false);
     });
   }
 
@@ -222,10 +247,17 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
     for (const fixture of OPENAPI_SURFACES) {
       const SURFACE = surfaceOf(fixture.id);
 
-      test(`${fixture.id}: registry surface exists, is no-auth GET, carries schema`, () => {
+      test(`${fixture.id}: registry surface exists, is sweep-gated GET, carries schema`, () => {
         assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
         assert.equal(SURFACE.kind, "openapi");
-        assert.equal(SURFACE.auth_required, false);
+        // Paywalled since the 2026-11-15 infra#873 sweep, same 402 class as
+        // the dashboard surfaces above.
+        assert.equal(SURFACE.auth_required, true);
+        assert.equal(SURFACE.auth?.scheme, "custom");
+        assert.match(
+          SURFACE.notes,
+          /\[2026-11-15 infra#873 p3b\] payment-required \(402\)/,
+        );
         assert.equal(SURFACE.probe?.enabled, true);
         assert.equal(SURFACE.probe?.method, "GET");
         assert.equal(SURFACE.probe?.expect, "json");

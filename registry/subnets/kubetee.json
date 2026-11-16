@@ -249,7 +249,7 @@
       "id": "sn-90-degenbrain-resolution-detail",
       "kind": "subnet-api",
       "name": "DegenBrain resolution detail",
-      "notes": "Public no-auth GET /api/resolutions/{statement_id} on api.subnet90.com returning single-statement resolution detail. Documented in the subnet OpenAPI; sibling of the already-registered /api/resolutions list. Path-parameterized template registered per catalog-everything policy (ReadyAI/SOMA convention). probe.enabled:false because there is no stable canonical statement_id (live made-up/example ids return HTTP 404 JSON). Live-verified 2026-07-21: route exists (404 Statement not found).",
+      "notes": "Public no-auth GET /api/resolutions/{statement_id} on api.subnet90.com returning single-statement resolution detail. Documented in the subnet OpenAPI; sibling of the already-registered /api/resolutions list. Path-parameterized template registered per catalog-everything policy (ReadyAI/SOMA convention). probe.enabled:false because there is no stable canonical statement_id (live made-up/example ids return HTTP 404 JSON). Live-verified 2026-07-21: route exists (404 Statement not found). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

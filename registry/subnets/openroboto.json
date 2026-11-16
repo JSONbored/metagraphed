@@ -99,10 +99,10 @@
       "id": "sn-80-dogelayer-chain-types",
       "kind": "data-artifact",
       "name": "dogelayer chain type registry",
-      "notes": "Public no-auth machine-readable chain type registry (types.json) from the official SN80 dogelayer repository (dogelayer-ai/dogelayer), pinned to an immutable commit. Defines the SCALE-encoded type definitions the subnet's core uses to decode on-chain data, including the PoolInfo commitment structure (pool_index, ip, port, domain, username, password, high_diff_port) that validators publish when they commit stratum pool metadata to the chain. Static JSON artifact useful for agents decoding SN80 chain state.",
+      "notes": "Public no-auth machine-readable chain type registry (types.json) from the official SN80 dogelayer repository (dogelayer-ai/dogelayer), pinned to an immutable commit. Defines the SCALE-encoded type definitions the subnet's core uses to decode on-chain data, including the PoolInfo commitment structure (pool_index, ip, port, domain, username, password, high_diff_port) that validators publish when they commit stratum pool metadata to the chain. Static JSON artifact useful for agents decoding SN80 chain state. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

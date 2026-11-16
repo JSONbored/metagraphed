@@ -36,6 +36,12 @@
 //     -> HTTP 200 {validator_key, netuid:51, uids, weights, ...}
 // Registry already matched reality -- no registry edit needed.
 //
+// 2026-11-15: the infra#873 availability sweep found /api/reclaims answering
+// 404 on an alive host and probe-disabled sn-51-lium-reclaims-api pending url
+// re-verification; its tests below pin that non-callable state (probe-disabled
+// = retired from the callable set, not broken). The other surfaces stay
+// callable.
+//
 // Note on sn-51-lium-io-openapi: kind "openapi" is not in
 // OPERATIONAL_SURFACE_KINDS (src/health-probe-core.ts), so that surface is
 // absent from public/metagraph/operational-surfaces.json and cannot be
@@ -82,6 +88,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         : { ok: false, status: 404 },
   };
   const originalFetch = globalThis.fetch;
+  let upstreamFetched = false;
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -89,6 +96,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    upstreamFetched = true;
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -109,7 +117,8 @@ async function callToolWithSurface(surface: Row, body: unknown) {
       mockEnv(),
       deps,
     );
-    return ((await response.json()) as Row).result;
+    const result = ((await response.json()) as Row).result;
+    return { result, upstreamFetched };
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -120,6 +129,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-io-machines-api",
     url: "https://lium.io/api/machines",
     schemaUrl: "https://lium.io/api/openapi.json",
+    callable: true,
     body: [
       {
         name: "NVIDIA A30",
@@ -139,6 +149,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-health",
     url: "https://lium.io/api/version",
     schemaUrl: "https://lium.io/api/openapi.json",
+    callable: true,
     body: {
       started_at: "2026-07-20T10:41:48.463468+00:00",
       uptime_seconds: 70500,
@@ -152,6 +163,9 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-reclaims-api",
     url: "https://lium.io/api/reclaims",
     schemaUrl: "https://lium.io/api/openapi.json",
+    // Probe-disabled by the 2026-11-15 infra#873 sweep (route answers 404 on
+    // an alive host); retired from the callable set pending re-verification.
+    callable: false,
     // Minimal fixture of the live array shape (live body is ~416 KB).
     body: [
       {
@@ -174,6 +188,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-machines-capacity-api",
     url: "https://lium.io/api/machines/capacity",
     schemaUrl: "https://lium.io/api/openapi.json",
+    callable: true,
     body: [
       {
         base_model: "B300",
@@ -192,6 +207,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-executors-count",
     url: "https://lium.io/api/executors/count",
     schemaUrl: undefined,
+    callable: true,
     body: { count: 110 },
     assertBody: (b: Row) => {
       assert.equal(typeof b.count, "number");
@@ -201,6 +217,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-executors-total-count",
     url: "https://lium.io/api/executors/total-count",
     schemaUrl: undefined,
+    callable: true,
     body: { total_count: 369 },
     assertBody: (b: Row) => {
       assert.equal(typeof b.total_count, "number");
@@ -210,6 +227,7 @@ const CALLABLE_SURFACES = [
     id: "sn-51-lium-latest-set-weights",
     url: "https://lium.io/api/latest-set-weights",
     schemaUrl: undefined,
+    callable: true,
     body: {
       validator_key: "5F7X5UpKSr26KU3jKfpLmT8kuKtBNyHhEnfS8xtxPCqCb13p",
       netuid: 51,
@@ -230,17 +248,26 @@ const CALLABLE_SURFACES = [
 describe("SN51 lium.io call_subnet_surface verification (#7064)", () => {
   for (const fixture of CALLABLE_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
+    const callable = fixture.callable !== false;
 
-    test(`${fixture.id}: registry surface is callable`, () => {
-      assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
-      assert.equal(SURFACE.kind, "subnet-api");
-      assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
-      assert.equal(SURFACE.probe?.method, "GET");
-      assert.equal(SURFACE.probe?.expect, "json");
-      assert.equal(SURFACE.url, fixture.url);
-      assert.equal(SURFACE.schema_url, fixture.schemaUrl);
-    });
+    test(
+      callable
+        ? `${fixture.id}: registry surface is callable`
+        : `${fixture.id}: registry surface pins its sweep-retired (non-callable) state`,
+      () => {
+        assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
+        assert.equal(SURFACE.kind, "subnet-api");
+        assert.equal(SURFACE.auth_required, false);
+        assert.equal(SURFACE.probe?.enabled, callable);
+        if (!callable) {
+          assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+        }
+        assert.equal(SURFACE.probe?.method, "GET");
+        assert.equal(SURFACE.probe?.expect, "json");
+        assert.equal(SURFACE.url, fixture.url);
+        assert.equal(SURFACE.schema_url, fixture.schemaUrl);
+      },
+    );
 
     test(`${fixture.id}: callSubnetSurface returns the real JSON body`, async () => {
       let requestedUrl: string | undefined;
@@ -262,13 +289,30 @@ describe("SN51 lium.io call_subnet_surface verification (#7064)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call by surface id`, async () => {
-      const result = await callToolWithSurface(SURFACE, fixture.body);
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, fixture.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      fixture.assertBody(result.structuredContent.body as Row);
-    });
+    test(
+      callable
+        ? `${fixture.id}: end-to-end MCP tools/call by surface id`
+        : `${fixture.id}: the MCP tool refuses the retired surface without fetching upstream`,
+      async () => {
+        const { result, upstreamFetched } = await callToolWithSurface(
+          SURFACE,
+          fixture.body,
+        );
+        if (!callable) {
+          // In production the operational catalog filters
+          // probe.enabled:false surfaces out entirely; injecting the real
+          // config pins the tool's own surface_unavailable guard.
+          assert.equal(result.isError, true);
+          assert.match(result.content[0].text, /probe\.enabled:false/);
+          assert.equal(upstreamFetched, false);
+          return;
+        }
+        assert.equal(result.isError, false);
+        assert.equal(result.structuredContent.surface_id, fixture.id);
+        assert.equal(result.structuredContent.status_code, 200);
+        fixture.assertBody(result.structuredContent.body as Row);
+      },
+    );
   }
 
   describe("sn-51-lium-io-openapi (direct-call only)", () => {

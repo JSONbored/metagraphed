@@ -121,10 +121,10 @@
       "id": "sn-113-tensorusd-vault-abi",
       "kind": "data-artifact",
       "name": "TensorUSD vault contract ABI",
-      "notes": "Public no-auth JSON contract metadata (ink! ABI) for the SN113 TensorUSD vault pallet contract. Loaded by miners and validators via ContractMetadata.create_from_file in the official tensorusd/common/contract.py module; the README documents the matching mainnet Vault contract address.",
+      "notes": "Public no-auth JSON contract metadata (ink! ABI) for the SN113 TensorUSD vault pallet contract. Loaded by miners and validators via ContractMetadata.create_from_file in the official tensorusd/common/contract.py module; the README documents the matching mainnet Vault contract address. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

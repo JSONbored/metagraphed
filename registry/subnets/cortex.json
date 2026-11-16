@@ -135,9 +135,9 @@
       "id": "sn-100-platform-network-subnet-api",
       "kind": "subnet-api",
       "name": "Plaτform challenge registry API",
-      "notes": "Public no-auth GET returning the active BASE challenge registry (network, API version, and challenge slugs with emission percentages). Documented in the subnet's own OpenAPI (chain.joinbase.ai/openapi.json, path /v1/registry); same host as the registered OpenAPI surface. The sibling /v1/weights/latest endpoint on this host returns netuid 100, confirming SN100 ownership.",
+      "notes": "Public no-auth GET returning the active BASE challenge registry (network, API version, and challenge slugs with emission percentages). Documented in the subnet's own OpenAPI (chain.joinbase.ai/openapi.json, path /v1/registry); same host as the registered OpenAPI surface. The sibling /v1/weights/latest endpoint on this host returns netuid 100, confirming SN100 ownership. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -160,7 +160,7 @@
       "id": "sn-100-platform-network-challenges-dashboard",
       "kind": "data-artifact",
       "name": "Plaτform challenges dashboard SVG",
-      "notes": "Public no-auth GET returning a rendered SVG dashboard (registered BASE challenges with status, miners, and emissions) on the same chain.joinbase.ai host as the registered OpenAPI/subnet-api surfaces. Documented in the subnet's own OpenAPI spec (chain.joinbase.ai/openapi.json, path /v1/challenges/dashboard.svg, summary \"Get Challenges Dashboard Svg\").",
+      "notes": "Public no-auth GET returning a rendered SVG dashboard (registered BASE challenges with status, miners, and emissions) on the same chain.joinbase.ai host as the registered OpenAPI/subnet-api surfaces. Documented in the subnet's own OpenAPI spec (chain.joinbase.ai/openapi.json, path /v1/challenges/dashboard.svg, summary \"Get Challenges Dashboard Svg\"). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "platform-network",
       "public_safe": true,
       "review": {
@@ -179,9 +179,9 @@
       "id": "sn-100-joinbase-validators-public",
       "kind": "subnet-api",
       "name": "Base validators (public)",
-      "notes": "Public no-auth GET returning the public validator list (hotkey, uid, status, online, capabilities). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the public validator list (hotkey, uid, status, online, capabilities). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -208,7 +208,7 @@
       "id": "sn-100-platform-admin",
       "kind": "subnet-api",
       "name": "Platform admin",
-      "notes": "Admin Home operation on the Plaтform BASE Challenge Proxy API (GET /admin), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "notes": "Admin Home operation on the Plaтform BASE Challenge Proxy API (GET /admin), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -237,7 +237,7 @@
       "id": "sn-100-platform-admin-challenges",
       "kind": "subnet-api",
       "name": "Platform admin challenges",
-      "notes": "Admin Challenges operation on the Plaтform BASE Challenge Proxy API (GET /admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "notes": "Admin Challenges operation on the Plaтform BASE Challenge Proxy API (GET /admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -259,7 +259,7 @@
       "id": "sn-100-platform-challenges-slug",
       "kind": "subnet-api",
       "name": "Platform challenges slug",
-      "notes": "Proxy Root operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Proxy Root operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -281,7 +281,7 @@
       "id": "sn-100-platform-challenges-slug-path",
       "kind": "subnet-api",
       "name": "Platform challenges slug path",
-      "notes": "Proxy Path operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}/{path}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, {path}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Proxy Path operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}/{path}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, {path}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -303,7 +303,7 @@
       "id": "sn-100-platform-internal-v1-challenges-slug-raw-weights",
       "kind": "subnet-api",
       "name": "Platform internal v1 challenges slug raw weights",
-      "notes": "Push Raw Weights operation on the Plaтform BASE Challenge Proxy API (POST /internal/v1/challenges/{slug}/raw-weights), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Push Raw Weights operation on the Plaтform BASE Challenge Proxy API (POST /internal/v1/challenges/{slug}/raw-weights), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -332,7 +332,7 @@
       "id": "sn-100-platform-v1-admin-challenges",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges",
-      "notes": "Create Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Create Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -361,7 +361,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug",
-      "notes": "Get Challenge operation on the Plaтform BASE Challenge Proxy API (GET, PATCH /v1/admin/challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Get Challenge operation on the Plaтform BASE Challenge Proxy API (GET, PATCH /v1/admin/challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -390,7 +390,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug-activate",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug activate",
-      "notes": "Activate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/activate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Activate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/activate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -419,7 +419,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug-deactivate",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug deactivate",
-      "notes": "Deactivate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/deactivate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Deactivate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/deactivate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -448,7 +448,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug-pull",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug pull",
-      "notes": "Pull Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Pull Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -477,7 +477,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug-restart",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug restart",
-      "notes": "Restart Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/restart), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Restart Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/restart), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -506,7 +506,7 @@
       "id": "sn-100-platform-v1-admin-challenges-slug-status",
       "kind": "subnet-api",
       "name": "Platform v1 admin challenges slug status",
-      "notes": "Challenge Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/admin/challenges/{slug}/status), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Challenge Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/admin/challenges/{slug}/status), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -528,7 +528,7 @@
       "id": "sn-100-platform-v1-assignments-assignment-id-progress",
       "kind": "subnet-api",
       "name": "Platform v1 assignments assignment id progress",
-      "notes": "Assignment Progress operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/progress), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Assignment Progress operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/progress), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -550,7 +550,7 @@
       "id": "sn-100-platform-v1-assignments-assignment-id-result",
       "kind": "subnet-api",
       "name": "Platform v1 assignments assignment id result",
-      "notes": "Assignment Result operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/result), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Assignment Result operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/result), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -572,7 +572,7 @@
       "id": "sn-100-platform-v1-assignments-pull",
       "kind": "subnet-api",
       "name": "Platform v1 assignments pull",
-      "notes": "Pull Assignments operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Pull Assignments operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -594,7 +594,7 @@
       "id": "sn-100-platform-v1-challenges-challenge-name-submissions",
       "kind": "subnet-api",
       "name": "Platform v1 challenges challenge name submissions",
-      "notes": "Upload Submission operation on the Plaтform BASE Challenge Proxy API (POST /v1/challenges/{challenge_name}/submissions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Upload Submission operation on the Plaтform BASE Challenge Proxy API (POST /v1/challenges/{challenge_name}/submissions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -616,7 +616,7 @@
       "id": "sn-100-platform-v1-challenges-challenge-name-submissions-submission-id",
       "kind": "subnet-api",
       "name": "Platform v1 challenges challenge name submissions submission id",
-      "notes": "Bridge Submission Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/challenges/{challenge_name}/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Bridge Submission Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/challenges/{challenge_name}/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -645,7 +645,7 @@
       "id": "sn-100-platform-v1-validators",
       "kind": "subnet-api",
       "name": "Platform v1 validators",
-      "notes": "List Validators operation on the Plaтform BASE Challenge Proxy API (GET /v1/validators), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "notes": "List Validators operation on the Plaтform BASE Challenge Proxy API (GET /v1/validators), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -667,7 +667,7 @@
       "id": "sn-100-platform-v1-validators-heartbeat",
       "kind": "subnet-api",
       "name": "Platform v1 validators heartbeat",
-      "notes": "Heartbeat Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/heartbeat), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Heartbeat Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/heartbeat), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -689,7 +689,7 @@
       "id": "sn-100-platform-v1-validators-register",
       "kind": "subnet-api",
       "name": "Platform v1 validators register",
-      "notes": "Register Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/register), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Register Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/register), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -716,7 +716,7 @@
         "provenance": "operator-attested",
         "source_url": "https://chain.joinbase.ai/openapi.json"
       },
-      "notes": "Set Subscriptions operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/subscriptions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. REVENUE ROLE (#10460): not-revenue. A GET answers 405; a POST answers 'invalid signed request'. It is a signed write endpoint, not a readable subscription-revenue feed. The earlier empty GET response was an unsupported method, not a genuine zero. REVENUE ROLE (#10460): not-revenue. A GET answers 405; a POST answers 'invalid signed request'. It is a signed write endpoint, not a readable subscription-revenue feed. The earlier empty GET response was an unsupported method, not a genuine zero.",
+      "notes": "Set Subscriptions operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/subscriptions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. REVENUE ROLE (#10460): not-revenue. A GET answers 405; a POST answers 'invalid signed request'. It is a signed write endpoint, not a readable subscription-revenue feed. The earlier empty GET response was an unsupported method, not a genuine zero. REVENUE ROLE (#10460): not-revenue. A GET answers 405; a POST answers 'invalid signed request'. It is a signed write endpoint, not a readable subscription-revenue feed. The earlier empty GET response was an unsupported method, not a genuine zero. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -760,7 +760,7 @@
       "id": "sn-100-platform-v1-weights-submission-observations",
       "kind": "subnet-api",
       "name": "Platform v1 weights submission observations",
-      "notes": "Report Submission Observation operation on the Plaтform BASE Challenge Proxy API (POST /v1/weights/submission-observations), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Report Submission Observation operation on the Plaтform BASE Challenge Proxy API (POST /v1/weights/submission-observations), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -782,7 +782,7 @@
       "id": "sn-100-platform-v1-weights-vector-id",
       "kind": "subnet-api",
       "name": "Platform v1 weights vector id",
-      "notes": "Get Weight Vector operation on the Plaтform BASE Challenge Proxy API (GET /v1/weights/{vector_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {vector_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Weight Vector operation on the Plaтform BASE Challenge Proxy API (GET /v1/weights/{vector_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {vector_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

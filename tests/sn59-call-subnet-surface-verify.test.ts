@@ -14,6 +14,12 @@
 // keeping the test hermetic while still exercising the JSON parse-and-return
 // path against the upstream's actual field set. (The per-mode session counts are
 // live gauges, so the test asserts the stable shape, not their exact values.)
+//
+// [2026-11-15 infra#873 p2] The availability sweep found api.babelbit.ai
+// dns-gone (NXDOMAIN x2) and retired the surface from the callable set
+// (probe.enabled:false; re-add only on new identity evidence -- retired, not
+// merely broken), so this file now pins the non-callable state and the tool's
+// refusal to call it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -50,12 +56,13 @@ function sn59Response() {
 }
 
 describe("SN59 Babelbit call_subnet_surface verification (#7072)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins the sweep-retired (non-callable) config", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
-    // No-auth GET /health returning JSON.
+    // [2026-11-15 infra#873 p2] dns-gone: retired from the callable set.
+    assert.equal(SURFACE.probe?.enabled, false);
+    // Declared method/expectation are preserved on the retired record.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
     assert.equal(SURFACE.url, "https://api.babelbit.ai/health");
@@ -92,7 +99,7 @@ describe("SN59 Babelbit call_subnet_surface verification (#7072)", () => {
     );
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool rejects the retired surface without fetching upstream", async () => {
     // operational-surfaces.json flattens each registry surface's `id` to a
     // top-level `surface_id`; build that catalog shape from the real surface.
     const catalog = {
@@ -104,6 +111,7 @@ describe("SN59 Babelbit call_subnet_surface verification (#7072)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
@@ -113,6 +121,7 @@ describe("SN59 Babelbit call_subnet_surface verification (#7072)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return sn59Response();
     }) as typeof fetch;
     try {
@@ -134,10 +143,9 @@ describe("SN59 Babelbit call_subnet_surface verification (#7072)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.status, "healthy");
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

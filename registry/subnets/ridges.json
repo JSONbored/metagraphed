@@ -52,7 +52,7 @@
       "authority": "community",
       "id": "sn-62-ridges-subnet-api",
       "kind": "subnet-api",
-      "name": "Ridges API \u2014 top agents leaderboard (retrieval)",
+      "name": "Ridges API — top agents leaderboard (retrieval)",
       "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json.",
       "probe": {
         "enabled": true,
@@ -135,9 +135,9 @@
       "id": "sn-62-ridges-benchmark-agents",
       "kind": "subnet-api",
       "name": "Ridges benchmark agents",
-      "notes": "Public no-auth GET returning the list of benchmark reference agents (miner_hotkey, name, version_num, status). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the list of benchmark reference agents (miner_hotkey, name, version_num, status). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -213,9 +213,9 @@
       "id": "sn-62-ridges-perfectly-solved-over-time",
       "kind": "subnet-api",
       "name": "Ridges perfectly-solved-over-time",
-      "notes": "Public no-auth GET /retrieval/perfectly-solved-over-time on agent-upload.ridges.ai, returning an hourly time series of fully-solved problem counts, overall and per benchmark family. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken.",
+      "notes": "Public no-auth GET /retrieval/perfectly-solved-over-time on agent-upload.ridges.ai, returning an hourly time series of fully-solved problem counts, overall and per benchmark family. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -231,9 +231,9 @@
       "id": "sn-62-ridges-top-scores-over-time",
       "kind": "subnet-api",
       "name": "Ridges top-scores-over-time",
-      "notes": "Public no-auth GET /retrieval/top-scores-over-time on agent-upload.ridges.ai, returning an hourly time series of the top agent score. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "notes": "Public no-auth GET /retrieval/top-scores-over-time on agent-upload.ridges.ai, returning an hourly time series of the top agent score. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -249,9 +249,9 @@
       "id": "sn-62-ridges-latest-set-info",
       "kind": "subnet-api",
       "name": "Ridges latest set info",
-      "notes": "Public no-auth GET /scoring/latest-set-info on agent-upload.ridges.ai, returning the current evaluation set's id and creation timestamp. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken.",
+      "notes": "Public no-auth GET /scoring/latest-set-info on agent-upload.ridges.ai, returning the current evaluation set's id and creation timestamp. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -267,9 +267,9 @@
       "id": "sn-62-ridges-problem-statistics",
       "kind": "data-artifact",
       "name": "Ridges problem statistics",
-      "notes": "Public no-auth GET /statistics/problem-statistics on agent-upload.ridges.ai, returning per-problem evaluation statistics (difficulty, total/finished/passed run counts) across the SWE-bench-style problem suite. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "notes": "Public no-auth GET /statistics/problem-statistics on agent-upload.ridges.ai, returning per-problem evaluation statistics (difficulty, total/finished/passed run counts) across the SWE-bench-style problem suite. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -349,12 +349,12 @@
       "url": "https://agent-upload.ridges.ai/agent/get-by-evaluation-run-id"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-62-ridges-debug-lock-info",
       "kind": "subnet-api",
       "name": "Ridges debug lock info",
-      "notes": "Debug Lock Info operation on the Ridges agent-upload API (GET /debug/lock-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "notes": "Debug Lock Info operation on the Ridges agent-upload API (GET /debug/lock-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -368,15 +368,19 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
-      "url": "https://agent-upload.ridges.ai/debug/lock-info"
+      "url": "https://agent-upload.ridges.ai/debug/lock-info",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-62-ridges-debug-query-info",
       "kind": "subnet-api",
       "name": "Ridges debug query info",
-      "notes": "Debug Query Info operation on the Ridges agent-upload API (GET /debug/query-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "notes": "Debug Query Info operation on the Ridges agent-upload API (GET /debug/query-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing). [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -390,7 +394,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
-      "url": "https://agent-upload.ridges.ai/debug/query-info"
+      "url": "https://agent-upload.ridges.ai/debug/query-info",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth_required": false,

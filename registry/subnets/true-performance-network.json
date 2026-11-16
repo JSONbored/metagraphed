@@ -181,7 +181,7 @@
       "id": "sn-65-tpn-failover-config-new",
       "kind": "subnet-api",
       "name": "TPN failover config issuance",
-      "notes": "Generate Failover VPN Configuration operation on the TPN API (POST /failover/config/new), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Generate Failover VPN Configuration operation on the TPN API (POST /failover/config/new), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -271,7 +271,7 @@
       "id": "sn-65-tpn-proxy-generate",
       "kind": "subnet-api",
       "name": "TPN proxy config generation",
-      "notes": "Generate SOCKS5 Proxy Configuration operation on the TPN API (POST /proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Generate SOCKS5 Proxy Configuration operation on the TPN API (POST /proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -325,7 +325,7 @@
       "id": "sn-65-tpn-vpn-cost",
       "kind": "subnet-api",
       "name": "TPN VPN cost quote",
-      "notes": "Calculate VPN Credit Cost operation on the TPN API (POST /vpn/cost), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "notes": "Calculate VPN Credit Cost operation on the TPN API (POST /vpn/cost), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -379,7 +379,7 @@
       "id": "sn-65-tpn-vpn-generate",
       "kind": "subnet-api",
       "name": "TPN VPN config generation",
-      "notes": "Generate WireGuard VPN Configuration operation on the TPN API (POST /vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "notes": "Generate WireGuard VPN Configuration operation on the TPN API (POST /vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -432,7 +432,7 @@
       "id": "sn-65-tpn-x402-proxy-generate",
       "kind": "subnet-api",
       "name": "TPN x402 proxy config generation",
-      "notes": "Generate SOCKS5 Proxy Configuration (x402) operation on the TPN API (POST /x402/proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "notes": "Generate SOCKS5 Proxy Configuration (x402) operation on the TPN API (POST /x402/proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -456,7 +456,7 @@
       "id": "sn-65-tpn-x402-vpn-generate",
       "kind": "subnet-api",
       "name": "TPN x402 VPN config generation",
-      "notes": "Generate WireGuard VPN Configuration (x402) operation on the TPN API (POST /x402/vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "notes": "Generate WireGuard VPN Configuration (x402) operation on the TPN API (POST /x402/vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

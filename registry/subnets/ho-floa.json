@@ -165,10 +165,10 @@
       "id": "sn-29-coldint-competitions-api",
       "kind": "subnet-api",
       "name": "Coldint competitions configuration API",
-      "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart.",
+      "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

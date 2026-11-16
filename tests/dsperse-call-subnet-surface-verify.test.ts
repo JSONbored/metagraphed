@@ -3,8 +3,14 @@
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN2's *real* registry surface config
 // (registry/subnets/danilabs.json) to the tool's contract, so a future edit that
-// regresses its callability (flipping to HEAD, marking it auth_required,
-// disabling its probe) is caught here.
+// changes its availability class without updating this pin is caught here.
+//
+// The 2026-11-15 infra#873 availability sweep retired this surface from the
+// callable set (p2: dns-gone), so this file now pins the
+// non-callable state: probe disabled pending re-verification (retired, not
+// deleted), and the MCP tool refusing the call before any upstream fetch.
+// The transport-layer fixture test below is unchanged -- callSubnetSurface
+// itself does not gate on probe.enabled.
 //
 // The surface is the public no-auth SN2 API endpoint (sn-2-dsperse-circuit-list, GET https://repository.inferencelabs.com/circuits,
 // JSON, single fixed endpoint -- no schema). Live-verified 2026-07-21 to return
@@ -44,11 +50,13 @@ function upstreamResponse() {
 }
 
 describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface is pinned to its retired (probe-disabled) config", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
+    // [2026-11-15 infra#873 p2] dns-gone: retired from the callable set.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p2\] dns-gone/);
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
     assert.equal(SURFACE.url, "https://repository.inferencelabs.com/circuits");
@@ -77,7 +85,7 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
     assert.ok("circuits" in (result.body as Row));
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool refuses the retired surface without fetching upstream", async () => {
     const catalog = {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 2 }],
     };
@@ -87,6 +95,7 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
       const url = String(input);
@@ -95,6 +104,7 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return upstreamResponse();
     };
     try {
@@ -116,10 +126,9 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.ok("circuits" in (result.structuredContent.body as Row));
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

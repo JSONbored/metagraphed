@@ -166,9 +166,9 @@
       "id": "sn-35-oxmarkets-openapi",
       "kind": "openapi",
       "name": "Cartha Verifier API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema for the Cartha Verifier API (title: Cartha Verifier). Served publicly at api.cartha.finance; documents SN35 OxMarkets/Cartha miner verification, pool, and lock routes plus the no-auth GET /health probe.",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Cartha Verifier API (title: Cartha Verifier). Served publicly at api.cartha.finance; documents SN35 OxMarkets/Cartha miner verification, pool, and lock routes plus the no-auth GET /health probe. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -193,9 +193,9 @@
       "id": "sn-35-oxmarkets-health",
       "kind": "subnet-api",
       "name": "Cartha Verifier API health",
-      "notes": "Public no-auth GET /health on api.cartha.finance returning liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /health in the subnet OpenAPI spec; api.cartha.finance is the default VERIFIER_URL configured in the official Cartha principal miner template.",
+      "notes": "Public no-auth GET /health on api.cartha.finance returning liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /health in the subnet OpenAPI spec; api.cartha.finance is the default VERIFIER_URL configured in the official Cartha principal miner template. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -220,11 +220,12 @@
       "name": "Cartha liquidity-providing metrics",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "probe-derived"
+        "provenance": "none",
+        "searched_at": "2026-11-15T00:00:00Z"
       },
-      "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned.",
+      "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -244,9 +245,9 @@
       "id": "sn-35-oxmarkets-pools",
       "kind": "subnet-api",
       "name": "Cartha registered pools",
-      "notes": "Public no-auth GET /pools on api.cartha.finance returning the registered liquidity-pool/vault list for the Cartha perp DEX (name, poolId, vaultAddress, chainId, network per pool). Documented as GET /pools in the subnet's own OpenAPI schema; distinct from the already-registered lp-stats aggregate-metrics and parent-vaults surfaces.",
+      "notes": "Public no-auth GET /pools on api.cartha.finance returning the registered liquidity-pool/vault list for the Cartha perp DEX (name, poolId, vaultAddress, chainId, network per pool). Documented as GET /pools in the subnet's own OpenAPI schema; distinct from the already-registered lp-stats aggregate-metrics and parent-vaults surfaces. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -262,9 +263,9 @@
       "id": "sn-35-cartha-deregistered-hotkeys",
       "kind": "subnet-api",
       "name": "Cartha deregistered hotkeys",
-      "notes": "Public no-auth GET returning the current epoch's deregistered hotkey list. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the current epoch's deregistered hotkey list. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -284,9 +285,9 @@
       "id": "sn-35-cartha-parent-vaults",
       "kind": "subnet-api",
       "name": "Cartha parent vaults",
-      "notes": "Public no-auth GET returning the list of registered parent vaults (address, chainId, name, category). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the list of registered parent vaults (address, chainId, name, category). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -306,7 +307,7 @@
       "id": "sn-35-oxmarkets-admin-check-lock-updated",
       "kind": "subnet-api",
       "name": "OxMarkets admin check lock updated",
-      "notes": "Check Lock Updated Event operation on the OxMarkets/Cartha API (POST /admin/check-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Check Lock Updated Event operation on the OxMarkets/Cartha API (POST /admin/check-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -328,7 +329,7 @@
       "id": "sn-35-oxmarkets-admin-check-withdrawal",
       "kind": "subnet-api",
       "name": "OxMarkets admin check withdrawal",
-      "notes": "Check Withdrawal Event operation on the OxMarkets/Cartha API (POST /admin/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Check Withdrawal Event operation on the OxMarkets/Cartha API (POST /admin/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -350,7 +351,7 @@
       "id": "sn-35-oxmarkets-admin-epoch-status",
       "kind": "subnet-api",
       "name": "OxMarkets admin epoch status",
-      "notes": "Get Epoch Status operation on the OxMarkets/Cartha API (GET /admin/epoch-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Epoch Status operation on the OxMarkets/Cartha API (GET /admin/epoch-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -372,7 +373,7 @@
       "id": "sn-35-oxmarkets-admin-force-process-lock-updated",
       "kind": "subnet-api",
       "name": "OxMarkets admin force process lock updated",
-      "notes": "Force Process Lock Updated operation on the OxMarkets/Cartha API (POST /admin/force-process-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Force Process Lock Updated operation on the OxMarkets/Cartha API (POST /admin/force-process-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -394,7 +395,7 @@
       "id": "sn-35-oxmarkets-admin-force-process-withdrawal",
       "kind": "subnet-api",
       "name": "OxMarkets admin force process withdrawal",
-      "notes": "Force Process Withdrawal operation on the OxMarkets/Cartha API (POST /admin/force-process-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Force Process Withdrawal operation on the OxMarkets/Cartha API (POST /admin/force-process-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -416,7 +417,7 @@
       "id": "sn-35-oxmarkets-admin-frozen-epochs",
       "kind": "subnet-api",
       "name": "OxMarkets admin frozen epochs",
-      "notes": "Get Frozen Epochs operation on the OxMarkets/Cartha API (GET /admin/frozen-epochs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Frozen Epochs operation on the OxMarkets/Cartha API (GET /admin/frozen-epochs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -438,7 +439,7 @@
       "id": "sn-35-oxmarkets-admin-parent-lock-orphans",
       "kind": "subnet-api",
       "name": "OxMarkets admin parent lock orphans",
-      "notes": "Get Parent Lock Orphans operation on the OxMarkets/Cartha API (GET /admin/parent-lock-orphans), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Parent Lock Orphans operation on the OxMarkets/Cartha API (GET /admin/parent-lock-orphans), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -460,7 +461,7 @@
       "id": "sn-35-oxmarkets-admin-processed-events",
       "kind": "subnet-api",
       "name": "OxMarkets admin processed events",
-      "notes": "Get Processed Events operation on the OxMarkets/Cartha API (GET /admin/processed-events), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Processed Events operation on the OxMarkets/Cartha API (GET /admin/processed-events), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -482,7 +483,7 @@
       "id": "sn-35-oxmarkets-admin-recover-lock",
       "kind": "subnet-api",
       "name": "OxMarkets admin recover lock",
-      "notes": "Recover Lock operation on the OxMarkets/Cartha API (POST /admin/recover-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Recover Lock operation on the OxMarkets/Cartha API (POST /admin/recover-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -504,7 +505,7 @@
       "id": "sn-35-oxmarkets-admin-recover-parent-lock",
       "kind": "subnet-api",
       "name": "OxMarkets admin recover parent lock",
-      "notes": "Recover Parent Lock operation on the OxMarkets/Cartha API (POST /admin/recover-parent-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Recover Parent Lock operation on the OxMarkets/Cartha API (POST /admin/recover-parent-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -526,7 +527,7 @@
       "id": "sn-35-oxmarkets-admin-scheduler-status",
       "kind": "subnet-api",
       "name": "OxMarkets admin scheduler status",
-      "notes": "Get Scheduler Status operation on the OxMarkets/Cartha API (GET /admin/scheduler-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Scheduler Status operation on the OxMarkets/Cartha API (GET /admin/scheduler-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -548,7 +549,7 @@
       "id": "sn-35-oxmarkets-auth-verify-operator-account",
       "kind": "subnet-api",
       "name": "OxMarkets auth verify operator account",
-      "notes": "Verify operator account operation on the OxMarkets/Cartha API (POST /auth/verify-operator account), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Verify operator account operation on the OxMarkets/Cartha API (POST /auth/verify-operator account), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -570,7 +571,7 @@
       "id": "sn-35-oxmarkets-lock-process",
       "kind": "subnet-api",
       "name": "OxMarkets lock process",
-      "notes": "Process Lock Transaction operation on the OxMarkets/Cartha API (POST /lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Process Lock Transaction operation on the OxMarkets/Cartha API (POST /lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -592,7 +593,7 @@
       "id": "sn-35-oxmarkets-lock-request-parent-signature",
       "kind": "subnet-api",
       "name": "OxMarkets lock request parent signature",
-      "notes": "Request Parent Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-parent-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Request Parent Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-parent-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -614,7 +615,7 @@
       "id": "sn-35-oxmarkets-lock-request-signature",
       "kind": "subnet-api",
       "name": "OxMarkets lock request signature",
-      "notes": "Request Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Request Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -636,7 +637,7 @@
       "id": "sn-35-oxmarkets-lock-request-signature-public",
       "kind": "subnet-api",
       "name": "OxMarkets lock request signature public",
-      "notes": "Request Lock Signature Public operation on the OxMarkets/Cartha API (POST /lock/request-signature-public), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Request Lock Signature Public operation on the OxMarkets/Cartha API (POST /lock/request-signature-public), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -658,7 +659,7 @@
       "id": "sn-35-oxmarkets-lock-status",
       "kind": "subnet-api",
       "name": "OxMarkets lock status",
-      "notes": "Get Lock Status operation on the OxMarkets/Cartha API (GET /lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Lock Status operation on the OxMarkets/Cartha API (GET /lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -680,7 +681,7 @@
       "id": "sn-35-oxmarkets-parent-lock-check-event",
       "kind": "subnet-api",
       "name": "OxMarkets parent lock check event",
-      "notes": "Check Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/check-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Check Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/check-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -702,7 +703,7 @@
       "id": "sn-35-oxmarkets-parent-lock-force-process-event",
       "kind": "subnet-api",
       "name": "OxMarkets parent lock force process event",
-      "notes": "Force Process Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/force-process-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Force Process Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/force-process-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -724,7 +725,7 @@
       "id": "sn-35-oxmarkets-parent-lock-process",
       "kind": "subnet-api",
       "name": "OxMarkets parent lock process",
-      "notes": "Process Parent Lock Transaction operation on the OxMarkets/Cartha API (POST /parent-lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Process Parent Lock Transaction operation on the OxMarkets/Cartha API (POST /parent-lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -746,7 +747,7 @@
       "id": "sn-35-oxmarkets-parent-lock-status",
       "kind": "subnet-api",
       "name": "OxMarkets parent lock status",
-      "notes": "Get Parent Lock Status operation on the OxMarkets/Cartha API (GET /parent-lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a transaction-hash query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "notes": "Get Parent Lock Status operation on the OxMarkets/Cartha API (GET /parent-lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a transaction-hash query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -768,7 +769,7 @@
       "id": "sn-35-oxmarkets-subnet-check-registration",
       "kind": "subnet-api",
       "name": "OxMarkets subnet check registration",
-      "notes": "Check Registration operation on the OxMarkets/Cartha API (GET /subnet/check-registration), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "notes": "Check Registration operation on the OxMarkets/Cartha API (GET /subnet/check-registration), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -790,7 +791,7 @@
       "id": "sn-35-oxmarkets-v1-admin-audit-log",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin audit log",
-      "notes": "Create Audit Log operation on the OxMarkets/Cartha API (POST /v1/admin/audit-log), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Create Audit Log operation on the OxMarkets/Cartha API (POST /v1/admin/audit-log), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -812,7 +813,7 @@
       "id": "sn-35-oxmarkets-v1-admin-audit-logs",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin audit logs",
-      "notes": "Get Audit Logs operation on the OxMarkets/Cartha API (GET /v1/admin/audit-logs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Audit Logs operation on the OxMarkets/Cartha API (GET /v1/admin/audit-logs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -834,7 +835,7 @@
       "id": "sn-35-oxmarkets-v1-admin-email-template-name",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin email template name",
-      "notes": "Admin Reset Email Template operation on the OxMarkets/Cartha API (DELETE, GET, PUT /v1/admin/email-template/{name}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Admin Reset Email Template operation on the OxMarkets/Cartha API (DELETE, GET, PUT /v1/admin/email-template/{name}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -856,7 +857,7 @@
       "id": "sn-35-oxmarkets-v1-admin-email-template-name-preview",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin email template name preview",
-      "notes": "Admin Preview Email Template operation on the OxMarkets/Cartha API (POST /v1/admin/email-template/{name}/preview), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Admin Preview Email Template operation on the OxMarkets/Cartha API (POST /v1/admin/email-template/{name}/preview), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -878,7 +879,7 @@
       "id": "sn-35-oxmarkets-v1-admin-email-templates",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin email templates",
-      "notes": "Admin List Email Templates operation on the OxMarkets/Cartha API (GET /v1/admin/email-templates), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Admin List Email Templates operation on the OxMarkets/Cartha API (GET /v1/admin/email-templates), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -900,7 +901,7 @@
       "id": "sn-35-oxmarkets-v1-admin-principal-application-application-id-review",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin principal application application id review",
-      "notes": "Admin Review Principal Application operation on the OxMarkets/Cartha API (POST /v1/admin/principal-application/{application_id}/review), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Admin Review Principal Application operation on the OxMarkets/Cartha API (POST /v1/admin/principal-application/{application_id}/review), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -922,7 +923,7 @@
       "id": "sn-35-oxmarkets-v1-admin-principal-applications",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin principal applications",
-      "notes": "Admin List Principal Applications operation on the OxMarkets/Cartha API (GET /v1/admin/principal-applications), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Admin List Principal Applications operation on the OxMarkets/Cartha API (GET /v1/admin/principal-applications), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -944,7 +945,7 @@
       "id": "sn-35-oxmarkets-v1-admin-principal-miner-operator-account",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin principal miner operator account",
-      "notes": "Admin Update Principal Miner operation on the OxMarkets/Cartha API (PUT /v1/admin/principal-miner/{operator account}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Admin Update Principal Miner operation on the OxMarkets/Cartha API (PUT /v1/admin/principal-miner/{operator account}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -966,7 +967,7 @@
       "id": "sn-35-oxmarkets-v1-admin-principal-miner-operator-account-remove",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin principal miner operator account remove",
-      "notes": "Admin Delete Principal Miner operation on the OxMarkets/Cartha API (POST /v1/admin/principal-miner/{operator account}/remove), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Admin Delete Principal Miner operation on the OxMarkets/Cartha API (POST /v1/admin/principal-miner/{operator account}/remove), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -988,7 +989,7 @@
       "id": "sn-35-oxmarkets-v1-admin-principal-miners",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin principal miners",
-      "notes": "Admin List Principal Miners operation on the OxMarkets/Cartha API (GET /v1/admin/principal-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Admin List Principal Miners operation on the OxMarkets/Cartha API (GET /v1/admin/principal-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1010,7 +1011,7 @@
       "id": "sn-35-oxmarkets-v1-admin-system-alert",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin system alert",
-      "notes": "Create System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Create System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1032,7 +1033,7 @@
       "id": "sn-35-oxmarkets-v1-admin-system-alert-alert-id-acknowledge",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin system alert alert id acknowledge",
-      "notes": "Acknowledge System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert/{alert_id}/acknowledge), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Acknowledge System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert/{alert_id}/acknowledge), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1054,7 +1055,7 @@
       "id": "sn-35-oxmarkets-v1-admin-system-alerts",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin system alerts",
-      "notes": "Get System Alerts operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get System Alerts operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1081,7 +1082,7 @@
         "provenance": "operator-attested",
         "source_url": "https://api.cartha.finance/openapi.json"
       },
-      "notes": "Get System Alerts Stats operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts/stats), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get System Alerts Stats operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts/stats), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1103,7 +1104,7 @@
       "id": "sn-35-oxmarkets-v1-deregistrations-check",
       "kind": "subnet-api",
       "name": "OxMarkets v1 deregistrations check",
-      "notes": "Check Deregistrations operation on the OxMarkets/Cartha API (POST /v1/deregistrations/check), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Check Deregistrations operation on the OxMarkets/Cartha API (POST /v1/deregistrations/check), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1125,7 +1126,7 @@
       "id": "sn-35-oxmarkets-v1-epoch-carry-over",
       "kind": "subnet-api",
       "name": "OxMarkets v1 epoch carry over",
-      "notes": "Manual Carry Over operation on the OxMarkets/Cartha API (POST /v1/epoch/carry-over), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Manual Carry Over operation on the OxMarkets/Cartha API (POST /v1/epoch/carry-over), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1147,7 +1148,7 @@
       "id": "sn-35-oxmarkets-v1-evictions-run",
       "kind": "subnet-api",
       "name": "OxMarkets v1 evictions run",
-      "notes": "Run Evictions operation on the OxMarkets/Cartha API (POST /v1/evictions/run), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Run Evictions operation on the OxMarkets/Cartha API (POST /v1/evictions/run), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1169,7 +1170,7 @@
       "id": "sn-35-oxmarkets-v1-metagraph-compare",
       "kind": "subnet-api",
       "name": "OxMarkets v1 metagraph compare",
-      "notes": "Compare Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/compare), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Compare Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/compare), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1191,7 +1192,7 @@
       "id": "sn-35-oxmarkets-v1-metagraph-deregistered",
       "kind": "subnet-api",
       "name": "OxMarkets v1 metagraph deregistered",
-      "notes": "Get Deregistered operator account operation on the OxMarkets/Cartha API (GET /v1/metagraph/deregistered), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Deregistered operator account operation on the OxMarkets/Cartha API (GET /v1/metagraph/deregistered), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1213,7 +1214,7 @@
       "id": "sn-35-oxmarkets-v1-metagraph-snapshot-snapshot-id",
       "kind": "subnet-api",
       "name": "OxMarkets v1 metagraph snapshot snapshot id",
-      "notes": "Get Metagraph Snapshot Detail operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshot/{snapshot_id}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Metagraph Snapshot Detail operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshot/{snapshot_id}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1235,7 +1236,7 @@
       "id": "sn-35-oxmarkets-v1-metagraph-snapshots",
       "kind": "subnet-api",
       "name": "OxMarkets v1 metagraph snapshots",
-      "notes": "Get Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshots), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Get Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshots), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1257,7 +1258,7 @@
       "id": "sn-35-oxmarkets-v1-miner-principal-apply",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner principal apply",
-      "notes": "Principal Apply operation on the OxMarkets/Cartha API (POST /v1/miner/principal/apply), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Principal Apply operation on the OxMarkets/Cartha API (POST /v1/miner/principal/apply), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1279,7 +1280,7 @@
       "id": "sn-35-oxmarkets-v1-miner-principal-list",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner principal list",
-      "notes": "Principal List operation on the OxMarkets/Cartha API (GET /v1/miner/principal/list), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Principal List operation on the OxMarkets/Cartha API (GET /v1/miner/principal/list), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1301,7 +1302,7 @@
       "id": "sn-35-oxmarkets-v1-miner-principal-profile",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner principal profile",
-      "notes": "Principal Profile operation on the OxMarkets/Cartha API (GET /v1/miner/principal/profile), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "notes": "Principal Profile operation on the OxMarkets/Cartha API (GET /v1/miner/principal/profile), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above). [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1323,7 +1324,7 @@
       "id": "sn-35-oxmarkets-v1-miner-principal-sync",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner principal sync",
-      "notes": "Principal Sync operation on the OxMarkets/Cartha API (POST /v1/miner/principal/sync), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Principal Sync operation on the OxMarkets/Cartha API (POST /v1/miner/principal/sync), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1345,7 +1346,7 @@
       "id": "sn-35-oxmarkets-v1-miner-status",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner status",
-      "notes": "Miner Status Public operation on the OxMarkets/Cartha API (GET /v1/miner/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "notes": "Miner Status Public operation on the OxMarkets/Cartha API (GET /v1/miner/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1367,7 +1368,7 @@
       "id": "sn-35-oxmarkets-v1-miner-status-by-evm",
       "kind": "subnet-api",
       "name": "OxMarkets v1 miner status by evm",
-      "notes": "Miner Status By Evm operation on the OxMarkets/Cartha API (GET /v1/miner/status-by-evm), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an EVM-address query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "notes": "Miner Status By Evm operation on the OxMarkets/Cartha API (GET /v1/miner/status-by-evm), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an EVM-address query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1389,7 +1390,7 @@
       "id": "sn-35-oxmarkets-v1-pair-status",
       "kind": "subnet-api",
       "name": "OxMarkets v1 pair status",
-      "notes": "Pair Status operation on the OxMarkets/Cartha API (POST /v1/pair/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Pair Status operation on the OxMarkets/Cartha API (POST /v1/pair/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1411,7 +1412,7 @@
       "id": "sn-35-oxmarkets-v1-position-check-withdrawal",
       "kind": "subnet-api",
       "name": "OxMarkets v1 position check withdrawal",
-      "notes": "Check Withdrawal operation on the OxMarkets/Cartha API (POST /v1/position/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Check Withdrawal operation on the OxMarkets/Cartha API (POST /v1/position/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1433,7 +1434,7 @@
       "id": "sn-35-oxmarkets-v1-upcoming-epoch-cleanup",
       "kind": "subnet-api",
       "name": "OxMarkets v1 upcoming epoch cleanup",
-      "notes": "Cleanup Upcoming Epoch operation on the OxMarkets/Cartha API (POST /v1/upcoming-epoch/cleanup), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Cleanup Upcoming Epoch operation on the OxMarkets/Cartha API (POST /v1/upcoming-epoch/cleanup), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1455,7 +1456,7 @@
       "id": "sn-35-oxmarkets-v1-verified-miners",
       "kind": "subnet-api",
       "name": "OxMarkets v1 verified miners",
-      "notes": "Verified Miners operation on the OxMarkets/Cartha API (GET /v1/verified-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: an unparameterised GET returns HTTP 403 stating a validator whitelist is enabled and a validator-identity parameter must be supplied, so access is restricted at the application level rather than by a declared security scheme; the probe is left disabled and the observation recorded.",
+      "notes": "Verified Miners operation on the OxMarkets/Cartha API (GET /v1/verified-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: an unparameterised GET returns HTTP 403 stating a validator whitelist is enabled and a validator-identity parameter must be supplied, so access is restricted at the application level rather than by a declared security scheme; the probe is left disabled and the observation recorded. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {
         "enabled": false,
         "expect": "json",

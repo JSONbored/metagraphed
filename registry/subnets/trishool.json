@@ -122,10 +122,10 @@
       "id": "sn-23-trishool-submission-schema",
       "kind": "data-artifact",
       "name": "Trishool tri-check submission schema template",
-      "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
+      "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
