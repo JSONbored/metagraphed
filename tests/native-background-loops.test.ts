@@ -544,3 +544,15 @@ test("a role still refuses by name a dependency it owns", () => {
     /register is required/,
   );
 });
+
+test("an unknown role refuses before binding anything", () => {
+  const { options } = fixture();
+  assert.throws(
+    () =>
+      createNativeBackgroundLoops({
+        ...options,
+        role: "bogus" as never,
+      }),
+    /Invalid native background role/,
+  );
+});

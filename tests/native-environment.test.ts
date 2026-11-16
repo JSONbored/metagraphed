@@ -458,3 +458,15 @@ test("every refusal surface rejects by name, and the chain guard narrows only a 
   );
   await serving.close();
 });
+
+test("the explicit trusted profile is the default composition", async () => {
+  const application = await createNativeEnvironment({
+    ...options(),
+    profile: "trusted",
+  });
+  assert.equal(state.loops!.role, "all");
+  assert.ok(state.loops!.cron);
+  assert.ok(state.loops!.owners);
+  assert.ok(state.loops!.mcp);
+  await application.close();
+});

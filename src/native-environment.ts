@@ -316,12 +316,15 @@ export async function createNativeEnvironment(
         const cron =
           profile === "serving"
             ? undefined
-            : await createPgCronScheduler(
-                jobs,
-                NATIVE_CRON_DEFINITIONS,
-                cronOptions,
-              );
-        if (cron) own(() => cron.close());
+            : await (async () => {
+                const scheduler = await createPgCronScheduler(
+                  jobs,
+                  NATIVE_CRON_DEFINITIONS,
+                  cronOptions,
+                );
+                own(() => scheduler.close());
+                return scheduler;
+              })();
         loops = createNativeBackgroundLoops({
           ...loopOptions,
           role:
