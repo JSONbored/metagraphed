@@ -46,6 +46,7 @@ declare const HTMLRewriter: {
 // are never re-scoped to metagraph.sh.
 const DISCOVERY_CONTENT_TYPES = {
   "/.well-known/api-catalog": ["application/linkset+json", "application/json"],
+  "/.well-known/x402": ["application/json"],
   "/.well-known/mcp/server-card.json": ["application/json"],
   "/.well-known/agent-card.json": ["application/json"],
   "/.well-known/agent-skills/index.json": ["application/json"],
@@ -63,6 +64,7 @@ const DISCOVERY_SAFE_RESPONSE_HEADERS = [
   "etag",
   "expires",
   "last-modified",
+  "retry-after",
   "vary",
 ] as const;
 
@@ -75,6 +77,7 @@ const DISCOVERY_LINK_HEADER = [
   `<${API_ORIGIN}/agent.md>; rel="service-doc"; type="text/markdown"`,
   `<${API_ORIGIN}/health>; rel="status"; type="application/json"`,
   `<${API_ORIGIN}/.well-known/mcp/server-card.json>; rel="describedby"; type="application/json"`,
+  `<${API_ORIGIN}/.well-known/x402>; rel="describedby"; type="application/json"`,
 ].join(", ");
 
 /**
@@ -169,16 +172,27 @@ async function handleDiscovery(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname === "/robots.txt") return buildRobots(url.host);
   if (url.pathname === "/sitemap.xml") return buildSitemap();
-  if (!DISCOVERY_PROXY_PATHS.has(url.pathname)) return null;
+  const openApiAlias = url.pathname === "/openapi.json";
+  if (!openApiAlias && !DISCOVERY_PROXY_PATHS.has(url.pathname)) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405, headers: { allow: "GET, HEAD" } });
   }
+  if (openApiAlias) {
+    return new Response(null, {
+      status: 301,
+      headers: {
+        location: `${API_ORIGIN}/metagraph/openapi.json`,
+        "cache-control": "public, max-age=3600",
+      },
+    });
+  }
   const upstream = await fetch(`${API_ORIGIN}${url.pathname}`, {
+    method: request.method,
     headers: { accept: request.headers.get("accept") ?? "*/*" },
   });
   const headers = buildDiscoveryResponseHeaders(url.pathname, upstream.headers);
   if (!headers) {
-    return new Response("Bad Gateway", {
+    return new Response(request.method === "HEAD" ? null : "Bad Gateway", {
       status: 502,
       headers: {
         "content-type": "text/plain; charset=utf-8",
@@ -186,7 +200,10 @@ async function handleDiscovery(request: Request): Promise<Response | null> {
       },
     });
   }
-  return new Response(upstream.body, { status: upstream.status, headers });
+  return new Response(request.method === "HEAD" ? null : upstream.body, {
+    status: upstream.status,
+    headers,
+  });
 }
 
 function buildDiscoveryResponseHeaders(pathname: string, upstreamHeaders: Headers): Headers | null {
