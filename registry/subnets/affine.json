@@ -63,9 +63,9 @@
       "id": "sn-120-affine-health",
       "kind": "subnet-api",
       "name": "Affine API health",
-      "notes": "Public no-auth GET /api/v1/health on api.affine.io returning liveness JSON (observed: {\"status\":\"ok\",\"service\":\"affine-api\"}). Documented as GET /api/v1/health in the subnet OpenAPI spec; api.affine.io/api/v1 is the default API_URL in the official affine-cortex API client.",
+      "notes": "Public no-auth GET /api/v1/health on api.affine.io returning liveness JSON (observed: {\"status\":\"ok\",\"service\":\"affine-api\"}). Documented as GET /api/v1/health in the subnet OpenAPI spec; api.affine.io/api/v1 is the default API_URL in the official affine-cortex API client. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -88,9 +88,9 @@
       "id": "sn-120-affine-data-artifact",
       "kind": "data-artifact",
       "name": "Affine current champion rank",
-      "notes": "Public no-auth GET /api/v1/rank/current on api.affine.io returning the current champion window (model reference, revision, since-block) plus past champions with their emission share. Documented as GET /api/v1/rank/current in the subnet's own OpenAPI 3.1 schema (already-registered sn-120-affine-openapi surface); same api.affine.io host as the existing health surface. Observed live and populated at submission time.",
+      "notes": "Public no-auth GET /api/v1/rank/current on api.affine.io returning the current champion window (model reference, revision, since-block) plus past champions with their emission share. Documented as GET /api/v1/rank/current in the subnet's own OpenAPI 3.1 schema (already-registered sn-120-affine-openapi surface); same api.affine.io host as the existing health surface. Observed live and populated at submission time. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -110,9 +110,9 @@
       "id": "sn-120-affine-scores-latest",
       "kind": "subnet-api",
       "name": "Affine latest scores",
-      "notes": "Public no-auth GET returning the latest per-miner scores (block_number, miner_hotkey, uid, model_revision). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the latest per-miner scores (block_number, miner_hotkey, uid, model_revision). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -132,9 +132,9 @@
       "id": "sn-120-affine-scores-weights-latest",
       "kind": "subnet-api",
       "name": "Affine latest weights",
-      "notes": "Public no-auth GET returning the latest computed weights per UID alongside the scoring config. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the latest computed weights per UID alongside the scoring config. Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -190,9 +190,9 @@
       "id": "sn-120-affine-config",
       "kind": "data-artifact",
       "name": "Affine validator scoring config",
-      "notes": "Public no-auth GET /api/v1/config on api.affine.io returning the live scoring config (observed: validator_burn_percentage). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET /api/v1/config on api.affine.io returning the live scoring config (observed: validator_burn_percentage). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -212,7 +212,7 @@
       "id": "sn-120-affine-miner-by-uid",
       "kind": "subnet-api",
       "name": "Affine miner detail by uid",
-      "notes": "GET /api/v1/miners/uid/{uid} on api.affine.io -- per-miner detail record (model reference, revision, validity, block numbers) for a registered uid; path-parameterized sibling of the already-registered list-style surfaces. Documented in the subnet's own OpenAPI 3.1 schema (the already-registered sn-120-affine-openapi surface) with no security declared. Live-verified 2026-07-22: uid 0 returns HTTP 200 JSON with the matching miner record; a non-integer path value returns a clean HTTP 422 validation error naming the uid path field. probe.enabled:false -- the URL is a percent-encoded path template and the probe pipeline has no per-surface path-param injection.",
+      "notes": "GET /api/v1/miners/uid/{uid} on api.affine.io -- per-miner detail record (model reference, revision, validity, block numbers) for a registered uid; path-parameterized sibling of the already-registered list-style surfaces. Documented in the subnet's own OpenAPI 3.1 schema (the already-registered sn-120-affine-openapi surface) with no security declared. Live-verified 2026-07-22: uid 0 returns HTTP 200 JSON with the matching miner record; a non-integer path value returns a clean HTTP 422 validation error naming the uid path field. probe.enabled:false -- the URL is a percent-encoded path template and the probe pipeline has no per-surface path-param injection. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -234,7 +234,7 @@
       "id": "sn-120-affine-miner-by-hotkey",
       "kind": "subnet-api",
       "name": "Affine miner detail by hotkey",
-      "notes": "GET /api/v1/miners/hotkey/{hotkey} on api.affine.io -- the same per-miner detail record as the uid lookup, addressed by the miner's hotkey instead. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22 using a real value obtained from the uid-0 lookup on the sibling surface: HTTP 200 JSON returning the identical miner record; an unknown value returns a clean HTTP 404 not-found response, not an auth rejection. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline.",
+      "notes": "GET /api/v1/miners/hotkey/{hotkey} on api.affine.io -- the same per-miner detail record as the uid lookup, addressed by the miner's hotkey instead. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22 using a real value obtained from the uid-0 lookup on the sibling surface: HTTP 200 JSON returning the identical miner record; an unknown value returns a clean HTTP 404 not-found response, not an auth rejection. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -256,7 +256,7 @@
       "id": "sn-120-affine-score-by-uid",
       "kind": "subnet-api",
       "name": "Affine score detail by uid",
-      "notes": "GET /api/v1/scores/uid/{uid} on api.affine.io -- per-miner score detail (overall and average score, per-environment scores, sample count) for a registered uid; path-parameterized sibling of the already-registered scores/latest surface. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22: uid 0 returns HTTP 200 JSON with the matching score record. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline.",
+      "notes": "GET /api/v1/scores/uid/{uid} on api.affine.io -- per-miner score detail (overall and average score, per-environment scores, sample count) for a registered uid; path-parameterized sibling of the already-registered scores/latest surface. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22: uid 0 returns HTTP 200 JSON with the matching score record. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -278,7 +278,7 @@
       "id": "sn-120-affine-config-param",
       "kind": "subnet-api",
       "name": "Affine config parameter detail",
-      "notes": "GET /api/v1/config/{key} on api.affine.io -- detail record for a single named config parameter (value, type, version, update metadata), the per-item sibling of the already-registered bulk /api/v1/config surface. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22 using a parameter name obtained from the bulk config surface: HTTP 200 JSON with the full parameter record; an unknown parameter name returns a clean HTTP 404 not-found response. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline.",
+      "notes": "GET /api/v1/config/{key} on api.affine.io -- detail record for a single named config parameter (value, type, version, update metadata), the per-item sibling of the already-registered bulk /api/v1/config surface. Documented in the subnet's own OpenAPI 3.1 schema with no security declared. Live-verified 2026-07-22 using a parameter name obtained from the bulk config surface: HTTP 200 JSON with the full parameter record; an unknown parameter name returns a clean HTTP 404 not-found response. probe.enabled:false -- percent-encoded path template; no per-surface path-param injection in the probe pipeline. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

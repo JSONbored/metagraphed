@@ -9,7 +9,7 @@
 // (metagraphed#7110, MCP execute Phase 1 follow-up #7014/#7215).
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN98's real registry surfaces
-// (registry/subnets/forevermoney.json) to the tool's contract, so a future edit
+// (registry/subnets/neverplayalone.json) to the tool's contract, so a future edit
 // that regresses their callability (flipping to HEAD, marking them
 // auth_required, disabling their probe) is caught here.
 //
@@ -39,7 +39,7 @@ const NETUID = 98;
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/forevermoney.json", import.meta.url),
+      new URL("../registry/subnets/neverplayalone.json", import.meta.url),
     ),
     "utf8",
   ),

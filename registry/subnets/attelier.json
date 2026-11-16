@@ -1,0 +1,240 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "security"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "The /api/v1/benchmark/chunks route requires a sourceDate/chunkId parameter and is not promotable."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "name": "Attelier",
+  "netuid": 126,
+  "notes": "Reviewed overlay for SN126 Poker44, a poker bot-detection subnet (security infrastructure, not a poker room). Root->128 accuracy audit first review pass (#5903): added website, source-repo, and whitepaper surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces, and added a new public no-param surface (benchmark/releases) explicitly documented alongside the already-tracked benchmark status endpoint.",
+  "schema_version": 1,
+  "slug": "sn-126",
+  "social": {
+    "x": "https://x.com/poker44subnet"
+  },
+  "source_repo": "https://github.com/attelierai/attelierai_subnet/",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-health",
+      "kind": "subnet-api",
+      "name": "Poker44 platform health API",
+      "notes": "Public no-auth GET /health on api.poker44.net returning platform liveness JSON (observed: status healthy, database and redis connected). Same host as the internal validator routes configured in the official Poker44-subnet validator neuron.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/neurons/validator.py",
+        "https://api.poker44.net/health"
+      ],
+      "url": "https://api.poker44.net/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-data-artifact",
+      "kind": "data-artifact",
+      "name": "Poker44 shadow-training benchmark dataset",
+      "notes": "Public no-auth GET /api/v1/benchmark on api.poker44.net — the official Poker44 (SN126) benchmark dataset release endpoint documented in the subnet repo's docs/training-benchmark.md (GET /api/v1/benchmark, GET /api/v1/benchmark/releases). Returns JSON release metadata (observed releaseVersion v1.13, schemaVersion shadow-training-v1, 121 chunks / 29,680 hands, auto-release schedule); miners fetch the hand chunks from this endpoint. Same api.poker44.net host as the already-listed platform health surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "peter-minion"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md",
+        "https://api.poker44.net/api/v1/benchmark"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-dashboard",
+      "kind": "dashboard",
+      "name": "Poker44 live benchmark dashboard",
+      "notes": "Public no-auth Poker44 (SN126) web dashboard at poker44.net/dashboard — the 'Live Benchmark for Bot Detection' leaderboard showing per-round miner scores, validator fleet status, and cycle progress across the subnet's competition rounds. Served on the official poker44.net platform linked from the Poker44/Poker44-subnet README; distinct from the api.poker44.net JSON benchmark/health endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/README.md"
+      ],
+      "url": "https://poker44.net/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-126-poker44-website",
+      "kind": "website",
+      "name": "Poker44 website",
+      "notes": "Official Poker44 website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Poker44/Poker44-subnet"],
+      "url": "https://poker44.net/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-126-poker44-source",
+      "kind": "source-repo",
+      "name": "Poker44 source repository",
+      "notes": "Official Poker44 source repository for SN126.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Poker44/Poker44-subnet"],
+      "url": "https://github.com/Poker44/Poker44-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-releases",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark release history",
+      "notes": "Public no-auth GET /api/v1/benchmark/releases on api.poker44.net returning the history of published shadow-training benchmark releases (per-release chunk/hand counts, audit thresholds, source dates). Explicitly documented as a standalone route in docs/training-benchmark.md alongside the already-tracked /api/v1/benchmark status endpoint; the sibling /api/v1/benchmark/chunks route requires a sourceDate/chunkId parameter and is not promotable. No wallet/hotkey data. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/releases"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-126-poker44-whitepaper",
+      "kind": "docs",
+      "name": "Poker44 whitepaper",
+      "notes": "Official Poker44 (SN126) whitepaper PDF, linked from the official website and README under Official Links.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/README.md",
+        "https://poker44.net/"
+      ],
+      "url": "https://poker44.net/Poker44_Whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunks",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunks for a source date",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks?sourceDate=YYYY-MM-DD on api.poker44.net returning the paginated list of chunk metadata (chunkId, chunkHash, chunkIndex, handCount, batchCount, releasedAt) for a given release date. Documented as a standalone route in docs/training-benchmark.md (GET /api/v1/benchmark/chunks with optional limit param). Live-verified 2026-07-22: GET /api/v1/benchmark/chunks?sourceDate=2026-07-22&limit=1 returned HTTP 200 with chunk data (chunkId 0185b8b3-8fe5-40c3-aa2a-e3ab0fb7e45c). Register with the fixed base URL and probe.enabled:false (requires caller-supplied sourceDate query param). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunk-item",
+      "kind": "data-artifact",
+      "name": "Poker44 single benchmark chunk by ID",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks/{chunkId} on api.poker44.net returning the full hand-history payload for a specific benchmark chunk (chunkHash, hand records with game_type, seats, streets, actions). Documented in docs/training-benchmark.md. Live-verified 2026-07-22: GET /api/v1/benchmark/chunks/0185b8b3-8fe5-40c3-aa2a-e3ab0fb7e45c returned HTTP 200. Register with the literal {chunkId} template and probe.enabled:false (path-param — no stable canonical chunk ID for the prober to use). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks/%7BchunkId%7D"
+    }
+  ],
+  "website_url": "https://attelier.ai"
+}

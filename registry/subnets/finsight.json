@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "netuid": 109,
+  "name": "Finsight",
+  "slug": "sn-109",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "data-artifact",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "dashboard_url": "https://taomarketcap.com/subnets/109",
+  "website_url": "https://finsight.tech/",
+  "notes": "Reviewed overlay for SN109 using the live Academia source repository and public Academia archives dataset. No standalone website, docs site, API, OpenAPI, or SSE surface has been verified yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:50:00.000Z",
+    "verified_at": "2026-06-08T10:50:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified standalone website yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
+  "surfaces": [
+    {
+      "id": "sn-109-academia-source",
+      "name": "Academia source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/fx-integral/academia",
+      "provider": "academia",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/fx-integral/academia",
+        "https://api.taomarketcap.com/public/v1/subnets/109"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Academia source repository for SN109."
+    },
+    {
+      "id": "sn-109-academia-archives",
+      "name": "Academia Bittensor archives dataset",
+      "kind": "data-artifact",
+      "url": "https://github.com/fx-integral/academia-archives",
+      "provider": "academia",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/fx-integral/academia",
+        "https://github.com/fx-integral/academia-archives"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Academia archives dataset repository for Bittensor historical subnet/archive data."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-109-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Academia TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/109/ on api.taomarketcap.com returning machine-readable JSON for SN109 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Academia exposes source repositories and archives but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/fx-integral/academia"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/109/"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 // tool (metagraphed#7049, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN34's *real* registry surface configs
-// (registry/subnets/bitmind.json) to the tool's contract, so a future edit
+// (registry/subnets/yugos.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // Live-verified 2026-07-21 (direct GET to the catalogued URLs):
@@ -38,7 +38,7 @@ const SURFACE_ID = "sn-34-bitmind-subnet-api";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/bitmind.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/yugos.json", import.meta.url)),
     "utf8",
   ),
 );

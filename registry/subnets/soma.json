@@ -775,7 +775,7 @@
       "id": "sn-114-soma-api-public-frontend-key-competition-timeframe-current",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key competition timeframe current",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competition/timeframe/current on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competition/timeframe/current on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -803,7 +803,7 @@
       "id": "sn-114-soma-api-public-frontend-key-competitions-list",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key competitions-list",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competitions-list on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competitions-list on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -831,7 +831,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -859,7 +859,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id hotkey",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -887,7 +887,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-competition",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id hotkey competition",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -915,7 +915,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-competition-challenges",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id hotkey competition challenges",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -943,7 +943,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-screener",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id hotkey screener",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -971,7 +971,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-screener-challenges",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners comp id hotkey screener challenges",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -999,7 +999,7 @@
       "id": "sn-114-soma-api-public-frontend-key-miners-hotkey-competition-challenges-batch-challenge-id",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key miners hotkey competition challenges batch challenge id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{hotkey}/competition/challenges/{batch_challenge_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{hotkey}/competition/challenges/{batch_challenge_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1027,7 +1027,7 @@
       "id": "sn-114-soma-api-public-frontend-key-summary",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key summary",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/summary on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/summary on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1055,7 +1055,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1083,7 +1083,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id hotkey",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1111,7 +1111,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-penalties",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id hotkey penalties",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/penalties on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/penalties on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1139,7 +1139,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id hotkey tasks",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1167,7 +1167,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks-task-name",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id hotkey tasks task name",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1195,7 +1195,7 @@
       "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks-task-name-runs",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key swe miners comp id hotkey tasks task name runs",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name}/runs on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name}/runs on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1223,7 +1223,7 @@
       "id": "sn-114-soma-api-public-frontend-key-validators",
       "kind": "subnet-api",
       "name": "SOMA api public frontend-key validators",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/validators on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/validators on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1496,5 +1496,5 @@
       "url": "https://platform.thesoma.ai/validator/submit_swebench_validation_score"
     }
   ],
-  "website_url": "https://thesoma.ai/"
+  "website_url": "https://thesoma.ai"
 }

@@ -16,7 +16,7 @@
   ],
   "docs_url": "https://docs.natix.network/whitepaper",
   "source_repo": "https://github.com/natixnetwork/streetvision-subnet",
-  "website_url": "https://www.natix.network/",
+  "website_url": "https://www.natix.network/?utm_source=bittensor",
   "notes": "Reviewed overlay for SN72 using the official NATIX StreetVision source repository, NATIX website, whitepaper, VX360 product page, and Hugging Face organization. Re-review pass (2026-07-15): discovered the roadwork dataset and its rows API, previously public, are now HF-auth-gated (401) -- corrected auth_required and disabled their probes rather than removing the surfaces.",
   "curation": {
     "level": "maintainer-reviewed",
@@ -218,7 +218,7 @@
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset \u2014 machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the HF dataset webpage surface above. Previously filled the file's gap note for a verified safe public subnet API endpoint; now gated along with the parent dataset. Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15, same gating as the parent roadwork dataset; was public at last review (2026-06-08). Probing disabled since it will always fail while gated."
+      "notes": "Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the HF dataset webpage surface above. Previously filled the file's gap note for a verified safe public subnet API endpoint; now gated along with the parent dataset. Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15, same gating as the parent roadwork dataset; was public at last review (2026-06-08). Probing disabled since it will always fail while gated."
     },
     {
       "auth_required": false,
@@ -226,7 +226,7 @@
       "id": "sn-72-natix-whitepaper-llms-txt",
       "kind": "data-artifact",
       "name": "NATIX whitepaper docs llms.txt index",
-      "notes": "Public no-auth machine-readable llms.txt index of the official StreetVision by NATIX (SN72) whitepaper documentation, served at docs.natix.network \u2014 the same official docs domain already registered as the sn-72-natix-whitepaper-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the NATIX docs (Executive Summary, Introduction, Problem, Solution, xNodes, etc.) for LLM/agent ingestion; content begins '# NATIX Network Whitepaper'. Distinct from the HTML whitepaper docs page (a different URL and a machine-readable text/markdown artifact).",
+      "notes": "Public no-auth machine-readable llms.txt index of the official StreetVision by NATIX (SN72) whitepaper documentation, served at docs.natix.network — the same official docs domain already registered as the sn-72-natix-whitepaper-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the NATIX docs (Executive Summary, Introduction, Problem, Solution, xNodes, etc.) for LLM/agent ingestion; content begins '# NATIX Network Whitepaper'. Distinct from the HTML whitepaper docs page (a different URL and a machine-readable text/markdown artifact).",
       "provider": "natix",
       "public_safe": true,
       "review": {

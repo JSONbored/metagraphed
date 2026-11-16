@@ -256,9 +256,9 @@
       "id": "sn-75-hippius-vm-flavors",
       "kind": "data-artifact",
       "name": "Hippius VM flavor catalog",
-      "notes": "Public no-auth GET /api/infrastructure/vm/flavors/ on api.hippius.com returning the available compute VM SKUs (name, cpu_cores, memory_mb, data_disk_gb, credits_per_hour). Documented in the subnet swagger.json OpenAPI spec on the same host as the existing surfaces; other infrastructure/vm/* routes (images, applications) are auth-gated (401) despite the schema declaring no security.",
+      "notes": "Public no-auth GET /api/infrastructure/vm/flavors/ on api.hippius.com returning the available compute VM SKUs (name, cpu_cores, memory_mb, data_disk_gb, credits_per_hour). Documented in the subnet swagger.json OpenAPI spec on the same host as the existing surfaces; other infrastructure/vm/* routes (images, applications) are auth-gated (401) despite the schema declaring no security. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -482,7 +482,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-6",
       "kind": "subnet-api",
       "name": "Hippius billing subscription detail",
-      "notes": "Path-param template (id) \u2014 per-subscription detail; same auth gate as the verified /billing/subscriptions/ collection.",
+      "notes": "Path-param template (id) — per-subscription detail; same auth gate as the verified /billing/subscriptions/ collection.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -505,7 +505,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-7",
       "kind": "subnet-api",
       "name": "Hippius VM instances",
-      "notes": "The caller's VM instance fleet (distinct from the public /vm/flavors/ catalog).",
+      "notes": "The caller's VM instance fleet (distinct from the public /vm/flavors/ catalog). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -528,7 +528,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-8",
       "kind": "subnet-api",
       "name": "Hippius VM instance detail",
-      "notes": "Path-param template (instance_id) \u2014 per-instance detail; same auth gate as the verified /vm/instances/ collection.",
+      "notes": "Path-param template (instance_id) — per-instance detail; same auth gate as the verified /vm/instances/ collection. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -551,7 +551,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-9",
       "kind": "subnet-api",
       "name": "Hippius VM images",
-      "notes": "The caller's VM image list.",
+      "notes": "The caller's VM image list. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -574,7 +574,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-10",
       "kind": "subnet-api",
       "name": "Hippius VM applications",
-      "notes": "The caller's VM application deployments.",
+      "notes": "The caller's VM application deployments. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -643,7 +643,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-13",
       "kind": "subnet-api",
       "name": "Hippius bucket objects",
-      "notes": "Path-param template (name) \u2014 objects in a bucket; same auth gate as the verified /objectstore/buckets/ collection.",
+      "notes": "Path-param template (name) — objects in a bucket; same auth gate as the verified /objectstore/buckets/ collection.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -1032,7 +1032,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-30",
       "kind": "subnet-api",
       "name": "Hippius container-registry namespace check",
-      "notes": "Public namespace-availability check; required query param `name`. Live-verified 2026-07-22: a bare GET returns HTTP 400 {\"error\":\"name parameter is required\"} (reaches the handler with no auth), NOT the 401 the rest of /registry/* returns \u2014 so it is public, correcting #7088's auth-gated classification.",
+      "notes": "Public namespace-availability check; required query param `name`. Live-verified 2026-07-22: a bare GET returns HTTP 400 {\"error\":\"name parameter is required\"} (reaches the handler with no auth), NOT the 401 the rest of /registry/* returns — so it is public, correcting #7088's auth-gated classification.",
       "provider": "hippius",
       "public_safe": true,
       "review": {

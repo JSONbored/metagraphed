@@ -2,7 +2,7 @@
 // tool (metagraphed#7070, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN57's *real* registry surface config
-// (registry/subnets/sparket.json) to the tool's contract, so a future edit
+// (registry/subnets/gaia.json) to the tool's contract, so a future edit
 // that regresses its callability is caught here.
 //
 // The surface is the public no-auth Sparket API health feed
@@ -29,7 +29,7 @@ const NETUID = 57;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/sparket.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/gaia.json", import.meta.url)),
     "utf8",
   ),
 );

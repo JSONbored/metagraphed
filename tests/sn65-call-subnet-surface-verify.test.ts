@@ -2,7 +2,7 @@
 // MCP tool (metagraphed#7078, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN65's *real* registry surface configs
-// (registry/subnets/tao-private-network.json) to the tool's contract, so a
+// (registry/subnets/true-performance-network.json) to the tool's contract, so a
 // future edit that regresses their callability is caught here.
 //
 // Live-verified 2026-07-21 (direct GET to the catalogued URLs):
@@ -27,7 +27,10 @@ const NETUID = 65;
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/tao-private-network.json", import.meta.url),
+      new URL(
+        "../registry/subnets/true-performance-network.json",
+        import.meta.url,
+      ),
     ),
     "utf8",
   ),

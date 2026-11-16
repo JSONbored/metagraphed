@@ -16,6 +16,12 @@
 // The fixtures below mirror those live responses rather than fetching
 // them, keeping the test hermetic while still exercising both the text
 // (non-JSON) and JSON parse-and-return paths.
+//
+// 2026-11-15: the infra#873 availability sweep found the health route
+// answering 404 on an alive host and probe-disabled it pending url
+// re-verification; this file now pins that non-callable state for the health
+// surface (probe-disabled = retired from the callable set, not broken). The
+// openapi surface on jsdelivr stays callable.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -43,6 +49,9 @@ const CASES = [
     expect: "any",
     contentType: "text/html",
     body: "ok",
+    // Probe-disabled by the 2026-11-15 infra#873 sweep (route answers 404 on
+    // an alive host); retired from the callable set pending re-verification.
+    callable: false,
   },
   {
     id: "sn-61-redteam-openapi",
@@ -51,24 +60,33 @@ const CASES = [
     expect: "json",
     contentType: "application/json",
     body: { openapi: "3.1.0", info: { title: "Device Fingerprinter Gate" } },
+    callable: true,
   },
 ];
 
-for (const { id, url, kind, expect, contentType, body } of CASES) {
+for (const { id, url, kind, expect, contentType, body, callable } of CASES) {
   const isJson = contentType === "application/json";
 
   describe(`SN61 RedTeam call_subnet_surface verification: ${id} (#7074)`, () => {
     const SURFACE = surfaceById(id);
 
-    test("the registry surface exists and is configured to be callable", () => {
-      assert.ok(SURFACE, `registry surface ${id} is present`);
-      assert.equal(SURFACE.kind, kind);
-      assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
-      assert.equal(SURFACE.probe?.method, "GET");
-      assert.equal(SURFACE.probe?.expect, expect);
-      assert.equal(SURFACE.url, url);
-    });
+    test(
+      callable
+        ? "the registry surface exists and is configured to be callable"
+        : "the registry surface exists and pins its sweep-retired (non-callable) state",
+      () => {
+        assert.ok(SURFACE, `registry surface ${id} is present`);
+        assert.equal(SURFACE.kind, kind);
+        assert.equal(SURFACE.auth_required, false);
+        assert.equal(SURFACE.probe?.enabled, callable);
+        if (!callable) {
+          assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+        }
+        assert.equal(SURFACE.probe?.method, "GET");
+        assert.equal(SURFACE.probe?.expect, expect);
+        assert.equal(SURFACE.url, url);
+      },
+    );
 
     test("callSubnetSurface returns the real body using the surface's own url + GET", async () => {
       let requestedUrl: string | undefined;
@@ -98,60 +116,76 @@ for (const { id, url, kind, expect, contentType, body } of CASES) {
       }
     });
 
-    test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
-      const catalog = {
-        surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 61 }],
-      };
-      const deps = {
-        readArtifact: async (_env: Row, path: string) =>
-          path === "/metagraph/operational-surfaces.json"
-            ? { ok: true, data: catalog }
-            : { ok: false, status: 404 },
-      };
-      const originalFetch = globalThis.fetch;
-      const responseBody = isJson ? JSON.stringify(body) : (body as string);
-      globalThis.fetch = async (input) => {
-        const reqUrl = String(input);
-        if (reqUrl.startsWith("https://cloudflare-dns.com/dns-query")) {
-          return new Response(JSON.stringify({ Status: 0 }), {
-            headers: { "content-type": "application/dns-json" },
+    test(
+      callable
+        ? "end-to-end through the call_subnet_surface MCP tool, resolved by surface id"
+        : "the call_subnet_surface MCP tool refuses the retired surface without fetching upstream",
+      async () => {
+        const catalog = {
+          surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 61 }],
+        };
+        const deps = {
+          readArtifact: async (_env: Row, path: string) =>
+            path === "/metagraph/operational-surfaces.json"
+              ? { ok: true, data: catalog }
+              : { ok: false, status: 404 },
+        };
+        const originalFetch = globalThis.fetch;
+        const responseBody = isJson ? JSON.stringify(body) : (body as string);
+        let upstreamFetched = false;
+        globalThis.fetch = async (input) => {
+          const reqUrl = String(input);
+          if (reqUrl.startsWith("https://cloudflare-dns.com/dns-query")) {
+            return new Response(JSON.stringify({ Status: 0 }), {
+              headers: { "content-type": "application/dns-json" },
+            });
+          }
+          upstreamFetched = true;
+          return new Response(responseBody, {
+            status: 200,
+            headers: { "content-type": contentType },
           });
-        }
-        return new Response(responseBody, {
-          status: 200,
-          headers: { "content-type": contentType },
-        });
-      };
-      try {
-        const response = await handleMcpRequest(
-          new Request("https://metagraph.sh/mcp", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "tools/call",
-              params: {
-                name: "call_subnet_surface",
-                arguments: { surface_id: id },
-              },
+        };
+        try {
+          const response = await handleMcpRequest(
+            new Request("https://metagraph.sh/mcp", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "tools/call",
+                params: {
+                  name: "call_subnet_surface",
+                  arguments: { surface_id: id },
+                },
+              }),
             }),
-          }),
-          mockEnv(),
-          deps,
-        );
-        const result = ((await response.json()) as Row).result;
-        assert.equal(result.isError, false);
-        assert.equal(result.structuredContent.surface_id, id);
-        assert.equal(result.structuredContent.status_code, 200);
-        if (isJson) {
-          assert.deepEqual(result.structuredContent.body, body);
-        } else {
-          assert.equal(result.structuredContent.body, body);
+            mockEnv(),
+            deps,
+          );
+          const result = ((await response.json()) as Row).result;
+          if (!callable) {
+            // In production the operational catalog filters
+            // probe.enabled:false surfaces out entirely; injecting the real
+            // config pins the tool's own surface_unavailable guard.
+            assert.equal(result.isError, true);
+            assert.match(result.content[0].text, /probe\.enabled:false/);
+            assert.equal(upstreamFetched, false);
+            return;
+          }
+          assert.equal(result.isError, false);
+          assert.equal(result.structuredContent.surface_id, id);
+          assert.equal(result.structuredContent.status_code, 200);
+          if (isJson) {
+            assert.deepEqual(result.structuredContent.body, body);
+          } else {
+            assert.equal(result.structuredContent.body, body);
+          }
+        } finally {
+          globalThis.fetch = originalFetch;
         }
-      } finally {
-        globalThis.fetch = originalFetch;
-      }
-    });
+      },
+    );
   });
 }

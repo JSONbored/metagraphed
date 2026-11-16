@@ -3,8 +3,14 @@
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN37's *real* registry surface config
 // (registry/subnets/aurelius.json) to the tool's contract, so a future edit that
-// regresses its callability (flipping to HEAD, marking it auth_required,
-// disabling its probe) is caught here.
+// changes its availability class without updating this pin is caught here.
+//
+// The 2026-11-15 infra#873 availability sweep retired this surface from the
+// callable set (p3b: route 404s on an alive host), so this file now pins the
+// non-callable state: probe disabled pending re-verification (retired, not
+// deleted), and the MCP tool refusing the call before any upstream fetch.
+// The transport-layer fixture test below is unchanged -- callSubnetSurface
+// itself does not gate on probe.enabled.
 //
 // The surface is the public no-auth SN37 API health endpoint
 // (sn-37-aurelius-subnet-api, GET https://new-collector-api-production.up.railway.app/health, JSON, single fixed endpoint -- no schema). Live-verified
@@ -44,11 +50,14 @@ function upstreamResponse() {
 }
 
 describe("SN37 Aurelius call_subnet_surface verification (#7052)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface is pinned to its retired (probe-disabled) config", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
+    // [2026-11-15 infra#873 p3b] route 404s on an alive host: retired from the
+    // callable set pending url re-verification.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
     // No-auth GET returning JSON.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
@@ -80,7 +89,7 @@ describe("SN37 Aurelius call_subnet_surface verification (#7052)", () => {
     assert.equal((result.body as Row).status, "ok");
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool refuses the retired surface without fetching upstream", async () => {
     const catalog = {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 37 }],
     };
@@ -90,6 +99,7 @@ describe("SN37 Aurelius call_subnet_surface verification (#7052)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
       const url = String(input);
@@ -98,6 +108,7 @@ describe("SN37 Aurelius call_subnet_surface verification (#7052)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return upstreamResponse();
     };
     try {
@@ -119,10 +130,9 @@ describe("SN37 Aurelius call_subnet_surface verification (#7052)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.status, "ok");
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

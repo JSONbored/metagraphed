@@ -107,9 +107,9 @@
       "id": "sn-96-verathos-openapi",
       "kind": "openapi",
       "name": "Verathos OpenAPI schema",
-      "notes": "Machine-readable OpenAPI schema for Verathos.",
+      "notes": "Machine-readable OpenAPI schema for Verathos. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -229,7 +229,7 @@
       "id": "sn-96-verathos-examples",
       "kind": "example",
       "name": "Verathos code examples",
-      "notes": "Official Verathos examples \u2014 OpenAI-compatible, streaming, and x402 client quickstarts.",
+      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -246,9 +246,9 @@
       "id": "sn-96-verathos-data-artifact",
       "kind": "data-artifact",
       "name": "Verathos on-chain model-registry snapshot",
-      "notes": "Public no-auth JSON snapshot of SN96's Bittensor chain identity and on-chain model/miner registry contract addresses; path is declared in the official OpenAPI spec.",
+      "notes": "Public no-auth JSON snapshot of SN96's Bittensor chain identity and on-chain model/miner registry contract addresses; path is declared in the official OpenAPI spec. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -271,9 +271,9 @@
       "id": "sn-96-verathos-data-artifact-verathos-ai",
       "kind": "data-artifact",
       "name": "Verathos model presets catalog",
-      "notes": "Public no-auth JSON catalog of SN96's supported model presets and quantization options; path is declared in the official OpenAPI spec.",
+      "notes": "Public no-auth JSON catalog of SN96's supported model presets and quantization options; path is declared in the official OpenAPI spec. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -296,9 +296,9 @@
       "id": "sn-96-verathos-subnet-api",
       "kind": "subnet-api",
       "name": "Verathos circulating-supply API",
-      "notes": "Public no-auth GET returning the subnet's circulating supply. Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); same host as the existing subnet-api (/v1/models) surface.",
+      "notes": "Public no-auth GET returning the subnet's circulating supply. Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); same host as the existing subnet-api (/v1/models) surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -321,9 +321,9 @@
       "id": "sn-96-verathos-health",
       "kind": "subnet-api",
       "name": "Verathos API health",
-      "notes": "Public no-auth GET /health returning Verathos API status. Live on api.verathos.ai, the same host as the existing models subnet-api surface; documented in the subnet's OpenAPI spec.",
+      "notes": "Public no-auth GET /health returning Verathos API status. Live on api.verathos.ai, the same host as the existing models subnet-api surface; documented in the subnet's OpenAPI spec. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -346,9 +346,9 @@
       "id": "sn-96-verathos-validator-proxy-openapi",
       "kind": "openapi",
       "name": "Verathos validator proxy OpenAPI schema",
-      "notes": "Public no-auth machine-readable OpenAPI 3.x schema (title \"Verathos Validator Proxy\") for api.verathos.ai -- a distinct host/API from the already-tracked verathos.ai/openapi.json protocol schema, covering validator proxy network stats, supply, and TEE-inference routes.",
+      "notes": "Public no-auth machine-readable OpenAPI 3.x schema (title \"Verathos Validator Proxy\") for api.verathos.ai -- a distinct host/API from the already-tracked verathos.ai/openapi.json protocol schema, covering validator proxy network stats, supply, and TEE-inference routes. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -372,11 +372,12 @@
       "name": "Verathos network stats",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "probe-derived"
+        "provenance": "operator-attested",
+        "source_url": "https://api.verathos.ai/openapi.json"
       },
-      "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats).",
+      "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -396,9 +397,9 @@
       "id": "sn-96-verathos-supply-info",
       "kind": "subnet-api",
       "name": "Verathos supply info",
-      "notes": "Public no-auth GET returning full token supply info (circulating, total, max, minted_total, alpha_in_pool, alpha_staked, price_tao, volume_tao) in one call -- a superset of the already-tracked /v1/supply/circulating. Documented in the validator proxy's own OpenAPI schema (path /v1/supply/info).",
+      "notes": "Public no-auth GET returning full token supply info (circulating, total, max, minted_total, alpha_in_pool, alpha_staked, price_tao, volume_tao) in one call -- a superset of the already-tracked /v1/supply/circulating. Documented in the validator proxy's own OpenAPI schema (path /v1/supply/info). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -418,9 +419,9 @@
       "id": "sn-96-verathos-protocol-health",
       "kind": "subnet-api",
       "name": "Verathos protocol API health",
-      "notes": "Public no-auth GET /api/health on verathos.ai returning protocol-side liveness (observed: {\"status\":\"ok\",\"mode\":\"proxy\"}). Documented in the protocol OpenAPI schema; distinct from the already-tracked api.verathos.ai/health on the validator-proxy host.",
+      "notes": "Public no-auth GET /api/health on verathos.ai returning protocol-side liveness (observed: {\"status\":\"ok\",\"mode\":\"proxy\"}). Documented in the protocol OpenAPI schema; distinct from the already-tracked api.verathos.ai/health on the validator-proxy host. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -440,9 +441,9 @@
       "id": "sn-96-verathos-models-status",
       "kind": "subnet-api",
       "name": "Verathos active model status",
-      "notes": "Public no-auth GET /api/models/status on verathos.ai returning the currently-loaded chat model's runtime status (loaded, preset_id, num_layers, quant_label, max_model_len). Documented in the protocol OpenAPI schema on the same host as the existing model-registry surfaces.",
+      "notes": "Public no-auth GET /api/models/status on verathos.ai returning the currently-loaded chat model's runtime status (loaded, preset_id, num_layers, quant_label, max_model_len). Documented in the protocol OpenAPI schema on the same host as the existing model-registry surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -484,9 +485,9 @@
       "id": "sn-96-verathos-dashboard-api",
       "kind": "data-artifact",
       "name": "Verathos protocol dashboard snapshot",
-      "notes": "Public no-auth GET /api/dashboard on verathos.ai returning a live network snapshot (proxy_connected, epoch_number, per-miner address/ss58/uid/endpoint/model_id list). Documented in the protocol OpenAPI schema. Aggregate/public data only, no account-specific fields.",
+      "notes": "Public no-auth GET /api/dashboard on verathos.ai returning a live network snapshot (proxy_connected, epoch_number, per-miner address/ss58/uid/endpoint/model_id list). Documented in the protocol OpenAPI schema. Aggregate/public data only, no account-specific fields. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -506,9 +507,9 @@
       "id": "sn-96-verathos-dashboard-timeseries",
       "kind": "data-artifact",
       "name": "Verathos protocol dashboard timeseries",
-      "notes": "Public no-auth GET /api/dashboard/timeseries on verathos.ai returning historical aggregate network metrics. Documented in the protocol OpenAPI schema on the same host as the existing dashboard-snapshot surface.",
+      "notes": "Public no-auth GET /api/dashboard/timeseries on verathos.ai returning historical aggregate network metrics. Documented in the protocol OpenAPI schema on the same host as the existing dashboard-snapshot surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -528,9 +529,9 @@
       "id": "sn-96-verathos-capacity-audit-health",
       "kind": "subnet-api",
       "name": "Verathos capacity-audit health",
-      "notes": "Public no-auth GET /capacity/audit/v1/health on api.verathos.ai returning capacity-audit backend liveness (observed: {\"status\":\"ok\",\"service\":\"verathos-validator-proxy\",\"capacity_audit\":true,...}). Documented in the validator-proxy OpenAPI schema on the same host as the existing /health surface.",
+      "notes": "Public no-auth GET /capacity/audit/v1/health on api.verathos.ai returning capacity-audit backend liveness (observed: {\"status\":\"ok\",\"service\":\"verathos-validator-proxy\",\"capacity_audit\":true,...}). Documented in the validator-proxy OpenAPI schema on the same host as the existing /health surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -550,9 +551,9 @@
       "id": "sn-96-verathos-subnet-config",
       "kind": "data-artifact",
       "name": "Verathos subnet scoring config",
-      "notes": "Public no-auth GET /v1/subnet-config on api.verathos.ai returning the live scoring configuration (tee_bonus_bps, ema_alpha_bps, throughput/proof-sample weighting) validators apply, plus effective_epoch and refresh interval. Documented in the validator-proxy OpenAPI schema.",
+      "notes": "Public no-auth GET /v1/subnet-config on api.verathos.ai returning the live scoring configuration (tee_bonus_bps, ema_alpha_bps, throughput/proof-sample weighting) validators apply, plus effective_epoch and refresh interval. Documented in the validator-proxy OpenAPI schema. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -572,9 +573,9 @@
       "id": "sn-96-verathos-supply-total",
       "kind": "data-artifact",
       "name": "Verathos total supply",
-      "notes": "Public no-auth GET /v1/supply/total on api.verathos.ai returning the token's total supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing circulating-supply and supply-info surfaces.",
+      "notes": "Public no-auth GET /v1/supply/total on api.verathos.ai returning the token's total supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing circulating-supply and supply-info surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -594,9 +595,9 @@
       "id": "sn-96-verathos-supply-max",
       "kind": "data-artifact",
       "name": "Verathos max supply",
-      "notes": "Public no-auth GET /v1/supply/max on api.verathos.ai returning the token's max-supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing supply surfaces.",
+      "notes": "Public no-auth GET /v1/supply/max on api.verathos.ai returning the token's max-supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing supply surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -618,11 +619,12 @@
       "name": "Verathos network usage timeseries",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "probe-derived"
+        "provenance": "operator-attested",
+        "source_url": "https://api.verathos.ai/openapi.json"
       },
-      "notes": "Public no-auth GET /v1/network/usage-timeseries on api.verathos.ai returning aggregate request/token-volume buckets over time (range, bucket_seconds, per-bucket requests/tokens). Documented in the validator-proxy OpenAPI schema on the same host as the existing network-stats surface.",
+      "notes": "Public no-auth GET /v1/network/usage-timeseries on api.verathos.ai returning aggregate request/token-volume buckets over time (range, bucket_seconds, per-bucket requests/tokens). Documented in the validator-proxy OpenAPI schema on the same host as the existing network-stats surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -642,9 +644,9 @@
       "id": "sn-96-verathos-price-quote",
       "kind": "subnet-api",
       "name": "Verathos price quote",
-      "notes": "Public no-auth GET /v1/price on api.verathos.ai returning a default cost quote (model, input/output tokens, cost_usd, cost_tao). Documented in the validator-proxy OpenAPI schema on the same host as the existing models/supply surfaces.",
+      "notes": "Public no-auth GET /v1/price on api.verathos.ai returning a default cost quote (model, input/output tokens, cost_usd, cost_tao). Documented in the validator-proxy OpenAPI schema on the same host as the existing models/supply surfaces. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -664,7 +666,7 @@
       "id": "sn-96-verathos-api-api-auth-register",
       "kind": "subnet-api",
       "name": "Verathos api/auth/register",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/register on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/register on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -690,7 +692,7 @@
       "id": "sn-96-verathos-api-api-auth-login",
       "kind": "subnet-api",
       "name": "Verathos api/auth/login",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/login on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/login on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -716,7 +718,7 @@
       "id": "sn-96-verathos-api-api-auth-create-key",
       "kind": "subnet-api",
       "name": "Verathos api/auth/create key",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/create-key on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/auth/create-key on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -742,7 +744,7 @@
       "id": "sn-96-verathos-api-api-auth-me",
       "kind": "subnet-api",
       "name": "Verathos api/auth/me",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/auth/me on verathos.ai -- from sn-96-verathos-openapi.  Live-verified 2026-07-22: HTTP 401 for anonymous GET. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/auth/me on verathos.ai -- from sn-96-verathos-openapi.  Live-verified 2026-07-22: HTTP 401 for anonymous GET. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -769,7 +771,7 @@
       "id": "sn-96-verathos-api-api-deposits-address",
       "kind": "subnet-api",
       "name": "Verathos api/deposits/address",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/deposits/address on verathos.ai -- from sn-96-verathos-openapi.  Live spot-check 2026-07-22: HTTP 503 preview-mode message. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/deposits/address on verathos.ai -- from sn-96-verathos-openapi.  Live spot-check 2026-07-22: HTTP 503 preview-mode message. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -795,7 +797,7 @@
       "id": "sn-96-verathos-api-api-deposits-withdraw",
       "kind": "subnet-api",
       "name": "Verathos api/deposits/withdraw",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/deposits/withdraw on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/deposits/withdraw on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -821,7 +823,7 @@
       "id": "sn-96-verathos-api-api-deposits-balance",
       "kind": "subnet-api",
       "name": "Verathos api/deposits/balance",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/deposits/balance on verathos.ai -- from sn-96-verathos-openapi.  Live spot-check 2026-07-22: HTTP 503 preview-mode message. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/deposits/balance on verathos.ai -- from sn-96-verathos-openapi.  Live spot-check 2026-07-22: HTTP 503 preview-mode message. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -847,7 +849,7 @@
       "id": "sn-96-verathos-api-api-models-load",
       "kind": "subnet-api",
       "name": "Verathos api/models/load",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/load on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/load on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -873,7 +875,7 @@
       "id": "sn-96-verathos-api-api-models-unload",
       "kind": "subnet-api",
       "name": "Verathos api/models/unload",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/unload on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/unload on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -899,7 +901,7 @@
       "id": "sn-96-verathos-api-api-models-refresh",
       "kind": "subnet-api",
       "name": "Verathos api/models/refresh",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/refresh on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/models/refresh on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -925,7 +927,7 @@
       "id": "sn-96-verathos-api-api-chat-conversation-id",
       "kind": "subnet-api",
       "name": "Verathos api/chat/conversation id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/chat/{conversation_id} on verathos.ai -- from sn-96-verathos-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/chat/{conversation_id} on verathos.ai -- from sn-96-verathos-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -951,9 +953,9 @@
       "id": "sn-96-verathos-api-api-conversations",
       "kind": "subnet-api",
       "name": "Verathos api/conversations",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, POST /api/conversations/ on verathos.ai -- from sn-96-verathos-openapi. Primary method GET; same URL also supports POST (not registered separately -- url collision).  Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, POST /api/conversations/ on verathos.ai -- from sn-96-verathos-openapi. Primary method GET; same URL also supports POST (not registered separately -- url collision).  Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -977,7 +979,7 @@
       "id": "sn-96-verathos-api-api-conversations-conversation-id",
       "kind": "subnet-api",
       "name": "Verathos api/conversations/conversation id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, PATCH, DELETE /api/conversations/{conversation_id} on verathos.ai -- from sn-96-verathos-openapi. Primary method GET; same URL also supports PATCH/DELETE (not registered separately -- url collision). Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, PATCH, DELETE /api/conversations/{conversation_id} on verathos.ai -- from sn-96-verathos-openapi. Primary method GET; same URL also supports PATCH/DELETE (not registered separately -- url collision). Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1003,7 +1005,7 @@
       "id": "sn-96-verathos-api-api-conversations-claim",
       "kind": "subnet-api",
       "name": "Verathos api/conversations/claim",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/conversations/claim on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/conversations/claim on verathos.ai -- from sn-96-verathos-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1029,7 +1031,7 @@
       "id": "sn-96-verathos-api-api-docs-slug",
       "kind": "subnet-api",
       "name": "Verathos api/docs/slug",
-      "notes": "Public no-auth GET /api/docs/{slug} on verathos.ai -- from sn-96-verathos-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Live-verified 2026-07-22: HTTP 200 with slug intro. Registered per metagraphed#7108 reopen.",
+      "notes": "Public no-auth GET /api/docs/{slug} on verathos.ai -- from sn-96-verathos-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Live-verified 2026-07-22: HTTP 200 with slug intro. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1073,7 +1075,7 @@
       "id": "sn-96-verathos-capacity-audit-v1-receipt",
       "kind": "subnet-api",
       "name": "Verathos capacity/audit/v1/receipt",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /capacity/audit/v1/receipt on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /capacity/audit/v1/receipt on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1099,7 +1101,7 @@
       "id": "sn-96-verathos-capacity-audit-v1-proof",
       "kind": "subnet-api",
       "name": "Verathos capacity/audit/v1/proof",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /capacity/audit/v1/proof on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /capacity/audit/v1/proof on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1125,9 +1127,9 @@
       "id": "sn-96-verathos-v1-miner-debug-help",
       "kind": "subnet-api",
       "name": "Verathos v1/miner debug/help",
-      "notes": "Public no-auth GET /v1/miner-debug/help on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live-verified 2026-07-22: HTTP 200 application/json for anonymous GET. Registered per metagraphed#7108 reopen.",
+      "notes": "Public no-auth GET /v1/miner-debug/help on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live-verified 2026-07-22: HTTP 200 application/json for anonymous GET. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -1147,7 +1149,7 @@
       "id": "sn-96-verathos-v1-miner-debug-uid",
       "kind": "subnet-api",
       "name": "Verathos v1/miner debug/uid",
-      "notes": "Public no-auth GET /v1/miner-debug/{uid} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen.",
+      "notes": "Public no-auth GET /v1/miner-debug/{uid} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1169,7 +1171,7 @@
       "id": "sn-96-verathos-v1-miner-debug-uid-entries-model-index",
       "kind": "subnet-api",
       "name": "Verathos v1/miner debug/uid/entries/model index",
-      "notes": "Public no-auth GET /v1/miner-debug/{uid}/entries/{model_index} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen.",
+      "notes": "Public no-auth GET /v1/miner-debug/{uid}/entries/{model_index} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1191,7 +1193,7 @@
       "id": "sn-96-verathos-v1-auth-challenge",
       "kind": "subnet-api",
       "name": "Verathos v1/auth/challenge",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/auth/challenge on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/auth/challenge on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1217,7 +1219,7 @@
       "id": "sn-96-verathos-v1-auth-register",
       "kind": "subnet-api",
       "name": "Verathos v1/auth/register",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/register on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/register on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1243,7 +1245,7 @@
       "id": "sn-96-verathos-v1-auth-login",
       "kind": "subnet-api",
       "name": "Verathos v1/auth/login",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/login on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/login on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1269,7 +1271,7 @@
       "id": "sn-96-verathos-v1-auth-keys",
       "kind": "subnet-api",
       "name": "Verathos v1/auth/keys",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1295,7 +1297,7 @@
       "id": "sn-96-verathos-v1-api-keys",
       "kind": "subnet-api",
       "name": "Verathos v1/api keys",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, POST /v1/api-keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Primary method GET; same URL also supports POST (not registered separately -- url collision).  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET, POST /v1/api-keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Primary method GET; same URL also supports POST (not registered separately -- url collision).  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1321,7 +1323,7 @@
       "id": "sn-96-verathos-v1-auth-wallet",
       "kind": "subnet-api",
       "name": "Verathos v1/auth/wallet",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/wallet on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/auth/wallet on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1347,7 +1349,7 @@
       "id": "sn-96-verathos-v1-api-keys-key-hash",
       "kind": "subnet-api",
       "name": "Verathos v1/api keys/key hash",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) DELETE /v1/api-keys/{key_hash} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) DELETE /v1/api-keys/{key_hash} on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because template URL is not fixed-callable today. Not spot-verified individually. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1373,7 +1375,7 @@
       "id": "sn-96-verathos-v1-admin-x402-stats",
       "kind": "subnet-api",
       "name": "Verathos v1/admin/x402/stats",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/x402/stats on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/x402/stats on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1399,7 +1401,7 @@
       "id": "sn-96-verathos-v1-admin-sponsored-keys",
       "kind": "subnet-api",
       "name": "Verathos v1/admin/sponsored keys",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/admin/sponsored-keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/admin/sponsored-keys on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1425,7 +1427,7 @@
       "id": "sn-96-verathos-v1-balance",
       "kind": "subnet-api",
       "name": "Verathos v1/balance",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/balance on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/balance on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1456,7 +1458,7 @@
         "provenance": "operator-attested",
         "source_url": "https://api.verathos.ai/openapi.json"
       },
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/usage on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/usage on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1482,7 +1484,7 @@
       "id": "sn-96-verathos-v1-user-me",
       "kind": "subnet-api",
       "name": "Verathos v1/user/me",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/user/me on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/user/me on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Live spot-check 2026-07-22: HTTP 503 (capacity/preview-dependent). Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1508,7 +1510,7 @@
       "id": "sn-96-verathos-v1-user-deposit-address",
       "kind": "subnet-api",
       "name": "Verathos v1/user/deposit address",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/user/deposit-address on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/user/deposit-address on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1534,7 +1536,7 @@
       "id": "sn-96-verathos-v1-user-withdraw",
       "kind": "subnet-api",
       "name": "Verathos v1/user/withdraw",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/user/withdraw on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/user/withdraw on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1560,7 +1562,7 @@
       "id": "sn-96-verathos-v1-chat-completions",
       "kind": "subnet-api",
       "name": "Verathos v1/chat/completions",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Live-verified 2026-07-22: unauthenticated POST with empty body returned HTTP 422. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Live-verified 2026-07-22: unauthenticated POST with empty body returned HTTP 422. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1586,7 +1588,7 @@
       "id": "sn-96-verathos-v1-tee-chat-completions",
       "kind": "subnet-api",
       "name": "Verathos v1/tee/chat/completions",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/tee/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/tee/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1612,7 +1614,7 @@
       "id": "sn-96-verathos-v1-tee-chat-completions-stream",
       "kind": "subnet-api",
       "name": "Verathos v1/tee/chat/completions/stream",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/tee/chat/completions/stream on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/tee/chat/completions/stream on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1638,7 +1640,7 @@
       "id": "sn-96-verathos-v1-debug-chat-completions",
       "kind": "subnet-api",
       "name": "Verathos v1/debug/chat/completions",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/debug/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/debug/chat/completions on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi. State-changing route; probe.enabled:false. Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1659,5 +1661,5 @@
       }
     }
   ],
-  "website_url": "https://verathos.ai/"
+  "website_url": "https://verathos.ai"
 }
