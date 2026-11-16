@@ -469,10 +469,13 @@ describe(
             maxRequestBytes: 1048576,
             requestTimeoutMillis: 1000,
             headersTimeoutMillis: 1000,
-            upgrade: createNativeChainWebSocketTransport(application.chain, {
-              closeGraceMillis: 100,
-              onError() {},
-            }),
+            upgrade: createNativeChainWebSocketTransport(
+              requireComposedChain(application.chain),
+              {
+                closeGraceMillis: 100,
+                onError() {},
+              },
+            ),
             onError() {},
           }),
           /EADDRINUSE/,
