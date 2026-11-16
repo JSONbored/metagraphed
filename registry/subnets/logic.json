@@ -220,7 +220,8 @@
       "name": "Cartha liquidity-providing metrics",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "probe-derived"
+        "provenance": "none",
+        "searched_at": "2026-11-15T00:00:00Z"
       },
       "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {

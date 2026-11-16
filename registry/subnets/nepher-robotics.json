@@ -473,7 +473,8 @@
       "name": "Nepher tournament alpha/TAO pricing API",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "probe-derived"
+        "provenance": "none",
+        "searched_at": "2026-11-15T00:00:00Z"
       },
       "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. [2026-11-15 infra#873 p2] dns-gone (NXDOMAIN x2): retired from the callable set; re-add only on new identity evidence.",
       "probe": {

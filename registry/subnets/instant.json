@@ -125,7 +125,8 @@
       "name": "Zipcode dashboard stats API",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "probe-derived"
+        "provenance": "operator-attested",
+        "source_url": "https://zipcode.ai/openapi.json"
       },
       "notes": "Public no-auth dashboard endpoint for SN46 network statistics, scores, emissions, and prize pool data. REVENUE ROLE (#10454): usage-proxy. Carries dailyPrizePoolUsd, which is money the subnet PAYS OUT to competitors, not money it takes in; model counts and top scores are usage. REVENUE ROLE (#10454): usage-proxy. Carries dailyPrizePoolUsd, which is money the subnet PAYS OUT to competitors, not money it takes in; model counts and top scores are usage. [2026-11-15 infra#873 p3b] payment-required (402) on a declared-open route: paid tier; re-review.",
       "probe": {
@@ -187,7 +188,8 @@
       "name": "Zipcode daily emissions API",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "probe-derived"
+        "provenance": "operator-attested",
+        "source_url": "https://zipcode.ai/openapi.json"
       },
       "notes": "Public no-auth GET /api/dashboard/stats/emissions on zipcode.ai returning SN46 daily TAO emissions and block height. Documented in the subnet OpenAPI on the same host as existing dashboard surfaces. REVENUE ROLE (#10454): not-revenue by construction -- the payload is {dailyEmissions, subnet, blockHeight}. This is the coverage ratio's DENOMINATOR and must never be read as its numerator. REVENUE ROLE (#10454): not-revenue by construction -- the payload is {dailyEmissions, subnet, blockHeight}. This is the coverage ratio's DENOMINATOR and must never be read as its numerator. [2026-11-15 infra#873 p3b] payment-required (402) on a declared-open route: paid tier; re-review.",
       "probe": {

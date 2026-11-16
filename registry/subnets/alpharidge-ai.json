@@ -133,7 +133,8 @@
       "name": "AlphaRidge.ai dashboard stats",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "probe-derived"
+        "provenance": "operator-attested",
+        "source_url": "https://api.alpharidge.ai/openapi.json"
       },
       "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) — counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\". [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
