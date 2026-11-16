@@ -4320,8 +4320,9 @@
       "provider": "zipcode",
       "public_safe": true,
       "revenue": {
-        "provenance": "probe-derived",
-        "role": "not-revenue"
+        "provenance": "operator-attested",
+        "role": "not-revenue",
+        "source_url": "https://zipcode.ai/openapi.json"
       },
       "schema_source": null,
       "subnet_name": "Instant",
@@ -4363,8 +4364,9 @@
       "provider": "zipcode",
       "public_safe": true,
       "revenue": {
-        "provenance": "probe-derived",
-        "role": "usage-proxy"
+        "provenance": "operator-attested",
+        "role": "usage-proxy",
+        "source_url": "https://zipcode.ai/openapi.json"
       },
       "schema_source": null,
       "subnet_name": "Instant",
