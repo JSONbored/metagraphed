@@ -45,6 +45,36 @@ upgrade admission and sockets; the environment retains the shared chain service
 until admitted HTTP and background work has drained. A failed listener bind
 closes the transport and the environment through the same retryable owners.
 
+### Client identity behind an HTTP proxy
+
+The listener uses the TCP peer as the client identity by default and discards
+incoming forwarding and Cloudflare headers. When a trusted HTTP proxy terminates
+TLS, pass an explicit policy to `listenNativeApi`:
+
+```ts
+clientIdentity: {
+  trustedProxyAddresses: ["192.0.2.10", "2001:db8::10"],
+}
+```
+
+Use the proxy's actual socket addresses in place of these documentation addresses.
+The policy accepts 1–32 distinct IP literals, normalizes IPv4-mapped IPv6, and
+rejects hostnames, CIDRs, zone IDs and unspecified addresses. It is copied before
+the listener starts. Peers outside the list retain socket-derived identity.
+
+The proxy must **overwrite** `X-Real-IP` with the original client's connection
+address, rather than forwarding a client-supplied claim. For example, an Nginx
+location can use `proxy_set_header X-Real-IP $remote_addr;`. Restrict access to a
+private origin listener separately when deploying behind private ingress.
+
+A listed peer must supply exactly one valid IP in `X-Real-IP`. Absent, duplicate,
+comma-separated or invalid claims receive HTTP 400 on ordinary requests;
+WebSocket upgrades are closed before admission. All forwarding and Cloudflare
+headers are still removed. Only the
+validated client address becomes the existing internal `cf-connecting-ip` value,
+so HTTP and WebSocket rate limits use the same identity without trusting those
+headers directly. The configured public origin remains authoritative.
+
 Each adapter registers cleanup immediately. Shutdown first stops recurring
 admission, drains admitted requests/jobs, then closes adapters in reverse
 construction order before the single PostgreSQL pool. Partial construction or

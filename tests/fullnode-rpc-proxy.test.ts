@@ -881,6 +881,9 @@ describe("Analytics Engine usage capture (#9228)", () => {
         async load() {
           return null;
         },
+        async latest() {
+          return null;
+        },
       },
     });
     globalThis.fetch = async () =>

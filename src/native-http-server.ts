@@ -1,9 +1,14 @@
 import { createAdaptorServer } from "@hono/node-server";
 import { createServer, type IncomingMessage } from "node:http";
-import type { AddressInfo } from "node:net";
+import { isIP, type AddressInfo } from "node:net";
 import type { Duplex } from "node:stream";
 import type { NativeApiProcess } from "./native-api-process.ts";
 import { errorResponse } from "../workers/http.ts";
+import { ipv6ToBytes } from "./ip-safety.ts";
+
+export interface NativeClientIdentity {
+  readonly trustedProxyAddresses: readonly string[];
+}
 
 export interface NativeHttpOptions {
   origin: string;
@@ -14,6 +19,7 @@ export interface NativeHttpOptions {
   headersTimeoutMillis: number;
   onError(error: unknown): void;
   upgrade?: NativeHttpUpgrade;
+  clientIdentity?: NativeClientIdentity;
 }
 
 export interface NativeHttpUpgrade {
@@ -32,11 +38,64 @@ export type NativeHttpApplication = Pick<
   "state" | "fetch" | "close"
 >;
 
+function canonicalAddress(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.includes("%")) return;
+  const family = isIP(value);
+  if (family === 4) return value === "0.0.0.0" ? undefined : value;
+  if (family !== 6) return;
+  const bytes = ipv6ToBytes(value)!;
+  if (bytes.every((byte) => byte === 0)) return;
+  if (
+    bytes.slice(0, 10).every((byte) => byte === 0) &&
+    bytes[10] === 255 &&
+    bytes[11] === 255
+  )
+    return canonicalAddress(bytes.slice(12).join("."));
+  return new URL(`http://[${value}]`).hostname.slice(1, -1);
+}
+
+function clientIdentityPolicy(
+  requested: NativeClientIdentity | undefined,
+): NativeClientIdentity | undefined {
+  if (requested === undefined) return;
+  if (
+    !requested ||
+    typeof requested !== "object" ||
+    Array.isArray(requested) ||
+    Object.keys(requested).length !== 1 ||
+    !Object.hasOwn(requested, "trustedProxyAddresses") ||
+    !Array.isArray(requested.trustedProxyAddresses) ||
+    requested.trustedProxyAddresses.length < 1 ||
+    requested.trustedProxyAddresses.length > 32
+  )
+    throw new TypeError(
+      "Native client identity requires 1 to 32 exact proxy IPs",
+    );
+  const addresses = Array.from(requested.trustedProxyAddresses, (value) => {
+    const address = canonicalAddress(value);
+    if (!address) throw new TypeError("Native trusted proxy IP is invalid");
+    return address;
+  });
+  if (new Set(addresses).size !== addresses.length)
+    throw new TypeError("Native trusted proxy IPs must be distinct");
+  return Object.freeze({ trustedProxyAddresses: Object.freeze(addresses) });
+}
+
+class NativeClientIdentityError extends Error {}
+
 export function trustedHeaders(
   original: Headers,
   remoteAddress: string | undefined,
   origin: URL,
+  clientIdentity?: NativeClientIdentity,
 ) {
+  let clientAddress = remoteAddress;
+  const peer = clientIdentity && canonicalAddress(remoteAddress);
+  if (peer && clientIdentity?.trustedProxyAddresses.includes(peer)) {
+    clientAddress = canonicalAddress(original.get("x-real-ip"));
+    if (!clientAddress)
+      throw new NativeClientIdentityError("Invalid trusted ingress client IP");
+  }
   const headers = new Headers(original);
   for (const name of [...headers.keys()]) {
     if (
@@ -48,7 +107,7 @@ export function trustedHeaders(
       headers.delete(name);
   }
   headers.set("host", origin.host);
-  if (remoteAddress) headers.set("cf-connecting-ip", remoteAddress);
+  if (clientAddress) headers.set("cf-connecting-ip", clientAddress);
   return headers;
 }
 
@@ -59,7 +118,10 @@ export async function listenNativeApi(
   process: NativeHttpApplication,
   requested: NativeHttpOptions,
 ): Promise<{ address: AddressInfo; close(): Promise<void> }> {
-  const options = { ...requested };
+  const options = {
+    ...requested,
+    clientIdentity: clientIdentityPolicy(requested.clientIdentity),
+  };
   const origin = new URL(options.origin);
   if (
     !/^https?:$/.test(origin.protocol) ||
@@ -120,6 +182,7 @@ export async function listenNativeApi(
           request.headers,
           incoming.socket.remoteAddress,
           origin,
+          options.clientIdentity,
         );
         const declaredBytes = headers.get("content-length");
         if (
@@ -158,6 +221,12 @@ export async function listenNativeApi(
           new Request(`${origin.origin}${path.pathname}${path.search}`, init),
         );
       } catch (error) {
+        if (error instanceof NativeClientIdentityError)
+          return errorResponse(
+            "invalid_client_identity",
+            "Trusted ingress requires one valid client IP.",
+            400,
+          );
         reportError(error);
         if (error instanceof NativePayloadTooLargeError) {
           return errorResponse(
@@ -197,6 +266,7 @@ export async function listenNativeApi(
                   headers,
                   incoming.socket.remoteAddress,
                   origin,
+                  options.clientIdentity,
                 ),
                 signal: aborted.signal,
               },

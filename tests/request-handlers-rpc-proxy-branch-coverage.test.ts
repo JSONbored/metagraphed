@@ -543,6 +543,9 @@ describe("AE usage capture wiring (#9228)", () => {
             async load() {
               return null;
             },
+            async latest() {
+              return null;
+            },
           },
         }),
         url("/rpc/v1/finney"),
