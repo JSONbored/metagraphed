@@ -192,6 +192,12 @@ export const NATIVE_SERVING_WRITES: Readonly<
     "api_usage_rollup_batches",
     "chain_alert_deliveries",
     "chain_alert_triggers",
+    // Login upserts run on the serving path until the infra#820 step-3
+    // re-point moves identity onto the producer plane; api_keys is absent
+    // deliberately -- the colliding twin retires in 0056 and key management
+    // lands on the producer functions at step 3 (#13040).
+    "github_accounts",
+    "rpc_accounts",
     "rpc_usage_events",
     "watch_push_subscriptions",
   ]),
