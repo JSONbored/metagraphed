@@ -252,9 +252,9 @@ test("owner settings refuse mismatched internal credentials", () => {
 test("source ownership covers runtime DDL with separate read-only retained view", () => {
   const declarations = new Map<string, Set<string>>();
   const directory = new URL("../migrations/postgres/", import.meta.url);
-  for (const file of readdirSync(directory).filter((name) =>
-    name.endsWith(".sql"),
-  )) {
+  for (const file of readdirSync(directory)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
     const text = readFileSync(new URL(file, directory), "utf8");
     for (const match of text.matchAll(
       /CREATE\s+(TABLE|VIEW)\s+(?:IF NOT EXISTS\s+)?([a-z_]+)\.([a-z_0-9]+)/g,
@@ -268,6 +268,15 @@ test("source ownership covers runtime DDL with separate read-only retained view"
       const name = schema + (kind === "VIEW" ? "_views" : "");
       if (!declarations.has(name)) declarations.set(name, new Set());
       declarations.get(name)!.add(table!);
+    }
+    // A later migration can retire a table (0056 retires the identity staging
+    // twins per infra#820); the census is what the fully-applied tree leaves,
+    // so a DROP subtracts its CREATE. Files iterate in name order, which is
+    // apply order.
+    for (const match of text.matchAll(
+      /DROP\s+TABLE\s+(?:IF EXISTS\s+)?([a-z_]+)\.([a-z_0-9]+)/g,
+    )) {
+      declarations.get(match[1]!)?.delete(match[2]!);
     }
   }
   const definitions = nativeSourceDefinitions(owners);
