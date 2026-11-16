@@ -373,10 +373,13 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
     );
     assert.equal(snapshot.rowCount, 1);
     assert.match(String(snapshot.rows[0].value), /"accountKind":"rpc"/);
-    const ttlMs = Number(snapshot.rows[0].expires_at) - now;
+    // KV expiration is epoch SECONDS (Workers KV semantics, preserved by the
+    // pg-backed store); the fixture's clock is frozen at `now` milliseconds.
+    const ttlSeconds =
+      Number(snapshot.rows[0].expires_at) - Math.floor(now / 1000);
     assert.ok(
-      ttlMs > 0 && ttlMs <= 61_000,
-      `snapshot TTL ${ttlMs}ms must be bounded by BLOCKLIST_KV_TTL`,
+      ttlSeconds > 0 && ttlSeconds <= 61,
+      `snapshot TTL ${ttlSeconds}s must be bounded by BLOCKLIST_KV_TTL`,
     );
     assert.equal(
       (
