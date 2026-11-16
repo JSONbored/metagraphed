@@ -28,6 +28,14 @@ export interface NativeSourceDefinition {
   owner: string;
   relations: readonly string[];
   access: "read" | "read-write";
+  /** The exact relations this process writes -- a subset of `relations`
+   * (infra#882). Absent on a read-write source means every relation (the
+   * trusted producer process). Startup then verifies INSERT/UPDATE/DELETE
+   * only on these, so a narrow serving credential passes with precisely the
+   * grants its declared writes need and nothing broader. Must be absent on a
+   * read source, and never empty on a read-write one -- a source with no
+   * writes is declared "read", which also makes its transactions READ ONLY. */
+  writable?: readonly string[];
 }
 
 /** Each declared source supplies the actual process-owned read/write handles. */
@@ -229,6 +237,23 @@ async function verifySources(
         "Native sources require unique names, schema, owner and relations",
       );
     }
+    // infra#882: the declared write set is the capability boundary. A read
+    // source declares none; a read-write source either writes everything
+    // (trusted producer, `writable` absent) or exactly the named subset
+    // (public serving) -- never an empty list, which would be a read source
+    // wearing a writer's transaction mode.
+    if (
+      source.writable !== undefined &&
+      (source.access === "read" ||
+        source.writable.length === 0 ||
+        source.writable.some(
+          (relation) => !source.relations.includes(relation),
+        ))
+    ) {
+      throw new Error(
+        `Native source ${source.name} declares writes outside its capability`,
+      );
+    }
     names.add(source.name);
     for (const relation of source.relations) {
       const identity = `${source.schema}.${relation}`;
@@ -257,6 +282,11 @@ async function verifySources(
       [source.schema, source.relations],
     );
     const available = new Map(rows.map((row) => [row.relation, row]));
+    const writes = new Set(
+      source.access === "read-write"
+        ? (source.writable ?? source.relations)
+        : [],
+    );
     for (const relation of source.relations) {
       const row = available.get(relation);
       if (
@@ -264,7 +294,7 @@ async function verifySources(
         row.owner !== source.owner ||
         !row.schema_usable ||
         !row.readable ||
-        (source.access === "read-write" &&
+        (writes.has(relation) &&
           !(row.insertable && row.updatable && row.deletable))
       ) {
         throw new Error(
@@ -274,6 +304,9 @@ async function verifySources(
     }
   }
 }
+// Exported for the real-role fixture qualification (tests/*.pg18.ts): the
+// capability split is proven against actual PostgreSQL grants, not mocks.
+export { verifySources as verifyNativeSourceCapabilities };
 
 /** Explicit preparation factory; no default environment, listener or activation. */
 export async function createNativeApiProcess<Environment, Scheduled, Queue>(
