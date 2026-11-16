@@ -133,10 +133,10 @@
       "id": "sn-98-forevermoney-liquidity-manager-abi",
       "kind": "data-artifact",
       "name": "ForeverMoney LiquidityManager contract ABI",
-      "notes": "Public no-auth machine-readable JSON ABI for the on-chain LiquidityManager smart contract loaded by the SN98 ForeverMoney validator, committed in the official SN98-ForeverMoney/forever-money repository at validator/utils/abis/LiquidityManager.json. Describes the constructor, functions, and events of the core liquidity-management contract the subnet's validator interacts with. Pinned to an immutable commit. Distinct from the min_compute hardware spec already registered.",
+      "notes": "Public no-auth machine-readable JSON ABI for the on-chain LiquidityManager smart contract loaded by the SN98 ForeverMoney validator, committed in the official SN98-ForeverMoney/forever-money repository at validator/utils/abis/LiquidityManager.json. Describes the constructor, functions, and events of the core liquidity-management contract the subnet's validator interacts with. Pinned to an immutable commit. Distinct from the min_compute hardware spec already registered. [2026-11-15 infra#873 p3a] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 15000
       },

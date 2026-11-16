@@ -53,12 +53,12 @@
       "url": "https://github.com/openevolai/evolai"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "official",
       "id": "sn-47-evolai-universal-qa-dataset",
       "kind": "data-artifact",
       "name": "EvolAI Universal QA dataset",
-      "notes": "Hugging Face dataset referenced by the EvolAI repository. Previously public; now returns HTTP 401 on both GET and HEAD (live-tested), consistent with the dataset having been gated or made private since originally registered. Probe disabled pending re-verification rather than removed, since this may be reversed by the operator.",
+      "notes": "Hugging Face dataset referenced by the EvolAI repository. Previously public; now returns HTTP 401 on both GET and HEAD (live-tested), consistent with the dataset having been gated or made private since originally registered. Probe disabled pending re-verification rather than removed, since this may be reversed by the operator. [2026-11-15 infra#873 p3a] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "html",
@@ -71,7 +71,11 @@
         "https://github.com/openevolai/evolai",
         "https://huggingface.co/datasets/evolai/universal_qa"
       ],
-      "url": "https://huggingface.co/datasets/evolai/universal_qa"
+      "url": "https://huggingface.co/datasets/evolai/universal_qa",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3a). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth_required": false,
@@ -127,9 +131,9 @@
       "id": "sn-47-evolai-validator-config",
       "kind": "data-artifact",
       "name": "EvolAI validator configuration",
-      "notes": "Public no-auth machine-readable validator-configuration module (evolai/validator/config.py) committed in the official openevolai/evolai repository, defining the SN47 EvolAI evaluation parameters the validator runs against: reference tokenizer/model, per-stage generation token budgets (think/KL/side-quest max-new-tokens), fast-transformer and Mamba2 evaluation toggles, and CUDA memory settings. Pinned to an immutable commit. Verified 200, SS58-clean and contains no secret values (the one API-key field reads an env var with a locally-generated default). Distinct from the universal_qa dataset already registered.",
+      "notes": "Public no-auth machine-readable validator-configuration module (evolai/validator/config.py) committed in the official openevolai/evolai repository, defining the SN47 EvolAI evaluation parameters the validator runs against: reference tokenizer/model, per-stage generation token budgets (think/KL/side-quest max-new-tokens), fast-transformer and Mamba2 evaluation toggles, and CUDA memory settings. Pinned to an immutable commit. Verified 200, SS58-clean and contains no secret values (the one API-key field reads an env var with a locally-generated default). Distinct from the universal_qa dataset already registered. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

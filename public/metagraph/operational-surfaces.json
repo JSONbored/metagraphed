@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 496,
+  "surface_count": 478,
   "surfaces": [
     {
       "auth_required": false,
@@ -3006,26 +3006,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 25,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 15000
-      },
-      "provider": "macrocosmos",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "UR",
-      "subnet_slug": "sn-25",
-      "surface_id": "sn-25-mainframe-pdb-file-api",
-      "surface_key": "srf-728da1bf08c5643c",
-      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "kind": "data-artifact",
       "netuid": 26,
       "probe": {
@@ -4228,154 +4208,6 @@
       "url": "https://api.alpharidge.ai/health"
     },
     {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-api-dashboard-auth-validation-set",
-      "surface_key": "srf-38cc113dbd28b284",
-      "url": "https://zipcode.ai/api/dashboard/auth/validation-set"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 46,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-api-docs",
-      "surface_key": "srf-8c7d21d0dfede149",
-      "url": "https://zipcode.ai/api/docs"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-api-geocode",
-      "surface_key": "srf-d9dc2622f96ffa5e",
-      "url": "https://zipcode.ai/api/geocode"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-data-artifact",
-      "surface_key": "srf-a8730d9720d490ba",
-      "url": "https://zipcode.ai/api/dashboard/models"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": {
-        "provenance": "operator-attested",
-        "role": "not-revenue",
-        "source_url": "https://zipcode.ai/openapi.json"
-      },
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-emissions-api",
-      "surface_key": "srf-b8498e95ae8fac4d",
-      "url": "https://zipcode.ai/api/dashboard/stats/emissions"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-real-estate-validation-set",
-      "surface_key": "srf-be800cb48c735c6f",
-      "url": "https://zipcode.ai/api/dashboard/validation-set/real_estate/download"
-    },
-    {
-      "auth_required": true,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 46,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "zipcode",
-      "public_safe": true,
-      "revenue": {
-        "provenance": "operator-attested",
-        "role": "usage-proxy",
-        "source_url": "https://zipcode.ai/openapi.json"
-      },
-      "schema_source": null,
-      "subnet_name": "Instant",
-      "subnet_slug": "sn-46",
-      "surface_id": "sn-46-zipcode-subnet-api",
-      "surface_key": "srf-fddab2ee751f9038",
-      "url": "https://zipcode.ai/api/dashboard/stats"
-    },
-    {
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
@@ -4394,26 +4226,6 @@
       "surface_id": "sn-47-evolai-subnet-api",
       "surface_key": "srf-ee8180c137f9a543",
       "url": "https://evolai-gate.hf.space/datasets"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 47,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "evolai",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "condense",
-      "subnet_slug": "sn-47",
-      "surface_id": "sn-47-evolai-validator-config",
-      "surface_key": "srf-a9a24073adcde815",
-      "url": "https://raw.githubusercontent.com/openevolai/evolai/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py"
     },
     {
       "auth_required": false,
@@ -5516,86 +5328,6 @@
       "surface_id": "sn-57-sparket-subnet-api",
       "surface_key": "srf-8c2c15f893a1216d",
       "url": "https://sparket.ai/api/v1/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 58,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Attune",
-      "subnet_slug": "sn-58",
-      "surface_id": "sn-58-handshake58-directory-providers",
-      "surface_key": "srf-68a5c16527781b54",
-      "url": "https://handshake58.com/api/directory/providers"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "subnet-api",
-      "netuid": 58,
-      "probe": {
-        "expect": "json",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Attune",
-      "subnet_slug": "sn-58",
-      "surface_id": "sn-58-handshake58-provider-directory-api",
-      "surface_key": "srf-1c93ab1da6a59c50",
-      "url": "https://handshake58.com/api/mcp/providers"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "subnet-api",
-      "netuid": 58,
-      "probe": {
-        "expect": "json",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Attune",
-      "subnet_slug": "sn-58",
-      "surface_id": "sn-58-handshake58-skills-api",
-      "surface_key": "srf-fdcb03337cc44e64",
-      "url": "https://handshake58.com/api/skills?status=published"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 58,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Attune",
-      "subnet_slug": "sn-58",
-      "surface_id": "sn-58-handshake58-subnet-api",
-      "surface_key": "srf-a13272815c6137f4",
-      "url": "https://handshake58.com/api/agent"
     },
     {
       "auth_required": false,
@@ -8581,26 +8313,6 @@
     },
     {
       "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 78,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "vocence",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "waw",
-      "subnet_slug": "sn-78",
-      "surface_id": "sn-78-vocence-llms-txt",
-      "surface_key": "srf-5163a5d6cd1272ed",
-      "url": "https://www.vocence.ai/llms.txt"
-    },
-    {
-      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 79,
@@ -9429,7 +9141,7 @@
       "kind": "data-artifact",
       "netuid": 94,
       "probe": {
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -9449,7 +9161,7 @@
       "kind": "data-artifact",
       "netuid": 94,
       "probe": {
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -9657,7 +9369,7 @@
       "kind": "data-artifact",
       "netuid": 98,
       "probe": {
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 15000
       },
@@ -10246,26 +9958,6 @@
       "surface_id": "sn-107-taomarketcap-subnet-api",
       "surface_key": "srf-c126a7fd32fa3494",
       "url": "https://api.taomarketcap.com/public/v1/subnets/107/"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 108,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "talkhead",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "ChipForge",
-      "subnet_slug": "sn-108",
-      "surface_id": "sn-108-talkhead-health",
-      "surface_key": "srf-ed598cc91078d165",
-      "url": "https://api.talkhead.ai/health"
     },
     {
       "auth_required": false,
@@ -11017,26 +10709,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 122,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "bitrecs",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "CookingTAO",
-      "subnet_slug": "sn-122",
-      "surface_id": "sn-122-bitrecs-llms-txt",
-      "surface_key": "srf-5509a9f4b1e232a2",
-      "url": "https://www.bitrecs.ai/llms.txt"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "kind": "subnet-api",
       "netuid": 123,
       "probe": {
@@ -11333,46 +11005,6 @@
       "surface_id": "sn-126-poker44-health",
       "surface_key": "srf-f61cf4e3e6d62677",
       "url": "https://api.poker44.net/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 127,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "astrid",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Zils",
-      "subnet_slug": "sn-127",
-      "surface_id": "sn-127-astrid-data-artifact",
-      "surface_key": "srf-ef74619837aeb244",
-      "url": "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 127,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "astrid",
-      "public_safe": true,
-      "revenue": null,
-      "schema_source": null,
-      "subnet_name": "Zils",
-      "subnet_slug": "sn-127",
-      "surface_id": "sn-127-astrid-subnet-api",
-      "surface_key": "srf-19cc25703828020a",
-      "url": "https://arena-api.astrid.global/public/arena/completed-competitions"
     },
     {
       "auth_required": false,

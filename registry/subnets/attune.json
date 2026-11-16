@@ -134,9 +134,9 @@
       "id": "sn-58-handshake58-openapi",
       "kind": "openapi",
       "name": "Handshake58 OpenAPI schema",
-      "notes": "Machine-readable OpenAPI schema advertised by the Handshake58 plugin manifest.",
+      "notes": "Machine-readable OpenAPI schema advertised by the Handshake58 plugin manifest. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -157,9 +157,9 @@
       "id": "sn-58-handshake58-provider-directory-api",
       "kind": "subnet-api",
       "name": "Handshake58 provider directory API",
-      "notes": "Public JSON provider directory for the Handshake58 marketplace.",
+      "notes": "Public JSON provider directory for the Handshake58 marketplace. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -180,9 +180,9 @@
       "id": "sn-58-handshake58-skills-api",
       "kind": "subnet-api",
       "name": "Handshake58 skills API",
-      "notes": "Public JSON skills index exposed by Handshake58.",
+      "notes": "Public JSON skills index exposed by Handshake58. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -256,9 +256,9 @@
       "id": "sn-58-handshake58-subnet-api",
       "kind": "subnet-api",
       "name": "Handshake58 agent discovery API",
-      "notes": "Public no-auth GET returning the DRAIN protocol agent discovery manifest (links to skill.md, providers_api, signing_api, directory, source). Documented in the subnet's own OpenAPI schema (title \"Handshake58 DRAIN Protocol API\"); same host as the existing subnet-api surfaces.",
+      "notes": "Public no-auth GET returning the DRAIN protocol agent discovery manifest (links to skill.md, providers_api, signing_api, directory, source). Documented in the subnet's own OpenAPI schema (title \"Handshake58 DRAIN Protocol API\"); same host as the existing subnet-api surfaces. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -279,7 +279,7 @@
       "id": "sn-58-handshake58-validator-registry-api",
       "kind": "subnet-api",
       "name": "Handshake58 validator miner registry API",
-      "notes": "Public no-auth GET returning the lightweight validator miner registry (approved online miners with UID, categories, and model counts). Documented in the subnet's own OpenAPI (handshake58.com/openapi.json, path /api/validator/registry); same host as existing subnet-api surfaces. Distinct from the provider directory and skills endpoints.",
+      "notes": "Public no-auth GET returning the lightweight validator miner registry (approved online miners with UID, categories, and model counts). Documented in the subnet's own OpenAPI (handshake58.com/openapi.json, path /api/validator/registry); same host as existing subnet-api surfaces. Distinct from the provider directory and skills endpoints. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "handshake58",
       "public_safe": true,
       "review": {
@@ -298,9 +298,9 @@
       "id": "sn-58-handshake58-directory-providers",
       "kind": "subnet-api",
       "name": "Handshake58 provider directory",
-      "notes": "Public no-auth GET returning the directory of registered miner providers (id, name, apiUrl). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning the directory of registered miner providers (id, name, apiUrl). Documented in the subnet's own OpenAPI schema. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000

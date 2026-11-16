@@ -73,7 +73,7 @@
       "id": "sn-82-compelle-health",
       "kind": "subnet-api",
       "name": "Compelle aggregation health",
-      "notes": "Public no-auth GET /api/health on compelle.com returning aggregation-service liveness JSON (observed: {\"ok\":true,\"db_size_bytes\":...,\"games\":...,\"miners\":...}). Served on the official Compelle SN82 debate arena host linked from the validator repository.",
+      "notes": "Public no-auth GET /api/health on compelle.com returning aggregation-service liveness JSON (observed: {\"ok\":true,\"db_size_bytes\":...,\"games\":...,\"miners\":...}). Served on the official Compelle SN82 debate arena host linked from the validator repository. [2026-11-15 infra#873 p3a] HTTP 410: provider-confirmed gone; retired from the callable set.",
       "provider": "compelle",
       "public_safe": true,
       "review": {
@@ -92,7 +92,7 @@
       "id": "sn-82-compelle-validator-config",
       "kind": "data-artifact",
       "name": "Compelle validator game configuration",
-      "notes": "Public no-auth JSON validator consensus configuration (netuid 82, LLM model identifiers, judge panel, Elo parameters, tournament settings, and bundled debate topics) published in the official compelle/compelle-validator repository at compelle/config.json. Documented in the README Configuration section as the shared game-parameter contract every validator runs.",
+      "notes": "Public no-auth JSON validator consensus configuration (netuid 82, LLM model identifiers, judge panel, Elo parameters, tournament settings, and bundled debate topics) published in the official compelle/compelle-validator repository at compelle/config.json. Documented in the README Configuration section as the shared game-parameter contract every validator runs. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "provider": "compelle",
       "public_safe": true,
       "review": {

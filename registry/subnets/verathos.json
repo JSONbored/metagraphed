@@ -372,7 +372,7 @@
       "name": "Verathos network stats",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "operator-attested",
+        "provenance": "none",
         "source_url": "https://api.verathos.ai/openapi.json"
       },
       "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
@@ -619,7 +619,7 @@
       "name": "Verathos network usage timeseries",
       "revenue": {
         "role": "usage-proxy",
-        "provenance": "operator-attested",
+        "provenance": "none",
         "source_url": "https://api.verathos.ai/openapi.json"
       },
       "notes": "Public no-auth GET /v1/network/usage-timeseries on api.verathos.ai returning aggregate request/token-volume buckets over time (range, bucket_seconds, per-bucket requests/tokens). Documented in the validator-proxy OpenAPI schema on the same host as the existing network-stats surface. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
@@ -1455,7 +1455,7 @@
       "name": "Verathos v1/usage",
       "revenue": {
         "role": "not-revenue",
-        "provenance": "operator-attested",
+        "provenance": "none",
         "source_url": "https://api.verathos.ai/openapi.json"
       },
       "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/usage on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",

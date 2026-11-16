@@ -121,9 +121,9 @@
       "id": "sn-78-vocence-llms-txt",
       "kind": "data-artifact",
       "name": "Vocence documentation index",
-      "notes": "Public no-auth machine-readable llms.txt documentation index published by the official Vocence website (www.vocence.ai). Catalogs SN78 Vocence Studio guides, Developer API reference, Python SDK, CLI, subnet miner/validator setup docs, and links the hosted OpenAPI spec at api.vocence.ai/openapi.json plus llms-full.txt for full-doc ingestion.",
+      "notes": "Public no-auth machine-readable llms.txt documentation index published by the official Vocence website (www.vocence.ai). Catalogs SN78 Vocence Studio guides, Developer API reference, Python SDK, CLI, subnet miner/validator setup docs, and links the hosted OpenAPI spec at api.vocence.ai/openapi.json plus llms-full.txt for full-doc ingestion. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
