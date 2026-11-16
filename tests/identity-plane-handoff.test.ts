@@ -72,6 +72,45 @@ test("re-applying over an already-composed schema is a no-op, not a failure", as
   await db.exec(migration("0056_identity_plane_handoff.sql"));
 });
 
+test("producer-first compose: the whole load phase applies over the producer identity plane", async () => {
+  // The canonical compose order (infra#820): the producer tree is applied
+  // first (it is on the live database), so the serving load phase must land
+  // over an existing app schema that already owns app.api_keys in the
+  // producer shape. 0010 skips exactly the repointed trio where it exists,
+  // 0011 floors no identity-trio sequence and never touches api_keys, and
+  // 0056's shape-guard leaves the producer table standing.
+  db = new PGlite();
+  await db.exec("CREATE SCHEMA app");
+  await db.exec(
+    `CREATE TABLE app.api_keys (
+       key_id uuid PRIMARY KEY,
+       account_id uuid NOT NULL,
+       token_digest text NOT NULL UNIQUE,
+       expires_at timestamptz NOT NULL
+     )`,
+  );
+  await db.exec(migration("0000_source_metadata.sql"));
+  await db.exec(migration("0010_account_state.sql"));
+  await db.exec(migration("0011_account_state_activate.sql"));
+  await db.exec(migration("0033_account_numeric.sql"));
+  await db.exec(migration("0056_identity_plane_handoff.sql"));
+  const columns = await db.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema='app' AND table_name='api_keys' ORDER BY column_name",
+  );
+  assert.deepEqual(
+    columns.rows.map((row) => row.column_name),
+    ["account_id", "expires_at", "key_id", "token_digest"],
+    "the producer shape must come through the whole load phase untouched",
+  );
+  const staging = await db.query<{ tablename: string }>(
+    "SELECT tablename FROM pg_tables WHERE schemaname='app' AND tablename IN ('rpc_accounts','github_accounts') ORDER BY tablename",
+  );
+  assert.deepEqual(
+    staging.rows.map((row) => row.tablename),
+    ["github_accounts", "rpc_accounts"],
+  );
+});
+
 test("a producer-shaped api_keys under the same name is never dropped, even empty", async () => {
   // Engine review on the handoff: the name alone does not identify the twin.
   // On an out-of-order or replayed apply the producer's own app.api_keys
