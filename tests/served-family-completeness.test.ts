@@ -56,17 +56,13 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
   "0039_restore_stable_constraints.sql": { tables: [], anchors: [] },
   "0040_native_export_revisions.sql": {
     tables: ["app.native_export_revisions"],
-    anchors: [
-      { file: "src/native-state-export.ts", symbol: "export" },
-    ],
+    anchors: [{ file: "src/native-state-export.ts", symbol: "export" }],
   },
   "0041_native_export_revisions_activate.sql": { tables: [], anchors: [] },
   "0042_rpc_usage_archive.sql": {
     // Closed-day archive rollups behind /api/v1/rpc/usage's cold windows.
     tables: ["app.rpc_usage_archive_days"],
-    anchors: [
-      { file: "src/pg-rpc-usage-reader.ts", symbol: "rpc_usage" },
-    ],
+    anchors: [{ file: "src/pg-rpc-usage-reader.ts", symbol: "rpc_usage" }],
   },
   "0043_rpc_usage_archive_prune.sql": {
     // Prune bookkeeping for the archive -- internal, owned by the store.
