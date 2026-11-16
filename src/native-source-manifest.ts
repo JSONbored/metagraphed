@@ -164,8 +164,56 @@ export type NativeSourceName = keyof typeof NATIVE_SOURCE_RELATIONS;
 export type NativeSchemaName = Exclude<NativeSourceName, "retained_views">;
 export type NativeSourceOwners = Readonly<Record<NativeSchemaName, string>>;
 
+/** Which credential a composed process presents (infra#882). "trusted" is the
+ * producer/scheduler composition: every source read-write, as today. "serving"
+ * is the public HTTP composition: reads everywhere, writes only the user-state
+ * relations below -- so the narrow serving role passes startup verification
+ * with exactly its own grants and a leaked serving credential cannot touch
+ * acquisition, custody or retained history. */
+export type NativeProcessProfile = "trusted" | "serving";
+
+/** The relations the PUBLIC SERVING process writes, per schema -- user state
+ * a request legitimately mutates (keys/quota/usage accounting, alert and push
+ * registrations, rate limiting, MCP sessions, request-driven usage capture,
+ * webhook enqueue). Everything else the serving role only reads. The real-role
+ * fixture (tests/native-capability-split.pg18.ts) is the qualification: a
+ * serving store writing outside this list fails startup verification with the
+ * relation named, which is the fail-closed readiness reason infra#882 asks
+ * for -- extend the list in the same change that adds the write. */
+export const NATIVE_SERVING_WRITES: Readonly<
+  Record<NativeSchemaName, readonly string[]>
+> = Object.freeze({
+  app: Object.freeze([
+    "api_key_blocks",
+    "api_key_usage_daily",
+    "api_quota_daily",
+    "api_usage_rollup",
+    "api_usage_rollup_batches",
+    "chain_alert_deliveries",
+    "chain_alert_triggers",
+    // Login upserts run on the serving path until the infra#820 step-3
+    // re-point moves identity onto the producer plane; api_keys is absent
+    // deliberately -- the colliding twin retires in 0056 and key management
+    // lands on the producer functions at step 3 (#13040).
+    "github_accounts",
+    "rpc_accounts",
+    "rpc_usage_events",
+    "watch_push_subscriptions",
+  ]),
+  auth: Object.freeze([
+    "kv_entries",
+    "rate_limit_buckets",
+    "rate_limit_policies",
+  ]),
+  jobs: Object.freeze(["messages", "queues"]),
+  realtime: Object.freeze(["mcp_capacity", "mcp_sessions"]),
+  retained: Object.freeze([]),
+  search: Object.freeze([]),
+});
+
 export function nativeSourceDefinitions(
   owners: NativeSourceOwners,
+  profile: NativeProcessProfile = "trusted",
 ): readonly NativeSourceDefinition[] {
   const schemas: NativeSchemaName[] = [
     "app",
@@ -196,15 +244,24 @@ export function nativeSourceDefinitions(
       const schema = (
         name === "retained_views" ? "retained" : name
       ) as NativeSchemaName;
+      const writes =
+        name === "retained_views"
+          ? []
+          : profile === "trusted"
+            ? relations
+            : NATIVE_SERVING_WRITES[schema];
       return Object.freeze({
         name,
         schema,
         owner: owners[schema],
         relations,
         access:
-          name === "retained_views"
-            ? ("read" as const)
-            : ("read-write" as const),
+          writes.length === 0 ? ("read" as const) : ("read-write" as const),
+        // The trusted process writes everything, which `writable` absent
+        // means; the serving process pins its exact set.
+        ...(profile === "serving" && writes.length > 0
+          ? { writable: writes }
+          : {}),
       });
     }),
   );
@@ -228,6 +285,10 @@ export async function assertNativeSequencePrivileges(
   ) as NativeSourceName[]) {
     const source = nativeSource(sources, name);
     if (source.access !== "read-write") continue;
+    // infra#882: generated-ID readiness follows the declared write set -- a
+    // serving process needs no sequence on tables it only reads.
+    const writable = [...(source.writable ?? source.relations)];
+    if (writable.length === 0) continue;
     const sequences = await source.read.query<{
       relation: string;
       sequence: string;
@@ -243,7 +304,7 @@ export async function assertNativeSequencePrivileges(
          AND d.classid='pg_catalog.pg_class'::regclass AND d.deptype IN ('a','i')
        JOIN pg_catalog.pg_class s ON s.oid=d.objid AND s.relkind='S'
        WHERE n.nspname=$1 AND t.relname=ANY($2::text[])`,
-      [source.schema, source.relations],
+      [source.schema, writable],
     );
     for (const sequence of sequences)
       if (sequence.writable !== true)
