@@ -515,7 +515,6 @@ describe(
           `CREATE ROLE ${role} LOGIN PASSWORD 'fixture-only'`,
         );
         for (const definition of nativeSourceDefinitions(owners, profile)) {
-          if (definition.name === "retained_views") continue;
           await control.query(
             `GRANT USAGE ON SCHEMA ${definition.schema} TO ${role}`,
           );
