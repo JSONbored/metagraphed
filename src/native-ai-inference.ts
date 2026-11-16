@@ -8,6 +8,7 @@ import {
   OpenAiCompletionResponseSchema,
 } from "../schemas-src/native-inference-http.ts";
 import type { AiInference } from "./ai-inference.ts";
+import type { NativeSettingKey } from "./native-runtime-settings.ts";
 import { createNativeWorkGroup } from "./native-work-group.ts";
 import { setImmediate as yieldEventLoop } from "node:timers/promises";
 
@@ -30,6 +31,82 @@ export interface NativeInferenceOptions {
 }
 
 const encoder = new TextEncoder();
+
+/** The declared scalar settings one AI-gateway deployment supplies (#13149).
+ * One endpoint serves both legs: the decision record on #13149 routes ask and
+ * search inference through the existing fleet AI gateway, so embedding and
+ * completion share a base URL and credential. */
+export const AI_INFERENCE_SETTING_KEYS = Object.freeze([
+  "AI_INFERENCE_BASE_URL",
+  "AI_INFERENCE_PROVIDER",
+  "AI_INFERENCE_EMBEDDING_MODEL",
+  "AI_INFERENCE_EMBEDDING_DIMENSIONS",
+  "AI_INFERENCE_COMPLETION_MODEL",
+] as const satisfies readonly NativeSettingKey[]);
+
+/** Every buffering and concurrency budget is code, never configuration: a
+ * deployment chooses WHERE inference runs (the gateway endpoint, the models),
+ * and nothing else. 4 x (256 KiB + 1 MiB) stays far inside the factory's
+ * 64 MiB aggregate ceiling, and 1024 output tokens bounds any caller above
+ * ask's own 512-token request. */
+const NATIVE_INFERENCE_BUDGETS = Object.freeze({
+  maxConcurrent: 4,
+  maxRequestBytes: 256 * 1024,
+  maxResponseBytes: 1024 * 1024,
+  maxOutputTokens: 1024,
+  executionTimeoutMillis: 30000,
+  drainTimeoutMillis: 5000,
+});
+
+/** Derive the native inference options from declared runtime settings.
+ *
+ * The endpoint value may be a placeholder until the gateway hostname is
+ * activated -- it must still parse as an explicit HTTP(S) API base, so a
+ * deployment cannot come up silently inference-less: a missing or malformed
+ * setting throws here, at construction, never at first request. The token is
+ * the only optional key (a tailnet-internal gateway may not need one). */
+export function nativeInferenceOptionsFrom(
+  settings: Readonly<Partial<Record<string, string>>>,
+  transport?: typeof fetch,
+): NativeInferenceOptions {
+  const required = Object.fromEntries(
+    AI_INFERENCE_SETTING_KEYS.map((key) => {
+      const value = settings[key];
+      if (typeof value !== "string" || !value.trim())
+        throw new TypeError(`Native inference requires setting: ${key}`);
+      return [key, value];
+    }),
+  ) as Record<(typeof AI_INFERENCE_SETTING_KEYS)[number], string>;
+  const dimensions = required.AI_INFERENCE_EMBEDDING_DIMENSIONS;
+  if (!/^[1-9]\d{0,3}$/.test(dimensions))
+    throw new TypeError(
+      "AI_INFERENCE_EMBEDDING_DIMENSIONS must be a positive integer",
+    );
+  const token = settings.AI_INFERENCE_TOKEN?.trim()
+    ? settings.AI_INFERENCE_TOKEN
+    : undefined;
+  const leg: NativeInferenceEndpoint = {
+    baseUrl: required.AI_INFERENCE_BASE_URL,
+    ...(token === undefined ? {} : { token }),
+  };
+  return {
+    identity: InferenceIdentitySchema.parse({
+      embedding: {
+        provider: required.AI_INFERENCE_PROVIDER,
+        model: required.AI_INFERENCE_EMBEDDING_MODEL,
+        dimensions: Number(dimensions),
+      },
+      completion: {
+        provider: required.AI_INFERENCE_PROVIDER,
+        model: required.AI_INFERENCE_COMPLETION_MODEL,
+      },
+    }),
+    embedding: { ...leg },
+    completion: { ...leg },
+    ...NATIVE_INFERENCE_BUDGETS,
+    ...(transport === undefined ? {} : { transport }),
+  };
+}
 function endpoint(value: NativeInferenceEndpoint, path: string) {
   const url = new URL(value.baseUrl);
   if (
