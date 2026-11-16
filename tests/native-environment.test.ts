@@ -9,7 +9,10 @@ import type {
 import type { NativeBackgroundOptions } from "../src/native-background-loops.ts";
 import type { NativeSubnetStatusOptions } from "../src/pg-subnet-status-hub.ts";
 import type { NativeOAuthModule } from "../src/native-oauth-provider.ts";
-import { createNativeEnvironment } from "../src/native-environment.ts";
+import {
+  createNativeEnvironment,
+  requireComposedChain,
+} from "../src/native-environment.ts";
 import { nativeEnvironmentFixture } from "./helpers/native-environment-fixture.ts";
 
 const state = vi.hoisted(() => ({
@@ -168,6 +171,7 @@ vi.mock("../src/native-chain-firehose.ts", () => ({
   createNativeChainFirehose: async () => ({
     fetch: async () => new Response("chain"),
     runDueAlarm: async () => 1,
+    openSocket: async () => null,
     close: close("chain"),
   }),
 }));
@@ -420,4 +424,37 @@ test("the producer profile composes no actor or listener and refuses them by nam
     new AbortController().signal,
   );
   await application.close();
+});
+
+test("every refusal surface rejects by name, and the chain guard narrows only a composed actor", async () => {
+  const producer = await createNativeEnvironment({
+    ...options(),
+    profile: "producer",
+  });
+  assert.throws(
+    () => requireComposedChain(producer.chain),
+    /not composed in this process/,
+  );
+  await producer.close();
+  const serving = await createNativeEnvironment({
+    ...options(),
+    profile: "serving",
+  });
+  assert.equal(requireComposedChain(serving.chain), serving.chain);
+  await assert.rejects(
+    serving.owners.api.queue({} as MessageBatch<unknown>),
+    /queue owner is not composed in the serving process/,
+  );
+  await assert.rejects(
+    serving.owners.api.fetch(new Request("https://fixture.example")),
+    /owner fetch is not composed in the serving process/,
+  );
+  await assert.rejects(
+    serving.owners.registry.scheduled(
+      { cron: "fixture", scheduledTime: 0 },
+      new AbortController().signal,
+    ),
+    /registry scheduled owner is not composed/,
+  );
+  await serving.close();
 });
