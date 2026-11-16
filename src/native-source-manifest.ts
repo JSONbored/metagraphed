@@ -16,7 +16,6 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "alpha_assets",
     "api_key_blocks",
     "api_key_usage_daily",
-    "api_keys",
     "api_quota_daily",
     "api_usage_rollup",
     "api_usage_rollup_batches",
