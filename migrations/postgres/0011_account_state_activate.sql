@@ -1,5 +1,10 @@
 -- Run transactionally while external application writers remain fenced.
-LOCK TABLE app.rpc_accounts, app.github_accounts, app.api_keys, app.api_key_blocks,
+-- Compose-aware (infra#820, producer-first order): the identity trio
+-- (rpc_accounts, github_accounts, api_keys) is repointed to the
+-- producer-owned plane -- no staging rows arrive for it, so it needs no
+-- sequence floor, and app.api_keys may be the PRODUCER'S table on a composed
+-- database (no id column, never locked or touched here).
+LOCK TABLE app.rpc_accounts, app.github_accounts, app.api_key_blocks,
     app.chain_alert_triggers, app.chain_alert_deliveries, app.watch_push_subscriptions,
     source_meta.state_sqlite_sequence IN ACCESS EXCLUSIVE MODE;
 
@@ -12,7 +17,7 @@ ALTER TABLE app.chain_alert_deliveries
 DO $$
 DECLARE
     sequence_tables CONSTANT text[] := ARRAY[
-        'rpc_accounts', 'github_accounts', 'api_keys', 'api_key_blocks',
+        'api_key_blocks',
         'chain_alert_triggers', 'chain_alert_deliveries', 'watch_push_subscriptions'
     ];
     table_name text;
