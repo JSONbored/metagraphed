@@ -5039,6 +5039,30 @@ async function withAccountsSql<T>(
   }
 }
 
+/** Key management targets the retired api_keys staging shape. On the native
+ * path that shape is gone -- the composed database's app.api_keys is the
+ * PRODUCER'S (uuid/token_digest, no serving grant), and key operations
+ * re-point onto the producer plane's functions at infra#820 step 3 (#13040).
+ * Until that lands, the native selection refuses EXPLICITLY and BEFORE any
+ * side effect: never a 502 after an external provider mint, never a
+ * half-applied promote. The Worker default (legacy database) is unchanged. */
+async function withAccountKeysSql<T>(
+  env: DataApiEnv,
+  ctx: AppExecutionContext,
+  fn: (sql: PgSql) => Promise<T>,
+): Promise<T | Response> {
+  if (selectedAccountStateStore(env)) {
+    return writeJson(
+      {
+        error:
+          "native key management is pending the producer-plane re-point (infra#820 step 3)",
+      },
+      503,
+    );
+  }
+  return withAccountsSql(env, ctx, fn);
+}
+
 const ACCOUNT_ROUTES_MAX_BODY_BYTES = 4096;
 
 async function readAccountRouteBody(request: Request) {
@@ -5452,7 +5476,7 @@ async function handleAccountKeyCreate(
     }
   }
 
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
     // rather than mint an orphaned key. Tier is the account's OWN tier
@@ -5507,7 +5531,7 @@ async function handleAccountKeysList(
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     type KeyListRow = {
       key_id: ApiKeys["unkey_key_id"];
       tier: ApiKeys["tier"];
@@ -5561,7 +5585,7 @@ async function handleAccountKeyRevoke(
   if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
     return writeJson({ error: "malformed key id" }, 400);
   }
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // Persist intent atomically with ownership before any provider mutation.
     // Retries retain the first timestamp. The independently deployed state
     // readers deny pending rows, even if provider confirmation later fails.
@@ -5672,7 +5696,7 @@ async function handleApiKeyState(
   if (error) return error;
   if (!isUnkeyKeyId(body?.keyId))
     return writeJson({ error: "provide a valid key id" }, 400);
-  return withAccountsSql(env, ctx, async (sql) =>
+  return withAccountKeysSql(env, ctx, async (sql) =>
     writeJson(
       {
         state: await readApiKeyLedgerState(sql, body.keyId, body.accountId),
@@ -5739,7 +5763,7 @@ async function handleApiKeyVerify(
   if (!isUnkeyKeyId(result.keyId))
     return writeJson({ valid: false, code: "NOT_FOUND" });
   const keyId = result.keyId;
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     // The guard follows provider verification so an earlier in-flight lookup
     // cannot restore access after revocation intent commits.
     const state = await readApiKeyLedgerState(sql, keyId, result.accountId);
@@ -6208,7 +6232,7 @@ async function handleAccountTierPromote(
   if (!ss58 || !tier) {
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
-  return withAccountsSql(env, ctx, async (sql) => {
+  return withAccountKeysSql(env, ctx, async (sql) => {
     const [account] = await sql<{ id: RpcAccounts["id"] }>`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
@@ -6456,32 +6480,40 @@ async function handleApiKeyAnomalies(
       ? await native.usage.anomalyRows(since)
       : await sql<{
           account_id: ApiKeyUsageDaily["account_id"];
+          account_kind: ApiKeyUsageDaily["account_kind"];
           day: ApiKeyUsageDaily["day"];
           route: ApiKeyUsageDaily["route"];
           request_count: ApiKeyUsageDaily["request_count"];
         }>`
-      SELECT account_id, day, route, request_count
+      SELECT account_id, account_kind, day, route, request_count
       FROM api_key_usage_daily
       WHERE day >= ${since}
-      ORDER BY account_id, day`;
+      ORDER BY account_kind, account_id, day`;
     const blocked = native
       ? await sql<{
           account_id: ApiKeyBlocks["account_id"];
+          account_kind: ApiKeyBlocks["account_kind"];
           reason_code: ApiKeyBlocks["reason_code"];
-        }>`SELECT account_id,reason_code FROM api_key_blocks WHERE unblocked_at IS NULL ORDER BY id`
+        }>`SELECT account_id,account_kind,reason_code FROM api_key_blocks WHERE unblocked_at IS NULL ORDER BY id`
       : await sql<{
           account_id: ApiKeyBlocks["account_id"];
+          account_kind: ApiKeyBlocks["account_kind"];
           reason_code: ApiKeyBlocks["reason_code"];
         }>`
-      SELECT account_id, reason_code FROM api_key_blocks
+      SELECT account_id, account_kind, reason_code FROM api_key_blocks
       WHERE unblocked_at IS NULL`;
+    // #11573's collision class: github id N and rpc id N are different
+    // accounts. Every map in this view keys by (kind, id).
     const blockedBy = new Map(
-      blocked.map((row) => [Number(row.account_id), row.reason_code]),
+      blocked.map((row) => [
+        `${row.account_kind}:${Number(row.account_id)}`,
+        row.reason_code,
+      ]),
     );
 
-    const byAccount = new Map<number, Map<string, Record<string, number>>>();
+    const byAccount = new Map<string, Map<string, Record<string, number>>>();
     for (const row of usage) {
-      const id = Number(row.account_id);
+      const id = `${row.account_kind}:${Number(row.account_id)}`;
       const perDay = byAccount.get(id) ?? new Map();
       const routes = perDay.get(row.day) ?? {};
       routes[String(row.route)] = Number(row.request_count);
@@ -6490,7 +6522,10 @@ async function handleApiKeyAnomalies(
     }
 
     const flagged = [];
-    for (const [accountId, perDay] of byAccount) {
+    for (const [accountKey, perDay] of byAccount) {
+      const separator = accountKey.indexOf(":");
+      const accountKind = accountKey.slice(0, separator);
+      const accountId = Number(accountKey.slice(separator + 1));
       const usageDays = [...perDay].map(([day, routes]) => ({ day, routes }));
       // The tier ceiling as a per-DAY number. MCP's keyed tier is the widest
       // surface a key can spend against, so it is the honest denominator for
@@ -6502,9 +6537,10 @@ async function handleApiKeyAnomalies(
       if (signals.length === 0) continue;
       flagged.push({
         account_id: accountId,
+        account_kind: accountKind,
         signals,
         top_score: signals[0].score,
-        blocked_reason_code: blockedBy.get(accountId) ?? null,
+        blocked_reason_code: blockedBy.get(accountKey) ?? null,
       });
     }
     flagged.sort((a, b) => b.top_score - a.top_score);
@@ -6551,7 +6587,8 @@ async function handleAccountKeyStatus(
       blocked_at: ApiKeyBlocks["blocked_at"];
     }>`
       SELECT reason_code, blocked_at FROM api_key_blocks
-      WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND unblocked_at IS NULL
       LIMIT 1`;
     if (!row) return writeJson({ blocked: false });
     const reasonCode = isBlockReasonCode(row.reason_code)
@@ -6587,7 +6624,7 @@ async function handleAccountKeyUsage(
       .slice(0, 10);
     const native = selectedAccountStateStore(env);
     const rows = native
-      ? await native.usage.accountRows(session.accountId, since)
+      ? await native.usage.accountRows(session.accountId, since, "rpc")
       : await sql<{
           day: ApiKeyUsageDaily["day"];
           route: ApiKeyUsageDaily["route"];
@@ -6596,7 +6633,8 @@ async function handleAccountKeyUsage(
         }>`
       SELECT day, route, request_count, rejected_count
       FROM api_key_usage_daily
-      WHERE account_id = ${session.accountId} AND day >= ${since}
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND day >= ${since}
       ORDER BY day DESC`;
     const byDay = new Map<string, { count: number; rejected: number }>();
     const byRoute = new Map<string, { count: number; rejected: number }>();
@@ -6627,7 +6665,8 @@ async function handleAccountKeyUsage(
     const today = new Date().toISOString().slice(0, 10);
     const [quotaRow] = await sql<{ units_spent: ApiQuotaDaily["units_spent"] }>`
       SELECT units_spent FROM api_quota_daily
-      WHERE account_id = ${session.accountId} AND day = ${today}`;
+      WHERE account_kind = 'rpc' AND account_id = ${session.accountId}
+        AND day = ${today}`;
     const unitsSpent = Number(quotaRow?.units_spent ?? 0) || 0;
     // The tier is NOT on the session token -- it is server-side state that can
     // change without re-issuing a key (#8608), so reading it from the session

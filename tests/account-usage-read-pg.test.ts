@@ -33,9 +33,10 @@ test("account and anomaly reads keep source row ordering and wire numbers", asyn
       requests: "9007199254740993",
       rejected: "Infinity",
       account: "42",
+      kind: "rpc",
     },
   ]);
-  assert.deepEqual(await f.readers.accountRows(0.1, "2026-11-01"), [
+  assert.deepEqual(await f.readers.accountRows(0.1, "2026-11-01", "rpc"), [
     {
       day: "2026-11-04",
       route: "/z",
@@ -44,19 +45,24 @@ test("account and anomaly reads keep source row ordering and wire numbers", asyn
     },
   ]);
   assert.match(f.queries[0].text, /ORDER BY day DESC,source_row_id/);
+  assert.equal(f.queries[0].values[0], "rpc");
   assert.equal(
-    f.queries[0].values[0],
+    f.queries[0].values[1],
     "0.1000000000000000055511151231257827021181583404541015625",
   );
   assert.deepEqual(await f.readers.anomalyRows("2026-11-01"), [
     {
       account_id: 42,
+      account_kind: "rpc",
       day: "2026-11-04",
       route: "/z",
       request_count: 9007199254740992,
     },
   ]);
-  assert.match(f.queries[1].text, /ORDER BY account_id,day,source_row_id/);
+  assert.match(
+    f.queries[1].text,
+    /ORDER BY account_kind,account_id,day,source_row_id/,
+  );
 });
 
 test("rollup sorting compares exact values before the JSON number boundary", async () => {
