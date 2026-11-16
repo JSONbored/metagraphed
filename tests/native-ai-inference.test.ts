@@ -390,9 +390,7 @@ test("derives gateway options from declared settings: one endpoint, both legs", 
       url: String(input),
       authorization: new Headers(init?.headers).get("authorization"),
     });
-    return String(input).endsWith("/embeddings")
-      ? embedding()
-      : completion();
+    return String(input).endsWith("/embeddings") ? embedding() : completion();
   });
   assert.deepEqual(derived.identity, {
     embedding: {
@@ -443,7 +441,9 @@ test("derived settings: the token is the only optional key", async () => {
       new RegExp(key),
       `expected a missing ${key} to be refused by name`,
     );
-    assert.throws(() => nativeInferenceOptionsFrom({ ...settings, [key]: " " }));
+    assert.throws(() =>
+      nativeInferenceOptionsFrom({ ...settings, [key]: " " }),
+    );
   }
 });
 
@@ -471,4 +471,17 @@ test("derived settings: dimensions must be a bounded positive integer", () => {
     ),
   );
   owners.push(owner);
+});
+
+test("derived settings carry no transport unless one is injected", () => {
+  const settings = {
+    AI_INFERENCE_BASE_URL: "https://gateway.example/v1",
+    AI_INFERENCE_PROVIDER: "fleet-gateway",
+    AI_INFERENCE_EMBEDDING_MODEL: "gateway-embed",
+    AI_INFERENCE_EMBEDDING_DIMENSIONS: "3",
+    AI_INFERENCE_COMPLETION_MODEL: "gateway-chat",
+  };
+  // Production derivation: no transport key at all, so the factory falls
+  // through to globalThis.fetch instead of a frozen undefined override.
+  assert.equal("transport" in nativeInferenceOptionsFrom(settings), false);
 });
