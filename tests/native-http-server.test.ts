@@ -381,3 +381,170 @@ test("an upgrade drain failure keeps process resources open until a successful r
   await fixture.server.close();
   assert.equal(fixture.closed(), 1);
 });
+
+// #13118: behind a TLS-terminating reverse proxy the TCP peer is always the
+// proxy, so socket-derived identity collapses every client into one for rate
+// limits and the per-IP WebSocket cap. The policy below hands identity to the
+// proxy's X-Real-IP -- and only for configured peers.
+describe("trusted ingress client identity", () => {
+  const policy = (...addresses: string[]) => ({
+    clientIdentity: { trustedProxyAddresses: addresses },
+  });
+
+  test("refuses hostnames, ranges, wildcards, scopes, unspecified and oversized policies at listen time", async () => {
+    for (const entries of [
+      [],
+      ["10.0.0.0/8"],
+      ["proxy.internal"],
+      ["*"],
+      ["fe80::1%eth0"],
+      ["0.0.0.0"],
+      ["::"],
+      [" 127.0.0.1"],
+      [""],
+      Array.from({ length: 33 }, (_, i) => `198.51.100.${i % 100}`),
+      ["300.1.1.1"],
+      ["12345::1"],
+      [42 as unknown as string],
+    ]) {
+      await assert.rejects(
+        listen(async () => new Response(), {
+          clientIdentity: { trustedProxyAddresses: entries },
+        }),
+      );
+    }
+  });
+
+  test("an untrusted peer keeps its socket identity and cannot claim one", async () => {
+    let seen!: Request;
+    const { url } = await listen(async (request) => {
+      seen = request;
+      return new Response("ok");
+    }, policy("198.51.100.7"));
+    const response = await fetch(url, {
+      headers: { "x-real-ip": "203.0.113.9" },
+    });
+    assert.equal(response.status, 200);
+    assert.match(seen.headers.get("cf-connecting-ip")!, /127\.0\.0\.1/);
+    assert.equal(seen.headers.has("x-real-ip"), false);
+  });
+
+  test("a trusted proxy's X-Real-IP becomes the client identity, and clients stay apart", async () => {
+    const identities: string[] = [];
+    const { url } = await listen(async (request) => {
+      identities.push(request.headers.get("cf-connecting-ip")!);
+      return new Response("ok");
+    }, policy("::ffff:127.0.0.1")); // IPv4-mapped entry matches the IPv4 peer
+    for (const client of ["203.0.113.9", "::ffff:203.0.113.10"]) {
+      const response = await fetch(url, { headers: { "x-real-ip": client } });
+      assert.equal(response.status, 200);
+    }
+    // Distinct clients behind one proxy keep distinct identities (quota
+    // separation), and the IPv4-mapped spelling normalizes to IPv4.
+    assert.deepEqual(identities, ["203.0.113.9", "203.0.113.10"]);
+  });
+
+  test("a trusted proxy that fails its identity obligation is refused before dispatch", async () => {
+    let called = 0;
+    const { url } = await listen(async () => {
+      called += 1;
+      return new Response("unexpected");
+    }, policy("127.0.0.1"));
+    for (const headers of [
+      {},
+      { "x-real-ip": "attacker.invalid" },
+      { "x-real-ip": "0.0.0.0" },
+      { "x-real-ip": "::" },
+      { "x-real-ip": "203.0.113.9/32" },
+      { "x-real-ip": "203.0.113.9, 203.0.113.10" },
+    ] as Record<string, string>[]) {
+      const response = await fetch(url, { headers });
+      assert.equal(response.status, 400);
+      assert.equal(
+        ((await response.json()) as { error: { code: string } }).error.code,
+        "invalid_client_identity",
+      );
+    }
+    assert.equal(called, 0);
+  });
+
+  test("repeated X-Real-IP headers are one refused claim, not a choice", async () => {
+    let called = 0;
+    const fixture = await listen(async () => {
+      called += 1;
+      return new Response("unexpected");
+    }, policy("127.0.0.1"));
+    const status = await new Promise<number>((resolve, reject) => {
+      const request = httpRequest(
+        fixture.url,
+        { headers: { "x-real-ip": ["203.0.113.9", "203.0.113.10"] } },
+        (response) => {
+          response.resume();
+          response.on("end", () => resolve(response.statusCode!));
+        },
+      );
+      request.on("error", reject);
+      request.end();
+    });
+    assert.equal(status, 400);
+    assert.equal(called, 0);
+  });
+
+  test("mutating the policy array after listen broadens nothing", async () => {
+    const addresses = ["198.51.100.7"];
+    let seen!: Request;
+    const { url } = await listen(
+      async (request) => {
+        seen = request;
+        return new Response("ok");
+      },
+      { clientIdentity: { trustedProxyAddresses: addresses } },
+    );
+    addresses.push("127.0.0.1");
+    const response = await fetch(url, {
+      headers: { "x-real-ip": "203.0.113.9" },
+    });
+    assert.equal(response.status, 200);
+    assert.match(seen.headers.get("cf-connecting-ip")!, /127\.0\.0\.1/);
+  });
+
+  test("upgrades admit a proxied client identity and refuse a missing one before admission", async () => {
+    const errors: unknown[] = [];
+    let admitted = 0;
+    let seen!: Request;
+    const fixture = await listen(async () => new Response("ok"), {
+      ...policy("127.0.0.1"),
+      onError: (error) => errors.push(error),
+      upgrade: {
+        async handle(request, _incoming, socket) {
+          admitted += 1;
+          seen = request;
+          socket.end(
+            "HTTP/1.1 503 Upgrade declined\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+          );
+        },
+        async close() {},
+      },
+    });
+    const upgradeStatus = (headers: Record<string, string>) =>
+      new Promise<number | "destroyed">((resolve, reject) => {
+        const request = httpRequest(fixture.url, {
+          headers: { connection: "Upgrade", upgrade: "websocket", ...headers },
+        });
+        request.on("response", (response) => {
+          response.resume();
+          response.on("end", () => resolve(response.statusCode!));
+        });
+        request.on("error", () => resolve("destroyed"));
+        request.on("upgrade", () => reject(new Error("unexpected upgrade")));
+        request.end();
+      });
+    assert.equal(await upgradeStatus({ "x-real-ip": "203.0.113.9" }), 503);
+    assert.equal(admitted, 1);
+    assert.equal(seen.headers.get("cf-connecting-ip"), "203.0.113.9");
+    assert.equal(seen.headers.has("x-real-ip"), false);
+    assert.equal(await upgradeStatus({}), "destroyed");
+    assert.equal(admitted, 1);
+    assert.match(String(errors[0]), /exactly one X-Real-IP/);
+  });
+});

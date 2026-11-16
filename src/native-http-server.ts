@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import type { Duplex } from "node:stream";
 import type { NativeApiProcess } from "./native-api-process.ts";
 import { errorResponse } from "../workers/http.ts";
+import { ipv6ToBytes } from "./ip-safety.ts";
 
 export interface NativeHttpOptions {
   origin: string;
@@ -14,6 +15,116 @@ export interface NativeHttpOptions {
   headersTimeoutMillis: number;
   onError(error: unknown): void;
   upgrade?: NativeHttpUpgrade;
+  /** Absent: every client identity is the TCP peer (direct exposure). */
+  clientIdentity?: NativeClientIdentityPolicy;
+}
+
+/**
+ * Trusted-ingress client identity (#13118). Behind a TLS-terminating reverse
+ * proxy every TCP peer is the proxy, so socket-derived identity collapses all
+ * clients into one for rate limits and the WebSocket per-IP cap. When the
+ * peer's address is listed here, the client identity is taken from the single
+ * `X-Real-IP` value the proxy wrote instead; every other peer keeps the
+ * socket-derived identity, and all forwarding/Cloudflare headers are stripped
+ * either way.
+ *
+ * The proxy MUST overwrite any incoming `X-Real-IP` with the address of ITS
+ * peer -- a proxy that forwards a client-supplied value hands every client a
+ * chosen identity. Entries are exact IP literals (at most 32); IPv4-mapped
+ * IPv6 normalizes to the IPv4 form so a dual-stack peer matches either
+ * spelling. Hostnames, CIDR ranges, wildcards, zone-scoped addresses and the
+ * unspecified address are refused at listen time.
+ */
+export interface NativeClientIdentityPolicy {
+  trustedProxyAddresses: readonly string[];
+}
+
+const NATIVE_TRUSTED_PROXY_LIMIT = 32;
+
+/** Exact IP literal -> canonical identity key, or null when it is anything
+ * else (hostname, CIDR, wildcard, zone-scoped, embedded whitespace). */
+function canonicalIpLiteral(value: string): string | null {
+  if (value === "" || /[\s%*/]/.test(value)) return null;
+  if (!value.includes(":")) {
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(value)) return null;
+    const octets = value.split(".").map(Number);
+    if (octets.some((octet) => octet > 255)) return null;
+    return octets.join(".");
+  }
+  const bytes = ipv6ToBytes(value);
+  if (bytes === null) return null;
+  // IPv4-mapped (::ffff:0:0/96) normalizes to the IPv4 form: Node reports a
+  // dual-stack peer as ::ffff:a.b.c.d, and one client must stay one identity.
+  if (
+    bytes.slice(0, 10).every((byte) => byte === 0) &&
+    bytes[10] === 0xff &&
+    bytes[11] === 0xff
+  )
+    return bytes.slice(12).join(".");
+  const groups: string[] = [];
+  for (let i = 0; i < 16; i += 2)
+    groups.push(((bytes[i]! << 8) | bytes[i + 1]!).toString(16));
+  return groups.join(":");
+}
+
+function isUnspecifiedIp(key: string): boolean {
+  return key === "0.0.0.0" || key === "0:0:0:0:0:0:0:0";
+}
+
+/** Validate and SNAPSHOT the policy before binding, so later mutation of the
+ * caller's array cannot broaden trust while the listener is serving. */
+function compileTrustedProxies(
+  policy: NativeClientIdentityPolicy,
+): ReadonlySet<string> {
+  const entries = [...policy.trustedProxyAddresses];
+  if (entries.length === 0 || entries.length > NATIVE_TRUSTED_PROXY_LIMIT) {
+    throw new Error(
+      `Native client identity policy must list 1-${NATIVE_TRUSTED_PROXY_LIMIT} trusted proxy addresses`,
+    );
+  }
+  const trusted = new Set<string>();
+  for (const entry of entries) {
+    const key = typeof entry === "string" ? canonicalIpLiteral(entry) : null;
+    if (key === null || isUnspecifiedIp(key)) {
+      throw new Error(
+        "Native trusted proxy entries must be exact unicast IP literals " +
+          "(no hostname, wildcard, CIDR, zone or unspecified address)",
+      );
+    }
+    trusted.add(key);
+  }
+  return trusted;
+}
+
+class NativeClientIdentityError extends Error {}
+
+/** The client identity for one connection: the single proxy-written
+ * `X-Real-IP` when the peer is a configured trusted proxy, otherwise the TCP
+ * peer unchanged. Throws (refusing the request before dispatch or upgrade
+ * admission) when a trusted proxy failed its one obligation. */
+function deriveClientAddress(
+  remoteAddress: string | undefined,
+  headers: Headers,
+  trustedProxies: ReadonlySet<string> | null,
+): string | undefined {
+  if (trustedProxies === null || remoteAddress === undefined)
+    return remoteAddress;
+  const peer = canonicalIpLiteral(remoteAddress);
+  if (peer === null || !trustedProxies.has(peer)) return remoteAddress;
+  const declared = headers.get("x-real-ip");
+  // Repeated headers arrive comma-joined, so one get() sees every value.
+  if (declared === null || declared.includes(",")) {
+    throw new NativeClientIdentityError(
+      "Trusted proxy must write exactly one X-Real-IP client identity",
+    );
+  }
+  const client = canonicalIpLiteral(declared);
+  if (client === null || isUnspecifiedIp(client)) {
+    throw new NativeClientIdentityError(
+      "Trusted proxy wrote an invalid X-Real-IP client identity",
+    );
+  }
+  return client;
 }
 
 export interface NativeHttpUpgrade {
@@ -99,6 +210,11 @@ export async function listenNativeApi(
       typeof options.upgrade?.close !== "function")
   )
     throw new Error("Native HTTP upgrade handler must own admission and close");
+  // Validated and snapshotted before the listener binds (#13118).
+  const trustedProxies =
+    options.clientIdentity === undefined
+      ? null
+      : compileTrustedProxies(options.clientIdentity);
   const reportError = (error: unknown) => {
     try {
       options.onError(error);
@@ -118,7 +234,11 @@ export async function listenNativeApi(
       try {
         const headers = trustedHeaders(
           request.headers,
-          incoming.socket.remoteAddress,
+          deriveClientAddress(
+            incoming.socket.remoteAddress,
+            request.headers,
+            trustedProxies,
+          ),
           origin,
         );
         const declaredBytes = headers.get("content-length");
@@ -159,6 +279,13 @@ export async function listenNativeApi(
         );
       } catch (error) {
         reportError(error);
+        if (error instanceof NativeClientIdentityError) {
+          return errorResponse(
+            "invalid_client_identity",
+            "Missing or invalid proxied client identity.",
+            400,
+          );
+        }
         if (error instanceof NativePayloadTooLargeError) {
           return errorResponse(
             "payload_too_large",
@@ -195,7 +322,11 @@ export async function listenNativeApi(
                 method: incoming.method,
                 headers: trustedHeaders(
                   headers,
-                  incoming.socket.remoteAddress,
+                  deriveClientAddress(
+                    incoming.socket.remoteAddress,
+                    headers,
+                    trustedProxies,
+                  ),
                   origin,
                 ),
                 signal: aborted.signal,
