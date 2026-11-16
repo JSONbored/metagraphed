@@ -9592,7 +9592,7 @@ export interface components {
                 /** @enum {string} */
                 stale_behavior: "block" | "warn";
                 /** @enum {string} */
-                status: "captured" | "current" | "degraded" | "missing" | "stale";
+                status: "captured" | "current" | "degraded" | "failed" | "missing" | "stale";
                 timestamp: string | null;
                 timestamp_field: string | null;
             }[];
