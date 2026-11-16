@@ -189,12 +189,16 @@ describe("complete endpoint catalog search", () => {
       listQuerySchema("endpoints"),
       ListEndpointsInputSchema,
     ]) {
-      for (const q of ["", " \t ", "a".repeat(200), "😀".repeat(100)])
+      // Since zod 4.6, `.max()` counts Unicode code points, not UTF-16 units —
+      // the same unit JSON Schema's `maxLength` is defined in, so the served
+      // contract and the runtime bound now agree. 100 astral emoji = 100 code
+      // points (200 UTF-16 units) and stays valid; 201 code points do not.
+      for (const q of ["", " \t ", "a".repeat(200), "😀".repeat(200)])
         assert.equal(schema.safeParse({ q }).success, true);
       for (const q of [
         "a".repeat(201),
         " ".repeat(201),
-        "😀".repeat(101),
+        "😀".repeat(201),
         42,
         null,
         ["one"],

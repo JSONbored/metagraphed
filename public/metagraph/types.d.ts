@@ -913,8 +913,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows, its PendingChildKeys queue, its threshold bookkeeping and the ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read. */
         get: operations["accountChildren"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/coldkey-swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's coldkey-swap state and lineage
+         * @description Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps. Served live from the coldkey-swaps store; until the engine's swap and lineage captures land every block declines to null and hotkey_count stays null over an empty list — never 0, because an empty capture is not a measured never-swapped account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountColdkeySwap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1059,6 +1079,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/locks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's conviction-lock state
+         * @description Fetch one account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants, spelled as the chain spells them), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Served live from the locks store; until the engine's lock capture lands the state holds no rows and the response is the schema-stable decline — an empty locks array with lock_count null, never 0, because an empty list is not a measured lock-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountLocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/multisigs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every multisig an account belongs to
+         * @description Fetch every multisig an account belongs to (#13166) — as the multisig account itself or as a signatory — each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Served live from the multisigs store; until the engine's Multisig call/event capture lands the state holds no rows and the response is the schema-stable decline — an empty multisigs array with multisig_count null, never 0, because an empty list is not a measured multisig-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountMultisigs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/parents": {
         parameters: {
             query?: never;
@@ -1066,7 +1126,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        /** @description Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows and its child-keyed ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read. */
         get: operations["accountParents"];
         put?: never;
         post?: never;
@@ -1127,6 +1187,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/proxies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one account's proxy delegations
+         * @description Fetch one account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (the chain's 23-and-growing enum, spelled as the chain spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve (u64 atomic units as a decimal string). Served live from the proxies store; until the engine's Proxy.Proxies capture lands the state holds no rows and the response is the schema-stable decline — an empty proxies array with proxy_count null, never 0, because an empty list is not a measured delegation-free account. Returns 400 on invalid ss58.
+         */
+        get: operations["accountProxies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/registrations": {
         parameters: {
             query?: never;
@@ -1151,7 +1231,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim. */
+        /** @description Read one account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility — only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor — claims flow through Basket* events since Root Reborn (v441), and basket STATE (shares, NAV, holdings) lives on the REST surfaces /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. Returns 400 on invalid ss58. Read-only; never submits a claim. */
         get: operations["accountRootClaim"];
         put?: never;
         post?: never;
@@ -1289,6 +1369,26 @@ export interface paths {
         };
         /** @description Fetch the compact account directory: bounded emission and subnet-reach rankings from one complete neuron snapshot. Capital and dominance are null, rankings.stake is empty and priced_registered_stake_tao is null because voting weight does not establish holdings or stake shares. Legacy financial rankings decline until the source recomputes independent evidence. */
         get: operations["accountHolderDirectory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/pending-coldkey-swaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List every in-flight v2 coldkey-swap announcement
+         * @description Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Served live from the coldkey-swaps store; until the engine's swap capture lands the state holds no rows and the response is the schema-stable decline — an empty swaps array with swap_count null (never 0, because an empty list is not a measured swap-free chain) and a null policy.
+         */
+        get: operations["pendingColdkeySwaps"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1640,6 +1740,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/baskets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch every validator's Root basket fund
+         * @description Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.
+         */
+        get: operations["chainBaskets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/burn": {
         parameters: {
             query?: never;
@@ -1785,6 +1905,26 @@ export interface paths {
         };
         /** @description Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/gamma": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch the chain-wide Gamma state
+         * @description Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.
+         */
+        get: operations["chainGamma"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2492,7 +2632,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure. */
+        /** @description Fetch the H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated) answers when the engine's capture holds the key's owning ss58 — with its capture history in `associations`, newest first and store-capped — otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache; `source` says which path answered. ss58 is null when neither resolves. associations is empty with association_count null until the engine's capture lands: an empty list is not a measured never-associated key, so a zero count is never published. */
         get: operations["evmAddressMapping"];
         put?: never;
         post?: never;
@@ -3279,6 +3419,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gamma/deposits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch the chain's Gamma deposits
+         * @description Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until the engine's GammaDeposits capture lands the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.
+         */
+        get: operations["gammaDeposits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gaps": {
         parameters: {
             query?: never;
@@ -3459,7 +3619,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
+        /** @description Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until the engine's oracle capture lands -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
         get: operations["taoUsd"];
         put?: never;
         post?: never;
@@ -3974,6 +4134,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/alpha-assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's alpha-asset accounting
+         * @description Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp. Served live from the alpha-assets store; until the engine's alpha-assets capture lands the store holds no rows and the response is the schema-stable decline — alpha_assets null, never a zeroed state, because an absent capture is not a measured zero issuance.
+         */
+        get: operations["subnetAlphaAssets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/alpha-dividends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's pending alpha dividends
+         * @description Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first. Served live from the dividends store; until the engine's dividend capture lands the registry holds no rows and the response is the schema-stable decline — an empty dividends array with hotkey_count null, never 0, because an empty registry is not a measured zero accrual.
+         */
+        get: operations["subnetAlphaDividends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/axon-removals": {
         parameters: {
             query?: never;
@@ -4249,6 +4449,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/gamma": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's current Gamma state
+         * @description Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until the engine's Gamma capture lands the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.
+         */
+        get: operations["subnetGamma"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/gamma/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's Gamma capture series
+         * @description Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.
+         */
+        get: operations["subnetGammaHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/gaps": {
         parameters: {
             query?: never;
@@ -4482,6 +4722,46 @@ export interface paths {
         };
         /** @description Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table. Entries where predates_capture is true are older than detection and carry a null block_number — that is a real answer, not a missing one. ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/limit-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's limit-order book
+         * @description Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.
+         */
+        get: operations["subnetLimitOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/mechanisms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's mechanism registry
+         * @description Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).
+         */
+        get: operations["subnetMechanisms"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4762,6 +5042,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's on-chain service URLs
+         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.
+         */
+        get: operations["subnetServices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/serving": {
         parameters: {
             query?: never;
@@ -4876,6 +5176,26 @@ export interface paths {
          * @description List curated public surfaces for one subnet.
          */
         get: operations["subnetSurfaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's balancer Swap state
+         * @description Fetch one subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 atomic units in decimal strings, and the raw u16 fee rate (Swap.FeeRate, served verbatim — the engine's decode owns the scaling), with their capture stamp. Served live from the swap store; until the engine's balancer capture lands the store holds no rows and the response is the schema-stable decline — swap null, never a zeroed state, because an absent capture is not a measured empty pool.
+         */
+        get: operations["subnetSwap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5230,6 +5550,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/{hotkey}/basket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one validator's Root basket detail
+         * @description Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163). Served live from the Root basket capture store; basket null with a PRESENT capture is a measurement — the completed capture enumerates every fund and this hotkey holds none — while a null capture is the decline (no store bound, or no completed capture yet). Returns 400 on an invalid ss58 hotkey.
+         */
+        get: operations["validatorBasket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validators/{hotkey}/history": {
         parameters: {
             query?: never;
@@ -5355,6 +5695,7 @@ export interface components {
         /** @description Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children. */
         AccountChildrenArtifact: {
             account: string;
+            child_key_detail?: components["schemas"]["ChildKeyDetail"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -5375,6 +5716,15 @@ export interface components {
                 }[];
                 netuid: number;
             }[] | null;
+        };
+        /** @description One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+        AccountColdkeySwapArtifact: {
+            /** @description The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run. */
+            announcement: components["schemas"]["ColdkeySwapAnnouncement"] | null;
+            captured_at: string | null;
+            lineage: components["schemas"]["AccountKeyLineage"];
+            schema_version: number;
+            ss58: string;
         };
         AccountCounterpartiesArtifact: {
             counterparties: {
@@ -5618,6 +5968,8 @@ export interface components {
             image?: string | null;
             name?: string | null;
             schema_version: number;
+            /** @description Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in `github`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated. */
+            storage_version?: number | null;
             url?: string | null;
         };
         AccountIdentityHistoryArtifact: {
@@ -5632,6 +5984,8 @@ export interface components {
                 image?: string | null;
                 name?: string | null;
                 observed_at: string | null;
+                /** @description Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated. */
+                storage_version?: number | null;
                 url?: string | null;
             }[];
             entry_count: number;
@@ -5640,9 +5994,56 @@ export interface components {
             offset?: number | null;
             schema_version: number;
         };
+        /** @description The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage. */
+        AccountKeyLineage: {
+            /** @description The global coldkey-swap lineage, null when the capture holds none for this account. */
+            coldkey: components["schemas"]["ColdkeyLineage"] | null;
+            /** @description The per-subnet hotkey lineage rows, ordered by netuid. */
+            hotkey: components["schemas"]["HotkeyLineageEntry"][];
+            /** @description How many per-subnet hotkey lineage rows the capture holds -- `hotkey.length`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published. */
+            hotkey_count: number | null;
+        };
+        /** @description One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+        AccountLocksArtifact: {
+            captured_at: string | null;
+            /** @description How many locks this account holds here -- `locks.length`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published. */
+            lock_count: number | null;
+            /** @description The account's locks, ordered by (netuid, hotkey, kind). */
+            locks: components["schemas"]["StakeLock"][];
+            schema_version: number;
+            ss58: string;
+        };
+        /** @description One multisig an account belongs to: the multisig account, its resolved composition and the capture stamp. */
+        AccountMultisig: {
+            captured_at: string | null;
+            /** @description The multisig account itself (ss58). */
+            multisig: string;
+            /**
+             * @description Which side of the membership matched: the queried account IS this multisig account, or it signs for it.
+             * @enum {string}
+             */
+            role: "multisig" | "signatory";
+            /** @description The signatory set behind the multisig account, as resolved from the call decode. Null when the capture has not resolved it -- never an empty list, which would claim a measured signatory-less multisig. */
+            signatories: string[] | null;
+            /** @description `signatories.length`, null exactly when signatories is null. */
+            signatory_count: number | null;
+            /** @description How many signatory approvals the multisig requires. Null when the capture has not resolved the composition. */
+            threshold: number | null;
+        };
+        /** @description One account's Multisig-pallet membership (#13166). Empty with a null multisig_count until the engine's multisig capture lands. Mirrors GET /api/v1/accounts/{ss58}/multisigs. */
+        AccountMultisigsArtifact: {
+            captured_at: string | null;
+            /** @description How many multisigs this account belongs to here -- `multisigs.length`. NULL when the state holds no rows for this account (store unbound, or the multisig capture has not run): a zero count is never a measurement and is not published. */
+            multisig_count: number | null;
+            /** @description The multisigs the account belongs to -- as the multisig account itself or as a signatory -- ordered by multisig address, store-capped. */
+            multisigs: components["schemas"]["AccountMultisig"][];
+            schema_version: number;
+            ss58: string;
+        };
         /** @description Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents. */
         AccountParentsArtifact: {
             account: string;
+            child_key_detail?: components["schemas"]["ParentKeyDetail"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -5785,6 +6186,28 @@ export interface components {
             total_announcements: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description One account's Proxy-pallet delegation state (#13166). Empty with a null proxy_count until the engine's proxy capture lands. Mirrors GET /api/v1/accounts/{ss58}/proxies. */
+        AccountProxiesArtifact: {
+            captured_at: string | null;
+            /** @description The account-level reserve held against its proxy vector (u64 atomic units as a decimal string, stored once per delegating account). Null when the capture did not carry it. */
+            deposit: string | null;
+            /** @description The account's proxy definitions, ordered by (delegate, proxy_type, delay). */
+            proxies: components["schemas"]["AccountProxy"][];
+            /** @description How many proxy definitions this account holds -- `proxies.length`. NULL when the state holds no rows for this account (store unbound, or the proxy capture has not run): a zero count is never a measurement and is not published. */
+            proxy_count: number | null;
+            schema_version: number;
+            ss58: string;
+        };
+        /** @description One proxy definition of an account: the delegate it runs to, its variant, its announcement delay and the capture stamp. */
+        AccountProxy: {
+            captured_at: string | null;
+            /** @description The announcement delay in blocks before this proxy's calls execute. 0 is the chain's own value for an undelayed proxy, read from storage -- not a fabricated default. */
+            delay: number;
+            /** @description The account the delegation runs to (ss58). */
+            delegate: string;
+            /** @description The proxy variant, spelled as the chain's enum spells it (Any / Owner / Staking / Registration ... GammaSpend) -- not pinned to an enum the runtime still extends (23 variants on v490). */
+            proxy_type: string;
+        };
         AccountRegistrationsArtifact: {
             address: string;
             concentration: number | null;
@@ -5800,8 +6223,9 @@ export interface components {
             total_registrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+        /** @description Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
         AccountRootClaimArtifact: {
+            basket_claims: components["schemas"]["RootClaimBasketClaims"] | null;
             claim_type?: {
                 /** @enum {string} */
                 kind: "Swap" | "Keep" | "KeepSubnets";
@@ -6510,6 +6934,31 @@ export interface components {
         };
         /** @enum {string} */
         Authority: "community" | "official" | "provider-claimed" | "registry-observed";
+        /** @description The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp. */
+        BasketCapture: {
+            /** @description When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time. */
+            accepted_at: string | null;
+            decoder_version: string;
+            /** @description The finalized block height the capture observed, as a u64 decimal string. */
+            finalized_block: string;
+            finalized_block_hash: string;
+            /** @description The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder). */
+            runtime_spec_version: number;
+        };
+        /** @description One holding leg of a validator's basket at the served capture. */
+        BasketHolding: {
+            netuid: number;
+            quantity_atomic: string | null;
+            /** @description rao for the netuid-0 cash leg; alpha_atomic for every subnet holding. */
+            quantity_unit: ("rao" | "alpha_atomic") | null;
+            realizable_value_rao: string | null;
+            spot_value_rao: string | null;
+        };
+        /** @description One target-allocation entry of a validator's basket. */
+        BasketTarget: {
+            netuid: number;
+            weight: number;
+        };
         /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
         BlockChainEventsArtifact: {
@@ -7193,6 +7642,36 @@ export interface components {
              */
             table: "blocks" | "extrinsics" | "chain_events" | "account_events";
         };
+        /** @description The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until the engine's Gamma capture lands. Mirrors GET /api/v1/chain/gamma. */
+        ChainGammaArtifact: {
+            captured_at: string | null;
+            /** @description Whether Gamma is enabled globally (SubtensorModule.GammaEnabled). NULL when the store holds no capture (store unbound, or the Gamma capture has not run) -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            /** @description When the global flag was captured. Null with a null flag. */
+            enabled_captured_at: string | null;
+            schema_version: number;
+            /** @description How many subnets carry a captured Gamma state here -- `subnets.length`. NULL when the per-subnet series holds no rows (store unbound, or the capture has not run): a zero count is never a measurement and is not published. */
+            subnet_count: number | null;
+            /** @description Every subnet's newest captured Gamma state, ordered by netuid. */
+            subnets: components["schemas"]["ChainGammaSubnet"][];
+        };
+        /** @description One subnet's newest captured Gamma state, keyed by its netuid. */
+        ChainGammaSubnet: {
+            captured_at: string | null;
+            /** @description The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            emission: string | null;
+            /** @description Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            netuid: number;
+            /** @description Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            pending_emission: string | null;
+            /** @description The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            unconverted_emission: string | null;
+            /** @description Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+            whitelisted: boolean | null;
+        };
         ChainHoldersArtifact: {
             captured_at: string | null;
             /** @description Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
@@ -7790,8 +8269,88 @@ export interface components {
                 netuid_renamed_count: number;
             };
         };
+        /** @description The stored child-key detail beside the live children graph (#13166): takes, the pending queue, threshold bookkeeping and capture history, from the child-keys store. Every count is NULL over an empty list until the engine's child-key capture lands. */
+        ChildKeyDetail: {
+            /** @description The account's parent-keyed relation history, newest capture first, store-capped. */
+            history: components["schemas"]["ChildKeysHistoryEntry"][];
+            history_count: number | null;
+            /** @description The account's scheduled child relations, ordered by (netuid, child). */
+            pending: components["schemas"]["PendingChildKeyEntry"][];
+            pending_count: number | null;
+            take_count: number | null;
+            /** @description The account's own per-subnet take rows, ordered by netuid. */
+            takes: components["schemas"]["ChildkeyTakeEntry"][];
+            /** @description The account's threshold bookkeeping, null when the capture holds none. */
+            threshold: components["schemas"]["ChildkeyThreshold"] | null;
+        };
+        /** @description One captured (parent, netuid, child, proportion) relation observation from the ChildKeys history. */
+        ChildKeysHistoryEntry: {
+            captured_at: string | null;
+            child: string;
+            netuid: number;
+            parent: string;
+            /** @description The raw stringified u64 proportion at the capture. */
+            proportion: string;
+            /** @description The same value pre-divided to a 0..1 float. */
+            proportion_fraction: number;
+        };
+        /** @description One subnet's stored child-key take for the account. */
+        ChildkeyTakeEntry: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description The take this hotkey charges its parents on the subnet, in PerU16 parts of 65535 (SubtensorModule.ChildkeyTake). */
+            take: number;
+            /** @description The same take pre-divided to a 0..1 float. */
+            take_fraction: number;
+        };
+        /** @description The account's stored child-key threshold bookkeeping. */
+        ChildkeyThreshold: {
+            captured_at: string | null;
+            /** @description Whether the account sits in SubtensorModule.ChildkeyThresholdChecks (stake changed; re-check queued for on_idle). Null when the capture did not carry that map's answer. */
+            pending_check: boolean | null;
+            /** @description Whether the account sits in SubtensorModule.ChildkeyThresholdSuspended (total stake below StakeThreshold; its child relations stay stored but are inert). Null when the capture did not carry that map's answer -- never a fabricated false. */
+            suspended: boolean | null;
+        };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+        /** @description The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history. */
+        ColdkeyLineage: {
+            captured_at: string | null;
+            /** @description SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into). */
+            root: string | null;
+            /** @description SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage. */
+            successor: string | null;
+        };
+        /** @description One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp. */
+        ColdkeySwapAnnouncement: {
+            /** @description The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis. */
+            announced_at: number | null;
+            /** @description The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried. */
+            announcement_hash: string | null;
+            captured_at: string | null;
+            /** @description The announcing account (ss58). */
+            coldkey: string;
+            /** @description The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record. */
+            disputed: boolean | null;
+            /** @description The dispute block itself when one is recorded, else null. */
+            disputed_at: number | null;
+            /** @description The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried. */
+            execute_at: number | null;
+            /** @description The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation. */
+            new_coldkey: string | null;
+            /** @description The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot. */
+            policy_snapshot: boolean | null;
+            /** @description The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried. */
+            status: string | null;
+        };
+        /** @description The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced. */
+        ColdkeySwapPolicy: {
+            /** @description SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it. */
+            announcement_delay: number | null;
+            captured_at: string | null;
+            /** @description SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it. */
+            reannouncement_delay: number | null;
+        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -8833,8 +9392,12 @@ export interface components {
                 surface_claim_count: number;
             };
         };
-        /** @description Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
+        /** @description EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- `source` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
         EvmAddressMappingArtifact: {
+            /** @description How many stored associations this answer carries -- `associations.length`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published. */
+            association_count: number | null;
+            /** @description The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands. */
+            associations: components["schemas"]["EvmAssociation"][];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -8848,7 +9411,24 @@ export interface components {
             h160: string;
             queried_at?: string | null;
             schema_version: number;
+            /**
+             * @description Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands.
+             * @enum {string}
+             */
+            source: "storage" | "precompile";
             ss58?: string | null;
+        };
+        /** @description One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp. */
+        EvmAssociation: {
+            /** @description The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis. */
+            associated_at: number | null;
+            captured_at: string | null;
+            /** @description The subnet the association names. */
+            netuid: number;
+            /** @description The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it. */
+            ss58: string | null;
+            /** @description The UID the EVM key is associated to. */
+            uid: number;
         };
         ExtrinsicDetailArtifact: {
             events: components["schemas"]["AccountEvent"][];
@@ -9012,7 +9592,7 @@ export interface components {
                 /** @enum {string} */
                 stale_behavior: "block" | "warn";
                 /** @enum {string} */
-                status: "captured" | "current" | "degraded" | "missing" | "stale";
+                status: "captured" | "current" | "degraded" | "failed" | "missing" | "stale";
                 timestamp: string | null;
                 timestamp_field: string | null;
             }[];
@@ -9037,6 +9617,32 @@ export interface components {
                 verification_generated_at: string | null;
                 warning_source_count: number;
             };
+        };
+        /** @description One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp. */
+        GammaDeposit: {
+            /** @description The deposit's Gamma balance -- u64 atomic units as a decimal string. */
+            balance: string;
+            captured_at: string | null;
+            /** @description The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis. */
+            closed_at: number | null;
+            /** @description The ss58 address the deposit is keyed by on chain -- its owning account. */
+            coldkey: string;
+            /** @description The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling). */
+            daily_cap: string | null;
+            /** @description The hotkey this deposit is bound to. */
+            hotkey: string;
+            netuid: number;
+            /** @description The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set. */
+            spender: string | null;
+        };
+        /** @description The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+        GammaDepositsArtifact: {
+            captured_at: string | null;
+            /** @description How many deposits this answer carries -- `deposits.length`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published. */
+            deposit_count: number | null;
+            /** @description The chain's Gamma deposits, largest balance first. */
+            deposits: components["schemas"]["GammaDeposit"][];
+            schema_version: number;
         };
         Gaps: {
             gap_notes: string[];
@@ -9461,6 +10067,15 @@ export interface components {
                 };
             };
         };
+        /** @description One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
+        HotkeyLineageEntry: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there. */
+            root: string | null;
+            /** @description SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there. */
+            successor: string | null;
+        };
         IndexerLagArtifact: {
             /** @description Blocks the distribution was computed over. Null only on a decline. */
             block_count: number | null;
@@ -9624,6 +10239,8 @@ export interface components {
         NeuronDetailArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
+            /** @description The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             /** @description The UID's live metagraph row; null when absent from the latest snapshot. */
             neuron: {
@@ -9647,6 +10264,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -9691,6 +10310,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -9844,6 +10465,15 @@ export interface components {
             sort?: string | null;
             total: number;
         };
+        /** @description The stored child-key detail beside the live parents graph (#13166): the account's takes and its child-keyed capture history. The pending queue and threshold bookkeeping are parent-keyed state and live on the children surface. */
+        ParentKeyDetail: {
+            /** @description The account's child-keyed relation history, newest capture first, store-capped. */
+            history: components["schemas"]["ChildKeysHistoryEntry"][];
+            history_count: number | null;
+            take_count: number | null;
+            /** @description The account's own per-subnet take rows, ordered by netuid. */
+            takes: components["schemas"]["ChildkeyTakeEntry"][];
+        };
         PartnershipMetadata: {
             /** Format: date */
             since: string;
@@ -9855,6 +10485,29 @@ export interface components {
          * @enum {string}
          */
         PartnershipTier: "pilot";
+        /** @description One scheduled-but-unapplied child relation of the account (SubtensorModule.PendingChildKeys). */
+        PendingChildKeyEntry: {
+            captured_at: string | null;
+            child: string;
+            /** @description The block the pending relations apply at (SubtensorModule.PendingChildKeys' cool-down). Null when the capture did not carry it. */
+            cool_down_block: number | null;
+            netuid: number;
+            /** @description The scheduled stake-weight proportion -- the raw stringified u64 (0..u64::MAX represents 0..100%). */
+            proportion: string;
+            /** @description The same value pre-divided to a 0..1 float. */
+            proportion_fraction: number;
+        };
+        /** @description Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+        PendingColdkeySwapsArtifact: {
+            captured_at: string | null;
+            /** @description The chain-wide delays at the newest capture, null until the policy capture lands. */
+            policy: components["schemas"]["ColdkeySwapPolicy"] | null;
+            schema_version: number;
+            /** @description How many in-flight announcements the capture holds -- `swaps.length`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published. */
+            swap_count: number | null;
+            /** @description The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account). */
+            swaps: components["schemas"]["ColdkeySwapAnnouncement"][];
+        };
         PipelineHistoryArtifact: {
             /** @description Present ONLY on a decline. An empty series is a measurement. */
             degraded?: components["schemas"]["UnavailableDegraded"];
@@ -10512,6 +11165,15 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
+        /** @description The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. */
+        RootClaimBasketClaims: {
+            /** @description `claims.length` -- the returned page, capped at 100, not a lifetime total. */
+            claim_count: number;
+            /** @description This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface). */
+            claims: components["schemas"]["AccountEvent"][];
+            /** @description The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read. */
+            covered_since: string | null;
+        };
         RpcEndpointsArtifact: {
             contract_version?: string;
             endpoints: {
@@ -11100,6 +11762,57 @@ export interface components {
         };
         /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+        /** @description One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp. */
+        StakeLock: {
+            /** @description The locked quantity -- u64 atomic units as a decimal string. */
+            amount: string;
+            captured_at: string | null;
+            /** @description The hotkey this lock binds. */
+            hotkey: string;
+            /** @description The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends. */
+            kind: string;
+            /** @description The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis. */
+            maturity_block: number | null;
+            netuid: number;
+        };
+        /** @description One subnet's current AlphaAssets accounting (#13165). Null `alpha_assets` until the engine's alpha-assets capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets. */
+        SubnetAlphaAssetsArtifact: {
+            /** @description The subnet's newest captured alpha-asset accounting. NULL when the store holds no capture for this subnet (store unbound, or the alpha-assets capture has not run): an absent state is never served as a zeroed one. */
+            alpha_assets: components["schemas"]["SubnetAlphaAssetsState"] | null;
+            captured_at: string | null;
+            netuid: number;
+            schema_version: number;
+        };
+        /** @description One captured alpha-asset accounting state of a subnet: total issuance and its burn/recycle sinks with their capture stamp. */
+        SubnetAlphaAssetsState: {
+            /** @description Alpha burned on this subnet (AlphaAssets.AlphaBurned) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+            burned: string | null;
+            captured_at: string | null;
+            /** @description Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+            recycled: string | null;
+            /** @description The subnet's total alpha issuance (AlphaAssets.TotalAlphaIssuance) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            total_issuance: string | null;
+        };
+        /** @description One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp. */
+        SubnetAlphaDividend: {
+            /** @description Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0. */
+            alpha_divs: string | null;
+            captured_at: string | null;
+            /** @description The hotkey this pending dividend accrual belongs to. */
+            hotkey: string;
+            /** @description Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured. */
+            root_alpha_divs: string | null;
+        };
+        /** @description One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+        SubnetAlphaDividendsArtifact: {
+            captured_at: string | null;
+            /** @description The subnet's pending dividend accruals, largest alpha_divs first. */
+            dividends: components["schemas"]["SubnetAlphaDividend"][];
+            /** @description How many hotkeys carry a pending accrual row here -- `dividends.length`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published. */
+            hotkey_count: number | null;
+            netuid: number;
+            schema_version: number;
+        };
         /** @description One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
@@ -11962,6 +12675,40 @@ export interface components {
             schema_version: 1;
             slug?: string;
         };
+        /** @description One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+        SubnetGammaArtifact: {
+            captured_at: string | null;
+            /** @description The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one. */
+            gamma: components["schemas"]["SubnetGammaState"] | null;
+            netuid: number;
+            schema_version: number;
+        };
+        /** @description One subnet's Gamma capture series (#13164). Empty with a null point_count until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma/history. */
+        SubnetGammaHistoryArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description How many captures this answer carries -- `points.length`. NULL when the series holds no rows for this subnet (store unbound, or the Gamma capture has not run): a zero count is never a measurement and is not published. */
+            point_count: number | null;
+            /** @description The subnet's captured Gamma states, newest first. */
+            points: components["schemas"]["SubnetGammaState"][];
+            schema_version: number;
+        };
+        /** @description One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp. */
+        SubnetGammaState: {
+            captured_at: string | null;
+            /** @description The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            emission: string | null;
+            /** @description Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+            enabled: boolean | null;
+            /** @description Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            pending_emission: string | null;
+            /** @description The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+            unconverted_emission: string | null;
+            /** @description Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+            whitelisted: boolean | null;
+        };
         SubnetGapsArtifact: {
             contract_version?: string;
             enrichment_queue: {
@@ -12331,6 +13078,52 @@ export interface components {
             offset?: number | null;
             schema_version: number;
         };
+        /** @description One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
+        SubnetLimitOrder: {
+            /** @description The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0. */
+            amount: string | null;
+            captured_at: string | null;
+            /** @description The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds. */
+            kind: string;
+            /** @description The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex. */
+            order_id: string;
+            /** @description The account that placed the order (ss58-encoded). */
+            owner: string;
+            /** @description The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+            price: string | null;
+            /** @description The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order. */
+            status: string | null;
+        };
+        /** @description One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+        SubnetLimitOrdersArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            /** @description How many orders this answer carries -- `orders.length`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published. */
+            order_count: number | null;
+            /** @description The subnet's captured orders, newest capture first. */
+            orders: components["schemas"]["SubnetLimitOrder"][];
+            schema_version: number;
+        };
+        /** @description One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp. */
+        SubnetMechanism: {
+            captured_at: string | null;
+            /** @description The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured. */
+            consensus_mode: string | null;
+            /** @description This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share. */
+            emission_split: number | null;
+            /** @description The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has. */
+            mechid: number;
+        };
+        /** @description One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+        SubnetMechanismsArtifact: {
+            captured_at: string | null;
+            /** @description How many mechanisms this subnet has -- `mechanisms.length`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published. */
+            mechanism_count: number | null;
+            /** @description The subnet's mechanisms, ordered by mechid. */
+            mechanisms: components["schemas"]["SubnetMechanism"][];
+            netuid: number;
+            schema_version: number;
+        };
         SubnetMetagraphArtifact: {
             axon_earning?: {
                 /** @description How many of `earning_miners` publish an axon that points somewhere ROUTABLE. Stricter than 'announces an axon': an address in a private, loopback or reserved range is announced and unreachable, which is 5.3% of announced axons network-wide. Compare against `earning_miners` to read whether being reachable has anything to do with being paid on this subnet -- on roughly half of the subnets that pay miners at all, this is zero. */
@@ -12344,6 +13137,8 @@ export interface components {
             };
             block_number?: number | null;
             captured_at?: string | null;
+            /** @description The mechanism (sub-subnet) this snapshot is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             neuron_count: number;
             neurons: {
@@ -12367,6 +13162,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -13204,6 +14001,26 @@ export interface components {
             };
             subnets: components["schemas"]["SubnetIndexEntry"][];
         };
+        /** @description One on-chain service binding: the hotkey, the URL it published, and the capture stamp. */
+        SubnetService: {
+            captured_at: string | null;
+            /** @description The hotkey this service URL is bound to. */
+            hotkey: string;
+            /** @description The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim. */
+            service_url: string;
+            /** @description The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis. */
+            set_at: number | null;
+        };
+        /** @description One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+        SubnetServicesArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            schema_version: number;
+            /** @description How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+            service_count: number | null;
+            /** @description The subnet's service bindings, ordered by hotkey. */
+            services: components["schemas"]["SubnetService"][];
+        };
         SubnetServingArtifact: {
             announcements: number;
             announcements_per_server: number | null;
@@ -13290,6 +14107,24 @@ export interface components {
             schema_version: 1;
             slug?: string;
             surfaces: components["schemas"]["Surface"][];
+        };
+        /** @description One subnet's current balancer-based Swap state (#13165). Null `swap` until the engine's balancer capture lands. Mirrors GET /api/v1/subnets/{netuid}/swap. */
+        SubnetSwapArtifact: {
+            captured_at: string | null;
+            netuid: number;
+            schema_version: number;
+            /** @description The subnet's newest captured balancer state. NULL when the store holds no capture for this subnet (store unbound, or the balancer capture has not run): an absent state is never served as a zeroed one. */
+            swap: components["schemas"]["SubnetSwapState"] | null;
+        };
+        /** @description One captured balancer state of a subnet's Swap pool: the TAO and alpha reservoirs and the raw fee rate with their capture stamp. */
+        SubnetSwapState: {
+            /** @description The subnet pool's alpha reservoir (Swap.BalancerAlphaReservoir) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+            alpha_reservoir: string | null;
+            captured_at: string | null;
+            /** @description The pool's swap fee rate (Swap.FeeRate) -- the chain's raw u16 as stored, served verbatim because the engine's decode owns the scaling. Null when the capture did not carry it -- never coalesced to 0, which would claim a measured fee-free pool. */
+            fee_rate: number | null;
+            /** @description The subnet pool's TAO reservoir (Swap.BalancerTaoReservoir) -- u64 atomic units (rao) as a decimal string. Null when not captured, never fabricated as 0. */
+            tao_reservoir: string | null;
         };
         /** @description One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
         SubnetTrajectoryArtifact: {
@@ -13520,6 +14355,8 @@ export interface components {
                 /** @description True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
                 is_burn_uid?: boolean;
                 is_immunity_period?: boolean;
+                /** @description The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+                mechid?: number;
                 /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
@@ -13622,6 +14459,8 @@ export interface components {
         SubnetWeightsArtifact: {
             degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_setters: number;
+            /** @description The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+            mechid?: number;
             netuid: number;
             observed_at: string | null;
             schema_version: number;
@@ -13961,11 +14800,18 @@ export interface components {
             latest: components["schemas"]["TaoUsdLatest"] | null;
             /** @description How far back the answer actually reaches -- the series began 2026-08-02. */
             oldest_observed_at: string | null;
+            /** @description The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price. */
+            oracle: components["schemas"]["TaoUsdOracle"] | null;
             point_count: number;
             points: components["schemas"]["TaoUsdPoint"][];
             /** @description How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
             priced_point_count: number;
             schema_version: number;
+            /**
+             * @description Always `pool_composite`: the price series and `latest` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate `oracle` block labelled `chain_oracle`.
+             * @constant
+             */
+            source: "pool_composite";
             /** @description True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh. */
             stale: boolean;
             /** @description The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift. */
@@ -13983,6 +14829,34 @@ export interface components {
             pools: unknown[];
             /** @description Stated even when the price is null -- it is what says why. */
             price_basis: string | null;
+            usd_per_tao: number | null;
+        };
+        /** @description The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price. */
+        TaoUsdOracle: {
+            block_number: number;
+            captured_at: string | null;
+            /** @description How many feeds this block carries -- `feeds.length`, store-capped. Never 0: with no captured feeds the whole block is null instead. */
+            fed_count: number;
+            /** @description The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price. */
+            feeds: components["schemas"]["TaoUsdOracleFeed"][];
+            observed_at: string | null;
+            /** @description The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it. */
+            oracle: string | null;
+            /** @description The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived. */
+            price_raw: string | null;
+            /**
+             * @description Always `chain_oracle`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source `pool_composite`).
+             * @constant
+             */
+            source: "chain_oracle";
+            /** @description The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price. */
+            usd_per_tao: number | null;
+        };
+        /** @description One TaoUsdPriceFed reading, pinned to the block it landed at. */
+        TaoUsdOracleFeed: {
+            block_number: number;
+            observed_at: string | null;
+            /** @description The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price. */
             usd_per_tao: number | null;
         };
         /** @description One TAO/USD reading. */
@@ -14080,6 +14954,52 @@ export interface components {
                 uptime_ratio: number | null;
             }[];
             window?: string | null;
+        };
+        /** @description One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
+        ValidatorBasket: {
+            /** @description The hotkey this fund belongs to, as the raw 0x account-id hex. */
+            account_id: string;
+            deposited_rao: string | null;
+            /** @description Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
+            display_price_q64_bits: string | null;
+            /** @description The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
+            first_block: string | null;
+            holdings_count: number | null;
+            /** @description The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+            hotkey: string | null;
+            pending_entitlement_q64_bits: string | null;
+            /** @description Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */
+            provisional: boolean | null;
+            realizable_nav_rao: string | null;
+            redeemed_rao: string | null;
+            shares_atomic: string | null;
+            /** @description Spot net asset value in rao, as a u64 decimal string. */
+            spot_nav_rao: string | null;
+            stake_price_q64_bits: string | null;
+            /** @description The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return. */
+            staker_twr_q64_bits: string | null;
+            targets_count: number | null;
+        };
+        /** @description One validator's Root basket fund with its holdings and target allocations at the newest completed capture (#13163). basket is null with a present capture when the capture holds no fund for the hotkey (a measurement), and null with a null capture when there is nothing to serve (the decline). Mirrors GET /api/v1/validators/{hotkey}/basket. */
+        ValidatorBasketArtifact: {
+            basket: components["schemas"]["ValidatorBasket"] | null;
+            capture: components["schemas"]["BasketCapture"] | null;
+            /** @description The basket's holding legs, ordered by netuid. */
+            holdings: components["schemas"]["BasketHolding"][];
+            /** @description The requested hotkey (SS58). */
+            hotkey: string;
+            schema_version: number;
+            /** @description The basket's target allocations, ordered by netuid. */
+            targets: components["schemas"]["BasketTarget"][];
+        };
+        /** @description Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets. */
+        ValidatorBasketsArtifact: {
+            /** @description The capture's funds, largest spot NAV first. */
+            baskets: components["schemas"]["ValidatorBasket"][];
+            capture: components["schemas"]["BasketCapture"] | null;
+            /** @description How many funds the served capture holds -- `baskets.length`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture. */
+            fund_count: number | null;
+            schema_version: number;
         };
         ValidatorDetailArtifact: {
             /**
@@ -14822,6 +15742,44 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "pending": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "cool_down_block": 5000000,
+                     *               "netuid": 7,
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "pending_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "threshold": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "pending_check": false,
+                     *             "suspended": false
+                     *           }
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -14954,6 +15912,28 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ]
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -15085,6 +16065,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "basket_claims": {
+                     *           "claim_count": 1,
+                     *           "claims": [
+                     *             {
+                     *               "block_number": 5000000,
+                     *               "event_kind": "example"
+                     *             }
+                     *           ],
+                     *           "covered_since": "example"
+                     *         },
                      *         "claim_type": {
                      *           "kind": "Swap",
                      *           "subnets": [
@@ -19535,6 +20525,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "association_count": 1,
+                     *         "associations": [
+                     *           {
+                     *             "associated_at": 1,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7,
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "uid": 1
+                     *           }
+                     *         ],
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -19544,6 +20544,7 @@ export interface operations {
                      *         "h160": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "source": "storage",
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
                      *       },
                      *       "meta": {
@@ -22206,6 +23207,44 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "pending": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "cool_down_block": 5000000,
+                     *               "netuid": 7,
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "pending_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "threshold": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "pending_check": false,
+                     *             "suspended": false
+                     *           }
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -22260,6 +23299,146 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountChildrenArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountColdkeySwap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "announcement": {
+                     *           "announced_at": 1,
+                     *           "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "coldkey": "example",
+                     *           "disputed": false,
+                     *           "disputed_at": 1,
+                     *           "execute_at": 1,
+                     *           "new_coldkey": "example",
+                     *           "policy_snapshot": false,
+                     *           "status": "ok"
+                     *         },
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "lineage": {
+                     *           "coldkey": {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "root": "example",
+                     *             "successor": "example"
+                     *           },
+                     *           "hotkey": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "root": "example",
+                     *               "successor": "example"
+                     *             }
+                     *           ],
+                     *           "hotkey_count": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountColdkeySwapArtifact"];
                     };
                 };
             };
@@ -23224,6 +24403,7 @@ export interface operations {
                      *         "image": "example",
                      *         "name": "Example Subnet",
                      *         "schema_version": 1,
+                     *         "storage_version": 1,
                      *         "url": "https://api.metagraph.sh/example"
                      *       },
                      *       "meta": {
@@ -23442,6 +24622,254 @@ export interface operations {
             };
         };
     };
+    accountLocks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "lock_count": 1,
+                     *         "locks": [
+                     *           {
+                     *             "amount": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "kind": "example",
+                     *             "maturity_block": 5000000,
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountLocksArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountMultisigs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "multisig_count": 1,
+                     *         "multisigs": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "multisig": "example",
+                     *             "role": "multisig",
+                     *             "signatories": [
+                     *               "example"
+                     *             ],
+                     *             "signatory_count": 1,
+                     *             "threshold": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountMultisigsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountParents: {
         parameters: {
             query?: never;
@@ -23470,6 +24898,28 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "account": "example",
+                     *         "child_key_detail": {
+                     *           "history": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "child": "example",
+                     *               "netuid": 7,
+                     *               "parent": "example",
+                     *               "proportion": "example",
+                     *               "proportion_fraction": 0.5
+                     *             }
+                     *           ],
+                     *           "history_count": 1,
+                     *           "take_count": 1,
+                     *           "takes": [
+                     *             {
+                     *               "captured_at": "2026-06-01T00:00:00.000Z",
+                     *               "netuid": 7,
+                     *               "take": 1,
+                     *               "take_fraction": 0.5
+                     *             }
+                     *           ]
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -23974,6 +25424,128 @@ export interface operations {
             };
         };
     };
+    accountProxies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded account address -- a hotkey or coldkey.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "deposit": "example",
+                     *         "proxies": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "delay": 1,
+                     *             "delegate": "example",
+                     *             "proxy_type": "example"
+                     *           }
+                     *         ],
+                     *         "proxy_count": 1,
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountProxiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountRegistrations: {
         parameters: {
             query?: {
@@ -24128,6 +25700,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "basket_claims": {
+                     *           "claim_count": 1,
+                     *           "claims": [
+                     *             {
+                     *               "block_number": 5000000,
+                     *               "event_kind": "example"
+                     *             }
+                     *           ],
+                     *           "covered_since": "example"
+                     *         },
                      *         "claim_type": {
                      *           "kind": "Swap",
                      *           "subnets": [
@@ -25270,6 +26852,131 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHolderDirectoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    pendingColdkeySwaps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "policy": {
+                     *           "announcement_delay": 1,
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "reannouncement_delay": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "swap_count": 1,
+                     *         "swaps": [
+                     *           {
+                     *             "announced_at": 1,
+                     *             "announcement_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "coldkey": "example",
+                     *             "disputed": false,
+                     *             "disputed_at": 1,
+                     *             "execute_at": 1,
+                     *             "new_coldkey": "example",
+                     *             "policy_snapshot": false,
+                     *             "status": "ok"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["PendingColdkeySwapsArtifact"];
                     };
                 };
             };
@@ -28250,6 +29957,137 @@ export interface operations {
             };
         };
     };
+    chainBaskets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "baskets": [
+                     *           {
+                     *             "account_id": "example",
+                     *             "deposited_rao": "example",
+                     *             "display_price_q64_bits": "example",
+                     *             "first_block": "example",
+                     *             "holdings_count": 1,
+                     *             "hotkey": "example",
+                     *             "pending_entitlement_q64_bits": "Example Subnet",
+                     *             "provisional": false,
+                     *             "realizable_nav_rao": "example",
+                     *             "redeemed_rao": "example",
+                     *             "shares_atomic": "example",
+                     *             "spot_nav_rao": "example",
+                     *             "stake_price_q64_bits": "example",
+                     *             "staker_twr_q64_bits": "example",
+                     *             "targets_count": 1
+                     *           }
+                     *         ],
+                     *         "capture": {
+                     *           "accepted_at": "2026-06-01T00:00:00.000Z",
+                     *           "decoder_version": "2026-06-29.1",
+                     *           "finalized_block": "example",
+                     *           "finalized_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1
+                     *         },
+                     *         "fund_count": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorBasketsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainBurn: {
         parameters: {
             query?: never;
@@ -29608,6 +31446,126 @@ export interface operations {
                      *     2026-07-01,15000,9200,42.5,0.004620,0.0025,0,0,0
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainGamma: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "enabled": true,
+                     *         "enabled_captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "emission": "example",
+                     *             "enabled": true,
+                     *             "netuid": 7,
+                     *             "pending_emission": "example",
+                     *             "price": "example",
+                     *             "unconverted_emission": "example",
+                     *             "whitelisted": false
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainGammaArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -35435,6 +37393,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "association_count": 1,
+                     *         "associations": [
+                     *           {
+                     *             "associated_at": 1,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7,
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "uid": 1
+                     *           }
+                     *         ],
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -35444,6 +37412,7 @@ export interface operations {
                      *         "h160": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "source": "storage",
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
                      *       },
                      *       "meta": {
@@ -37924,6 +39893,124 @@ export interface operations {
             };
         };
     };
+    gammaDeposits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "deposit_count": 1,
+                     *         "deposits": [
+                     *           {
+                     *             "balance": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "closed_at": 1,
+                     *             "coldkey": "example",
+                     *             "daily_cap": "example",
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "spender": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GammaDepositsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     gaps: {
         parameters: {
             query?: {
@@ -39349,6 +41436,23 @@ export interface operations {
                      *           "usd_per_tao": 0.5
                      *         },
                      *         "oldest_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "oracle": {
+                     *           "block_number": 5000000,
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "fed_count": 1,
+                     *           "feeds": [
+                     *             {
+                     *               "block_number": 5000000,
+                     *               "observed_at": "2026-06-01T00:00:00.000Z",
+                     *               "usd_per_tao": 0.5
+                     *             }
+                     *           ],
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "oracle": "example",
+                     *           "price_raw": "example",
+                     *           "source": "chain_oracle",
+                     *           "usd_per_tao": 0.5
+                     *         },
                      *         "point_count": 1,
                      *         "points": [
                      *           {
@@ -39359,6 +41463,7 @@ export interface operations {
                      *         ],
                      *         "priced_point_count": 1,
                      *         "schema_version": 1,
+                     *         "source": "pool_composite",
                      *         "stale": false,
                      *         "stale_after_ms": 1,
                      *         "window": "30d"
@@ -44317,6 +46422,245 @@ export interface operations {
             };
         };
     };
+    subnetAlphaAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "alpha_assets": {
+                     *           "burned": "example",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "recycled": "example",
+                     *           "total_issuance": "example"
+                     *         },
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetAlphaAssetsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetAlphaDividends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "dividends": [
+                     *           {
+                     *             "alpha_divs": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "root_alpha_divs": "example"
+                     *           }
+                     *         ],
+                     *         "hotkey_count": 1,
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetAlphaDividendsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetAxonRemovals: {
         parameters: {
             query?: {
@@ -46699,6 +49043,251 @@ export interface operations {
             };
         };
     };
+    subnetGamma: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "gamma": {
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "emission": "example",
+                     *           "enabled": true,
+                     *           "pending_emission": "example",
+                     *           "price": "example",
+                     *           "unconverted_emission": "example",
+                     *           "whitelisted": false
+                     *         },
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetGammaArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetGammaHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "emission": "example",
+                     *             "enabled": true,
+                     *             "pending_emission": "example",
+                     *             "price": "example",
+                     *             "unconverted_emission": "example",
+                     *             "whitelisted": false
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetGammaHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetGaps: {
         parameters: {
             query?: {
@@ -48673,10 +51262,257 @@ export interface operations {
             };
         };
     };
+    subnetLimitOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "order_count": 1,
+                     *         "orders": [
+                     *           {
+                     *             "amount": "example",
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "kind": "example",
+                     *             "order_id": "example",
+                     *             "owner": "example",
+                     *             "price": "example",
+                     *             "status": "ok"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetLimitOrdersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetMechanisms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechanism_count": 1,
+                     *         "mechanisms": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "consensus_mode": "example",
+                     *             "emission_split": 0.5,
+                     *             "mechid": 1
+                     *           }
+                     *         ],
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetMechanismsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetMetagraph: {
         parameters: {
             query?: {
                 validator_permit?: "true";
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -48714,6 +51550,7 @@ export interface operations {
                      *         },
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "neuron_count": 1,
                      *         "neurons": [
@@ -48978,6 +51815,8 @@ export interface operations {
     subnetNeuron: {
         parameters: {
             query?: {
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
             };
@@ -49012,6 +51851,7 @@ export interface operations {
                      *       "data": {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "neuron": {
                      *           "active": false,
@@ -49028,6 +51868,7 @@ export interface operations {
                      *           "incentive": 0.5,
                      *           "is_burn_uid": false,
                      *           "is_immunity_period": false,
+                     *           "mechid": 1,
                      *           "rank": 0.5,
                      *           "registered_at_block": 5000000,
                      *           "stake_tao": 0.5,
@@ -51467,6 +54308,127 @@ export interface operations {
             };
         };
     };
+    subnetServices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "service_count": 1,
+                     *         "services": [
+                     *           {
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "example",
+                     *             "service_url": "https://api.metagraph.sh/example",
+                     *             "set_at": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetServicesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetServing: {
         parameters: {
             query?: {
@@ -52322,6 +55284,124 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetSwap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "swap": {
+                     *           "alpha_reservoir": "example",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "fee_rate": 1,
+                     *           "tao_reservoir": "example"
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetSwapArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -53689,6 +56769,8 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then. */
+                mechid?: number;
             };
             header?: never;
             path: {
@@ -53719,6 +56801,7 @@ export interface operations {
                      *           "reason": "example"
                      *         },
                      *         "distinct_setters": 1,
+                     *         "mechid": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -55209,6 +58292,156 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorDetailArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorBasket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "basket": {
+                     *           "account_id": "example",
+                     *           "deposited_rao": "example",
+                     *           "display_price_q64_bits": "example",
+                     *           "first_block": "example",
+                     *           "holdings_count": 1,
+                     *           "hotkey": "example",
+                     *           "pending_entitlement_q64_bits": "Example Subnet",
+                     *           "provisional": false,
+                     *           "realizable_nav_rao": "example",
+                     *           "redeemed_rao": "example",
+                     *           "shares_atomic": "example",
+                     *           "spot_nav_rao": "example",
+                     *           "stake_price_q64_bits": "example",
+                     *           "staker_twr_q64_bits": "example",
+                     *           "targets_count": 1
+                     *         },
+                     *         "capture": {
+                     *           "accepted_at": "2026-06-01T00:00:00.000Z",
+                     *           "decoder_version": "2026-06-29.1",
+                     *           "finalized_block": "example",
+                     *           "finalized_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "runtime_spec_version": 1
+                     *         },
+                     *         "holdings": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "quantity_atomic": "example",
+                     *             "quantity_unit": "rao",
+                     *             "realizable_value_rao": "example",
+                     *             "spot_value_rao": "example"
+                     *           }
+                     *         ],
+                     *         "hotkey": "example",
+                     *         "schema_version": 1,
+                     *         "targets": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "weight": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorBasketArtifact"];
                     };
                 };
             };

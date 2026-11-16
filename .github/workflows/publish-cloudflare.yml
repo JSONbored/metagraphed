@@ -435,6 +435,11 @@ jobs:
           exit 1
         env:
           METAGRAPH_LIVE_BASE_URL: https://api.metagraph.sh
+          # Optional: an mg_ API key restores the smoke's deep MCP coverage
+          # (handshake, tool census, live tools/call). Absent, the smoke
+          # asserts the designed anonymous contract: the OAuth sign-in
+          # challenge (#12592/#11563).
+          METAGRAPH_SMOKE_MCP_KEY: ${{ secrets.METAGRAPH_SMOKE_MCP_KEY }}
 
       # Runs under the same concurrency lock as upload and pointer publication.
       - name: Collect unreachable registry hashes

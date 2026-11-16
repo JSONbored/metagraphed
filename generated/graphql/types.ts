@@ -77,11 +77,23 @@ export type AccountChildSubnet = {
 export type AccountChildren = {
   __typename?: 'AccountChildren';
   account: Scalars['String']['output'];
+  child_key_detail?: Maybe<ChildKeyDetail>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnets?: Maybe<Array<AccountChildSubnet>>;
+};
+
+/** One account's v2 coldkey-swap state and key successor lineage (#13166). Every block declines to null (and hotkey_count stays null over an empty list) until the engine's swap and lineage captures land. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+export type AccountColdkeySwap = {
+  __typename?: 'AccountColdkeySwap';
+  /** The account's in-flight v2 swap announcement. Null when the capture holds none -- not announced, or the swap capture has not run. */
+  announcement?: Maybe<ColdkeySwapAnnouncement>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  lineage: AccountKeyLineage;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
 };
 
 export type AccountCounterparties = {
@@ -297,6 +309,8 @@ export type AccountIdentity = {
   image?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
+  /** Which SubtensorModule identity storage map the capture decoded this identity from (2 = IdentitiesV2, the live v490 map, whose seven fields this artifact mirrors -- githubRepo lands in `github`). NULL when the row predates the labelled decode: an unlabelled row is not a measured version, so the label is never fabricated. */
+  storage_version?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -323,7 +337,20 @@ export type AccountIdentityHistoryEntry = {
   image?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   observed_at?: Maybe<Scalars['String']['output']>;
+  /** Which SubtensorModule identity storage map this entry was decoded from (2 = IdentitiesV2, the live v490 map). NULL when the entry predates the labelled decode -- never fabricated. */
+  storage_version?: Maybe<Scalars['Int']['output']>;
   url?: Maybe<Scalars['String']['output']>;
+};
+
+/** The account's key successor lineage across both key planes (#13166): the global coldkey-swap lineage and the per-subnet hotkey-swap lineage. */
+export type AccountKeyLineage = {
+  __typename?: 'AccountKeyLineage';
+  /** The global coldkey-swap lineage, null when the capture holds none for this account. */
+  coldkey?: Maybe<ColdkeyLineage>;
+  /** The per-subnet hotkey lineage rows, ordered by netuid. */
+  hotkey: Array<HotkeyLineageEntry>;
+  /** How many per-subnet hotkey lineage rows the capture holds -- `hotkey.length`. NULL when there are none (store unbound, or the lineage capture has not run): a zero count is never a measurement and is not published. */
+  hotkey_count?: Maybe<Scalars['Int']['output']>;
 };
 
 /** A community-contributed entity label for an address (exchange/foundation/operator/other). */
@@ -346,10 +373,50 @@ export type AccountList = {
   total: Scalars['Int']['output'];
 };
 
+/** One account's conviction-lock state (#13163). Empty with a null lock_count until the engine's lock capture lands. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+export type AccountLocks = {
+  __typename?: 'AccountLocks';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many locks this account holds here -- `locks.length`. NULL when the state holds no rows for this account (store unbound, or the lock capture has not run): a zero count is never a measurement and is not published. */
+  lock_count?: Maybe<Scalars['Int']['output']>;
+  /** The account's locks, ordered by (netuid, hotkey, kind). */
+  locks: Array<StakeLock>;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
+};
+
 export type AccountModuleCall = {
   __typename?: 'AccountModuleCall';
   call_module?: Maybe<Scalars['String']['output']>;
   count: Scalars['Int']['output'];
+};
+
+/** One multisig an account belongs to: the multisig account, its resolved composition and the capture stamp. */
+export type AccountMultisig = {
+  __typename?: 'AccountMultisig';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The multisig account itself (ss58). */
+  multisig: Scalars['String']['output'];
+  /** Which side of the membership matched: the queried account IS this multisig account, or it signs for it. */
+  role: Scalars['String']['output'];
+  /** The signatory set behind the multisig account, as resolved from the call decode. Null when the capture has not resolved it -- never an empty list, which would claim a measured signatory-less multisig. */
+  signatories?: Maybe<Array<Scalars['String']['output']>>;
+  /** `signatories.length`, null exactly when signatories is null. */
+  signatory_count?: Maybe<Scalars['Int']['output']>;
+  /** How many signatory approvals the multisig requires. Null when the capture has not resolved the composition. */
+  threshold?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One account's Multisig-pallet membership (#13166). Empty with a null multisig_count until the engine's multisig capture lands. Mirrors GET /api/v1/accounts/{ss58}/multisigs. */
+export type AccountMultisigs = {
+  __typename?: 'AccountMultisigs';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many multisigs this account belongs to here -- `multisigs.length`. NULL when the state holds no rows for this account (store unbound, or the multisig capture has not run): a zero count is never a measurement and is not published. */
+  multisig_count?: Maybe<Scalars['Int']['output']>;
+  /** The multisigs the account belongs to -- as the multisig account itself or as a signatory -- ordered by multisig address, store-capped. */
+  multisigs: Array<AccountMultisig>;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
 };
 
 /** One tie between this `coldkey` and a subnet. `owns` is CURRENT ownership read from the economics tier's `owner_coldkey` (measured from SubtensorModule.SubnetOwner) and carries a NULL `block_number`, because it is a state rather than an event -- these come first, by netuid. `gained_ownership`/`lost_ownership` are SubnetOwnerChanged transfers, newest first, and there is exactly ONE such event in all of chain history: ownership is established at registration and only ever moved by conviction contest, which is why reading the transfer stream alone reported no ties for coldkeys that plainly own a subnet (#9313). */
@@ -380,6 +447,7 @@ export type AccountParentSubnet = {
 export type AccountParents = {
   __typename?: 'AccountParents';
   account: Scalars['String']['output'];
+  child_key_detail?: Maybe<ParentKeyDetail>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   queried_at?: Maybe<Scalars['String']['output']>;
@@ -507,6 +575,32 @@ export type AccountPrometheusSubnet = {
   netuid: Scalars['Int']['output'];
 };
 
+/** One account's Proxy-pallet delegation state (#13166). Empty with a null proxy_count until the engine's proxy capture lands. Mirrors GET /api/v1/accounts/{ss58}/proxies. */
+export type AccountProxies = {
+  __typename?: 'AccountProxies';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The account-level reserve held against its proxy vector (u64 atomic units as a decimal string, stored once per delegating account). Null when the capture did not carry it. */
+  deposit?: Maybe<Scalars['String']['output']>;
+  /** The account's proxy definitions, ordered by (delegate, proxy_type, delay). */
+  proxies: Array<AccountProxy>;
+  /** How many proxy definitions this account holds -- `proxies.length`. NULL when the state holds no rows for this account (store unbound, or the proxy capture has not run): a zero count is never a measurement and is not published. */
+  proxy_count?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+  ss58: Scalars['String']['output'];
+};
+
+/** One proxy definition of an account: the delegate it runs to, its variant, its announcement delay and the capture stamp. */
+export type AccountProxy = {
+  __typename?: 'AccountProxy';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The announcement delay in blocks before this proxy's calls execute. 0 is the chain's own value for an undelayed proxy, read from storage -- not a fabricated default. */
+  delay: Scalars['Int']['output'];
+  /** The account the delegation runs to (ss58). */
+  delegate: Scalars['String']['output'];
+  /** The proxy variant, spelled as the chain's enum spells it (Any / Owner / Staking / Registration ... GammaSpend) -- not pinned to an enum the runtime still extends (23 variants on v490). */
+  proxy_type: Scalars['String']['output'];
+};
+
 export type AccountRegistration = {
   __typename?: 'AccountRegistration';
   active: Scalars['Boolean']['output'];
@@ -537,9 +631,10 @@ export type AccountRegistrations = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** Deprecated per-subnet Root-claim compatibility read at one finalized block. Only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable. claim_type/hotkeys are null unless supported. Native Root basket entitlement requires separate basket data and is never inferred here. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+/** Per-account Root-claim currency: the deprecated per-subnet compatibility read at one finalized block (only the audited node-subtensor v440 adapter returns legacy values; v441+ reports unsupported, other runtimes or failed reads unavailable; claim_type/hotkeys null unless supported) PLUS the ≥v441 basket-claim era block, assembled from the ingested Basket* event stream (#13163) -- claims now flow through BasketClaimed events, and basket state lives on /chain/baskets. Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
 export type AccountRootClaim = {
   __typename?: 'AccountRootClaim';
+  basket_claims?: Maybe<RootClaimBasketClaims>;
   claim_type?: Maybe<RootClaimType>;
   /** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
   compatibility: RootClaimCompatibility;
@@ -769,6 +864,19 @@ export type AttributionEvidence = {
   observed_at: Scalars['String']['output'];
   /** A public page a reader can open — the subnet's own docs, repo or site. Pin a repo citation to a commit SHA; a branch moves under the claim. */
   source_url?: Maybe<Scalars['String']['output']>;
+};
+
+/** The completed Root basket capture an artifact was served from: its finalized source block, runtime era and acceptance stamp. */
+export type BasketCapture = {
+  __typename?: 'BasketCapture';
+  /** When the receiver accepted the completed capture. Null when the acceptance stamp did not cross as a readable time. */
+  accepted_at?: Maybe<Scalars['String']['output']>;
+  decoder_version: Scalars['String']['output'];
+  /** The finalized block height the capture observed, as a u64 decimal string. */
+  finalized_block: Scalars['String']['output'];
+  finalized_block_hash: Scalars['String']['output'];
+  /** The node-subtensor specVersion the capture was decoded under (454 for the audited legacy decoder; 490-era captures land with the engine's decoder). */
+  runtime_spec_version: Scalars['Int']['output'];
 };
 
 export type Block = {
@@ -2036,6 +2144,100 @@ export type ChangelogArtifactSummary = {
   netuid_renamed_count: Scalars['Int']['output'];
 };
 
+/** The stored child-key detail beside the live children graph (#13166): takes, the pending queue, threshold bookkeeping and capture history, from the child-keys store. Every count is NULL over an empty list until the engine's child-key capture lands. */
+export type ChildKeyDetail = {
+  __typename?: 'ChildKeyDetail';
+  /** The account's parent-keyed relation history, newest capture first, store-capped. */
+  history: Array<ChildKeysHistoryEntry>;
+  history_count?: Maybe<Scalars['Int']['output']>;
+  /** The account's scheduled child relations, ordered by (netuid, child). */
+  pending: Array<PendingChildKeyEntry>;
+  pending_count?: Maybe<Scalars['Int']['output']>;
+  take_count?: Maybe<Scalars['Int']['output']>;
+  /** The account's own per-subnet take rows, ordered by netuid. */
+  takes: Array<ChildkeyTakeEntry>;
+  /** The account's threshold bookkeeping, null when the capture holds none. */
+  threshold?: Maybe<ChildkeyThreshold>;
+};
+
+/** One captured (parent, netuid, child, proportion) relation observation from the ChildKeys history. */
+export type ChildKeysHistoryEntry = {
+  __typename?: 'ChildKeysHistoryEntry';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  child: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  parent: Scalars['String']['output'];
+  /** The raw stringified u64 proportion at the capture. */
+  proportion: Scalars['String']['output'];
+  /** The same value pre-divided to a 0..1 float. */
+  proportion_fraction: Scalars['Float']['output'];
+};
+
+/** One subnet's stored child-key take for the account. */
+export type ChildkeyTakeEntry = {
+  __typename?: 'ChildkeyTakeEntry';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** The take this hotkey charges its parents on the subnet, in PerU16 parts of 65535 (SubtensorModule.ChildkeyTake). */
+  take: Scalars['Int']['output'];
+  /** The same take pre-divided to a 0..1 float. */
+  take_fraction: Scalars['Float']['output'];
+};
+
+/** The account's stored child-key threshold bookkeeping. */
+export type ChildkeyThreshold = {
+  __typename?: 'ChildkeyThreshold';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** Whether the account sits in SubtensorModule.ChildkeyThresholdChecks (stake changed; re-check queued for on_idle). Null when the capture did not carry that map's answer. */
+  pending_check?: Maybe<Scalars['Boolean']['output']>;
+  /** Whether the account sits in SubtensorModule.ChildkeyThresholdSuspended (total stake below StakeThreshold; its child relations stay stored but are inert). Null when the capture did not carry that map's answer -- never a fabricated false. */
+  suspended?: Maybe<Scalars['Boolean']['output']>;
+};
+
+/** The account's global coldkey swap lineage: written on each successful swap so watchers can follow owner identity without walking history. */
+export type ColdkeyLineage = {
+  __typename?: 'ColdkeyLineage';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeyRoot: the first account in this swap lineage. Null when the account is its own root (never swapped into). */
+  root?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeySuccessor: the account this one swapped into. Null when the account is the newest in its lineage. */
+  successor?: Maybe<Scalars['String']['output']>;
+};
+
+/** One in-flight v2 coldkey-swap announcement: the announcing account and its reserved destination with the commitment hash, the announce/execute/dispute blocks, the policy snapshot and the capture stamp. */
+export type ColdkeySwapAnnouncement = {
+  __typename?: 'ColdkeySwapAnnouncement';
+  /** The block the announcement landed, engine-derived from the ColdkeySwapAnnounced event. Null when not carried -- never fabricated as 0, which would claim an announcement at genesis. */
+  announced_at?: Maybe<Scalars['Int']['output']>;
+  /** The H256 commitment stored beside the execute block, 0x-prefixed lowercase hex. Null when not carried. */
+  announcement_hash?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The announcing account (ss58). */
+  coldkey: Scalars['String']['output'];
+  /** The dispute state from SubtensorModule.ColdkeySwapDisputes: true when disputed; false when root cleared the dispute but retained the record (the chain's 0); null when the capture carried no dispute record. */
+  disputed?: Maybe<Scalars['Boolean']['output']>;
+  /** The dispute block itself when one is recorded, else null. */
+  disputed_at?: Maybe<Scalars['Int']['output']>;
+  /** The block the swap can be performed (the u32 in SubtensorModule.ColdkeySwapAnnouncements). Null when not carried. */
+  execute_at?: Maybe<Scalars['Int']['output']>;
+  /** The reserved destination account (ss58), in cleartext from SubtensorModule.ColdkeySwapReservedDestination. Null when the capture carried no reservation. */
+  new_coldkey?: Maybe<Scalars['String']['output']>;
+  /** The announcement-time decision from SubtensorModule.ColdkeySwapV2PolicySnapshots on importing the source auto-stake policy. Null when the capture carried no snapshot. */
+  policy_snapshot?: Maybe<Scalars['Boolean']['output']>;
+  /** The lifecycle state as the engine spells it -- text, not pinned to an enum the runtime still extends. Null when not carried. */
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+/** The chain-wide v2 coldkey-swap delays at the newest capture -- how long an announcement must age before execution, and before it can be replaced. */
+export type ColdkeySwapPolicy = {
+  __typename?: 'ColdkeySwapPolicy';
+  /** SubtensorModule.ColdkeySwapAnnouncementDelay: blocks after an announcement before the swap can be performed. Null when the capture did not carry it. */
+  announcement_delay?: Maybe<Scalars['Int']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it. */
+  reannouncement_delay?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Compare = {
   __typename?: 'Compare';
   dimensions?: Maybe<Array<Scalars['String']['output']>>;
@@ -2699,15 +2901,35 @@ export type EvidenceList = {
   total: Scalars['Int']['output'];
 };
 
-/** Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
+/** EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- `source` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
 export type EvmAddressMapping = {
   __typename?: 'EvmAddressMapping';
+  /** How many stored associations this answer carries -- `associations.length`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published. */
+  association_count?: Maybe<Scalars['Int']['output']>;
+  /** The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands. */
+  associations: Array<EvmAssociation>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources: Scalars['JSON']['output'];
   h160: Scalars['String']['output'];
   queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
+  /** Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands. */
+  source: Scalars['String']['output'];
   ss58?: Maybe<Scalars['String']['output']>;
+};
+
+/** One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp. */
+export type EvmAssociation = {
+  __typename?: 'EvmAssociation';
+  /** The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis. */
+  associated_at?: Maybe<Scalars['Int']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet the association names. */
+  netuid: Scalars['Int']['output'];
+  /** The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it. */
+  ss58?: Maybe<Scalars['String']['output']>;
+  /** The UID the EVM key is associated to. */
+  uid: Scalars['Int']['output'];
 };
 
 export type Extrinsic = {
@@ -2779,6 +3001,36 @@ export type FailureReasonsDay = {
   failing_checks: Scalars['Int']['output'];
   failure_rate?: Maybe<Scalars['Float']['output']>;
   total_checks: Scalars['Int']['output'];
+};
+
+/** One Gamma deposit: the owning account and hotkey it is keyed by, the subnet, its balance, the spend controls, and the capture stamp. */
+export type GammaDeposit = {
+  __typename?: 'GammaDeposit';
+  /** The deposit's Gamma balance -- u64 atomic units as a decimal string. */
+  balance: Scalars['String']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The block this deposit was closed at (event GammaDepositClosed). Null while the deposit is open -- never fabricated as 0, which would claim closure at genesis. */
+  closed_at?: Maybe<Scalars['Int']['output']>;
+  /** The ss58 address the deposit is keyed by on chain -- its owning account. */
+  coldkey: Scalars['String']['output'];
+  /** The deposit's daily spend ceiling (event GammaDepositDailySpendCapSet) -- u64 atomic units as a decimal string. Null when no cap is set, never fabricated as 0 (which would claim a measured zero ceiling). */
+  daily_cap?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this deposit is bound to. */
+  hotkey: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  /** The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set. */
+  spender?: Maybe<Scalars['String']['output']>;
+};
+
+/** The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+export type GammaDeposits = {
+  __typename?: 'GammaDeposits';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many deposits this answer carries -- `deposits.length`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published. */
+  deposit_count?: Maybe<Scalars['Int']['output']>;
+  /** The chain's Gamma deposits, largest balance first. */
+  deposits: Array<GammaDeposit>;
+  schema_version: Scalars['Int']['output'];
 };
 
 export type Gaps = {
@@ -2976,6 +3228,17 @@ export type HealthTrends = {
   source: Scalars['String']['output'];
   /** The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape. */
   windows: Scalars['JSON']['output'];
+};
+
+/** One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
+export type HotkeyLineageEntry = {
+  __typename?: 'HotkeyLineageEntry';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** SubtensorModule.HotkeyRoot for (netuid, hotkey): the first hotkey in the subnet's swap lineage. Null when the hotkey is its own root there. */
+  root?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.HotkeySuccessor for (netuid, hotkey): the hotkey this one swapped into on the subnet. Null when the hotkey is the newest in its lineage there. */
+  successor?: Maybe<Scalars['String']['output']>;
 };
 
 /** One subnet's on-chain hyperparameter block. Every field is nullable: a value absent from the captured row stays null rather than being coerced. *_ratio fields are 0..1 U16-derived ratios; *_tao fields are rao-exact (9dp); bonds_moving_avg_raw is the unscaled on-chain integer. */
@@ -3177,6 +3440,8 @@ export type Neuron = {
   __typename?: 'Neuron';
   block_number?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
+  /** The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   netuid: Scalars['Int']['output'];
   /** The UID's live metagraph row; null when absent from the latest snapshot. */
   neuron?: Maybe<NeuronState>;
@@ -3222,6 +3487,8 @@ export type NeuronHistoryPoint = {
   /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
   is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
+  /** The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
@@ -3259,6 +3526,8 @@ export type NeuronState = {
   /** True when this UID is the subnet's BURN SINK (#11094): the chain routes `SubtensorModule.MinerBurned` of miner incentive to the UID holding `SubtensorModule.SubnetOwnerHotkey`, so its incentive is the burned fraction, not a miner's earnings. Exclude it before deriving any per-miner statistic -- including it inflates every figure by 1/(1-burn). False when the subnet burns nothing; absent when the serving tier did not resolve the two chain captures. */
   is_burn_uid?: Maybe<Scalars['Boolean']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
+  /** The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   /** 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
@@ -3363,6 +3632,44 @@ export type OpportunityEntry = {
   validator_headroom?: Maybe<Scalars['Int']['output']>;
 };
 
+/** The stored child-key detail beside the live parents graph (#13166): the account's takes and its child-keyed capture history. The pending queue and threshold bookkeeping are parent-keyed state and live on the children surface. */
+export type ParentKeyDetail = {
+  __typename?: 'ParentKeyDetail';
+  /** The account's child-keyed relation history, newest capture first, store-capped. */
+  history: Array<ChildKeysHistoryEntry>;
+  history_count?: Maybe<Scalars['Int']['output']>;
+  take_count?: Maybe<Scalars['Int']['output']>;
+  /** The account's own per-subnet take rows, ordered by netuid. */
+  takes: Array<ChildkeyTakeEntry>;
+};
+
+/** One scheduled-but-unapplied child relation of the account (SubtensorModule.PendingChildKeys). */
+export type PendingChildKeyEntry = {
+  __typename?: 'PendingChildKeyEntry';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  child: Scalars['String']['output'];
+  /** The block the pending relations apply at (SubtensorModule.PendingChildKeys' cool-down). Null when the capture did not carry it. */
+  cool_down_block?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** The scheduled stake-weight proportion -- the raw stringified u64 (0..u64::MAX represents 0..100%). */
+  proportion: Scalars['String']['output'];
+  /** The same value pre-divided to a 0..1 float. */
+  proportion_fraction: Scalars['Float']['output'];
+};
+
+/** Every in-flight v2 coldkey-swap announcement on the chain (#13166). Empty with a null swap_count until the engine's swap capture lands. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+export type PendingColdkeySwaps = {
+  __typename?: 'PendingColdkeySwaps';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The chain-wide delays at the newest capture, null until the policy capture lands. */
+  policy?: Maybe<ColdkeySwapPolicy>;
+  schema_version: Scalars['Int']['output'];
+  /** How many in-flight announcements the capture holds -- `swaps.length`. NULL when the state holds no rows (store unbound, or the swap capture has not run): a zero count is never a measurement and is not published. */
+  swap_count?: Maybe<Scalars['Int']['output']>;
+  /** The in-flight announcements, soonest-executable first (the chain map holds at most one per announcing account). */
+  swaps: Array<ColdkeySwapAnnouncement>;
+};
+
 export type PipelineHistoryPoint = {
   __typename?: 'PipelineHistoryPoint';
   alpha_in_emission?: Maybe<Scalars['Float']['output']>;
@@ -3457,6 +3764,8 @@ export type Query = {
   account_balance?: Maybe<AccountBalance>;
   /** Live child-hotkey delegation graph (#6723) for one Finney ss58 account -- every child hotkey it currently delegates stake-weight to, per subnet, with the proportion charged -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no children on any subnet). Companion to account_parents. Mirrors GET /api/v1/accounts/{ss58}/children. */
   account_children?: Maybe<AccountChildren>;
+  /** One account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement, the global coldkey-swap successor/root lineage and the per-subnet hotkey-swap successor/root lineage, with capture stamps. Until the engine's swap and lineage captures land, every block resolves to null and hotkey_count stays NULL over an empty list -- never 0, because an empty capture is not a measured never-swapped account. Mirrors GET /api/v1/accounts/{ss58}/coldkey-swap. */
+  account_coldkey_swap: AccountColdkeySwap;
   /** Rank who one account transacts native TAO with, by total transfer volume, from the Balances.Transfer feed: per counterparty the sent/received/net TAO, transfer count, and last block, plus scan totals. Pass counterparty=<ss58> (must differ from ss58) to drill into a single relationship instead -- its fund-flow totals plus direction-aware transfer evidence under relationship, newest first. limit caps the ranked list (default 20) or the relationship's transfer evidence (default 50); 1-100. An address with no transfers resolves to a schema-stable zero card, never null. Mirrors GET /api/v1/accounts/{ss58}/counterparties. */
   account_counterparties: AccountCounterparties;
   /** One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d) -- the slots where this hotkey was the PREVIOUS holder, DERIVED from UID reuse (#9307): eviction count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. An address with no evictions resolves to a schema-stable zeroed card, never null; the 90d window is not precomputed, so it carries a degraded block instead of a confident zero. Mirrors GET /api/v1/accounts/{ss58}/deregistrations. */
@@ -3473,6 +3782,10 @@ export type Query = {
   account_identity: AccountIdentity;
   /** One account's on-chain identity change history, newest first -- an append-only diff-tracking timeline (name/url/github/image/discord/description/additional plus a stable hash per entry). Page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no identity-history rows resolves to a schema-stable empty timeline, never null. Mirrors GET /api/v1/accounts/{ss58}/identity-history. */
   account_identity_history: AccountIdentityHistory;
+  /** One account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (spelled as the chain's storage item spells it), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Until the engine's lock capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty locks array with lock_count NULL, never 0, because an empty list is not a measured lock-free account. Mirrors GET /api/v1/accounts/{ss58}/locks. */
+  account_locks: AccountLocks;
+  /** Every multisig an account belongs to (#13166) -- as the multisig account itself or as a signatory -- each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Until the engine's Multisig call/event capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty multisigs array with multisig_count NULL, never 0, because an empty list is not a measured multisig-free account. Mirrors GET /api/v1/accounts/{ss58}/multisigs. */
+  account_multisigs: AccountMultisigs;
   /** Live parent-hotkey delegation graph (#6723) for one Finney ss58 account -- every hotkey currently delegating stake-weight to it, per subnet -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no parents on any subnet). Companion to account_children. Mirrors GET /api/v1/accounts/{ss58}/parents. */
   account_parents?: Maybe<AccountParents>;
   /** One hotkey's cross-subnet neuron memberships in netuid/uid order, with observed scores, role, active state, native emission, counts and priced emission totals. Legacy stake quantities, total capital, concentration and investment yield are unavailable and remain null, including for an empty card; metagraph voting weight cannot establish independent principal. An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio. */
@@ -3483,9 +3796,11 @@ export type Query = {
   account_positions: AccountPositions;
   /** One account's Prometheus telemetry-serving footprint across subnets over a 7d/30d/90d window (default 30d) -- which subnets it announces a Prometheus endpoint on, how often, first/last announcement times, and an HHI concentration of where that activity is focused. An address with no matching announcements resolves to a schema-stable zeroed footprint, never null. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
   account_prometheus: AccountPrometheus;
+  /** One account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (spelled as the chain's enum spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve. Until the engine's Proxy.Proxies capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty proxies array with proxy_count NULL, never 0, because an empty list is not a measured delegation-free account. Mirrors GET /api/v1/accounts/{ss58}/proxies. */
+  account_proxies: AccountProxies;
   /** One account's per-subnet registration footprint over a 7d/30d/90d window (default 30d): NeuronRegistered count and first/last timestamps per subnet, an HHI concentration of where its registration activity is focused, and the dominant subnet; an address with no registrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/registrations. */
   account_registrations: AccountRegistrations;
-  /** Deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Native basket entitlement is separate. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
+  /** One account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility -- only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor -- claims flow through Basket* events since Root Reborn (v441), and basket state lives on validator_baskets. Read-only; never submits a claim. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
   account_root_claim?: Maybe<AccountRootClaim>;
   /** One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving. */
   account_serving: AccountServing;
@@ -3633,6 +3948,8 @@ export type Query = {
   fixtures?: Maybe<Scalars['JSON']['output']>;
   /** Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness. */
   freshness?: Maybe<Scalars['JSON']['output']>;
+  /** The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits. */
+  gamma_deposits: GammaDeposits;
   /** Registry-wide interface gap report -- every active subnet's missing/unsupported public interface facets, gap_count, coverage_level, and curation_level. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_gaps(netuid) (one subnet's contributor enrichment queue). Mirrors GET /api/v1/gaps. */
   gaps: GapsList;
   /** The get_global_incidents-aligned name for the same global downtime-incident ledger (#7643): identical 7d/30d window validation, tier fallback, and cold-tier degradation as incidents — a thin alias so MCP tool names and GraphQL fields line up. Distinct from endpoint_incidents (the active endpoint failure/degradation feed, GET /api/v1/endpoint-incidents): this is the historical incident ledger. Returns the typed GlobalIncidents envelope rather than the issue's literal JSON suggestion, matching incidents. Mirrors GET /api/v1/incidents. */
@@ -3661,6 +3978,8 @@ export type Query = {
   neuron_history: NeuronHistory;
   /** Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). Each board is a FIELD here, so the route's board selector is the selection set's job. Mirrors GET /api/v1/registry/leaderboards. */
   opportunity_boards: OpportunityBoards;
+  /** Every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination, commitment hash, announce/execute/dispute blocks, policy snapshot and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Until the engine's swap capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty swaps array with swap_count NULL (never 0, because an empty list is not a measured swap-free chain) and a null policy. Mirrors GET /api/v1/accounts/pending-coldkey-swaps. */
+  pending_coldkey_swaps: PendingColdkeySwaps;
   /** Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles. */
   profiles: ProfileList;
   /** One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}. */
@@ -3711,6 +4030,10 @@ export type Query = {
   source_snapshots: SourceSnapshotList;
   /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}. */
   subnet?: Maybe<Subnet>;
+  /** One subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled; u64 alpha atomic units as decimal strings) with their capture stamp. Until the engine's alpha-assets capture lands, the store holds no rows and this resolves to the schema-stable decline -- alpha_assets NULL, never a zeroed state, because an absent capture is not a measured zero issuance. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets. */
+  subnet_alpha_assets: SubnetAlphaAssets;
+  /** One subnet's pending alpha dividend accrual (#13163): each hotkey's AlphaDividendsPerSubnet / RootAlphaDividendsPerSubnet amounts (u64 alpha atomic units as decimal strings) with their capture stamp, largest alpha_divs first. Until the engine's dividend capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty dividends array with hotkey_count NULL, never 0, because an empty registry is not a measured zero accrual. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+  subnet_alpha_dividends: SubnetAlphaDividends;
   /** Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals. */
   subnet_axon_removals: SubnetAxonRemovals;
   /** Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn. */
@@ -3741,6 +4064,8 @@ export type Query = {
   subnet_events: SubnetEvents;
   /** One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Search with q across subject, claim, source_url, and support_summary; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does — an unsupported sort/limit/cursor is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the claims rows. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/evidence. */
   subnet_evidence?: Maybe<Scalars['JSON']['output']>;
+  /** One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+  subnet_gamma: SubnetGamma;
   /** One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Filter with curation_level, missing_kinds, and review_state; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the priorities rows. Mirrors GET /api/v1/subnets/{netuid}/gaps. */
   subnet_gaps?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Filter with kind, provider, status, and classification; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST reports (total, returned, limit, cursor, next_cursor, sort, order) alongside the surfaces. Opaque JSON otherwise matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health. */
@@ -3769,6 +4094,10 @@ export type Query = {
   subnet_lease_history: SubnetLeaseHistory;
   /** When one subnet was registered or deregistered, newest first. Entries with predates_capture=true are older than detection and carry a null block_number -- a real answer, not a missing one. A subnet with no recorded transition resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/lifecycle. */
   subnet_lifecycle: SubnetLifecycle;
+  /** One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+  subnet_limit_orders: SubnetLimitOrders;
+  /** One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+  subnet_mechanisms: SubnetMechanisms;
   /** One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph. */
   subnet_metagraph?: Maybe<Scalars['JSON']['output']>;
   /** Whether a subnet's registered miners actually earn, over a 7d/30d/90d window (default 30d), from the neuron_daily rollup. Reports the daily zero-emission rate, how many days each miner UID earned on — persistent-zero and occasionally-zero are different facts a snapshot collapses — and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. Descriptive only: no fairness score and no grade, because a high Gini on a subnet whose task genuinely has one best answer is not misconduct. `days_covered` rides beside every distribution figure. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
@@ -3799,6 +4128,8 @@ export type Query = {
   subnet_registrations: SubnetRegistrations;
   /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   subnet_revenue: SubnetRevenueCard;
+  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services. */
+  subnet_services: SubnetServices;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
   /** Per-subnet net stake flow over a 7d/30d/90d window (default 30d): TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream. direction narrows to inflow (in) or outflow (out); all (default) reports both. A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-flow. */
@@ -3811,6 +4142,8 @@ export type Query = {
   subnet_stake_transfers: SubnetStakeTransfers;
   /** When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history. */
   subnet_surface_history: SubnetSurfaceHistory;
+  /** One subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir; u64 atomic units as decimal strings) and the raw u16 fee rate (Swap.FeeRate) with their capture stamp. Until the engine's balancer capture lands, the store holds no rows and this resolves to the schema-stable decline -- swap NULL, never a zeroed state, because an absent capture is not a measured empty pool. Mirrors GET /api/v1/subnets/{netuid}/swap. */
+  subnet_swap: SubnetSwap;
   /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   subnet_trajectory: SubnetTrajectory;
   /** What one subnet's own published source declares it allocates to a treasury, against what the chain shows. A cut disclosed in a public repo is a business model, not a discovery, and agreement between declared and observed is the expected result — published as prominently as any divergence. Three states are kept apart: no reading (nobody looked, and the response claims nothing), `found: false` (read at a commit and found nothing — evidence), and a reviewed share. `declared_matches_observed` is tri-state and null is the normal answer today; null must never render as false. Machine readings publish their read status and withhold their finding until reviewed. Mirrors GET /api/v1/subnets/{netuid}/treasury. */
@@ -3843,12 +4176,14 @@ export type Query = {
   sudo_key?: Maybe<SudoKey>;
   /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
-  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
+  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
   tao_usd: TaoUsd;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when every holders tier is cold, never null. TWO TIERS (#9469): the net_flow_7d/30d/90d sorts are LIVE, recomputed daily from the account_events stake stream; the free_tao/delegated_tao/total_tao sorts are served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so on those captured_at/last_updated do not advance and balances are as of that date -- read that ranking as historical, and use account(ss58) for a live balance. On a flow-sorted page the three holdings columns are null, never zero. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
   validator?: Maybe<Validator>;
+  /** Every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings, largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Until the capture lane has completed a capture -- or where no capture store is bound -- this resolves to the schema-stable decline: capture NULL with fund_count NULL and an empty baskets array; with a capture present, fund_count 0 would be a real measurement, because a completed capture is a verified complete enumeration of every fund. Mirrors GET /api/v1/chain/baskets. */
+  validator_baskets: ValidatorBaskets;
   /** Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics. */
   validator_economics: ValidatorEconomicsRanking;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
@@ -3879,6 +4214,11 @@ export type QueryAccount_BalanceArgs = {
 
 export type QueryAccount_ChildrenArgs = {
   network?: InputMaybe<Network>;
+  ss58: Scalars['String']['input'];
+};
+
+
+export type QueryAccount_Coldkey_SwapArgs = {
   ss58: Scalars['String']['input'];
 };
 
@@ -3947,6 +4287,16 @@ export type QueryAccount_Identity_HistoryArgs = {
 };
 
 
+export type QueryAccount_LocksArgs = {
+  ss58: Scalars['String']['input'];
+};
+
+
+export type QueryAccount_MultisigsArgs = {
+  ss58: Scalars['String']['input'];
+};
+
+
 export type QueryAccount_ParentsArgs = {
   network?: InputMaybe<Network>;
   ss58: Scalars['String']['input'];
@@ -3973,6 +4323,11 @@ export type QueryAccount_PositionsArgs = {
 export type QueryAccount_PrometheusArgs = {
   ss58: Scalars['String']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAccount_ProxiesArgs = {
+  ss58: Scalars['String']['input'];
 };
 
 
@@ -4569,6 +4924,7 @@ export type QueryNetwork_RandomnessArgs = {
 
 
 export type QueryNeuronArgs = {
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   uid: Scalars['Int']['input'];
 };
@@ -4831,6 +5187,16 @@ export type QuerySubnetArgs = {
 };
 
 
+export type QuerySubnet_Alpha_AssetsArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Alpha_DividendsArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_Axon_RemovalsArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
@@ -4954,6 +5320,11 @@ export type QuerySubnet_EvidenceArgs = {
 };
 
 
+export type QuerySubnet_GammaArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_GapsArgs = {
   curation_level?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
@@ -5054,8 +5425,19 @@ export type QuerySubnet_LifecycleArgs = {
 };
 
 
+export type QuerySubnet_Limit_OrdersArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_MechanismsArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_MetagraphArgs = {
   fields?: InputMaybe<Scalars['String']['input']>;
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   validator_permit?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -5140,6 +5522,11 @@ export type QuerySubnet_RevenueArgs = {
 };
 
 
+export type QuerySubnet_ServicesArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_ServingArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
@@ -5174,6 +5561,11 @@ export type QuerySubnet_Stake_TransfersArgs = {
 
 export type QuerySubnet_Surface_HistoryArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_SwapArgs = {
   netuid: Scalars['Int']['input'];
 };
 
@@ -5234,6 +5626,7 @@ export type QuerySubnet_Weight_SettersArgs = {
 
 
 export type QuerySubnet_WeightsArgs = {
+  mechid?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -5749,6 +6142,17 @@ export type ReviewProfileCompletenessList = {
   total: Scalars['Int']['output'];
 };
 
+/** The ≥v441 Root basket claim flow for this account, assembled from the ingested Basket* event stream (#13163). Basket STATE (shares, NAV, holdings) lives on /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. */
+export type RootClaimBasketClaims = {
+  __typename?: 'RootClaimBasketClaims';
+  /** `claims.length` -- the returned page, capped at 100, not a lifetime total. */
+  claim_count: Scalars['Int']['output'];
+  /** This account's newest BasketClaimed / BasketClaimDustSkipped events, newest first, at most 100 -- a claims card, not a second paged feed (/accounts/{ss58}/events remains the paged surface). */
+  claims: Array<AccountEvent>;
+  /** The event store's own coverage floor: claims before this instant are not visible to this card. Null when the floor could not be read. */
+  covered_since?: Maybe<Scalars['String']['output']>;
+};
+
 /** Runtime compatibility at one finalized block. Only the audited node-subtensor v440 adapter supports legacy reads; v441+ is unsupported. Other runtimes or failed reads are unavailable. Native basket entitlement is not represented here. */
 export type RootClaimCompatibility = {
   __typename?: 'RootClaimCompatibility';
@@ -6127,6 +6531,21 @@ export type SourceSnapshotsArtifactSummary = {
   verification_result_count: Scalars['Int']['output'];
 };
 
+/** One conviction lock of an account: the hotkey and subnet it binds, its variant, the locked amount, its maturity and the capture stamp. */
+export type StakeLock = {
+  __typename?: 'StakeLock';
+  /** The locked quantity -- u64 atomic units as a decimal string. */
+  amount: Scalars['String']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this lock binds. */
+  hotkey: Scalars['String']['output'];
+  /** The lock variant, spelled as the chain's storage item spells it (Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants) -- not pinned to an enum the runtime still extends. */
+  kind: Scalars['String']['output'];
+  /** The block at which this lock matures. Null for a lock without a maturity (perpetual, or a variant that does not carry one) -- never fabricated as 0, which would claim maturity at genesis. */
+  maturity_block?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+};
+
 export type Subnet = {
   __typename?: 'Subnet';
   also_on?: Maybe<Array<SubnetIndexEntryAlsoOn>>;
@@ -6187,6 +6606,52 @@ export type SubnetSurfacesArgs = {
   order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** One subnet's current AlphaAssets accounting (#13165). Null `alpha_assets` until the engine's alpha-assets capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-assets. */
+export type SubnetAlphaAssets = {
+  __typename?: 'SubnetAlphaAssets';
+  /** The subnet's newest captured alpha-asset accounting. NULL when the store holds no capture for this subnet (store unbound, or the alpha-assets capture has not run): an absent state is never served as a zeroed one. */
+  alpha_assets?: Maybe<SubnetAlphaAssetsState>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
+/** One captured alpha-asset accounting state of a subnet: total issuance and its burn/recycle sinks with their capture stamp. */
+export type SubnetAlphaAssetsState = {
+  __typename?: 'SubnetAlphaAssetsState';
+  /** Alpha burned on this subnet (AlphaAssets.AlphaBurned) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  burned?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** Alpha recycled on this subnet (AlphaAssets.AlphaRecycled) -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  recycled?: Maybe<Scalars['String']['output']>;
+  /** The subnet's total alpha issuance (AlphaAssets.TotalAlphaIssuance) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  total_issuance?: Maybe<Scalars['String']['output']>;
+};
+
+/** One hotkey's pending alpha dividend accrual on a subnet: the alpha and root-alpha amounts with their capture stamp. */
+export type SubnetAlphaDividend = {
+  __typename?: 'SubnetAlphaDividend';
+  /** Pending alpha dividends for this hotkey on this subnet, from SubtensorModule.AlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when the chain carried no value for it at capture time, never fabricated as 0. */
+  alpha_divs?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this pending dividend accrual belongs to. */
+  hotkey: Scalars['String']['output'];
+  /** Pending root alpha dividends for this hotkey on this subnet, from SubtensorModule.RootAlphaDividendsPerSubnet -- u64 alpha atomic units as a decimal string. Null when not captured. */
+  root_alpha_divs?: Maybe<Scalars['String']['output']>;
+};
+
+/** One subnet's pending alpha dividend accrual (#13163). Empty with a null hotkey_count until the engine's dividend capture lands. Mirrors GET /api/v1/subnets/{netuid}/alpha-dividends. */
+export type SubnetAlphaDividends = {
+  __typename?: 'SubnetAlphaDividends';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's pending dividend accruals, largest alpha_divs first. */
+  dividends: Array<SubnetAlphaDividend>;
+  /** How many hotkeys carry a pending accrual row here -- `dividends.length`. NULL when the registry holds no rows for this subnet (store unbound, or the accrual capture has not run): a zero count is never a measurement and is not published. */
+  hotkey_count?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
 };
 
 export type SubnetAxonRemovals = {
@@ -6694,6 +7159,34 @@ export type SubnetEvents = {
   schema_version: Scalars['Int']['output'];
 };
 
+/** One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+export type SubnetGamma = {
+  __typename?: 'SubnetGamma';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one. */
+  gamma?: Maybe<SubnetGammaState>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
+/** One captured Gamma state of a subnet: the enablement flags, the raw price, and the emission counters with their capture stamp. */
+export type SubnetGammaState = {
+  __typename?: 'SubnetGammaState';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The subnet's Gamma emission (SubtensorModule.SubnetGammaEmission) -- u64 atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  emission?: Maybe<Scalars['String']['output']>;
+  /** Whether Gamma is enabled on this subnet (SubtensorModule.SubnetGammaEnabled). Null when the capture did not carry the flag -- never coalesced to false, which would claim a measured off-switch. */
+  enabled?: Maybe<Scalars['Boolean']['output']>;
+  /** Gamma emission accrued but not yet minted (SubtensorModule.PendingGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+  pending_emission?: Maybe<Scalars['String']['output']>;
+  /** The subnet's Gamma price (SubtensorModule.SubnetGammaPrice) -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+  price?: Maybe<Scalars['String']['output']>;
+  /** Gamma emission minted but not yet converted (SubtensorModule.UnconvertedGammaEmission) -- u64 atomic units as a decimal string. Null when not captured. */
+  unconverted_emission?: Maybe<Scalars['String']['output']>;
+  /** Whether the subnet is whitelisted for Gamma emission (SubtensorModule.SubnetGammaEmissionWhitelisted). Null when the capture did not carry the flag. */
+  whitelisted?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type SubnetHealth = {
   __typename?: 'SubnetHealth';
   avg_latency_ms?: Maybe<Scalars['Int']['output']>;
@@ -6943,6 +7436,36 @@ export type SubnetLifecycleEntry = {
   predates_capture: Scalars['Boolean']['output'];
 };
 
+/** One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
+export type SubnetLimitOrder = {
+  __typename?: 'SubnetLimitOrder';
+  /** The order's amount -- u64 atomic units as a decimal string. Null when the capture did not carry it, never fabricated as 0. */
+  amount?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The chain's OrderType variant, spelled as the chain spells it -- a pinned enum would reject a variant the runtime adds. */
+  kind: Scalars['String']['output'];
+  /** The chain's H256 order key (LimitOrders.Orders) as 0x-prefixed lowercase hex. */
+  order_id: Scalars['String']['output'];
+  /** The account that placed the order (ss58-encoded). */
+  owner: Scalars['String']['output'];
+  /** The order's limit price -- the chain's raw price encoding as a canonical decimal string, served verbatim because the engine's decode owns the scaling. Null when not captured. */
+  price?: Maybe<Scalars['String']['output']>;
+  /** The order's state (LimitOrders.Orders: Fulfilled / PartiallyFilled / Cancelled today), spelled as the chain spells it. Null when the capture did not carry one -- never a fabricated open order. */
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+/** One subnet's LimitOrders order book (#13165). Empty with a null order_count until the engine's order-book capture lands. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
+export type SubnetLimitOrders = {
+  __typename?: 'SubnetLimitOrders';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** How many orders this answer carries -- `orders.length`, store-capped. NULL when the book holds no rows for this subnet (store unbound, or the order-book capture has not run): a zero count is never a measurement and is not published. */
+  order_count?: Maybe<Scalars['Int']['output']>;
+  /** The subnet's captured orders, newest capture first. */
+  orders: Array<SubnetLimitOrder>;
+  schema_version: Scalars['Int']['output'];
+};
+
 export type SubnetList = {
   __typename?: 'SubnetList';
   /** When the chain snapshot behind this index was captured. Distinct from `generated_at`, which marks the build that shaped it. */
@@ -6952,6 +7475,30 @@ export type SubnetList = {
   native_snapshot_captured_at?: Maybe<Scalars['String']['output']>;
   next_cursor?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+/** One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp. */
+export type SubnetMechanism = {
+  __typename?: 'SubnetMechanism';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured. */
+  consensus_mode?: Maybe<Scalars['String']['output']>;
+  /** This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share. */
+  emission_split?: Maybe<Scalars['Float']['output']>;
+  /** The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has. */
+  mechid: Scalars['Int']['output'];
+};
+
+/** One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+export type SubnetMechanisms = {
+  __typename?: 'SubnetMechanisms';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many mechanisms this subnet has -- `mechanisms.length`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published. */
+  mechanism_count?: Maybe<Scalars['Int']['output']>;
+  /** The subnet's mechanisms, ordered by mechid. */
+  mechanisms: Array<SubnetMechanism>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
 };
 
 /** Whether a subnet's registered miners actually earn, measured over a 7d/30d/90d window rather than from a snapshot. Reports the daily zero-emission rate, how many days each miner UID earned on (persistent-zero and occasionally-zero are different facts a snapshot collapses), and emission concentration across controlling entities as the headline lens with the per-UID lens beside it. DESCRIPTIVE ONLY — there is no fairness score and no grade: a high Gini on a subnet whose task genuinely has one best answer is not misconduct, and that context is not in this data. A subnet with no daily rollup resolves to a schema-stable empty series (days_covered 0), never null. Mirrors GET /api/v1/subnets/{netuid}/miner-fairness. */
@@ -7609,6 +8156,30 @@ export type SubnetRevenueCard = {
   schema_version: Scalars['Int']['output'];
 };
 
+/** One on-chain service binding: the hotkey, the URL it published, and the capture stamp. */
+export type SubnetService = {
+  __typename?: 'SubnetService';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The hotkey this service URL is bound to. */
+  hotkey: Scalars['String']['output'];
+  /** The service URL as the chain stores it (SubtensorModule.Services) -- published on chain by the key's owner, served verbatim. */
+  service_url: Scalars['String']['output'];
+  /** The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis. */
+  set_at?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+export type SubnetServices = {
+  __typename?: 'SubnetServices';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+  service_count?: Maybe<Scalars['Int']['output']>;
+  /** The subnet's service bindings, ordered by hotkey. */
+  services: Array<SubnetService>;
+};
+
 export type SubnetServing = {
   __typename?: 'SubnetServing';
   announcements: Scalars['Int']['output'];
@@ -7688,6 +8259,28 @@ export type SubnetSurfaceHistory = {
   schema_version: Scalars['Int']['output'];
   /** Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there. */
   surface_count: Scalars['Int']['output'];
+};
+
+/** One subnet's current balancer-based Swap state (#13165). Null `swap` until the engine's balancer capture lands. Mirrors GET /api/v1/subnets/{netuid}/swap. */
+export type SubnetSwap = {
+  __typename?: 'SubnetSwap';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** The subnet's newest captured balancer state. NULL when the store holds no capture for this subnet (store unbound, or the balancer capture has not run): an absent state is never served as a zeroed one. */
+  swap?: Maybe<SubnetSwapState>;
+};
+
+/** One captured balancer state of a subnet's Swap pool: the TAO and alpha reservoirs and the raw fee rate with their capture stamp. */
+export type SubnetSwapState = {
+  __typename?: 'SubnetSwapState';
+  /** The subnet pool's alpha reservoir (Swap.BalancerAlphaReservoir) -- u64 alpha atomic units as a decimal string. Null when not captured, never fabricated as 0. */
+  alpha_reservoir?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** The pool's swap fee rate (Swap.FeeRate) -- the chain's raw u16 as stored, served verbatim because the engine's decode owns the scaling. Null when the capture did not carry it -- never coalesced to 0, which would claim a measured fee-free pool. */
+  fee_rate?: Maybe<Scalars['Int']['output']>;
+  /** The subnet pool's TAO reservoir (Swap.BalancerTaoReservoir) -- u64 atomic units (rao) as a decimal string. Null when not captured, never fabricated as 0. */
+  tao_reservoir?: Maybe<Scalars['String']['output']>;
 };
 
 /** One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
@@ -7972,6 +8565,8 @@ export type SubnetWeights = {
   __typename?: 'SubnetWeights';
   degraded?: Maybe<DegradedInfo>;
   distinct_setters: Scalars['Int']['output'];
+  /** The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162). */
+  mechid?: Maybe<Scalars['Int']['output']>;
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
@@ -8129,11 +8724,15 @@ export type TaoUsd = {
   latest?: Maybe<TaoUsdLatest>;
   /** How far back the answer actually reaches -- the series began 2026-08-02. */
   oldest_observed_at?: Maybe<Scalars['String']['output']>;
+  /** The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price. */
+  oracle?: Maybe<TaoUsdOracle>;
   point_count: Scalars['Int']['output'];
   points: Array<TaoUsdPoint>;
   /** How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
   priced_point_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+  /** Always `pool_composite`: the price series and `latest` on this card are the composed off-chain index (ADR 0025 -- a liquidity-weighted median across wTAO/WETH pools through an ETH/USDC anchor). The chain's own price, when captured, is the separate `oracle` block labelled `chain_oracle`. */
+  source: Scalars['String']['output'];
   /** True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh. */
   stale: Scalars['Boolean']['output'];
   /** The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift. */
@@ -8162,6 +8761,35 @@ export type TaoUsdLatest = {
   pools: Array<Scalars['JSON']['output']>;
   /** Stated even when the price is null -- it is what says why. */
   price_basis?: Maybe<Scalars['String']['output']>;
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
+/** The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price. */
+export type TaoUsdOracle = {
+  __typename?: 'TaoUsdOracle';
+  block_number: Scalars['Int']['output'];
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** How many feeds this block carries -- `feeds.length`, store-capped. Never 0: with no captured feeds the whole block is null instead. */
+  fed_count: Scalars['Int']['output'];
+  /** The TaoUsdPriceFed history, newest first and store-capped. The first entry is the current on-chain price. */
+  feeds: Array<TaoUsdOracleFeed>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The authorized feeder account (SubtensorModule.TaoUsdPriceOracle) at the newest feed, as an ss58 address. Null when the capture did not carry it. */
+  oracle?: Maybe<Scalars['String']['output']>;
+  /** The chain's raw price encoding at the newest feed, verbatim as a canonical decimal string -- the engine's decode owns the scaling, so the raw value rides along for audit rather than being re-derived. */
+  price_raw?: Maybe<Scalars['String']['output']>;
+  /** Always `chain_oracle`: this block is the chain's own TaoUsdPrice, as opposed to the composed off-chain index beside it (source `pool_composite`). */
+  source: Scalars['String']['output'];
+  /** The current on-chain USD-per-TAO figure (SubtensorModule.TaoUsdPrice; the newest feed). Null when the newest feed could not be normalized, NOT a zero price. */
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
+/** One TaoUsdPriceFed reading, pinned to the block it landed at. */
+export type TaoUsdOracleFeed = {
+  __typename?: 'TaoUsdOracleFeed';
+  block_number: Scalars['Int']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The fed USD-per-TAO figure as the engine's decode normalized it. Null when the feed could not be normalized, NOT a zero price. */
   usd_per_tao?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -8299,6 +8927,44 @@ export type Validator = {
   /** Deprecated compatibility field; always null. The metagraph records subnet voting weight (alpha + tao_weight * root), not independent delegated principal. Pricing or summing that weight cannot measure holdings value; null is unavailable, never zero. */
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
   uid_count?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One validator's Root basket fund at the served capture: shares, NAV, deposit/redemption watermarks, pricing marks and baseline state. */
+export type ValidatorBasket = {
+  __typename?: 'ValidatorBasket';
+  /** The hotkey this fund belongs to, as the raw 0x account-id hex. */
+  account_id: Scalars['String']['output'];
+  deposited_rao?: Maybe<Scalars['String']['output']>;
+  /** Display share price as raw Q64.64 bits (u128 decimal string) -- divide by 2^64 for the human price. Served as bits so no precision is invented. */
+  display_price_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** The baseline's first block as a u64 decimal string; null while the baseline is provisional. */
+  first_block?: Maybe<Scalars['String']['output']>;
+  holdings_count?: Maybe<Scalars['Int']['output']>;
+  /** The hotkey this fund belongs to, as a finney SS58 address. Null only when the stored account id could not be re-encoded. */
+  hotkey?: Maybe<Scalars['String']['output']>;
+  pending_entitlement_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** Whether the fund's pricing baseline is still provisional (no first_block stamped yet). */
+  provisional?: Maybe<Scalars['Boolean']['output']>;
+  realizable_nav_rao?: Maybe<Scalars['String']['output']>;
+  redeemed_rao?: Maybe<Scalars['String']['output']>;
+  shares_atomic?: Maybe<Scalars['String']['output']>;
+  /** Spot net asset value in rao, as a u64 decimal string. */
+  spot_nav_rao?: Maybe<Scalars['String']['output']>;
+  stake_price_q64_bits?: Maybe<Scalars['String']['output']>;
+  /** The runtime's staker time-weighted-return mark as raw Q64.64 bits. A mark, not an annualized return. */
+  staker_twr_q64_bits?: Maybe<Scalars['String']['output']>;
+  targets_count?: Maybe<Scalars['Int']['output']>;
+};
+
+/** Every validator's Root basket fund at the newest completed capture (#13163). Empty with a null capture until the capture lane has completed one. Mirrors GET /api/v1/chain/baskets. */
+export type ValidatorBaskets = {
+  __typename?: 'ValidatorBaskets';
+  /** The capture's funds, largest spot NAV first. */
+  baskets: Array<ValidatorBasket>;
+  capture?: Maybe<BasketCapture>;
+  /** How many funds the served capture holds -- `baskets.length`. NULL when no completed capture is available to serve (store unbound, or none accepted yet); 0 only as a real measurement from a completed capture. */
+  fund_count?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
 };
 
 /** Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators. */
@@ -8564,6 +9230,7 @@ export type ResolversTypes = ResolversObject<{
   AccountChildEntry: ResolverTypeWrapper<AccountChildEntry>;
   AccountChildSubnet: ResolverTypeWrapper<AccountChildSubnet>;
   AccountChildren: ResolverTypeWrapper<AccountChildren>;
+  AccountColdkeySwap: ResolverTypeWrapper<AccountColdkeySwap>;
   AccountCounterparties: ResolverTypeWrapper<AccountCounterparties>;
   AccountCounterparty: ResolverTypeWrapper<AccountCounterparty>;
   AccountCounterpartyRelationship: ResolverTypeWrapper<AccountCounterpartyRelationship>;
@@ -8582,9 +9249,13 @@ export type ResolversTypes = ResolversObject<{
   AccountIdentity: ResolverTypeWrapper<AccountIdentity>;
   AccountIdentityHistory: ResolverTypeWrapper<AccountIdentityHistory>;
   AccountIdentityHistoryEntry: ResolverTypeWrapper<AccountIdentityHistoryEntry>;
+  AccountKeyLineage: ResolverTypeWrapper<AccountKeyLineage>;
   AccountLabel: ResolverTypeWrapper<AccountLabel>;
   AccountList: ResolverTypeWrapper<AccountList>;
+  AccountLocks: ResolverTypeWrapper<AccountLocks>;
   AccountModuleCall: ResolverTypeWrapper<AccountModuleCall>;
+  AccountMultisig: ResolverTypeWrapper<AccountMultisig>;
+  AccountMultisigs: ResolverTypeWrapper<AccountMultisigs>;
   AccountOwnershipTie: ResolverTypeWrapper<AccountOwnershipTie>;
   AccountParentEntry: ResolverTypeWrapper<AccountParentEntry>;
   AccountParentSubnet: ResolverTypeWrapper<AccountParentSubnet>;
@@ -8597,6 +9268,8 @@ export type ResolversTypes = ResolversObject<{
   AccountPositionsDegraded: ResolverTypeWrapper<AccountPositionsDegraded>;
   AccountPrometheus: ResolverTypeWrapper<AccountPrometheus>;
   AccountPrometheusSubnet: ResolverTypeWrapper<AccountPrometheusSubnet>;
+  AccountProxies: ResolverTypeWrapper<AccountProxies>;
+  AccountProxy: ResolverTypeWrapper<AccountProxy>;
   AccountRegistration: ResolverTypeWrapper<AccountRegistration>;
   AccountRegistrationSubnet: ResolverTypeWrapper<AccountRegistrationSubnet>;
   AccountRegistrations: ResolverTypeWrapper<AccountRegistrations>;
@@ -8618,6 +9291,7 @@ export type ResolversTypes = ResolversObject<{
   AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   AttributionEvidence: ResolverTypeWrapper<AttributionEvidence>;
+  BasketCapture: ResolverTypeWrapper<BasketCapture>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
   BlockChainEventsArtifactEvents: ResolverTypeWrapper<BlockChainEventsArtifactEvents>;
@@ -8718,6 +9392,13 @@ export type ResolversTypes = ResolversObject<{
   ChangelogArtifactSubnetsRemoved: ResolverTypeWrapper<ChangelogArtifactSubnetsRemoved>;
   ChangelogArtifactSubnetsRenamed: ResolverTypeWrapper<ChangelogArtifactSubnetsRenamed>;
   ChangelogArtifactSummary: ResolverTypeWrapper<ChangelogArtifactSummary>;
+  ChildKeyDetail: ResolverTypeWrapper<ChildKeyDetail>;
+  ChildKeysHistoryEntry: ResolverTypeWrapper<ChildKeysHistoryEntry>;
+  ChildkeyTakeEntry: ResolverTypeWrapper<ChildkeyTakeEntry>;
+  ChildkeyThreshold: ResolverTypeWrapper<ChildkeyThreshold>;
+  ColdkeyLineage: ResolverTypeWrapper<ColdkeyLineage>;
+  ColdkeySwapAnnouncement: ResolverTypeWrapper<ColdkeySwapAnnouncement>;
+  ColdkeySwapPolicy: ResolverTypeWrapper<ColdkeySwapPolicy>;
   Compare: ResolverTypeWrapper<Compare>;
   CompareEconomics: ResolverTypeWrapper<CompareEconomics>;
   CompareHealth: ResolverTypeWrapper<CompareHealth>;
@@ -8766,6 +9447,7 @@ export type ResolversTypes = ResolversObject<{
   EvidenceLedgerArtifactSummary: ResolverTypeWrapper<EvidenceLedgerArtifactSummary>;
   EvidenceList: ResolverTypeWrapper<EvidenceList>;
   EvmAddressMapping: ResolverTypeWrapper<EvmAddressMapping>;
+  EvmAssociation: ResolverTypeWrapper<EvmAssociation>;
   Extrinsic: ResolverTypeWrapper<Extrinsic>;
   ExtrinsicDetail: ResolverTypeWrapper<ExtrinsicDetail>;
   ExtrinsicList: ResolverTypeWrapper<ExtrinsicList>;
@@ -8773,6 +9455,8 @@ export type ResolversTypes = ResolversObject<{
   FailureReasons: ResolverTypeWrapper<FailureReasons>;
   FailureReasonsDay: ResolverTypeWrapper<FailureReasonsDay>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
+  GammaDeposit: ResolverTypeWrapper<GammaDeposit>;
+  GammaDeposits: ResolverTypeWrapper<GammaDeposits>;
   Gaps: ResolverTypeWrapper<Gaps>;
   GapsArtifactGaps: ResolverTypeWrapper<GapsArtifactGaps>;
   GapsArtifactGapsSchemaParity: ResolverTypeWrapper<GapsArtifactGapsSchemaParity>;
@@ -8789,6 +9473,7 @@ export type ResolversTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: ResolverTypeWrapper<HealthPercentilesArtifactSurfacesLatencyMs>;
   HealthProbeSummary: ResolverTypeWrapper<HealthProbeSummary>;
   HealthTrends: ResolverTypeWrapper<HealthTrends>;
+  HotkeyLineageEntry: ResolverTypeWrapper<HotkeyLineageEntry>;
   Hyperparameters: ResolverTypeWrapper<Hyperparameters>;
   HyperparamsHistoryEntry: ResolverTypeWrapper<HyperparamsHistoryEntry>;
   Identity: ResolverTypeWrapper<Identity>;
@@ -8814,6 +9499,9 @@ export type ResolversTypes = ResolversObject<{
   NominatorPosition: ResolverTypeWrapper<NominatorPosition>;
   OpportunityBoards: ResolverTypeWrapper<OpportunityBoards>;
   OpportunityEntry: ResolverTypeWrapper<OpportunityEntry>;
+  ParentKeyDetail: ResolverTypeWrapper<ParentKeyDetail>;
+  PendingChildKeyEntry: ResolverTypeWrapper<PendingChildKeyEntry>;
+  PendingColdkeySwaps: ResolverTypeWrapper<PendingColdkeySwaps>;
   PipelineHistoryPoint: ResolverTypeWrapper<PipelineHistoryPoint>;
   PoolList: ResolverTypeWrapper<PoolList>;
   ProfileList: ResolverTypeWrapper<ProfileList>;
@@ -8844,6 +9532,7 @@ export type ResolversTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ResolverTypeWrapper<ReviewProfileCompletenessArtifactProfiles>;
   ReviewProfileCompletenessArtifactSummary: ResolverTypeWrapper<ReviewProfileCompletenessArtifactSummary>;
   ReviewProfileCompletenessList: ResolverTypeWrapper<ReviewProfileCompletenessList>;
+  RootClaimBasketClaims: ResolverTypeWrapper<RootClaimBasketClaims>;
   RootClaimCompatibility: ResolverTypeWrapper<RootClaimCompatibility>;
   RootClaimEntry: ResolverTypeWrapper<RootClaimEntry>;
   RootClaimHotkey: ResolverTypeWrapper<RootClaimHotkey>;
@@ -8874,8 +9563,13 @@ export type ResolversTypes = ResolversObject<{
   SourceSnapshotList: ResolverTypeWrapper<SourceSnapshotList>;
   SourceSnapshotsArtifactSources: ResolverTypeWrapper<SourceSnapshotsArtifactSources>;
   SourceSnapshotsArtifactSummary: ResolverTypeWrapper<SourceSnapshotsArtifactSummary>;
+  StakeLock: ResolverTypeWrapper<StakeLock>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subnet: ResolverTypeWrapper<Subnet>;
+  SubnetAlphaAssets: ResolverTypeWrapper<SubnetAlphaAssets>;
+  SubnetAlphaAssetsState: ResolverTypeWrapper<SubnetAlphaAssetsState>;
+  SubnetAlphaDividend: ResolverTypeWrapper<SubnetAlphaDividend>;
+  SubnetAlphaDividends: ResolverTypeWrapper<SubnetAlphaDividends>;
   SubnetAxonRemovals: ResolverTypeWrapper<SubnetAxonRemovals>;
   SubnetBurn: ResolverTypeWrapper<SubnetBurn>;
   SubnetBurnHistory: ResolverTypeWrapper<SubnetBurnHistory>;
@@ -8907,6 +9601,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
   SubnetEventSummaryArtifactEventKinds: ResolverTypeWrapper<SubnetEventSummaryArtifactEventKinds>;
   SubnetEvents: ResolverTypeWrapper<SubnetEvents>;
+  SubnetGamma: ResolverTypeWrapper<SubnetGamma>;
+  SubnetGammaState: ResolverTypeWrapper<SubnetGammaState>;
   SubnetHealth: ResolverTypeWrapper<SubnetHealth>;
   SubnetHealthIncidents: ResolverTypeWrapper<SubnetHealthIncidents>;
   SubnetHealthPercentiles: ResolverTypeWrapper<SubnetHealthPercentiles>;
@@ -8928,7 +9624,11 @@ export type ResolversTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: ResolverTypeWrapper<SubnetLeaseHistoryArtifactLeaseEvents>;
   SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
   SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
+  SubnetLimitOrder: ResolverTypeWrapper<SubnetLimitOrder>;
+  SubnetLimitOrders: ResolverTypeWrapper<SubnetLimitOrders>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
+  SubnetMechanism: ResolverTypeWrapper<SubnetMechanism>;
+  SubnetMechanisms: ResolverTypeWrapper<SubnetMechanisms>;
   SubnetMinerFairness: ResolverTypeWrapper<SubnetMinerFairness>;
   SubnetMinerFairnessConcentration: ResolverTypeWrapper<SubnetMinerFairnessConcentration>;
   SubnetMinerFairnessLive: ResolverTypeWrapper<SubnetMinerFairnessLive>;
@@ -8972,12 +9672,16 @@ export type ResolversTypes = ResolversObject<{
   SubnetRegistrations: ResolverTypeWrapper<SubnetRegistrations>;
   SubnetRevenue: ResolverTypeWrapper<SubnetRevenue>;
   SubnetRevenueCard: ResolverTypeWrapper<SubnetRevenueCard>;
+  SubnetService: ResolverTypeWrapper<SubnetService>;
+  SubnetServices: ResolverTypeWrapper<SubnetServices>;
   SubnetServing: ResolverTypeWrapper<SubnetServing>;
   SubnetStakeFlow: ResolverTypeWrapper<SubnetStakeFlow>;
   SubnetStakeMoves: ResolverTypeWrapper<SubnetStakeMoves>;
   SubnetStakeQuote: ResolverTypeWrapper<SubnetStakeQuote>;
   SubnetStakeTransfers: ResolverTypeWrapper<SubnetStakeTransfers>;
   SubnetSurfaceHistory: ResolverTypeWrapper<SubnetSurfaceHistory>;
+  SubnetSwap: ResolverTypeWrapper<SubnetSwap>;
+  SubnetSwapState: ResolverTypeWrapper<SubnetSwapState>;
   SubnetTrajectory: ResolverTypeWrapper<SubnetTrajectory>;
   SubnetTrajectoryDelta: ResolverTypeWrapper<SubnetTrajectoryDelta>;
   SubnetTrajectoryPoint: ResolverTypeWrapper<SubnetTrajectoryPoint>;
@@ -9007,6 +9711,8 @@ export type ResolversTypes = ResolversObject<{
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
   TaoUsdConversion: ResolverTypeWrapper<TaoUsdConversion>;
   TaoUsdLatest: ResolverTypeWrapper<TaoUsdLatest>;
+  TaoUsdOracle: ResolverTypeWrapper<TaoUsdOracle>;
+  TaoUsdOracleFeed: ResolverTypeWrapper<TaoUsdOracleFeed>;
   TaoUsdPoint: ResolverTypeWrapper<TaoUsdPoint>;
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
   TurnoverValidatorChange: ResolverTypeWrapper<TurnoverValidatorChange>;
@@ -9017,6 +9723,8 @@ export type ResolversTypes = ResolversObject<{
   UptimeReliability: ResolverTypeWrapper<UptimeReliability>;
   UptimeSurface: ResolverTypeWrapper<UptimeSurface>;
   Validator: ResolverTypeWrapper<Validator>;
+  ValidatorBasket: ResolverTypeWrapper<ValidatorBasket>;
+  ValidatorBaskets: ResolverTypeWrapper<ValidatorBaskets>;
   ValidatorComparison: ResolverTypeWrapper<ValidatorComparison>;
   ValidatorEconomicsExclusion: ResolverTypeWrapper<ValidatorEconomicsExclusion>;
   ValidatorEconomicsHistoryPoint: ResolverTypeWrapper<ValidatorEconomicsHistoryPoint>;
@@ -9040,6 +9748,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountChildEntry: AccountChildEntry;
   AccountChildSubnet: AccountChildSubnet;
   AccountChildren: AccountChildren;
+  AccountColdkeySwap: AccountColdkeySwap;
   AccountCounterparties: AccountCounterparties;
   AccountCounterparty: AccountCounterparty;
   AccountCounterpartyRelationship: AccountCounterpartyRelationship;
@@ -9058,9 +9767,13 @@ export type ResolversParentTypes = ResolversObject<{
   AccountIdentity: AccountIdentity;
   AccountIdentityHistory: AccountIdentityHistory;
   AccountIdentityHistoryEntry: AccountIdentityHistoryEntry;
+  AccountKeyLineage: AccountKeyLineage;
   AccountLabel: AccountLabel;
   AccountList: AccountList;
+  AccountLocks: AccountLocks;
   AccountModuleCall: AccountModuleCall;
+  AccountMultisig: AccountMultisig;
+  AccountMultisigs: AccountMultisigs;
   AccountOwnershipTie: AccountOwnershipTie;
   AccountParentEntry: AccountParentEntry;
   AccountParentSubnet: AccountParentSubnet;
@@ -9073,6 +9786,8 @@ export type ResolversParentTypes = ResolversObject<{
   AccountPositionsDegraded: AccountPositionsDegraded;
   AccountPrometheus: AccountPrometheus;
   AccountPrometheusSubnet: AccountPrometheusSubnet;
+  AccountProxies: AccountProxies;
+  AccountProxy: AccountProxy;
   AccountRegistration: AccountRegistration;
   AccountRegistrationSubnet: AccountRegistrationSubnet;
   AccountRegistrations: AccountRegistrations;
@@ -9094,6 +9809,7 @@ export type ResolversParentTypes = ResolversObject<{
   AdapterArtifactSnapshot: AdapterArtifactSnapshot;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   AttributionEvidence: AttributionEvidence;
+  BasketCapture: BasketCapture;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
   BlockChainEventsArtifactEvents: BlockChainEventsArtifactEvents;
@@ -9193,6 +9909,13 @@ export type ResolversParentTypes = ResolversObject<{
   ChangelogArtifactSubnetsRemoved: ChangelogArtifactSubnetsRemoved;
   ChangelogArtifactSubnetsRenamed: ChangelogArtifactSubnetsRenamed;
   ChangelogArtifactSummary: ChangelogArtifactSummary;
+  ChildKeyDetail: ChildKeyDetail;
+  ChildKeysHistoryEntry: ChildKeysHistoryEntry;
+  ChildkeyTakeEntry: ChildkeyTakeEntry;
+  ChildkeyThreshold: ChildkeyThreshold;
+  ColdkeyLineage: ColdkeyLineage;
+  ColdkeySwapAnnouncement: ColdkeySwapAnnouncement;
+  ColdkeySwapPolicy: ColdkeySwapPolicy;
   Compare: Compare;
   CompareEconomics: CompareEconomics;
   CompareHealth: CompareHealth;
@@ -9241,6 +9964,7 @@ export type ResolversParentTypes = ResolversObject<{
   EvidenceLedgerArtifactSummary: EvidenceLedgerArtifactSummary;
   EvidenceList: EvidenceList;
   EvmAddressMapping: EvmAddressMapping;
+  EvmAssociation: EvmAssociation;
   Extrinsic: Extrinsic;
   ExtrinsicDetail: ExtrinsicDetail;
   ExtrinsicList: ExtrinsicList;
@@ -9248,6 +9972,8 @@ export type ResolversParentTypes = ResolversObject<{
   FailureReasons: FailureReasons;
   FailureReasonsDay: FailureReasonsDay;
   Float: Scalars['Float']['output'];
+  GammaDeposit: GammaDeposit;
+  GammaDeposits: GammaDeposits;
   Gaps: Gaps;
   GapsArtifactGaps: GapsArtifactGaps;
   GapsArtifactGapsSchemaParity: GapsArtifactGapsSchemaParity;
@@ -9264,6 +9990,7 @@ export type ResolversParentTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: HealthPercentilesArtifactSurfacesLatencyMs;
   HealthProbeSummary: HealthProbeSummary;
   HealthTrends: HealthTrends;
+  HotkeyLineageEntry: HotkeyLineageEntry;
   Hyperparameters: Hyperparameters;
   HyperparamsHistoryEntry: HyperparamsHistoryEntry;
   Identity: Identity;
@@ -9288,6 +10015,9 @@ export type ResolversParentTypes = ResolversObject<{
   NominatorPosition: NominatorPosition;
   OpportunityBoards: OpportunityBoards;
   OpportunityEntry: OpportunityEntry;
+  ParentKeyDetail: ParentKeyDetail;
+  PendingChildKeyEntry: PendingChildKeyEntry;
+  PendingColdkeySwaps: PendingColdkeySwaps;
   PipelineHistoryPoint: PipelineHistoryPoint;
   PoolList: PoolList;
   ProfileList: ProfileList;
@@ -9318,6 +10048,7 @@ export type ResolversParentTypes = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles: ReviewProfileCompletenessArtifactProfiles;
   ReviewProfileCompletenessArtifactSummary: ReviewProfileCompletenessArtifactSummary;
   ReviewProfileCompletenessList: ReviewProfileCompletenessList;
+  RootClaimBasketClaims: RootClaimBasketClaims;
   RootClaimCompatibility: RootClaimCompatibility;
   RootClaimEntry: RootClaimEntry;
   RootClaimHotkey: RootClaimHotkey;
@@ -9348,8 +10079,13 @@ export type ResolversParentTypes = ResolversObject<{
   SourceSnapshotList: SourceSnapshotList;
   SourceSnapshotsArtifactSources: SourceSnapshotsArtifactSources;
   SourceSnapshotsArtifactSummary: SourceSnapshotsArtifactSummary;
+  StakeLock: StakeLock;
   String: Scalars['String']['output'];
   Subnet: Subnet;
+  SubnetAlphaAssets: SubnetAlphaAssets;
+  SubnetAlphaAssetsState: SubnetAlphaAssetsState;
+  SubnetAlphaDividend: SubnetAlphaDividend;
+  SubnetAlphaDividends: SubnetAlphaDividends;
   SubnetAxonRemovals: SubnetAxonRemovals;
   SubnetBurn: SubnetBurn;
   SubnetBurnHistory: SubnetBurnHistory;
@@ -9381,6 +10117,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
   SubnetEventSummaryArtifactEventKinds: SubnetEventSummaryArtifactEventKinds;
   SubnetEvents: SubnetEvents;
+  SubnetGamma: SubnetGamma;
+  SubnetGammaState: SubnetGammaState;
   SubnetHealth: SubnetHealth;
   SubnetHealthIncidents: SubnetHealthIncidents;
   SubnetHealthPercentiles: SubnetHealthPercentiles;
@@ -9402,7 +10140,11 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: SubnetLeaseHistoryArtifactLeaseEvents;
   SubnetLifecycle: SubnetLifecycle;
   SubnetLifecycleEntry: SubnetLifecycleEntry;
+  SubnetLimitOrder: SubnetLimitOrder;
+  SubnetLimitOrders: SubnetLimitOrders;
   SubnetList: SubnetList;
+  SubnetMechanism: SubnetMechanism;
+  SubnetMechanisms: SubnetMechanisms;
   SubnetMinerFairness: SubnetMinerFairness;
   SubnetMinerFairnessConcentration: SubnetMinerFairnessConcentration;
   SubnetMinerFairnessLive: SubnetMinerFairnessLive;
@@ -9446,12 +10188,16 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetRegistrations: SubnetRegistrations;
   SubnetRevenue: SubnetRevenue;
   SubnetRevenueCard: SubnetRevenueCard;
+  SubnetService: SubnetService;
+  SubnetServices: SubnetServices;
   SubnetServing: SubnetServing;
   SubnetStakeFlow: SubnetStakeFlow;
   SubnetStakeMoves: SubnetStakeMoves;
   SubnetStakeQuote: SubnetStakeQuote;
   SubnetStakeTransfers: SubnetStakeTransfers;
   SubnetSurfaceHistory: SubnetSurfaceHistory;
+  SubnetSwap: SubnetSwap;
+  SubnetSwapState: SubnetSwapState;
   SubnetTrajectory: SubnetTrajectory;
   SubnetTrajectoryDelta: SubnetTrajectoryDelta;
   SubnetTrajectoryPoint: SubnetTrajectoryPoint;
@@ -9481,6 +10227,8 @@ export type ResolversParentTypes = ResolversObject<{
   TaoUsd: TaoUsd;
   TaoUsdConversion: TaoUsdConversion;
   TaoUsdLatest: TaoUsdLatest;
+  TaoUsdOracle: TaoUsdOracle;
+  TaoUsdOracleFeed: TaoUsdOracleFeed;
   TaoUsdPoint: TaoUsdPoint;
   TurnoverUidReassignment: TurnoverUidReassignment;
   TurnoverValidatorChange: TurnoverValidatorChange;
@@ -9491,6 +10239,8 @@ export type ResolversParentTypes = ResolversObject<{
   UptimeReliability: UptimeReliability;
   UptimeSurface: UptimeSurface;
   Validator: Validator;
+  ValidatorBasket: ValidatorBasket;
+  ValidatorBaskets: ValidatorBaskets;
   ValidatorComparison: ValidatorComparison;
   ValidatorEconomicsExclusion: ValidatorEconomicsExclusion;
   ValidatorEconomicsHistoryPoint: ValidatorEconomicsHistoryPoint;
@@ -9554,10 +10304,19 @@ export type AccountChildSubnetResolvers<ContextType = GqlContext, ParentType ext
 
 export type AccountChildrenResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountChildren'] = ResolversParentTypes['AccountChildren']> = ResolversObject<{
   account?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  child_key_detail?: Resolver<Maybe<ResolversTypes['ChildKeyDetail']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Maybe<Array<ResolversTypes['AccountChildSubnet']>>, ParentType, ContextType>;
+}>;
+
+export type AccountColdkeySwapResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountColdkeySwap'] = ResolversParentTypes['AccountColdkeySwap']> = ResolversObject<{
+  announcement?: Resolver<Maybe<ResolversTypes['ColdkeySwapAnnouncement']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lineage?: Resolver<ResolversTypes['AccountKeyLineage'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type AccountCounterpartiesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountCounterparties'] = ResolversParentTypes['AccountCounterparties']> = ResolversObject<{
@@ -9737,6 +10496,7 @@ export type AccountIdentityResolvers<ContextType = GqlContext, ParentType extend
   image?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  storage_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -9759,7 +10519,14 @@ export type AccountIdentityHistoryEntryResolvers<ContextType = GqlContext, Paren
   image?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  storage_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AccountKeyLineageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountKeyLineage'] = ResolversParentTypes['AccountKeyLineage']> = ResolversObject<{
+  coldkey?: Resolver<Maybe<ResolversTypes['ColdkeyLineage']>, ParentType, ContextType>;
+  hotkey?: Resolver<Array<ResolversTypes['HotkeyLineageEntry']>, ParentType, ContextType>;
+  hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type AccountLabelResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountLabel'] = ResolversParentTypes['AccountLabel']> = ResolversObject<{
@@ -9778,9 +10545,34 @@ export type AccountListResolvers<ContextType = GqlContext, ParentType extends Re
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type AccountLocksResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountLocks'] = ResolversParentTypes['AccountLocks']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lock_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  locks?: Resolver<Array<ResolversTypes['StakeLock']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type AccountModuleCallResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountModuleCall'] = ResolversParentTypes['AccountModuleCall']> = ResolversObject<{
   call_module?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type AccountMultisigResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountMultisig'] = ResolversParentTypes['AccountMultisig']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  multisig?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  signatories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  signatory_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  threshold?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type AccountMultisigsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountMultisigs'] = ResolversParentTypes['AccountMultisigs']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  multisig_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  multisigs?: Resolver<Array<ResolversTypes['AccountMultisig']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type AccountOwnershipTieResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountOwnershipTie'] = ResolversParentTypes['AccountOwnershipTie']> = ResolversObject<{
@@ -9803,6 +10595,7 @@ export type AccountParentSubnetResolvers<ContextType = GqlContext, ParentType ex
 
 export type AccountParentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountParents'] = ResolversParentTypes['AccountParents']> = ResolversObject<{
   account?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  child_key_detail?: Resolver<Maybe<ResolversTypes['ParentKeyDetail']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9898,6 +10691,22 @@ export type AccountPrometheusSubnetResolvers<ContextType = GqlContext, ParentTyp
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type AccountProxiesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountProxies'] = ResolversParentTypes['AccountProxies']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  deposit?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  proxies?: Resolver<Array<ResolversTypes['AccountProxy']>, ParentType, ContextType>;
+  proxy_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type AccountProxyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountProxy'] = ResolversParentTypes['AccountProxy']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  delay?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  delegate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  proxy_type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type AccountRegistrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountRegistration'] = ResolversParentTypes['AccountRegistration']> = ResolversObject<{
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9925,6 +10734,7 @@ export type AccountRegistrationsResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type AccountRootClaimResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountRootClaim'] = ResolversParentTypes['AccountRootClaim']> = ResolversObject<{
+  basket_claims?: Resolver<Maybe<ResolversTypes['RootClaimBasketClaims']>, ParentType, ContextType>;
   claim_type?: Resolver<Maybe<ResolversTypes['RootClaimType']>, ParentType, ContextType>;
   compatibility?: Resolver<ResolversTypes['RootClaimCompatibility'], ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
@@ -10107,6 +10917,14 @@ export type AttributionEvidenceResolvers<ContextType = GqlContext, ParentType ex
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   source_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type BasketCaptureResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BasketCapture'] = ResolversParentTypes['BasketCapture']> = ResolversObject<{
+  accepted_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  decoder_version?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  finalized_block?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  finalized_block_hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  runtime_spec_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type BlockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Block'] = ResolversParentTypes['Block']> = ResolversObject<{
@@ -11080,6 +11898,63 @@ export type ChangelogArtifactSummaryResolvers<ContextType = GqlContext, ParentTy
   netuid_renamed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type ChildKeyDetailResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChildKeyDetail'] = ResolversParentTypes['ChildKeyDetail']> = ResolversObject<{
+  history?: Resolver<Array<ResolversTypes['ChildKeysHistoryEntry']>, ParentType, ContextType>;
+  history_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  pending?: Resolver<Array<ResolversTypes['PendingChildKeyEntry']>, ParentType, ContextType>;
+  pending_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  take_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  takes?: Resolver<Array<ResolversTypes['ChildkeyTakeEntry']>, ParentType, ContextType>;
+  threshold?: Resolver<Maybe<ResolversTypes['ChildkeyThreshold']>, ParentType, ContextType>;
+}>;
+
+export type ChildKeysHistoryEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChildKeysHistoryEntry'] = ResolversParentTypes['ChildKeysHistoryEntry']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  child?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  parent?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  proportion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  proportion_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type ChildkeyTakeEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChildkeyTakeEntry'] = ResolversParentTypes['ChildkeyTakeEntry']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  take?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  take_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type ChildkeyThresholdResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChildkeyThreshold'] = ResolversParentTypes['ChildkeyThreshold']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pending_check?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  suspended?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+}>;
+
+export type ColdkeyLineageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeyLineage'] = ResolversParentTypes['ColdkeyLineage']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  root?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  successor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ColdkeySwapAnnouncementResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeySwapAnnouncement'] = ResolversParentTypes['ColdkeySwapAnnouncement']> = ResolversObject<{
+  announced_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  announcement_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  disputed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  disputed_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  execute_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  new_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  policy_snapshot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ColdkeySwapPolicyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ColdkeySwapPolicy'] = ResolversParentTypes['ColdkeySwapPolicy']> = ResolversObject<{
+  announcement_delay?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reannouncement_delay?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
 export type CompareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Compare'] = ResolversParentTypes['Compare']> = ResolversObject<{
   dimensions?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -11622,11 +12497,22 @@ export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends R
 }>;
 
 export type EvmAddressMappingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvmAddressMapping'] = ResolversParentTypes['EvmAddressMapping']> = ResolversObject<{
+  association_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  associations?: Resolver<Array<ResolversTypes['EvmAssociation']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   h160?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   ss58?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type EvmAssociationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvmAssociation'] = ResolversParentTypes['EvmAssociation']> = ResolversObject<{
+  associated_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ss58?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ExtrinsicResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Extrinsic'] = ResolversParentTypes['Extrinsic']> = ResolversObject<{
@@ -11685,6 +12571,24 @@ export type FailureReasonsDayResolvers<ContextType = GqlContext, ParentType exte
   failing_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   failure_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type GammaDepositResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GammaDeposit'] = ResolversParentTypes['GammaDeposit']> = ResolversObject<{
+  balance?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  closed_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  daily_cap?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  spender?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type GammaDepositsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GammaDeposits'] = ResolversParentTypes['GammaDeposits']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  deposit_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  deposits?: Resolver<Array<ResolversTypes['GammaDeposit']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type GapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Gaps'] = ResolversParentTypes['Gaps']> = ResolversObject<{
@@ -11853,6 +12757,13 @@ export type HealthTrendsResolvers<ContextType = GqlContext, ParentType extends R
   windows?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
 }>;
 
+export type HotkeyLineageEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HotkeyLineageEntry'] = ResolversParentTypes['HotkeyLineageEntry']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  root?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  successor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type HyperparametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Hyperparameters'] = ResolversParentTypes['Hyperparameters']> = ResolversObject<{
   activity_cutoff?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   activity_cutoff_factor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -12018,6 +12929,7 @@ export type NetworkRandomnessResolvers<ContextType = GqlContext, ParentType exte
 export type NeuronResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Neuron'] = ResolversParentTypes['Neuron']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron?: Resolver<Maybe<ResolversTypes['NeuronState']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -12052,6 +12964,7 @@ export type NeuronHistoryPointResolvers<ContextType = GqlContext, ParentType ext
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -12078,6 +12991,7 @@ export type NeuronStateResolvers<ContextType = GqlContext, ParentType extends Re
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   is_burn_uid?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -12152,6 +13066,30 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type ParentKeyDetailResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ParentKeyDetail'] = ResolversParentTypes['ParentKeyDetail']> = ResolversObject<{
+  history?: Resolver<Array<ResolversTypes['ChildKeysHistoryEntry']>, ParentType, ContextType>;
+  history_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  take_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  takes?: Resolver<Array<ResolversTypes['ChildkeyTakeEntry']>, ParentType, ContextType>;
+}>;
+
+export type PendingChildKeyEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PendingChildKeyEntry'] = ResolversParentTypes['PendingChildKeyEntry']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  child?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  cool_down_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  proportion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  proportion_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type PendingColdkeySwapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PendingColdkeySwaps'] = ResolversParentTypes['PendingColdkeySwaps']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  policy?: Resolver<Maybe<ResolversTypes['ColdkeySwapPolicy']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  swap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  swaps?: Resolver<Array<ResolversTypes['ColdkeySwapAnnouncement']>, ParentType, ContextType>;
 }>;
 
 export type PipelineHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryPoint'] = ResolversParentTypes['PipelineHistoryPoint']> = ResolversObject<{
@@ -12230,6 +13168,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   account_axon_removals?: Resolver<ResolversTypes['AccountAxonRemovals'], ParentType, ContextType, RequireFields<QueryAccount_Axon_RemovalsArgs, 'ss58'>>;
   account_balance?: Resolver<Maybe<ResolversTypes['AccountBalance']>, ParentType, ContextType, RequireFields<QueryAccount_BalanceArgs, 'ss58'>>;
   account_children?: Resolver<Maybe<ResolversTypes['AccountChildren']>, ParentType, ContextType, RequireFields<QueryAccount_ChildrenArgs, 'ss58'>>;
+  account_coldkey_swap?: Resolver<ResolversTypes['AccountColdkeySwap'], ParentType, ContextType, RequireFields<QueryAccount_Coldkey_SwapArgs, 'ss58'>>;
   account_counterparties?: Resolver<ResolversTypes['AccountCounterparties'], ParentType, ContextType, RequireFields<QueryAccount_CounterpartiesArgs, 'ss58'>>;
   account_deregistrations?: Resolver<ResolversTypes['AccountDeregistrations'], ParentType, ContextType, RequireFields<QueryAccount_DeregistrationsArgs, 'ss58'>>;
   account_entities?: Resolver<ResolversTypes['AccountEntities'], ParentType, ContextType, RequireFields<QueryAccount_EntitiesArgs, 'ss58'>>;
@@ -12238,11 +13177,14 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   account_history?: Resolver<ResolversTypes['AccountHistory'], ParentType, ContextType, RequireFields<QueryAccount_HistoryArgs, 'ss58'>>;
   account_identity?: Resolver<ResolversTypes['AccountIdentity'], ParentType, ContextType, RequireFields<QueryAccount_IdentityArgs, 'ss58'>>;
   account_identity_history?: Resolver<ResolversTypes['AccountIdentityHistory'], ParentType, ContextType, RequireFields<QueryAccount_Identity_HistoryArgs, 'ss58'>>;
+  account_locks?: Resolver<ResolversTypes['AccountLocks'], ParentType, ContextType, RequireFields<QueryAccount_LocksArgs, 'ss58'>>;
+  account_multisigs?: Resolver<ResolversTypes['AccountMultisigs'], ParentType, ContextType, RequireFields<QueryAccount_MultisigsArgs, 'ss58'>>;
   account_parents?: Resolver<Maybe<ResolversTypes['AccountParents']>, ParentType, ContextType, RequireFields<QueryAccount_ParentsArgs, 'ss58'>>;
   account_portfolio?: Resolver<ResolversTypes['AccountPortfolio'], ParentType, ContextType, RequireFields<QueryAccount_PortfolioArgs, 'ss58'>>;
   account_position_history?: Resolver<ResolversTypes['AccountPositionHistory'], ParentType, ContextType, RequireFields<QueryAccount_Position_HistoryArgs, 'netuid' | 'ss58'>>;
   account_positions?: Resolver<ResolversTypes['AccountPositions'], ParentType, ContextType, RequireFields<QueryAccount_PositionsArgs, 'ss58'>>;
   account_prometheus?: Resolver<ResolversTypes['AccountPrometheus'], ParentType, ContextType, RequireFields<QueryAccount_PrometheusArgs, 'ss58'>>;
+  account_proxies?: Resolver<ResolversTypes['AccountProxies'], ParentType, ContextType, RequireFields<QueryAccount_ProxiesArgs, 'ss58'>>;
   account_registrations?: Resolver<ResolversTypes['AccountRegistrations'], ParentType, ContextType, RequireFields<QueryAccount_RegistrationsArgs, 'ss58'>>;
   account_root_claim?: Resolver<Maybe<ResolversTypes['AccountRootClaim']>, ParentType, ContextType, RequireFields<QueryAccount_Root_ClaimArgs, 'ss58'>>;
   account_serving?: Resolver<ResolversTypes['AccountServing'], ParentType, ContextType, RequireFields<QueryAccount_ServingArgs, 'ss58'>>;
@@ -12318,6 +13260,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   fixture?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryFixtureArgs, 'surface_id'>>;
   fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryFixturesArgs>>;
   freshness?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  gamma_deposits?: Resolver<ResolversTypes['GammaDeposits'], ParentType, ContextType>;
   gaps?: Resolver<ResolversTypes['GapsList'], ParentType, ContextType, Partial<QueryGapsArgs>>;
   global_incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryGlobal_IncidentsArgs>>;
   governance_config_changes?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryGovernance_Config_ChangesArgs>>;
@@ -12332,6 +13275,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   neuron?: Resolver<ResolversTypes['Neuron'], ParentType, ContextType, RequireFields<QueryNeuronArgs, 'netuid' | 'uid'>>;
   neuron_history?: Resolver<ResolversTypes['NeuronHistory'], ParentType, ContextType, RequireFields<QueryNeuron_HistoryArgs, 'netuid' | 'uid'>>;
   opportunity_boards?: Resolver<ResolversTypes['OpportunityBoards'], ParentType, ContextType, Partial<QueryOpportunity_BoardsArgs>>;
+  pending_coldkey_swaps?: Resolver<ResolversTypes['PendingColdkeySwaps'], ParentType, ContextType>;
   profiles?: Resolver<ResolversTypes['ProfileList'], ParentType, ContextType, Partial<QueryProfilesArgs>>;
   provider?: Resolver<Maybe<ResolversTypes['Provider']>, ParentType, ContextType, RequireFields<QueryProviderArgs, 'id'>>;
   provider_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryProvider_EndpointsArgs, 'slug'>>;
@@ -12357,6 +13301,8 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   source_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   source_snapshots?: Resolver<ResolversTypes['SourceSnapshotList'], ParentType, ContextType, Partial<QuerySource_SnapshotsArgs>>;
   subnet?: Resolver<Maybe<ResolversTypes['Subnet']>, ParentType, ContextType, RequireFields<QuerySubnetArgs, 'netuid'>>;
+  subnet_alpha_assets?: Resolver<ResolversTypes['SubnetAlphaAssets'], ParentType, ContextType, RequireFields<QuerySubnet_Alpha_AssetsArgs, 'netuid'>>;
+  subnet_alpha_dividends?: Resolver<ResolversTypes['SubnetAlphaDividends'], ParentType, ContextType, RequireFields<QuerySubnet_Alpha_DividendsArgs, 'netuid'>>;
   subnet_axon_removals?: Resolver<ResolversTypes['SubnetAxonRemovals'], ParentType, ContextType, RequireFields<QuerySubnet_Axon_RemovalsArgs, 'netuid'>>;
   subnet_burn?: Resolver<Maybe<ResolversTypes['SubnetBurn']>, ParentType, ContextType, RequireFields<QuerySubnet_BurnArgs, 'netuid'>>;
   subnet_burn_history?: Resolver<ResolversTypes['SubnetBurnHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Burn_HistoryArgs, 'netuid'>>;
@@ -12372,6 +13318,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
   subnet_events?: Resolver<ResolversTypes['SubnetEvents'], ParentType, ContextType, RequireFields<QuerySubnet_EventsArgs, 'netuid'>>;
   subnet_evidence?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EvidenceArgs, 'netuid'>>;
+  subnet_gamma?: Resolver<ResolversTypes['SubnetGamma'], ParentType, ContextType, RequireFields<QuerySubnet_GammaArgs, 'netuid'>>;
   subnet_gaps?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_GapsArgs, 'netuid'>>;
   subnet_health?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_HealthArgs, 'netuid'>>;
   subnet_health_incidents?: Resolver<ResolversTypes['SubnetHealthIncidents'], ParentType, ContextType, RequireFields<QuerySubnet_Health_IncidentsArgs, 'netuid'>>;
@@ -12386,6 +13333,8 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_lease?: Resolver<Maybe<ResolversTypes['SubnetLease']>, ParentType, ContextType, RequireFields<QuerySubnet_LeaseArgs, 'netuid'>>;
   subnet_lease_history?: Resolver<ResolversTypes['SubnetLeaseHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Lease_HistoryArgs, 'netuid'>>;
   subnet_lifecycle?: Resolver<ResolversTypes['SubnetLifecycle'], ParentType, ContextType, RequireFields<QuerySubnet_LifecycleArgs, 'netuid'>>;
+  subnet_limit_orders?: Resolver<ResolversTypes['SubnetLimitOrders'], ParentType, ContextType, RequireFields<QuerySubnet_Limit_OrdersArgs, 'netuid'>>;
+  subnet_mechanisms?: Resolver<ResolversTypes['SubnetMechanisms'], ParentType, ContextType, RequireFields<QuerySubnet_MechanismsArgs, 'netuid'>>;
   subnet_metagraph?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_MetagraphArgs, 'netuid'>>;
   subnet_miner_fairness?: Resolver<ResolversTypes['SubnetMinerFairness'], ParentType, ContextType, RequireFields<QuerySubnet_Miner_FairnessArgs, 'netuid'>>;
   subnet_movers?: Resolver<ResolversTypes['SubnetMovers'], ParentType, ContextType, Partial<QuerySubnet_MoversArgs>>;
@@ -12401,12 +13350,14 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_recycled?: Resolver<Maybe<ResolversTypes['SubnetRecycled']>, ParentType, ContextType, RequireFields<QuerySubnet_RecycledArgs, 'netuid'>>;
   subnet_registrations?: Resolver<ResolversTypes['SubnetRegistrations'], ParentType, ContextType, RequireFields<QuerySubnet_RegistrationsArgs, 'netuid'>>;
   subnet_revenue?: Resolver<ResolversTypes['SubnetRevenueCard'], ParentType, ContextType, RequireFields<QuerySubnet_RevenueArgs, 'netuid'>>;
+  subnet_services?: Resolver<ResolversTypes['SubnetServices'], ParentType, ContextType, RequireFields<QuerySubnet_ServicesArgs, 'netuid'>>;
   subnet_serving?: Resolver<ResolversTypes['SubnetServing'], ParentType, ContextType, RequireFields<QuerySubnet_ServingArgs, 'netuid'>>;
   subnet_stake_flow?: Resolver<ResolversTypes['SubnetStakeFlow'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_FlowArgs, 'netuid'>>;
   subnet_stake_moves?: Resolver<ResolversTypes['SubnetStakeMoves'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_MovesArgs, 'netuid'>>;
   subnet_stake_quote?: Resolver<ResolversTypes['SubnetStakeQuote'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_QuoteArgs, 'amount' | 'netuid'>>;
   subnet_stake_transfers?: Resolver<ResolversTypes['SubnetStakeTransfers'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_TransfersArgs, 'netuid'>>;
   subnet_surface_history?: Resolver<ResolversTypes['SubnetSurfaceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Surface_HistoryArgs, 'netuid'>>;
+  subnet_swap?: Resolver<ResolversTypes['SubnetSwap'], ParentType, ContextType, RequireFields<QuerySubnet_SwapArgs, 'netuid'>>;
   subnet_trajectory?: Resolver<ResolversTypes['SubnetTrajectory'], ParentType, ContextType, RequireFields<QuerySubnet_TrajectoryArgs, 'netuid'>>;
   subnet_treasury?: Resolver<ResolversTypes['SubnetTreasury'], ParentType, ContextType, RequireFields<QuerySubnet_TreasuryArgs, 'netuid'>>;
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
@@ -12426,6 +13377,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   tao_usd?: Resolver<ResolversTypes['TaoUsd'], ParentType, ContextType, Partial<QueryTao_UsdArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;
+  validator_baskets?: Resolver<ResolversTypes['ValidatorBaskets'], ParentType, ContextType>;
   validator_economics?: Resolver<ResolversTypes['ValidatorEconomicsRanking'], ParentType, ContextType, Partial<QueryValidator_EconomicsArgs>>;
   validator_history?: Resolver<ResolversTypes['ValidatorHistory'], ParentType, ContextType, RequireFields<QueryValidator_HistoryArgs, 'hotkey'>>;
   validator_nominators?: Resolver<ResolversTypes['NominatorList'], ParentType, ContextType, RequireFields<QueryValidator_NominatorsArgs, 'hotkey'>>;
@@ -12767,6 +13719,12 @@ export type ReviewProfileCompletenessListResolvers<ContextType = GqlContext, Par
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type RootClaimBasketClaimsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimBasketClaims'] = ResolversParentTypes['RootClaimBasketClaims']> = ResolversObject<{
+  claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  claims?: Resolver<Array<ResolversTypes['AccountEvent']>, ParentType, ContextType>;
+  covered_since?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type RootClaimCompatibilityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimCompatibility'] = ResolversParentTypes['RootClaimCompatibility']> = ResolversObject<{
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   claim_type_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -13052,6 +14010,15 @@ export type SourceSnapshotsArtifactSummaryResolvers<ContextType = GqlContext, Pa
   verification_result_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type StakeLockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['StakeLock'] = ResolversParentTypes['StakeLock']> = ResolversObject<{
+  amount?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  maturity_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Subnet'] = ResolversParentTypes['Subnet']> = ResolversObject<{
   also_on?: Resolver<Maybe<Array<ResolversTypes['SubnetIndexEntryAlsoOn']>>, ParentType, ContextType>;
   categories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
@@ -13080,6 +14047,35 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   surfaces?: Resolver<Array<ResolversTypes['Surface']>, ParentType, ContextType, Partial<SubnetSurfacesArgs>>;
   symbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaAssetsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaAssets'] = ResolversParentTypes['SubnetAlphaAssets']> = ResolversObject<{
+  alpha_assets?: Resolver<Maybe<ResolversTypes['SubnetAlphaAssetsState']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaAssetsStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaAssetsState'] = ResolversParentTypes['SubnetAlphaAssetsState']> = ResolversObject<{
+  burned?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  recycled?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total_issuance?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaDividendResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaDividend'] = ResolversParentTypes['SubnetAlphaDividend']> = ResolversObject<{
+  alpha_divs?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  root_alpha_divs?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetAlphaDividendsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAlphaDividends'] = ResolversParentTypes['SubnetAlphaDividends']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  dividends?: Resolver<Array<ResolversTypes['SubnetAlphaDividend']>, ParentType, ContextType>;
+  hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAxonRemovals'] = ResolversParentTypes['SubnetAxonRemovals']> = ResolversObject<{
@@ -13444,6 +14440,23 @@ export type SubnetEventsResolvers<ContextType = GqlContext, ParentType extends R
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetGammaResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetGamma'] = ResolversParentTypes['SubnetGamma']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  gamma?: Resolver<Maybe<ResolversTypes['SubnetGammaState']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetGammaStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetGammaState'] = ResolversParentTypes['SubnetGammaState']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  pending_emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  price?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  unconverted_emission?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  whitelisted?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+}>;
+
 export type SubnetHealthResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHealth'] = ResolversParentTypes['SubnetHealth']> = ResolversObject<{
   avg_latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   degraded_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -13646,12 +14659,45 @@ export type SubnetLifecycleEntryResolvers<ContextType = GqlContext, ParentType e
   predates_capture?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
+export type SubnetLimitOrderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLimitOrder'] = ResolversParentTypes['SubnetLimitOrder']> = ResolversObject<{
+  amount?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  order_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  price?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetLimitOrdersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLimitOrders'] = ResolversParentTypes['SubnetLimitOrders']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  order_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  orders?: Resolver<Array<ResolversTypes['SubnetLimitOrder']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetList'] = ResolversParentTypes['SubnetList']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   items?: Resolver<Array<ResolversTypes['Subnet']>, ParentType, ContextType>;
   native_snapshot_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetMechanismResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMechanism'] = ResolversParentTypes['SubnetMechanism']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  consensus_mode?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  emission_split?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  mechid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetMechanismsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMechanisms'] = ResolversParentTypes['SubnetMechanisms']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  mechanism_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  mechanisms?: Resolver<Array<ResolversTypes['SubnetMechanism']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetMinerFairnessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetMinerFairness'] = ResolversParentTypes['SubnetMinerFairness']> = ResolversObject<{
@@ -14166,6 +15212,21 @@ export type SubnetRevenueCardResolvers<ContextType = GqlContext, ParentType exte
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetServiceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetService'] = ResolversParentTypes['SubnetService']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  service_url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  set_at?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type SubnetServicesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServices'] = ResolversParentTypes['SubnetServices']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  service_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  services?: Resolver<Array<ResolversTypes['SubnetService']>, ParentType, ContextType>;
+}>;
+
 export type SubnetServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServing'] = ResolversParentTypes['SubnetServing']> = ResolversObject<{
   announcements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   announcements_per_server?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14233,6 +15294,20 @@ export type SubnetSurfaceHistoryResolvers<ContextType = GqlContext, ParentType e
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetSwapResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetSwap'] = ResolversParentTypes['SubnetSwap']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  swap?: Resolver<Maybe<ResolversTypes['SubnetSwapState']>, ParentType, ContextType>;
+}>;
+
+export type SubnetSwapStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetSwapState'] = ResolversParentTypes['SubnetSwapState']> = ResolversObject<{
+  alpha_reservoir?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  fee_rate?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  tao_reservoir?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetTrajectoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTrajectory'] = ResolversParentTypes['SubnetTrajectory']> = ResolversObject<{
@@ -14443,6 +15518,7 @@ export type SubnetWeightSettersResolvers<ContextType = GqlContext, ParentType ex
 export type SubnetWeightsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetWeights'] = ResolversParentTypes['SubnetWeights']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_setters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  mechid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -14567,10 +15643,12 @@ export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends Resolve
   change_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   latest?: Resolver<Maybe<ResolversTypes['TaoUsdLatest']>, ParentType, ContextType>;
   oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oracle?: Resolver<Maybe<ResolversTypes['TaoUsdOracle']>, ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['TaoUsdPoint']>, ParentType, ContextType>;
   priced_point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   stale?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   stale_after_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -14590,6 +15668,24 @@ export type TaoUsdLatestResolvers<ContextType = GqlContext, ParentType extends R
   pool_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   pools?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdOracleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdOracle'] = ResolversParentTypes['TaoUsdOracle']> = ResolversObject<{
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  fed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  feeds?: Resolver<Array<ResolversTypes['TaoUsdOracleFeed']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oracle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  price_raw?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdOracleFeedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdOracleFeed'] = ResolversParentTypes['TaoUsdOracleFeed']> = ResolversObject<{
+  block_number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
@@ -14689,6 +15785,31 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type ValidatorBasketResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorBasket'] = ResolversParentTypes['ValidatorBasket']> = ResolversObject<{
+  account_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  deposited_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  display_price_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  first_block?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  holdings_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pending_entitlement_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  provisional?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  realizable_nav_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  redeemed_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  shares_atomic?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spot_nav_rao?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  stake_price_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  staker_twr_q64_bits?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  targets_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type ValidatorBasketsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorBaskets'] = ResolversParentTypes['ValidatorBaskets']> = ResolversObject<{
+  baskets?: Resolver<Array<ResolversTypes['ValidatorBasket']>, ParentType, ContextType>;
+  capture?: Resolver<Maybe<ResolversTypes['BasketCapture']>, ParentType, ContextType>;
+  fund_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorComparison'] = ResolversParentTypes['ValidatorComparison']> = ResolversObject<{
@@ -14838,6 +15959,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountChildEntry?: AccountChildEntryResolvers<ContextType>;
   AccountChildSubnet?: AccountChildSubnetResolvers<ContextType>;
   AccountChildren?: AccountChildrenResolvers<ContextType>;
+  AccountColdkeySwap?: AccountColdkeySwapResolvers<ContextType>;
   AccountCounterparties?: AccountCounterpartiesResolvers<ContextType>;
   AccountCounterparty?: AccountCounterpartyResolvers<ContextType>;
   AccountCounterpartyRelationship?: AccountCounterpartyRelationshipResolvers<ContextType>;
@@ -14856,9 +15978,13 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountIdentity?: AccountIdentityResolvers<ContextType>;
   AccountIdentityHistory?: AccountIdentityHistoryResolvers<ContextType>;
   AccountIdentityHistoryEntry?: AccountIdentityHistoryEntryResolvers<ContextType>;
+  AccountKeyLineage?: AccountKeyLineageResolvers<ContextType>;
   AccountLabel?: AccountLabelResolvers<ContextType>;
   AccountList?: AccountListResolvers<ContextType>;
+  AccountLocks?: AccountLocksResolvers<ContextType>;
   AccountModuleCall?: AccountModuleCallResolvers<ContextType>;
+  AccountMultisig?: AccountMultisigResolvers<ContextType>;
+  AccountMultisigs?: AccountMultisigsResolvers<ContextType>;
   AccountOwnershipTie?: AccountOwnershipTieResolvers<ContextType>;
   AccountParentEntry?: AccountParentEntryResolvers<ContextType>;
   AccountParentSubnet?: AccountParentSubnetResolvers<ContextType>;
@@ -14871,6 +15997,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountPositionsDegraded?: AccountPositionsDegradedResolvers<ContextType>;
   AccountPrometheus?: AccountPrometheusResolvers<ContextType>;
   AccountPrometheusSubnet?: AccountPrometheusSubnetResolvers<ContextType>;
+  AccountProxies?: AccountProxiesResolvers<ContextType>;
+  AccountProxy?: AccountProxyResolvers<ContextType>;
   AccountRegistration?: AccountRegistrationResolvers<ContextType>;
   AccountRegistrationSubnet?: AccountRegistrationSubnetResolvers<ContextType>;
   AccountRegistrations?: AccountRegistrationsResolvers<ContextType>;
@@ -14892,6 +16020,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   AttributionEvidence?: AttributionEvidenceResolvers<ContextType>;
+  BasketCapture?: BasketCaptureResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
   BlockChainEventsArtifactEvents?: BlockChainEventsArtifactEventsResolvers<ContextType>;
@@ -14990,6 +16119,13 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChangelogArtifactSubnetsRemoved?: ChangelogArtifactSubnetsRemovedResolvers<ContextType>;
   ChangelogArtifactSubnetsRenamed?: ChangelogArtifactSubnetsRenamedResolvers<ContextType>;
   ChangelogArtifactSummary?: ChangelogArtifactSummaryResolvers<ContextType>;
+  ChildKeyDetail?: ChildKeyDetailResolvers<ContextType>;
+  ChildKeysHistoryEntry?: ChildKeysHistoryEntryResolvers<ContextType>;
+  ChildkeyTakeEntry?: ChildkeyTakeEntryResolvers<ContextType>;
+  ChildkeyThreshold?: ChildkeyThresholdResolvers<ContextType>;
+  ColdkeyLineage?: ColdkeyLineageResolvers<ContextType>;
+  ColdkeySwapAnnouncement?: ColdkeySwapAnnouncementResolvers<ContextType>;
+  ColdkeySwapPolicy?: ColdkeySwapPolicyResolvers<ContextType>;
   Compare?: CompareResolvers<ContextType>;
   CompareEconomics?: CompareEconomicsResolvers<ContextType>;
   CompareHealth?: CompareHealthResolvers<ContextType>;
@@ -15038,12 +16174,15 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   EvidenceLedgerArtifactSummary?: EvidenceLedgerArtifactSummaryResolvers<ContextType>;
   EvidenceList?: EvidenceListResolvers<ContextType>;
   EvmAddressMapping?: EvmAddressMappingResolvers<ContextType>;
+  EvmAssociation?: EvmAssociationResolvers<ContextType>;
   Extrinsic?: ExtrinsicResolvers<ContextType>;
   ExtrinsicDetail?: ExtrinsicDetailResolvers<ContextType>;
   ExtrinsicList?: ExtrinsicListResolvers<ContextType>;
   FailureReason?: FailureReasonResolvers<ContextType>;
   FailureReasons?: FailureReasonsResolvers<ContextType>;
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
+  GammaDeposit?: GammaDepositResolvers<ContextType>;
+  GammaDeposits?: GammaDepositsResolvers<ContextType>;
   Gaps?: GapsResolvers<ContextType>;
   GapsArtifactGaps?: GapsArtifactGapsResolvers<ContextType>;
   GapsArtifactGapsSchemaParity?: GapsArtifactGapsSchemaParityResolvers<ContextType>;
@@ -15060,6 +16199,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs?: HealthPercentilesArtifactSurfacesLatencyMsResolvers<ContextType>;
   HealthProbeSummary?: HealthProbeSummaryResolvers<ContextType>;
   HealthTrends?: HealthTrendsResolvers<ContextType>;
+  HotkeyLineageEntry?: HotkeyLineageEntryResolvers<ContextType>;
   Hyperparameters?: HyperparametersResolvers<ContextType>;
   HyperparamsHistoryEntry?: HyperparamsHistoryEntryResolvers<ContextType>;
   Identity?: IdentityResolvers<ContextType>;
@@ -15083,6 +16223,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   NominatorPosition?: NominatorPositionResolvers<ContextType>;
   OpportunityBoards?: OpportunityBoardsResolvers<ContextType>;
   OpportunityEntry?: OpportunityEntryResolvers<ContextType>;
+  ParentKeyDetail?: ParentKeyDetailResolvers<ContextType>;
+  PendingChildKeyEntry?: PendingChildKeyEntryResolvers<ContextType>;
+  PendingColdkeySwaps?: PendingColdkeySwapsResolvers<ContextType>;
   PipelineHistoryPoint?: PipelineHistoryPointResolvers<ContextType>;
   PoolList?: PoolListResolvers<ContextType>;
   ProfileList?: ProfileListResolvers<ContextType>;
@@ -15113,6 +16256,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ReviewProfileCompletenessArtifactProfiles?: ReviewProfileCompletenessArtifactProfilesResolvers<ContextType>;
   ReviewProfileCompletenessArtifactSummary?: ReviewProfileCompletenessArtifactSummaryResolvers<ContextType>;
   ReviewProfileCompletenessList?: ReviewProfileCompletenessListResolvers<ContextType>;
+  RootClaimBasketClaims?: RootClaimBasketClaimsResolvers<ContextType>;
   RootClaimCompatibility?: RootClaimCompatibilityResolvers<ContextType>;
   RootClaimEntry?: RootClaimEntryResolvers<ContextType>;
   RootClaimHotkey?: RootClaimHotkeyResolvers<ContextType>;
@@ -15143,7 +16287,12 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SourceSnapshotList?: SourceSnapshotListResolvers<ContextType>;
   SourceSnapshotsArtifactSources?: SourceSnapshotsArtifactSourcesResolvers<ContextType>;
   SourceSnapshotsArtifactSummary?: SourceSnapshotsArtifactSummaryResolvers<ContextType>;
+  StakeLock?: StakeLockResolvers<ContextType>;
   Subnet?: SubnetResolvers<ContextType>;
+  SubnetAlphaAssets?: SubnetAlphaAssetsResolvers<ContextType>;
+  SubnetAlphaAssetsState?: SubnetAlphaAssetsStateResolvers<ContextType>;
+  SubnetAlphaDividend?: SubnetAlphaDividendResolvers<ContextType>;
+  SubnetAlphaDividends?: SubnetAlphaDividendsResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
   SubnetBurnHistory?: SubnetBurnHistoryResolvers<ContextType>;
@@ -15175,6 +16324,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
   SubnetEventSummaryArtifactEventKinds?: SubnetEventSummaryArtifactEventKindsResolvers<ContextType>;
   SubnetEvents?: SubnetEventsResolvers<ContextType>;
+  SubnetGamma?: SubnetGammaResolvers<ContextType>;
+  SubnetGammaState?: SubnetGammaStateResolvers<ContextType>;
   SubnetHealth?: SubnetHealthResolvers<ContextType>;
   SubnetHealthIncidents?: SubnetHealthIncidentsResolvers<ContextType>;
   SubnetHealthPercentiles?: SubnetHealthPercentilesResolvers<ContextType>;
@@ -15196,7 +16347,11 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents?: SubnetLeaseHistoryArtifactLeaseEventsResolvers<ContextType>;
   SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
   SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
+  SubnetLimitOrder?: SubnetLimitOrderResolvers<ContextType>;
+  SubnetLimitOrders?: SubnetLimitOrdersResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;
+  SubnetMechanism?: SubnetMechanismResolvers<ContextType>;
+  SubnetMechanisms?: SubnetMechanismsResolvers<ContextType>;
   SubnetMinerFairness?: SubnetMinerFairnessResolvers<ContextType>;
   SubnetMinerFairnessConcentration?: SubnetMinerFairnessConcentrationResolvers<ContextType>;
   SubnetMinerFairnessLive?: SubnetMinerFairnessLiveResolvers<ContextType>;
@@ -15240,12 +16395,16 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetRegistrations?: SubnetRegistrationsResolvers<ContextType>;
   SubnetRevenue?: SubnetRevenueResolvers<ContextType>;
   SubnetRevenueCard?: SubnetRevenueCardResolvers<ContextType>;
+  SubnetService?: SubnetServiceResolvers<ContextType>;
+  SubnetServices?: SubnetServicesResolvers<ContextType>;
   SubnetServing?: SubnetServingResolvers<ContextType>;
   SubnetStakeFlow?: SubnetStakeFlowResolvers<ContextType>;
   SubnetStakeMoves?: SubnetStakeMovesResolvers<ContextType>;
   SubnetStakeQuote?: SubnetStakeQuoteResolvers<ContextType>;
   SubnetStakeTransfers?: SubnetStakeTransfersResolvers<ContextType>;
   SubnetSurfaceHistory?: SubnetSurfaceHistoryResolvers<ContextType>;
+  SubnetSwap?: SubnetSwapResolvers<ContextType>;
+  SubnetSwapState?: SubnetSwapStateResolvers<ContextType>;
   SubnetTrajectory?: SubnetTrajectoryResolvers<ContextType>;
   SubnetTrajectoryDelta?: SubnetTrajectoryDeltaResolvers<ContextType>;
   SubnetTrajectoryPoint?: SubnetTrajectoryPointResolvers<ContextType>;
@@ -15275,6 +16434,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   TaoUsd?: TaoUsdResolvers<ContextType>;
   TaoUsdConversion?: TaoUsdConversionResolvers<ContextType>;
   TaoUsdLatest?: TaoUsdLatestResolvers<ContextType>;
+  TaoUsdOracle?: TaoUsdOracleResolvers<ContextType>;
+  TaoUsdOracleFeed?: TaoUsdOracleFeedResolvers<ContextType>;
   TaoUsdPoint?: TaoUsdPointResolvers<ContextType>;
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;
   TurnoverValidatorChange?: TurnoverValidatorChangeResolvers<ContextType>;
@@ -15285,6 +16446,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   UptimeReliability?: UptimeReliabilityResolvers<ContextType>;
   UptimeSurface?: UptimeSurfaceResolvers<ContextType>;
   Validator?: ValidatorResolvers<ContextType>;
+  ValidatorBasket?: ValidatorBasketResolvers<ContextType>;
+  ValidatorBaskets?: ValidatorBasketsResolvers<ContextType>;
   ValidatorComparison?: ValidatorComparisonResolvers<ContextType>;
   ValidatorEconomicsExclusion?: ValidatorEconomicsExclusionResolvers<ContextType>;
   ValidatorEconomicsHistoryPoint?: ValidatorEconomicsHistoryPointResolvers<ContextType>;

@@ -936,3 +936,33 @@ describe("refreshLiveEconomics", () => {
     assert.ok(stamped >= before && stamped <= Date.now());
   });
 });
+
+test("native live economics reads the aggregate capability before relational ownership", async () => {
+  const aggregateRows = vi.fn(async () => NEURON_ROWS);
+  const queries: string[] = [];
+  const query = async <Row>(text: string) => {
+    queries.push(text);
+    assert(text.includes("FROM subnet_snapshots"));
+    return HISTORY_ROWS as Row[];
+  };
+  const { env, readArtifact, puts } = harness({
+    env: {
+      NEURON_AGGREGATE_STORE: { aggregateRows },
+      NATIVE_READ_STORE: {
+        tables: ["subnet_snapshots"],
+        store: { query, first: async () => null },
+      },
+    },
+  });
+  const { impl } = chainFetch(defaultChain());
+  const result = await refreshLiveEconomics(env, {
+    readArtifact,
+    fetchImpl: impl,
+    now: NOW,
+    timeoutMs: 5000,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(puts.length, 1);
+  assert.equal(aggregateRows.mock.calls.length, 1);
+  assert.equal(queries.length, 1);
+});

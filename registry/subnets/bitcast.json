@@ -292,9 +292,9 @@
       "id": "sn-93-bitcast-min-compute-spec",
       "kind": "data-artifact",
       "name": "Bitcast minimum compute requirements",
-      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official bitcast-network/bitcast repository as min_compute.yml. Documents baseline CPU and RAM requirements for SN93 YouTube-token miners and validators.",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official bitcast-network/bitcast repository as min_compute.yml. Documents baseline CPU and RAM requirements for SN93 YouTube-token miners and validators. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -317,7 +317,7 @@
       "id": "sn-93-bitcast-whitepaper-docs",
       "kind": "docs",
       "name": "Bitcast whitepaper",
-      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design \u2014 content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
+      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design — content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -461,7 +461,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-competitor-campaigns",
       "kind": "subnet-api",
       "name": "Bitcast List Competitor Campaigns",
-      "notes": "Public no-auth GET /api/v2/admin/competitor-campaigns on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (not in the live-verified public fixed-GET set).",
+      "notes": "Public no-auth GET /api/v2/admin/competitor-campaigns on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (not in the live-verified public fixed-GET set).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -486,7 +486,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-competitor-platforms",
       "kind": "subnet-api",
       "name": "Bitcast List Competitor Platforms",
-      "notes": "Public no-auth GET /api/v2/admin/competitor-platforms on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "notes": "Public no-auth GET /api/v2/admin/competitor-platforms on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -511,7 +511,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-orgs",
       "kind": "subnet-api",
       "name": "Bitcast List Orgs",
-      "notes": "Public no-auth GET/POST /api/v2/admin/orgs on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -536,7 +536,7 @@
       "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id",
       "kind": "subnet-api",
       "name": "Bitcast Update Org",
-      "notes": "Public no-auth PUT /api/v2/admin/orgs/{org_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth PUT /api/v2/admin/orgs/{org_id} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -561,7 +561,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-briefs",
       "kind": "subnet-api",
       "name": "Bitcast List Org Briefs",
-      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/briefs on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/briefs on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -586,7 +586,7 @@
       "id": "sn-93-bitcast-delete-api-v2-admin-orgs-org-id-briefs-brief-id",
       "kind": "subnet-api",
       "name": "Bitcast Unassign Brief From Org",
-      "notes": "Public no-auth DELETE /api/v2/admin/orgs/{org_id}/briefs/{brief_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth DELETE /api/v2/admin/orgs/{org_id}/briefs/{brief_id} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -611,7 +611,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-campaign-groups",
       "kind": "subnet-api",
       "name": "Bitcast List Campaign Groups",
-      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/campaign-groups on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/campaign-groups on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -636,7 +636,7 @@
       "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-campaign-groups-group-id",
       "kind": "subnet-api",
       "name": "Bitcast Update Campaign Group",
-      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/campaign-groups/{group_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/campaign-groups/{group_id} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -661,7 +661,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-config",
       "kind": "subnet-api",
       "name": "Bitcast List Attention Config",
-      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/config on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/config on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -686,7 +686,7 @@
       "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-config-config-id",
       "kind": "subnet-api",
       "name": "Bitcast Update Attention Handle",
-      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/config/{config_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/config/{config_id} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -711,7 +711,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-members",
       "kind": "subnet-api",
       "name": "Bitcast List Members",
-      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/members on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/members on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -736,7 +736,7 @@
       "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-members-member-id",
       "kind": "subnet-api",
       "name": "Bitcast Update Member",
-      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/members/{member_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/members/{member_id} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -823,7 +823,7 @@
       "id": "sn-93-bitcast-get-api-v2-admin-watchlist",
       "kind": "subnet-api",
       "name": "Bitcast List Watchlist",
-      "notes": "Public no-auth GET/POST /api/v2/admin/watchlist on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "notes": "Public no-auth GET/POST /api/v2/admin/watchlist on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -848,7 +848,7 @@
       "id": "sn-93-bitcast-delete-api-v2-admin-watchlist-handle",
       "kind": "subnet-api",
       "name": "Bitcast Remove From Watchlist",
-      "notes": "Public no-auth DELETE /api/v2/admin/watchlist/{handle} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth DELETE /api/v2/admin/watchlist/{handle} on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -873,7 +873,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-forgot-password",
       "kind": "subnet-api",
       "name": "Bitcast Request password reset",
-      "notes": "Public no-auth POST /api/v2/auth/forgot-password on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/forgot-password on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -898,7 +898,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-google",
       "kind": "subnet-api",
       "name": "Bitcast Exchange Google ID token for JWT",
-      "notes": "Public no-auth POST /api/v2/auth/google on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/google on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -955,7 +955,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-login",
       "kind": "subnet-api",
       "name": "Bitcast Email/password login",
-      "notes": "Public no-auth POST /api/v2/auth/login on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/login on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1044,7 +1044,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-register",
       "kind": "subnet-api",
       "name": "Bitcast Register via Google OAuth",
-      "notes": "Public no-auth POST /api/v2/auth/register on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/register on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1069,7 +1069,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-register-email",
       "kind": "subnet-api",
       "name": "Bitcast Register via email/password",
-      "notes": "Public no-auth POST /api/v2/auth/register-email on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/register-email on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1094,7 +1094,7 @@
       "id": "sn-93-bitcast-post-api-v2-auth-reset-password",
       "kind": "subnet-api",
       "name": "Bitcast Reset password",
-      "notes": "Public no-auth POST /api/v2/auth/reset-password on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "notes": "Public no-auth POST /api/v2/auth/reset-password on bitcast-api.bitcast.network — OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1187,7 +1187,7 @@
       "id": "sn-93-bitcast-get-api-v2-brand-x-handle-analytics",
       "kind": "subnet-api",
       "name": "Bitcast Legacy alias for /watchlist-tweets",
-      "notes": "Auth-gated GET /api/v2/brand/x-handle-analytics on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "notes": "Auth-gated GET /api/v2/brand/x-handle-analytics on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2166,7 +2166,7 @@
       "id": "sn-93-bitcast-post-api-v2-twitter-briefs-brief-id-topup",
       "kind": "subnet-api",
       "name": "Bitcast Top up an existing brief with additional funding",
-      "notes": "Auth-gated POST /api/v2/twitter/briefs/{brief_id}/topup on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "notes": "Auth-gated POST /api/v2/twitter/briefs/{brief_id}/topup on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2321,7 +2321,7 @@
       "id": "sn-93-bitcast-post-api-v2-twitter-funding-funding-id-cancel",
       "kind": "subnet-api",
       "name": "Bitcast Cancel a pending funding record",
-      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/cancel on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/cancel on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2352,7 +2352,7 @@
       "id": "sn-93-bitcast-post-api-v2-twitter-funding-funding-id-payment",
       "kind": "subnet-api",
       "name": "Bitcast Submit payment transaction hash and block number",
-      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/payment on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/payment on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -2600,7 +2600,7 @@
       "id": "sn-93-bitcast-get-api-v2-users-registration-status",
       "kind": "subnet-api",
       "name": "Bitcast Get Registration Status",
-      "notes": "Auth-gated GET /api/v2/users/registration-status on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "notes": "Auth-gated GET /api/v2/users/registration-status on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -4051,5 +4051,5 @@
       "url": "https://bitcast-api.bitcast.network/api/v2/youtube/videos/%7Bbitcast_video_id%7D"
     }
   ],
-  "website_url": "https://www.bitcast.network/"
+  "website_url": "https://stats.bitcast.network/"
 }

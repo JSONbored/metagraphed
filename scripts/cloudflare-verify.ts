@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { cloudflareObservabilityErrors } from "./cloudflare-observability-policy.ts";
 import {
   readJson,
   repoRoot,
@@ -90,10 +91,37 @@ check(
   (config.vars as Row | undefined)?.METAGRAPH_R2_LATEST_PREFIX === "latest/",
   "R2 latest prefix must default to latest/",
 );
-check(
-  (config.observability as Row | undefined)?.enabled === true,
-  "observability must be enabled",
+for (const configFile of [
+  "wrangler.jsonc",
+  "wrangler.data.jsonc",
+  "wrangler.registry.jsonc",
+  "wrangler.wss-lb.jsonc",
+  "apps/ui/wrangler.jsonc",
+]) {
+  const workerConfig: Row = JSON.parse(
+    stripJsonComments(
+      await fs.readFile(path.join(repoRoot, configFile), "utf8"),
+    ),
+  );
+  errors.push(
+    ...cloudflareObservabilityErrors(workerConfig).map(
+      (error) => `${configFile}: ${error}`,
+    ),
+  );
+}
+const previewAction = await fs.readFile(
+  path.join(repoRoot, ".github/actions/deploy-ui-preview/action.yml"),
+  "utf8",
 );
+const previewConfig = previewAction.match(/<<'JSON'\n([\s\S]*?)\n\s*JSON\n/);
+check(Boolean(previewConfig), "trusted UI preview config must be present");
+if (previewConfig) {
+  errors.push(
+    ...cloudflareObservabilityErrors(JSON.parse(previewConfig[1]!)).map(
+      (error) => `trusted UI preview: ${error}`,
+    ),
+  );
+}
 const dataConfig: Row = JSON.parse(
   stripJsonComments(
     await fs.readFile(path.join(repoRoot, "wrangler.data.jsonc"), "utf8"),

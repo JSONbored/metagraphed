@@ -617,6 +617,78 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-mechanisms",
+      "path": "/metagraph/subnets/{netuid}/mechanisms.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetMechanismsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-alpha-dividends",
+      "path": "/metagraph/subnets/{netuid}/alpha-dividends.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetAlphaDividendsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-gamma",
+      "path": "/metagraph/subnets/{netuid}/gamma.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetGammaArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-gamma-history",
+      "path": "/metagraph/subnets/{netuid}/gamma/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetGammaHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-services",
+      "path": "/metagraph/subnets/{netuid}/services.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetServicesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-swap",
+      "path": "/metagraph/subnets/{netuid}/swap.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetSwapArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-alpha-assets",
+      "path": "/metagraph/subnets/{netuid}/alpha-assets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetAlphaAssetsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-limit-orders",
+      "path": "/metagraph/subnets/{netuid}/limit-orders.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLimitOrdersArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-weight-setters",
       "path": "/metagraph/subnets/{netuid}/weights/setters.json",
       "retirement": null,
@@ -828,6 +900,42 @@
       "path": "/metagraph/validators/{hotkey}/history.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/ValidatorHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-baskets",
+      "path": "/metagraph/chain/baskets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-gamma",
+      "path": "/metagraph/chain/gamma.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainGammaArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "gamma-deposits",
+      "path": "/metagraph/gamma/deposits.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/GammaDepositsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "validator-basket",
+      "path": "/metagraph/validators/{hotkey}/basket.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorBasketArtifact",
       "status": "live",
       "storage_tier": "r2"
     },
@@ -1206,6 +1314,51 @@
       "path": "/metagraph/accounts/{ss58}/root-claim.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/AccountRootClaimArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-locks",
+      "path": "/metagraph/accounts/{ss58}/locks.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountLocksArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "pending-coldkey-swaps",
+      "path": "/metagraph/accounts/pending-coldkey-swaps.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/PendingColdkeySwapsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-coldkey-swap",
+      "path": "/metagraph/accounts/{ss58}/coldkey-swap.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountColdkeySwapArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-proxies",
+      "path": "/metagraph/accounts/{ss58}/proxies.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountProxiesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-multisigs",
+      "path": "/metagraph/accounts/{ss58}/multisigs.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountMultisigsArtifact",
       "status": "live",
       "storage_tier": "r2"
     },
@@ -2606,7 +2759,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 174,
+    "mainnet_only_route_count": 191,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7795,6 +7948,134 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/mechanisms.json",
+      "cache": "short",
+      "description": "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).",
+      "id": "subnet-mechanisms",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/mechanisms",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/alpha-dividends.json",
+      "cache": "short",
+      "description": "Fetch one subnet's pending alpha dividend accrual (#13163): each hotkey's pending alpha dividends (SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends (RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal strings with their capture stamp, largest alpha_divs first. Served live from the dividends store; until the engine's dividend capture lands the registry holds no rows and the response is the schema-stable decline — an empty dividends array with hotkey_count null, never 0, because an empty registry is not a measured zero accrual.",
+      "id": "subnet-alpha-dividends",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/alpha-dividends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/gamma.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until the engine's Gamma capture lands the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.",
+      "id": "subnet-gamma",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/gamma",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/gamma/history.json",
+      "cache": "short",
+      "description": "Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.",
+      "id": "subnet-gamma-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/gamma/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/services.json",
+      "cache": "short",
+      "description": "Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.",
+      "id": "subnet-services",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/services",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/swap.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current balancer-based Swap state (#13165, runtime v490): the pool's TAO and alpha reservoirs (Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 atomic units in decimal strings, and the raw u16 fee rate (Swap.FeeRate, served verbatim — the engine's decode owns the scaling), with their capture stamp. Served live from the swap store; until the engine's balancer capture lands the store holds no rows and the response is the schema-stable decline — swap null, never a zeroed state, because an absent capture is not a measured empty pool.",
+      "id": "subnet-swap",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/swap",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/alpha-assets.json",
+      "cache": "short",
+      "description": "Fetch one subnet's current AlphaAssets accounting (#13165, runtime v490): total alpha issuance and its burn/recycle sinks (AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal strings, with their capture stamp. Served live from the alpha-assets store; until the engine's alpha-assets capture lands the store holds no rows and the response is the schema-stable decline — alpha_assets null, never a zeroed state, because an absent capture is not a measured zero issuance.",
+      "id": "subnet-alpha-assets",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/alpha-assets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/limit-orders.json",
+      "cache": "short",
+      "description": "Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped. Served live from the limit-orders store; until the engine's order-book capture lands the book holds no rows and the response is the schema-stable decline — an empty orders array with order_count null, never 0, because an empty book is not a measured order-less subnet.",
+      "id": "subnet-limit-orders",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/limit-orders",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/weights.json",
       "cache": "short",
       "description": "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
@@ -7818,6 +8099,15 @@
               "30d"
             ],
             "type": "string"
+          }
+        },
+        {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]
@@ -8707,6 +8997,70 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/chain/baskets.json",
+      "cache": "short",
+      "description": "Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.",
+      "id": "chain-baskets",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/baskets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/gamma.json",
+      "cache": "short",
+      "description": "Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.",
+      "id": "chain-gamma",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/gamma",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/gamma/deposits.json",
+      "cache": "short",
+      "description": "Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until the engine's GammaDeposits capture lands the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.",
+      "id": "gamma-deposits",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/gamma/deposits",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/validators/{hotkey}/basket.json",
+      "cache": "short",
+      "description": "Fetch one validator's Root basket fund with its holdings (per-netuid quantities and rao valuations) and target allocations at the newest completed capture (#13163). Served live from the Root basket capture store; basket null with a PRESENT capture is a measurement — the completed capture enumerates every fund and this hotkey holds none — while a null capture is the decline (no store bound, or no completed capture yet). Returns 400 on an invalid ss58 hotkey.",
+      "id": "validator-basket",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/validators/{hotkey}/basket",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
       "cache": "short",
       "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set.",
@@ -8728,6 +9082,15 @@
               "true"
             ],
             "type": "string"
+          }
+        },
+        {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
           }
         },
         {
@@ -8766,6 +9129,15 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": [
+        {
+          "description": "Mechanism (sub-subnet) id to scope to, echoed back as `mechid` on the response. Omit it for the same rows unscoped. 0 -- today's only captured mechanism -- is the only accepted value until mechanism-aware capture lands (#13162); the ceiling widens then.",
+          "name": "mechid",
+          "schema": {
+            "maximum": 0,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         {
           "name": "fields",
           "schema": {
@@ -10243,7 +10615,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/root-claim.json",
       "cache": "short",
-      "description": "Read deprecated per-subnet Root-claim state with explicit runtime compatibility. Only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null. Runtime and legacy storage are pinned to a finalized block; the runtime is checked before the 120s KV cache. Returns 400 on invalid ss58. This does not report native basket entitlement or submit a claim.",
+      "description": "Read one account's Root-claim currency across both eras. The legacy block: deprecated per-subnet state with explicit runtime compatibility — only audited node-subtensor v440 is supported; v441+ reports unsupported, other runtimes or failed reads unavailable, with claim_type/hotkeys null; runtime and legacy storage are pinned to a finalized block, checked before the 120s KV cache. The current era (#13163): basket_claims carries the newest BasketClaimed / BasketClaimDustSkipped events from the ingested event stream with the store's coverage floor — claims flow through Basket* events since Root Reborn (v441), and basket STATE (shares, NAV, holdings) lives on the REST surfaces /api/v1/chain/baskets and /api/v1/validators/{hotkey}/basket. Returns 400 on invalid ss58. Read-only; never submits a claim.",
       "id": "account-root-claim",
       "mainnet_only": false,
       "method": "GET",
@@ -10260,9 +10632,89 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/accounts/{ss58}/locks.json",
+      "cache": "short",
+      "description": "Fetch one account's conviction-lock state (#13163): each lock's hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / DecayingLock / OwnerLock and their decaying variants, spelled as the chain spells them), locked amount (u64 atomic units as a decimal string) and maturity block with its capture stamp, ordered by (netuid, hotkey, kind). Served live from the locks store; until the engine's lock capture lands the state holds no rows and the response is the schema-stable decline — an empty locks array with lock_count null, never 0, because an empty list is not a measured lock-free account. Returns 400 on invalid ss58.",
+      "id": "account-locks",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/locks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/pending-coldkey-swaps.json",
+      "cache": "short",
+      "description": "Fetch every in-flight v2 coldkey-swap announcement (#13166): each announcing account with its reserved destination (SubtensorModule.ColdkeySwapReservedDestination), commitment hash and execute block (ColdkeySwapAnnouncements), dispute state (ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) and capture stamp, soonest-executable first, beside the chain-wide announcement/reannouncement delays. Served live from the coldkey-swaps store; until the engine's swap capture lands the state holds no rows and the response is the schema-stable decline — an empty swaps array with swap_count null (never 0, because an empty list is not a measured swap-free chain) and a null policy.",
+      "id": "pending-coldkey-swaps",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/pending-coldkey-swaps",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/coldkey-swap.json",
+      "cache": "short",
+      "description": "Fetch one account's v2 coldkey-swap state and key successor lineage (#13166): its in-flight announcement (SubtensorModule.ColdkeySwapAnnouncements and its dispute/reservation/policy companions), the global coldkey-swap successor/root lineage (ColdkeySuccessor / ColdkeyRoot) and the per-subnet hotkey-swap successor/root lineage (HotkeySuccessor / HotkeyRoot), with capture stamps. Served live from the coldkey-swaps store; until the engine's swap and lineage captures land every block declines to null and hotkey_count stays null over an empty list — never 0, because an empty capture is not a measured never-swapped account. Returns 400 on invalid ss58.",
+      "id": "account-coldkey-swap",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/coldkey-swap",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/proxies.json",
+      "cache": "short",
+      "description": "Fetch one account's Proxy-pallet delegation state (#13166): each proxy definition's delegate, variant (the chain's 23-and-growing enum, spelled as the chain spells it) and announcement delay with its capture stamp, ordered by (delegate, proxy_type, delay), plus the account-level reserve (u64 atomic units as a decimal string). Served live from the proxies store; until the engine's Proxy.Proxies capture lands the state holds no rows and the response is the schema-stable decline — an empty proxies array with proxy_count null, never 0, because an empty list is not a measured delegation-free account. Returns 400 on invalid ss58.",
+      "id": "account-proxies",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/proxies",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/multisigs.json",
+      "cache": "short",
+      "description": "Fetch every multisig an account belongs to (#13166) — as the multisig account itself or as a signatory — each with its resolved signatory set, approval threshold, which side of the membership matched and the capture stamp, ordered by multisig address and store-capped. Served live from the multisigs store; until the engine's Multisig call/event capture lands the state holds no rows and the response is the schema-stable decline — an empty multisigs array with multisig_count null, never 0, because an empty list is not a measured multisig-free account. Returns 400 on invalid ss58.",
+      "id": "account-multisigs",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/accounts/{ss58}/multisigs",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/accounts/{ss58}/children.json",
       "cache": "short",
-      "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows, its PendingChildKeys queue, its threshold bookkeeping and the ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-children",
       "mainnet_only": false,
       "method": "GET",
@@ -10281,7 +10733,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/parents.json",
       "cache": "short",
-      "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. The child_key_detail block beside the graph carries the STORED per-hotkey detail (#13166): the account's ChildkeyTake rows and its child-keyed ChildKeys capture history, read from the child-keys store — null until the engine's child-key capture lands, and on any testnet-addressed read.",
       "id": "account-parents",
       "mainnet_only": false,
       "method": "GET",
@@ -10300,7 +10752,7 @@
     {
       "artifact_path": "/metagraph/evm/address/{h160}.json",
       "cache": "short",
-      "description": "Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.",
+      "description": "Fetch the H160 -> SS58 address mapping for one EVM address (#6725/#6728; #13165). The stored on-chain association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated) answers when the engine's capture holds the key's owning ss58 — with its capture history in `associations`, newest first and store-capped — otherwise the live AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache; `source` says which path answered. ss58 is null when neither resolves. associations is empty with association_count null until the engine's capture lands: an empty list is not a measured never-associated key, so a zero count is never published.",
       "id": "evm-address-mapping",
       "mainnet_only": false,
       "method": "GET",
@@ -10338,7 +10790,7 @@
     {
       "artifact_path": "/metagraph/network/tao-usd.json",
       "cache": "short",
-      "description": "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
+      "description": "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until the engine's oracle capture lands -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
       "id": "tao-usd",
       "mainnet_only": true,
       "method": "GET",

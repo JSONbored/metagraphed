@@ -49,6 +49,10 @@ export interface LaneHealthStoreDeps {
   clientFactory?: (connectionString: string) => LaneHealthPgClient;
 }
 
+export interface LaneHealthStoreEnv {
+  LANE_HEALTH_STORE?: LaneHealthDb;
+}
+
 /** A LaneHealthDb over Postgres, one connection per operation. */
 export function pgLaneHealthDb(
   connectionString: string,
@@ -90,7 +94,7 @@ export function pgLaneHealthDb(
  * The store lane_health verdicts should be written to and read from.
  *
  * `injected` wins outright so tests keep handing in their own fake. Otherwise
- * Explicit D1 ownership wins next; otherwise Hyperdrive remains the owner --
+ * An explicit native capability wins next, followed by D1 ownership and Hyperdrive --
  * `undefined` when it is not, which recordLaneVerdict already treats as "no
  * store" rather than as an error.
  */
@@ -104,6 +108,11 @@ export function laneHealthStore(
   deps: LaneHealthStoreDeps = {},
 ): LaneHealthDb | undefined {
   if (injected) return injected;
+  const native =
+    env && typeof env === "object"
+      ? (env as LaneHealthStoreEnv).LANE_HEALTH_STORE
+      : undefined;
+  if (native) return native;
   const d1 = selectedD1Store(env, ["lane_health"]);
   if (d1) {
     let readiness: Promise<boolean> | undefined;

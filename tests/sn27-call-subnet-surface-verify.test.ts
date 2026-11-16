@@ -2,7 +2,7 @@
 // tool (metagraphed#7043, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN27's *real* registry surface config
-// (registry/subnets/ni-compute.json) to the tool's contract, so a future edit
+// (registry/subnets/komms.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping to HEAD, marking it auth_required,
 // disabling its probe, moving the URL) is caught here.
 //
@@ -26,9 +26,7 @@ const SURFACE_ID = "sn-27-taomarketcap-subnet-api";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/ni-compute.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/komms.json", import.meta.url)),
     "utf8",
   ),
 );

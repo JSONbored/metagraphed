@@ -322,6 +322,54 @@ describe("runRawCaptureSync — refusal paths", () => {
 });
 
 describe("runRawCaptureSync — capture", () => {
+  test("native storage captures without legacy bindings and never advances after a failed byte write", async () => {
+    const { env, puts } = envWith();
+    const frontiers = new Map<string, number>();
+    let fail = false;
+    const nativeEnv = {
+      ...env,
+      D1_STATE: undefined,
+      HYPERDRIVE: undefined,
+      RAW_CAPTURE_STORAGE: "postgresql",
+      NATIVE_RAW_CAPTURE: {
+        store: {
+          async put(key: string, value: string) {
+            if (fail) throw new Error("fixture byte storage failed");
+            puts.set(key, value);
+          },
+        },
+        watermark(network: string) {
+          return {
+            read: async () => frontiers.get(network) ?? null,
+            write: async (value: number) => {
+              frontiers.set(network, value);
+            },
+          };
+        },
+      },
+    };
+    const result = await runRawCaptureSync(nativeEnv, {
+      sleepFn: noSleep,
+      ctx: CTX,
+      now: () => 5000,
+      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
+      recordException: async () => false,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(frontiers.get("mainnet"), RAW_CAPTURE_GENESIS_FLOOR + 2);
+    assert.equal(puts.size, 1);
+    fail = true;
+    await runRawCaptureSync(nativeEnv, {
+      sleepFn: noSleep,
+      ctx: CTX,
+      now: () => 6000,
+      fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 5),
+      recordException: async () => false,
+    });
+    assert.equal(frontiers.get("mainnet"), RAW_CAPTURE_GENESIS_FLOOR + 2);
+    assert.equal(puts.size, 1);
+  });
+
   test("explicit D1 selection captures without an R2 binding and advances only its committed watermark", async () => {
     const { env } = envWith({
       RAW_CAPTURE_STORAGE: "d1",

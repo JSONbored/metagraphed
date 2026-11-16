@@ -39,10 +39,7 @@ vi.mock("@cloudflare/workers-oauth-provider", () => ({
 }));
 
 async function entryHandler() {
-  return (await import("../workers/api.entry.ts")).default as Record<
-    string,
-    unknown
-  >;
+  return { ...(await import("../workers/api.entry.ts")).default };
 }
 
 async function rawHandler() {
@@ -98,5 +95,60 @@ describe("api.entry handler parity", () => {
       "webhook-deliveries",
       "the batch must arrive unmodified — the DLQ branch in api.ts keys off it",
     );
+  });
+
+  // The state-source seam (#13171). The entry resolves env through
+  // src/hyperdrive-state-bindings.ts ONLY when METAGRAPH_STATE_SOURCE is
+  // present, and that module changes nothing without the full opt-in — so in
+  // every configuration that exists today, the application receives the
+  // IDENTICAL env object it always did.
+  test("scheduled and queue pass the identical env through without the selector", async () => {
+    const entry = await entryHandler();
+    const received: unknown[] = [];
+    const handler = await rawHandler();
+    const originals = { scheduled: handler.scheduled, queue: handler.queue };
+    handler.scheduled = async (_: unknown, env: unknown) => {
+      received.push(env);
+    };
+    handler.queue = async (_: unknown, env: unknown) => {
+      received.push(env);
+    };
+    const environments = [
+      {}, // no selector at all — every deployed config today
+      { METAGRAPH_STATE_SOURCE: "d1" }, // selector present, not "hyperdrive"
+      { METAGRAPH_STATE_SOURCE: "hyperdrive" }, // selected, but no HYPERDRIVE
+    ];
+    try {
+      for (const env of environments) {
+        await (
+          entry.scheduled as (
+            e: unknown,
+            n: unknown,
+            c: unknown,
+          ) => Promise<unknown>
+        )({ cron: "" }, env, {});
+        await (
+          entry.queue as (b: unknown, e: unknown, c: unknown) => Promise<void>
+        )({ queue: "webhook-deliveries", messages: [] }, env, {});
+      }
+    } finally {
+      handler.scheduled = originals.scheduled;
+      handler.queue = originals.queue;
+    }
+    const expected = environments.flatMap((env) => [env, env]);
+    assert.equal(received.length, expected.length);
+    for (const [index, env] of expected.entries())
+      assert.equal(
+        received[index],
+        env,
+        "each env object must reach the application unchanged AND identical -- " +
+          "the dark path never clones or augments it",
+      );
+    for (const env of environments)
+      assert.equal(
+        "LANE_HEALTH_STORE" in env,
+        false,
+        "the seam must not fill store keys without the full opt-in",
+      );
   });
 });

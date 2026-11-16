@@ -54,6 +54,11 @@ import type {
   OAuthProviderOptions,
 } from "@cloudflare/workers-oauth-provider";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "./api-key-validation.ts";
+import {
+  consumeKvText,
+  oauthPendingKv,
+  type OAuthPendingEnv,
+} from "./app-kv.ts";
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -283,16 +288,15 @@ export const isAnonymousMcpRequest = isNonOAuthMcpRequest;
 // real Workers runtime: the package's own runtime file does
 // `import ... from "cloudflare:workers"` at module scope (confirmed against
 // dist/oauth-provider.js, not just its .d.ts), a protocol plain Node
-// doesn't implement. Both real routes
-// (handleAuthorizeRequest/handleGithubOAuthCallback) accept an injectable
-// deps.getHelpers precisely so their own logic stays fully covered without
-// this function ever running in a test.
-/* v8 ignore start */
-async function defaultGetOAuthHelpers(env: Env): Promise<OAuthHelpers> {
+// doesn't implement. Native composition supplies OAUTH_PROVIDER explicitly;
+// Worker deployments retain the lazy import. Tests can also inject getHelpers.
+async function defaultGetOAuthHelpers(
+  env: Env & { OAUTH_PROVIDER?: OAuthHelpers },
+): Promise<OAuthHelpers> {
+  if (env.OAUTH_PROVIDER) return env.OAUTH_PROVIDER;
   const { getOAuthApi } = await import("@cloudflare/workers-oauth-provider");
   return getOAuthApi(buildOAuthProviderOptions(UNUSED_DEFAULT_HANDLER), env);
 }
-/* v8 ignore stop */
 
 function randomNonce(): string {
   const bytes = new Uint8Array(24);
@@ -310,10 +314,11 @@ interface GithubOAuthDeps {
 /** GET /authorize -- parse the incoming OAuth request, stash it, hand off to GitHub. */
 export async function handleAuthorizeRequest(
   request: Request,
-  env: Env,
+  env: Env & OAuthPendingEnv,
   deps: GithubOAuthDeps = {},
 ): Promise<Response> {
-  if (!env.OAUTH_KV) {
+  const pendingStore = oauthPendingKv(env);
+  if (!pendingStore) {
     return new Response("oauth is not provisioned on this deployment", {
       status: 503,
     });
@@ -339,7 +344,7 @@ export async function handleAuthorizeRequest(
     return new Response("unknown client_id", { status: 400 });
   }
   const nonce = randomNonce();
-  await env.OAUTH_KV.put(
+  await pendingStore.put(
     `${OAUTH_PENDING_KV_PREFIX}${nonce}`,
     JSON.stringify(authRequest),
     { expirationTtl: OAUTH_PENDING_TTL_SECONDS },
@@ -404,9 +409,10 @@ function stringOrNull(value: unknown): string | null {
  */
 export async function handleAuthorizeConsent(
   request: Request,
-  env: Env,
+  env: Env & OAuthPendingEnv,
 ): Promise<Response> {
-  if (!env.OAUTH_KV || !env.GITHUB_OAUTH_CLIENT_ID) {
+  const pendingStore = oauthPendingKv(env);
+  if (!pendingStore || !env.GITHUB_OAUTH_CLIENT_ID) {
     return new Response("oauth is not provisioned on this deployment", {
       status: 503,
     });
@@ -418,7 +424,7 @@ export async function handleAuthorizeConsent(
   }
   // The nonce must name a request WE stashed. That is what stops a forged POST
   // from starting a grant for a client the user never saw.
-  const pending = await env.OAUTH_KV.get(`${OAUTH_PENDING_KV_PREFIX}${nonce}`, {
+  const pending = await pendingStore.get(`${OAUTH_PENDING_KV_PREFIX}${nonce}`, {
     type: "json",
   });
   if (!pending) {
@@ -439,11 +445,12 @@ export async function handleAuthorizeConsent(
 /** GET /oauth/callback/github -- GitHub's redirect back after the user authorizes. */
 export async function handleGithubOAuthCallback(
   request: Request,
-  env: Env,
+  env: Env & OAuthPendingEnv,
   deps: GithubOAuthDeps = {},
 ): Promise<Response> {
+  const pendingStore = oauthPendingKv(env);
   if (
-    !env.OAUTH_KV ||
+    !pendingStore ||
     !env.GITHUB_OAUTH_CLIENT_ID ||
     !env.GITHUB_OAUTH_CLIENT_SECRET
   ) {
@@ -458,7 +465,7 @@ export async function handleGithubOAuthCallback(
     return new Response("missing code or state", { status: 400 });
   }
   const pendingKey = `${OAUTH_PENDING_KV_PREFIX}${state}`;
-  const pendingRaw = await env.OAUTH_KV.get(pendingKey);
+  const pendingRaw = await consumeKvText(pendingStore, pendingKey);
   if (!pendingRaw) {
     return new Response("expired or unknown state -- restart the login", {
       status: 400,
@@ -467,7 +474,6 @@ export async function handleGithubOAuthCallback(
   // Single-use: delete before doing any further work so a replayed callback
   // (browser back-button, a proxy retrying the GET) can't complete twice
   // against the same pending request.
-  await env.OAUTH_KV.delete(pendingKey);
   let authRequest: AuthRequest;
   try {
     authRequest = JSON.parse(pendingRaw);

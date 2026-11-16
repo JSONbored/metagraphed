@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 // Daily schema-snapshot baseline capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the last retirement of a
 // PR-based sync lane.
@@ -374,7 +374,7 @@ export async function runSchemaSnapshotsSync(
   ctx?: Ctx,
   deps: SchemaSnapshotsSyncDeps = {},
 ): Promise<SchemaSnapshotsSyncResult> {
-  const store = generatedArtifactStore(env.D1_STATE);
+  const store = selectedGeneratedArtifactStore(env);
   if (!store) {
     console.error(
       "[schema-snapshots-sync] D1_STATE is not bound; the OpenAPI " +

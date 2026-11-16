@@ -1,0 +1,223 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "stablecoin"
+  ],
+  "contact": "admin@tensorusd.com",
+  "curation": {
+    "gap_notes": [
+      "No verified OpenAPI/Swagger schema yet -- api.tensorusd.com/openapi.json and /docs both 404.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/113",
+  "docs_url": "https://docs.tensorusd.com/components/subnet",
+  "name": "gje",
+  "netuid": 113,
+  "notes": "Reviewed overlay for SN113 using the official TensorUSD website, subnet docs, and source repository. Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks; added the agent-api.tensorusd.com backend health surface (TENSORUSD_SN_BACKEND_URL, the official Mechanism 1 prediction-agent backend, distinct from the already-tracked api.tensorusd.com host).",
+  "schema_version": 1,
+  "slug": "sn-113",
+  "social": {
+    "x": "https://x.com/tensorusd"
+  },
+  "source_repo": "https://github.com/TensorUSD/subnet",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-113-tensorusd-website",
+      "kind": "website",
+      "name": "TensorUSD website",
+      "notes": "Official TensorUSD website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "source_urls": ["https://github.com/TensorUSD/subnet"],
+      "url": "https://tensorusd.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-113-tensorusd-docs",
+      "kind": "docs",
+      "name": "TensorUSD subnet docs",
+      "notes": "Official TensorUSD subnet documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "url": "https://docs.tensorusd.com/components/subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-113-tensorusd-source",
+      "kind": "source-repo",
+      "name": "TensorUSD source repository",
+      "notes": "Official TensorUSD source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "source_urls": ["https://github.com/TensorUSD/subnet"],
+      "url": "https://github.com/TensorUSD/subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-113-tensorusd-subnet-api",
+      "kind": "subnet-api",
+      "name": "TensorUSD API health",
+      "notes": "Public no-auth GET returning the TensorUSD (SN113) backend API health (status + component/database connectivity). Hosted on api.tensorusd.com, the API subdomain of the subnet's registered website tensorusd.com.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "source_urls": ["https://tensorusd.com/"],
+      "url": "https://api.tensorusd.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-113-tensorusd-vault-abi",
+      "kind": "data-artifact",
+      "name": "TensorUSD vault contract ABI",
+      "notes": "Public no-auth JSON contract metadata (ink! ABI) for the SN113 TensorUSD vault pallet contract. Loaded by miners and validators via ContractMetadata.create_from_file in the official tensorusd/common/contract.py module; the README documents the matching mainnet Vault contract address. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/tensorusd/common/contract.py",
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/TensorUSD/subnet/main/tensorusd/common/abis/tusdt_vault.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-113-tensorusd-llms-txt",
+      "kind": "data-artifact",
+      "name": "TensorUSD docs llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of the official SN113 TensorUSD documentation, served at the docs.tensorusd.com domain the official TensorUSD/subnet README links (README confirms netuid 113). Provides an agent-consumable Markdown map of the TensorUSD docs (introduction, components, contracts) for LLM/agent ingestion; content begins '# TensorUSD'.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md",
+        "https://docs.tensorusd.com/"
+      ],
+      "url": "https://docs.tensorusd.com/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-113-tensorusd-agent-api-health",
+      "kind": "subnet-api",
+      "name": "TensorUSD agent-API health",
+      "notes": "Public no-auth GET /health on agent-api.tensorusd.com returning backend liveness JSON (observed: {\"success\":true,\"data\":{\"status\":\"ok\",\"env\":\"prod\"}}). This is the official TENSORUSD_SN_BACKEND_URL from the subnet's own .env documentation -- the Mechanism 1 prediction-agent backend used to fetch vault/liquidator information, distinct from the already-tracked api.tensorusd.com host and response shape.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "url": "https://agent-api.tensorusd.com/health"
+    },
+    {
+      "auth": {
+        "scheme": "basic",
+        "scopes_note": "Requires HTTP Basic Authentication (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 with a \"WWW-Authenticate: Basic\" challenge header). No bearer token, API key, or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Basic <base64(username:password)>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-113-tensorusd-api-openapi",
+      "kind": "subnet-api",
+      "name": "TensorUSD SN113 backend API schema endpoint (auth-gated)",
+      "notes": "GET /api/openapi.json on api.tensorusd.com is a real, auth-gated backend OpenAPI schema endpoint -- distinct from the bare /openapi.json (404, already recorded in the existing gap_notes). It requires credentials to read, so the schema itself could not be captured (registered as subnet-api rather than openapi, since openapi-kind surfaces require a machine-readable schema). Live-verified 2026-07-22: GET https://api.tensorusd.com/api/openapi.json -> HTTP 401 (empty body); GET https://api.tensorusd.com/openapi.json -> HTTP 404 (confirms the distinct path). Registered with probe.enabled:false since it is not anonymously callable; worth re-probing with an API key to unlock full endpoint discovery.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "lourincedaging0-commits"
+      },
+      "source_urls": ["https://api.tensorusd.com/api/openapi.json"],
+      "url": "https://api.tensorusd.com/api/openapi.json"
+    }
+  ],
+  "website_url": "https://tensorusd.com/"
+}

@@ -169,9 +169,14 @@ describe("loadAddressMapping", () => {
       const data = await loadAddressMapping(mockEnv(env), H160);
       // The cached body verbatim, PLUS provenance (#9108) -- attached outside
       // the cache, so an entry written before the map existed still comes
-      // back with one instead of serving a full TTL without it.
+      // back with one instead of serving a full TTL without it -- and the
+      // #13165 association block, attached the same way (no store bound here,
+      // so it is the decline).
       assert.deepEqual(data, {
         ...cached,
+        source: "precompile",
+        association_count: null,
+        associations: [],
         field_sources: ADDRESS_MAPPING_FIELD_SOURCES,
       });
       assert.equal(fetchCalled, false);
@@ -440,5 +445,121 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
     assert.equal(res.status, 400);
     const body = await parseJsonBody(res, ErrorEnvelopeSchema);
     assert.equal(body.error.code, "invalid_h160");
+  });
+});
+
+// The #13165 storage-first path: when the engine's AssociatedEvmAddress
+// capture holds the key's owning ss58, the stored association answers and
+// provenance says so; otherwise the precompile path above is unchanged.
+describe("loadAddressMapping — stored associations (#13165)", () => {
+  const ASSOCIATION = {
+    ss58: GOLDEN_SS58,
+    netuid: 64,
+    uid: 7,
+    associated_at: "9000000",
+    captured_at: 1_763_000_000_000,
+  };
+
+  test("a stored association answers ss58 with storage provenance, no RPC", async () => {
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      fetchCalled = true;
+      return { ok: false };
+    }) as unknown as typeof fetch;
+    try {
+      const env = {
+        EVM_ASSOCIATIONS_STORE: { byH160: async () => [ASSOCIATION] },
+      };
+      const data = await loadAddressMapping(mockEnv(env), H160);
+      assert.equal(data.source, "storage");
+      assert.equal(data.ss58, GOLDEN_SS58);
+      assert.equal(data.association_count, 1);
+      assert.deepEqual(data.associations, [
+        {
+          ss58: GOLDEN_SS58,
+          netuid: 64,
+          uid: 7,
+          associated_at: 9_000_000,
+          captured_at: new Date(1_763_000_000_000).toISOString(),
+        },
+      ]);
+      // The capture stamp, not our clock.
+      assert.equal(data.queried_at, new Date(1_763_000_000_000).toISOString());
+      assert.deepEqual(data.field_sources, {
+        ss58: {
+          kind: "measured",
+          storage: "SubtensorModule.AssociatedEvmAddress",
+        },
+        source: { kind: "reconstructed", storage: null },
+        association_count: { kind: "reconstructed", storage: null },
+        associations: {
+          kind: "measured",
+          storage: "SubtensorModule.AssociatedEvmAddress",
+        },
+      });
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("a stored association without its stamp falls back to our clock", async () => {
+    const env = {
+      EVM_ASSOCIATIONS_STORE: {
+        byH160: async () => [{ ...ASSOCIATION, captured_at: null }],
+      },
+    };
+    const data = await loadAddressMapping(mockEnv(env), H160);
+    assert.equal(data.source, "storage");
+    assert.ok(data.queried_at);
+  });
+
+  test("an association without its ss58 keeps the precompile answer beside the rows", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
+    })) as unknown as typeof fetch;
+    try {
+      const env = {
+        EVM_ASSOCIATIONS_STORE: {
+          byH160: async () => [{ ...ASSOCIATION, ss58: null }],
+        },
+      };
+      const data = await loadAddressMapping(mockEnv(env), H160);
+      assert.equal(data.source, "precompile");
+      assert.equal(data.ss58, GOLDEN_SS58);
+      assert.equal(data.association_count, 1);
+      assert.equal((data.associations[0] as Row).ss58, null);
+      assert.deepEqual(data.field_sources, ADDRESS_MAPPING_FIELD_SOURCES);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("a testnet-addressed call keeps the precompile path outright", async () => {
+    let storeRead = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
+    })) as unknown as typeof fetch;
+    try {
+      const env = {
+        EVM_ASSOCIATIONS_STORE: {
+          byH160: async () => {
+            storeRead = true;
+            return [ASSOCIATION];
+          },
+        },
+      };
+      const data = await loadAddressMapping(mockEnv(env), H160, "testnet");
+      assert.equal(storeRead, false);
+      assert.equal(data.source, "precompile");
+      assert.equal(data.association_count, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
   });
 });

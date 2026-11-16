@@ -342,10 +342,10 @@
       "id": "sn-13-data-universe-desirability-defaults",
       "kind": "data-artifact",
       "name": "Data Universe default desirability list",
-      "notes": "Public no-auth JSON default dynamic-desirability list (per-source label weights used to value Reddit and X data) published at dynamic_desirability/default.json in the official macrocosm-os/data-universe repository. Documents the SN13 baseline data-scoring configuration.",
+      "notes": "Public no-auth JSON default dynamic-desirability list (per-source label weights used to value Reddit and X data) published at dynamic_desirability/default.json in the official macrocosm-os/data-universe repository. Documents the SN13 baseline data-scoring configuration. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

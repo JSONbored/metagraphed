@@ -25,7 +25,7 @@
   "social": {
     "x": "https://x.com/blockmachine_io"
   },
-  "source_repo": "https://github.com/taostat/blockmachine",
+  "source_repo": "https://github.com/taostat/blockmachine/",
   "status": "active",
   "surfaces": [
     {
@@ -187,7 +187,7 @@
       "id": "sn-19-blockmachine-epochs-catalog",
       "kind": "data-artifact",
       "name": "BlockMachine epochs catalog",
-      "notes": "Public no-auth BlockMachine epochs listing \u2014 every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
+      "notes": "Public no-auth BlockMachine epochs listing — every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -330,12 +330,12 @@
       "url": "https://api.blockmachine.io/bans/%7Bcoldkey%7D"
     },
     {
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "id": "sn-19-blockmachine-bans-proxy-detection",
       "kind": "subnet-api",
       "name": "BlockMachine bans proxy detection",
-      "notes": "Ban Proxy Detected Miner operation on the BlockMachine API (POST /bans/proxy-detection), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "notes": "Ban Proxy Detected Miner operation on the BlockMachine API (POST /bans/proxy-detection), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence. [2026-11-15 infra#873 p3b] access flip: 401 on a declared-open route; invocation tier needs credentialed re-review.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -349,7 +349,11 @@
         "submitted_by": "joaovictor91123"
       },
       "source_urls": ["https://api.blockmachine.io/openapi.json"],
-      "url": "https://api.blockmachine.io/bans/proxy-detection"
+      "url": "https://api.blockmachine.io/bans/proxy-detection",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Mechanism not publicly documented; observed as a 401 flip on a previously open route (infra#873 p3b). Curate the real scheme at credentialed re-review."
+      }
     },
     {
       "auth_required": false,
@@ -474,7 +478,7 @@
       "id": "sn-19-blockmachine-epochs-epoch-id",
       "kind": "subnet-api",
       "name": "BlockMachine epochs epoch id",
-      "notes": "Get Epoch operation on the BlockMachine API (GET /epochs/{epoch_id}), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "notes": "Get Epoch operation on the BlockMachine API (GET /epochs/{epoch_id}), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "expect": "json",

@@ -90,3 +90,27 @@ per-branch preview URLs at `*-metagraphed-ui.<account>.workers.dev`.
 The backend (`metagraphed`) is a **separate** Worker on the `api.metagraph.sh`
 subdomain — the UI apex and the API are distinct hostnames, so there is no
 path-based route splitting to configure on this Worker.
+
+## Native Node preparation
+
+`npm run build:native --workspace=apps/ui` produces a separate
+`apps/ui/dist/native/server/index.mjs` and `dist/native/public` tree. It explicitly
+selects Nitro's Node server preset and removes the sandbox flags that otherwise
+force the Worker preset. The ordinary Worker build and deployment stay unchanged.
+
+The Node build supplies a local logo-asset capability and an explicit OG render
+tree, so cached logos and image rendering do not require Cloudflare globals.
+Canonical public origins and the normal application routes remain the same.
+Use `NITRO_HOST=127.0.0.1 NITRO_PORT=3000 node dist/native/server/index.mjs` from
+`apps/ui` only when intentionally starting this target. Its server uses the pinned
+runtime's bounded graceful shutdown; placement, ingress and production resource
+qualification are separate deployment work.
+
+`npm run test:native --workspace=apps/ui` starts only a disposable loopback server,
+checks SSR metadata, byte-identical static assets, discovery and real PNG
+rendering, then verifies shutdown. A test-only preload provides fonts and discovery
+fixtures and refuses other external fetches. The existing `build:worker:e2e`
+command now runs the native build and runtime checks afterward through its npm
+post-build hook, keeping both targets under the existing UI CI job. The native
+output lives separately, so the later Worker browser tests keep their original
+artifacts.

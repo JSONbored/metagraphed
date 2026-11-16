@@ -67,7 +67,10 @@ import {
 } from "../schemas-src/routes/account-child-delegation.ts";
 import { ACCOUNT_BALANCE_FIELD_SOURCES } from "../src/account-balance.ts";
 import { ACCOUNT_ROOT_CLAIM_FIELD_SOURCES } from "../src/account-root-claim.ts";
-import { ADDRESS_MAPPING_FIELD_SOURCES } from "../src/address-mapping.ts";
+import {
+  ADDRESS_MAPPING_FIELD_SOURCES,
+  ADDRESS_MAPPING_STORAGE_FIELD_SOURCES,
+} from "../src/address-mapping.ts";
 import { SUBNET_LEASE_FIELD_SOURCES } from "../src/subnet-lease.ts";
 import { SubnetConvictionArtifactSchema } from "../schemas-src/routes/subnet-conviction.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "../src/subnet-conviction.ts";
@@ -136,6 +139,14 @@ const SURFACES: {
     name: "GET /api/v1/evm/address/{h160}",
     schema: EvmAddressMappingArtifactSchema,
     sources: ADDRESS_MAPPING_FIELD_SOURCES,
+  },
+  {
+    // The SAME schema, described for the storage-first path (#13165). Both
+    // maps are checked against the published field set so they can never
+    // drift apart in what they cover -- only in what they claim about ss58.
+    name: "GET /api/v1/evm/address/{h160} (storage tier)",
+    schema: EvmAddressMappingArtifactSchema,
+    sources: ADDRESS_MAPPING_STORAGE_FIELD_SOURCES,
   },
   {
     name: "GET /api/v1/subnets/{netuid}/conviction",

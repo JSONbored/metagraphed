@@ -9,11 +9,18 @@ import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import type { StoreEnv } from "./read-store.ts";
 import type { TelemetryEnv } from "./usage-telemetry.ts";
+import {
+  selectedGeneratedArtifactStore,
+  type GeneratedArtifactEnv,
+} from "./generated-artifact-store.ts";
 
 // `ArtifactStoreEnv` because this watchdog READS the lane status objects out
 // of the archive. It used to reach them through a cast, which left the env
 // type claiming the function touched no bucket at all.
-type ContainerLaneWatchdogEnv = StoreEnv & TelemetryEnv & ArtifactStoreEnv;
+type ContainerLaneWatchdogEnv = StoreEnv &
+  TelemetryEnv &
+  ArtifactStoreEnv &
+  GeneratedArtifactEnv;
 
 /** One container-written lane: what to call it, and where it says how it went. */
 export interface ContainerLane {
@@ -301,17 +308,23 @@ export async function runContainerLaneWatchdog(
   const record = deps.recordException ?? recordExceptionEvent;
   const bucket = artifactBucket(env);
   const state = env?.D1_STATE;
-  if (!bucket && !state?.prepare)
+  const native =
+    env?.GENERATED_ARTIFACT_STORE === undefined
+      ? undefined
+      : selectedGeneratedArtifactStore(env);
+  if (!native && !bucket && !state?.prepare)
     return { ok: false, reason: "status storage unavailable" };
   const thresholdMs = deps.thresholdMs ?? CONTAINER_LANE_THRESHOLD_MS;
 
-  // A committed D1 status owns this lane. Failed reads and invalid payloads
+  // Native selection owns all five status keys, including absent or failed
+  // reads. In the legacy path, a committed D1 status owns this lane.
+  // Failed reads and invalid payloads
   // must never reveal an older, healthy R2 verdict. Absent rows retain the
   // legacy owner only while the producer is rolling over to D1.
   const prefix = "container-status/v1/";
   const stored = new Map<string, string | null>();
   let stateFailed = false;
-  if (state?.prepare) {
+  if (!native && state?.prepare) {
     try {
       const result = await state
         .prepare(
@@ -335,7 +348,15 @@ export async function runContainerLaneWatchdog(
     let body: ContainerLaneStatus["body"];
     try {
       let value: unknown = null;
-      if (!stateFailed) {
+      if (native) {
+        value = await native.get(prefix + key, 65536);
+        const text = JSON.stringify(value);
+        if (
+          text === undefined ||
+          new TextEncoder().encode(text).byteLength > 65536
+        )
+          value = null;
+      } else if (!stateFailed) {
         if (stored.has(prefix + key)) {
           const payload = stored.get(prefix + key);
           value = typeof payload === "string" ? JSON.parse(payload) : null;

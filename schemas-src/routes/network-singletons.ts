@@ -10,19 +10,71 @@
 import { z } from "zod";
 import { FieldSourcesSchema } from "../shared.ts";
 
+export const EvmAssociationSchema = z
+  .object({
+    ss58: z
+      .string()
+      .nullable()
+      .describe(
+        "The owning hotkey the engine resolved for this (netuid, uid) at capture time, ss58-encoded. Null when the capture did not carry it.",
+      ),
+    netuid: z.int().min(0).describe("The subnet the association names."),
+    uid: z.int().min(0).describe("The UID the EVM key is associated to."),
+    associated_at: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "The block the association was made at (the u64 beside the H160 in SubtensorModule.AssociatedEvmAddress). Null when the capture did not carry it -- never fabricated as 0, which would claim an association at genesis.",
+      ),
+    captured_at: z.string().nullable(),
+  })
+  .strict()
+  .describe(
+    "One captured on-chain EVM key association (SubtensorModule.AssociatedEvmAddress; event EvmKeyAssociated): the (netuid, uid) it binds, the owning ss58 and the association block, with the capture stamp.",
+  );
+
 export const EvmAddressMappingArtifactSchema = z
   .object({
     schema_version: z.int(),
     h160: z.string(),
     ss58: z.string().nullable().optional(),
     queried_at: z.string().nullable().optional(),
+    // #13165: which path answered `ss58`. "storage" when the engine's
+    // SubtensorModule.AssociatedEvmAddress capture holds the key's owning
+    // ss58; "precompile" otherwise -- including everywhere today, where no
+    // association store is bound.
+    source: z
+      .enum(["storage", "precompile"])
+      .describe(
+        "Which path answered ss58: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) or the live AddressMapping-precompile eth_call. Precompile everywhere until the engine's association capture lands.",
+      ),
+    /**
+     * NULL IS THE DECLINE, and 0 is deliberately not expressible. An empty
+     * association list is never a measured "never associated" -- it is what
+     * an unbound or unfilled store looks like (the engine dependency #13165
+     * defers), and publishing it as a count would be the confident-zero
+     * failure the subnet surfaces' own comments are about.
+     */
+    association_count: z
+      .int()
+      .min(1)
+      .nullable()
+      .describe(
+        "How many stored associations this answer carries -- `associations.length`, store-capped. NULL when the store holds no rows for this key (store unbound, or the association capture has not run): a zero count is never a measurement and is not published.",
+      ),
+    associations: z
+      .array(EvmAssociationSchema)
+      .describe(
+        "The key's captured on-chain associations, newest capture first and store-capped. Empty until the engine's AssociatedEvmAddress capture lands.",
+      ),
     // #9108. Required: attached outside the KV cache on every read, so no
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
   .strict()
   .describe(
-    "Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.",
+    "EVM (H160) -> Substrate (SS58) account-address mapping: the stored on-chain association (SubtensorModule.AssociatedEvmAddress) when the engine's capture holds it, else resolved live from chain via the AddressMapping precompile -- `source` says which. ss58 is null when neither path resolves (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.",
   );
 export type EvmAddressMappingArtifact = z.infer<
   typeof EvmAddressMappingArtifactSchema

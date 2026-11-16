@@ -150,5 +150,6 @@
   ],
   "social": {
     "x": "https://x.com/endurenet"
-  }
+  },
+  "source_repo": "https://github.com/Endure-Network/endure-subnet"
 }

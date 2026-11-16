@@ -87,7 +87,11 @@ beforeAll(async () => {
     "utf8",
   ).split("-- statement-breakpoint"))
     if (statement.trim()) await db.prepare(statement).run();
-});
+  // Miniflare's first D1 call boots workerd and its wasm; under a loaded CI
+  // shard that boot alone has crossed vitest's 10s default hook budget
+  // (measured 10098ms on shared 3/3), skipping all 11 tests. The budget is
+  // for the boot, not the statements.
+}, 60000);
 afterAll(async () => runtime.dispose());
 beforeEach(async () => {
   for (const table of tables) await db.prepare(`DELETE FROM ${table}`).run();

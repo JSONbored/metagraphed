@@ -2,7 +2,7 @@
 // tool (metagraphed#7089, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN76's *real* registry surface configs
-// (registry/subnets/byzantium.json) to the tool's contract, so a future edit
+// (registry/subnets/ormas.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // Both surfaces listed in #7089 were verified live on 2026-07-21 against their
@@ -30,9 +30,7 @@ const NETUID = 76;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/byzantium.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/ormas.json", import.meta.url)),
     "utf8",
   ),
 );

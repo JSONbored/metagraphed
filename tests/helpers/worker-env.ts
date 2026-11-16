@@ -4,5 +4,7 @@
 export {
   apiEnv,
   dataApiEnv,
+  mergedDataApiEnv,
+  mergedRegistrySyncEnv,
   registrySyncEnv,
 } from "../../scripts/lib/worker-env.ts";

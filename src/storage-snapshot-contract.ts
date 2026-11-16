@@ -99,8 +99,15 @@ export interface StorageSnapshotItem {
  * archive means. A reader comparing a span sampled every 20 minutes against one
  * sampled hourly is comparing two different datasets, and nothing in the rows
  * themselves would say so.
+ *
+ * Version 2 (#13165): the pre-490 Swap shape (`Swap.AlphaSqrtPrice`,
+ * `Swap.SwapV3Initialized`) no longer exists on chain -- spec 490's Swap
+ * pallet is balancer-based -- so those two declarations were dead: a producer
+ * reading them would snapshot nothing, forever. They are replaced by the
+ * v490 names below. Rows already archived under version 1 keep their
+ * meaning; this bump is what tells a reader the declared set changed.
  */
-export const STORAGE_SNAPSHOT_VERSION = 1;
+export const STORAGE_SNAPSHOT_VERSION = 2;
 
 /**
  * The four pallets where a published figure currently has no observed check.
@@ -114,17 +121,31 @@ export const STORAGE_SNAPSHOT_VERSION = 1;
 export const STORAGE_SNAPSHOT_ITEMS: readonly StorageSnapshotItem[] = [
   {
     pallet: "Swap",
-    item: "AlphaSqrtPrice",
+    item: "BalancerTaoReservoir",
     everyMinutes: 60,
     reason:
-      "The AMM state behind `alpha_price_tao`, which we publish with no independent check. Hourly tracks a tempo without sampling inside one.",
+      "The v490 balancer AMM state behind `tao_in_pool_tao`, which we publish with no independent check. Hourly tracks a tempo without sampling inside one.",
   },
   {
     pallet: "Swap",
-    item: "SwapV3Initialized",
+    item: "BalancerAlphaReservoir",
+    everyMinutes: 60,
+    reason:
+      "The other half of the v490 pool identity, behind `alpha_in_pool`. Sampled with BalancerTaoReservoir so the two are always attributable to one height.",
+  },
+  {
+    pallet: "Swap",
+    item: "FeeRate",
     everyMinutes: 1440,
     reason:
-      "A per-subnet initialisation flag that changes once ever. Daily is a liveness sample, not a series.",
+      "The pool's raw u16 fee rate, moved only by the FeeRateSet event. Daily is a liveness sample, not a series.",
+  },
+  {
+    pallet: "Swap",
+    item: "PalSwapInitialized",
+    everyMinutes: 1440,
+    reason:
+      "A per-subnet initialisation flag that changes once ever (the v490 successor of the retired SwapV3Initialized). Daily is a liveness sample, not a series.",
   },
   {
     pallet: "Balances",

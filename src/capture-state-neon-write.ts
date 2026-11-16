@@ -20,6 +20,7 @@
 // upsert would silently drop that and replace a known value with NULL -- the
 // same shape as #9634's last_ok, one table over.
 import { createD1Sql, selectedD1Store } from "./d1-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import type { BlocksHead } from "../generated/db/types.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
@@ -67,13 +68,16 @@ async function runner(
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const d1 = deps.sql
-    ? null
-    : selectedD1Store(env, [
-        lane === BLOCKS_HEAD_NEON_LANE ? "blocks_head" : "raw_capture_state",
-      ]);
+  const native = deps.sql ? undefined : selectedNativeWriteRunner(env, lane);
+  const d1 =
+    deps.sql || native
+      ? null
+      : selectedD1Store(env, [
+          lane === BLOCKS_HEAD_NEON_LANE ? "blocks_head" : "raw_capture_state",
+        ]);
   const sql =
     deps.sql ??
+    native ??
     (d1 ? createD1Sql(d1) : neonWriteRunner(env, ctx, lane, hyperdrive));
   if (!sql) {
     // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op.

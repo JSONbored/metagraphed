@@ -1,4 +1,4 @@
-import { generatedArtifactStore } from "./generated-artifact-store.ts";
+import { selectedGeneratedArtifactStore } from "./generated-artifact-store.ts";
 // Hourly operational-surfaces capture as a Worker cron writing D1 (#9096,
 // following the #233 github-signals template) — the second retirement of a
 // PR-based sync lane.
@@ -240,7 +240,7 @@ export async function runOperationalSurfacesSync(
   ctx?: Ctx,
   deps: OperationalSurfacesSyncDeps = {},
 ): Promise<OperationalSurfacesSyncResult> {
-  const store = generatedArtifactStore(env.D1_STATE);
+  const store = selectedGeneratedArtifactStore(env);
   if (!store) {
     console.error(
       "[operational-surfaces-sync] D1_STATE is not bound; the " +

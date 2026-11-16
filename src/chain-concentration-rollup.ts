@@ -28,6 +28,7 @@ import { buildChainConcentration } from "./concentration.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import { selectedD1Store } from "./d1-store.ts";
+import type { ChainConcentrationStore } from "./chain-concentration-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -98,18 +99,29 @@ export async function rollupChainConcentration(
     nowMs = Date.now(),
     maxDays = CHAIN_CONCENTRATION_ROLLUP_MAX_DAYS_PER_TICK,
     env = null,
-  }: { nowMs?: number; maxDays?: number; env?: HistoryReadEnv | null } = {},
+    native,
+  }: {
+    nowMs?: number;
+    maxDays?: number;
+    env?: HistoryReadEnv | null;
+    native?: ChainConcentrationStore;
+  } = {},
 ): Promise<Row> {
-  if (!db?.query || !db?.run) return { rolled: false, reason: "unavailable" };
+  if (!native && (!db?.query || !db?.run))
+    return { rolled: false, reason: "unavailable" };
 
   let pending: string[];
   let indexed: boolean;
   try {
-    indexed = selectedD1Store(env, ["neuron_daily"]) !== null;
-    const res = await db.query<Row>(pendingDaysSql(indexed), [
-      utcDay(nowMs),
-      maxDays,
-    ]);
+    indexed = !native && selectedD1Store(env, ["neuron_daily"]) !== null;
+    const res = native
+      ? (await native.pendingDays(utcDay(nowMs), maxDays)).map((day) => ({
+          day,
+        }))
+      : await db!.query!<Row>(pendingDaysSql(indexed), [
+          utcDay(nowMs),
+          maxDays,
+        ]);
     pending = res
       .map((r) => r?.day)
       .filter((d): d is string => typeof d === "string" && d.length > 0);
@@ -125,9 +137,11 @@ export async function rollupChainConcentration(
   const failed: string[] = [];
   for (const day of pending) {
     try {
-      const rows = await db.query<Row>(
-        indexed
-          ? `SELECT json_extract(j.value,'$.stake_tao') AS stake_tao,
+      const rows = native
+        ? await native.dailyRows(day)
+        : await db!.query!<Row>(
+            indexed
+              ? `SELECT json_extract(j.value,'$.stake_tao') AS stake_tao,
               json_extract(j.value,'$.emission_tao') AS emission_tao,
               m.coldkey, json_extract(j.value,'$.validator_permit') AS validator_permit,
               m.netuid, json_extract(j.value,'$.captured_at') AS captured_at
@@ -135,10 +149,10 @@ export async function rollupChainConcentration(
             CROSS JOIN neuron_daily_members m
             WHERE d.day=? AND m.netuid=d.netuid AND m.snapshot_date=d.day
               AND m.uid=CAST(j.key AS INTEGER) AND m.shard=d.shard`
-          : `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
-              " FROM neuron_daily WHERE snapshot_date = ?",
-        [day],
-      );
+              : `SELECT ${CHAIN_CONCENTRATION_DAILY_READ_COLUMNS}` +
+                  " FROM neuron_daily WHERE snapshot_date = ?",
+            [day],
+          );
       // A day with no rows is not a day of zero concentration -- it is a day
       // the capture did not run. Storing a card for it would manufacture a
       // point; leaving it pending costs one scan a tick and stays honest.
@@ -147,36 +161,46 @@ export async function rollupChainConcentration(
         continue;
       }
       const card = buildChainConcentration(rows);
-      await db.run(
-        `INSERT INTO ${CHAIN_CONCENTRATION_DAILY_TABLE}` +
-          " (day, neuron_count, card, source_captured_at, computed_at," +
-          " builder_version)" +
-          " VALUES (?, ?, ?, ?, ?, ?)" +
-          " ON CONFLICT(day) DO UPDATE SET" +
-          " neuron_count = excluded.neuron_count," +
-          " card = excluded.card," +
-          " source_captured_at = excluded.source_captured_at," +
-          " computed_at = excluded.computed_at," +
-          " builder_version = excluded.builder_version",
-        [
+      if (native) {
+        await native.put({
           day,
-          // The row count, not a field read back out of the card: it is the
-          // same number by definition, and taking it from the rows keeps the
-          // one NOT NULL count an integer by construction. subnet_count and
-          // entity_count are NOT lifted out -- they are already in the card,
-          // and a second copy is a second thing that can disagree.
-          rows.length,
-          JSON.stringify(card),
-          capturedAtMs(rows),
-          nowMs,
-          // No fallback: the builder declares this, and if it ever stops, the
-          // NOT NULL column rejects the row, the day is marked failed, and the
-          // next tick retries it. A defaulted version would instead record a
-          // point as computed under a definition it was not, which is the one
-          // thing this column exists to prevent.
-          Number(card.schema_version),
-        ],
-      );
+          neuronCount: rows.length,
+          card: JSON.stringify(card),
+          capturedAt: capturedAtMs(rows),
+          computedAt: nowMs,
+          builderVersion: Number(card.schema_version),
+        });
+      } else
+        await db!.run!(
+          `INSERT INTO ${CHAIN_CONCENTRATION_DAILY_TABLE}` +
+            " (day, neuron_count, card, source_captured_at, computed_at," +
+            " builder_version)" +
+            " VALUES (?, ?, ?, ?, ?, ?)" +
+            " ON CONFLICT(day) DO UPDATE SET" +
+            " neuron_count = excluded.neuron_count," +
+            " card = excluded.card," +
+            " source_captured_at = excluded.source_captured_at," +
+            " computed_at = excluded.computed_at," +
+            " builder_version = excluded.builder_version",
+          [
+            day,
+            // The row count, not a field read back out of the card: it is the
+            // same number by definition, and taking it from the rows keeps the
+            // one NOT NULL count an integer by construction. subnet_count and
+            // entity_count are NOT lifted out -- they are already in the card,
+            // and a second copy is a second thing that can disagree.
+            rows.length,
+            JSON.stringify(card),
+            capturedAtMs(rows),
+            nowMs,
+            // No fallback: the builder declares this, and if it ever stops, the
+            // NOT NULL column rejects the row, the day is marked failed, and the
+            // next tick retries it. A defaulted version would instead record a
+            // point as computed under a definition it was not, which is the one
+            // thing this column exists to prevent.
+            Number(card.schema_version),
+          ],
+        );
       rolled.push(day);
     } catch (error) {
       failed.push(day);

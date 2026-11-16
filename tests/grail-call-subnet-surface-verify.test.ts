@@ -2,7 +2,7 @@
 // (metagraphed#7094, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN81's real registry surface config
-// (registry/subnets/grail.json) to the tool's contract, so a future edit that
+// (registry/subnets/reliquary.json) to the tool's contract, so a future edit that
 // regresses its callability (flipping to HEAD, marking it auth_required,
 // disabling its probe) is caught here.
 //
@@ -27,7 +27,9 @@ const OPENAPI_URL = "https://grail-grafana.tplr.ai/public/openapi3.json";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/grail.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/reliquary.json", import.meta.url),
+    ),
     "utf8",
   ),
 );

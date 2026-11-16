@@ -5,6 +5,10 @@ const junitPath = process.env.VITEST_JUNIT_PATH;
 export default defineConfig({
   test: {
     environment: "node",
+    // graphql-ws shares GraphQLSchema/GraphQLError identity with the app.
+    // Resolve both through Vite's same conditions instead of mixing its
+    // development GraphQL export with the external library's Node export.
+    server: { deps: { inline: ["graphql-ws"] } },
     // `.claude/**` keeps gitignored agent worktrees (.claude/worktrees/*, each a
     // full repo copy with its own tests) from doubling the run + skewing coverage.
     // `deploy/**` is standalone infra (the wss-lb service is tested via

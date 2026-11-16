@@ -41,6 +41,7 @@ import { SELF_HEALTH_COMPONENTS } from "./self-health.ts";
 import type { NeonWriteEnv } from "./neon-write-buffer.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import { SELF_HEALTH_TABLES, selfHealthSql } from "./self-health-store.ts";
+import { selectedNativeSelfHealthStore } from "./native-self-health-store.ts";
 
 export const SELF_HEALTH_PROBE_LANE = "self-health-probe";
 
@@ -149,7 +150,9 @@ export async function runSelfHealthProbe(
 ): Promise<SelfHealthProbeOutcome> {
   const now = deps.now ?? Date.now;
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
-  const d1 = deps.sql ? null : selectedD1Store(env, SELF_HEALTH_TABLES);
+  const native = deps.sql ? null : selectedNativeSelfHealthStore(env);
+  const d1 =
+    deps.sql || native ? null : selectedD1Store(env, SELF_HEALTH_TABLES);
   const sql = deps.sql ?? selfHealthSql(env, ctx);
 
   // Both retained ticks and their daily counts use the same selected owner.
@@ -177,6 +180,11 @@ export async function runSelfHealthProbe(
   let written = 0;
   for (const result of results) {
     try {
+      if (native) {
+        await native.record({ ...result, checkedAt, day });
+        written += 1;
+        continue;
+      }
       if (d1) {
         // Insert the daily contribution only for a new immutable tick. Both
         // statements commit together, so retries cannot double its count and

@@ -243,6 +243,45 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_price_share_composition: {
     operation: "subnet-price-share-composition",
   },
+  get_subnet_mechanisms: {
+    operation: "subnet-mechanisms",
+  },
+  get_subnet_alpha_dividends: {
+    operation: "subnet-alpha-dividends",
+  },
+  get_account_locks: {
+    operation: "account-locks",
+  },
+  get_pending_coldkey_swaps: {
+    operation: "pending-coldkey-swaps",
+  },
+  get_account_proxies: {
+    operation: "account-proxies",
+  },
+  get_account_multisigs: {
+    operation: "account-multisigs",
+  },
+  get_validator_baskets: {
+    operation: "chain-baskets",
+  },
+  get_subnet_gamma: {
+    operation: "subnet-gamma",
+  },
+  get_gamma_deposits: {
+    operation: "gamma-deposits",
+  },
+  get_subnet_services: {
+    operation: "subnet-services",
+  },
+  get_subnet_swap: {
+    operation: "subnet-swap",
+  },
+  get_subnet_alpha_assets: {
+    operation: "subnet-alpha-assets",
+  },
+  get_subnet_limit_orders: {
+    operation: "subnet-limit-orders",
+  },
   get_emission_pipeline_history: {
     operation: "subnet-emission-pipeline-history",
   },

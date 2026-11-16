@@ -238,14 +238,10 @@ describe("buildSubnetYield", () => {
     const emissionSchema =
       apiComponents.components.schemas.SubnetYieldArtifact.properties.neurons
         .items.properties.emission_tao;
-    // Zod's z.toJSONSchema() emits a nullable number as anyOf:[{type:number},
-    // {type:null}], not the hand-written type:["number","null"] union form
-    // this asserted against pre-conversion -- same semantics, different JSON
-    // Schema idiom.
-    assert.deepEqual(emissionSchema.anyOf, [
-      { type: "number" },
-      { type: "null" },
-    ]);
+    // Since zod 4.6, z.toJSONSchema() emits a nullable number as the type
+    // union `type: ["number", "null"]` rather than the anyOf branch form it
+    // used through 4.4 -- same semantics, different JSON Schema idiom.
+    assert.deepEqual(emissionSchema.type, ["number", "null"]);
 
     const negativeStake = buildSubnetYield(
       [neuron(5, { stake: -1, emission: 2 })],

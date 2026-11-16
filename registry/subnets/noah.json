@@ -1,0 +1,138 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T10:10:00.000Z"
+  },
+  "dashboard_url": "https://compelle.com/status",
+  "name": "Noah",
+  "netuid": 82,
+  "notes": "Reviewed overlay for SN82 using the official Compelle website and validator repository.",
+  "schema_version": 1,
+  "slug": "sn-82",
+  "source_repo": "https://github.com/Vora-Inc/NOAH",
+  "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-82-compelle-website",
+      "kind": "website",
+      "name": "Compelle website",
+      "notes": "Official Compelle website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compelle",
+      "public_safe": true,
+      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "url": "https://compelle.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-82-compelle-source",
+      "kind": "source-repo",
+      "name": "Compelle validator repository",
+      "notes": "Official Compelle validator repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compelle",
+      "public_safe": true,
+      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "url": "https://github.com/compelle/compelle-validator"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-health",
+      "kind": "subnet-api",
+      "name": "Compelle aggregation health",
+      "notes": "Public no-auth GET /api/health on compelle.com returning aggregation-service liveness JSON (observed: {\"ok\":true,\"db_size_bytes\":...,\"games\":...,\"miners\":...}). Served on the official Compelle SN82 debate arena host linked from the validator repository. [2026-11-15 infra#873 p3a] HTTP 410: provider-confirmed gone; retired from the callable set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/compelle/compelle-validator",
+        "https://compelle.com/"
+      ],
+      "url": "https://compelle.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-validator-config",
+      "kind": "data-artifact",
+      "name": "Compelle validator game configuration",
+      "notes": "Public no-auth JSON validator consensus configuration (netuid 82, LLM model identifiers, judge panel, Elo parameters, tournament settings, and bundled debate topics) published in the official compelle/compelle-validator repository at compelle/config.json. Documented in the README Configuration section as the shared game-parameter contract every validator runs. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/compelle/compelle-validator/blob/main/README.md",
+        "https://github.com/compelle/compelle-validator/blob/main/compelle/config.json"
+      ],
+      "url": "https://raw.githubusercontent.com/compelle/compelle-validator/main/compelle/config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-status-dashboard",
+      "kind": "dashboard",
+      "name": "Compelle system status dashboard",
+      "notes": "Public no-auth web dashboard at compelle.com/status - a live system-status readout of the SN82 Compelle validator network (validator state, last epoch block and time, distinct validators reporting, eligible miners scored in the last epoch, total epochs and games indexed), refreshing every 30 seconds. Server-rendered human-viewable page (page title: System Status | Compelle) on the subnet's official compelle.com app host, distinct in kind from the JSON /api/health endpoint and the validator-config data-artifact.",
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jaytbarimbao-collab"
+      },
+      "source_urls": ["https://compelle.com/status", "https://compelle.com/"],
+      "url": "https://compelle.com/status"
+    }
+  ],
+  "website_url": "https://subnet82.com"
+}

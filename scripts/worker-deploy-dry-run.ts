@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot, stripJsonComments } from "./lib.ts";
+import { cloudflareObservabilityErrors } from "./cloudflare-observability-policy.ts";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
 const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
@@ -65,7 +66,7 @@ check(
   config.vars?.ARCHIVE_OBJECT_STORAGE === "native" && !config.r2_buckets,
   "Native archive storage must be selected without R2 bindings",
 );
-check(config.observability?.enabled === true, "observability must be enabled");
+errors.push(...cloudflareObservabilityErrors(config));
 
 await fs.access(workerPath);
 

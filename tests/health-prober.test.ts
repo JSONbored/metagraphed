@@ -2,6 +2,7 @@ import { generatedArtifactDb } from "./helpers/generated-artifact-db.ts";
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import type { ObservationsSql } from "../src/observations-neon.ts";
 
 // One test in this file -- the hourly-cron dispatch below -- reaches
 // `observationsRunner`, which builds a real `new Client(...)` now that Neon is
@@ -432,6 +433,40 @@ describe("a stuck surface releases its slot (metagraphed#9769)", () => {
 });
 
 describe("runHealthProber", () => {
+  test("native observation capability owns continuity reads and probe writes", async () => {
+    const { env, posted } = makeProberEnv();
+    const calls: string[] = [];
+    const store: ObservationsSql = {
+      nativePostgres: true,
+      async unsafe(text: string) {
+        calls.push(text);
+        return [];
+      },
+      async transaction(run) {
+        return run(store);
+      },
+    };
+    Object.assign(env, { OBSERVATIONS_STORE: store });
+    const result = await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv: makeKv(),
+      loadSurfaces: async () => SURFACES,
+      probeSurface: probeImpl,
+      probeOptions: {},
+    });
+    assert.equal(result.ok, true);
+    assert.ok(
+      calls.some((text) => text.startsWith("SELECT * FROM surface_status")),
+    );
+    assert.ok(
+      calls.some((text) => text.includes("INSERT INTO surface_checks")),
+    );
+    assert.ok(
+      calls.some((text) => text.includes("INSERT INTO surface_status")),
+    );
+    assert.deepEqual(posted, []);
+  });
+
   test("an out-of-range prior last_ok coerces to null instead of throwing a RangeError", async () => {
     // A corrupt/out-of-range epoch (e.g. 1e100) carried on a prior last_ok would make
     // new Date(ms).toISOString() throw, tearing down the run. It must coerce to null.

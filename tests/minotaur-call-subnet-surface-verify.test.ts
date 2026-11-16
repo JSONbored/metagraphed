@@ -2,7 +2,7 @@
 // (metagraphed#7123, MCP execute Phase 1 follow-up #7014/#7215).
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN112's real registry surfaces
-// (registry/subnets/minotaur.json) to the tool's contract, so a future edit that
+// (registry/subnets/thor.json) to the tool's contract, so a future edit that
 // regresses their callability (flipping to HEAD, marking them auth_required,
 // disabling their probe) is caught here.
 //
@@ -37,9 +37,7 @@ const NETUID = 112;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/minotaur.json", import.meta.url),
-    ),
+    fileURLToPath(new URL("../registry/subnets/thor.json", import.meta.url)),
     "utf8",
   ),
 );

@@ -2,7 +2,7 @@
 // tool (metagraphed#7045, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN29's registry surface
-// (registry/subnets/coldint.json) to the tool's contract, so a future edit
+// (registry/subnets/ho-floa.json) to the tool's contract, so a future edit
 // that regresses its callability (flipping to HEAD, marking it
 // auth_required, disabling its probe) is caught here.
 //
@@ -33,7 +33,7 @@ const SURFACE_ID = "sn-29-coldint-competitions-api";
 
 const registry: Row = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/coldint.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/ho-floa.json", import.meta.url)),
     "utf8",
   ),
 );
@@ -59,7 +59,10 @@ describe("SN29 Coldint call_subnet_surface verification (#7045)", () => {
     assert.equal(SURFACE.auth_required, false);
     assert.equal(SURFACE.probe?.enabled, true);
     assert.equal(SURFACE.probe?.method, "GET");
-    assert.equal(SURFACE.probe?.expect, "json");
+    // [2026-11-15 infra#873 p3b] the endpoint serves its JSON body under a
+    // text/* content-type header, so the probe expectation is "any" -- the
+    // surface stays callable and still returns JSON.
+    assert.equal(SURFACE.probe?.expect, "any");
     assert.equal(
       SURFACE.url,
       "https://github.com/coldint/sn29/raw/main/competitions.json",

@@ -1,3 +1,5 @@
+import { mcpSessionService } from "./mcp-session-service.ts";
+import { chainFirehoseService } from "./chain-firehose-service.ts";
 import {
   LEGACY_EMISSION_SHARE_DESCRIPTION,
   MEAN_LEGACY_EMISSION_SHARE_DESCRIPTION,
@@ -1428,6 +1430,98 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.ts";
 import {
+  MECHANISM_SCOPE_MESSAGE,
+  invalidMechanismScope,
+  stampMechanismScope,
+} from "./mechanism-scope.ts";
+import {
+  GetSubnetMechanismsInputSchema,
+  GetSubnetMechanismsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-mechanisms.ts";
+import {
+  GetSubnetAlphaDividendsInputSchema,
+  GetSubnetAlphaDividendsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-alpha-dividends.ts";
+import {
+  GetAccountLocksInputSchema,
+  GetAccountLocksOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-locks.ts";
+import {
+  GetPendingColdkeySwapsInputSchema,
+  GetPendingColdkeySwapsOutputSchema,
+} from "../schemas-src/mcp-tools/get-pending-coldkey-swaps.ts";
+import {
+  GetAccountProxiesInputSchema,
+  GetAccountProxiesOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-proxies.ts";
+import {
+  GetAccountMultisigsInputSchema,
+  GetAccountMultisigsOutputSchema,
+} from "../schemas-src/mcp-tools/get-account-multisigs.ts";
+import {
+  GetValidatorBasketsInputSchema,
+  GetValidatorBasketsOutputSchema,
+} from "../schemas-src/mcp-tools/get-validator-baskets.ts";
+import {
+  GetSubnetGammaInputSchema,
+  GetSubnetGammaOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-gamma.ts";
+import {
+  GetGammaDepositsInputSchema,
+  GetGammaDepositsOutputSchema,
+} from "../schemas-src/mcp-tools/get-gamma-deposits.ts";
+import {
+  GetSubnetServicesInputSchema,
+  GetSubnetServicesOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-services.ts";
+import {
+  GetSubnetSwapInputSchema,
+  GetSubnetSwapOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-swap.ts";
+import {
+  GetSubnetAlphaAssetsInputSchema,
+  GetSubnetAlphaAssetsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-alpha-assets.ts";
+import {
+  GetSubnetLimitOrdersInputSchema,
+  GetSubnetLimitOrdersOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-limit-orders.ts";
+import {
+  buildValidatorBaskets,
+  loadValidatorBaskets,
+} from "./validator-baskets.ts";
+import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
+import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
+import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "./subnet-alpha-assets.ts";
+import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "./subnet-limit-orders.ts";
+import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
+import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "./subnet-mechanisms.ts";
+import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "./subnet-alpha-dividends.ts";
+import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+} from "./coldkey-swaps.ts";
+import { buildAccountProxies, loadAccountProxies } from "./account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "./account-multisigs.ts";
+import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
   buildAccountEvents,
@@ -2263,7 +2357,7 @@ export function toolResultContent(
 // - change or remove a tool's I/O       → MAJOR
 // - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.78.33";
+export const MCP_SERVER_VERSION = "1.78.35";
 // Price-impact thresholds for get_stake_action_preview's plan-shaped
 // `warnings`/`ok` advisory (#6894). There is no prior precedent for these in
 // this codebase, so they follow common AMM/DEX slippage conventions: ~1% is the
@@ -2656,8 +2750,8 @@ export const MCP_INSTRUCTIONS =
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
-  "get_account_root_claim its deprecated legacy Root-claim compatibility (claim type, claimable rates, " +
-  "cumulative claimed — read-only, never submits claim_root), " +
+  "get_account_root_claim its Root-claim currency (deprecated legacy compatibility plus the " +
+  "basket_claims event flow — read-only, never submits claim_root), " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered, get_account_portfolio " +
   "its registered memberships, scores and emission observations (capital, " +
@@ -4629,6 +4723,24 @@ function requireNetuid(args: Row) {
     );
   }
   return netuid;
+}
+
+/**
+ * The mechanism (mechid) scope argument (#13162).
+ *
+ * SAME REASON AS requireNetuid: dispatch does not validate against the Zod
+ * input schema, so the published bound-to-0 (mechidSchema's
+ * enforce-what-you-publish posture) is enforced here, with the sentence every
+ * surface rejects an out-of-range scope with. Null means "unscoped", which
+ * keeps the response byte-identical to before the argument existed.
+ */
+function optionalMechanismScope(args: Row) {
+  const raw = args?.mechid;
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "number" || invalidMechanismScope(raw)) {
+    throw toolError("invalid_params", MECHANISM_SCOPE_MESSAGE);
+  }
+  return raw;
 }
 
 /**
@@ -8729,14 +8841,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_WEIGHTS_WINDOWS,
         DEFAULT_SUBNET_WEIGHTS_WINDOW,
       );
-      return (
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamp below is a no-op then.
+      const mechid = optionalMechanismScope(args);
+      return stampMechanismScope(
         // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
         // wrangler.jsonc and is absent from FORWARDABLE_TIER_FLAGS, so this arm
         // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightsColdTier(ctx.env, netuid, {
           windowLabel: window,
           windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
-        })) ?? buildSubnetWeights(null, netuid, { window })
+        })) ?? buildSubnetWeights(null, netuid, { window }),
+        mechid,
       );
     },
   },
@@ -9361,6 +9477,353 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_mechanisms",
+    title: "Get a subnet's mechanism registry",
+    description:
+      "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each " +
+      "mechanism's mechid, its emission split (0..1, from " +
+      "SubtensorModule.MechanismEmissionSplit), its consensus mode " +
+      "(ConsensusByMechanism) and the capture stamp, ordered by mechid. " +
+      "Until the engine's per-mechanism capture lands, the registry holds no " +
+      "rows and the response is the schema-stable decline: an empty " +
+      "mechanisms array with mechanism_count NULL -- never 0, because every " +
+      "subnet has at least mechanism 0 and a zero count would be a " +
+      "fabricated measurement. Scope the per-UID tools to one mechanism with " +
+      "their own mechid argument (get_subnet_metagraph, get_neuron, " +
+      "get_subnet_weights). Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+    inputSchema: inputJsonSchema(GetSubnetMechanismsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetMechanismsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetMechanisms -> buildSubnetMechanisms decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildSubnetMechanisms(
+        await loadSubnetMechanisms(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_subnet_alpha_dividends",
+    title: "Get a subnet's pending alpha dividends",
+    description:
+      "Fetch one subnet's pending alpha dividend accrual (#13163): each " +
+      "hotkey's pending alpha dividends " +
+      "(SubtensorModule.AlphaDividendsPerSubnet) and root alpha dividends " +
+      "(RootAlphaDividendsPerSubnet), as u64 alpha atomic units in decimal " +
+      "strings with their capture stamp, largest alpha_divs first. Until the " +
+      "engine's dividend capture lands, the registry holds no rows and the " +
+      "response is the schema-stable decline: an empty dividends array with " +
+      "hotkey_count NULL -- never 0, because an empty registry is not a " +
+      "measured zero accrual. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/alpha-dividends.",
+    inputSchema: inputJsonSchema(GetSubnetAlphaDividendsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetAlphaDividendsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetAlphaDividends -> buildSubnetAlphaDividends decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetAlphaDividends(
+        await loadSubnetAlphaDividends(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_account_locks",
+    title: "Get an account's conviction-lock state",
+    description:
+      "Fetch one account's conviction-lock state (#13163): each lock's " +
+      "hotkey, subnet, variant (SubtensorModule.Lock / HotkeyLock / " +
+      "DecayingLock / OwnerLock and their decaying variants, spelled as the " +
+      "chain spells them), locked amount (u64 atomic units as a decimal " +
+      "string) and maturity block with its capture stamp, ordered by " +
+      "(netuid, hotkey, kind). Until the engine's lock capture lands, the " +
+      "state holds no rows and the response is the schema-stable decline: " +
+      "an empty locks array with lock_count NULL -- never 0, because an " +
+      "empty list is not a measured lock-free account. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/locks.",
+    inputSchema: inputJsonSchema(GetAccountLocksInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountLocksInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountLocks -> buildAccountLocks decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildAccountLocks(await loadAccountLocks(ctx.env, ss58), ss58);
+    },
+  },
+  {
+    name: "get_pending_coldkey_swaps",
+    title: "List every in-flight coldkey-swap announcement",
+    description:
+      "Fetch every in-flight v2 coldkey-swap announcement (#13166): each " +
+      "announcing account with its reserved destination " +
+      "(SubtensorModule.ColdkeySwapReservedDestination), commitment hash " +
+      "and execute block (ColdkeySwapAnnouncements), dispute state " +
+      "(ColdkeySwapDisputes), policy snapshot (ColdkeySwapV2PolicySnapshots) " +
+      "and capture stamp, soonest-executable first, beside the chain-wide " +
+      "announcement/reannouncement delays. Until the engine's swap capture " +
+      "lands, the state holds no rows and the response is the schema-stable " +
+      "decline: an empty swaps array with swap_count NULL (never 0, because " +
+      "an empty list is not a measured swap-free chain) and a null policy. " +
+      "The per-account drill-in with key successor lineage is the REST card " +
+      "/api/v1/accounts/{ss58}/coldkey-swap. Mirrors GET " +
+      "/api/v1/accounts/pending-coldkey-swaps.",
+    inputSchema: inputJsonSchema(GetPendingColdkeySwapsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetPendingColdkeySwapsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadPendingColdkeySwaps -> buildPendingColdkeySwaps decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildPendingColdkeySwaps(await loadPendingColdkeySwaps(ctx.env));
+    },
+  },
+  {
+    name: "get_account_proxies",
+    title: "Get an account's proxy delegations",
+    description:
+      "Fetch one account's Proxy-pallet delegation state (#13166): each " +
+      "proxy definition's delegate, variant (spelled as the chain's enum " +
+      "spells it -- 23 variants on v490 and growing) and announcement delay " +
+      "with its capture stamp, ordered by (delegate, proxy_type, delay), " +
+      "plus the account-level reserve (u64 atomic units as a decimal " +
+      "string). Until the engine's Proxy.Proxies capture lands, the state " +
+      "holds no rows and the response is the schema-stable decline: an " +
+      "empty proxies array with proxy_count NULL -- never 0, because an " +
+      "empty list is not a measured delegation-free account. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/proxies.",
+    inputSchema: inputJsonSchema(GetAccountProxiesInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountProxiesInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountProxies -> buildAccountProxies decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildAccountProxies(await loadAccountProxies(ctx.env, ss58), ss58);
+    },
+  },
+  {
+    name: "get_account_multisigs",
+    title: "List every multisig an account belongs to",
+    description:
+      "Fetch every multisig an account belongs to (#13166) -- as the " +
+      "multisig account itself or as a signatory -- each with its resolved " +
+      "signatory set, approval threshold, which side of the membership " +
+      "matched and the capture stamp, ordered by multisig address and " +
+      "store-capped. Until the engine's Multisig call/event capture lands, " +
+      "the state holds no rows and the response is the schema-stable " +
+      "decline: an empty multisigs array with multisig_count NULL -- never " +
+      "0, because an empty list is not a measured multisig-free account. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/multisigs.",
+    inputSchema: inputJsonSchema(GetAccountMultisigsInputSchema),
+    async handler(
+      args: z.infer<typeof GetAccountMultisigsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // requireSs58 already checksum-checks the address (#10036), so there is
+      // no second validation to fail here.
+      const ss58 = requireSs58(args);
+      // Same loadAccountMultisigs -> buildAccountMultisigs decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildAccountMultisigs(
+        await loadAccountMultisigs(ctx.env, ss58),
+        ss58,
+      );
+    },
+  },
+  {
+    name: "get_validator_baskets",
+    title: "Get every validator's Root basket fund",
+    description:
+      "Fetch every validator's Root basket fund at the newest completed " +
+      "capture (#13163): shares, spot/realizable NAV in rao, " +
+      "deposit/redemption watermarks and Q64.64 pricing marks as canonical " +
+      "decimal strings, largest spot NAV first, with the capture's " +
+      "finalized block, runtime era and acceptance stamp. With no capture " +
+      "store bound, or no completed capture yet, the response is the " +
+      "schema-stable decline: capture NULL with fund_count NULL and an " +
+      "empty baskets array. With a capture present, fund_count 0 is a real " +
+      "measurement -- a completed capture is a verified complete " +
+      "enumeration of every fund. Per-fund holdings and target allocations " +
+      "live on the REST drill-in /api/v1/validators/{hotkey}/basket. " +
+      "Mirrors GET /api/v1/chain/baskets.",
+    inputSchema: inputJsonSchema(GetValidatorBasketsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetValidatorBasketsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadValidatorBaskets -> buildValidatorBaskets decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildValidatorBaskets(await loadValidatorBaskets(ctx.env));
+    },
+  },
+  {
+    name: "get_subnet_gamma",
+    title: "Get a subnet's current Gamma state",
+    description:
+      "Fetch one subnet's current Gamma state (#13164): the " +
+      "SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw " +
+      "SubnetGammaPrice as a canonical decimal string (the engine's decode " +
+      "owns the scaling), and the SubnetGammaEmission / " +
+      "PendingGammaEmission / UnconvertedGammaEmission counters as u64 " +
+      "atomic units in decimal strings, with their capture stamp. Until the " +
+      "engine's Gamma capture lands, the store holds no rows and the " +
+      "response is the schema-stable decline: gamma NULL -- never a zeroed " +
+      "state, because an absent capture is not a measured Gamma-off subnet. " +
+      "The capture series lives on the REST drill-in " +
+      "/api/v1/subnets/{netuid}/gamma/history. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/gamma.",
+    inputSchema: inputJsonSchema(GetSubnetGammaInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetGammaInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetGamma -> buildSubnetGamma decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildSubnetGamma(await loadSubnetGamma(ctx.env, netuid), netuid);
+    },
+  },
+  {
+    name: "get_gamma_deposits",
+    title: "Get the chain's Gamma deposits",
+    description:
+      "Fetch the chain's Gamma deposit state (#13164): each deposit's " +
+      "owning account and hotkey, subnet, balance " +
+      "(SubtensorModule.GammaDeposits; u64 atomic units as a decimal " +
+      "string), authorized spender, daily spend cap and closed-at block " +
+      "with its capture stamp, largest balance first and store-capped. " +
+      "Until the engine's GammaDeposits capture lands, the state holds no " +
+      "rows and the response is the schema-stable decline: an empty " +
+      "deposits array with deposit_count NULL -- never 0, because an empty " +
+      "list is not a measured deposit-free chain. Mirrors GET " +
+      "/api/v1/gamma/deposits.",
+    inputSchema: inputJsonSchema(GetGammaDepositsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetGammaDepositsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Same loadGammaDeposits -> buildGammaDeposits decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildGammaDeposits(await loadGammaDeposits(ctx.env));
+    },
+  },
+  {
+    name: "get_subnet_services",
+    title: "Get a subnet's on-chain service URLs",
+    description:
+      "Fetch one subnet's on-chain service-URL registry (#13164): each " +
+      "hotkey's published service URL (SubtensorModule.Services; events " +
+      "ServiceSet / ServiceRemoved) with the block it was set at and its " +
+      "capture stamp, ordered by hotkey. Until the engine's Services " +
+      "capture lands, the registry holds no rows and the response is the " +
+      "schema-stable decline: an empty services array with service_count " +
+      "NULL -- never 0, because an empty registry is not a measured " +
+      "service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
+    inputSchema: inputJsonSchema(GetSubnetServicesInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetServicesInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetServices -> buildSubnetServices decline contract the
+      // REST handler and the GraphQL resolver share.
+      return buildSubnetServices(
+        await loadSubnetServices(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_subnet_swap",
+    title: "Get a subnet's balancer Swap state",
+    description:
+      "Fetch one subnet's current balancer-based Swap state (#13165, " +
+      "runtime v490): the pool's TAO and alpha reservoirs " +
+      "(Swap.BalancerTaoReservoir / Swap.BalancerAlphaReservoir) as u64 " +
+      "atomic units in decimal strings, and the raw u16 fee rate " +
+      "(Swap.FeeRate, served verbatim -- the engine's decode owns the " +
+      "scaling), with their capture stamp. Until the engine's balancer " +
+      "capture lands, the store holds no rows and the response is the " +
+      "schema-stable decline: swap NULL -- never a zeroed state, because an " +
+      "absent capture is not a measured empty pool. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/swap.",
+    inputSchema: inputJsonSchema(GetSubnetSwapInputSchema),
+    async handler(args: z.infer<typeof GetSubnetSwapInputSchema>, ctx: McpCtx) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetSwap -> buildSubnetSwap decline contract the REST
+      // handler and the GraphQL resolver share.
+      return buildSubnetSwap(await loadSubnetSwap(ctx.env, netuid), netuid);
+    },
+  },
+  {
+    name: "get_subnet_alpha_assets",
+    title: "Get a subnet's alpha-asset accounting",
+    description:
+      "Fetch one subnet's current AlphaAssets accounting (#13165, runtime " +
+      "v490): total alpha issuance and its burn/recycle sinks " +
+      "(AlphaAssets.TotalAlphaIssuance / AlphaAssets.AlphaBurned / " +
+      "AlphaAssets.AlphaRecycled) as u64 alpha atomic units in decimal " +
+      "strings, with their capture stamp. Until the engine's alpha-assets " +
+      "capture lands, the store holds no rows and the response is the " +
+      "schema-stable decline: alpha_assets NULL -- never a zeroed state, " +
+      "because an absent capture is not a measured zero issuance. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/alpha-assets.",
+    inputSchema: inputJsonSchema(GetSubnetAlphaAssetsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetAlphaAssetsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetAlphaAssets -> buildSubnetAlphaAssets decline contract
+      // the REST handler and the GraphQL resolver share.
+      return buildSubnetAlphaAssets(
+        await loadSubnetAlphaAssets(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_subnet_limit_orders",
+    title: "Get a subnet's limit-order book",
+    description:
+      "Fetch one subnet's LimitOrders order book (#13165, runtime v490): " +
+      "each captured order's H256 key (LimitOrders.Orders), owner, " +
+      "OrderType variant (spelled as the chain spells it), amount (u64 " +
+      "atomic units as a decimal string), raw price (canonical decimal text " +
+      "-- the engine's decode owns the scaling) and state, newest capture " +
+      "first and store-capped. Until the engine's order-book capture lands, " +
+      "the book holds no rows and the response is the schema-stable " +
+      "decline: an empty orders array with order_count NULL -- never 0, " +
+      "because an empty book is not a measured order-less subnet. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/limit-orders.",
+    inputSchema: inputJsonSchema(GetSubnetLimitOrdersInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetLimitOrdersInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetLimitOrders -> buildSubnetLimitOrders decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetLimitOrders(
+        await loadSubnetLimitOrders(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
     name: "get_subnet_metagraph",
     title: "Get subnet metagraph (per-UID)",
     description:
@@ -9395,6 +9858,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // handleSubnetMetagraph (validator_permit=true is the only value that
       // changes the canonical cache path; omission and false are equivalent).
       const validatorPermit = optionalBoolean(args, "validator_permit");
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamp below is a no-op then.
+      const mechid = optionalMechanismScope(args);
       // #9082: rejected before the tier read, so an unsupported field costs a
       // tool error rather than a full 256-row fetch the caller never sees.
       const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
@@ -9416,13 +9882,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // columns being filtered on.
       return projectNeuronPayload(
         selectNeuronRows(
-          (await tryDataApiTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
-              validator_permit: validatorPermit ? "true" : undefined,
-            }),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) ?? buildSubnetMetagraph([], netuid),
+          stampMechanismScope(
+            (await tryDataApiTier(
+              ctx.env,
+              mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
+                validator_permit: validatorPermit ? "true" : undefined,
+              }),
+              "METAGRAPH_NEURONS_SOURCE",
+            )) ?? buildSubnetMetagraph([], netuid),
+            mechid,
+          ),
           selection,
         ),
         fields,
@@ -9867,6 +10336,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // handleNeuron.
       const uid = optionalNonNegativeInt(args, "uid");
       const hotkey = optionalHotkey(args, "hotkey");
+      // #13162: the mechanism scope, bounded to 0 like the route it mirrors --
+      // see mechidSchema. Null means unscoped; the stamps below are no-ops then.
+      const mechid = optionalMechanismScope(args);
       // #9872: exactly one identifier. Enforced here rather than in the
       // schema because this server validates arguments in the handler by
       // design (#8942) -- and because both failures need to say which pair
@@ -9901,23 +10373,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : [];
         const match = rows.find((row) => row.hotkey === hotkey) ?? null;
         return projectNeuronPayload(
-          {
-            schema_version: snapshot.schema_version ?? 1,
-            netuid,
-            captured_at: snapshot.captured_at ?? null,
-            block_number: snapshot.block_number ?? null,
-            // null is a real answer: the hotkey holds no UID on this subnet.
-            neuron: match,
-          },
+          stampMechanismScope(
+            {
+              schema_version: snapshot.schema_version ?? 1,
+              netuid,
+              captured_at: snapshot.captured_at ?? null,
+              block_number: snapshot.block_number ?? null,
+              // null is a real answer: the hotkey holds no UID on this subnet.
+              neuron: match,
+            },
+            mechid,
+          ),
           fields,
         );
       }
       return projectNeuronPayload(
-        (await tryDataApiTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
-          "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildNeuronDetail(null, netuid),
+        stampMechanismScope(
+          (await tryDataApiTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildNeuronDetail(null, netuid),
+          mechid,
+        ),
         fields,
       );
     },
@@ -10699,11 +11177,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the USD price of one TAO (#9609) with the derivation behind it, " +
       "plus the recent series. Use this to convert any TAO-denominated figure " +
-      "in this API into USD. There is no TAO/USD pair on chain, so the number " +
-      "is COMPOSED: a liquidity-weighted median across qualifying wTAO/WETH " +
-      "pools, rejecting pools more than 2% from the unweighted median, " +
-      "refusing to publish below a two-pool quorum, multiplied through an " +
-      "ETH/USDC anchor leg (ADR 0025). `latest` carries the price together " +
+      "in this API into USD. The series is COMPOSED off-chain (source " +
+      "pool_composite): a liquidity-weighted median across qualifying " +
+      "wTAO/WETH pools, rejecting pools more than 2% from the unweighted " +
+      "median, refusing to publish below a two-pool quorum, multiplied " +
+      "through an ETH/USDC anchor leg (ADR 0025). The chain's own " +
+      "TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, " +
+      "labelled source chain_oracle with its TaoUsdPriceFed history " +
+      "(#13164); it is NULL until the engine's oracle capture lands -- an " +
+      "absent capture is never served as a price. `latest` carries the " +
+      "composed price together " +
       "with price_basis, eth_usd, block_number, pool_count and the per-pool " +
       "breakdown, so the figure and its audit trail always describe the same " +
       "block. IMPORTANT: a null usd_per_tao is a STATED OUTCOME, not missing " +
@@ -10731,6 +11214,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return buildTaoUsdSeries(rows, {
         window: label,
         includePoints: args?.include_points === true,
+        // #13164: same oracle decline contract the REST handler and the
+        // GraphQL resolver share -- null until the engine's oracle capture
+        // lands.
+        oracle: buildTaoUsdOracle(await loadTaoUsdOracle(ctx.env)),
       });
     },
   },
@@ -11525,14 +12012,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_account_root_claim",
-    title: "Get an account's legacy Root-claim compatibility",
+    title: "Get an account's Root-claim currency",
     description:
-      "Read deprecated per-subnet Root-claim state at a finalized block. " +
-      "Only audited node-subtensor v440 is supported; v441+ reports unsupported, " +
-      "other runtimes or failed reads unavailable, with claim_type/hotkeys null. " +
-      "Runtime is checked before the 120s KV cache. Native basket entitlement " +
-      "requires separate basket data and is not inferred here. Read-only; never " +
-      "submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+      "Read one account's Root-claim currency across both eras. Legacy: " +
+      "deprecated per-subnet state at a finalized block -- only audited " +
+      "node-subtensor v440 is supported; v441+ reports unsupported, other " +
+      "runtimes or failed reads unavailable, with claim_type/hotkeys null; " +
+      "runtime is checked before the 120s KV cache. Current era (#13163): " +
+      "basket_claims carries the newest BasketClaimed / " +
+      "BasketClaimDustSkipped events from the ingested event stream with the " +
+      "store's coverage floor -- claims flow through Basket* events since " +
+      "Root Reborn (v441), and basket STATE lives on get_validator_baskets. " +
+      "Read-only; never submits claim_root. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/root-claim.",
     inputSchema: inputJsonSchema(GetAccountRootClaimInputSchema),
     async handler(
       args: z.infer<typeof GetAccountRootClaimInputSchema>,
@@ -15673,6 +16165,26 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
     outputJsonSchema(GetChainConcentrationHistoryOutputSchema),
   get_subnet_price_share_composition: () =>
     outputJsonSchema(GetSubnetPriceShareCompositionOutputSchema),
+  get_subnet_mechanisms: () =>
+    outputJsonSchema(GetSubnetMechanismsOutputSchema),
+  get_subnet_alpha_dividends: () =>
+    outputJsonSchema(GetSubnetAlphaDividendsOutputSchema),
+  get_account_locks: () => outputJsonSchema(GetAccountLocksOutputSchema),
+  get_pending_coldkey_swaps: () =>
+    outputJsonSchema(GetPendingColdkeySwapsOutputSchema),
+  get_account_proxies: () => outputJsonSchema(GetAccountProxiesOutputSchema),
+  get_account_multisigs: () =>
+    outputJsonSchema(GetAccountMultisigsOutputSchema),
+  get_validator_baskets: () =>
+    outputJsonSchema(GetValidatorBasketsOutputSchema),
+  get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),
+  get_gamma_deposits: () => outputJsonSchema(GetGammaDepositsOutputSchema),
+  get_subnet_services: () => outputJsonSchema(GetSubnetServicesOutputSchema),
+  get_subnet_swap: () => outputJsonSchema(GetSubnetSwapOutputSchema),
+  get_subnet_alpha_assets: () =>
+    outputJsonSchema(GetSubnetAlphaAssetsOutputSchema),
+  get_subnet_limit_orders: () =>
+    outputJsonSchema(GetSubnetLimitOrdersOutputSchema),
   get_emission_pipeline_history: () =>
     outputJsonSchema(GetPipelineHistoryOutputSchema),
   get_deregistration_ranking_history: () =>
@@ -16457,20 +16969,21 @@ function resourceArtifactPath(uri: string) {
 // the hub last cold-started) -- a subscribed client's first resources/read
 // after subscribing is a normal, expected case, not a fault.
 async function readLiveChainStreamResource(ctx: McpCtx) {
-  if (!ctx.env.CHAIN_FIREHOSE_HUB) {
+  const service = chainFirehoseService(ctx.env);
+  if (!service) {
     return {
       table: null,
       message: "the realtime firehose is not bound on this deployment",
     };
   }
-  const stub = ctx.env.CHAIN_FIREHOSE_HUB.get(
-    ctx.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-  );
-  const upstream = await stub.fetch(
+  const upstream = await service.fetch(
     "https://chain-firehose-hub.internal/latest",
   );
-  const { payload } = await upstream.json();
-  return payload ?? { table: null, message: "no chain event observed yet" };
+  const data = asJsonObject(await upstream.json());
+  if (!data) throw new Error("Invalid chain firehose response");
+  return (
+    data.payload ?? { table: null, message: "no chain event observed yet" }
+  );
 }
 
 async function readSubnetStatusResource(ctx: McpCtx, netuid: number) {
@@ -16554,16 +17067,15 @@ async function subscribeResource(params: Row | null, ctx: McpCtx) {
         "from the initialize response).",
     );
   }
-  if (!ctx.env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(ctx.env, ctx.sessionId);
+  if (!sessionService) {
     throw toolError(
       "resource_unavailable",
       "MCP resource subscriptions are not provisioned on this deployment.",
     );
   }
-  const stub = ctx.env.MCP_SESSION_HUB.get(
-    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     "https://mcp-session-hub.internal/subscribe",
     {
       method: "POST",
@@ -16588,18 +17100,17 @@ async function unsubscribeResource(params: Row | null, ctx: McpCtx) {
       "resources/unsubscribe requires an Mcp-Session-Id header.",
     );
   }
-  if (!ctx.env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(ctx.env, ctx.sessionId);
+  if (!sessionService) {
     throw toolError(
       "resource_unavailable",
       "MCP resource subscriptions are not provisioned on this deployment.",
     );
   }
-  const stub = ctx.env.MCP_SESSION_HUB.get(
-    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
-  );
+
   // Unsubscribing from something never subscribed to is a harmless no-op
   // (McpSessionHub's Set.delete semantics) -- no existence check needed.
-  await stub.fetch("https://mcp-session-hub.internal/unsubscribe", {
+  await sessionService.fetch("https://mcp-session-hub.internal/unsubscribe", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ sessionId: ctx.sessionId, uri }),
@@ -18587,12 +19098,11 @@ async function registerMcpSession(
   env: Env,
   sessionId: string | undefined,
 ): Promise<void> {
-  if (!sessionId || !env.MCP_SESSION_HUB) return;
+  if (!sessionId) return;
   try {
-    const stub = env.MCP_SESSION_HUB.get(
-      env.MCP_SESSION_HUB.idFromName(sessionId),
-    );
-    await stub.fetch("https://mcp-session-hub.internal/register", {
+    const sessionService = mcpSessionService(env, sessionId);
+    if (!sessionService) return;
+    await sessionService.fetch("https://mcp-session-hub.internal/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ sessionId }),
@@ -18647,14 +19157,14 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
       { allow: "POST, DELETE, OPTIONS" },
     );
   }
-  if (!env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(env, rawSessionId);
+  if (!sessionService) {
     return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
   }
-  const stub = env.MCP_SESSION_HUB.get(
-    env.MCP_SESSION_HUB.idFromName(rawSessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     `https://mcp-session-hub.internal/stream?sessionId=${encodeURIComponent(rawSessionId)}`,
+    { signal: request.signal },
   );
   if (!upstream.ok) {
     // 404 (session unknown/already terminated) from the DO -- a client-facing
@@ -18725,13 +19235,12 @@ async function handleMcpTerminateRequest(request: Request, env: Env) {
       400,
     );
   }
-  if (!env.MCP_SESSION_HUB) {
+  const sessionService = mcpSessionService(env, rawSessionId);
+  if (!sessionService) {
     return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
   }
-  const stub = env.MCP_SESSION_HUB.get(
-    env.MCP_SESSION_HUB.idFromName(rawSessionId),
-  );
-  const upstream = await stub.fetch(
+
+  const upstream = await sessionService.fetch(
     "https://mcp-session-hub.internal/terminate",
     {
       method: "POST",

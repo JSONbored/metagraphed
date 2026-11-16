@@ -50,12 +50,30 @@ export function r2ObjectUrl(
   return `${r2ApiBaseUrl()}/accounts/${accountId}/r2/buckets/${bucketName}/objects/${encodeR2Key(key)}`;
 }
 
-/** Read a small cron snapshot from D1; optional enrichment retains its seed
- * when credentials, the store, or valid object data are unavailable. */
+/** Read a small cron snapshot from the explicitly selected store. Native builds
+ * set METAGRAPH_GENERATED_ARTIFACT_DATABASE_URL for a scoped PostgreSQL reader.
+ * Optional enrichment retains its seed when the selected store is unavailable. */
 export async function readGeneratedStoreJson(
   key: string,
   timeoutMs = 30_000,
 ): Promise<Record<string, unknown> | null> {
+  const nativeDatabase = process.env.METAGRAPH_GENERATED_ARTIFACT_DATABASE_URL;
+  if (nativeDatabase) {
+    try {
+      const { readGeneratedArtifactPostgres } =
+        await import("./generated-artifact-postgres.ts");
+      const doc = await readGeneratedArtifactPostgres(
+        key,
+        nativeDatabase,
+        timeoutMs,
+      );
+      return doc && typeof doc === "object" && !Array.isArray(doc)
+        ? (doc as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) return null;

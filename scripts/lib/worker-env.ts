@@ -30,6 +30,7 @@
 import type {
   ApiWorkerEnv,
   DataApiWorkerEnv,
+  MergedWorkerEnv,
   RegistrySyncWorkerEnv,
 } from "../../workers/types.ts";
 
@@ -53,4 +54,18 @@ export function registrySyncEnv(
 /** A partial `Env` -- the MAIN API Worker's, not any other's. */
 export function apiEnv(overrides: EnvStub<ApiWorkerEnv> = {}): ApiWorkerEnv {
   return overrides as ApiWorkerEnv;
+}
+
+/** The merged single-Worker env (#13143): the main Worker's plus the data tier's. */
+export function mergedDataApiEnv(
+  overrides: EnvStub<MergedWorkerEnv<DataApiWorkerEnv>> = {},
+): MergedWorkerEnv<DataApiWorkerEnv> {
+  return overrides as MergedWorkerEnv<DataApiWorkerEnv>;
+}
+
+/** The merged single-Worker env (#13143): the main Worker's plus the registry write tier's. */
+export function mergedRegistrySyncEnv(
+  overrides: EnvStub<MergedWorkerEnv<RegistrySyncWorkerEnv>> = {},
+): MergedWorkerEnv<RegistrySyncWorkerEnv> {
+  return overrides as MergedWorkerEnv<RegistrySyncWorkerEnv>;
 }

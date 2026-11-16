@@ -3,10 +3,16 @@
 // Unlike tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring
 // with synthetic surfaces -- this file pins SN120's real registry surfaces
 // (registry/subnets/affine.json) to the tool's contract, so a future edit that
-// regresses their callability (flipping to HEAD, marking them auth_required,
-// disabling their probe) is caught here.
+// changes their availability class without updating these pins is caught here.
 //
-// All eight live-verified 2026-07-21:
+// The 2026-11-15 infra#873 availability sweep found all five operational
+// routes answering 404 on an alive host, so they are probe-disabled (retired
+// from the callable set pending url re-verification -- gated/disabled, not
+// deleted) and this file pins that non-callable state for them; the
+// openapi/website/source-repo surfaces remain callable and keep their
+// original pins.
+//
+// All eight were live-verified 2026-07-21:
 //   - sn-120-affine-openapi              GET https://api.affine.io/openapi.json
 //     -> 200 application/json (OpenAPI 3.1.0 schema, 10 paths).
 //   - sn-120-affine-health               GET .../api/v1/health -> 200
@@ -80,6 +86,7 @@ async function callThroughMcpTool(surface: Row, spec: Row) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    (spec.onUpstreamFetch as (() => void) | undefined)?.();
     return upstreamResponse(spec);
   };
   try {
@@ -160,6 +167,7 @@ const CONFIG = { configs: { validator_burn_percentage: 0 } };
 const SURFACES = [
   {
     id: "sn-120-affine-openapi",
+    retired: false,
     kind: "openapi",
     operational: false,
     url: "https://api.affine.io/openapi.json",
@@ -170,6 +178,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-health",
+    retired: true,
     kind: "subnet-api",
     operational: true,
     url: "https://api.affine.io/api/v1/health",
@@ -180,6 +189,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-data-artifact",
+    retired: true,
     kind: "data-artifact",
     operational: true,
     url: "https://api.affine.io/api/v1/rank/current",
@@ -190,6 +200,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-scores-latest",
+    retired: true,
     kind: "subnet-api",
     operational: true,
     url: "https://api.affine.io/api/v1/scores/latest",
@@ -200,6 +211,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-scores-weights-latest",
+    retired: true,
     kind: "subnet-api",
     operational: true,
     url: "https://api.affine.io/api/v1/scores/weights/latest",
@@ -210,6 +222,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-config",
+    retired: true,
     kind: "data-artifact",
     operational: true,
     url: "https://api.affine.io/api/v1/config",
@@ -220,6 +233,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-website",
+    retired: false,
     kind: "website",
     operational: false,
     url: "https://www.affine.io/",
@@ -230,6 +244,7 @@ const SURFACES = [
   },
   {
     id: "sn-120-affine-source-repo",
+    retired: false,
     kind: "source-repo",
     operational: false,
     url: "https://github.com/AffineFoundation/affine",
@@ -244,14 +259,26 @@ for (const spec of SURFACES) {
   describe(`SN120 Affine ${spec.id} call_subnet_surface verification (#7129)`, () => {
     const SURFACE = surfaceById(spec.id);
 
-    test("the registry surface exists and is configured to be callable", () => {
-      assert.ok(SURFACE, `registry surface ${spec.id} is present`);
-      assert.equal(SURFACE.kind, spec.kind);
-      assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.url, spec.url);
-      assert.equal(SURFACE.probe?.enabled, true);
-      assert.equal(SURFACE.probe?.method, spec.method);
-    });
+    test(
+      spec.retired
+        ? "the registry surface is pinned to its retired (probe-disabled) config"
+        : "the registry surface exists and is configured to be callable",
+      () => {
+        assert.ok(SURFACE, `registry surface ${spec.id} is present`);
+        assert.equal(SURFACE.kind, spec.kind);
+        assert.equal(SURFACE.auth_required, false);
+        assert.equal(SURFACE.url, spec.url);
+        if (spec.retired) {
+          // [2026-11-15 infra#873 p3b] route 404s on an alive host: retired
+          // from the callable set pending url re-verification.
+          assert.equal(SURFACE.probe?.enabled, false);
+          assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3b\]/);
+        } else {
+          assert.equal(SURFACE.probe?.enabled, true);
+        }
+        assert.equal(SURFACE.probe?.method, spec.method);
+      },
+    );
 
     test(`callSubnetSurface issues a ${spec.method} to the surface's own url and returns the body`, async () => {
       let requestedUrl: string | undefined;
@@ -281,7 +308,21 @@ for (const spec of SURFACES) {
       }
     });
 
-    if (spec.operational) {
+    if (spec.operational && spec.retired) {
+      test("the call_subnet_surface MCP tool refuses the retired surface without fetching upstream", async () => {
+        assert.ok(OPERATIONAL_SURFACE_KINDS.includes(spec.kind));
+        let upstreamFetched = false;
+        const result = await callThroughMcpTool(SURFACE, {
+          ...spec,
+          onUpstreamFetch: () => {
+            upstreamFetched = true;
+          },
+        });
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text, /probe\.enabled:false/);
+        assert.equal(upstreamFetched, false);
+      });
+    } else if (spec.operational) {
       test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
         assert.ok(OPERATIONAL_SURFACE_KINDS.includes(spec.kind));
         const result = await callThroughMcpTool(SURFACE, spec);

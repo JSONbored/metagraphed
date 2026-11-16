@@ -193,7 +193,7 @@ export function isRetiredLane(lane: string): boolean {
  * a plain object. */
 export interface LaneHealthDb {
   /** Native identity used only inside one bounded retention statement. */
-  historyRowId?: "rowid" | "ctid";
+  historyRowId?: "rowid" | "ctid" | "source_row_id";
   /** D1 requires the repaired physical triggers before housekeeping can run. */
   retentionReady?(): Promise<boolean>;
   /** A materialized latest-per-lane read, maintained atomically by the store. */

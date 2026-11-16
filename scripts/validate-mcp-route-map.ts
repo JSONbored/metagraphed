@@ -51,6 +51,36 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "event stream open; MCP sessions subscribe through the hub's own " +
     "/mcp-subscribe channel (mcpSubscribedSessions), and the polled twin is " +
     "list_chain_events.",
+  "/api/v1/validators/{hotkey}/basket":
+    "The per-validator drill-in of /api/v1/chain/baskets (#13163). " +
+    "get_validator_baskets already hands an agent EVERY fund at the served " +
+    "capture in one call -- a capture holds at most 2,048 -- so a per-hotkey " +
+    "tool would be a second, narrower answer to the same question. The " +
+    "holdings/targets detail is a UI drill-in; add the tool when an agent " +
+    "workflow actually needs per-leg composition.",
+  "/api/v1/subnets/{netuid}/gamma/history":
+    "The capture-series drill-in of /api/v1/subnets/{netuid}/gamma " +
+    "(#13164). get_subnet_gamma already answers the agent question -- the " +
+    "subnet's CURRENT Gamma state -- and the series is empty until the " +
+    "engine's Gamma capture lands, so a history tool today would only " +
+    "restate the decline. Add it when an agent workflow actually needs the " +
+    "trajectory.",
+  "/api/v1/chain/gamma":
+    "The chain-wide rollup of /api/v1/subnets/{netuid}/gamma (#13164). " +
+    "get_subnet_gamma answers the per-subnet question an agent actually " +
+    "asks, and the rollup's one extra scalar (the global GammaEnabled " +
+    "switch) is not worth a second tool that restates every per-subnet row; " +
+    "the chain card is an HTTP/UI surface. Add a tool when an agent " +
+    "workflow needs the global switch on its own.",
+  "/api/v1/accounts/{ss58}/coldkey-swap":
+    "The per-account drill-in of /api/v1/accounts/pending-coldkey-swaps " +
+    "(#13166). get_pending_coldkey_swaps already hands an agent EVERY " +
+    "in-flight announcement in one call (the chain map holds at most one " +
+    "per announcing account, store-capped), so a per-account twin would " +
+    "restate a row the list already serves; the key successor lineage block " +
+    "is an HTTP/UI drill-in until an agent workflow actually needs to walk " +
+    "swap lineage, and both blocks are empty until the engine's captures " +
+    "land. Add the tool when a real agent workflow asks per-account.",
 };
 
 /** `.atom`/`.rss`/`.json` feed variants: get_feed serves the JSON one. */

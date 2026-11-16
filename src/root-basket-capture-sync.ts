@@ -2,6 +2,7 @@ import { RootBasketCaptureSchema } from "../schemas-src/root-basket-capture.ts";
 import { createProducerStore, type ProducerStore } from "./producer-store.ts";
 import { timingSafeEqual } from "./webhooks.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
+import { selectedRootBasketStore } from "./root-basket-store.ts";
 import {
   ROOT_BASKET_D1_TABLES,
   writeRootBasketCaptureD1,
@@ -21,6 +22,7 @@ interface SyncEnv {
   HYPERDRIVE?: { connectionString: string };
   D1_STATE?: D1StoreBinding;
   D1_STATE_TABLES?: string;
+  ROOT_BASKET_STORE?: unknown;
 }
 
 export async function handleRootBasketCaptureSync(
@@ -87,8 +89,25 @@ export async function handleRootBasketCaptureSync(
     return fail(413, "root basket capture exceeds row limits");
   let store: ProducerStore | undefined;
   try {
+    const processStore = selectedRootBasketStore(env);
+    if (processStore) {
+      const receipt = await processStore.write(
+        parsed.data,
+        (deps.now ?? Date.now)(),
+      );
+      return Response.json({ ok: true, ...receipt });
+    }
     // Partial ownership or a missing selected binding THROWS here. Only a
     // family with zero D1-selected tables can reach the legacy fallback.
+    // The legacy D1/Neon lanes keep their production-held v454 DDL pins
+    // (#13163): decline a v490-era capture here, before any insert, rather
+    // than letting the row die on a CHECK constraint mid-transaction.
+    if (parsed.data.runtime_spec_version !== 454) {
+      return fail(
+        422,
+        "post-v454 root basket captures require the native PostgreSQL store",
+      );
+    }
     const native = selectedD1Store(env, ROOT_BASKET_D1_TABLES);
     store =
       deps.store ??

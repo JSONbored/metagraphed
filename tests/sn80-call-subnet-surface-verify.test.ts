@@ -2,7 +2,7 @@
 // tool (metagraphed#7093, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN80's *real* no-auth GET JSON
-// registry surface (registry/subnets/dogelayer.json) to the tool's contract.
+// registry surface (registry/subnets/openroboto.json) to the tool's contract.
 //
 // Live-verified 2026-07-21:
 //   sn-80-taomarketcap-subnet-api  GET https://api.taomarketcap.com/public/v1/subnets/80/
@@ -21,7 +21,7 @@ const NETUID = 80;
 const registry = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL("../registry/subnets/dogelayer.json", import.meta.url),
+      new URL("../registry/subnets/openroboto.json", import.meta.url),
     ),
     "utf8",
   ),

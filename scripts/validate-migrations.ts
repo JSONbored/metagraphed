@@ -30,7 +30,10 @@ import { repoRoot } from "./lib.ts";
  * Pulled out of the top-level script so the rule is testable without a
  * directory of fixture files.
  */
-export function migrationSequenceErrors(files: readonly string[]): string[] {
+export function migrationSequenceErrors(
+  files: readonly string[],
+  allowedGaps: ReadonlySet<number> = new Set(),
+): string[] {
   const errors: string[] = [];
   const seen = new Map<number, string>(); // prefix number -> filename
   const numbers: number[] = [];
@@ -56,7 +59,10 @@ export function migrationSequenceErrors(files: readonly string[]): string[] {
 
   numbers.sort((a, b) => a - b);
   for (let i = 1; i < numbers.length; i += 1) {
-    const expected = numbers[i - 1] + 1;
+    let expected = numbers[i - 1] + 1;
+    // Forgive a declared hole only when the sequence actually skips past it --
+    // a file that fills the hole is legal, never a duplicate of the gap.
+    while (expected < numbers[i] && allowedGaps.has(expected)) expected += 1;
     if (numbers[i] !== expected) {
       errors.push(
         `non-sequential migration prefix: expected ${String(expected).padStart(4, "0")} ` +
@@ -77,12 +83,24 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // they go on BY HAND, so a duplicate or skipped prefix is not caught by an apply
   // step that would otherwise have noticed. The rule is unchanged; only the
   // directory moved, again.
-  for (const store of ["neon", "d1"]) {
+  // migrations/postgres -- the tree that SURVIVES the #13142 cutover and where
+  // every new schema change lands -- joins the guard with ONE documented hole:
+  // 0023 never existed on main (the #13023 branch's activate file was
+  // renumbered to 0027 before the squash landed; byte-identical content,
+  // verified on #13145). The postgres tree was previously unguarded, which is
+  // exactly how the #12765/#12908-class prefix collision and this gap went
+  // unflagged there.
+  const KNOWN_GAPS: Record<string, ReadonlySet<number>> = {
+    neon: new Set(),
+    d1: new Set(),
+    postgres: new Set([23]),
+  };
+  for (const store of ["neon", "d1", "postgres"]) {
     const migrationsRoot = path.join(repoRoot, "migrations", store);
     const files = (await fs.readdir(migrationsRoot)).filter((name) =>
       name.endsWith(".sql"),
     );
-    const errors = migrationSequenceErrors(files);
+    const errors = migrationSequenceErrors(files, KNOWN_GAPS[store]);
     if (errors.length > 0) {
       console.error(
         `${store} migration validation failed with ${errors.length} issue(s):`,

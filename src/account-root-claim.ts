@@ -28,6 +28,11 @@ import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./finney-ss58.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import { formatAccountEvent, type AccountEvent } from "./account-events.ts";
+import {
+  accountEventsHotFloorMs,
+  loadAccountBasketClaimEventsHotTier,
+} from "./chain-detail-hot-tier.ts";
 import {
   type ChainNetworkId,
   networkKvKey,
@@ -388,6 +393,7 @@ export interface AccountRootClaimResultSnapshot {
  * `RootClaimed` entries per hotkey and netuid, so it assembles many reads.
  */
 export interface AccountRootClaimResult extends AccountRootClaimResultSnapshot {
+  basket_claims: RootClaimBasketClaims | null;
   field_sources: typeof ACCOUNT_ROOT_CLAIM_FIELD_SOURCES;
 }
 
@@ -395,6 +401,9 @@ export const ACCOUNT_ROOT_CLAIM_FIELD_SOURCES = {
   claim_type: { kind: "reconstructed", storage: null },
   hotkeys: { kind: "reconstructed", storage: null },
   compatibility: { kind: "reconstructed", storage: null },
+  // #13163: assembled from the ingested Basket* event stream, not from the
+  // retired RootClaimable/RootClaimed storage the fields above describe.
+  basket_claims: { kind: "reconstructed", storage: null },
 } as const satisfies FieldSources;
 
 export interface RootClaimCompatibility {
@@ -605,19 +614,82 @@ async function loadAccountRootClaimSnapshot(
 }
 
 /**
- * The served record: the body above plus its provenance map.
+ * The served record: the body above plus the ≥v441 basket-claim era block and
+ * its provenance map.
  *
- * Attached outside the loader so it never enters the KV blob, and so REST,
- * GraphQL and MCP all inherit it from one point rather than three call sites
- * kept in step by hand (#9108).
+ * Attached outside the loader so neither enters the KV blob, and so REST,
+ * GraphQL and MCP all inherit them from one point rather than three call
+ * sites kept in step by hand (#9108).
  */
 export async function loadAccountRootClaim(
   env: Env,
   ss58: string,
   network?: ChainNetworkId,
 ): Promise<AccountRootClaimResult> {
+  const snapshot = await loadAccountRootClaimSnapshot(env, ss58, network);
   return {
-    ...(await loadAccountRootClaimSnapshot(env, ss58, network)),
+    ...snapshot,
+    basket_claims: await loadRootClaimBasketClaims(env, ss58, network),
     field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
+  };
+}
+
+// ---- The ≥v441 basket-claim era (#13163) ------------------------------------
+// Root Reborn (v441) retired the per-subnet RootClaimType/RootClaimable path
+// the legacy adapter above reads; on the live runtime, claims flow through
+// the Basket* events this repo already ingests. This block serves that flow
+// from the ingested event stream -- no new chain decode -- so the root-claim
+// surface carries the current claim currency beside its legacy compatibility
+// read. The AlphaV2/deferred-basket STATE decode stays with the engine.
+
+/** The claim-flow kinds, exactly as the chain names its events. The rest of
+ * the Basket* family (deposits, conversions, swaps) is position flow, which
+ * the events feed already serves -- this surface is about CLAIMS. */
+export const ROOT_CLAIM_BASKET_EVENT_KINDS = [
+  "BasketClaimed",
+  "BasketClaimDustSkipped",
+] as const;
+
+/** Newest-first page bound: a claims card, not a second paged feed --
+ * /accounts/{ss58}/events?kind=BasketClaimed remains the paged surface. */
+export const ROOT_CLAIM_BASKET_CLAIMS_LIMIT = 100;
+
+export interface RootClaimBasketClaims {
+  claims: AccountEvent[];
+  claim_count: number;
+  covered_since: string | null;
+}
+
+/**
+ * This account's basket claim events, newest first -- or null.
+ *
+ * Null for "no event store bound", a failed read, AND a non-finney network
+ * (the chain-detail event stream is the finney lane; a testnet request must
+ * not be answered with mainnet claims). All render as the same schema-stable
+ * decline. An EMPTY list from a bound store is a measurement over the stated
+ * coverage window: no claims since `covered_since`.
+ */
+export async function loadRootClaimBasketClaims(
+  env: Env,
+  ss58: string,
+  network?: ChainNetworkId,
+): Promise<RootClaimBasketClaims | null> {
+  if (network !== undefined && network !== "mainnet") return null;
+  const rows = await loadAccountBasketClaimEventsHotTier(
+    env,
+    ss58,
+    ROOT_CLAIM_BASKET_EVENT_KINDS,
+    ROOT_CLAIM_BASKET_CLAIMS_LIMIT,
+  );
+  if (rows === null) return null;
+  const claims = rows
+    .map((row) => formatAccountEvent(row))
+    .filter((row): row is AccountEvent => row !== null);
+  const floorMs = await accountEventsHotFloorMs(env);
+  return {
+    claims,
+    claim_count: claims.length,
+    covered_since:
+      floorMs === null || floorMs <= 0 ? null : new Date(floorMs).toISOString(),
   };
 }

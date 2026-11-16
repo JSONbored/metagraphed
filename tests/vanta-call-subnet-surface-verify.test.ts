@@ -40,7 +40,9 @@ const SURFACE = registry.surfaces.find(
 
 // GitHub raw serves this JSON-shaped blob as text/plain, so the tool returns
 // it verbatim as a string. Mirror that (a representative slice, not the full
-// live file).
+// live file). [2026-11-15 infra#873 p3b] For the same reason the availability
+// sweep relaxed the probe expectation from "json" to "any"; the surface stays
+// callable -- only the expectation pin changed.
 const BODY = '{\n    "equity": {\n        "AAPL": {}\n    }\n}';
 
 function upstreamResponse() {
@@ -57,7 +59,8 @@ describe("SN8 Vanta call_subnet_surface verification (#7024)", () => {
     assert.equal(SURFACE.auth_required, false);
     assert.equal(SURFACE.probe?.enabled, true);
     assert.equal(SURFACE.probe?.method, "GET");
-    assert.equal(SURFACE.probe?.expect, "json");
+    // JSON body under a text/* header: probe expectation relaxed to "any".
+    assert.equal(SURFACE.probe?.expect, "any");
     assert.equal(SURFACE.url, SURFACE_URL);
     assert.equal(SURFACE.schema_url, undefined);
   });

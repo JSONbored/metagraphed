@@ -679,6 +679,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 103,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn103:hyperparam:9332024:subnet_is_active",
+            "chain:sn103:hyperparam:9321606:min_burn_tao",
+            "chain:sn103:hyperparam:9321606:subnet_is_active",
+            "chain:sn103:hyperparam:9319806:min_burn_tao"
+          ],
+          "text": "Subnet 103 recorded four hyperparameter changes between 19 October and 21 October."
+        }
+      ],
+      "slug": "2026-w43",
+      "sources": [
+        {
+          "id": "chain:sn103:hyperparam:9332024:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9332024.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-21T13:06:30.641Z",
+          "title": "Subnet 103: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9332024"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9321606:min_burn_tao",
+          "summary": "Minimum burn changed from 0.000022222 to 0.0005 at block #9321606.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-20T02:05:49.068Z",
+          "title": "Subnet 103: Minimum burn 0.000022222 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9321606"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9321606:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9321606.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-20T02:05:49.068Z",
+          "title": "Subnet 103: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9321606"
+        },
+        {
+          "id": "chain:sn103:hyperparam:9319806:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.000022222 at block #9319806.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn103"
+          ],
+          "timestamp": "2026-10-19T20:05:49.545Z",
+          "title": "Subnet 103: Minimum burn 1 → 0.000022222",
+          "url": "https://metagraph.sh/blocks/9319806"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 43,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 104,
       "schema_version": 1,
       "sentences": [
@@ -3498,6 +3568,76 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 16,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn16:hyperparam:9426819:min_burn_tao",
+            "chain:sn16:hyperparam:9426219:subnet_is_active",
+            "chain:sn16:hyperparam:9425619:min_burn_tao",
+            "chain:sn16:hyperparam:9425619:subnet_is_active"
+          ],
+          "text": "Subnet 16 recorded four hyperparameter changes on 3 November."
+        }
+      ],
+      "slug": "2026-w45",
+      "sources": [
+        {
+          "id": "chain:sn16:hyperparam:9426819:min_burn_tao",
+          "summary": "Minimum burn changed from 0.0005 to 0.999999 at block #9426819.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn16"
+          ],
+          "timestamp": "2026-11-03T17:06:03.062Z",
+          "title": "Subnet 16: Minimum burn 0.0005 → 0.999999",
+          "url": "https://metagraph.sh/blocks/9426819"
+        },
+        {
+          "id": "chain:sn16:hyperparam:9426219:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9426219.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn16"
+          ],
+          "timestamp": "2026-11-03T15:05:57.956Z",
+          "title": "Subnet 16: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9426219"
+        },
+        {
+          "id": "chain:sn16:hyperparam:9425619:min_burn_tao",
+          "summary": "Minimum burn changed from 1 to 0.0005 at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn16"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 16: Minimum burn 1 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9425619"
+        },
+        {
+          "id": "chain:sn16:hyperparam:9425619:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn16"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 16: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9425619"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 45,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 17,
       "schema_version": 1,
       "sentences": [
@@ -4342,6 +4482,63 @@
       ],
       "substantive_count": 4,
       "week": 33,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 24,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn24:hyperparam:9425619:min_burn_tao",
+            "chain:sn24:hyperparam:9425619:max_validators",
+            "chain:sn24:hyperparam:9425619:commit_reveal_enabled"
+          ],
+          "text": "Subnet 24 recorded three hyperparameter changes on 3 November."
+        }
+      ],
+      "slug": "2026-w45",
+      "sources": [
+        {
+          "id": "chain:sn24:hyperparam:9425619:min_burn_tao",
+          "summary": "Minimum burn changed from 0.0005 to 0.1 at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn24"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 24: Minimum burn 0.0005 → 0.1",
+          "url": "https://metagraph.sh/blocks/9425619"
+        },
+        {
+          "id": "chain:sn24:hyperparam:9425619:max_validators",
+          "summary": "Max validators changed from 64 to 1 at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn24"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 24: Max validators 64 → 1",
+          "url": "https://metagraph.sh/blocks/9425619"
+        },
+        {
+          "id": "chain:sn24:hyperparam:9425619:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from enabled to disabled at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn24"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 24: Commit-reveal enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9425619"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 45,
       "year": 2026
     },
     {
@@ -5771,6 +5968,76 @@
       ],
       "substantive_count": 4,
       "week": 34,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 36,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn36:hyperparam:9433119:min_burn_tao",
+            "chain:sn36:hyperparam:9433119:subnet_is_active",
+            "chain:sn36:hyperparam:9425619:min_burn_tao",
+            "chain:sn36:hyperparam:9425619:subnet_is_active"
+          ],
+          "text": "Subnet 36 recorded four hyperparameter changes between 3 November and 4 November."
+        }
+      ],
+      "slug": "2026-w45",
+      "sources": [
+        {
+          "id": "chain:sn36:hyperparam:9433119:min_burn_tao",
+          "summary": "Minimum burn changed from 0.0005 to 0.3 at block #9433119.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-11-04T14:06:04.561Z",
+          "title": "Subnet 36: Minimum burn 0.0005 → 0.3",
+          "url": "https://metagraph.sh/blocks/9433119"
+        },
+        {
+          "id": "chain:sn36:hyperparam:9433119:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9433119.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-11-04T14:06:04.561Z",
+          "title": "Subnet 36: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9433119"
+        },
+        {
+          "id": "chain:sn36:hyperparam:9425619:min_burn_tao",
+          "summary": "Minimum burn changed from 0.1 to 0.0005 at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 36: Minimum burn 0.1 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9425619"
+        },
+        {
+          "id": "chain:sn36:hyperparam:9425619:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn36"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 36: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9425619"
+        }
+      ],
+      "substantive_count": 4,
+      "week": 45,
       "year": 2026
     },
     {
@@ -9921,6 +10188,63 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 70,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn70:hyperparam:9426519:subnet_is_active",
+            "chain:sn70:hyperparam:9425619:min_burn_tao",
+            "chain:sn70:hyperparam:9425619:subnet_is_active"
+          ],
+          "text": "Subnet 70 recorded three hyperparameter changes on 3 November."
+        }
+      ],
+      "slug": "2026-w45",
+      "sources": [
+        {
+          "id": "chain:sn70:hyperparam:9426519:subnet_is_active",
+          "summary": "Subnet active changed from disabled to enabled at block #9426519.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-11-03T16:05:59.618Z",
+          "title": "Subnet 70: Subnet active disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9426519"
+        },
+        {
+          "id": "chain:sn70:hyperparam:9425619:min_burn_tao",
+          "summary": "Minimum burn changed from 0.000001111 to 0.0005 at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 70: Minimum burn 0.000001111 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9425619"
+        },
+        {
+          "id": "chain:sn70:hyperparam:9425619:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9425619.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn70"
+          ],
+          "timestamp": "2026-11-03T13:06:05.606Z",
+          "title": "Subnet 70: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9425619"
+        }
+      ],
+      "substantive_count": 3,
+      "week": 45,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 71,
       "schema_version": 1,
       "sentences": [
@@ -10783,6 +11107,115 @@
       ],
       "substantive_count": 6,
       "week": 26,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 78,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn78:hyperparam:9471212:min_burn_tao",
+            "chain:sn78:hyperparam:9471212:activity_cutoff",
+            "chain:sn78:hyperparam:9471212:commit_reveal_enabled",
+            "chain:sn78:hyperparam:9471212:target_regs_per_interval",
+            "chain:sn78:hyperparam:9471212:min_allowed_weights",
+            "chain:sn78:hyperparam:9471212:yuma_version",
+            "chain:sn78:hyperparam:9471212:subnet_is_active"
+          ],
+          "text": "Subnet 78 recorded seven hyperparameter changes on 9 November."
+        }
+      ],
+      "slug": "2026-w46",
+      "sources": [
+        {
+          "id": "chain:sn78:hyperparam:9471212:min_burn_tao",
+          "summary": "Minimum burn changed from 0.375 to 0.0005 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Minimum burn 0.375 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:activity_cutoff",
+          "summary": "Activity cutoff changed from 360 to 5000 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Activity cutoff 360 → 5000",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from disabled to enabled at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Commit-reveal disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:min_allowed_weights",
+          "summary": "Min allowed weights changed from 256 to 1 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Min allowed weights 256 → 1",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9471212"
+        }
+      ],
+      "substantive_count": 7,
+      "week": 46,
       "year": 2026
     },
     {

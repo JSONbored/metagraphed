@@ -22,6 +22,10 @@ export const GetSubnetWeightsInputSchema = z
   .object({
     netuid: netuidSchema(),
     window: RouteQuery_subnets_netuid_weights.shape.window,
+    // #13162: THE ROUTE'S OWN PARAMETER, including its bound-to-0 posture --
+    // see mechidSchema in schemas-src/query-params.ts for why 0 is the only
+    // honest value until mechanism-aware capture lands.
+    mechid: RouteQuery_subnets_netuid_weights.shape.mechid,
   })
   .strict();
 export type GetSubnetWeightsInput = z.infer<typeof GetSubnetWeightsInputSchema>;
