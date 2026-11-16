@@ -197,6 +197,7 @@ describe("native neuron capture transactions", { concurrency: false }, () => {
     await control.query("BEGIN");
     try {
       await control.query(sql("0025_neuron_documents_activate.sql"));
+      await control.query(sql("0044_mechanisms.sql"));
       await control.query(sql("0027_closed_day_revisions_activate.sql"));
       await control.query("COMMIT");
     } catch (error) {
