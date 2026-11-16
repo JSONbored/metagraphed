@@ -36983,6 +36983,7 @@
                     "captured",
                     "current",
                     "degraded",
+                    "failed",
                     "missing",
                     "stale"
                   ],
