@@ -48,3 +48,35 @@ describe("sequencing", () => {
     expect(migrationSequenceErrors([])).toEqual([]);
   });
 });
+
+describe("known gaps", () => {
+  const allowed = new Set([23]);
+  it("tolerates a documented gap exactly once and nowhere else", () => {
+    // The postgres tree's real shape: ...0022, (no 0023), 0024...
+    expect(
+      migrationSequenceErrors(
+        ["0022_a.sql", "0024_b.sql", "0025_c.sql"],
+        allowed,
+      ),
+    ).toEqual([]);
+    // The allowance is per-number, not a license for other gaps.
+    expect(
+      migrationSequenceErrors(
+        ["0022_a.sql", "0024_b.sql", "0026_c.sql"],
+        allowed,
+      ).join("\n"),
+    ).toMatch(/expected 0025 but found 0026/);
+    // Without the allowance the original rule is untouched.
+    expect(
+      migrationSequenceErrors(["0022_a.sql", "0024_b.sql"]).join("\n"),
+    ).toMatch(/expected 0023 but found 0024/);
+    // A file that FILLS a declared gap is still accepted (the allowance only
+    // forgives absence, it does not forbid presence).
+    expect(
+      migrationSequenceErrors(
+        ["0022_a.sql", "0023_x.sql", "0024_b.sql"],
+        allowed,
+      ),
+    ).toEqual([]);
+  });
+});
