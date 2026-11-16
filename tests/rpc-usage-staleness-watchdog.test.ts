@@ -231,7 +231,9 @@ describe("runRpcUsageStalenessWatchdog", () => {
     } as unknown as Env;
   }
   const refuseAeQuery = (async () => {
-    throw new Error("Analytics Engine must not be read when the store is selected");
+    throw new Error(
+      "Analytics Engine must not be read when the store is selected",
+    );
   }) as never;
 
   test("a bound native store is read instead of Analytics Engine", async () => {

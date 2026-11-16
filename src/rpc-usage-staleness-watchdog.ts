@@ -140,6 +140,9 @@ export async function runRpcUsageStalenessWatchdog(
             ? error
             : new Error("rpc-usage staleness read failed"),
         route: "watchdog:rpc-usage-staleness",
+        // The read failing and the lane being stale are different faults; a
+        // shared fingerprint would let one throttle the other's alert.
+        fingerprintDetail: "native-read-failed",
         errorCode: "query_failed",
       });
       return { ok: false, reason: "query_failed", source };
@@ -196,6 +199,7 @@ export async function runRpcUsageStalenessWatchdog(
           `/api/v1/rpc/usage is answering from data that stopped advancing`,
       ),
       route: "watchdog:rpc-usage-staleness",
+      fingerprintDetail: "stale-lane",
       errorCode: "stale_lane",
     });
   }

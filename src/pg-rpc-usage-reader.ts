@@ -36,7 +36,7 @@ function numeric(row: Row): Row {
   };
 }
 
-/** All five rollups observe one snapshot; output remains the shared public contract. */export function createPgRpcUsageReader(
+/** All five rollups observe one snapshot; output remains the shared public contract. */ export function createPgRpcUsageReader(
   runtime: Pick<PgStoreRuntime, "transaction">,
 ) {
   return async (window: string, now: number): Promise<Row | null> => {
