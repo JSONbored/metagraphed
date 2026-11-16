@@ -14,6 +14,14 @@
 // that live response's top-level shape rather than fetching it, keeping the
 // test hermetic while still exercising charset-suffixed JSON parsing against
 // the upstream's actual field set.
+//
+// [2026-11-15 infra#873 p3a] The availability sweep found every declared
+// Astrid route answering 404 on an alive host -- SN127 is now "Zils" on chain
+// and the old product's API is fully withdrawn; the audit recommends retiring
+// the provider entry and re-curating under the new identity. The surface is
+// retired from the callable set pending that re-curation (probe.enabled:false
+// -- retired, not merely broken), so this file now pins the non-callable state
+// and the tool's refusal to call it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -57,11 +65,17 @@ function sn127Response() {
 }
 
 describe("SN127 Astrid call_subnet_surface verification (#7135)", () => {
-  test("the registry surface exists and is configured to be callable", () => {
+  test("the registry surface exists and pins the sweep-retired (non-callable) config", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
-    assert.equal(SURFACE.probe?.enabled, true);
+    // [2026-11-15 infra#873 p3a] route answers 404 on an alive host; retired
+    // from the callable set pending re-curation under the Zils identity.
+    assert.equal(SURFACE.probe?.enabled, false);
+    assert.match(
+      SURFACE.notes,
+      /\[2026-11-15 infra#873 p3a\] declared route answers 404 on an alive host/,
+    );
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
     assert.equal(
@@ -99,7 +113,7 @@ describe("SN127 Astrid call_subnet_surface verification (#7135)", () => {
     );
   });
 
-  test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
+  test("the call_subnet_surface MCP tool rejects the retired surface without fetching upstream", async () => {
     // operational-surfaces.json flattens each registry surface's `id` to a
     // top-level `surface_id`; build that catalog shape from the real surface.
     const catalog = {
@@ -111,6 +125,7 @@ describe("SN127 Astrid call_subnet_surface verification (#7135)", () => {
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
+    let upstreamFetched = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
@@ -120,6 +135,7 @@ describe("SN127 Astrid call_subnet_surface verification (#7135)", () => {
           headers: { "content-type": "application/dns-json" },
         });
       }
+      upstreamFetched = true;
       return sn127Response();
     }) as typeof fetch;
     try {
@@ -141,13 +157,9 @@ describe("SN127 Astrid call_subnet_surface verification (#7135)", () => {
         deps,
       );
       const result = ((await response.json()) as Row).result;
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, SURFACE_ID);
-      assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(
-        result.structuredContent.body.competitions[0].name,
-        "Miners Showdown 3",
-      );
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     } finally {
       globalThis.fetch = originalFetch;
     }

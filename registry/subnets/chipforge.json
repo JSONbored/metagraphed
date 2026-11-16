@@ -37,9 +37,9 @@
       "id": "sn-108-talkhead-health",
       "kind": "subnet-api",
       "name": "TalkHead API health",
-      "notes": "Public no-auth GET /health on api.talkhead.ai returning application liveness (observed plain-text response: Healthy). Served on the TalkHead subnet API host documented in the talkhead-subnet repository README for miner and validator submission flows.",
+      "notes": "Public no-auth GET /health on api.talkhead.ai returning application liveness (observed plain-text response: Healthy). Served on the TalkHead subnet API host documented in the talkhead-subnet repository README for miner and validator submission flows. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

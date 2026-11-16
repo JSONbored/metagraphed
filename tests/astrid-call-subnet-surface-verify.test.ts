@@ -111,6 +111,8 @@ const WALLET_ACTIVITY = {
 const SURFACES = [
   {
     id: "sn-127-astrid-subnet-api",
+    // [2026-11-15 infra#873 p3a] route-gone on the renamed host: sweep-retired.
+    retired: true,
     kind: "subnet-api",
     operational: true,
     url: "https://arena-api.astrid.global/public/arena/completed-competitions",
@@ -121,6 +123,8 @@ const SURFACES = [
   },
   {
     id: "sn-127-astrid-data-artifact",
+    // [2026-11-15 infra#873 p3a] route-gone on the renamed host: sweep-retired.
+    retired: true,
     kind: "data-artifact",
     operational: true,
     url: "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity",
@@ -165,12 +169,16 @@ for (const spec of SURFACES) {
   describe(`SN127 Astrid ${spec.id} call_subnet_surface verification (#7135)`, () => {
     const SURFACE = surfaceById(spec.id);
 
-    test("the registry surface exists and is configured to be callable", () => {
+    test("the registry surface exists and pins its post-sweep callable state", () => {
       assert.ok(SURFACE, `registry surface ${spec.id} is present`);
       assert.equal(SURFACE.kind, spec.kind);
       assert.equal(SURFACE.auth_required, false);
       assert.equal(SURFACE.url, spec.url);
-      assert.equal(SURFACE.probe?.enabled, true);
+      // [2026-11-15 infra#873 p3a] retired specs pin probe disabled + the
+      // dated audit note; the rest stay callable.
+      assert.equal(SURFACE.probe?.enabled, spec.retired !== true);
+      if (spec.retired)
+        assert.match(SURFACE.notes, /\[2026-11-15 infra#873 p3a\]/);
       assert.equal(SURFACE.probe?.method, spec.method);
     });
 
@@ -203,7 +211,14 @@ for (const spec of SURFACES) {
       }
     });
 
-    if (spec.operational) {
+    if (spec.operational && spec.retired) {
+      test("the call_subnet_surface MCP tool rejects the retired surface", async () => {
+        assert.ok(OPERATIONAL_SURFACE_KINDS.includes(spec.kind));
+        const result = await callThroughMcpTool(SURFACE, spec);
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text, /probe\.enabled:false/);
+      });
+    } else if (spec.operational) {
       test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
         assert.ok(OPERATIONAL_SURFACE_KINDS.includes(spec.kind));
         const result = await callThroughMcpTool(SURFACE, spec);

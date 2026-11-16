@@ -88,9 +88,9 @@
       "id": "sn-25-mainframe-pdb-file-api",
       "kind": "subnet-api",
       "name": "Mainframe PDB structure file API",
-      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors.",
+      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors. [2026-11-15 infra#873 p3a] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 15000
