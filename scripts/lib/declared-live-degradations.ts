@@ -14,7 +14,9 @@
 // status/code fails as a new defect, and every route NOT listed here still
 // fails the publish on any non-200. The list expires at cutover: the fleet
 // serving path turns every row stale at once, and deleting this file is part
-// of the #13143/#13146 cutover checklist.
+// of the #13143/#13146 cutover checklist. Expiry began 2026-11-16: the fleet
+// backfill reached extrinsics first and its row came off when the route
+// answered 200 again (the stale-declaration tripwire in the 02:11Z publish).
 export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
   ["/api/v1/accounts/{ss58}", "account_summary_unavailable"],
   ...[
@@ -32,7 +34,6 @@ export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
     "/api/v1/blocks/{ref}/chain-events",
     "/api/v1/blocks/{ref}/events",
     "/api/v1/blocks/{ref}/extrinsics",
-    "/api/v1/extrinsics",
     "/api/v1/governance/config-changes",
     "/api/v1/subnets/{netuid}/event-summary",
     "/api/v1/subnets/{netuid}/events",
