@@ -189,6 +189,11 @@ export const NATIVE_SERVING_WRITES: Readonly<
     "api_quota_daily",
     "api_usage_rollup",
     "api_usage_rollup_batches",
+    // The chain-firehose owner lives in the SERVING composition (infra#882
+    // part-2 decision): its idempotent head upsert and its own actor row are
+    // the two bounded writes that keep chain streams on one listener process.
+    // SINGLE-WRITER: the producer profile must never also declare these two.
+    "blocks_head",
     "chain_alert_deliveries",
     "chain_alert_triggers",
     // Login upserts run on the serving path until the infra#820 step-3
@@ -206,7 +211,11 @@ export const NATIVE_SERVING_WRITES: Readonly<
     "rate_limit_policies",
   ]),
   jobs: Object.freeze(["messages", "queues"]),
-  realtime: Object.freeze(["mcp_capacity", "mcp_sessions"]),
+  realtime: Object.freeze([
+    "chain_firehose_actor",
+    "mcp_capacity",
+    "mcp_sessions",
+  ]),
   retained: Object.freeze([]),
   search: Object.freeze([]),
 });
