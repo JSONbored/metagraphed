@@ -308,59 +308,117 @@ async function runLiveSmoke(): Promise<void> {
     "the /wss RPC route should return rpc_websocket_unsupported",
   );
 
-  // Remote MCP server: the JSON-RPC handshake must work and expose every tool,
-  // and a representative tools/call must resolve real registry data.
-  const mcpInit = await fetchJson(`${baseUrl}/mcp`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: { protocolVersion: "2025-06-18" },
-    }),
-  });
-  assert.equal(
-    mcpInit.status,
-    200,
-    "POST /mcp initialize must return HTTP 200",
-  );
-  assert.equal(
-    mcpInit.body?.result?.serverInfo?.name,
-    "metagraphed",
-    "MCP initialize must identify the metagraphed server",
-  );
+  // Remote MCP server: /mcp and /mcp/core are OAuth 2.1 protected resources
+  // (#12592) -- the designed anonymous behavior is the transport-level sign-in
+  // challenge of #11563, not a handshake. A 200 for an anonymous initialize
+  // would mean the auth gate is off in production. Deep handshake coverage
+  // (serverInfo, the tool census, a live tools/call) needs an identity, so it
+  // runs only when the smoke is given a credential.
+  for (const mcpPath of ["/mcp", "/mcp/core"]) {
+    const refusal = await fetchJson(`${baseUrl}${mcpPath}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: { protocolVersion: "2025-06-18" },
+      }),
+    });
+    assert.equal(
+      refusal.status,
+      401,
+      `anonymous POST ${mcpPath} initialize must be challenged with HTTP 401`,
+    );
+    assert.equal(
+      refusal.body?.error,
+      "invalid_token",
+      `${mcpPath}: the challenge body must carry the invalid_token error code`,
+    );
+    assert.equal(
+      refusal.headers.get("x-mcp-refusal"),
+      "auth_required",
+      `${mcpPath}: the refusal must be classified auth_required`,
+    );
+    const challenge = refusal.headers.get("www-authenticate") ?? "";
+    assert.ok(
+      challenge.startsWith('Bearer error="invalid_token"'),
+      `${mcpPath}: www-authenticate must carry a Bearer invalid_token challenge, got: ${challenge || "none"}`,
+    );
+    // RFC 9728: the challenge points at the metadata document for the exact
+    // resource path the caller used, and that document is itself public --
+    // otherwise a spec-compliant client can never discover how to sign in.
+    const metadataUrl = `${baseUrl}/.well-known/oauth-protected-resource${mcpPath}`;
+    assert.ok(
+      challenge.includes(`resource_metadata="${metadataUrl}"`),
+      `${mcpPath}: the challenge must point at its own per-path protected-resource metadata`,
+    );
+    const metadataDoc = await fetchJson(metadataUrl);
+    assert.equal(
+      metadataDoc.status,
+      200,
+      `${mcpPath}: the protected-resource metadata document must be anonymously readable`,
+    );
+  }
 
-  const mcpTools = await fetchJson(`${baseUrl}/mcp`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
-  });
-  assert.equal(
-    mcpTools.body?.result?.tools?.length,
-    MCP_TOOLS.length,
-    `MCP tools/list must expose all ${MCP_TOOLS.length} tools`,
-  );
+  const mcpCredential = process.env.METAGRAPH_SMOKE_MCP_KEY;
+  if (mcpCredential) {
+    const mcpHeaders = {
+      "content-type": "application/json",
+      authorization: `Bearer ${mcpCredential}`,
+    };
+    const mcpInit = await fetchJson(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: mcpHeaders,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: { protocolVersion: "2025-06-18" },
+      }),
+    });
+    assert.equal(
+      mcpInit.status,
+      200,
+      "authenticated POST /mcp initialize must return HTTP 200",
+    );
+    assert.equal(
+      mcpInit.body?.result?.serverInfo?.name,
+      "metagraphed",
+      "MCP initialize must identify the metagraphed server",
+    );
 
-  const mcpCall = await fetchJson(`${baseUrl}/mcp`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 3,
-      method: "tools/call",
-      params: { name: "list_subnet_apis", arguments: { netuid: 7 } },
-    }),
-  });
-  assert.equal(
-    mcpCall.body?.result?.isError,
-    false,
-    "MCP list_subnet_apis(7) must succeed against live data",
-  );
-  assert.ok(
-    mcpCall.body?.result?.structuredContent?.service_count >= 1,
-    "MCP list_subnet_apis(7) must return at least one service",
-  );
+    const mcpTools = await fetchJson(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: mcpHeaders,
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
+    });
+    assert.equal(
+      mcpTools.body?.result?.tools?.length,
+      MCP_TOOLS.length,
+      `MCP tools/list must expose all ${MCP_TOOLS.length} tools`,
+    );
+
+    const mcpCall = await fetchJson(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: mcpHeaders,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "list_subnet_apis", arguments: { netuid: 7 } },
+      }),
+    });
+    assert.equal(
+      mcpCall.body?.result?.isError,
+      false,
+      "MCP list_subnet_apis(7) must succeed against live data",
+    );
+    assert.ok(
+      mcpCall.body?.result?.structuredContent?.service_count >= 1,
+      "MCP list_subnet_apis(7) must return at least one service",
+    );
+  }
 
   // AI routes (semantic search + /ask). Tolerant of the kill-switch: a 503
   // ai_unavailable is an accepted "disabled" state; when enabled we validate the
@@ -501,6 +559,7 @@ async function runLiveSmoke(): Promise<void> {
         api_route_count: apiChecks.length,
         raw_artifact_count: rawArtifactChecks.length,
         mcp_tool_count: MCP_TOOLS.length,
+        mcp_coverage: mcpCredential ? "credentialed" : "challenge-only",
         ai_status: aiStatus,
         ai_crawler_access: "unblocked",
         health_history_date: healthDate,
