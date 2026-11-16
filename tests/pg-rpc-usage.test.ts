@@ -6,7 +6,11 @@ import {
   createPgRpcUsageStore,
   type PgRpcUsageOptions,
 } from "../src/pg-rpc-usage.ts";
-import { createPgRpcUsageReader } from "../src/pg-rpc-usage-reader.ts";
+import {
+  createPgRpcUsageLatestReader,
+  createPgRpcUsageReader,
+} from "../src/pg-rpc-usage-reader.ts";
+import { RPC_USAGE_STALENESS_LOOKBACK_MS } from "../src/rpc-usage-store.ts";
 import { loadRpcUsageHotTier } from "../src/rpc-usage-hot-tier.ts";
 import { apiEnv } from "./helpers/worker-env.ts";
 
@@ -482,4 +486,79 @@ test("prune refuses missing, malformed and out-of-budget deletion receipts", asy
   const f = fixture();
   expect(await f.store.prune()).toBe(0);
   await f.store.close();
+});
+
+test("latest reads one bounded number: max(occurred_at) inside the lookback, every pool", async () => {
+  const stamp = 1_785_600_000_000;
+  const seen: { sql: string; values: unknown[]; readOnly: boolean }[] = [];
+  const runtime: Pick<PgStoreRuntime, "transaction"> = {
+    async transaction(fn) {
+      let readOnly = false;
+      return fn({
+        async run(sql: string) {
+          if (sql === "SET TRANSACTION READ ONLY") readOnly = true;
+          return { changes: 0 };
+        },
+        async first<Row>(sql: string, values: unknown[]) {
+          seen.push({ sql, values, readOnly });
+          return { latest: String(stamp - 60000) } as Row;
+        },
+        async query() {
+          throw new Error("latest must be a single-row read");
+        },
+      });
+    },
+  };
+  const latest = createPgRpcUsageLatestReader(
+    runtime,
+    RPC_USAGE_STALENESS_LOOKBACK_MS,
+  );
+  expect(await latest(stamp)).toBe(stamp - 60000);
+  expect(seen).toHaveLength(1);
+  expect(seen[0]!.readOnly).toBe(true);
+  expect(seen[0]!.sql).toContain("max(occurred_at)");
+  expect(seen[0]!.sql).not.toContain("pool=");
+  expect(seen[0]!.values).toEqual([stamp - RPC_USAGE_STALENESS_LOOKBACK_MS]);
+
+  const empty = createPgRpcUsageLatestReader(
+    {
+      async transaction(fn) {
+        return fn({
+          async run() {
+            return { changes: 0 };
+          },
+          async first() {
+            return { latest: null };
+          },
+          async query() {
+            throw new Error("unused");
+          },
+        });
+      },
+    },
+    RPC_USAGE_STALENESS_LOOKBACK_MS,
+  );
+  expect(await empty(stamp)).toBe(null);
+  expect(() => createPgRpcUsageLatestReader(runtime, 0)).toThrow("lookback");
+});
+
+test("the store exposes latest through the seam", async () => {
+  const runtime: Pick<PgStoreRuntime, "transaction"> = {
+    async transaction(fn) {
+      return fn({
+        async run() {
+          return { changes: 0 };
+        },
+        async first() {
+          return { latest: "5" };
+        },
+        async query() {
+          throw new Error("unused");
+        },
+      });
+    },
+  };
+  const store = createPgRpcUsageStore(runtime, options);
+  expect(await store.latest(RPC_USAGE_STALENESS_LOOKBACK_MS + 5)).toBe(5);
+  await store.close();
 });

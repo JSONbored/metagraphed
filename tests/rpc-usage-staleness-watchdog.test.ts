@@ -215,8 +215,78 @@ describe("runRpcUsageStalenessWatchdog", () => {
       recordException,
       query: queryReturning(null).query,
     });
-    assert.deepEqual(result, { ok: false, reason: "query_failed" });
+    assert.deepEqual(result, {
+      ok: false,
+      reason: "query_failed",
+      source: "analytics-engine",
+    });
     assert.equal(alerts.length, 0);
+  });
+
+  // #13150: the selected native store answers for its own writer; Analytics
+  // Engine is never consulted when RPC_USAGE_STORE is bound.
+  function storeEnv(latest: () => Promise<number | null>): Env {
+    return {
+      RPC_USAGE_STORE: { record: () => true, load: async () => null, latest },
+    } as unknown as Env;
+  }
+  const refuseAeQuery = (async () => {
+    throw new Error("Analytics Engine must not be read when the store is selected");
+  }) as never;
+
+  test("a bound native store is read instead of Analytics Engine", async () => {
+    const { alerts, recordException } = collector();
+    const result = await runRpcUsageStalenessWatchdog(
+      storeEnv(async () => NOW - MINUTE),
+      { now: () => NOW, recordException, query: refuseAeQuery },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.alerted, false);
+    assert.equal(result.source, "postgresql");
+    assert.equal(result.age_ms, MINUTE);
+    assert.equal(alerts.length, 0);
+  });
+
+  test("a stalled native lane records exactly one exception per tick", async () => {
+    const { alerts, recordException } = collector();
+    const result = await runRpcUsageStalenessWatchdog(
+      storeEnv(async () => NOW - 5 * 60 * MINUTE),
+      { now: () => NOW, recordException, query: refuseAeQuery },
+    );
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "stale");
+    assert.equal(result.source, "postgresql");
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0]!.errorCode, "stale_lane");
+  });
+
+  test("an empty native lookback is a stall, not a quiet window", async () => {
+    const { alerts, recordException } = collector();
+    const result = await runRpcUsageStalenessWatchdog(
+      storeEnv(async () => null),
+      { now: () => NOW, recordException, query: refuseAeQuery },
+    );
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "no_rows");
+    assert.equal(result.age_ms, null);
+    assert.equal(alerts.length, 1);
+  });
+
+  test("a failing native read is query_failed, reported once, never a staleness claim", async () => {
+    const { alerts, recordException } = collector();
+    const result = await runRpcUsageStalenessWatchdog(
+      storeEnv(async () => {
+        throw new Error("connection refused");
+      }),
+      { now: () => NOW, recordException, query: refuseAeQuery },
+    );
+    assert.deepEqual(result, {
+      ok: false,
+      reason: "query_failed",
+      source: "postgresql",
+    });
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0]!.errorCode, "query_failed");
   });
 
   test("defaults to the real recorder and client when no seam is injected", async () => {

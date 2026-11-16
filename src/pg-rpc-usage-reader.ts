@@ -36,8 +36,7 @@ function numeric(row: Row): Row {
   };
 }
 
-/** All five rollups observe one snapshot; output remains the shared public contract. */
-export function createPgRpcUsageReader(
+/** All five rollups observe one snapshot; output remains the shared public contract. */export function createPgRpcUsageReader(
   runtime: Pick<PgStoreRuntime, "transaction">,
 ) {
   return async (window: string, now: number): Promise<Row | null> => {
@@ -130,6 +129,35 @@ export function createPgRpcUsageReader(
             };
           }),
         });
+      },
+      { isolation: "repeatable read" },
+    );
+  };
+}
+
+/** The staleness watchdog's one number (#13150): the newest captured data
+ * point inside the lookback, every pool (it watches the WRITER, the same
+ * posture as the Analytics Engine query it replaces -- the gated fullnode
+ * pool's writer stopping must trip it too). PostgreSQL returns max() over an
+ * empty window as SQL NULL, which maps to null here: "no data points", never
+ * a 1970 timestamp to compute an age against. */
+export function createPgRpcUsageLatestReader(
+  runtime: Pick<PgStoreRuntime, "transaction">,
+  lookbackMs: number,
+) {
+  if (!Number.isSafeInteger(lookbackMs) || lookbackMs < 1)
+    throw new RangeError("Invalid native RPC staleness lookback");
+  return async (now: number): Promise<number | null> => {
+    return runtime.transaction(
+      async (scope) => {
+        await scope.run("SET TRANSACTION READ ONLY");
+        const row = await scope.first<{ latest: unknown }>(
+          "SELECT max(occurred_at)::text AS latest FROM app.rpc_usage_events WHERE occurred_at > $1",
+          [now - lookbackMs],
+        );
+        if (!row || row.latest === null || row.latest === undefined)
+          return null;
+        return count(row.latest);
       },
       { isolation: "repeatable read" },
     );
