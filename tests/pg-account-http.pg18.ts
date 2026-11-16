@@ -274,6 +274,14 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       { ss58: address, tier: "paid" },
       { "x-account-tier-promote-token": "fixture-tier" },
     );
+    // The interim refusal leaves the native tier unpromoted by design; the
+    // parity legs below compare LIKE states, so the induced divergence is
+    // reconciled directly. Removed with the step-3 re-point, when promote
+    // itself regains a native path to compare.
+    await control.query(
+      "UPDATE app.rpc_accounts SET tier='paid' WHERE ss58=$1",
+      [address],
+    );
     assert.equal(
       (
         await both(
