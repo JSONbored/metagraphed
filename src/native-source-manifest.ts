@@ -170,7 +170,7 @@ export type NativeSourceOwners = Readonly<Record<NativeSchemaName, string>>;
  * relations below -- so the narrow serving role passes startup verification
  * with exactly its own grants and a leaked serving credential cannot touch
  * acquisition, custody or retained history. */
-export type NativeProcessProfile = "trusted" | "serving";
+export type NativeProcessProfile = "trusted" | "serving" | "producer";
 
 /** The relations the PUBLIC SERVING process writes, per schema -- user state
  * a request legitimately mutates (keys/quota/usage accounting, alert and push
@@ -212,12 +212,36 @@ export const NATIVE_SERVING_WRITES: Readonly<
   ]),
   jobs: Object.freeze(["messages", "queues"]),
   realtime: Object.freeze([
+    // The realtime actor component (status -> sessions <-> chain <-> alerter)
+    // is one in-process graph -- splitting it would need exactly the
+    // inter-process paths the part-2 decision rejected -- so the whole
+    // component lives in the SERVING composition and its two remaining actor
+    // leases join the declared writes (single-writer, like the chain pair).
+    "alerter_owner",
     "chain_firehose_actor",
     "mcp_capacity",
     "mcp_sessions",
+    "subnet_status_actor",
   ]),
   retained: Object.freeze([]),
   search: Object.freeze([]),
+});
+
+/** Relations with exactly ONE writing composition (infra#882 condition 1):
+ * the serving-owned actor leases and the chain head. The producer profile is
+ * DERIVED by excluding these from its write set, so the two profiles cannot
+ * drift into a double-writer without the derivation (and its test) failing. */
+export const NATIVE_SINGLE_WRITER_SERVING: Readonly<
+  Partial<Record<NativeSchemaName, readonly string[]>>
+> = Object.freeze({
+  app: Object.freeze(["blocks_head"]),
+  realtime: Object.freeze([
+    "alerter_owner",
+    "chain_firehose_actor",
+    "mcp_capacity",
+    "mcp_sessions",
+    "subnet_status_actor",
+  ]),
 });
 
 export function nativeSourceDefinitions(
@@ -258,7 +282,14 @@ export function nativeSourceDefinitions(
           ? []
           : profile === "trusted"
             ? relations
-            : NATIVE_SERVING_WRITES[schema];
+            : profile === "serving"
+              ? NATIVE_SERVING_WRITES[schema]
+              : relations.filter(
+                  (relation) =>
+                    !(NATIVE_SINGLE_WRITER_SERVING[schema] ?? []).includes(
+                      relation,
+                    ),
+                );
       return Object.freeze({
         name,
         schema,
@@ -268,7 +299,7 @@ export function nativeSourceDefinitions(
           writes.length === 0 ? ("read" as const) : ("read-write" as const),
         // The trusted process writes everything, which `writable` absent
         // means; the serving process pins its exact set.
-        ...(profile === "serving" && writes.length > 0
+        ...(profile !== "trusted" && writes.length > 0
           ? { writable: writes }
           : {}),
       });

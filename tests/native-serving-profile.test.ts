@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   NATIVE_SERVING_WRITES,
+  NATIVE_SINGLE_WRITER_SERVING,
   NATIVE_SOURCE_RELATIONS,
   nativeSourceDefinitions,
   type NativeSchemaName,
@@ -73,6 +74,59 @@ test("the trusted default is unchanged: full write surface, no writable pin", ()
         definition.name,
       );
       assert.equal(definition.writable, undefined, definition.name);
+    }
+  }
+});
+
+test("single-writer rows belong to exactly the serving profile", () => {
+  const serving = nativeSourceDefinitions(owners, "serving");
+  const producer = nativeSourceDefinitions(owners, "producer");
+  for (const [schema, relations] of Object.entries(
+    NATIVE_SINGLE_WRITER_SERVING,
+  )) {
+    const servingWrites =
+      serving.find(
+        (definition) =>
+          definition.schema === schema && definition.name !== "retained_views",
+      )!.writable ?? [];
+    const producerWrites =
+      producer.find(
+        (definition) =>
+          definition.schema === schema && definition.name !== "retained_views",
+      )!.writable ?? [];
+    for (const relation of relations!) {
+      assert.ok(
+        servingWrites.includes(relation),
+        `${schema}.${relation} must be a serving write`,
+      );
+      assert.ok(
+        !producerWrites.includes(relation),
+        `${schema}.${relation} must never be a producer write`,
+      );
+    }
+  }
+});
+
+test("the producer profile writes everything except the serving-owned rows", () => {
+  for (const definition of nativeSourceDefinitions(owners, "producer")) {
+    if (definition.name === "retained_views") {
+      assert.equal(definition.access, "read");
+      continue;
+    }
+    const excluded =
+      NATIVE_SINGLE_WRITER_SERVING[definition.schema as NativeSchemaName] ?? [];
+    const expected = definition.relations.filter(
+      (relation) => !excluded.includes(relation),
+    );
+    if (expected.length === 0) {
+      // realtime is wholly serving-owned: the producer composition only
+      // reads it, and a no-write source derives read access (READ ONLY
+      // transactions at the wrapper).
+      assert.equal(definition.access, "read", definition.name);
+      assert.equal(definition.writable, undefined, definition.name);
+    } else {
+      assert.equal(definition.access, "read-write", definition.name);
+      assert.deepEqual(definition.writable, expected, definition.name);
     }
   }
 });
