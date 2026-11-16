@@ -1,53 +1,51 @@
--- Identity-plane handoff (infra#820 composition decision, 2026-11-16).
+-- Identity-plane handoff, collision half (infra#820 composition, 2026-11-16).
 --
--- One PostgreSQL 18 composes two migration trees, and schema `app` had two
--- owners for the identity family: this tree's D1-port staging twins
--- (`rpc_accounts`, `github_accounts`, `api_keys` from 0010) and the producer
--- tree's modern identity plane (`accounts`, `identities`,
--- `legacy_account_aliases`, `api_keys` with uuid/token_digest shapes --
--- subnet-ops metagraphed/native-app/migrations, applied after this tree).
--- The recorded decision is (a)-refined: the producer tree owns the identity
--- plane; nothing forward-migrates those tables except the producer tree. The
--- staging twins therefore retire here so the composed apply is collision-free.
+-- One PostgreSQL 18 composes two migration trees, and exactly one identity
+-- table exists in both: this tree's D1-port staging `app.api_keys` (0010,
+-- bigint/prefix/secret_hash/unkey shape) against the producer tree's modern
+-- `app.api_keys` (uuid/token_digest/scopes -- subnet-ops
+-- metagraphed/native-app/migrations, applied after this tree). The recorded
+-- decision is (a)-refined: the producer tree owns the identity plane. The
+-- staging twin retires here so the composed apply is collision-free.
 --
--- READERS/WRITERS of the retired shapes, and where each retires:
---   * workers/data-api.ts identity handlers (tier lookups, api-key
---     issue/list/revoke, unkey flows) -- live on the legacy database today,
---     which this migration does not touch; their native-path statements run
---     through ACCOUNT_STATE_STORE.sql (src/account-identity-pg.ts) and retire
---     with the infra#820 step-3 mapping re-derivation (#13040), which re-points
---     the read model (bigint ids, prefix/secret_hash, account_kind) onto the
---     producer's (uuid accounts, token_digest, scopes/audience).
---   * The import families: legacy identity rows land as
---     `app.legacy_account_aliases` mapping rows against producer-owned
---     accounts/identities -- new mapping semantics owned by the infra#820
---     step-3 re-derivation, never a straight copy into these shapes.
+-- `app.rpc_accounts` and `app.github_accounts` are deliberately NOT dropped
+-- here: they collide with nothing (the producer tree creates neither), and
+-- the native serving path still consumes them live -- the OAuth account-tier
+-- lookup and the login upserts run against them through
+-- ACCOUNT_STATE_STORE.sql (src/account-identity-pg.ts), which the complete
+-- native environment gate (tests/native-environment.pg18.ts) exercises.
+-- They retire WITH the infra#820 step-3 mapping re-derivation (#13040) that
+-- re-points the read model (bigint ids, account_kind) onto the producer's
+-- (uuid accounts via legacy_account_aliases) -- never ahead of it.
+--
+-- READERS/WRITERS of the retired api_keys shape, and where each retires:
+--   * workers/data-api.ts api-key handlers (issue/list/revoke, unkey flows)
+--     -- live on the legacy database today, which this migration does not
+--     touch; their native-path statements fail by name (42P01) until the
+--     step-3 re-point lands them on the producer plane's
+--     create/list/revoke_api_key functions (#13040).
+--   * Imported legacy key rows land through the infra#820 step-3 mapping
+--     (digest model), never a straight copy into this shape.
 --   * Serving-owned operational state (api_key_blocks, api_key_usage_daily,
---     api_quota_daily, api_usage_rollup*) stays in this tree, keyed by
---     (account_kind, legacy id) exactly as imported; reads resolve to producer
---     identities through legacy_account_aliases.
+--     api_quota_daily, api_usage_rollup*) stays in this tree, keyed exactly
+--     as imported.
 --
--- The twins are load-phase staging (0010 "Load phase"); on the composed apply
--- they are created empty by 0010 and retired here before the producer tree
--- runs. A row in any of them means the ordering above was violated -- import
--- data would be dropped -- so this migration refuses rather than deletes.
+-- The twin is load-phase staging (0010 "Load phase"); on the composed apply
+-- it is created empty by 0010 and retired here before the producer tree
+-- runs. A row in it means the ordering above was violated -- import data
+-- would be dropped -- so this migration refuses rather than deletes.
 DO $$
 DECLARE
-    twin text;
     occupied boolean;
 BEGIN
-    FOREACH twin IN ARRAY ARRAY['rpc_accounts', 'github_accounts', 'api_keys'] LOOP
-        IF EXISTS(SELECT FROM pg_tables WHERE schemaname = 'app' AND tablename = twin) THEN
-            EXECUTE format('SELECT EXISTS(SELECT FROM app.%I LIMIT 1)', twin) INTO STRICT occupied;
-            IF occupied THEN
-                RAISE EXCEPTION 'identity staging twin app.% holds rows; move them through the infra#820 mapping before retiring the shape', twin
-                    USING ERRCODE = '55000';
-            END IF;
+    IF EXISTS(SELECT FROM pg_tables WHERE schemaname = 'app' AND tablename = 'api_keys') THEN
+        SELECT EXISTS(SELECT FROM app.api_keys LIMIT 1) INTO STRICT occupied;
+        IF occupied THEN
+            RAISE EXCEPTION 'identity staging twin app.api_keys holds rows; move them through the infra#820 mapping before retiring the shape'
+                USING ERRCODE = '55000';
         END IF;
-    END LOOP;
+    END IF;
 END;
 $$;
 
 DROP TABLE IF EXISTS app.api_keys;
-DROP TABLE IF EXISTS app.github_accounts;
-DROP TABLE IF EXISTS app.rpc_accounts;
