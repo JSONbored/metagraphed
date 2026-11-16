@@ -1932,12 +1932,26 @@ export async function handleChainAxonRemovals(
       // A null rollup means there was no store to read, NOT that nothing was
       // removed, so the builder keeps its schema-stable empty in that case --
       // the same distinction the degraded marker was carrying.
-      const rollup = await loadAxonRemovals(env, {
-        windowDays:
-          CHAIN_AXON_REMOVALS_WINDOWS[
-            label as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
-          ],
-      });
+      // A THROWING store is not an absent store (#13159, 2026-11-16): a D1
+      // read failing under load escaped here as a bare runtime 500 with no
+      // envelope, invisible to the structured-error consumers. null keeps the
+      // schema-stable empty; a throw is a 503 the caller can classify.
+      let rollup;
+      try {
+        rollup = await loadAxonRemovals(env, {
+          windowDays:
+            CHAIN_AXON_REMOVALS_WINDOWS[
+              label as keyof typeof CHAIN_AXON_REMOVALS_WINDOWS
+            ],
+        });
+      } catch (error) {
+        console.error("chain-axon-removals store read failed:", error);
+        return errorResponse(
+          "data_tier_unavailable",
+          "The axon-removals store did not answer; retry shortly.",
+          503,
+        );
+      }
       const data = buildChainAxonRemovals(rollup?.subnets ?? [], {
         window: label,
         limit,
