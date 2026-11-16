@@ -181,6 +181,9 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
       { file: "schemas-src/openapi-registry.ts", symbol: "Multisig" },
     ],
   },
+  // Drop-only: retires the 0010 identity staging twins per infra#820 -- the
+  // producer tree owns the identity plane. Creates nothing, so no anchors.
+  "0056_identity_plane_handoff.sql": { tables: [], anchors: [] },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:
