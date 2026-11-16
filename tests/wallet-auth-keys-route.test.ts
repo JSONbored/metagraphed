@@ -1570,13 +1570,43 @@ test("anomalies: an already-blocked account is annotated, not re-flagged", async
   const env = blockEnv();
   mockQueue.current = [
     [
-      { account_id: "7", day: "2026-07-01", route: "a", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "b", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "c", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "d", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "e", request_count: "5" },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "a",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "b",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "c",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "d",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "e",
+        request_count: "5",
+      },
     ],
-    [{ account_id: "7", reason_code: "abuse_scraping" }],
+    [{ account_id: "7", account_kind: "rpc", reason_code: "abuse_scraping" }],
   ];
   const res = await fetchRoute(
     blockReq("/api/v1/internal/keys/anomalies", null, BLOCK_TOKEN, "GET"),
@@ -1606,11 +1636,41 @@ test("anomalies: read-only review queue, ranked, never blocks anyone", async () 
   const env = blockEnv();
   mockQueue.current = [
     [
-      { account_id: "7", day: "2026-07-01", route: "mcp", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "ask", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "a", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "b", request_count: "5" },
-      { account_id: "7", day: "2026-07-01", route: "c", request_count: "5" },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "mcp",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "ask",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "a",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "b",
+        request_count: "5",
+      },
+      {
+        account_id: "7",
+        account_kind: "rpc",
+        day: "2026-07-01",
+        route: "c",
+        request_count: "5",
+      },
     ],
     [],
   ];
@@ -1623,6 +1683,7 @@ test("anomalies: read-only review queue, ranked, never blocks anyone", async () 
   assert.equal(body.flagged_count, 1);
   const flagged = (body.flagged as Row[])[0];
   assert.equal(flagged.account_id, 7);
+  assert.equal(flagged.account_kind, "rpc");
   assert.equal(flagged.blocked_reason_code, null);
   // Advisory only: the route issues no writes at all.
   assert.ok(

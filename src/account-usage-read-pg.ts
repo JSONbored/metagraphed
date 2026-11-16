@@ -14,7 +14,10 @@ export type AccountUsageRow = D1JsonNumbers<
   "request_count" | "rejected_count"
 >;
 export type AccountAnomalyRow = D1JsonNumbers<
-  Pick<ApiKeyUsageDaily, "account_id" | "day" | "route" | "request_count">,
+  Pick<
+    ApiKeyUsageDaily,
+    "account_id" | "account_kind" | "day" | "route" | "request_count"
+  >,
   "request_count"
 >;
 export interface AccountRollupRow {
@@ -50,12 +53,18 @@ export function createPgAccountUsageReaders(
   runtime: Pick<PgStoreRuntime, "transaction">,
 ) {
   return {
-    accountRows(accountId: number, since: string): Promise<AccountUsageRow[]> {
+    accountRows(
+      accountId: number,
+      since: string,
+      kind: "rpc" | "github",
+    ): Promise<AccountUsageRow[]> {
+      // #11573's collision class: github id N and rpc id N share the numeric
+      // range, so an account's own dashboard must never read across kinds.
       return runtime.transaction(
         async (tx) => {
           const rows = await tx.query<StoredAccountUsage>(
-            "SELECT day,route,request_count::text AS requests,rejected_count::text AS rejected FROM app.api_key_usage_daily WHERE account_id=?::numeric AND day>=? ORDER BY day DESC,source_row_id",
-            [sqliteNumberDecimal(accountId), since],
+            "SELECT day,route,request_count::text AS requests,rejected_count::text AS rejected FROM app.api_key_usage_daily WHERE account_kind=? AND account_id=?::numeric AND day>=? ORDER BY day DESC,source_row_id",
+            [kind, sqliteNumberDecimal(accountId), since],
           );
           return rows.map((row) => ({
             day: row.day,
@@ -73,13 +82,15 @@ export function createPgAccountUsageReaders(
           const rows = await tx.query<
             Pick<StoredAccountUsage, "day" | "route" | "requests"> & {
               account: string;
+              kind: "rpc" | "github";
             }
           >(
-            "SELECT account_id::text AS account,day,route,request_count::text AS requests FROM app.api_key_usage_daily WHERE day>=? ORDER BY account_id,day,source_row_id",
+            "SELECT account_id::text AS account,account_kind AS kind,day,route,request_count::text AS requests FROM app.api_key_usage_daily WHERE day>=? ORDER BY account_kind,account_id,day,source_row_id",
             [since],
           );
           return rows.map((row) => ({
             account_id: Number(row.account),
+            account_kind: row.kind,
             day: row.day,
             route: row.route,
             request_count: wireNumber(Number(row.requests)),

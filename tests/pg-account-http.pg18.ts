@@ -205,6 +205,32 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       assert.deepEqual(actual, expected, path);
       return actual;
     };
+    // Key management on the native selection refuses EXPLICITLY until the
+    // producer-plane re-point (infra#820 step 3, #13040): the source path
+    // keeps its full legacy lifecycle, the native path returns the interim
+    // 503 before any side effect (the Unkey mock sees no native calls on key
+    // routes, which is the point -- the intent-before-provider proof moves to
+    // the step-3 parity work).
+    const INTERIM_KEYS = {
+      status: 503,
+      text: '{"error":"native key management is pending the producer-plane re-point (infra#820 step 3)"}',
+    };
+    const keysInterim = async (
+      expectedSourceStatus: number,
+      path: string,
+      body?: object,
+      headers: Record<string, string> = {},
+      method = body ? "POST" : "GET",
+    ) => {
+      const expected = await call(sourceEnv, path, body, headers, method);
+      assert.equal(expected.status, expectedSourceStatus, path);
+      assert.deepEqual(
+        await call(nativeEnv, path, body, headers, method),
+        INTERIM_KEYS,
+        path,
+      );
+      return expected;
+    };
     const sessions = [];
     for (const env of [sourceEnv, nativeEnv]) {
       const challenge = await call(env, "auth/wallet/challenge", {
@@ -238,19 +264,23 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       ).status,
       200,
     );
-    assert.equal((await both("keys", {}, session)).status, 201);
+    await keysInterim(201, "keys", {}, session);
     fixtureKey = "key_second";
-    assert.equal((await both("keys", {}, session)).status, 201);
-    assert.equal((await both("keys", undefined, session)).status, 200);
-    assert.equal(
-      (
-        await both(
-          "internal/accounts/tier",
-          { ss58: address, tier: "paid" },
-          { "x-account-tier-promote-token": "fixture-tier" },
-        )
-      ).status,
+    await keysInterim(201, "keys", {}, session);
+    await keysInterim(200, "keys", undefined, session);
+    await keysInterim(
       200,
+      "internal/accounts/tier",
+      { ss58: address, tier: "paid" },
+      { "x-account-tier-promote-token": "fixture-tier" },
+    );
+    // The interim refusal leaves the native tier unpromoted by design; the
+    // parity legs below compare LIKE states, so the induced divergence is
+    // reconciled directly. Removed with the step-3 re-point, when promote
+    // itself regains a native path to compare.
+    await control.query(
+      "UPDATE app.rpc_accounts SET tier='paid' WHERE ss58=$1",
+      [address],
     );
     assert.equal(
       (
@@ -329,26 +359,16 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       200,
     );
     failRevocation = true;
-    assert.equal(
-      (await both("keys/key_fixture", undefined, session, "DELETE")).status,
-      502,
-    );
-    assert.equal(
-      (
-        await both(
-          "internal/keys/state",
-          { keyId: "key_fixture", accountId: 1 },
-          internal,
-        )
-      ).status,
+    await keysInterim(502, "keys/key_fixture", undefined, session, "DELETE");
+    await keysInterim(
       200,
+      "internal/keys/state",
+      { keyId: "key_fixture", accountId: 1 },
+      internal,
     );
     failRevocation = false;
-    assert.equal(
-      (await both("keys/key_fixture", undefined, session, "DELETE")).status,
-      200,
-    );
-    assert.equal((await both("keys", undefined, session)).status, 200);
+    await keysInterim(200, "keys/key_fixture", undefined, session, "DELETE");
+    await keysInterim(200, "keys", undefined, session);
   } finally {
     Date.now = originalNow;
     globalThis.fetch = originalFetch;
