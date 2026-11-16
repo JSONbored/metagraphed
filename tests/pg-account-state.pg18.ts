@@ -400,7 +400,7 @@ describe(
         "INSERT INTO app.api_key_usage_daily(account_id,day,route,request_count,source_row_id) VALUES(42,'2026-11-04','infinite','Infinity',4)",
       );
       assert.deepEqual(
-        await readers.accountRows(42, "2026-11-01"),
+        await readers.accountRows(42, "2026-11-01", "rpc"),
         (
           await db
             .prepare(
@@ -414,7 +414,7 @@ describe(
         (
           await db
             .prepare(
-              "SELECT account_id,day,route,request_count FROM api_key_usage_daily WHERE day>='2026-11-01' ORDER BY account_id,day",
+              "SELECT account_id,account_kind,day,route,request_count FROM api_key_usage_daily WHERE day>='2026-11-01' ORDER BY account_kind,account_id,day,rowid",
             )
             .all()
         ).results,

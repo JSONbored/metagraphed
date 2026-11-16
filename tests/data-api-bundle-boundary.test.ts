@@ -302,11 +302,15 @@ describe("data-api's bundle boundary", () => {
     // builders and store selectors plus their route/tool prose. The
     // PostgreSQL stores (pg-proxies.ts, pg-multisigs.ts, pg-child-keys.ts)
     // stay outside the graph; keep 2,494 source bytes of margin.
+    // The #13040 interim slice adds 2,541 source bytes over 13a6dcd2a, for
+    // 4,949,047: the withAccountKeysSql refusal seam and its contract prose,
+    // and account-kind scoping on the four cross-kind reads (#11573). Nothing
+    // new enters the graph; keep 2,553 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_949_000,
+      firstParty < 4_951_600,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

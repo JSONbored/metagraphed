@@ -201,10 +201,16 @@ test("native account routes select complete usage, quota and identity capabiliti
     ).status,
     200,
   );
-  assert.equal(
-    (await f.request("keys", undefined, { authorization: `Bearer ${token}` }))
-      .status,
-    200,
+  // Key management is pending the producer-plane re-point (infra#820 step
+  // 3): the native selection refuses EXPLICITLY, before any side effect,
+  // rather than 502-ing after the statement hits the producer's table.
+  const keysResponse = await f.request("keys", undefined, {
+    authorization: `Bearer ${token}`,
+  });
+  assert.equal(keysResponse.status, 503);
+  assert.match(
+    JSON.stringify(await keysResponse.json()),
+    /producer-plane re-point/,
   );
   assert.equal(
     (

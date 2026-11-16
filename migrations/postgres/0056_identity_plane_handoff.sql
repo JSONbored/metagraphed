@@ -21,7 +21,9 @@
 -- READERS/WRITERS of the retired api_keys shape, and where each retires:
 --   * workers/data-api.ts api-key handlers (issue/list/revoke, unkey flows)
 --     -- live on the legacy database today, which this migration does not
---     touch; their native-path statements fail by name (42P01) until the
+--     touch; their native-path statements refuse explicitly (503 via
+--     withAccountKeysSql -- on the composed database app.api_keys is the
+--     PRODUCER'S shape with no serving grant, so nothing silently runs) until the
 --     step-3 re-point lands them on the producer plane's
 --     create/list/revoke_api_key functions (#13040).
 --   * Imported legacy key rows land through the infra#820 step-3 mapping

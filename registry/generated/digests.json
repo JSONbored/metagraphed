@@ -11111,6 +11111,115 @@
     },
     {
       "generated_at": "1970-01-01T00:00:00.000Z",
+      "netuid": 78,
+      "schema_version": 1,
+      "sentences": [
+        {
+          "citations": [
+            "chain:sn78:hyperparam:9471212:min_burn_tao",
+            "chain:sn78:hyperparam:9471212:activity_cutoff",
+            "chain:sn78:hyperparam:9471212:commit_reveal_enabled",
+            "chain:sn78:hyperparam:9471212:target_regs_per_interval",
+            "chain:sn78:hyperparam:9471212:min_allowed_weights",
+            "chain:sn78:hyperparam:9471212:yuma_version",
+            "chain:sn78:hyperparam:9471212:subnet_is_active"
+          ],
+          "text": "Subnet 78 recorded seven hyperparameter changes on 9 November."
+        }
+      ],
+      "slug": "2026-w46",
+      "sources": [
+        {
+          "id": "chain:sn78:hyperparam:9471212:min_burn_tao",
+          "summary": "Minimum burn changed from 0.375 to 0.0005 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Minimum burn 0.375 → 0.0005",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:activity_cutoff",
+          "summary": "Activity cutoff changed from 360 to 5000 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Activity cutoff 360 → 5000",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:commit_reveal_enabled",
+          "summary": "Commit-reveal changed from disabled to enabled at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Commit-reveal disabled → enabled",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:target_regs_per_interval",
+          "summary": "Target registrations per interval changed from 1 to 2 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Target registrations per interval 1 → 2",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:min_allowed_weights",
+          "summary": "Min allowed weights changed from 256 to 1 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Min allowed weights 256 → 1",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:yuma_version",
+          "summary": "Yuma version changed from 2 to 3 at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Yuma version 2 → 3",
+          "url": "https://metagraph.sh/blocks/9471212"
+        },
+        {
+          "id": "chain:sn78:hyperparam:9471212:subnet_is_active",
+          "summary": "Subnet active changed from enabled to disabled at block #9471212.",
+          "tags": [
+            "chain",
+            "hyperparam",
+            "sn78"
+          ],
+          "timestamp": "2026-11-09T21:05:59.925Z",
+          "title": "Subnet 78: Subnet active enabled → disabled",
+          "url": "https://metagraph.sh/blocks/9471212"
+        }
+      ],
+      "substantive_count": 7,
+      "week": 46,
+      "year": 2026
+    },
+    {
+      "generated_at": "1970-01-01T00:00:00.000Z",
       "netuid": 79,
       "schema_version": 1,
       "sentences": [

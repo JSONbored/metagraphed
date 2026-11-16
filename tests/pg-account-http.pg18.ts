@@ -52,11 +52,26 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       (await control.query("SELECT 1 FROM pg_namespace WHERE nspname='auth'"))
         .rowCount === 0;
     assert.ok(ownApp && ownAuth, "requires disposable fixture");
+    // Composed reality (infra#820, producer-first): app.api_keys is the
+    // PRODUCER'S shape before the serving load phase lands, 0010 skips its
+    // staging twin where it exists, and 0056's shape-guard leaves the
+    // producer table standing. This suite proves account parity on that
+    // schema, not the retired one.
+    await control.query("CREATE SCHEMA app");
+    await control.query(
+      `CREATE TABLE app.api_keys (
+         key_id uuid PRIMARY KEY,
+         account_id uuid NOT NULL,
+         token_digest text NOT NULL UNIQUE,
+         expires_at timestamptz NOT NULL
+       )`,
+    );
     for (const name of [
       "0010_account_state.sql",
       "0033_account_numeric.sql",
       "0035_usage_row_identity.sql",
       "0036_usage_row_identity_activate.sql",
+      "0056_identity_plane_handoff.sql",
       "0009_auth_kv.sql",
     ])
       await control.query(
@@ -205,6 +220,32 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       assert.deepEqual(actual, expected, path);
       return actual;
     };
+    // Key management on the native selection refuses EXPLICITLY until the
+    // producer-plane re-point (infra#820 step 3, #13040): the source path
+    // keeps its full legacy lifecycle, the native path returns the interim
+    // 503 before any side effect (the Unkey mock sees no native calls on key
+    // routes, which is the point -- the intent-before-provider proof moves to
+    // the step-3 parity work).
+    const INTERIM_KEYS = {
+      status: 503,
+      text: '{"error":"native key management is pending the producer-plane re-point (infra#820 step 3)"}',
+    };
+    const keysInterim = async (
+      expectedSourceStatus: number,
+      path: string,
+      body?: object,
+      headers: Record<string, string> = {},
+      method = body ? "POST" : "GET",
+    ) => {
+      const expected = await call(sourceEnv, path, body, headers, method);
+      assert.equal(expected.status, expectedSourceStatus, path);
+      assert.deepEqual(
+        await call(nativeEnv, path, body, headers, method),
+        INTERIM_KEYS,
+        path,
+      );
+      return expected;
+    };
     const sessions = [];
     for (const env of [sourceEnv, nativeEnv]) {
       const challenge = await call(env, "auth/wallet/challenge", {
@@ -238,19 +279,23 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       ).status,
       200,
     );
-    assert.equal((await both("keys", {}, session)).status, 201);
+    await keysInterim(201, "keys", {}, session);
     fixtureKey = "key_second";
-    assert.equal((await both("keys", {}, session)).status, 201);
-    assert.equal((await both("keys", undefined, session)).status, 200);
-    assert.equal(
-      (
-        await both(
-          "internal/accounts/tier",
-          { ss58: address, tier: "paid" },
-          { "x-account-tier-promote-token": "fixture-tier" },
-        )
-      ).status,
+    await keysInterim(201, "keys", {}, session);
+    await keysInterim(200, "keys", undefined, session);
+    await keysInterim(
       200,
+      "internal/accounts/tier",
+      { ss58: address, tier: "paid" },
+      { "x-account-tier-promote-token": "fixture-tier" },
+    );
+    // The interim refusal leaves the native tier unpromoted by design; the
+    // parity legs below compare LIKE states, so the induced divergence is
+    // reconciled directly. Removed with the step-3 re-point, when promote
+    // itself regains a native path to compare.
+    await control.query(
+      "UPDATE app.rpc_accounts SET tier='paid' WHERE ss58=$1",
+      [address],
     );
     assert.equal(
       (
@@ -318,6 +363,24 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       200,
     );
     assert.equal((await both("keys/status", undefined, session)).status, 200);
+    // The native block path wrote the blocklist snapshot into the control KV
+    // (auth.kv_entries) with the bounded TTL -- the durable stored effect,
+    // not just the handler's response bytes. Asserted here, between block and
+    // unblock, where the entry exists.
+    const snapshot = await control.query(
+      "SELECT convert_from(value,'utf8') AS value, expires_at FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+      ["api-key-blocklist"],
+    );
+    assert.equal(snapshot.rowCount, 1);
+    assert.match(String(snapshot.rows[0].value), /"accountKind":"rpc"/);
+    // KV expiration is epoch SECONDS (Workers KV semantics, preserved by the
+    // pg-backed store); the fixture's clock is frozen at `now` milliseconds.
+    const ttlSeconds =
+      Number(snapshot.rows[0].expires_at) - Math.floor(now / 1000);
+    assert.ok(
+      ttlSeconds > 0 && ttlSeconds <= 61,
+      `snapshot TTL ${ttlSeconds}s must be bounded by BLOCKLIST_KV_TTL`,
+    );
     assert.equal(
       (
         await both(
@@ -329,26 +392,70 @@ test("native wallet, GitHub, key, tier, usage and block HTTP lifecycles retain D
       200,
     );
     failRevocation = true;
-    assert.equal(
-      (await both("keys/key_fixture", undefined, session, "DELETE")).status,
-      502,
-    );
-    assert.equal(
-      (
-        await both(
-          "internal/keys/state",
-          { keyId: "key_fixture", accountId: 1 },
-          internal,
-        )
-      ).status,
+    await keysInterim(502, "keys/key_fixture", undefined, session, "DELETE");
+    await keysInterim(
       200,
+      "internal/keys/state",
+      { keyId: "key_fixture", accountId: 1 },
+      internal,
     );
     failRevocation = false;
+    await keysInterim(200, "keys/key_fixture", undefined, session, "DELETE");
+    await keysInterim(200, "keys", undefined, session);
+    // The producer shape came through the whole suite untouched: the drop in
+    // 0056 fired on nothing, and no account statement reached its table.
     assert.equal(
-      (await both("keys/key_fixture", undefined, session, "DELETE")).status,
-      200,
+      (
+        await control.query(
+          "SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='app' AND table_name='api_keys' AND column_name='token_digest'",
+        )
+      ).rows[0].n,
+      1,
     );
-    assert.equal((await both("keys", undefined, session)).status, 200);
+    // Unblock refreshed the snapshot to the empty list -- stale block
+    // entries do not outlive the ledger state that produced them.
+    const cleared = await control.query(
+      "SELECT convert_from(value,'utf8') AS value FROM auth.kv_entries WHERE namespace='control' AND convert_from(key,'utf8')=$1",
+      ["api-key-blocklist"],
+    );
+    assert.equal(cleared.rowCount, 1);
+    assert.match(String(cleared.rows[0].value), /"blocks":\[\]/);
+    // Pool exhaustion fails identity handlers CLOSED within the connection
+    // timeout, never hanging and never leaking a half-applied write.
+    const releases: (() => void)[] = [];
+    const held = Array.from({ length: 4 }, () =>
+      runtime.transaction(
+        (scope) =>
+          new Promise<void>((resolve) => {
+            releases.push(resolve);
+            void scope;
+          }),
+      ),
+    );
+    while (releases.length < 4) await new Promise((r) => setTimeout(r, 10));
+    const exhausted = await call(
+      nativeEnv,
+      "auth/github/upsert-account",
+      {
+        github_user_id: 2,
+        github_login: "exhausted",
+      },
+      internal,
+    );
+    assert.equal(exhausted.status, 502);
+    for (const release of releases) release();
+    await Promise.all(held);
+    // The pool recovers: the same write succeeds afterwards.
+    const recovered = await call(
+      nativeEnv,
+      "auth/github/upsert-account",
+      {
+        github_user_id: 2,
+        github_login: "exhausted",
+      },
+      internal,
+    );
+    assert.equal(recovered.status, 200);
   } finally {
     Date.now = originalNow;
     globalThis.fetch = originalFetch;
