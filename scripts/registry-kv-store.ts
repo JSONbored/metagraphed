@@ -18,6 +18,21 @@ const POINTER_KEY = "metagraph:latest";
 const BATCH_BYTES = 8 * 1024 * 1024;
 const STORAGE_BUDGET = 700 * 1024 * 1024;
 const GC_GRACE_MS = 24 * 60 * 60 * 1000;
+// The burst floor: when a publish still exceeds the budget AFTER normal
+// collection (a day of unusually many registry generations -- 2026-11-15's
+// three registry merges plus the scheduled publishes were the first proof),
+// the publisher may re-collect with this shorter retention window instead of
+// waiting out the full grace. The selected and previous generations are
+// retained unconditionally either way; only INTERMEDIATE same-day generations
+// older than the floor become collectable, and a reader stale enough to hold
+// one refetches the pointer on its next miss. The budget itself is not the
+// knob: 700 MiB guards the platform's 1 GiB namespace cap, where an overflow
+// would break writes mid-publish instead of failing closed here.
+export const KV_BURST_GRACE_MS = 2 * 60 * 60 * 1000;
+
+/** Thrown when a publication would overflow the storage budget -- the
+ * publisher catches exactly this to run burst collection and retry once. */
+export class RegistryStorageBudgetError extends Error {}
 const STABLE_PATH =
   /^\/metagraph\/(?:health\/history\/\d{4}-\d{2}-\d{2}\.json|schemas\/(?!index\.json$)[A-Za-z0-9._:-]+\.json|fixtures\/(?!_capture-report\.json$)[A-Za-z0-9._:-]+\.json)$/;
 
@@ -231,7 +246,7 @@ export async function publishRegistryKv(
     0,
   );
   if (storedBytes + newBytes > STORAGE_BUDGET)
-    throw new Error(
+    throw new RegistryStorageBudgetError(
       "Registry publication exceeds its existing-storage budget; collect verified obsolete generations first",
     );
 
@@ -310,10 +325,13 @@ export async function publishRegistryKv(
 }
 
 /** Reclaim only this publisher's unreferenced keys, after a full day for stale
- * pointers and in-flight reads. The selected and previous generations remain. */
+ * pointers and in-flight reads. The selected and previous generations remain.
+ * `graceMs` defaults to the full day; the budget-overflow retry passes
+ * KV_BURST_GRACE_MS to make intermediate burst generations collectable. */
 export async function collectRegistryKv(
   store: RegistryKvStore,
   now = Date.now(),
+  graceMs = GC_GRACE_MS,
 ): Promise<number> {
   const before = await readPointer(store);
   const retained = new Set<string>();
@@ -323,7 +341,7 @@ export async function collectRegistryKv(
     .filter(
       (entry) =>
         /^registry:v1:manifest:[a-f0-9]{64}$/.test(entry.name) &&
-        Date.parse(entry.metadata.uploaded_at) >= now - GC_GRACE_MS,
+        Date.parse(entry.metadata.uploaded_at) >= now - graceMs,
     )
     .map(({ name }) => name.slice("registry:v1:manifest:".length));
   for (const digest of new Set([
@@ -350,7 +368,7 @@ export async function collectRegistryKv(
     (entry) =>
       /^registry:v1:(?:object|manifest):[a-f0-9]{64}$/.test(entry.name) &&
       !retained.has(entry.name) &&
-      Date.parse(entry.metadata.uploaded_at) < now - GC_GRACE_MS,
+      Date.parse(entry.metadata.uploaded_at) < now - graceMs,
   );
   if (JSON.stringify(await readPointer(store)) !== JSON.stringify(before))
     throw new Error("Registry pointer changed during collection");
