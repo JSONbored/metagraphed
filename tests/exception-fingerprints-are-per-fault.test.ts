@@ -60,21 +60,28 @@ function captureSites(source: string, file: string): Map<string, Site[]> {
   // too, and skipping the bad match silently drops the good one. That is how
   // the first draft of this gate found one of safe-mode's two codes and
   // reported the route as single-fault, i.e. compliant.
-  for (const match of source.matchAll(/route:\s*"([^"]+)"/g)) {
+  //
+  // Each site's window runs from its `route:` literal to the NEXT one (or the
+  // file's end), and `fingerprintDetail` counts anywhere in that window -- key
+  // order inside an object literal is semantically irrelevant, and an earlier
+  // draft that only read the slice between `route:` and `errorCode:` failed a
+  // compliant site whose detail was written after its code (#13216 lost a CI
+  // round to exactly that). The one ordering this still assumes is that
+  // `route:` leads its own literal, which the anchor test below pins against
+  // how these sites are actually written.
+  const anchors = [...source.matchAll(/route:\s*"([^"]+)"/g)];
+  for (const [index, match] of anchors.entries()) {
     const from = match.index! + match[0].length;
-    const codeAt = source.indexOf("errorCode:", from);
-    if (codeAt === -1) continue;
-    const between = source.slice(from, codeAt);
-    // Another `route:` in between means this literal has no errorCode of its
-    // own -- the one we found belongs to a later site, which gets its own turn.
-    if (/route:\s*"/.test(between)) continue;
-    const code = /errorCode:\s*"([^"]+)"/.exec(source.slice(codeAt));
+    const within = source.slice(from, anchors[index + 1]?.index ?? undefined);
+    const code = /errorCode:\s*"([^"]+)"/.exec(within);
+    // No errorCode inside this site's window means the literal carries no
+    // code of its own (a lane verdict, a bare route) -- not a capture site.
     if (!code) continue;
     const sites = byRoute.get(match[1]!) ?? [];
     sites.push({
       file,
       errorCode: code[1]!,
-      hasDetail: between.includes("fingerprintDetail:"),
+      hasDetail: within.includes("fingerprintDetail:"),
     });
     byRoute.set(match[1]!, sites);
   }
@@ -114,6 +121,38 @@ describe("a route with several faults fingerprints them apart", () => {
       [],
       "these routes let one fault throttle another:\n  " +
         offenders.join("\n  "),
+    );
+  });
+
+  test("a site's keys count in any order, and windows never bleed between sites", () => {
+    // The object literal is the unit; where fingerprintDetail sits inside it
+    // is style. The third site checks the window boundary: its missing detail
+    // must not be credited from the detailed site before it.
+    const source = `
+      await record(env, {
+        error: new Error("a"),
+        route: "fixture:lane",
+        errorCode: "one",
+        fingerprintDetail: "after-the-code",
+      });
+      await record(env, {
+        route: "fixture:lane",
+        fingerprintDetail: "before-the-code",
+        errorCode: "two",
+      });
+      await record(env, {
+        route: "fixture:lane",
+        errorCode: "three",
+      });
+    `;
+    const sites = captureSites(source, "fixture.ts").get("fixture:lane");
+    assert.deepEqual(
+      sites?.map((site) => [site.errorCode, site.hasDetail]),
+      [
+        ["one", true],
+        ["two", true],
+        ["three", false],
+      ],
     );
   });
 
