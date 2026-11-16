@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import {
   createNativeAiInference,
+  nativeInferenceOptionsFrom,
   type NativeInferenceOptions,
 } from "../src/native-ai-inference.ts";
 import { selectedAiInference } from "../src/ai-inference.ts";
@@ -372,4 +373,102 @@ test("caller cancellation stops admission before fetch and cancels an active bod
   controller.abort(new Error("caller disconnected"));
   await rejected;
   assert.equal(cancelled, true);
+});
+
+test("derives gateway options from declared settings: one endpoint, both legs", async () => {
+  const settings = {
+    AI_INFERENCE_BASE_URL: "https://gateway.example/v1",
+    AI_INFERENCE_PROVIDER: "fleet-gateway",
+    AI_INFERENCE_EMBEDDING_MODEL: "gateway-embed",
+    AI_INFERENCE_EMBEDDING_DIMENSIONS: "3",
+    AI_INFERENCE_COMPLETION_MODEL: "gateway-chat",
+    AI_INFERENCE_TOKEN: "gateway-token",
+  };
+  const requests: { url: string; authorization: string | null }[] = [];
+  const derived = nativeInferenceOptionsFrom(settings, async (input, init) => {
+    requests.push({
+      url: String(input),
+      authorization: new Headers(init?.headers).get("authorization"),
+    });
+    return String(input).endsWith("/embeddings")
+      ? embedding()
+      : completion();
+  });
+  assert.deepEqual(derived.identity, {
+    embedding: {
+      provider: "fleet-gateway",
+      model: "gateway-embed",
+      dimensions: 3,
+    },
+    completion: { provider: "fleet-gateway", model: "gateway-chat" },
+  });
+  const owner = createNativeAiInference(derived);
+  owners.push(owner);
+  await owner.embed(["x"]);
+  await owner.complete([{ role: "user", content: "q" }], 16);
+  assert.deepEqual(requests, [
+    {
+      url: "https://gateway.example/v1/embeddings",
+      authorization: "Bearer gateway-token",
+    },
+    {
+      url: "https://gateway.example/v1/chat/completions",
+      authorization: "Bearer gateway-token",
+    },
+  ]);
+});
+
+test("derived settings: the token is the only optional key", async () => {
+  const settings: Record<string, string> = {
+    AI_INFERENCE_BASE_URL: "https://gateway.example/v1",
+    AI_INFERENCE_PROVIDER: "fleet-gateway",
+    AI_INFERENCE_EMBEDDING_MODEL: "gateway-embed",
+    AI_INFERENCE_EMBEDDING_DIMENSIONS: "3",
+    AI_INFERENCE_COMPLETION_MODEL: "gateway-chat",
+  };
+  let authorization: string | null = "unset";
+  const owner = createNativeAiInference(
+    nativeInferenceOptionsFrom(settings, async (input, init) => {
+      authorization = new Headers(init?.headers).get("authorization");
+      return embedding();
+    }),
+  );
+  owners.push(owner);
+  await owner.embed(["x"]);
+  assert.equal(authorization, null);
+  for (const key of Object.keys(settings)) {
+    const { [key]: _, ...missing } = settings;
+    assert.throws(
+      () => nativeInferenceOptionsFrom(missing),
+      new RegExp(key),
+      `expected a missing ${key} to be refused by name`,
+    );
+    assert.throws(() => nativeInferenceOptionsFrom({ ...settings, [key]: " " }));
+  }
+});
+
+test("derived settings: dimensions must be a bounded positive integer", () => {
+  const settings = {
+    AI_INFERENCE_BASE_URL: "https://gateway.example/v1",
+    AI_INFERENCE_PROVIDER: "fleet-gateway",
+    AI_INFERENCE_EMBEDDING_MODEL: "gateway-embed",
+    AI_INFERENCE_EMBEDDING_DIMENSIONS: "3",
+    AI_INFERENCE_COMPLETION_MODEL: "gateway-chat",
+  };
+  for (const value of ["0", "-1", "3.5", "x", "", "40960", "1e3"])
+    assert.throws(() =>
+      nativeInferenceOptionsFrom({
+        ...settings,
+        AI_INFERENCE_EMBEDDING_DIMENSIONS: value,
+      }),
+    );
+  // 4096 is the identity schema's own ceiling; the derived value must pass
+  // the same factory validation every hand-built option set passes.
+  const owner = createNativeAiInference(
+    nativeInferenceOptionsFrom(
+      { ...settings, AI_INFERENCE_EMBEDDING_DIMENSIONS: "4096" },
+      async () => embedding(),
+    ),
+  );
+  owners.push(owner);
 });
