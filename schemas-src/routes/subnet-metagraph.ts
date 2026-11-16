@@ -29,6 +29,18 @@ import { z } from "zod";
 export const NeuronSchema = z
   .object({
     uid: z.int().min(0),
+    // #13162: the mechanism (sub-subnet) dimension. Present only on a
+    // mechanism-scoped response (`?mechid=`): the scope is what makes the
+    // claim true -- ingestion dedupes to mechanism 0, so a row served under an
+    // explicit mechid 0 scope IS a mechanism-0 row. Absent on an unscoped
+    // response rather than fabricated, until mechanism-keyed capture lands.
+    mechid: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "The mechanism (sub-subnet) this row belongs to. Present only when the request scoped a mechanism via `mechid=`; every stored row today is mechanism 0 (#13162).",
+      ),
     hotkey: z.string().nullable(),
     coldkey: z.string().nullable(),
     active: z.boolean(),
@@ -168,6 +180,15 @@ export const SubnetMetagraphArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
+    // #13162: echo of the request's `mechid=` scope -- present exactly when
+    // the caller passed one, so an unscoped response stays byte-identical.
+    mechid: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "The mechanism (sub-subnet) this snapshot is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
+      ),
     neuron_count: z.int().min(0),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
@@ -185,6 +206,15 @@ export const NeuronDetailArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
+    // #13162: echo of the request's `mechid=` scope -- present exactly when
+    // the caller passed one, so an unscoped response stays byte-identical.
+    mechid: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "The mechanism (sub-subnet) this card is scoped to, echoed from the request's `mechid=`. Absent when the request did not scope a mechanism (#13162).",
+      ),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
     neuron: NeuronSchema.nullable().describe(

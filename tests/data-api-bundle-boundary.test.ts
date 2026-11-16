@@ -247,11 +247,66 @@ describe("data-api's bundle boundary", () => {
     // Native table-export selection adds 953 source / 386 minified / 63 gzip
     // bytes over 347bc45a, for 4,894,218 source bytes. The PostgreSQL exporter
     // and pinned decoder remain outside the Worker graph.
+    // The mechanism (mechid) dimension (#13162) adds 5,628 source bytes over
+    // a1263f71, for 4,899,846: the shared scope stamp (mechanism-scope.ts),
+    // the subnet-mechanisms builders and store selector, and the grown neuron
+    // schema prose. The PostgreSQL mechanisms store (pg-subnet-mechanisms.ts)
+    // and every previously forbidden native implementation remain outside this
+    // graph; keep 2,154 source bytes of margin for this measured change.
+    // The stake-v2 serving slices (#13163) add 4,551 source bytes over
+    // 59bff494, for 4,904,397: the subnet-alpha-dividends and account-locks
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-alpha-dividends.ts, pg-stake-locks.ts)
+    // stay outside the graph; keep 2,603 source bytes of margin.
+    // The basket serving slice (#13163) adds 6,091 source bytes over
+    // 2c2c18ca, for 4,910,488: the validator-baskets builders and loaders
+    // plus their route/tool prose. root-basket-pg.ts stays forbidden above,
+    // and the capture-write module (node:crypto) stays out -- the fund cap
+    // is restated as a pinned literal for exactly that reason. Keep 2,512
+    // source bytes of margin.
+    // The root-claim basket-claim era (#13163) adds 1,767 source bytes over
+    // 28a9c277, for 4,912,255: the basket_claims block in
+    // account-root-claim.ts, the kind-filtered hot-tier read, and the grown
+    // route/tool prose. Nothing new enters the graph -- both modules were
+    // already in it; keep 2,745 source bytes of margin.
+    // The Gamma serving slice (#13164) adds 10,707 source bytes over
+    // 4707fa14, for 4,922,962: the subnet-gamma / gamma-deposits /
+    // subnet-services builders and store selectors plus their route/tool
+    // prose. The PostgreSQL stores (pg-subnet-gamma.ts,
+    // pg-gamma-deposits.ts, pg-subnet-services.ts) stay outside the graph;
+    // keep 2,538 source bytes of margin.
+    // The on-chain TAO/USD oracle (#13164) adds 1,397 source bytes over
+    // e635a993, for 4,924,359: the tao-usd-oracle builder and store selector
+    // plus the grown tao-usd route/tool prose. pg-tao-usd-oracle.ts stays
+    // outside the graph; keep 2,641 source bytes of margin.
+    // The Swap/AlphaAssets serving slice (#13165) adds 4,689 source bytes
+    // over 803e22b7, for 4,929,048: the subnet-swap / subnet-alpha-assets
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-subnet-swap.ts, pg-subnet-alpha-assets.ts) stay
+    // outside the graph; keep 2,452 source bytes of margin.
+    // The LimitOrders serving slice (#13165) adds 2,999 source bytes over
+    // 85172bfa, for 4,932,047: the subnet-limit-orders builder and store
+    // selector plus their route/tool prose. pg-subnet-limit-orders.ts stays
+    // outside the graph; keep 2,453 source bytes of margin.
+    // The identity-v2 labelling slice (#13166) adds 1,501 source bytes over
+    // c5e4ecc9, for 4,934,674: the storage-version helper and its emission in
+    // the identity builders plus the grown identity schema prose. Nothing new
+    // enters the graph -- both identity modules were already in it; keep
+    // 2,526 source bytes of margin.
+    // The coldkey-swap serving slice (#13166) adds 5,677 source bytes over
+    // 8c9ad938, for 4,940,351: the coldkey-swaps builders and store selector
+    // plus their route/tool prose. The PostgreSQL store (pg-coldkey-swaps.ts)
+    // stays outside the graph; keep 2,649 source bytes of margin.
+    // The account-plane serving slice (#13166) adds 6,155 source bytes over
+    // 91bd43f1, for 4,946,506: the proxies/multisigs/child-key-detail
+    // builders and store selectors plus their route/tool prose. The
+    // PostgreSQL stores (pg-proxies.ts, pg-multisigs.ts, pg-child-keys.ts)
+    // stay outside the graph; keep 2,494 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_896_000,
+      firstParty < 4_949_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

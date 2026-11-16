@@ -117,9 +117,9 @@
       "id": "sn-61-redteam-health",
       "kind": "subnet-api",
       "name": "RedTeam dashboard health",
-      "notes": "Public no-auth GET /healthz on dashboard.theredteam.io returning gateway liveness (observed plain-text response: ok). Served on the official RedTeam dashboard host registered in this manifest and linked from the RedTeam source repository README.",
+      "notes": "Public no-auth GET /healthz on dashboard.theredteam.io returning gateway liveness (observed plain-text response: ok). Served on the official RedTeam dashboard host registered in this manifest and linked from the RedTeam source repository README. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

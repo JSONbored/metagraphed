@@ -114,13 +114,19 @@ describe("the declaration", () => {
   });
 
   test("keys are stable and sorted, so a diff reads as an addition", () => {
+    // #13165: the pre-490 `Swap.AlphaSqrtPrice` / `Swap.SwapV3Initialized`
+    // declarations were DEAD -- spec 490's Swap pallet is balancer-based and
+    // neither item exists on chain any more -- so they are replaced by the
+    // v490 names, under STORAGE_SNAPSHOT_VERSION 2.
     assert.deepEqual(storageSnapshotKeys(), [
       "Balances.InactiveIssuance",
       "Balances.TotalIssuance",
       "Commitments.CommitmentOf",
       "Crowdloan.Crowdloans",
-      "Swap.AlphaSqrtPrice",
-      "Swap.SwapV3Initialized",
+      "Swap.BalancerAlphaReservoir",
+      "Swap.BalancerTaoReservoir",
+      "Swap.FeeRate",
+      "Swap.PalSwapInitialized",
     ]);
   });
 
@@ -139,7 +145,8 @@ describe("the declaration", () => {
   test("the version is an integer that can be bumped", () => {
     // It exists so a cadence change is visible to a reader comparing two
     // spans -- the rows themselves would not say the sampling moved.
+    // Version 2 is the #13165 Swap-shape replacement above.
     assert.ok(Number.isInteger(STORAGE_SNAPSHOT_VERSION));
-    assert.ok(STORAGE_SNAPSHOT_VERSION >= 1);
+    assert.equal(STORAGE_SNAPSHOT_VERSION, 2);
   });
 });

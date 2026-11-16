@@ -2,7 +2,7 @@
 // tool (metagraphed#7060, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN46's *real* registry surface configs
-// (registry/subnets/zipcode.json) to the tool's contract, so a future edit
+// (registry/subnets/instant.json) to the tool's contract, so a future edit
 // that regresses their callability is caught here.
 //
 // Live-verified 2026-07-21 (direct GET to the catalogued URLs):
@@ -21,6 +21,17 @@
 //     GET https://zipcode.ai/api/dashboard/stats/emissions
 //     -> HTTP 200 {"dailyEmissions":127.5,"subnet":46,"blockHeight":...}
 // Registry already matched reality -- no registry edit needed.
+//
+// 2026-11-15: the infra#873 availability sweep found every zipcode.ai route
+// here answering HTTP 402 -- which custody's #13204 verification traced to
+// Vercel DEPLOYMENT_DISABLED: the HOST is suspended, not paywalled. The
+// registry keeps the surfaces declared-open with probes disabled pending
+// placeholder on all four surfaces (gated != broken -- the host is alive and
+// the API is now a paid tier, pending re-review for the credential
+// mechanism). This file pins that gated state: the MCP tool must refuse the
+// two subnet-api surfaces without a credential and without touching upstream.
+// Probes stay enabled, so the transport-level fixtures below still exercise
+// the parse paths.
 //
 // Note on the two openapi surfaces: kind "openapi" is not in
 // OPERATIONAL_SURFACE_KINDS (src/health-probe-core.ts), so those surfaces are
@@ -41,7 +52,7 @@ const NETUID = 46;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/zipcode.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/instant.json", import.meta.url)),
     "utf8",
   ),
 );
@@ -68,6 +79,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         : { ok: false, status: 404 },
   };
   const originalFetch = globalThis.fetch;
+  let upstreamFetched = false;
   globalThis.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -75,6 +87,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    upstreamFetched = true;
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -95,13 +108,16 @@ async function callToolWithSurface(surface: Row, body: unknown) {
       mockEnv(),
       deps,
     );
-    return ((await response.json()) as Row).result;
+    const result = ((await response.json()) as Row).result;
+    return { result, upstreamFetched };
   } finally {
     globalThis.fetch = originalFetch;
   }
 }
 
-const CALLABLE_SURFACES = [
+// The two dashboard surfaces, paywalled (402) since the 2026-11-15 infra#873
+// sweep; fixtures keep the pre-paywall body shapes for the transport tests.
+const GATED_SURFACES = [
   {
     id: "sn-46-zipcode-subnet-api",
     url: "https://zipcode.ai/api/dashboard/stats",
@@ -133,14 +149,22 @@ const CALLABLE_SURFACES = [
 ];
 
 describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
-  for (const fixture of CALLABLE_SURFACES) {
+  for (const fixture of GATED_SURFACES) {
     const SURFACE = surfaceOf(fixture.id);
 
-    test(`${fixture.id}: registry surface is callable`, () => {
+    test(`${fixture.id}: registry surface pins its host-unavailable (corrected) state`, () => {
       assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
       assert.equal(SURFACE.kind, "subnet-api");
+      // Custody correction: the 402 is Vercel DEPLOYMENT_DISABLED -- host
+      // unavailable, not a paywall. Declared-open stands; the probe is
+      // disabled pending redeploy evidence.
       assert.equal(SURFACE.auth_required, false);
-      assert.equal(SURFACE.probe?.enabled, true);
+      assert.equal(SURFACE.auth, undefined);
+      assert.match(
+        SURFACE.notes,
+        /custody correction\] the 402 is Vercel DEPLOYMENT_DISABLED/,
+      );
+      assert.equal(SURFACE.probe?.enabled, false);
       assert.equal(SURFACE.probe?.method, "GET");
       assert.equal(SURFACE.probe?.expect, "json");
       assert.equal(SURFACE.url, fixture.url);
@@ -167,12 +191,14 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
       fixture.assertBody(result.body as Row);
     });
 
-    test(`${fixture.id}: end-to-end MCP tools/call by surface id`, async () => {
-      const result = await callToolWithSurface(SURFACE, fixture.body);
-      assert.equal(result.isError, false);
-      assert.equal(result.structuredContent.surface_id, fixture.id);
-      assert.equal(result.structuredContent.status_code, 200);
-      fixture.assertBody(result.structuredContent.body as Row);
+    test(`${fixture.id}: the MCP tool refuses the retired surface without fetching upstream`, async () => {
+      const { result, upstreamFetched } = await callToolWithSurface(
+        SURFACE,
+        fixture.body,
+      );
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
     });
   }
 
@@ -222,11 +248,18 @@ describe("SN46 Zipcode call_subnet_surface verification (#7060)", () => {
     for (const fixture of OPENAPI_SURFACES) {
       const SURFACE = surfaceOf(fixture.id);
 
-      test(`${fixture.id}: registry surface exists, is no-auth GET, carries schema`, () => {
+      test(`${fixture.id}: registry surface pins its host-unavailable (corrected) state`, () => {
         assert.ok(SURFACE, `registry surface ${fixture.id} is present`);
         assert.equal(SURFACE.kind, "openapi");
+        // Custody correction: Vercel DEPLOYMENT_DISABLED, same host class as
+        // the dashboard surfaces above -- declared-open, probe disabled.
         assert.equal(SURFACE.auth_required, false);
-        assert.equal(SURFACE.probe?.enabled, true);
+        assert.equal(SURFACE.auth, undefined);
+        assert.match(
+          SURFACE.notes,
+          /custody correction\] the 402 is Vercel DEPLOYMENT_DISABLED/,
+        );
+        assert.equal(SURFACE.probe?.enabled, false);
         assert.equal(SURFACE.probe?.method, "GET");
         assert.equal(SURFACE.probe?.expect, "json");
         assert.equal(SURFACE.url, fixture.url);

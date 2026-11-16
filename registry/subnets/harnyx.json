@@ -96,10 +96,10 @@
       "id": "sn-67-harnyx-data-artifact",
       "kind": "data-artifact",
       "name": "Harnyx WebWalkerQA miner-task benchmark",
-      "notes": "Public WebWalkerQA question-answer evaluation set (680 records: Question, answer, domain, source_website, golden_path, difficulty_level) from the SN67 Harnyx miner-task benchmark suite, used to score web-navigation research tasks. No-auth static JSON dataset, pinned to an immutable commit.",
+      "notes": "Public WebWalkerQA question-answer evaluation set (680 records: Question, answer, domain, source_website, golden_path, difficulty_level) from the SN67 Harnyx miner-task benchmark suite, used to score web-navigation research tasks. No-auth static JSON dataset, pinned to an immutable commit. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },

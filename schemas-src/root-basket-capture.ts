@@ -1,8 +1,18 @@
 // Internal observation contract; no public route or publication pointer.
 // SCALE types are pinned to subtensor 14cde6410fe8ec81a940e290c56f94a632a0988d
-// (v454), rpc_info/basket_info.rs and staking/beta_pricing.rs.
+// (v454), rpc_info/basket_info.rs and staking/beta_pricing.rs. Refreshed for
+// the live runtime (#13163): a spec-490 capture of the same basket_info
+// observation is accepted with a decoder that names its v490 revision -- the
+// exact v490 commit pin, like the v490 SCALE decode itself (the
+// SubtensorModule.DeferredBasket* family), lands with the engine's decoder.
 import { z } from "zod";
 import { BittensorNetworkSchema } from "./shared.ts";
+
+/** The audited v454 decoder -- the only decoder the v454 era ever shipped. */
+export const ROOT_BASKET_V454_DECODER = "subtensor-v454-14cde641-v1";
+/** A v490-era decoder names its subtensor revision and its own version. */
+export const ROOT_BASKET_V490_DECODER_PATTERN =
+  /^subtensor-v490-[0-9a-f]{8}-v[1-9][0-9]*$/;
 
 function integerString(bits: number, signed = false) {
   const bound = 1n << BigInt(signed ? bits - 1 : bits);
@@ -140,9 +150,16 @@ export const RootBasketCaptureSchema = z
     network_genesis_hash: hash,
     finalized_block_hash: hash,
     finalized_block: u64,
-    runtime_spec_version: z.literal(454),
+    runtime_spec_version: z.union([z.literal(454), z.literal(490)]),
     runtime_api_version: z.literal(3),
-    decoder_version: z.literal("subtensor-v454-14cde641-v1"),
+    decoder_version: z
+      .string()
+      .refine(
+        (value) =>
+          value === ROOT_BASKET_V454_DECODER ||
+          ROOT_BASKET_V490_DECODER_PATTERN.test(value),
+        "Unknown root basket decoder",
+      ),
     metadata_sha256: hash,
     started_at_ms: u64,
     finished_at_ms: u64,
@@ -156,6 +173,16 @@ export const RootBasketCaptureSchema = z
   .superRefine((capture, ctx) => {
     const issue = (message: string) =>
       ctx.addIssue({ code: "custom", message });
+    // Era consistency: the audited v454 decoder is the only decoder that era
+    // ever shipped, and a v490 decoder must name a v490 revision -- a spec
+    // observed under one runtime must not wear the other era's decoder.
+    if (
+      capture.runtime_spec_version === 454
+        ? capture.decoder_version !== ROOT_BASKET_V454_DECODER
+        : !ROOT_BASKET_V490_DECODER_PATTERN.test(capture.decoder_version)
+    ) {
+      issue("Decoder does not belong to the observed runtime era");
+    }
     if (greaterUnsigned(capture.started_at_ms, capture.finished_at_ms)) {
       issue("Capture finish precedes start");
     }

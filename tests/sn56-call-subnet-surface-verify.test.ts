@@ -40,6 +40,12 @@
 //     -> HTTP 200 JSON {text, image, environment}
 // Registry already matched reality -- no registry edit needed.
 //
+// [2026-11-15 infra#873 p3b] The availability sweep found GET /healthz
+// answering 404 on an alive host and retired sn-56-gradients-healthz from the
+// callable set (probe.enabled:false pending url re-verification -- retired,
+// not merely broken). That surface moved out of CALLABLE_SURFACES below and
+// now pins the non-callable state and the tool's refusal to call it.
+//
 // Note on sn-56-gradients-openapi: kind "openapi" is not in
 // OPERATIONAL_SURFACE_KINDS (src/health-probe-core.ts), so that surface is
 // absent from public/metagraph/operational-surfaces.json and cannot be
@@ -78,7 +84,11 @@ function jsonResponse(body: unknown) {
   });
 }
 
-async function callToolWithSurface(surface: Row, body: unknown) {
+async function callToolWithSurface(
+  surface: Row,
+  body: unknown,
+  onUpstream?: () => void,
+) {
   const catalog = {
     surfaces: [{ ...surface, surface_id: surface.id, netuid: NETUID }],
   };
@@ -97,6 +107,7 @@ async function callToolWithSurface(surface: Row, body: unknown) {
         headers: { "content-type": "application/dns-json" },
       });
     }
+    onUpstream?.();
     return jsonResponse(body);
   }) as typeof fetch;
   try {
@@ -190,15 +201,6 @@ const CALLABLE_SURFACES = [
     assertBody: (b: Row) => {
       assert.equal(typeof b.number_of_jobs_success, "number");
       assert.equal(typeof b.job_can_be_made, "boolean");
-    },
-  },
-  {
-    id: "sn-56-gradients-healthz",
-    url: "https://api.gradients.io/healthz",
-    schemaUrl: undefined,
-    body: { ok: true },
-    assertBody: (b: Row) => {
-      assert.equal(b.ok, true);
     },
   },
   {
@@ -313,6 +315,33 @@ describe("SN56 Gradients call_subnet_surface verification (#7069)", () => {
       fixture.assertBody(result.structuredContent.body as Row);
     });
   }
+
+  describe("sn-56-gradients-healthz (sweep-retired, non-callable)", () => {
+    const SURFACE = surfaceOf("sn-56-gradients-healthz");
+
+    test("registry surface pins the sweep-retired (non-callable) config", () => {
+      assert.ok(SURFACE, "registry surface sn-56-gradients-healthz is present");
+      assert.equal(SURFACE.kind, "subnet-api");
+      assert.equal(SURFACE.auth_required, false);
+      // [2026-11-15 infra#873 p3b] 404 on an alive host: retired from the
+      // callable set pending re-verification.
+      assert.equal(SURFACE.probe?.enabled, false);
+      assert.equal(SURFACE.probe?.method, "GET");
+      assert.equal(SURFACE.probe?.expect, "json");
+      assert.equal(SURFACE.url, "https://api.gradients.io/healthz");
+      assert.equal(SURFACE.schema_url, undefined);
+    });
+
+    test("the call_subnet_surface MCP tool rejects it without fetching upstream", async () => {
+      let upstreamFetched = false;
+      const result = await callToolWithSurface(SURFACE, { ok: true }, () => {
+        upstreamFetched = true;
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /probe\.enabled:false/);
+      assert.equal(upstreamFetched, false);
+    });
+  });
 
   describe("sn-56-gradients-openapi (direct-call only)", () => {
     const SURFACE = surfaceOf("sn-56-gradients-openapi");

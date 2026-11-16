@@ -2444,6 +2444,40 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_emission_changes", HARNESS_SERVES_NO_ROWS],
   ["get_emission_pipeline_history", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_price_share_composition", HARNESS_SERVES_NO_ROWS],
+  // #13162: the mechanisms registry has no producer until the engine's
+  // per-mechanism capture lands, so the harness can only see the decline.
+  ["get_subnet_mechanisms", HARNESS_SERVES_NO_ROWS],
+  // #13163: the dividend accrual and lock state have no producer until the
+  // engine's stake-v2 capture lands, so the harness can only see the decline.
+  ["get_subnet_alpha_dividends", HARNESS_SERVES_NO_ROWS],
+  ["get_account_locks", HARNESS_SERVES_NO_ROWS],
+  // #13166: the coldkey-swap announcement plane has no producer until the
+  // engine's swap capture lands, so the harness can only see the decline.
+  ["get_pending_coldkey_swaps", HARNESS_SERVES_NO_ROWS],
+  // #13166: the proxy and multisig state has no producer until the engine's
+  // Proxy/Multisig capture lands, so the harness can only see the decline.
+  ["get_account_proxies", HARNESS_SERVES_NO_ROWS],
+  ["get_account_multisigs", HARNESS_SERVES_NO_ROWS],
+  // #13163: no capture store is bound in the harness, so the baskets tool can
+  // only see the null-capture decline.
+  ["get_validator_baskets", HARNESS_SERVES_NO_ROWS],
+  // #13164: the Gamma state, deposit state and service registry have no
+  // producer until the engine's Gamma capture lands, so the harness can only
+  // see the decline.
+  ["get_subnet_gamma", HARNESS_SERVES_NO_ROWS],
+  ["get_gamma_deposits", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_services", HARNESS_SERVES_NO_ROWS],
+  // #13165: the balancer Swap state and AlphaAssets accounting have no
+  // producer until the engine's capture lands, so the harness can only see
+  // the decline.
+  ["get_subnet_swap", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_alpha_assets", HARNESS_SERVES_NO_ROWS],
+  // #13165: the LimitOrders order book is engine-gated the same way.
+  ["get_subnet_limit_orders", HARNESS_SERVES_NO_ROWS],
+  // #13165: the associations block on the EVM address mapping is engine-gated
+  // the same way -- no association store is bound in the harness, so the tool
+  // can only see the empty decline beside its precompile answer.
+  ["get_evm_address_mapping", HARNESS_SERVES_NO_ROWS],
   ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
   [
     "get_feed",

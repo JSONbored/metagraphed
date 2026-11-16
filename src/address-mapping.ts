@@ -15,6 +15,10 @@
 import { readLiveRpcCache, writeLiveRpcCache } from "./live-rpc-cache.ts";
 import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.ts";
+import {
+  buildEvmAssociations,
+  loadEvmAssociations,
+} from "./evm-associations.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import {
   type ChainNetworkId,
@@ -74,13 +78,44 @@ export interface AddressMappingResultSnapshot {
  * honest answer: it says the value was computed by the chain's own code rather
  * than looked up, which is a different guarantee from a storage read and a
  * different one again from our arithmetic.
+ *
+ * #13165 adds the SECOND map below: when the engine's
+ * SubtensorModule.AssociatedEvmAddress capture has rows for the key, `ss58` is
+ * that explicit on-chain association rather than the precompile's computed
+ * mapping, and the map says so. `source` names which path answered --
+ * reconstructed, because it is our own label; `associations` is always the
+ * storage read (empty until the capture lands); `association_count` is our
+ * count of it.
  */
 export interface AddressMappingResult extends AddressMappingResultSnapshot {
-  field_sources: typeof ADDRESS_MAPPING_FIELD_SOURCES;
+  /** Which path answered `ss58`: the stored association or the precompile. */
+  source: "storage" | "precompile";
+  association_count: number | null;
+  associations: Record<string, unknown>[];
+  field_sources:
+    | typeof ADDRESS_MAPPING_FIELD_SOURCES
+    | typeof ADDRESS_MAPPING_STORAGE_FIELD_SOURCES;
 }
 
 export const ADDRESS_MAPPING_FIELD_SOURCES = {
   ss58: { kind: "measured", storage: "AddressMapping.addressMapping" },
+  source: { kind: "reconstructed", storage: null },
+  association_count: { kind: "reconstructed", storage: null },
+  associations: {
+    kind: "measured",
+    storage: "SubtensorModule.AssociatedEvmAddress",
+  },
+} as const satisfies FieldSources;
+
+/** The same map with `ss58` re-attributed to the storage read (#13165). */
+export const ADDRESS_MAPPING_STORAGE_FIELD_SOURCES = {
+  ss58: { kind: "measured", storage: "SubtensorModule.AssociatedEvmAddress" },
+  source: { kind: "reconstructed", storage: null },
+  association_count: { kind: "reconstructed", storage: null },
+  associations: {
+    kind: "measured",
+    storage: "SubtensorModule.AssociatedEvmAddress",
+  },
 } as const satisfies FieldSources;
 
 async function loadAddressMappingSnapshot(
@@ -165,14 +200,49 @@ async function loadAddressMappingSnapshot(
  * Attached outside the loader so it never enters the KV blob, and so REST,
  * GraphQL and MCP all inherit it from one point rather than three call sites
  * kept in step by hand (#9108).
+ *
+ * #13165: the explicit on-chain association answers first. When the engine's
+ * SubtensorModule.AssociatedEvmAddress capture holds a row for this key whose
+ * owning ss58 it carries, that association IS the answer -- provenance
+ * switches to the storage read, and `queried_at` is the capture stamp rather
+ * than our clock. The precompile path stays the fallback: it is a total
+ * function of the H160 and correct whether or not the storage has data, and
+ * it is all that today's deployed Workers (no store bound) can serve. The
+ * association store is mainnet-only (app.evm_associations has no network
+ * column), so a testnet-addressed call keeps the precompile path outright.
  */
 export async function loadAddressMapping(
   env: Env,
   h160: string,
   network?: ChainNetworkId,
 ): Promise<AddressMappingResult> {
+  const normalized = h160.toLowerCase();
+  const rows =
+    (network ?? "mainnet") === "mainnet"
+      ? await loadEvmAssociations(env, normalized)
+      : null;
+  const { association_count, associations } = buildEvmAssociations(rows);
+  const newest = associations[0];
+  const storageSs58 =
+    typeof newest?.ss58 === "string" && newest.ss58 !== "" ? newest.ss58 : null;
+  if (storageSs58 !== null) {
+    return {
+      schema_version: 1,
+      h160: normalized,
+      ss58: storageSs58,
+      queried_at:
+        (newest.captured_at as string | null) ?? new Date().toISOString(),
+      source: "storage",
+      association_count,
+      associations,
+      field_sources: ADDRESS_MAPPING_STORAGE_FIELD_SOURCES,
+    };
+  }
   return {
     ...(await loadAddressMappingSnapshot(env, h160, network)),
+    source: "precompile",
+    association_count,
+    associations,
     field_sources: ADDRESS_MAPPING_FIELD_SOURCES,
   };
 }

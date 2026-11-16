@@ -420,6 +420,23 @@ import {
   handleCrowdloan,
   handleCrowdloans,
   handleSubnetLease,
+  handleSubnetMechanisms,
+  handleSubnetAlphaDividends,
+  handleAccountLocks,
+  handlePendingColdkeySwaps,
+  handleAccountColdkeySwap,
+  handleAccountProxies,
+  handleAccountMultisigs,
+  handleChainBaskets,
+  handleValidatorBasket,
+  handleSubnetGamma,
+  handleSubnetGammaHistory,
+  handleChainGamma,
+  handleGammaDeposits,
+  handleSubnetServices,
+  handleSubnetSwap,
+  handleSubnetAlphaAssets,
+  handleSubnetLimitOrders,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -844,6 +861,23 @@ import {
   CROWDLOANS_PATH_PATTERN,
   CROWDLOAN_DETAIL_PATH_PATTERN,
   SUBNET_LEASE_PATH_PATTERN,
+  SUBNET_MECHANISMS_PATH_PATTERN,
+  SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN,
+  ACCOUNT_LOCKS_PATH_PATTERN,
+  PENDING_COLDKEY_SWAPS_PATH,
+  ACCOUNT_COLDKEY_SWAP_PATH_PATTERN,
+  ACCOUNT_PROXIES_PATH_PATTERN,
+  ACCOUNT_MULTISIGS_PATH_PATTERN,
+  CHAIN_BASKETS_PATH,
+  VALIDATOR_BASKET_PATH_PATTERN,
+  SUBNET_GAMMA_HISTORY_PATH_PATTERN,
+  SUBNET_GAMMA_PATH_PATTERN,
+  CHAIN_GAMMA_PATH,
+  GAMMA_DEPOSITS_PATH,
+  SUBNET_SERVICES_PATH_PATTERN,
+  SUBNET_SWAP_PATH_PATTERN,
+  SUBNET_ALPHA_ASSETS_PATH_PATTERN,
+  SUBNET_LIMIT_ORDERS_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -7061,6 +7095,141 @@ async function dispatchRequest(
         canonicalSubnetWeightsCachePath(resolved.url),
       );
     }
+    const mechanismsMatch = SUBNET_MECHANISMS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (mechanismsMatch) {
+      // #13162: one subnet's mechanism registry -- a handful of rows per
+      // subnet through the native store seam, dispatched directly like the
+      // sibling hyperparameters card (no edge-cache wrapper).
+      return handleSubnetMechanisms(request, env, Number(mechanismsMatch[1]));
+    }
+    const alphaDividendsMatch = SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (alphaDividendsMatch) {
+      // #13163: one subnet's pending dividend accrual -- one bounded read
+      // through the native store seam, dispatched directly like the sibling
+      // mechanisms card (no edge-cache wrapper).
+      return handleSubnetAlphaDividends(
+        request,
+        env,
+        Number(alphaDividendsMatch[1]),
+      );
+    }
+    const accountLocksMatch = ACCOUNT_LOCKS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountLocksMatch) {
+      // #13163: one account's conviction-lock state -- a handful of rows per
+      // account through the native store seam, dispatched directly like the
+      // sibling subnet cards above (no edge-cache wrapper).
+      return handleAccountLocks(request, env, accountLocksMatch[1]);
+    }
+    if (resolved.url.pathname === PENDING_COLDKEY_SWAPS_PATH) {
+      // #13166: every in-flight v2 coldkey-swap announcement -- one bounded
+      // read through the native coldkey-swaps store seam. An exact path,
+      // checked BEFORE ACCOUNT_PATH_PATTERN below so the literal segment is
+      // never read as an ss58.
+      return handlePendingColdkeySwaps(request, env);
+    }
+    const accountColdkeySwapMatch = ACCOUNT_COLDKEY_SWAP_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountColdkeySwapMatch) {
+      // #13166: one account's v2 swap state and key successor lineage,
+      // through the same seam.
+      return handleAccountColdkeySwap(request, env, accountColdkeySwapMatch[1]);
+    }
+    const accountProxiesMatch = ACCOUNT_PROXIES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountProxiesMatch) {
+      // #13166: one account's Proxy-pallet delegation state -- a handful of
+      // rows per account through the native proxies store seam.
+      return handleAccountProxies(request, env, accountProxiesMatch[1]);
+    }
+    const accountMultisigsMatch = ACCOUNT_MULTISIGS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountMultisigsMatch) {
+      // #13166: every multisig the account belongs to, through the native
+      // multisigs store seam.
+      return handleAccountMultisigs(request, env, accountMultisigsMatch[1]);
+    }
+    if (resolved.url.pathname === CHAIN_BASKETS_PATH) {
+      // #13163: every validator's Root basket fund at the newest completed
+      // capture -- one bounded read through the capture store seam,
+      // dispatched directly like the sibling cards above.
+      return handleChainBaskets(request, env);
+    }
+    const validatorBasketMatch = VALIDATOR_BASKET_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (validatorBasketMatch) {
+      // #13163: one validator's Root basket fund with holdings/targets,
+      // through the same capture store seam.
+      return handleValidatorBasket(request, env, validatorBasketMatch[1]);
+    }
+    // #13164: the Gamma capture series BEFORE its bare card -- same ordering
+    // convention as SUBNET_WEIGHT_SETTERS before SUBNET_WEIGHTS.
+    const gammaHistoryMatch = SUBNET_GAMMA_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (gammaHistoryMatch) {
+      return handleSubnetGammaHistory(
+        request,
+        env,
+        Number(gammaHistoryMatch[1]),
+      );
+    }
+    const gammaMatch = SUBNET_GAMMA_PATH_PATTERN.exec(resolved.url.pathname);
+    if (gammaMatch) {
+      // #13164: one subnet's current Gamma state -- one bounded read through
+      // the native Gamma store seam, dispatched directly like the sibling
+      // mechanisms card (no edge-cache wrapper).
+      return handleSubnetGamma(request, env, Number(gammaMatch[1]));
+    }
+    if (resolved.url.pathname === CHAIN_GAMMA_PATH) {
+      // #13164: the chain-wide Gamma state, through the same seam.
+      return handleChainGamma(request, env);
+    }
+    if (resolved.url.pathname === GAMMA_DEPOSITS_PATH) {
+      // #13164: the chain's Gamma deposits -- one bounded read through the
+      // native deposits store seam.
+      return handleGammaDeposits(request, env);
+    }
+    const servicesMatch = SUBNET_SERVICES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (servicesMatch) {
+      // #13164: one subnet's on-chain service-URL registry, through the
+      // native services store seam.
+      return handleSubnetServices(request, env, Number(servicesMatch[1]));
+    }
+    const swapMatch = SUBNET_SWAP_PATH_PATTERN.exec(resolved.url.pathname);
+    if (swapMatch) {
+      // #13165: one subnet's current balancer-based Swap state -- one bounded
+      // read through the native swap store seam, dispatched directly like the
+      // sibling gamma card (no edge-cache wrapper).
+      return handleSubnetSwap(request, env, Number(swapMatch[1]));
+    }
+    const alphaAssetsMatch = SUBNET_ALPHA_ASSETS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (alphaAssetsMatch) {
+      // #13165: one subnet's current AlphaAssets accounting, through the
+      // native alpha-assets store seam.
+      return handleSubnetAlphaAssets(request, env, Number(alphaAssetsMatch[1]));
+    }
+    const limitOrdersMatch = SUBNET_LIMIT_ORDERS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (limitOrdersMatch) {
+      // #13165: one subnet's LimitOrders order book, through the native
+      // limit-orders store seam.
+      return handleSubnetLimitOrders(request, env, Number(limitOrdersMatch[1]));
+    }
     const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8097,6 +8266,34 @@ export function isMainnetOnlyApiPath(pathname: string) {
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
+    // #13162: app.subnet_mechanisms carries no network dimension.
+    SUBNET_MECHANISMS_PATH_PATTERN.test(pathname) ||
+    // #13163: app.subnet_alpha_dividends / app.stake_locks carry no network
+    // dimension.
+    SUBNET_ALPHA_DIVIDENDS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_LOCKS_PATH_PATTERN.test(pathname) ||
+    // #13166: app.coldkey_swap_announcements / app.coldkey_swap_policy /
+    // app.key_successors carry no network dimension.
+    pathname === PENDING_COLDKEY_SWAPS_PATH ||
+    ACCOUNT_COLDKEY_SWAP_PATH_PATTERN.test(pathname) ||
+    // #13166: app.proxies / app.multisigs carry no network dimension.
+    ACCOUNT_PROXIES_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_MULTISIGS_PATH_PATTERN.test(pathname) ||
+    // #13163: the basket loaders pin network='finney' by construction.
+    pathname === CHAIN_BASKETS_PATH ||
+    VALIDATOR_BASKET_PATH_PATTERN.test(pathname) ||
+    // #13164: app.subnet_gamma / app.chain_gamma / app.gamma_deposits /
+    // app.subnet_services carry no network dimension.
+    SUBNET_GAMMA_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_GAMMA_PATH_PATTERN.test(pathname) ||
+    pathname === CHAIN_GAMMA_PATH ||
+    pathname === GAMMA_DEPOSITS_PATH ||
+    SUBNET_SERVICES_PATH_PATTERN.test(pathname) ||
+    // #13165: app.swap_balancer / app.alpha_assets carry no network
+    // dimension.
+    SUBNET_SWAP_PATH_PATTERN.test(pathname) ||
+    SUBNET_ALPHA_ASSETS_PATH_PATTERN.test(pathname) ||
+    SUBNET_LIMIT_ORDERS_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||
@@ -10238,10 +10435,21 @@ async function handleHealthRequest(request: Request, env: Env) {
   // Chain-event index freshness (#1346/#1361) — the realtime streamer's heartbeat.
   // The newest observed_at row is an index-friendly heartbeat for the latest
   // indexed chain event; age_seconds is ~12-30s while the streamer is live,
-  // growing toward the ~5-min poller backstop if it's down. Reported for
-  // observability (does NOT gate the HTTP status, like operational_health);
-  // best-effort + null on a cold/unbound store.
+  // growing toward the ~5-min poller backstop if it's down. Best-effort + null
+  // on a cold/unbound store.
+  //
+  // A PRESENT stale heartbeat now GATES the status. The head froze at block
+  // 9,420,866 on 2026-11-02 and /health kept answering 200 "ok" for weeks —
+  // served chain data was wrong output presented as healthy, and every uptime
+  // monitor pointed here agreed. Same posture as the publish pointer above:
+  // only a present heartbeat can trip it (an unbound or cold store stays
+  // reported-null and does not gate), so local/dev and the worker-test harness
+  // stay healthy. Default 1800s = 6 missed 5-minute poller backstops: a
+  // restarting streamer rides through, a dead one is degraded within the hour.
+  const chainMaxAgeSeconds =
+    Number(env.METAGRAPH_HEALTH_CHAIN_MAX_AGE_SECONDS) || 1800;
   let chainEvents = null;
+  let chainStale = false;
   if (bindings.health_db) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
@@ -10249,19 +10457,25 @@ async function handleHealthRequest(request: Request, env: Env) {
     // (mirrors toIso in src/blocks.ts and captured_at guards elsewhere).
     const chainEventsFresh =
       Number.isFinite(chainEventsAtMs) && chainEventsAtMs > 0;
+    const chainAgeSeconds = chainEventsFresh
+      ? Math.round((Date.now() - chainEventsAtMs) / 1000)
+      : null;
+    chainStale =
+      chainAgeSeconds !== null && chainAgeSeconds > chainMaxAgeSeconds;
     chainEvents = {
       latest_indexed_block: chainEventsRow?.block ?? null,
       latest_event_at: chainEventsFresh
         ? new Date(chainEventsAtMs).toISOString()
         : null,
-      age_seconds: chainEventsFresh
-        ? Math.round((Date.now() - chainEventsAtMs) / 1000)
-        : null,
+      age_seconds: chainAgeSeconds,
+      max_age_seconds: chainMaxAgeSeconds,
+      stale: chainStale,
     };
   }
+  const degraded = stale || chainStale;
 
   const body = JSON.stringify({
-    status: stale ? "degraded" : "ok",
+    status: degraded ? "degraded" : "ok",
     service: "metagraphed",
     contract_version: contractVersion(env),
     rpc_proxy_enabled: env.METAGRAPH_ENABLE_RPC_PROXY === "true",
@@ -10283,8 +10497,8 @@ async function handleHealthRequest(request: Request, env: Env) {
   });
 
   const headers = apiHeaders("short");
-  headers.set("x-metagraph-health", stale ? "degraded" : "ok");
-  if (stale) {
+  headers.set("x-metagraph-health", degraded ? "degraded" : "ok");
+  if (degraded) {
     // The degraded branch is a transient 503; a 503 carrying explicit freshness
     // (public, max-age=60, stale-while-revalidate=300) is cacheable per RFC 7234,
     // so a shared/edge cache could keep serving "degraded" for up to ~6 min after
@@ -10293,7 +10507,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     headers.set("x-metagraph-cache-profile", "no-store");
   }
   return new Response(request.method === "HEAD" ? null : body, {
-    status: stale ? 503 : 200,
+    status: degraded ? 503 : 200,
     headers,
   });
 }

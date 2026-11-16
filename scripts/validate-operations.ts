@@ -70,6 +70,26 @@ export const DECLARED_UNEXPOSED: Readonly<Record<string, string>> = {
     "Agents already receive the richer independently sortable rows through " +
     "list_accounts; mirroring the compact SSR payload would expose a second, " +
     "less capable answer to the same domain question.",
+  "validator-basket":
+    "the per-validator drill-in of chain-baskets (#13163). " +
+    "get_validator_baskets / validator_baskets already hand both surfaces " +
+    "EVERY fund at the served capture in one call (a capture holds at most " +
+    "2,048), so a per-hotkey twin would be a second, narrower answer to the " +
+    "same question; the per-leg holdings/targets detail is an HTTP drill-in " +
+    "until an agent workflow actually needs it.",
+  "subnet-gamma-history":
+    "the capture-series drill-in of subnet-gamma (#13164). get_subnet_gamma " +
+    "/ subnet_gamma already answer the question an agent asks -- the " +
+    "subnet's CURRENT Gamma state -- and the series is empty until the " +
+    "engine's Gamma capture lands, so exposing the history today would only " +
+    "restate the decline; it is an HTTP drill-in until an agent workflow " +
+    "actually needs the trajectory.",
+  "chain-gamma":
+    "the chain-wide rollup of subnet-gamma (#13164). get_subnet_gamma / " +
+    "subnet_gamma answer the per-subnet question agents actually ask, and " +
+    "the rollup adds one scalar (the global GammaEnabled switch) on top of " +
+    "rows the per-subnet surfaces already serve; it is an HTTP/UI card " +
+    "until an agent workflow needs the global switch on its own.",
 
   // ── three feeds REST serves and no surface reaches ────────────────────────
   //

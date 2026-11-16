@@ -41,6 +41,8 @@ import {
 // before calling; the handler is what makes the reading true.
 const RouteQuery_subnets_netuid_neurons_uid_history =
   ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/neurons/{uid}/history"];
+const RouteQuery_subnets_netuid_neurons_uid =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/neurons/{uid}"];
 
 export const GetNeuronInputSchema = z
   .object({
@@ -61,6 +63,10 @@ export const GetNeuronInputSchema = z
           "not both. Returns `neuron: null` when the hotkey holds no UID on " +
           "this subnet, which is the answer to 'is it still registered'.",
       ),
+    // #13162: THE ROUTE'S OWN PARAMETER, including its bound-to-0 posture --
+    // see mechidSchema in schemas-src/query-params.ts for why 0 is the only
+    // honest value until mechanism-aware capture lands.
+    mechid: RouteQuery_subnets_netuid_neurons_uid.shape.mechid,
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.

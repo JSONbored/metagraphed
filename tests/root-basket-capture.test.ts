@@ -312,3 +312,52 @@ describe("finalized basket observation contract", () => {
     assert.equal(parse(withFund({ spot_nav_rao: null })), false);
   });
 });
+
+// The v490 era refresh (#13163): the live chain moved past the audited v454
+// pin, and a spec-490 capture of the same observation is accepted when its
+// decoder names a v490 revision. The exact v490 commit pin lands with the
+// engine's decoder; a spec must never wear the other era's decoder.
+describe("capture runtime eras (#13163)", () => {
+  const v490 = () => ({
+    ...syntheticBasketCapture(),
+    runtime_spec_version: 490,
+    decoder_version: "subtensor-v490-0abc1234-v1",
+  });
+
+  test("accepts a v490 capture whose decoder names a v490 revision", () => {
+    assert.equal(parse(v490()), true);
+  });
+
+  test("rejects a decoder from the other era, both directions", () => {
+    assert.equal(
+      parse({ ...v490(), decoder_version: "subtensor-v454-14cde641-v1" }),
+      false,
+    );
+    assert.equal(
+      parse({
+        ...syntheticBasketCapture(),
+        decoder_version: "subtensor-v490-0abc1234-v1",
+      }),
+      false,
+    );
+  });
+
+  test("rejects a malformed v490 decoder name", () => {
+    for (const decoder_version of [
+      "subtensor-v490-0abc1234-v0",
+      "subtensor-v490-xyz-v1",
+      "subtensor-v490-0abc12345-v1",
+      "subtensor-v490-0ABC1234-v1",
+      "subtensor-v491-0abc1234-v1",
+      "",
+    ]) {
+      assert.equal(parse({ ...v490(), decoder_version }), false);
+    }
+  });
+
+  test("still rejects any spec that is not an audited era", () => {
+    for (const runtime_spec_version of [440, 455, 489, 491]) {
+      assert.equal(parse({ ...v490(), runtime_spec_version }), false);
+    }
+  });
+});

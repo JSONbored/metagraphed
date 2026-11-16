@@ -33,7 +33,12 @@ export interface NativeSourceDefinition {
 /** Each declared source supplies the actual process-owned read/write handles. */
 export interface NativeSource extends NativeSourceDefinition, NativeStore {}
 
-function scopedSource(
+/** Scope one declared source over a shared runtime: schema-pinned search_path
+ * per transaction, writes refused on read-only sources, never the pool's
+ * lifecycle. Exported for the Hyperdrive-selected Worker assembly
+ * (src/hyperdrive-state-bindings.ts), which builds the same source map without
+ * this process's admission and verification envelope. */
+export function scopedSource(
   runtime: PgStoreRuntime,
   source: NativeSourceDefinition,
 ): NativeSource {

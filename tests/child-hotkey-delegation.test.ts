@@ -414,11 +414,13 @@ describe("loadAccountChildren", () => {
     });
     try {
       const data = await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
-      // The cached body verbatim, PLUS provenance (#9108) -- attached outside
-      // the cache, so an entry written before the map existed still comes
-      // back with one instead of serving a full TTL without it.
+      // The cached body verbatim, PLUS provenance (#9108) and the stored
+      // child-key detail (#13166) -- both attached outside the cache, so an
+      // entry written before either existed still comes back with them
+      // instead of serving a full TTL without.
       assert.deepEqual(data, {
         ...cached,
+        child_key_detail: null,
         field_sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
       });
       assert.equal(fetchCalled, false);

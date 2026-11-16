@@ -62,6 +62,20 @@ describe("the stream schema is DERIVED, so it cannot drift from the Zod one", ()
     );
   });
 
+  test("a multi-type union throws instead of picking one, nullable or not", () => {
+    // zod >=4.6 emits `type: ["string", "number"]` for a primitive union. A
+    // stream field carries exactly one type, so deriving one silently would be
+    // the dropped-row failure this module exists to refuse.
+    assert.throws(() =>
+      streamSchemaFrom(z.object({ a: z.union([z.string(), z.number()]) })),
+    );
+    assert.throws(() =>
+      streamSchemaFrom(
+        z.object({ a: z.union([z.string(), z.number()]).nullable() }),
+      ),
+    );
+  });
+
   test("strings and bools map", () => {
     const s = streamSchemaFrom(z.object({ s: z.string(), b: z.boolean() }));
     assert.deepEqual(

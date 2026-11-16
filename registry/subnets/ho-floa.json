@@ -1,0 +1,214 @@
+{
+  "categories": [
+    "baseline-curated",
+    "data",
+    "distributed-training",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No official social account found (website and README link only Discord and TaoStats)."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:15:00.000Z",
+    "source_count": 9,
+    "verified_at": "2026-07-16T00:15:00.000Z"
+  },
+  "dashboard_url": "https://taostats.io/subnets/netuid-29",
+  "docs_url": "https://github.com/coldint/coldint_validator/blob/main/README.md",
+  "name": "hoτfloaτ",
+  "netuid": 29,
+  "notes": "Reviewed overlay for SN29 using the official Coldint website, validator repository, dynamic configuration repository, README documentation, and referenced training dataset. This pass fixed the min-compute data-artifact surface (added by a recent contributor PR) having no probe config at all -- the registry-wide gap tracked in #5932 -- and removed an incorrect social.x value (https://x.com/cacheon_ai, a copy-paste of SN14 Cacheon's own handle, unrelated to this subnet); no official Coldint social account was found on the website or in the README to replace it with. On-chain SubnetIdentitiesV3 native_name is a stylized \"hotfloat\" rather than \"Coldint\", but the on-chain website_url field matches coldint.io exactly, positively confirming the same operator -- not treated as a rename.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
+  "schema_version": 1,
+  "slug": "sn-29",
+  "source_repo": "https://github.com/coldint/hotfloat",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-website",
+      "kind": "website",
+      "name": "Coldint website",
+      "notes": "Official Coldint website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://coldint.io/"
+      ],
+      "url": "https://coldint.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-validator-source",
+      "kind": "source-repo",
+      "name": "Coldint validator source repository",
+      "notes": "Official SN29 validator repository -- its README states \"Bittensor subnet 29 is focused on advancing collaborative, distributed model training\". Reverts #11086, which repointed this to coldint/hotfloat because SubnetIdentitiesV3 declares that repo for netuid 29. It is not SN29's: hotfloat's README is titled \"Cacheon (SN14)\", links tao.app/subnets/14 and cacheon.ai, and its validator/.env.example sets CACHEON_NETUID=14. The chain identity is operator-set and wrong here. Last pushed 2025-07-11; coldint/sn29 (the dynamic-configuration repository, also registered) names it as \"the validator code\".",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "source_urls": ["https://github.com/coldint/coldint_validator"],
+      "url": "https://github.com/coldint/coldint_validator"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-config-source",
+      "kind": "source-repo",
+      "name": "Coldint dynamic configuration repository",
+      "notes": "Official dynamic configuration repository for SN29 validators.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://github.com/coldint/sn29"
+      ],
+      "url": "https://github.com/coldint/sn29"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-readme-docs",
+      "kind": "docs",
+      "name": "Coldint README",
+      "notes": "Official Coldint README for SN29.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "source_urls": ["https://github.com/coldint/coldint_validator"],
+      "url": "https://github.com/coldint/coldint_validator/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-fineweb-dataset",
+      "kind": "data-artifact",
+      "name": "FineWeb Edu score 2 dataset",
+      "notes": "Public Hugging Face dataset referenced by the Coldint README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2"
+      ],
+      "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-29-coldint-taostats-dashboard",
+      "kind": "dashboard",
+      "name": "Coldint TaoStats dashboard",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "TaoStats subnet dashboard linked by the Coldint README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://taostats.io/subnets/netuid-29"
+      ],
+      "url": "https://taostats.io/subnets/netuid-29"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-29-coldint-competitions-api",
+      "kind": "subnet-api",
+      "name": "Coldint competitions configuration API",
+      "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator/blob/main/constants/__init__.py",
+        "https://github.com/coldint/sn29/blob/main/README.md"
+      ],
+      "url": "https://github.com/coldint/sn29/raw/main/competitions.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-29-coldint-min-compute",
+      "kind": "data-artifact",
+      "name": "Coldint minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml from the official SN29 Coldint validator repository (coldint/coldint_validator), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN29 Coldint miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "provider": "coldint",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://github.com/coldint/coldint_validator/blob/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/coldint/coldint_validator/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
+    }
+  ],
+  "website_url": "http://hotfloat.io"
+}

@@ -132,10 +132,10 @@
       "id": "sn-21-adtao-training-episodes",
       "kind": "data-artifact",
       "name": "AdTAO training episodes sample dataset",
-      "notes": "Public no-auth JSON dataset of bundled sample prediction episodes (account state, action context, and known outcomes) published in the official SN21 AdTAO source repository at data/training/. Documented in the repo README as the bundled sample data (10 episodes with known outcomes) and consumed by scripts/train_example_model.py for local baseline-model training.",
+      "notes": "Public no-auth JSON dataset of bundled sample prediction episodes (account state, action context, and known outcomes) published in the official SN21 AdTAO source repository at data/training/. Documented in the repo README as the bundled sample data (10 episodes with known outcomes) and consumed by scripts/train_example_model.py for local baseline-model training. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -157,7 +157,7 @@
       "id": "sn-21-adtao-epoch-verification",
       "kind": "subnet-api",
       "name": "AdTAO epoch verification",
-      "notes": "Public no-auth chain-derived scoring-commitment read for one epoch, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 409 {\"detail\":\"9.C.2 post-scoring artifact for epoch_id=1 is not yet visible in RevealedCommitments for this validator ...\"} \u2014 a real epoch-state explanation, not an auth error. Path parameter in percent-encoded brace form; probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth chain-derived scoring-commitment read for one epoch, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 409 {\"detail\":\"9.C.2 post-scoring artifact for epoch_id=1 is not yet visible in RevealedCommitments for this validator ...\"} — a real epoch-state explanation, not an auth error. Path parameter in percent-encoded brace form; probe disabled (needs a real epoch id).",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -182,7 +182,7 @@
       "id": "sn-21-adtao-epoch-commitment",
       "kind": "subnet-api",
       "name": "AdTAO epoch commitment",
-      "notes": "Public no-auth per-epoch commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} \u2014 a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth per-epoch commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -207,7 +207,7 @@
       "id": "sn-21-adtao-epoch-episode-commitment",
       "kind": "subnet-api",
       "name": "AdTAO epoch episode-commitment",
-      "notes": "Public no-auth per-epoch episode-commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} \u2014 a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth per-epoch episode-commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id). [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -469,5 +469,5 @@
       "url": "https://validator.adtao.io/v1/registration-status"
     }
   ],
-  "website_url": "https://adtao.io/"
+  "website_url": "https://adtao.io"
 }

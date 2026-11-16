@@ -100,7 +100,18 @@ describe("checkQueryArguments", () => {
     // than in `violations` -- which is the outcome this count exists to
     // confirm. Bumping it is a prompt to check that, not a formality.
     // #11550 adds one exact empty-argument mirror, declared in NO_QUERY_PARAMETERS.
-    assert.equal(report.exact, 207);
+    // #13162 adds another (subnet_mechanisms), the same way.
+    // #13163 adds three more (subnet_alpha_dividends, account_locks,
+    // validator_baskets), the same way.
+    // #13164 adds three more (subnet_gamma, gamma_deposits,
+    // subnet_services), the same way.
+    // #13165 adds two more (subnet_swap, subnet_alpha_assets), the same way.
+    // #13165 adds one more (subnet_limit_orders), the same way.
+    // #13166 adds two more (pending_coldkey_swaps, account_coldkey_swap),
+    // the same way.
+    // #13166 adds two more (account_proxies, account_multisigs), the same
+    // way.
+    assert.equal(report.exact, 221);
     assert.equal(report.skipped, 0);
   });
 

@@ -41,6 +41,44 @@ import {
   maxComplexityRule,
   maxDepthRule,
 } from "./graphql-limits.ts";
+import { stampMechanismScope } from "./mechanism-scope.ts";
+import {
+  buildSubnetMechanisms,
+  loadSubnetMechanisms,
+} from "./subnet-mechanisms.ts";
+import {
+  buildSubnetAlphaDividends,
+  loadSubnetAlphaDividends,
+} from "./subnet-alpha-dividends.ts";
+import { buildAccountLocks, loadAccountLocks } from "./account-locks.ts";
+import {
+  buildPendingColdkeySwaps,
+  loadPendingColdkeySwaps,
+  buildAccountColdkeySwap,
+  loadAccountColdkeySwap,
+} from "./coldkey-swaps.ts";
+import { buildAccountProxies, loadAccountProxies } from "./account-proxies.ts";
+import {
+  buildAccountMultisigs,
+  loadAccountMultisigs,
+} from "./account-multisigs.ts";
+import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
+import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
+import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
+import {
+  buildSubnetAlphaAssets,
+  loadSubnetAlphaAssets,
+} from "./subnet-alpha-assets.ts";
+import {
+  buildSubnetLimitOrders,
+  loadSubnetLimitOrders,
+} from "./subnet-limit-orders.ts";
+import { buildTaoUsdOracle, loadTaoUsdOracle } from "./tao-usd-oracle.ts";
+import {
+  buildValidatorBaskets,
+  loadValidatorBaskets,
+} from "./validator-baskets.ts";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -2492,9 +2530,11 @@ const rootValue = {
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
   async subnet_metagraph(
-    { netuid, validator_permit, fields }: QuerySubnet_MetagraphArgs,
+    { netuid, validator_permit, fields, mechid }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
     // fallback contract get_subnet_metagraph uses; a subnet with no indexed
     // neurons is a schema-stable empty metagraph, never a GraphQL error.
@@ -2503,7 +2543,7 @@ const rootValue = {
     // #10065: the payload is opaque JSON, so the selection set cannot narrow
     // it and `fields` is the only projection a caller has.
     if (fields != null && fields !== "") params.set("fields", fields);
-    return (
+    return stampMechanismScope(
       ((await tryDataApiTier(
         context.env,
         postgresTierRequest(
@@ -2512,7 +2552,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ?? buildSubnetMetagraph([], netuid)
+      )) as Row | null) ?? buildSubnetMetagraph([], netuid),
+      mechid ?? null,
     );
   },
 
@@ -3012,6 +3053,9 @@ const rootValue = {
     return buildTaoUsdSeries(rows, {
       window: label,
       includePoints: include_points ?? true,
+      // #13164: same oracle decline contract the REST handler and the MCP
+      // tool share -- null until the engine's oracle capture lands.
+      oracle: buildTaoUsdOracle(await loadTaoUsdOracle(context.env)),
     });
   },
 
@@ -3548,13 +3592,15 @@ const rootValue = {
     };
   },
 
-  async neuron({ netuid, uid }: QueryNeuronArgs, context: GqlContext) {
+  async neuron({ netuid, uid, mechid }: QueryNeuronArgs, context: GqlContext) {
     assertNetuidArgument(netuid);
     if (!Number.isInteger(uid) || uid < 0) {
       throw new GraphQLError("uid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same tryDataApiTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null)
     // cold fallback contract handleNeuron / MCP get_neuron use: an absent UID
     // is a schema-stable card with neuron:null, never a GraphQL error.
@@ -3567,13 +3613,16 @@ const rootValue = {
         ),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ?? buildNeuronDetail(null, netuid);
-    return {
-      schema_version: data.schema_version ?? 1,
-      netuid: data.netuid ?? netuid,
-      captured_at: data.captured_at ?? null,
-      block_number: data.block_number ?? null,
-      neuron: data.neuron ?? null,
-    };
+    return stampMechanismScope(
+      {
+        schema_version: data.schema_version ?? 1,
+        netuid: data.netuid ?? netuid,
+        captured_at: data.captured_at ?? null,
+        block_number: data.block_number ?? null,
+        neuron: data.neuron ?? null,
+      },
+      mechid ?? null,
+    );
   },
 
   async neuron_history(
@@ -3684,10 +3733,97 @@ const rootValue = {
     };
   },
 
-  async subnet_weights(
-    { netuid, window }: QuerySubnet_WeightsArgs,
+  async subnet_mechanisms({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13162: same loadSubnetMechanisms -> buildSubnetMechanisms decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled mechanisms store is a schema-stable card with
+    // mechanism_count null, never a GraphQL error.
+    return buildSubnetMechanisms(
+      await loadSubnetMechanisms(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_alpha_dividends(
+    { netuid }: { netuid: number },
     context: GqlContext,
   ) {
+    assertNetuidArgument(netuid);
+    // #13163: same loadSubnetAlphaDividends -> buildSubnetAlphaDividends
+    // decline contract the REST handler and the MCP tool share -- an unbound
+    // or unfilled dividends store is a schema-stable card with hotkey_count
+    // null, never a GraphQL error.
+    return buildSubnetAlphaDividends(
+      await loadSubnetAlphaDividends(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_gamma({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13164: same loadSubnetGamma -> buildSubnetGamma decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled Gamma
+    // store is a schema-stable card with gamma null, never a GraphQL error.
+    return buildSubnetGamma(await loadSubnetGamma(context.env, netuid), netuid);
+  },
+
+  async subnet_services({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13164: same loadSubnetServices -> buildSubnetServices decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // services store is a schema-stable card with service_count null, never a
+    // GraphQL error.
+    return buildSubnetServices(
+      await loadSubnetServices(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_swap({ netuid }: { netuid: number }, context: GqlContext) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetSwap -> buildSubnetSwap decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled swap
+    // store is a schema-stable card with swap null, never a GraphQL error.
+    return buildSubnetSwap(await loadSubnetSwap(context.env, netuid), netuid);
+  },
+
+  async subnet_alpha_assets(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetAlphaAssets -> buildSubnetAlphaAssets decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled alpha-assets store is a schema-stable card with alpha_assets
+    // null, never a GraphQL error.
+    return buildSubnetAlphaAssets(
+      await loadSubnetAlphaAssets(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_limit_orders(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // #13165: same loadSubnetLimitOrders -> buildSubnetLimitOrders decline
+    // contract the REST handler and the MCP tool share -- an unbound or
+    // unfilled limit-orders store is a schema-stable card with order_count
+    // null, never a GraphQL error.
+    return buildSubnetLimitOrders(
+      await loadSubnetLimitOrders(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async subnet_weights(
+    { netuid, window, mechid }: QuerySubnet_WeightsArgs,
+    context: GqlContext,
+  ) {
+    // #13162: mechid is parsed against the route's own published bound by the
+    // dispatch-level argument parse (route-query), so only null/0 reaches here.
     // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -3711,15 +3847,18 @@ const rootValue = {
         windowLabel: windowParam,
         windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
       })) ?? buildSubnetWeights(null, netuid, { window: windowParam });
-    return {
-      schema_version: data.schema_version ?? 1,
-      netuid: data.netuid ?? netuid,
-      window: data.window ?? windowParam,
-      observed_at: data.observed_at ?? null,
-      distinct_setters: data.distinct_setters ?? 0,
-      weight_sets: data.weight_sets ?? 0,
-      sets_per_setter: data.sets_per_setter ?? null,
-    };
+    return stampMechanismScope(
+      {
+        schema_version: data.schema_version ?? 1,
+        netuid: data.netuid ?? netuid,
+        window: data.window ?? windowParam,
+        observed_at: data.observed_at ?? null,
+        distinct_setters: data.distinct_setters ?? 0,
+        weight_sets: data.weight_sets ?? 0,
+        sets_per_setter: data.sets_per_setter ?? null,
+      },
+      mechid ?? null,
+    );
   },
 
   async subnet_stake_moves(
@@ -9522,6 +9661,89 @@ const rootValue = {
       ss58,
       chainNetworkFromChainName(network),
     );
+  },
+
+  async account_locks({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13163: same loadAccountLocks -> buildAccountLocks decline contract the
+    // REST handler and the MCP tool share -- an unbound or unfilled locks
+    // store is a schema-stable card with lock_count null, never a GraphQL
+    // error.
+    return buildAccountLocks(await loadAccountLocks(context.env, ss58), ss58);
+  },
+
+  async pending_coldkey_swaps(_args: unknown, context: GqlContext) {
+    // #13166: same loadPendingColdkeySwaps -> buildPendingColdkeySwaps
+    // decline contract the REST handler and the MCP tool share -- an unbound
+    // or unfilled coldkey-swaps store is a schema-stable card with
+    // swap_count null, never a GraphQL error.
+    return buildPendingColdkeySwaps(await loadPendingColdkeySwaps(context.env));
+  },
+
+  async account_coldkey_swap({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountColdkeySwap -> buildAccountColdkeySwap decline
+    // contract the REST handler shares -- an unbound or unfilled store is a
+    // schema-stable card with a null announcement and lineage, never a
+    // GraphQL error.
+    return buildAccountColdkeySwap(
+      await loadAccountColdkeySwap(context.env, ss58),
+      ss58,
+    );
+  },
+
+  async account_proxies({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountProxies -> buildAccountProxies decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // proxies store is a schema-stable card with proxy_count null, never a
+    // GraphQL error.
+    return buildAccountProxies(
+      await loadAccountProxies(context.env, ss58),
+      ss58,
+    );
+  },
+
+  async account_multisigs({ ss58 }: { ss58: string }, context: GqlContext) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #13166: same loadAccountMultisigs -> buildAccountMultisigs decline
+    // contract the REST handler and the MCP tool share.
+    return buildAccountMultisigs(
+      await loadAccountMultisigs(context.env, ss58),
+      ss58,
+    );
+  },
+
+  async validator_baskets(_args: unknown, context: GqlContext) {
+    // #13163: same loadValidatorBaskets -> buildValidatorBaskets decline
+    // contract the REST handler and the MCP tool share -- no store, or no
+    // completed capture, is a schema-stable card with capture and fund_count
+    // null, never a GraphQL error.
+    return buildValidatorBaskets(await loadValidatorBaskets(context.env));
+  },
+
+  async gamma_deposits(_args: unknown, context: GqlContext) {
+    // #13164: same loadGammaDeposits -> buildGammaDeposits decline contract
+    // the REST handler and the MCP tool share -- an unbound or unfilled
+    // deposits store is a schema-stable card with deposit_count null, never a
+    // GraphQL error.
+    return buildGammaDeposits(await loadGammaDeposits(context.env));
   },
 
   async account_children(

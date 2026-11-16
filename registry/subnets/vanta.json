@@ -168,10 +168,10 @@
       "id": "sn-8-vanta-model-parameters",
       "kind": "subnet-api",
       "name": "Vanta scoring model parameters",
-      "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions.",
+      "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -193,10 +193,10 @@
       "id": "sn-8-vanta-slippage-estimates",
       "kind": "data-artifact",
       "name": "Vanta empirical slippage estimates dataset",
-      "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published.",
+      "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published. [2026-11-15 infra#873 p3b] JSON body under a text/* header: probe expectation relaxed to any.",
       "probe": {
         "enabled": true,
-        "expect": "json",
+        "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -218,7 +218,7 @@
       "id": "sn-8-vanta-llms-txt",
       "kind": "data-artifact",
       "name": "Vanta Network llms.txt index",
-      "notes": "Public no-auth machine-readable llms.txt index of SN8 Vanta Network, served at the registered official website www.vantanetwork.io. The document self-identifies as SN8 \u2014 its header states Vanta Network is 'built on Bittensor Subnet 8'. An agent-consumable Markdown map of the network (what it is, how performance is evaluated on-chain, key links), distinct from the HTML website/docs surfaces already registered.",
+      "notes": "Public no-auth machine-readable llms.txt index of SN8 Vanta Network, served at the registered official website www.vantanetwork.io. The document self-identifies as SN8 — its header states Vanta Network is 'built on Bittensor Subnet 8'. An agent-consumable Markdown map of the network (what it is, how performance is evaluated on-chain, key links), distinct from the HTML website/docs surfaces already registered.",
       "provider": "vanta",
       "public_safe": true,
       "review": {

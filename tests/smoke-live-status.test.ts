@@ -166,3 +166,64 @@ describe("live smoke serving status diagnostics", () => {
     );
   });
 });
+
+test("a declared degradation is enforced exactly and expires loudly", () => {
+  const degraded = {
+    status: 503,
+    body: { error: { code: "history_unavailable" } },
+  };
+  assert.doesNotThrow(() =>
+    assertLiveApiStatus(degraded, "history_unavailable"),
+  );
+  // Recovery turns the row stale -- the declaration must go, loudly.
+  assert.throws(
+    () => assertLiveApiStatus({ status: 200 }, "history_unavailable"),
+    /stale degradation declaration/,
+  );
+  // A different failure under a declared route is a NEW defect, not the
+  // declared one: wrong status and wrong code each fail by name.
+  assert.throws(
+    () => assertLiveApiStatus({ status: 502 }, "history_unavailable"),
+    /declared degraded \(history_unavailable\) but got status=502/,
+  );
+  assert.throws(
+    () =>
+      assertLiveApiStatus(
+        { status: 503, body: { error: { code: "data_tier_unavailable" } } },
+        "history_unavailable",
+      ),
+    /the 503 carries error_code=data_tier_unavailable/,
+  );
+  // Undeclared routes keep the plain 200 contract.
+  assert.throws(
+    () => assertLiveApiStatus(degraded),
+    /expected HTTP 200 \(status=503; error_code=history_unavailable\)/,
+  );
+});
+
+test("a converging route passes on 200 or exactly its declared 503, nothing else", () => {
+  const ok200 = { status: 200 };
+  const declared503 = {
+    status: 503,
+    body: { error: { code: "history_unavailable" } },
+  };
+  assert.doesNotThrow(() =>
+    assertLiveApiStatus(ok200, "history_unavailable", true),
+  );
+  assert.doesNotThrow(() =>
+    assertLiveApiStatus(declared503, "history_unavailable", true),
+  );
+  assert.throws(
+    () => assertLiveApiStatus({ status: 502 }, "history_unavailable", true),
+    /declared degraded \(history_unavailable\) but got status=502/,
+  );
+  assert.throws(
+    () =>
+      assertLiveApiStatus(
+        { status: 503, body: { error: { code: "data_tier_unavailable" } } },
+        "history_unavailable",
+        true,
+      ),
+    /the 503 carries error_code=data_tier_unavailable/,
+  );
+});

@@ -166,6 +166,36 @@ export const FIELD_COMPLEXITY = {
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_price_share_composition: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13162: one bounded read of a handful of app.subnet_mechanisms rows.
+  subnet_mechanisms: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one bounded read of app.subnet_alpha_dividends (store-capped).
+  subnet_alpha_dividends: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded newest-capture read of app.subnet_gamma.
+  subnet_gamma: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded read of app.gamma_deposits (store-capped).
+  gamma_deposits: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13164: one bounded read of a handful of app.subnet_services rows.
+  subnet_services: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded newest-capture read of app.swap_balancer.
+  subnet_swap: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded newest-capture read of app.alpha_assets.
+  subnet_alpha_assets: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13165: one bounded read of app.limit_orders (store-capped).
+  subnet_limit_orders: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one bounded read of a handful of app.stake_locks rows.
+  account_locks: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded (store-capped) read of app.coldkey_swap_announcements
+  // plus the single-row policy capture.
+  pending_coldkey_swaps: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one announcement row plus a handful of app.key_successors rows.
+  account_coldkey_swap: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded read of a handful of app.proxies rows.
+  account_proxies: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13166: one bounded (store-capped) membership read of app.multisigs.
+  account_multisigs: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #13163: one completed capture's funds, capped by the receiver's own
+  // fund ceiling.
+  validator_baskets: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_emission_pipeline_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,

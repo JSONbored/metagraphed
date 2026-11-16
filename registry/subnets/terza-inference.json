@@ -1,0 +1,378 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "info@djinn.gg",
+  "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet -- www.djinn.gg/docs and /openapi.json both return either the SPA shell or 404, not a real machine-readable schema.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "/api/genius/signals, /api/genius/earnings, and /api/odds all return 400 without a required query parameter (address / sport respectively) -- not promoted as their own no-param surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/103",
+  "name": "Terza Inference",
+  "netuid": 103,
+  "notes": "Reviewed overlay for SN103 using the official Djinn website and source repository. Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Enumerated the web/app/api directory tree via the source repository and live-tested every discovered route; added 7 new no-param public surfaces (sports, delegates, miners/discover, network/config, network/matrix, network/status, validators/discover).",
+  "schema_version": 1,
+  "slug": "sn-103",
+  "social": {
+    "x": "https://x.com/djinn_gg"
+  },
+  "source_repo": "https://github.com/terza-labs/terza-miner",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-103-djinn-website",
+      "kind": "website",
+      "name": "Djinn website",
+      "notes": "Official Djinn website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-103-djinn-source",
+      "kind": "source-repo",
+      "name": "Djinn source repository",
+      "notes": "Official Djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://github.com/Djinn-Inc/djinn"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-health",
+      "kind": "subnet-api",
+      "name": "Djinn API health",
+      "notes": "Public no-auth GET /api/health on www.djinn.gg returning application liveness JSON. Implemented in the official Djinn web repository on the same host as the registered website surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn/blob/main/web/app/api/health/route.ts",
+        "https://www.djinn.gg/"
+      ],
+      "url": "https://www.djinn.gg/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Djinn minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official Djinn-Inc/djinn repository as min_compute.yml. Documents SN103 operator requirements for TLSNotary proof miners and MPC validators without GPU. [2026-11-15 infra#873 p3b] declared route answers 404 on an alive host: url needs re-verification or removal at review.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn/blob/main/min_compute.yml",
+        "https://github.com/Djinn-Inc/djinn/blob/main/CONTRIBUTING.md"
+      ],
+      "url": "https://raw.githubusercontent.com/Djinn-Inc/djinn/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-leaderboard",
+      "kind": "data-artifact",
+      "name": "Djinn genius track-record leaderboard",
+      "notes": "Public no-auth JSON leaderboard of SN103 Djinn 'Genius' analysts served from the official djinn.gg site, exposing each genius's on-chain track record (totalSignals, totalPurchases, totalVolume, totalFeesEarned, aggregateQualityScore, collateralDeposited, totalSlashed, favorable/unfavorable/void counts). This is the machine-readable form of the publicly-verifiable track records the official Djinn-Inc/djinn README describes (\"Track records are publicly verifiable on-chain\"), served on the README's official djinn.gg domain.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn/blob/main/README.md"],
+      "url": "https://www.djinn.gg/api/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-sports",
+      "kind": "subnet-api",
+      "name": "Djinn supported sports list",
+      "notes": "Public no-auth GET /api/sports on www.djinn.gg returning the list of supported sports keys/names/categories (NBA, NFL, MLB, NHL, several soccer leagues, etc.) used to key the /api/odds endpoint. Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/sports"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-delegates",
+      "kind": "data-artifact",
+      "name": "Djinn delegate name registry",
+      "notes": "Public no-auth GET /api/delegates on www.djinn.gg returning a hotkey-to-display-name mapping for known network delegates (e.g. Kraken, tao.bot, Cortex Foundation). Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/delegates"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-miners-discover",
+      "kind": "subnet-api",
+      "name": "Djinn miner discovery list",
+      "notes": "Public no-auth GET /api/miners/discover on www.djinn.gg returning the full registered miner list (uid, ip, port, hotkey, coldkey, stake, alphaStake, taoStake, incentive). Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/miners/discover"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-network-config",
+      "kind": "subnet-api",
+      "name": "Djinn validator endpoint config",
+      "notes": "Public no-auth GET /api/network/config on www.djinn.gg returning the configured validator endpoint list (uid, name, endpoint URL, pubkey). Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/network/config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-network-matrix",
+      "kind": "subnet-api",
+      "name": "Djinn validator/miner health matrix",
+      "notes": "Public no-auth GET /api/network/matrix on www.djinn.gg returning a per-validator breakdown of stake, version, health, and each validator's per-miner status matrix. Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/network/matrix"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-network-status",
+      "kind": "subnet-api",
+      "name": "Djinn network summary status",
+      "notes": "Public no-auth GET /api/network/status on www.djinn.gg returning network-wide summary counters (totalValidators, totalMiners, validatorsHealthy, totalShares, gini, burnPercent, featureFlags). Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/network/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-validators-discover",
+      "kind": "subnet-api",
+      "name": "Djinn validator discovery list",
+      "notes": "Public no-auth GET /api/validators/discover on www.djinn.gg returning the full registered validator list (uid, ip, port, hotkey, coldkey, stake, alphaStake, taoStake). Discovered by enumerating the web/app/api directory tree in the official Djinn-Inc/djinn source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/api/validators/discover"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-odds",
+      "kind": "subnet-api",
+      "name": "Djinn odds by sport",
+      "notes": "Public no-auth GET /api/odds on www.djinn.gg returning live odds for one sport. Requires query param `sport` (allowed keys listed in the 400 body when omitted). Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without sport returns HTTP 400. Live-verified 2026-07-21: no sport → 400; ?sport=basketball_nba → 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/sports"
+      ],
+      "url": "https://www.djinn.gg/api/odds"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-signals",
+      "kind": "subnet-api",
+      "name": "Djinn genius signals by address",
+      "notes": "Public no-auth GET /api/genius/signals on www.djinn.gg returning Genius-track signals for one Ethereum address. Requires query param `address`. Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without address returns HTTP 400. Live-verified 2026-07-21: no address → 400 {\"error\":\"invalid_address\",...}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/genius/leaderboard"
+      ],
+      "url": "https://www.djinn.gg/api/genius/signals"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-earnings",
+      "kind": "subnet-api",
+      "name": "Djinn genius earnings by address",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
+      "notes": "Public no-auth GET /api/genius/earnings on www.djinn.gg returning Genius-track earnings for one Ethereum address. Requires query param `address`. Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without address returns HTTP 400. Live-verified 2026-07-21: no address → 400 {\"error\":\"invalid_address\",...}. REVENUE ROLE (#10461): none, searched 2026-08-10. www.djinn.gg 301-redirects to djinn.gg and the target returns the site's SPA HTML shell, not JSON -- the path is swallowed by the frontend router, so there is no earnings API here to read. 'earnings' would in any case be miner payout, not platform revenue. REVENUE ROLE (#10461): none, searched 2026-08-10. www.djinn.gg 301-redirects to djinn.gg and the target returns the site's SPA HTML shell, not JSON -- the path is swallowed by the frontend router, so there is no earnings API here to read. 'earnings' would in any case be miner payout, not platform revenue.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/genius/leaderboard"
+      ],
+      "url": "https://www.djinn.gg/api/genius/earnings"
+    }
+  ],
+  "website_url": "https://terza.si"
+}
