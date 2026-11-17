@@ -121,17 +121,27 @@ export async function readAnchoredWindow(
     scopeParams,
   );
   const endDate = (anchor?.[0]?.end_date as string | null) ?? null;
+  // An empty (or subnet-less) relation has no window at all, and no second
+  // read is worth spending on it.
+  if (endDate === null) return { startDate: null, endDate: null };
+  // A NON-ISO stored anchor yields no cutoff, and then the window is the whole
+  // range rather than nothing. That is the source behaviour, shared by
+  // `createPgNeuronDailyViewStore.window` and pinned as parity between the two
+  // in tests/pg-neuron-daily-view.pg18.ts -- a refusal here instead looks like
+  // an empty store to every caller, which is the #9792 shape this module
+  // exists to prevent, not a safer answer. Worth noting rather than changing
+  // unilaterally: a caller asking for 7 days gets everything in this case, and
+  // narrowing that is a decision for all three components at once.
   const cutoff = shiftIsoDate(endDate, -days);
-  // A null anchor is an empty (or subnet-less) relation, and a null cutoff is
-  // a stored value that is not a date. Either way there is no window to
-  // report, and inventing one would be the confident answer this whole module
-  // exists to stop.
-  if (endDate === null || cutoff === null)
-    return { startDate: null, endDate: null };
   const start = await runner(
-    "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE" +
-      `${netuid === undefined ? "" : " netuid = ? AND"} snapshot_date >= ?`,
-    [...scopeParams, cutoff],
+    "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily" +
+      (netuid === undefined && cutoff === null
+        ? ""
+        : ` WHERE${netuid === undefined ? "" : " netuid = ?"}` +
+          (cutoff === null
+            ? ""
+            : `${netuid === undefined ? "" : " AND"} snapshot_date >= ?`)),
+    [...scopeParams, ...(cutoff === null ? [] : [cutoff])],
   );
   return {
     startDate: (start?.[0]?.start_date as string | null) ?? null,

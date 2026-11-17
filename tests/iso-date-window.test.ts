@@ -140,13 +140,43 @@ describe("readAnchoredWindow", () => {
     assert.equal(calls.length, 1, "no cutoff read against a null anchor");
   });
 
-  test("a stored anchor that is not a date reports no window, never a guess", async () => {
-    const { calls, runner } = capturing(() => [{ end_date: "not-a-day" }]);
+  test("a non-ISO stored anchor falls back to the whole range, as the source does", async () => {
+    // There is no cutoff to compute from a non-date, and the answer is the
+    // whole range rather than nothing: `createPgNeuronDailyViewStore.window`
+    // does the same, and tests/pg-neuron-daily-view.pg18.ts asserts the two
+    // agree. Refusing here instead would present a populated store as empty,
+    // which is the #9792 shape, not a safer answer.
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "not-a-day" }]
+        : [{ start_date: "2026-01-01" }],
+    );
     assert.deepEqual(await readAnchoredWindow(runner, 30), {
-      startDate: null,
-      endDate: null,
+      startDate: "2026-01-01",
+      endDate: "not-a-day",
     });
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
+    // No cutoff is bound, and none is spelled.
+    assert.deepEqual(calls[1]!.params, []);
+    assert.doesNotMatch(calls[1]!.sql, /snapshot_date >=/);
+  });
+
+  test("a non-ISO anchor keeps its subnet scope", async () => {
+    // The scope and the cutoff are separate clauses, so dropping one must not
+    // drop the other -- an unscoped MIN here would report another subnet's
+    // oldest day as this one's window start.
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "not-a-day" }]
+        : [{ start_date: "2026-02-02" }],
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 30, 9), {
+      startDate: "2026-02-02",
+      endDate: "not-a-day",
+    });
+    assert.deepEqual(calls[1]!.params, [9]);
+    assert.match(calls[1]!.sql, /WHERE netuid = \?/);
+    assert.doesNotMatch(calls[1]!.sql, /snapshot_date >=/);
   });
 });
 
@@ -213,6 +243,22 @@ describe("readAnchoredWindow on a real Postgres engine", () => {
       startDate: null,
       endDate: null,
     });
+  });
+
+  test("a non-ISO stored day keeps the window whole, on the engine", async () => {
+    // The parity tests/pg-neuron-daily-view.pg18.ts asserts between this and
+    // the native view store's window(). That leg needs CI's pinned SQLite to
+    // run at all, so the behaviour is pinned here too rather than only there.
+    await db.query(
+      "INSERT INTO neuron_daily(netuid,snapshot_date,uid) VALUES (7,'invalid-day',1)",
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 7, 7), {
+      startDate: "2026-01-01",
+      endDate: "invalid-day",
+    });
+    await db.query(
+      "DELETE FROM neuron_daily WHERE snapshot_date='invalid-day'",
+    );
   });
 
   test("the idiom this replaced is genuinely rejected by the engine", async () => {
