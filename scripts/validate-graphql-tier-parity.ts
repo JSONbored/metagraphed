@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { parse } from "graphql";
 import type { ObjectTypeDefinitionNode } from "graphql";
+import { mirroredRoute } from "./lib/graphql-mirrors.ts";
 
 const API_PATH = "workers/api.ts";
 const HANDLER_DIR = "workers/request-handlers";
@@ -128,11 +129,8 @@ export function checkTierParity({
   );
   const fieldByRoute = new Map<string, string>();
   for (const field of query?.fields ?? []) {
-    const mirrors = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(
-      field.description?.value ?? "",
-    );
-    if (mirrors)
-      fieldByRoute.set(mirrors[1].replace(/\.$/, ""), field.name.value);
+    const mirrors = mirroredRoute(field.description?.value);
+    if (mirrors) fieldByRoute.set(mirrors, field.name.value);
   }
 
   const violations: string[] = [];

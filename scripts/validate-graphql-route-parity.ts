@@ -29,6 +29,7 @@ import {
 import { fieldsArgumentApplies } from "../schemas-src/graphql/query-arguments.ts";
 import { GRAPHQL_EXCLUDED_QUERY_PARAMETERS } from "../schemas-src/query-params.ts";
 import { extractSdl } from "./validate-graphql-component-parity.ts";
+import { mirroredRoute } from "./lib/graphql-mirrors.ts";
 
 type Json = Record<string, unknown>;
 
@@ -238,9 +239,8 @@ if (!queryType) {
 }
 
 for (const field of queryType.fields) {
-  const mirror = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(field.doc);
-  if (!mirror) continue;
-  const route = mirror[1].replace(/\.$/, "");
+  const route = mirroredRoute(field.doc);
+  if (route === null) continue;
   const dataSchema = routeDataSchema(route);
   if (!dataSchema) continue;
   const sdlType = byName.get(bareType(field.type));
@@ -388,9 +388,9 @@ function isBooleanStringEnum(schema: Json): boolean {
 }
 
 for (const field of queryType.fields) {
-  const mirror = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(field.doc);
+  const mirror = mirroredRoute(field.doc);
   if (!mirror) continue;
-  const route = mirror[1].replace(/\.$/, "");
+  const route = mirror;
   const published = publishedParameters(route);
   if (!published) continue;
 

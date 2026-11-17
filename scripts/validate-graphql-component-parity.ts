@@ -64,6 +64,7 @@ import {
   PUBLISHED_TYPE_NAMES,
   QUERY_BINDINGS,
 } from "../schemas-src/graphql/published-names.ts";
+import { mirroredRoute } from "./lib/graphql-mirrors.ts";
 
 /**
  * Query fields whose RESPONSE is deliberately not their route's component.
@@ -386,12 +387,10 @@ export function checkComponentParity(
   // ── seed from the Query bindings, then propagate through matching fields ──
   const queue: [string, string][] = [];
   for (const field of sdlTypes.get("Query")?.fields ?? []) {
-    const mirrors = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(
-      field.description?.value ?? "",
-    );
+    const mirrors = mirroredRoute(field.description?.value ?? "");
     if (!mirrors) continue;
     if (RESHAPING_FIELDS.has(field.name.value)) continue;
-    const component = dataComponent(mirrors[1].replace(/\.$/, ""));
+    const component = dataComponent(mirrors);
     if (component) queue.push([sdlTypeName(field.type), component]);
   }
 
