@@ -337,7 +337,7 @@ describe("data-api's bundle boundary", () => {
     // anything, so a deletion lowers it: 2,480 source bytes of margin, below
     // where this slice started.
     // The PostgreSQL-untypable text key gains one owner, +1,164 source bytes
-    // over e6aa44a62, for 4,957,888. Four native read paths each carried their
+    // over e38f3c723, for 4,957,734. Four native read paths each carried their
     // own copy of the detection (`/\0|[\uD800-\uDFFF]/u`, three of them
     // naming the result `exceptional`) and two carried their own copy of the
     // protocol that follows from it -- bind `bytea`, compare through
