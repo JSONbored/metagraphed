@@ -25,7 +25,7 @@
 // has supported it since 3.24, so there is no reason to reach for the
 // SQLite-only form at all.
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 
 /** Spellings SQLite accepts and Postgres does not. */
@@ -201,6 +201,120 @@ const SQLITE_ONLY_IN_SQL_CONTEXT: Readonly<Record<string, string>> = {
   raise: "RAISE in PL/pgSQL, never in a plain statement",
 };
 
+/**
+ * A fact the source must still state for an exception's reasoning to hold.
+ *
+ * A literal substring, deliberately: a marker that needs a regexp to express
+ * is usually a guess about the file rather than a quotation from it.
+ */
+interface Premise {
+  /** The file the marker lives in; the exception's own file by default. */
+  file?: string;
+  marker: string;
+  /** What dies if the marker goes. */
+  means: string;
+}
+
+/**
+ * Files the scan skips because they cannot be handed a Postgres runner.
+ *
+ * AN EXCEPTION LIST IS THE NEXT PLACE THIS CLASS HIDES. Every entry here is a
+ * claim about a file, and claims rot: the call gets ported and the line
+ * outlives it, or the file gets widened and the line keeps quietly covering
+ * it. Two tests below make that loud instead -- an entry that no longer trips
+ * any rule is a line to delete, and a declared premise that disappears fails
+ * the build naming what it meant.
+ *
+ * `premise` is owed on every entry and carried by the two added with the
+ * function derivation, whose reasoning was established first-hand. The older
+ * entries carry the still-needed check only; stating that plainly is better
+ * than inventing a premise for reasoning somebody else established, and each
+ * gains one as it is next touched.
+ */
+interface SingleStoreOwner {
+  file: string;
+  why: string;
+  premise?: readonly Premise[];
+  /** A known change this exception leaves with, so the line goes too. */
+  retiresWith?: string;
+}
+
+const SINGLE_STORE_OWNERS: readonly SingleStoreOwner[] = [
+  {
+    file: "src/sqlite-document-decoder.ts",
+    why: "Owns its read-only :memory: DatabaseSync. These fixed statements never accept or execute through a store runner.",
+  },
+  {
+    file: "scripts/generate-export-projection.ts",
+    why: "Offline schema generation owns its in-memory SQLite connection; the native runtime imports only its generated static metadata.",
+  },
+  {
+    file: "src/neuron-documents.ts",
+    why: "Document-plane SQL for the D1 owner.",
+  },
+  {
+    file: "src/neuron-snapshot-read.ts",
+    why: "The native branch has an explicit neurons owner check; the portable branch is exercised by the PostgreSQL route suite.",
+  },
+  {
+    file: "src/subnet-burn-read.ts",
+    why: "Latest burn seeks require explicit subnet_burn_history ownership. D1 parity tests reject calls to the portable runner in that branch.",
+  },
+  {
+    file: "src/chain-concentration-rollup.ts",
+    why: "The document branch requires explicit neuron_daily D1 ownership; native parity tests also execute the portable rollup branch.",
+  },
+  { file: "src/axon-transition-d1.ts", why: "D1-dialect axon SQL builders." },
+  { file: "src/observations-d1.ts", why: "D1-dialect observations SQL." },
+  { file: "src/capture-family-d1.ts", why: "D1-dialect capture-family SQL." },
+  { file: "src/ledger-d1.ts", why: "D1-dialect ledger SQL." },
+  { file: "src/registry-sync-d1.ts", why: "D1-dialect registry-sync SQL." },
+  {
+    file: "src/usage-rollup-d1.ts",
+    why: "The caller requires explicit api_usage_rollup D1 ownership; native receipt tests cover rollback and committed-reply replay.",
+  },
+  { file: "src/root-basket-capture-d1.ts", why: "D1-dialect root-basket SQL." },
+  { file: "src/d1-state-export.ts", why: "D1-dialect export reads." },
+  { file: "src/d1-store.ts", why: "The D1 store itself." },
+  {
+    file: "src/retained-blocks-sync.ts",
+    why: "Dedicated D1 binding and credential; never accepts a generic store runner. Native receiver tests cover atomic source selection.",
+  },
+  {
+    // Found by the function derivation, which flagged its `hex(data)`: correct
+    // about the function and wrong about the file.
+    file: "src/raw-capture-d1.ts",
+    why: 'Takes a `Pick<D1Database, "prepare" | "batch">` -- a D1 binding structurally, never a generic store runner -- and its one call site is reached only when RAW_CAPTURE_STORAGE is "d1".',
+    premise: [
+      {
+        marker: 'Pick<D1Database, "prepare" | "batch">',
+        means:
+          "the store takes a D1 binding structurally; widened past this, it could receive a Postgres runner and the skip must stop covering it",
+      },
+      {
+        file: "workers/api.ts",
+        marker: 'env.RAW_CAPTURE_STORAGE === "d1"',
+        means: "the only call site is still gated on the D1 storage mode",
+      },
+    ],
+    // #13187 PAUSED this lane (RAW_CAPTURE_ENABLED=false) and did not delete
+    // it -- its watermark persists so re-enabling resumes where it stopped. So
+    // this line retires with the D1 plane at cutover, not with that pause.
+    retiresWith: 'the D1 plane at cutover (RAW_CAPTURE_STORAGE leaves "d1")',
+  },
+  {
+    file: "scripts/review-treasury-readings.ts",
+    why: "Runs through `d1AdminBatch` on a maintainer's D1 management credential -- the same posture as the native D1 migration runner, as its own header says. Its `changes()` was the derivation's other find.",
+    premise: [
+      {
+        marker: "d1AdminBatch",
+        means:
+          "the script still executes through the D1 management credential rather than a store runner",
+      },
+    ],
+  },
+];
+
 /** A literal is SQL if it names a statement or clause keyword. */
 const SQL_SHAPED =
   /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b/i;
@@ -289,55 +403,7 @@ describe("store-neutral SQL", () => {
       ...walk("workers"),
       ...walk("scripts"),
     ]) {
-      // Native implementations require complete-family D1 ownership. Their
-      // atomic writes are exercised against D1 in the corresponding native
-      // tests; shared readers remain dialect-neutral.
-      if (
-        [
-          // Format decoder owns its read-only :memory: DatabaseSync. These
-          // fixed statements never accept or execute through a store runner.
-          "src/sqlite-document-decoder.ts",
-          // Offline schema generation owns its in-memory SQLite connection;
-          // the native runtime imports only its generated static metadata.
-          "scripts/generate-export-projection.ts",
-          "src/neuron-documents.ts",
-          // The native branch has an explicit neurons owner check; the
-          // portable branch is exercised by the PostgreSQL route suite.
-          "src/neuron-snapshot-read.ts",
-          // Latest burn seeks require explicit subnet_burn_history ownership.
-          // D1 parity tests reject calls to the portable runner in that branch.
-          "src/subnet-burn-read.ts",
-          // The document branch requires explicit neuron_daily D1 ownership;
-          // native parity tests also execute the portable rollup branch.
-          "src/chain-concentration-rollup.ts",
-          "src/axon-transition-d1.ts",
-          "src/observations-d1.ts",
-          "src/capture-family-d1.ts",
-          "src/ledger-d1.ts",
-          "src/registry-sync-d1.ts",
-          // The caller requires explicit api_usage_rollup D1 ownership;
-          // native receipt tests cover rollback and committed-reply replay.
-          "src/usage-rollup-d1.ts",
-          "src/root-basket-capture-d1.ts",
-          "src/d1-state-export.ts",
-          "src/d1-store.ts",
-          // Dedicated D1 binding and credential; never accepts a generic
-          // store runner. Native receiver tests cover atomic source selection.
-          "src/retained-blocks-sync.ts",
-          // Takes a `Pick<D1Database, "prepare" | "batch">` -- a D1 binding,
-          // structurally, never a generic store runner. Found by the function
-          // derivation below, which flagged its `hex(data)`: correct about the
-          // function and wrong about the file, so the file is declared here
-          // rather than the rule weakened.
-          "src/raw-capture-d1.ts",
-          // Runs through `d1AdminBatch` on a maintainer's D1 management
-          // credential -- the same posture as the native D1 migration runner,
-          // as its own header says. Its `changes()` was the derivation's other
-          // find.
-          "scripts/review-treasury-readings.ts",
-        ].includes(file)
-      )
-        continue;
+      if (SINGLE_STORE_OWNERS.some((owner) => owner.file === file)) continue;
       scanned += 1;
       const literals = sqlLiteralList(readFileSync(file, "utf8"));
       sqlLiterals_ += literals.filter((literal) =>
@@ -460,6 +526,56 @@ describe("store-neutral SQL", () => {
       ),
       "the dialect-neutral anchored window is being reported as SQLite-only",
     );
+  });
+
+  test("every skipped file still has something to skip", () => {
+    // DIRECTION ONE OF THE ROT GUARD. An entry whose call was ported or
+    // deleted is a line to remove, not to carry: left in place it silently
+    // exempts whatever the file grows next. This needs no per-entry reasoning
+    // and so covers the whole list -- a file that trips nothing has no reason
+    // to be here.
+    const stale: string[] = [];
+    for (const owner of SINGLE_STORE_OWNERS) {
+      if (!existsSync(owner.file)) {
+        stale.push(`${owner.file}: file is gone -- delete its entry`);
+        continue;
+      }
+      const literals = sqlLiteralList(readFileSync(owner.file, "utf8"));
+      const trips =
+        SQLITE_ONLY.some(([pattern]) => pattern.test(literals.join("\n"))) ||
+        functionOffences(literals).length > 0;
+      if (!trips)
+        stale.push(
+          `${owner.file}: no SQLite-only SQL left -- its exception has outlived the call${
+            owner.retiresWith
+              ? ` (expected to retire with ${owner.retiresWith})`
+              : ""
+          }, delete the entry`,
+        );
+    }
+    assert.deepEqual(stale, [], stale.join("\n"));
+  });
+
+  test("every declared premise is still stated by the source", () => {
+    // DIRECTION TWO. The reasoning, not the symptom: if raw-capture-d1.ts is
+    // widened past its D1 binding, or the treasury script loses its
+    // management-credential path, the exception stops being true while still
+    // reading as deliberate. The failure names what the marker meant so
+    // whoever hits it can tell a rename from a real widening.
+    const broken: string[] = [];
+    for (const owner of SINGLE_STORE_OWNERS)
+      for (const premise of owner.premise ?? []) {
+        const file = premise.file ?? owner.file;
+        if (!existsSync(file)) {
+          broken.push(`${owner.file}: premise file ${file} is gone`);
+          continue;
+        }
+        if (!readFileSync(file, "utf8").includes(premise.marker))
+          broken.push(
+            `${owner.file}: ${file} no longer states \`${premise.marker}\` -- ${premise.means}`,
+          );
+      }
+    assert.deepEqual(broken, [], broken.join("\n"));
   });
 
   test("every function in the derivation is provably caught, and the count is stated", () => {
