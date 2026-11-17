@@ -15,13 +15,19 @@ import {
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
-// Pure shaping (computeMovers/buildMovers) + a thin store loader (loadSubnetMovers); the
-// Worker adds the REST envelope. Null-safe: a cold store or a single snapshot yields an
-// empty movers list (never throws), matching the sibling live tiers (turnover, history).
 //
-// Reads the neuron_daily rollup the refresh-metagraph cron lands daily. The route's scans
-// filter on snapshot_date first (the window-boundary MIN/MAX and the two-day aggregate), so
-// the date-first idx_neuron_daily_date_netuid_agg (migrations/0030) covers them.
+// SHAPING ONLY -- this module reads nothing. It is the window/sort vocabulary plus
+// computeMovers/buildMovers, which take rows somebody else fetched. The reads live in
+// workers/data-api.ts, through NEURON_DAILY_VIEW_STORE's window()/rows() or the portable
+// fallback beside it, and the Worker adds the REST envelope. Null-safe: a cold store or a
+// single snapshot yields an empty movers list (never throws), matching the sibling live
+// tiers (turnover, history).
+//
+// It did also carry a thin store loader, and a note that the route's scans filter on
+// snapshot_date first so the date-first idx_neuron_daily_date_netuid_agg (migrations/0030)
+// covers them. The loader was the pre-#4909 D1 store-query path and retired unreachable in
+// #13240; the index note went with it, since it describes reads this module no longer
+// performs and belongs with whoever performs them.
 
 type Row = Record<string, unknown>;
 
