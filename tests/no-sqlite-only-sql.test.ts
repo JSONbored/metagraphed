@@ -102,6 +102,27 @@ const SQLITE_ONLY: [RegExp, string][] = [
     /\bjson_each\s*\((?![^()\n]*::json\b)/i,
     "json_each() on a value with no explicit ::json cast — SQLite accepts a TEXT argument and Postgres does not (use ::json, which keeps duplicate keys where the jsonb forms drop them)",
   ],
+  // The three remaining constructs #9798 named for this scan and never got.
+  // None appears in a scanned file today -- every current use of INSTR is
+  // inside the D1-owning modules skipped below -- so these are here to stop a
+  // REINTRODUCTION, which is the job the scan was asked to do. Each has a
+  // portable spelling that both engines accept, so there is no reason to
+  // reach for the SQLite one.
+  //
+  // `||` was on that list too and is deliberately NOT here: both engines
+  // concatenate strings with it, and the real divergence is only in NULL and
+  // numeric coercion, which this scanner cannot tell apart from the thousands
+  // of legitimate uses in this tree. A rule that cannot distinguish them
+  // would be noise, and noise is how a gate stops being read.
+  [/\bIFNULL\s*\(/i, "IFNULL() — both engines have COALESCE()"],
+  [
+    /\bGROUP_CONCAT\s*\(/i,
+    "GROUP_CONCAT() — Postgres uses string_agg(value, separator); note SQLite's default separator is ',' and string_agg has no default",
+  ],
+  [
+    /\bINSTR\s*\(/i,
+    "INSTR(haystack, needle) — Postgres uses strpos(), whose arguments are in the SAME order; both are 1-based and return 0 when absent",
+  ],
   // BOOLEAN ARITHMETIC. SQLite has no boolean type, so `n + (a > b)` adds 1 or
   // 0; Postgres answers `operator does not exist: integer + boolean`.
   //
@@ -314,6 +335,31 @@ describe("store-neutral SQL", () => {
       ),
       "the dialect-neutral anchored window is being reported as SQLite-only",
     );
+  });
+
+  test("the three constructs #9798 named are recognised, and their portable forms are not", () => {
+    // These guard against reintroduction rather than against anything in the
+    // tree, so without this test a green run above would say nothing at all
+    // about whether they work.
+    const caught = (sql: string) =>
+      SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(sql)));
+    for (const [sqliteOnly, portable] of [
+      [
+        "`SELECT IFNULL(stake_tao, 0) FROM neuron_daily`",
+        "`SELECT COALESCE(stake_tao, 0) FROM neuron_daily`",
+      ],
+      [
+        "`SELECT GROUP_CONCAT(hotkey) FROM neuron_daily`",
+        "`SELECT string_agg(hotkey, ',') FROM neuron_daily`",
+      ],
+      [
+        "`SELECT INSTR(axon, ':') FROM neuron_daily`",
+        "`SELECT strpos(axon, ':') FROM neuron_daily`",
+      ],
+    ] as [string, string][]) {
+      assert.ok(caught(sqliteOnly), `not recognised: ${sqliteOnly}`);
+      assert.ok(!caught(portable), `portable form rejected: ${portable}`);
+    }
   });
 
   test("the json_each rule still catches the uncast read, and the ::json forms it must not", () => {
