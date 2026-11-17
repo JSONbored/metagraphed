@@ -188,6 +188,34 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     );
     for (const route of stale) console.error(`  - ${route}`);
   }
-  if (violations.length || stale.length) process.exit(1);
+  // THE REACH, ASSERTED -- not merely printed.
+  //
+  // This gate counted its comparisons and reported them, then exited on
+  // violations alone. Zero comparisons therefore printed "0 route(s)
+  // compared" and PASSED. Its three sibling parity gates all failed when the
+  // same input went blank; this one did not, which is how it was found
+  // (#13251 broke the shared `Mirrors GET` read, and route-parity,
+  // published-names and component-parity each failed while this stayed
+  // green). A gate that cannot tell "nothing diverges" from "I compared
+  // nothing" is not reporting on the schema, and the symptom is silence.
+  //
+  // The floor follows route-parity's `comparedPairs < 155` precedent.
+  // Measured at 16 routes with a projection tier today, and each unit is one
+  // route, so 12 tolerates four leaving -- more than any single retirement
+  // plausibly removes -- while still refusing the collapse that a broken
+  // description read, an unparsed SDL or an unreadable handler source
+  // produces. Not tighter, because ordinary retirement must not churn it;
+  // not looser, because a floor only a total failure can breach is a comment.
+  if (compared < 12) {
+    console.error(
+      `\nOnly ${compared} route(s) compared, under a floor of 12 -- this gate ` +
+        "is not reaching the schema, so its silence means nothing.\n" +
+        "If routes or projection tiers were legitimately retired, lower the " +
+        "floor IN THE SAME CHANGE and name them. Otherwise suspect the " +
+        "`Mirrors GET` read (scripts/lib/graphql-mirrors.ts), the SDL parse, " +
+        "or the handler sources -- any of those going blank lands here.",
+    );
+  }
+  if (violations.length || stale.length || compared < 12) process.exit(1);
   console.log("graphql-tier-parity: OK");
 }
