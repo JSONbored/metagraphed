@@ -42,6 +42,7 @@ import {
   networkKvKey,
   rpcUrlForNetwork,
 } from "./chain-network.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 
@@ -87,13 +88,6 @@ function decodeLeU64(hex: unknown): bigint | null {
     value = (value << 8n) | BigInt(parseInt(hex.slice(i, i + 2), 16));
   }
   return value;
-}
-
-// BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss on large cumulative totals (mirrors account-balance.ts's
-// same-shaped conversion).
-function raoToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
 // Query the live cumulative TAO recycled for registration on one subnet. Uses
@@ -163,7 +157,7 @@ async function loadSubnetRecycledSnapshot(
       const raw = chainRpcResult(await rpcResp.json());
       const rao = decodeLeU64(raw);
       if (rao != null) {
-        recycledTao = raoToTao(rao);
+        recycledTao = raoBigToTao(rao);
         rpcOk = true;
       } else if (raw === null) {
         // Genuinely unset storage (pre-ValueQuery-default chain state, or an
