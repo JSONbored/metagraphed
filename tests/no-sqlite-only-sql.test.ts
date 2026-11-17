@@ -437,25 +437,48 @@ describe("store-neutral SQL", () => {
     // ordinary growth does not fail the build -- but a drop means the scan
     // stopped looking somewhere, which is exactly the failure #9798 had.
     //
-    // MEASURED 2026-11-16 at 1,022 files and 1,083 SQL literals, against
-    // floors of 950 and 900. The slack is deliberate and it is there for
-    // DELETIONS: retiring the four unreachable neuron_daily loaders (#13240)
-    // cost five SQL literals on its own. A floor with no slack would have
-    // turned that legitimate retirement into a red build reading "the scan
-    // stopped looking", which is this guard's own failure mode wearing the
-    // other coat -- so the messages below say how to tell the two apart
-    // rather than just reporting the number.
+    // THE MARGIN IS CHOSEN, NOT ROUNDED. Measured 2026-11-16: 1,022 scanned
+    // files and 1,083 SQL literals, of which only 228 files carry SQL at all.
+    // Round numbers that merely sit under today's count would make this
+    // decoration -- a floor of 900 against 1,083 would have let the scan stop
+    // looking at 17% of the SQL and still pass, and "it stopped looking" is
+    // the one thing the floor exists to catch.
+    //
+    // So each floor tolerates the largest LEGITIMATE loss and fails on
+    // anything bigger:
+    //
+    //   literals, 990 -- one large file's worth below today. The biggest
+    //     single contributor is workers/data-api.ts at 87 literals (8.0%);
+    //     the next two are 66 and 43. One file retiring is visible in its own
+    //     diff and restating the floor beside it is cheap, so that must not
+    //     fail the build. A loss LARGER than the biggest file means something
+    //     structural moved -- a walk root, the literal extraction, SQL_SHAPED
+    //     -- which is worth stopping for.
+    //   files, 1,000 -- 22 below today. No change yet seen removes more than
+    //     a handful; #13240 retired four loaders and removed zero files,
+    //     since their modules survive without them. Adding skip-list entries
+    //     lowers this too, and 22 is more than any plausible batch of those.
+    //
+    // Deliberately not tighter: ordinary editing moves a literal or two in
+    // and out of recognition, and a floor that churns on that gets raised
+    // reflexively until it means nothing. Deliberately not looser: a floor
+    // only a catastrophe can breach is a comment, not a check.
+    //
+    // The cutover (#13201) folds data-api into the metagraphed Worker, so it
+    // is the change most likely to move ~8% of this count. That is the
+    // designed path, not a surprise: restate the floor in that change,
+    // naming it.
     assert.ok(
-      scanned > 950,
-      `the scan reached only ${scanned} files, under its floor of 950.\n` +
+      scanned > 1_000,
+      `the scan reached only ${scanned} files, under its floor of 1,000.\n` +
         "If files were legitimately deleted, lower the floor IN THE SAME " +
         "CHANGE and say which files and why. If not, the walk is no longer " +
         "reaching part of the tree -- check the skip list and the walk roots " +
         "(src, workers, scripts) before touching this number.",
     );
     assert.ok(
-      sqlLiterals_ > 900,
-      `the scan found only ${sqlLiterals_} SQL literals, under its floor of 900.\n` +
+      sqlLiterals_ > 990,
+      `the scan found only ${sqlLiterals_} SQL literals, under its floor of 990.\n` +
         "A deletion that removes SQL lowers this legitimately -- restate the " +
         "floor in the same change, naming the deletion. What it must not mean " +
         "is that SQL stopped being RECOGNISED: if the count fell without code " +
