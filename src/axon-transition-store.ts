@@ -26,17 +26,29 @@ const REQUIRED = ["query", "projectionReady", "assertReadable"] as const;
  * capability means a wiring defect, and falling back silently would answer
  * axon questions from a different store than the one the deployment selected.
  */
+/**
+ * The binding really is the capability -- a type predicate, so the selector
+ * returns it without an assertion.
+ *
+ * The sibling `selected*Store` helpers in this tree assert instead. Narrowing
+ * is the same check with the compiler holding the result, which is what makes
+ * the `return` below safe rather than merely declared safe.
+ */
+function isAxonTransitionStore(value: unknown): value is AxonTransitionStore {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    REQUIRED.every((name) => typeof Reflect.get(value, name) === "function")
+  );
+}
+
 export function selectedAxonTransitionStore(
   env: unknown,
 ): AxonTransitionStore | null {
   if (!env || typeof env !== "object" || !("AXON_TRANSITION_STORE" in env))
     return null;
   const store = env.AXON_TRANSITION_STORE;
-  if (
-    !store ||
-    typeof store !== "object" ||
-    !REQUIRED.every((name) => typeof Reflect.get(store, name) === "function")
-  )
+  if (!isAxonTransitionStore(store))
     throw new TypeError("Native axon transition capability is incomplete");
-  return store as AxonTransitionStore;
+  return store;
 }

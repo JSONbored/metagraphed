@@ -156,6 +156,28 @@ describe("readAnchoredWindow", () => {
     assert.equal(calls.length, 1, "no cutoff read against a null anchor");
   });
 
+  test("a driver that returns a non-string aggregate yields no window, not a coerced one", async () => {
+    // These cells used to be read with `as string | null`, which asserted a
+    // type nobody had checked: a driver handing back a Date, a number or a
+    // Buffer for MAX(snapshot_date) would have been declared a string and
+    // bound into the next query. Narrowing makes each of those null, which
+    // every caller already handles.
+    for (const value of [
+      new Date("2026-01-31"),
+      20260131,
+      Buffer.from("2026-01-31"),
+      {},
+    ]) {
+      const { calls, runner } = capturing(() => [{ end_date: value }]);
+      assert.deepEqual(
+        await readAnchoredWindow(runner, 30),
+        { startDate: null, endDate: null },
+        `a ${value.constructor.name} anchor must not become a window`,
+      );
+      assert.equal(calls.length, 1, "and no cutoff read is attempted");
+    }
+  });
+
   test("a non-ISO stored anchor falls back to the whole range, as the source does", async () => {
     // There is no cutoff to compute from a non-date, and the answer is the
     // whole range rather than nothing: `createPgNeuronDailyViewStore.window`

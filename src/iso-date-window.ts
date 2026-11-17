@@ -122,6 +122,18 @@ export type WindowRunner = (
  * `days` null means the whole retained range, which needs no cutoff and stays
  * one read.
  */
+/**
+ * One aggregate cell as a day string, or null.
+ *
+ * Narrowing rather than asserting `as string | null`: the runner's rows are
+ * `unknown`-valued, and a driver that hands back a Date, a number or a Buffer
+ * for an aggregate would have been asserted into a string and bound into the
+ * next query. This makes that case null, which every caller already handles.
+ */
+function dayCell(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
 export async function readAnchoredWindow(
   runner: WindowRunner,
   days: number | null,
@@ -136,15 +148,15 @@ export async function readAnchoredWindow(
       scopeParams,
     );
     return {
-      startDate: (all?.[0]?.start_date as string | null) ?? null,
-      endDate: (all?.[0]?.end_date as string | null) ?? null,
+      startDate: dayCell(all?.[0]?.start_date),
+      endDate: dayCell(all?.[0]?.end_date),
     };
   }
   const anchor = await runner(
     `SELECT MAX(snapshot_date) AS end_date FROM neuron_daily${scope}`,
     scopeParams,
   );
-  const endDate = (anchor?.[0]?.end_date as string | null) ?? null;
+  const endDate = dayCell(anchor?.[0]?.end_date);
   // An empty (or subnet-less) relation has no window at all, and no second
   // read is worth spending on it.
   if (endDate === null) return { startDate: null, endDate: null };
@@ -168,7 +180,7 @@ export async function readAnchoredWindow(
     [...scopeParams, ...(cutoff === null ? [] : [cutoff])],
   );
   return {
-    startDate: (start?.[0]?.start_date as string | null) ?? null,
+    startDate: dayCell(start?.[0]?.start_date),
     endDate,
   };
 }
