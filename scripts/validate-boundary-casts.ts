@@ -310,6 +310,39 @@ function walkTypeScript(dir: string): string[] {
 }
 
 export function scanRepository(): BoundaryCast[] {
+  return scanRepositoryWithReach().found;
+}
+
+/**
+ * Files this gate must reach before its silence means anything.
+ *
+ * MEASURED, at 806 -- what this walk actually returns over `src` and
+ * `workers`. Not inferred from the sibling gate: validate-double-assertions
+ * reaches 1,837 because it scans six directories via `git ls-files` and
+ * carries `.tsx`. A floor set by analogy to that number would have failed on
+ * the first run, which is how this one was caught.
+ *
+ * MAX_BOUNDARY_CASTS is 0, so neither half of the ratchet in main() can notice
+ * a scan that read nothing: 0 found equals 0 budgeted and the gate passes. The
+ * sibling's own header records that consequence already happening once -- a
+ * filter saying `.endsWith(".ts")` left an entire workspace invisible to it.
+ *
+ * 700 tolerates ~106 files leaving, more than a refactor removes, while
+ * refusing the collapse an unreadable directory or a typo'd SCANNED_DIRS entry
+ * produces.
+ *
+ * Note for whoever widens SCANNED_DIRS: this walk takes `.ts` only, which
+ * costs nothing today because `src` and `workers` contain no `.tsx` at all.
+ * Adding `packages` (49 `.tsx`) or `apps/ui` (200) would make those files
+ * silently invisible here -- carry `.tsx` in the filter at the same time, and
+ * restate this floor.
+ */
+const SCANNED_FILES_FLOOR = 700;
+
+export function scanRepositoryWithReach(): {
+  found: BoundaryCast[];
+  scanned: number;
+} {
   const sources = SCANNED_DIRS.flatMap((dir) =>
     walkTypeScript(path.join(repoRoot, dir)).map((absolute) => ({
       path: path.relative(repoRoot, absolute),
@@ -321,15 +354,30 @@ export function scanRepository(): BoundaryCast[] {
   for (const { path: relative, text } of sources) {
     found.push(...findBoundaryCasts(relative, text, aliases));
   }
-  return found.sort((a, b) =>
-    a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file),
-  );
+  return {
+    scanned: sources.length,
+    found: found.sort((a, b) =>
+      a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file),
+    ),
+  };
 }
 
 function main(): void {
-  const found = scanRepository();
+  const { found, scanned } = scanRepositoryWithReach();
   for (const cast of found) {
     console.error(`${cast.file}:${cast.line}  ${cast.text}`);
+  }
+  // THE REACH, before either ratchet half -- both compare a count to a budget
+  // of 0, so a scan that read nothing reports 0 against 0 and passes.
+  if (scanned < SCANNED_FILES_FLOOR) {
+    console.error(
+      `\nvalidate:boundary-casts FAILED: only ${scanned} file(s) scanned, under ` +
+        `a floor of ${SCANNED_FILES_FLOOR} -- this gate is not reading the tree, ` +
+        "so finding nothing means nothing.\nIf a workspace was legitimately " +
+        "removed, lower SCANNED_FILES_FLOOR in the same change and name it; " +
+        "otherwise suspect SCANNED_DIRS or an unreadable directory.",
+    );
+    process.exit(1);
   }
   if (found.length > MAX_BOUNDARY_CASTS) {
     console.error(
@@ -352,7 +400,7 @@ function main(): void {
   }
   console.log(
     `validate:boundary-casts OK — ${found.length} concrete cast(s) over an ` +
-      `untrusted boundary (budget ${MAX_BOUNDARY_CASTS}).`,
+      `untrusted boundary (budget ${MAX_BOUNDARY_CASTS}); ${scanned} file(s) scanned.`,
   );
 }
 

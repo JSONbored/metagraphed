@@ -167,9 +167,30 @@ function trackedTypeScript(dir: string): string[] {
 }
 
 export function scanRepository(): DoubleAssertion[] {
+  return scanRepositoryWithReach().found;
+}
+
+/**
+ * The findings AND how many files produced them.
+ *
+ * Every budget here is 0, which means neither half of the ratchet below can
+ * notice a scan that read nothing: 0 found equals 0 budgeted, so the gate
+ * passes. That is not hypothetical for this file -- its own header records the
+ * old directory walk silently skipping `.tsx`, which left every route and
+ * component in the UI workspace invisible to this gate. The listing mechanism
+ * was fixed; nothing was added to detect the next time the reach collapses.
+ *
+ * So the count comes back with the findings and is asserted against a floor.
+ */
+export function scanRepositoryWithReach(): {
+  found: DoubleAssertion[];
+  scanned: number;
+} {
   const found: DoubleAssertion[] = [];
+  let scanned = 0;
   for (const dir of SCANNED_DIRS) {
     for (const file of trackedTypeScript(dir)) {
+      scanned += 1;
       found.push(
         ...findDoubleAssertions(
           file,
@@ -178,8 +199,25 @@ export function scanRepository(): DoubleAssertion[] {
       );
     }
   }
-  return found;
+  return { found, scanned };
 }
+
+/**
+ * Files this gate must reach before its silence means anything.
+ *
+ * Measured 2026-11-17 at 1,837 files -- that is what this gate actually
+ * scans, AFTER the test filter, not the 2,189 that `git ls-files` returns for
+ * the six directories. The distinction matters: a floor set from the unfiltered
+ * figure would have sat 37 files under the real count and tripped on ordinary
+ * churn.
+ *
+ * 1,600 tolerates ~237 files leaving, far more than a refactor removes, while
+ * refusing the collapse a wrong cwd, a .gitignore change or a typo'd
+ * SCANNED_DIRS entry produces. A whole workspace leaving DOES trip it --
+ * apps/ui alone is 701 files -- and that is deliberate: a change that large
+ * should restate the floor and say so, which is what the failure asks for.
+ */
+const SCANNED_FILES_FLOOR = 1_600;
 
 /**
  * Which budget a finding counts against: the LONGEST configured key that is a
@@ -204,7 +242,7 @@ export function areaOf(file: string, areas: readonly string[]): string {
 }
 
 function main(): void {
-  const found = scanRepository();
+  const { found, scanned } = scanRepositoryWithReach();
   const areas = Object.keys(BUDGETS);
   const counts = new Map<string, number>(areas.map((area) => [area, 0]));
   for (const cast of found) {
@@ -236,6 +274,19 @@ function main(): void {
       );
     }
   }
+  // THE REACH. Both halves of the ratchet above compare a count to a budget,
+  // and every budget is 0 -- so a scan that read nothing reports 0 against 0
+  // and passes. This gate has been blind to a whole workspace before (see
+  // trackedTypeScript's header), so its silence has to be earned.
+  if (scanned < SCANNED_FILES_FLOOR) {
+    errors.push(
+      `only ${scanned} file(s) scanned, under a floor of ${SCANNED_FILES_FLOOR} -- ` +
+        "this gate is not reading the tree, so finding nothing means nothing. " +
+        "If a workspace was legitimately removed, lower SCANNED_FILES_FLOOR in " +
+        "the same change and name it; otherwise suspect SCANNED_DIRS, the cwd " +
+        "git ls-files runs in, or a .gitignore change hiding tracked sources.",
+    );
+  }
   if (errors.length) {
     console.error(
       `\nvalidate:double-assertions FAILED:\n${errors.map((e) => `  - ${e}`).join("\n")}`,
@@ -243,7 +294,9 @@ function main(): void {
     process.exit(1);
   }
   console.log(
-    `validate:double-assertions OK — ${Object.entries(BUDGETS)
+    `validate:double-assertions OK — ${scanned} file(s) scanned; ${Object.entries(
+      BUDGETS,
+    )
       .map(([a, b]) => `${a} ${counts.get(a) ?? 0}/${b}`)
       .join(", ")}.`,
   );
