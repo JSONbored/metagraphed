@@ -702,9 +702,11 @@ describe("the cron wiring", () => {
     // prober. Both are silent.
     const { readFileSync } = await import("node:fs");
     const { LAKEHOUSE_SEAM_CRON } = await import("../workers/config.ts");
-    const wrangler = readFileSync("wrangler.jsonc", "utf8");
+    const { declaredCrons } = await import("../scripts/lib/jsonc.ts");
     assert.ok(
-      wrangler.includes(`"${LAKEHOUSE_SEAM_CRON}"`),
+      declaredCrons(readFileSync("wrangler.jsonc", "utf8")).includes(
+        LAKEHOUSE_SEAM_CRON,
+      ),
       `wrangler.jsonc declares no "${LAKEHOUSE_SEAM_CRON}" cron, so this watchdog never runs`,
     );
   });

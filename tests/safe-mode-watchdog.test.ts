@@ -191,10 +191,11 @@ describe("SafeMode alerting rule (#8696)", () => {
 
   test("the cron constant matches a wrangler schedule", async () => {
     const { readFileSync } = await import("node:fs");
+    const { declaredCrons } = await import("../scripts/lib/jsonc.ts");
     const { SAFE_MODE_WATCHDOG_CRON } = await import("../workers/config.ts");
     assert.ok(
-      readFileSync("wrangler.jsonc", "utf8").includes(
-        `"${SAFE_MODE_WATCHDOG_CRON}"`,
+      declaredCrons(readFileSync("wrangler.jsonc", "utf8")).includes(
+        SAFE_MODE_WATCHDOG_CRON,
       ),
       `wrangler.jsonc declares no "${SAFE_MODE_WATCHDOG_CRON}" cron, so this watchdog never runs`,
     );
