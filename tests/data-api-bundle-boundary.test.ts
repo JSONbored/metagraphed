@@ -306,11 +306,22 @@ describe("data-api's bundle boundary", () => {
     // 4,949,047: the withAccountKeysSql refusal seam and its contract prose,
     // and account-kind scoping on the four cross-kind reads (#11573). Nothing
     // new enters the graph; keep 2,553 source bytes of margin.
+    // The #13019 slice-2 consumers add 9,324 source bytes over 7d741a901, for
+    // 4,958,709. TWO MODULES ENTER THE GRAPH, which the named checks above
+    // confirm are the only ones: src/axon-transition-pg.ts (5,004) and
+    // src/axon-transition-store.ts (1,870). Unlike the pg-* stores in the
+    // entries above, the axon family's dialect SQL builders are imported
+    // DIRECTLY by their consumers rather than reached through a binding --
+    // src/axon-transition-d1.ts (3,909) has always been in this graph for the
+    // same reason, because the consumers compose the sequence from the shared
+    // definition instead of asking a store to answer the question. The
+    // remaining 2,450 bytes are the watchdog's and loader's own native arms
+    // and prose. Keep 2,491 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_951_600,
+      firstParty < 4_961_200,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

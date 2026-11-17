@@ -37,6 +37,7 @@ import {
 } from "./pg-neuron-capture.ts";
 import { createPgRootBasketStore } from "./root-basket-pg.ts";
 import { createPgObservations } from "./observations-pg.ts";
+import { createPgAxonTransition } from "./axon-transition-pg.ts";
 import { createPgLaneHealth } from "./lane-health-pg.ts";
 import { createPgRegistrySyncStore } from "./pg-registry-sync.ts";
 import { createPgGeneratedArtifactStore } from "./pg-generated-artifacts.ts";
@@ -115,6 +116,7 @@ export function createNativeStateBindings(
     GENERATED_ARTIFACT_STORE: createPgGeneratedArtifactStore(app),
     SELF_HEALTH_STORE: createPgSelfHealthStore(app),
     CHAIN_CONCENTRATION_STORE: createPgChainConcentrationStore(app, decoder),
+    AXON_TRANSITION_STORE: createPgAxonTransition(app),
     RETAINED_BLOCKS_STORE: createPgRetainedBlocks(retained),
     NATIVE_RAW_CAPTURE: createPgRawCapture(app),
     RAW_CAPTURE_STORAGE: "postgresql",

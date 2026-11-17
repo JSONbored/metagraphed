@@ -377,11 +377,19 @@ test("D1 classification shares every address boundary and the last-colon split, 
 
 test("watchdog native counts and mechanism attribution agree with PostgreSQL and execute without Hyperdrive", async () => {
   await seed(rows);
+  const store = createD1Store(db);
+  // The dialect and its readiness are the CALLER's now, so the test resolves
+  // both the way the watchdog does.
+  const d1Sequence = (indexed: boolean) => (ids: readonly number[]) =>
+    axonSequenceD1Sql(
+      `AND d.netuid IN (${ids.map(() => "?").join(",")})`,
+      indexed,
+    );
   const native = await loadAxonLossMechanisms(
-    createD1Store(db),
+    store,
     [7, 8],
     "2026-08-01",
-    true,
+    d1Sequence(await axonProjectionReady(store.query)),
   );
   const postgres = await loadAxonLossMechanisms(
     { query: (sql, values = []) => query(sql, values) },
@@ -390,7 +398,7 @@ test("watchdog native counts and mechanism attribution agree with PostgreSQL and
   );
   assert.deepEqual(native, postgres);
   assert.equal(native[8]?.distinctIps, 1);
-  const days = await createD1Store(db).query<{
+  const days = await store.query<{
     netuid: number;
     date: string;
     neurons: number;
@@ -462,7 +470,19 @@ test("partial projection backfills remain on document reads, then switch with id
     true,
   );
   assert.deepEqual(
-    await loadAxonLossMechanisms(store, [7, 8], "2026-08-01", true),
+    // Explicitly the UNINDEXED builder: netuid 8's backfill is incomplete
+    // here, so this is the document path, and it must still agree with
+    // Postgres row for row.
+    await loadAxonLossMechanisms(
+      store,
+      [7, 8],
+      "2026-08-01",
+      (ids: readonly number[]) =>
+        axonSequenceD1Sql(
+          `AND d.netuid IN (${ids.map(() => "?").join(",")})`,
+          false,
+        ),
+    ),
     await loadAxonLossMechanisms(
       { query: (sql, values = []) => query(sql, values) },
       [7, 8],

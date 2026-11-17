@@ -20,6 +20,11 @@ import {
   axonSequenceD1Sql,
   axonProjectionReady,
 } from "./axon-transition-d1.ts";
+import { axonSequencePgSql } from "./axon-transition-pg.ts";
+import {
+  selectedAxonTransitionStore,
+  type AxonTransitionStore,
+} from "./axon-transition-store.ts";
 import { selectedD1Store } from "./d1-store.ts";
 import {
   readAxonRemovalProjection,
@@ -139,6 +144,9 @@ export async function loadAxonRemovalRows(
   if (deps.query) {
     rows = await deps.query(CANDIDATE_SLOTS_SQL, [cutoff]);
   } else {
+    // Composed tree first, then D1, then the portable reader.
+    const composed = selectedAxonTransitionStore(env);
+    if (composed) return loadComposedAxonRemovalRows(composed, deps, cutoff);
     const native = selectedD1Store(env, ["neuron_daily"]);
     const db = native ?? readStore(env, ["neuron_daily"]);
     if (!db) return null;
@@ -148,6 +156,49 @@ export async function loadAxonRemovalRows(
   }
 
   return rows as NeuronAxonDayRow[] | null;
+}
+
+/**
+ * The composed-tree arm.
+ *
+ * Unlike D1, this store has no per-request CPU ceiling to respect, so there is
+ * no subnet grouping here: the window partitions by (netuid, uid) either way,
+ * and one statement over the whole window gives the derivation exactly the
+ * same sequences the grouped D1 reads assemble. The netuid/hotkey narrowing is
+ * still applied, because a subnet card and an account read genuinely want less
+ * than the network.
+ *
+ * `assertReadable` runs before the read, not after: a reading the text unwrap
+ * cannot represent must refuse by name rather than be silently coerced into a
+ * removal (or out of one).
+ */
+async function loadComposedAxonRemovalRows(
+  store: AxonTransitionStore,
+  deps: AxonRemovalsLoadDeps,
+  cutoff: string,
+): Promise<NeuronAxonDayRow[]> {
+  const indexed = await store.projectionReady();
+  await store.assertReadable(indexed);
+  const scope: string[] = [];
+  const values: unknown[] = [cutoff];
+  if (deps.netuid !== undefined) {
+    scope.push("netuid = ?");
+    values.push(deps.netuid);
+  }
+  if (deps.hotkey !== undefined) {
+    // The whole slot history, including a replacement operator's readings:
+    // narrowing to the hotkey's own rows could manufacture a removal by
+    // hiding the reading that confirms the slot kept serving.
+    scope.push(
+      "(netuid, uid) IN (SELECT netuid, uid FROM app.neuron_daily_members" +
+        " WHERE mechid = 0 AND hotkey = ? AND snapshot_date >= ?)",
+    );
+    values.push(deps.hotkey, cutoff);
+  }
+  return store.query<NeuronAxonDayRow>(
+    candidateSlotsSql(axonSequencePgSql(scope.join(" AND "), indexed)),
+    values,
+  );
 }
 
 /** A configured native source always returns a complete array or throws. */
@@ -316,12 +367,21 @@ export async function refreshAxonRemovalProjection(
   env: unknown,
   nowMs = Date.now(),
 ): Promise<void> {
+  const cutoff = isoDaysAgo(nowMs, AXON_PROJECTION_LOOKBACK_DAYS);
+  // Same precedence as the read path. Without the composed arm this tick
+  // would quietly stop refreshing after the cutover, leaving the public
+  // projection frozen at its last D1-era contents -- served as current.
+  const composed = selectedAxonTransitionStore(env);
+  if (composed) {
+    await writeAxonRemovalProjection(
+      env,
+      await loadComposedAxonRemovalRows(composed, {}, cutoff),
+      nowMs,
+    );
+    return;
+  }
   const native = selectedD1Store(env, ["neuron_daily"]);
   if (!native) return;
-  const rows = await loadNativeAxonRemovalRows(
-    native,
-    {},
-    isoDaysAgo(nowMs, AXON_PROJECTION_LOOKBACK_DAYS),
-  );
+  const rows = await loadNativeAxonRemovalRows(native, {}, cutoff);
   await writeAxonRemovalProjection(env, rows, nowMs);
 }

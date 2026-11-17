@@ -62,6 +62,8 @@ import {
   readAxonDayCountsD1,
   axonProjectionReady,
 } from "./axon-transition-d1.ts";
+import { axonSequencePgSql, axonDayCountsPgSql } from "./axon-transition-pg.ts";
+import { selectedAxonTransitionStore } from "./axon-transition-store.ts";
 import {
   AXON_LOSS_SQL,
   AXON_MOVED_SQL,
@@ -395,6 +397,14 @@ export function classifyAxonMechanism(
  * day the flag list is one to three subnets, so scoping it to those keeps the
  * cost proportional to what was found rather than to the network.
  *
+ * `sequence` builds the day sequence for the netuids it is handed, in the
+ * dialect of whatever store the CALLER selected. It is a parameter rather than
+ * a flag because there are now three stores and resolving the dialect here
+ * meant resolving readiness here too -- a second `axonProjectionReady` round
+ * trip per tick, against a store the caller had already asked. The predicate
+ * carries placeholders only; each builder's caller composes it from integers
+ * it has already filtered.
+ *
  * `{}` on any failure, which leaves every finding's kind at its default. See
  * classifyAxonMechanism for why that is the safe direction.
  */
@@ -405,7 +415,8 @@ export async function loadAxonLossMechanisms(
     | undefined,
   netuids: readonly number[],
   sinceDate: string,
-  nativeD1 = false,
+  sequence: (netuids: readonly number[]) => string = (ids) =>
+    axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`),
 ): Promise<
   Record<
     number,
@@ -430,9 +441,8 @@ export async function loadAxonLossMechanisms(
   if (!db?.query || ids.length === 0) return out;
   try {
     const sameHotkeyLoss = `${AXON_LOSS_SQL} AND ${AXON_SAME_HOTKEY_SQL}`;
-    const indexed = nativeD1 && (await axonProjectionReady(db.query));
     const rows = (await db.query(
-      `WITH seq AS (${nativeD1 ? axonSequenceD1Sql(`AND d.netuid IN (${ids.map(() => "?").join(",")})`, indexed) : axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`)}) ` +
+      `WITH seq AS (${sequence(ids)}) ` +
         "SELECT netuid, " +
         `COUNT(*) FILTER (WHERE ${AXON_LOSS_SQL} AND ${AXON_VIA_REUSE_SQL}) AS via_reuse, ` +
         `COUNT(*) FILTER (WHERE ${sameHotkeyLoss}) AS same_hotkey, ` +
@@ -470,6 +480,46 @@ export async function loadAxonLossMechanisms(
   return out;
 }
 
+/**
+ * One row of the per-subnet-day counts read, as every store spells it.
+ *
+ * A `type` and not an `interface` so it stays assignable to the
+ * `Record<string, unknown>[]` that `groupAxonDays` takes -- an interface has no
+ * implicit index signature, and naming this as one would oblige the call site
+ * to assert (same reason as AxonRemovalSubnetRow in
+ * src/axon-removals-loader.ts). The counts arrive as strings from Postgres and
+ * numbers from the other two, which `groupAxonDays` already coerces.
+ */
+export type AxonDayCountRow = {
+  netuid: number | string;
+  date: string;
+  with_axon: number | string;
+  neurons: number | string;
+};
+
+/**
+ * The portable (Neon) arm's per-subnet-day counts.
+ *
+ * Its own function so the three arms narrow honestly: the caller has already
+ * established that one store was selected, but that fact does not survive a
+ * ternary chain, and asserting it away would hide a real "no store" from the
+ * stale verdict that exists to report it.
+ */
+async function readPortableAxonDayCounts(
+  store: ReturnType<typeof readStore> | null,
+  since: string,
+): Promise<Record<string, unknown>[]> {
+  if (!store?.query) throw new Error("no store bound for axon day counts");
+  return store.query(
+    "SELECT netuid, snapshot_date AS date, " +
+      `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
+      "COUNT(*) AS neurons FROM neuron_daily " +
+      "WHERE snapshot_date >= ? GROUP BY netuid, snapshot_date " +
+      "ORDER BY netuid, snapshot_date",
+    [since],
+  );
+}
+
 export interface AxonWatchdogDeps {
   laneHealthDb?: LaneHealthDb | null;
   now?: () => number;
@@ -485,25 +535,57 @@ export async function runAxonAnnouncementWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const native = selectedD1Store(env, ["neuron_daily"]);
-  const db = native ?? readStore(env, ["neuron_daily"]);
+  // Composed tree first, then D1, then the portable reader -- the same
+  // precedence every converted consumer uses (src/neuron-snapshot-read.ts).
+  const composed = selectedAxonTransitionStore(env);
+  const native = composed ? null : selectedD1Store(env, ["neuron_daily"]);
+  const portable = composed || native ? null : readStore(env, ["neuron_daily"]);
+  // The mechanism read takes whichever one was selected; its own SQL comes
+  // from `sequence` below, so it needs only a runner.
+  const db = composed ?? native ?? portable;
   if (!db?.query) return { ok: false, reason: "no store bound" };
+
+  // Readiness is resolved ONCE per tick and used by both reads below. Asking
+  // each of them separately was two round trips for one fact. It is resolved
+  // INSIDE the try, because on the composed store it is itself a query and a
+  // readiness read that fails is a store failure like any other -- it has to
+  // reach the stale verdict below, not escape the tick.
+  let indexed = false;
+  const sequence = composed
+    ? (ids: readonly number[]) =>
+        axonSequencePgSql(
+          `netuid IN (${ids.map(() => "?").join(",")})`,
+          indexed,
+        )
+    : native
+      ? (ids: readonly number[]) =>
+          axonSequenceD1Sql(
+            `AND d.netuid IN (${ids.map(() => "?").join(",")})`,
+            indexed,
+          )
+      : (ids: readonly number[]) =>
+          axonSequenceSql(`netuid IN (${ids.map(() => "?").join(",")})`);
 
   let bySubnet: Map<number, AxonDay[]>;
   try {
+    if (composed) {
+      indexed = await composed.projectionReady();
+      // Refuse rather than coerce: a reading the text unwrap cannot represent
+      // would otherwise be silently rendered into a count.
+      await composed.assertReadable(indexed);
+    } else if (native) {
+      indexed = await axonProjectionReady(native.query);
+    }
     // Aggregated in the store: the raw window is ~129 subnets x 256 neurons x 8
     // days, and the answer is two integers per subnet-day.
     const since = isoDaysAgo(now(), AXON_BASELINE_DAYS + 1);
-    const rows = native
-      ? await readAxonDayCountsD1(native.query, since)
-      : await db.query(
-          "SELECT netuid, snapshot_date AS date, " +
-            `COUNT(*) FILTER (WHERE ${ROUTABLE_AXON_SQL}) AS with_axon, ` +
-            "COUNT(*) AS neurons FROM neuron_daily " +
-            "WHERE snapshot_date >= ? GROUP BY netuid, snapshot_date " +
-            "ORDER BY netuid, snapshot_date",
-          [since],
-        );
+    const rows = composed
+      ? await composed.query<AxonDayCountRow>(axonDayCountsPgSql(indexed), [
+          since,
+        ])
+      : native
+        ? await readAxonDayCountsD1(native.query, since)
+        : await readPortableAxonDayCounts(portable, since);
     bySubnet = groupAxonDays(rows);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -528,7 +610,7 @@ export async function runAxonAnnouncementWatchdog(
     db,
     findings.map((f) => f.netuid),
     isoDaysAgo(now(), AXON_BASELINE_DAYS + 1),
-    native !== null,
+    sequence,
   );
   for (const finding of findings) {
     const counts = mechanisms[finding.netuid];
