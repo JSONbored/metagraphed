@@ -92,3 +92,49 @@ export function stripJsonComments(value: string): string {
   }
   return result;
 }
+
+/**
+ * The cron schedules wrangler.jsonc actually DECLARES, parsed.
+ *
+ * Four suites asserted their cron was scheduled with
+ * `readFileSync("wrangler.jsonc", "utf8").includes(`"${CRON}"`)`, each under a
+ * message naming a real consequence -- "so this watchdog never runs", "so no
+ * projection ever recomputes". A raw substring over this file answers neither
+ * question it is asked:
+ *
+ *   - wrangler.jsonc carries over a thousand comment lines, and the comments
+ *     in and around the crons block quote cron expressions to explain the
+ *     cadences, so a commented-out or merely documented schedule satisfies the
+ *     check while nothing is scheduled. Prose has no compiler.
+ *   - a match anywhere in the file passes, including inside another worker's
+ *     block or an unrelated array, so the check cannot tell "scheduled" from
+ *     "mentioned somewhere".
+ *
+ * Parsing answers both, and the stripper above is why it can: a regex stripper
+ * splices a route glob's trailing slash-star to a cron's star-slash and
+ * deletes the config between them, as its own header explains. (Written in
+ * words on purpose -- the literal sequence would end this comment, which is
+ * the same hazard one level up.) Throws rather than returning empty on a
+ * malformed or absent
+ * triggers block -- "no crons declared" and "I could not read the crons" are
+ * different facts, and only one of them should read as a missing schedule.
+ */
+export function declaredCrons(source: string): readonly string[] {
+  const config: unknown = JSON.parse(stripJsonComments(source));
+  const triggers =
+    config && typeof config === "object" && "triggers" in config
+      ? (config as { triggers?: unknown }).triggers
+      : undefined;
+  const crons =
+    triggers && typeof triggers === "object" && "crons" in triggers
+      ? (triggers as { crons?: unknown }).crons
+      : undefined;
+  if (!Array.isArray(crons))
+    throw new TypeError("wrangler.jsonc has no triggers.crons array");
+  const bad = crons.filter((entry) => typeof entry !== "string");
+  if (bad.length > 0)
+    throw new TypeError(
+      `wrangler.jsonc triggers.crons holds ${bad.length} non-string entr${bad.length === 1 ? "y" : "ies"}`,
+    );
+  return crons as string[];
+}

@@ -2035,9 +2035,11 @@ describe("lane registry", () => {
     // prober. Both are silent (the lakehouse-seam watchdog's own guard).
     const { readFileSync } = await import("node:fs");
     const { PROJECTION_LANES_CRON } = await import("../workers/config.ts");
-    const wrangler = readFileSync("wrangler.jsonc", "utf8");
+    const { declaredCrons } = await import("../scripts/lib/jsonc.ts");
     assert.ok(
-      wrangler.includes(`"${PROJECTION_LANES_CRON}"`),
+      declaredCrons(readFileSync("wrangler.jsonc", "utf8")).includes(
+        PROJECTION_LANES_CRON,
+      ),
       `wrangler.jsonc declares no "${PROJECTION_LANES_CRON}" cron, so no projection ever recomputes`,
     );
   });

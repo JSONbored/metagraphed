@@ -330,9 +330,11 @@ describe("live-economics cron wiring", () => {
     const { readFileSync } = await import("node:fs");
     const { LIVE_ECONOMICS_REFRESH_CRON } =
       await import("../workers/config.ts");
-    const wrangler = readFileSync("wrangler.jsonc", "utf8");
+    const { declaredCrons } = await import("../scripts/lib/jsonc.ts");
     assert.ok(
-      wrangler.includes(`"${LIVE_ECONOMICS_REFRESH_CRON}"`),
+      declaredCrons(readFileSync("wrangler.jsonc", "utf8")).includes(
+        LIVE_ECONOMICS_REFRESH_CRON,
+      ),
       `wrangler.jsonc declares no "${LIVE_ECONOMICS_REFRESH_CRON}" cron, so the live economics tier never refreshes`,
     );
   });
