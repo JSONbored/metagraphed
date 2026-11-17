@@ -128,6 +128,31 @@ test("day counts aggregate routable vs total per subnet-day", async () => {
   );
 });
 
+test("day counts over the PROJECTED readings count every duplicate entry", async () => {
+  // The arm the watchdog actually runs before the backfill completes, and the
+  // one the indexed test above cannot reach. It is not a copy of that case:
+  // the duplicate uid key fans out, so the same day carries three readings
+  // across two members rather than two, and the routable filter runs over
+  // every one of them. A single-arm test would have left this unmeasured
+  // while reporting the day counts as covered.
+  const counts = (await run(axonDayCountsPgSql(false), ["2026-11-01"])) as {
+    rows: {
+      date: string;
+      with_axon: string | number;
+      neurons: string | number;
+    }[];
+  };
+  assert.deepEqual(
+    counts.rows.map((row) => [
+      row.date,
+      Number(row.with_axon),
+      Number(row.neurons),
+    ]),
+    [["2026-11-01", 2, 3]],
+    "three readings from two members; the documentation-space duplicate is not routable",
+  );
+});
+
 test("the projected readings fan out duplicate keys exactly as the source json does", async () => {
   const seq = (await run(
     `WITH seq AS (${axonSequencePgSql("", false)}) SELECT uid, axon FROM seq ORDER BY uid, axon`,
