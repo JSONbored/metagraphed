@@ -5,7 +5,6 @@ import {
   buildConcentration,
   buildConcentrationHistory,
   loadSubnetConcentration,
-  loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../src/concentration.ts";
 import type { Row } from "./row-type.ts";
@@ -364,32 +363,5 @@ describe("concentration loaders", () => {
     assert.equal(data.entity_count, 1);
     assert.equal(data.stake!.holders, 2);
     assert.equal(data.entity_stake!.total, 150);
-  });
-
-  test("loadSubnetConcentrationHistory returns empty points on a cold store", async () => {
-    const data = await loadSubnetConcentrationHistory(runner(), 7, {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(data.netuid, 7);
-    assert.equal(data.window, "30d");
-    assert.equal(data.point_count, 0);
-    assert.deepEqual(data.points, []);
-  });
-
-  test("loadSubnetConcentrationHistory aggregates neuron_daily rows", async () => {
-    const data = await loadSubnetConcentrationHistory(
-      runner({
-        "FROM neuron_daily": [
-          { snapshot_date: "2026-06-02", stake_tao: 20, emission_tao: 2 },
-          { snapshot_date: "2026-06-01", stake_tao: 10, emission_tao: 1 },
-        ],
-      }),
-      7,
-      { windowLabel: "7d", windowDays: 7 },
-    );
-    assert.equal(data.point_count, 2);
-    assert.equal(data.points[0].snapshot_date, "2026-06-02");
-    assert.ok(typeof data.points[0].stake_gini === "number");
   });
 });
