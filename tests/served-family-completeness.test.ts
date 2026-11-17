@@ -22,6 +22,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "vitest";
+import { stripTsComments } from "../scripts/lib/source-text.ts";
 
 const MIGRATIONS_DIR = "migrations/postgres";
 
@@ -253,12 +254,6 @@ const PRE_GATE_BACKLOG: readonly string[] = [
  * comment syntax and the SQL one has to respect string literals. Same reason
  * for both -- a comment naming a thing is not that thing.
  */
-function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^\s*\/\/.*$/gm, " ")
-    .replace(/([^:])\/\/.*$/gm, "$1 ");
-}
 
 /**
  * SQL comments, dropped before anything is read out of a migration.
@@ -391,7 +386,7 @@ test("every serving-schema family declares its contract surface or sits in the s
       // and fails nothing when the symbol never arrives. Comments are
       // therefore stripped before the anchor is looked for.
       if (
-        !stripComments(readFileSync(anchor.file, "utf8")).includes(
+        !stripTsComments(readFileSync(anchor.file, "utf8")).includes(
           anchor.symbol,
         )
       ) {

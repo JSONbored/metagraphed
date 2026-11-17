@@ -27,6 +27,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import { stripTsComments } from "../scripts/lib/source-text.ts";
 
 /** Spellings SQLite accepts and Postgres does not. */
 const SQLITE_ONLY: [RegExp, string][] = [
@@ -344,10 +345,7 @@ const SQL_SHAPED =
  * be silenced by deleting the rule.
  */
 function sqlLiteralList(source: string): string[] {
-  const withoutComments = source
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^\s*\/\/.*$/gm, " ")
-    .replace(/([^:])\/\/.*$/gm, "$1 ");
+  const withoutComments = stripTsComments(source);
   return [
     ...withoutComments.matchAll(
       /"([^"\\]*(?:\\.[^"\\]*)*)"|`([^`]*)`|'([^'\\]*(?:\\.[^'\\]*)*)'/g,

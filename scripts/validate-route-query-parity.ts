@@ -38,6 +38,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { z } from "zod";
 import { API_ROUTES, querySchemaForRoute } from "../src/contracts.ts";
 import { stripSentinelIntegerBounds } from "../src/mcp-input-schema.ts";
+import { stripTsComments } from "./lib/source-text.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -234,11 +235,6 @@ assert.deepEqual(
 // An exception list whose premise is checked by substring is the rot this
 // repo has hit repeatedly: prose has no compiler, so a comment naming a
 // symbol reads as a reference and fails nothing when the symbol goes.
-const withoutComments = (source: string): string =>
-  source
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^\s*\/\/.*$/gm, " ")
-    .replace(/([^:])\/\/.*$/gm, "$1 ");
 
 const staleAllowances = Object.entries(LIVE_ROUTE_QUERY_SCHEMAS).filter(
   ([name, importer]) => {
@@ -248,7 +244,7 @@ const staleAllowances = Object.entries(LIVE_ROUTE_QUERY_SCHEMAS).filter(
     } catch {
       return true;
     }
-    return !withoutComments(source).includes(name);
+    return !stripTsComments(source).includes(name);
   },
 );
 assert.deepEqual(
