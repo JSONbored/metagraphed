@@ -129,6 +129,22 @@ describe("readAnchoredWindow", () => {
     assert.doesNotMatch(calls[0].sql, /snapshot_date >=/);
   });
 
+  test("the all window over an empty relation is two nulls, not one read's worth of guesses", async () => {
+    // The windowed path already pins "a store that returns no row degrades to
+    // a null start"; the all window reads BOTH aggregates in one statement and
+    // so has its own version of that arm. An empty relation answers a bare
+    // aggregate with a row of nulls, and a store that answers with no row at
+    // all has to reach the same place.
+    for (const rows of [[{ start_date: null, end_date: null }], []]) {
+      const { calls, runner } = capturing(() => rows);
+      assert.deepEqual(await readAnchoredWindow(runner, null), {
+        startDate: null,
+        endDate: null,
+      });
+      assert.equal(calls.length, 1);
+    }
+  });
+
   test("a cold store reports no window instead of computing from a null anchor", async () => {
     // The old subquery's NULL made `>=` match nothing; this must reach the
     // same "unknown window" answer without ever binding "Invalid Date".
