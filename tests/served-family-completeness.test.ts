@@ -244,7 +244,15 @@ const PRE_GATE_BACKLOG: readonly string[] = [
   "0036_usage_row_identity_activate.sql",
 ];
 
-/** Comments are prose, and prose cannot serve a table. */
+/**
+ * TypeScript comments, dropped before an anchor is looked for. Prose is not a
+ * contract surface.
+ *
+ * Paired with `withoutSqlComments` below, which does the same job for the
+ * migration side: two functions because `--` and `//` are different languages'
+ * comment syntax and the SQL one has to respect string literals. Same reason
+ * for both -- a comment naming a thing is not that thing.
+ */
 function stripComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, " ")
@@ -252,13 +260,81 @@ function stripComments(source: string): string {
     .replace(/([^:])\/\/.*$/gm, "$1 ");
 }
 
+/**
+ * SQL comments, dropped before anything is read out of a migration.
+ *
+ * The anchor check above (`stripComments`) strips comments because a comment
+ * satisfied one. The table enumeration needs the same treatment, and
+ * the consequence here is the uglier one: a migration that MENTIONS a table it
+ * does not create -- `-- CREATE TABLE app.legacy_x, dropped in 0039` is the
+ * natural way to write that -- would have this gate demand a contract surface
+ * for a table that does not exist. Whoever hit that would satisfy it by
+ * inventing an anchor, which is how fiction gets into FAMILY_ANCHORS.
+ *
+ * Line-wise for `--` so a `--` inside a string literal is not mistaken for a
+ * comment; block comments are removed outright. Nothing in migrations/postgres
+ * relies on either shape today, which is exactly when to add this rather than
+ * after a migration has been misread.
+ */
+function withoutSqlComments(sql: string): string {
+  return sql
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split("\n")
+    .map((line) => {
+      let quote: string | null = null;
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i];
+        if (quote) {
+          if (ch === quote) quote = null;
+          continue;
+        }
+        if (ch === "'" || ch === '"') {
+          quote = ch;
+          continue;
+        }
+        if (ch === "-" && line[i + 1] === "-") return line.slice(0, i);
+      }
+      return line;
+    })
+    .join("\n");
+}
+
 function createdTables(sql: string): string[] {
   return [
-    ...sql.matchAll(
+    ...withoutSqlComments(sql).matchAll(
       /CREATE (?:UNLOGGED )?TABLE (?:IF NOT EXISTS )?([a-z_]+\.[a-z_0-9]+)/g,
     ),
   ].map((match) => match[1] as string);
 }
+
+test("a table the SQL only mentions is not a table the SQL creates", () => {
+  // The negative cases, which are the whole point: the enumeration above is a
+  // regex over migration text, and nothing in migrations/postgres exercises
+  // either shape today. Without these, stripping comments would be an
+  // unverified claim.
+  assert.deepEqual(
+    createdTables(`-- CREATE TABLE app.legacy_x, dropped in 0039
+       CREATE TABLE app.real_one (id bigint);`),
+    ["app.real_one"],
+    "a commented-out CREATE TABLE is being counted as created",
+  );
+  assert.deepEqual(
+    createdTables(`/* historical: CREATE TABLE app.block_commented (x int) */
+       CREATE TABLE app.real_two (id bigint);`),
+    ["app.real_two"],
+    "a block-commented CREATE TABLE is being counted as created",
+  );
+  // And a `--` inside a string literal is not a comment, so a default value
+  // containing one must not truncate the statement that follows it.
+  assert.deepEqual(
+    createdTables(
+      `CREATE TABLE app.with_default (note text DEFAULT 'a -- b');
+       CREATE TABLE app.after_it (id bigint);`,
+    ),
+    ["app.with_default", "app.after_it"],
+    "a double dash inside a string literal is being read as a comment",
+  );
+});
 
 test("every serving-schema family declares its contract surface or sits in the shrinking backlog", () => {
   const files = readdirSync(MIGRATIONS_DIR)
