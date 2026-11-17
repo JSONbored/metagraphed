@@ -11,6 +11,7 @@ import {
   neuronPassWrite,
   retryNeuronCapture,
 } from "./neuron-capture-receipt.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 
 type Row = Record<string, unknown>;
 export type NeuronDocumentFamily =
@@ -62,10 +63,7 @@ export function groupNeuronDocuments(
           .toUpperCase()
       : String(key);
     const day = family === "neurons" ? "" : row.snapshot_date;
-    if (
-      typeof day !== "string" ||
-      (family !== "neurons" && !/^\d{4}-\d{2}-\d{2}$/.test(day))
-    )
+    if (typeof day !== "string" || (family !== "neurons" && !isIsoDay(day)))
       throw new TypeError("Invalid neuron snapshot day");
     const shard = position
       ? [...String(key)].reduce(

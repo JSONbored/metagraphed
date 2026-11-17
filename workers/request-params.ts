@@ -14,6 +14,7 @@
 // the src/* loaders can both depend on without a cycle.
 
 import { clampInt } from "./config.ts";
+import { ISO_DAY } from "../src/iso-date-window.ts";
 
 // Absolute pagination ceilings, shared by every paginated route + tool. A page is
 // never larger than MAX_LIMIT rows, and OFFSET never seeks past MAX_OFFSET (deep
@@ -136,4 +137,4 @@ export function clampOffset(raw: string | number | null | undefined): number {
 // A bare, anchored YYYY-MM-DD calendar date — the shape the date-bounded feeds use
 // for their TEXT `day` columns (lexicographic = chronological). Format-only: it
 // does not range-check the month/day fields.
-export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+export const DAY_PATTERN = ISO_DAY;

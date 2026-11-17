@@ -1,7 +1,8 @@
+import { isIsoDay } from "./iso-date-window.ts";
 /** Daily transition dates denote UTC midnight; legacy event rows use epoch ms. */
 export function axonObservationEpochMs(value: unknown): number | null {
   if (value == null) return null;
-  const daily = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const daily = isIsoDay(value);
   const epoch = daily ? Date.parse(`${value}T00:00:00.000Z`) : Number(value);
   if (!Number.isFinite(epoch) || epoch <= 0) return null;
   const date = new Date(epoch);

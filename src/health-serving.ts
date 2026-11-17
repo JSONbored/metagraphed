@@ -32,6 +32,7 @@ import {
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
 import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 import { recordOrNull } from "./read-store.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 
 type Row = Record<string, unknown>;
 
@@ -786,11 +787,7 @@ export function formatBulkTrends({
     for (const row of rows || []) {
       const netuid = Number(row.netuid);
       const date = String(row.date || "");
-      if (
-        !Number.isInteger(netuid) ||
-        netuid < 0 ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(date)
-      ) {
+      if (!Number.isInteger(netuid) || netuid < 0 || !isIsoDay(date)) {
         continue;
       }
       const samples = Math.max(0, Number(row.total) || 0);

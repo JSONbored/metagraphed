@@ -1,3 +1,4 @@
+import { isIsoDay } from "./iso-date-window.ts";
 /**
  * Derived alpha-price %-change windows for subnet economics listings (#7227).
  *
@@ -104,7 +105,7 @@ export function normalizeAlphaPricePoints(
     if (date == null || date === "") continue;
     const day = String(date).slice(0, 10);
     // Reject non-calendar prefixes so effectiveAt never sees partial dates.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    if (!isIsoDay(day)) continue;
     points.push({
       date: day,
       alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),

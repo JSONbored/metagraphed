@@ -7,6 +7,7 @@ import {
 } from "./route-limits.ts";
 import type { SubnetPriceShareCompositionArtifact } from "../schemas-src/routes/subnet-price-share-composition.ts";
 import type { OptionalRowQuerier } from "./read-store.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 
 type Row = Record<string, unknown>;
 
@@ -142,7 +143,7 @@ export function buildSubnetPriceShareComposition(
     const day = row.snapshot_date;
     if (
       typeof day !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+      !isIsoDay(day) ||
       !Number.isFinite(Date.parse(day)) ||
       new Date(day).toISOString().slice(0, 10) !== day ||
       day < firstDay ||

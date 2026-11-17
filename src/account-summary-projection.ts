@@ -77,6 +77,7 @@ import { timed, TIMING_R2 } from "./request-timing.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { ArtifactReadBudget } from "./artifact-read-budget.ts";
 import { r2TimeoutMs } from "../workers/storage.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 
 /** Objects the producer writes, one per shard. Contract with
  * metagraphed-infra's `services/indexer-rs/account_summary_r2.py`. */
@@ -138,7 +139,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * than the lakehouse read it would replace.
  */
 export function recentFloorMs(through: string | undefined): number | null {
-  if (!through || !/^\d{4}-\d{2}-\d{2}$/.test(through)) return null;
+  if (!through || !isIsoDay(through)) return null;
   const midnight = Date.parse(`${through}T00:00:00.000Z`);
   return Number.isFinite(midnight) ? midnight + DAY_MS : null;
 }
