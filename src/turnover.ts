@@ -1,5 +1,4 @@
 import { roundBelowOne } from "./lib/stats.ts";
-import { readAnchoredWindow } from "./iso-date-window.ts";
 // Validator-set & registration turnover (churn) for one subnet: how much its
 // validator set and neuron population rotate between two dated snapshots of the
 // neuron_daily rollup (start vs end of a window). Pure + exported for unit tests;
@@ -7,15 +6,11 @@ import { readAnchoredWindow } from "./iso-date-window.ts";
 // snapshot yields a schema-stable zero (never throws), matching the live tiers.
 
 type Row = Record<string, unknown>;
-type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // The neuron_daily columns the turnover handler reads — its store read contract
 // (mirrors BLOCK_READ_COLUMNS / CONCENTRATION_READ_COLUMNS). A bare `hotkey`
 // column name is public metagraph vocabulary, not a secret; kept in src/ next to
 // its consumer so the Worker handler stays a thin SELECT.
-export const TURNOVER_READ_COLUMNS =
-  "snapshot_date, uid, hotkey, validator_permit";
-
 // Round a retention ratio (always a finite 0..1 jaccard result) to a stable
 // precision WITHOUT letting a sub-perfect ratio round up to an exact 1 — the same
 // invariant `displayUptimeRatio` enforces for uptime (#1799) and `formatUptimePercent`
@@ -391,68 +386,5 @@ export function turnoverChangeDetail(changes: Row): Row {
     validators_entered: changes.validators_entered,
     validators_exited: changes.validators_exited,
     uid_reassignments: changes.uid_reassignments,
-  };
-}
-
-async function loadTurnoverBoundaryRows(
-  runner: SqlRunner,
-  netuid: number,
-  { windowDays }: { windowDays?: number | null },
-): Promise<{ startDate: string | null; endDate: string | null; rows: Row[] }> {
-  // Anchor the window to the newest stored snapshot for this subnet, not the
-  // worker wall clock — a lagging/restored store still compares its real
-  // boundary days instead of returning comparable:false. Mirrors
-  // loadChainTurnover / loadSubnetMovers (#3024). The anchor is read and
-  // shifted in TypeScript: the `date(MAX(...), ?)` this used to ask is
-  // SQLite's alone and answered zero rows on Postgres (#9792).
-  const { startDate, endDate } = await readAnchoredWindow(
-    runner,
-    windowDays ?? null,
-    netuid,
-  );
-  const rows =
-    startDate == null || endDate == null
-      ? []
-      : await runner(
-          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?) ORDER BY snapshot_date ASC, uid ASC`,
-          [netuid, startDate, endDate],
-        );
-  return { startDate, endDate, rows };
-}
-
-// One subnet's validator-set & registration churn — shared by the REST route and
-// MCP tool: resolve the window's boundary snapshot_dates on neuron_daily (anchored
-// to the subnet's newest stored day for finite windows), read exactly those two
-// days' rows, shape with buildTurnover. Cold D1 → comparable:false.
-export async function loadSubnetTurnover(
-  runner: SqlRunner,
-  netuid: number,
-  {
-    windowLabel,
-    windowDays,
-    includeChanges = false,
-  }: {
-    windowLabel?: string;
-    windowDays?: number | null;
-    includeChanges?: boolean;
-  },
-): Promise<Row> {
-  const { startDate, endDate, rows } = await loadTurnoverBoundaryRows(
-    runner,
-    netuid,
-    {
-      windowDays,
-    },
-  );
-  const options = {
-    window: windowLabel,
-    startDate,
-    endDate,
-  };
-  const data = buildTurnover(rows, netuid, options);
-  if (!includeChanges) return data;
-  return {
-    ...data,
-    changes: turnoverChangeDetail(buildTurnoverChanges(rows, netuid, options)),
   };
 }

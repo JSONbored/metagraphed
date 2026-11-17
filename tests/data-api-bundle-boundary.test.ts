@@ -328,13 +328,19 @@ describe("data-api's bundle boundary", () => {
     // their bounds SQL, against which the helper carries one extra branch so a
     // non-ISO anchor keeps the whole range (the parity
     // tests/pg-neuron-daily-view.pg18.ts asserts). Nothing new enters the
-    // graph; all five modules were already in it. Keep 2,511 source bytes of
-    // margin.
+    // graph; all five modules were already in it.
+    // THE CEILING THEN TIGHTENS, because the next change deletes rather than
+    // adds: retiring the four unreachable neuron_daily loaders (#13019 slice
+    // 3 -- nothing called them, the api Worker proxies to data-api and says so
+    // at workers/request-handlers/entities.ts:3047) takes 6,769 source bytes
+    // OUT, for 4,954,520. A ratchet that only ever rises stops measuring
+    // anything, so a deletion lowers it: 2,480 source bytes of margin, below
+    // where this slice started.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_963_800,
+      firstParty < 4_957_000,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

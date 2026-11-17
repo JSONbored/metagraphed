@@ -19,14 +19,9 @@ import {
 // answer the same question at different scopes, and a second copy of the
 // truncation rule would be free to drift from the one the schema documents.
 import { windowCoverage } from "./turnover.ts";
-import { readAnchoredWindow } from "./iso-date-window.ts";
 export { CHAIN_TURNOVER_LIMIT_DEFAULT, CHAIN_TURNOVER_LIMIT_MAX };
 
 // The neuron_daily columns the handler reads — its store read contract. `hotkey` is public
-// metagraph vocabulary, not a secret; kept next to its consumer so the handler stays a thin SELECT.
-export const CHAIN_TURNOVER_READ_COLUMNS =
-  "snapshot_date, netuid, hotkey, validator_permit";
-
 // Supported comparison windows (label -> days): the 7d/30d/90d set the turnover/concentration
 // scorecards use.
 export const CHAIN_TURNOVER_WINDOWS: Record<string, number> = {
@@ -337,42 +332,4 @@ export function buildChainTurnover(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide validator turnover, computed live: anchor the window to the newest STORED
-// snapshot (date() relative to MAX(snapshot_date)) so a lagging/restored store still compares
-// real boundary snapshots, read every subnet's validator rows at those two days (bounded by
-// validator_permit = TRUE; the date-first idx_neuron_daily_date_netuid_agg covers the boundary
-// scan), shape with buildChainTurnover. Cold/absent or single-snapshot D1 → comparable:false.
-export async function loadChainTurnover(
-  runner: (
-    sql: string,
-    params: unknown[],
-  ) => Promise<Array<Record<string, unknown>>>,
-  {
-    windowLabel = DEFAULT_CHAIN_TURNOVER_WINDOW,
-    limit,
-  }: { windowLabel?: string; limit?: number } = {},
-): Promise<ChainTurnoverResult> {
-  // Normalize the label ONCE and use it for both the day lookup and the emitted artifact window,
-  // so a direct caller passing an unsupported label can never emit a schema-invalid window value
-  // (the HTTP handler already rejects bad windows before this runs).
-  const normalizedLabel = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowLabel)
-    ? windowLabel
-    : DEFAULT_CHAIN_TURNOVER_WINDOW;
-  const days = CHAIN_TURNOVER_WINDOWS[normalizedLabel];
-  const { startDate, endDate } = await readAnchoredWindow(runner, days);
-  let rows: Array<Record<string, unknown>> = [];
-  if (startDate != null && endDate != null && startDate !== endDate) {
-    rows = await runner(
-      `SELECT ${CHAIN_TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE validator_permit = TRUE AND snapshot_date IN (?, ?)`,
-      [startDate, endDate],
-    );
-  }
-  return buildChainTurnover(rows, {
-    window: normalizedLabel,
-    startDate,
-    endDate,
-    limit,
-  });
 }

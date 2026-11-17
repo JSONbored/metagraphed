@@ -4,7 +4,6 @@ import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
 // Shared with the turnover family rather than reimplemented: same rule, one
 // definition, so the truncation contract cannot drift between routes.
 import { windowCoverage } from "./turnover.ts";
-import { readAnchoredWindow } from "./iso-date-window.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
   round9OrZero,
@@ -25,7 +24,6 @@ export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // the date-first idx_neuron_daily_date_netuid_agg (migrations/0030) covers them.
 
 type Row = Record<string, unknown>;
-type SqlRunner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
 // Supported comparison windows (label -> days): the 7d/30d/90d set the concentration scorecards use.
 export const MOVERS_WINDOWS: Record<string, number> = {
@@ -359,41 +357,3 @@ export function buildMovers(
 // days (GROUP BY netuid, snapshot_date; the date-first idx_neuron_daily_date_netuid_agg
 // covers both the boundary scan and this aggregate), shape with buildMovers. Cold/absent
 // or single-snapshot D1 -> empty movers.
-export async function loadSubnetMovers(
-  runner: SqlRunner,
-  {
-    windowLabel = DEFAULT_MOVERS_WINDOW,
-    sort = DEFAULT_MOVERS_SORT,
-    limit = MOVERS_LIMIT_DEFAULT,
-  }: { windowLabel?: string; sort?: string; limit?: unknown } = {},
-): Promise<Row> {
-  const days =
-    MOVERS_WINDOWS[windowLabel] ?? MOVERS_WINDOWS[DEFAULT_MOVERS_WINDOW];
-  // Anchor the window to the newest STORED snapshot, not the worker's wall
-  // clock, so a lagging, restored, or historical store still compares its real
-  // boundary snapshots instead of returning empty when the data trails "now".
-  // The anchor is read and shifted in TypeScript: the `date(MAX(...), ?)` this
-  // used to ask is SQLite's alone and answered zero rows on Postgres (#9792).
-  const { startDate, endDate } = await readAnchoredWindow(runner, days);
-  let startRows: Row[] = [];
-  let endRows: Row[] = [];
-  if (startDate != null && endDate != null && startDate !== endDate) {
-    const rows = await runner(
-      "SELECT netuid, snapshot_date, COUNT(*) AS neuron_count, " +
-        "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
-        "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
-        "FROM neuron_daily WHERE snapshot_date IN (?, ?) GROUP BY netuid, snapshot_date",
-      [startDate, endDate],
-    );
-    const list = Array.isArray(rows) ? rows : [];
-    startRows = list.filter((row) => row?.snapshot_date === startDate);
-    endRows = list.filter((row) => row?.snapshot_date === endDate);
-  }
-  return buildMovers(startRows, endRows, {
-    window: windowLabel,
-    startDate,
-    endDate,
-    sort,
-    limit,
-  });
-}

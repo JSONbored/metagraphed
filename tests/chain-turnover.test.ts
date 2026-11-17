@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildChainTurnover,
-  loadChainTurnover,
   CHAIN_TURNOVER_LIMIT_MAX,
-  DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../src/chain-turnover.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -296,91 +294,6 @@ describe("buildChainTurnover", () => {
   test("non-array input yields the empty block", () => {
     const data = buildChainTurnover(null, { startDate: START, endDate: END });
     assert.equal(data.subnet_count, 0);
-    assert.deepEqual(data.subnets, []);
-  });
-});
-
-describe("loadChainTurnover", () => {
-  /**
-   * A runner that answers the anchored-window two-step, then the rows read.
-   *
-   * The window is MAX first, then MIN with a cutoff BOUND AS A DATE: the
-   * `date(MAX(snapshot_date), '-N days')` this used to ask is SQLite's alone
-   * and answered zero rows on a Postgres runner (#9792/#9798). So the
-   * anchoring these tests exist to pin is now proven by the bound cutoff --
-   * a real ISO date computed from the stored MAX -- rather than by a modifier
-   * string that only one engine understood.
-   */
-  function anchoredRunner(
-    bounds: { start: string | null; end: string | null },
-    rows: Row[] = [],
-  ) {
-    const calls: Row[] = [];
-    const runner = async (sql: string, params: unknown[]) => {
-      calls.push({ sql, params });
-      if (/MAX\(snapshot_date\) AS end_date/.test(sql))
-        return [{ end_date: bounds.end }];
-      if (/MIN\(snapshot_date\) AS start_date/.test(sql))
-        return [{ start_date: bounds.start }];
-      return rows;
-    };
-    return { calls, runner };
-  }
-
-  test("resolves boundary dates then reads the validator rows and shapes them", async () => {
-    const { calls, runner } = anchoredRunner(
-      { start: START, end: END },
-      ROWS as Row[],
-    );
-    const data = await loadChainTurnover(runner, {
-      windowLabel: "30d",
-      limit: 20,
-    });
-    // No date function left in any statement for two dialects to disagree
-    // about -- the anchor is read, shifted in TypeScript, and bound.
-    for (const call of calls)
-      assert.doesNotMatch(String(call.sql), /\bdate\s*\(/i);
-    assert.match(calls[0].sql, /MAX\(snapshot_date\) AS end_date/);
-    assert.deepEqual(calls[0].params, []);
-    // 30 days before the stored MAX, as a literal.
-    assert.deepEqual(calls[1].params, ["2026-05-31"]);
-    assert.match(
-      calls[2].sql,
-      /validator_permit = TRUE AND snapshot_date IN \(\?, \?\)/,
-    );
-    assert.deepEqual(calls[2].params, [START, END]);
-    assert.equal(data.window, "30d");
-    assert.equal(data.subnet_count, 2);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("defaults the window and returns empty on a cold store", async () => {
-    // A cold store's MAX is NULL, so there is no anchor to shift: the window
-    // is reported unknown and the second read never happens, rather than a
-    // cutoff being computed from "Invalid Date".
-    const { calls, runner } = anchoredRunner({ start: null, end: null });
-    const data = await loadChainTurnover(runner, {});
-    assert.equal(data.window, DEFAULT_CHAIN_TURNOVER_WINDOW);
-    assert.equal(calls.length, 1);
-    assert.equal(data.comparable, false);
-    assert.deepEqual(data.subnets, []);
-  });
-
-  test("an unknown windowLabel falls back to the default for BOTH days and emitted window", async () => {
-    const { calls, runner } = anchoredRunner({ start: START, end: END });
-    const data = await loadChainTurnover(runner, { windowLabel: "bogus" });
-    // The fallback is visible in the bound cutoff: 30 days before the stored
-    // MAX, not 7 and not a wall-clock date.
-    assert.deepEqual(calls[1].params, ["2026-05-31"]);
-    assert.equal(data.window, "30d"); // the normalized default, not "bogus"
-  });
-
-  test("a single available snapshot (start === end) skips the read and is not comparable", async () => {
-    const { calls, runner } = anchoredRunner({ start: END, end: END });
-    const data = await loadChainTurnover(runner, { windowLabel: "7d" });
-    assert.equal(calls.length, 2); // the window's two reads, no rows query
-    assert.deepEqual(calls[1].params, ["2026-06-23"]); // 7 days before MAX
-    assert.equal(data.comparable, false);
     assert.deepEqual(data.subnets, []);
   });
 });
