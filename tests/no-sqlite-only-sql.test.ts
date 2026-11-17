@@ -315,9 +315,24 @@ const SINGLE_STORE_OWNERS: readonly SingleStoreOwner[] = [
   },
 ];
 
-/** A literal is SQL if it names a statement or clause keyword. */
+/**
+ * A literal is SQL if it names a statement keyword OR a clause shape.
+ *
+ * The statement keywords alone were not enough, which I found by auditing my
+ * own narrowing: SQL in this tree is often COMPOSED, so a fragment like
+ * `CASE WHEN typeof(x)='text' THEN CAST(x AS BLOB) END AS v` carries no
+ * SELECT/FROM/WHERE at all. Every such fragment today happens to sit in a
+ * module the scan skips, so the blind spot cost nothing -- but that is the
+ * skip list's luck, not this predicate's correctness, and it is exactly the
+ * false negative the rest of this file exists to stop.
+ *
+ * The added shapes are clause forms that are SQL and effectively never English
+ * prose. Verified against the tree before widening: recognition rises from
+ * 1,018 literals to 1,083 and raises ZERO new offenders, so this finds
+ * fragments without accusing anything.
+ */
 const SQL_SHAPED =
-  /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b/i;
+  /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b|CASE\s+WHEN\b|CAST\s*\([^()]*\sAS\s|FILTER\s*\(\s*WHERE\b|COALESCE\s*\(/i;
 
 /**
  * Each string literal separately, with `${...}` replaced by a placeholder.
@@ -422,7 +437,7 @@ describe("store-neutral SQL", () => {
     // ordinary growth does not fail the build -- but a drop means the scan
     // stopped looking somewhere, which is exactly the failure #9798 had.
     //
-    // MEASURED 2026-11-16 at 1,022 files and 1,018 SQL literals, against
+    // MEASURED 2026-11-16 at 1,022 files and 1,083 SQL literals, against
     // floors of 950 and 900. The slack is deliberate and it is there for
     // DELETIONS: retiring the four unreachable neuron_daily loaders (#13240)
     // cost five SQL literals on its own. A floor with no slack would have
@@ -629,6 +644,17 @@ describe("store-neutral SQL", () => {
         functionOffences([`the ${name}(x) helper returns a label`]),
         [],
         `${name} fires on prose, which would make this gate noise`,
+      );
+      // ...and inside a KEYWORD-LESS SQL FRAGMENT, which is the blind spot
+      // the statement-keyword-only predicate had. SQL here is composed, so
+      // `CASE WHEN typeof(x)='text' THEN CAST(x AS BLOB) END` is a real
+      // statement's real fragment with no SELECT in sight.
+      assert.equal(
+        functionOffences([
+          `CASE WHEN ${name}(col)='text' THEN CAST(col AS BLOB) END AS v`,
+        ]).length,
+        1,
+        `${name} is invisible inside a composed SQL fragment`,
       );
     }
   });
