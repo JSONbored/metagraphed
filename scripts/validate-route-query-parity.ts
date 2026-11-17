@@ -223,6 +223,23 @@ assert.deepEqual(
     `#10062 removed:\n  ${strayExports.join("\n  ")}`,
 );
 
+// An allowance says "this export may stay because something imports it", so
+// the check has to read CODE. Reading raw source let a comment sustain the
+// allowance, and this file's own allowance is one line away from that: the
+// importer names BulkHealthTrendsQuerySchema in a doc comment as well as in
+// its import, so deleting the usage would leave the allowance alive on prose
+// alone. Verified by doing exactly that -- with the import and the `.extend`
+// removed, this gate still passed.
+//
+// An exception list whose premise is checked by substring is the rot this
+// repo has hit repeatedly: prose has no compiler, so a comment naming a
+// symbol reads as a reference and fails nothing when the symbol goes.
+const withoutComments = (source: string): string =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, " ")
+    .replace(/([^:])\/\/.*$/gm, "$1 ");
+
 const staleAllowances = Object.entries(LIVE_ROUTE_QUERY_SCHEMAS).filter(
   ([name, importer]) => {
     let source: string;
@@ -231,7 +248,7 @@ const staleAllowances = Object.entries(LIVE_ROUTE_QUERY_SCHEMAS).filter(
     } catch {
       return true;
     }
-    return !source.includes(name);
+    return !withoutComments(source).includes(name);
   },
 );
 assert.deepEqual(
