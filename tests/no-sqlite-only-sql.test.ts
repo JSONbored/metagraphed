@@ -315,9 +315,24 @@ const SINGLE_STORE_OWNERS: readonly SingleStoreOwner[] = [
   },
 ];
 
-/** A literal is SQL if it names a statement or clause keyword. */
+/**
+ * A literal is SQL if it names a statement keyword OR a clause shape.
+ *
+ * The statement keywords alone were not enough, which I found by auditing my
+ * own narrowing: SQL in this tree is often COMPOSED, so a fragment like
+ * `CASE WHEN typeof(x)='text' THEN CAST(x AS BLOB) END AS v` carries no
+ * SELECT/FROM/WHERE at all. Every such fragment today happens to sit in a
+ * module the scan skips, so the blind spot cost nothing -- but that is the
+ * skip list's luck, not this predicate's correctness, and it is exactly the
+ * false negative the rest of this file exists to stop.
+ *
+ * The added shapes are clause forms that are SQL and effectively never English
+ * prose. Verified against the tree before widening: recognition rises from
+ * 1,018 literals to 1,083 and raises ZERO new offenders, so this finds
+ * fragments without accusing anything.
+ */
 const SQL_SHAPED =
-  /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b/i;
+  /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b|CASE\s+WHEN\b|CAST\s*\([^()]*\sAS\s|FILTER\s*\(\s*WHERE\b|COALESCE\s*\(/i;
 
 /**
  * Each string literal separately, with `${...}` replaced by a placeholder.
@@ -421,13 +436,55 @@ describe("store-neutral SQL", () => {
     // to move a number somebody reads. These are floors, not equalities, so
     // ordinary growth does not fail the build -- but a drop means the scan
     // stopped looking somewhere, which is exactly the failure #9798 had.
+    //
+    // THE MARGIN IS CHOSEN, NOT ROUNDED. Measured 2026-11-16: 1,022 scanned
+    // files and 1,083 SQL literals, of which only 228 files carry SQL at all.
+    // Round numbers that merely sit under today's count would make this
+    // decoration -- a floor of 900 against 1,083 would have let the scan stop
+    // looking at 17% of the SQL and still pass, and "it stopped looking" is
+    // the one thing the floor exists to catch.
+    //
+    // So each floor tolerates the largest LEGITIMATE loss and fails on
+    // anything bigger:
+    //
+    //   literals, 990 -- one large file's worth below today. The biggest
+    //     single contributor is workers/data-api.ts at 87 literals (8.0%);
+    //     the next two are 66 and 43. One file retiring is visible in its own
+    //     diff and restating the floor beside it is cheap, so that must not
+    //     fail the build. A loss LARGER than the biggest file means something
+    //     structural moved -- a walk root, the literal extraction, SQL_SHAPED
+    //     -- which is worth stopping for.
+    //   files, 1,000 -- 22 below today. No change yet seen removes more than
+    //     a handful; #13240 retired four loaders and removed zero files,
+    //     since their modules survive without them. Adding skip-list entries
+    //     lowers this too, and 22 is more than any plausible batch of those.
+    //
+    // Deliberately not tighter: ordinary editing moves a literal or two in
+    // and out of recognition, and a floor that churns on that gets raised
+    // reflexively until it means nothing. Deliberately not looser: a floor
+    // only a catastrophe can breach is a comment, not a check.
+    //
+    // The cutover (#13201) folds data-api into the metagraphed Worker, so it
+    // is the change most likely to move ~8% of this count. That is the
+    // designed path, not a surprise: restate the floor in that change,
+    // naming it.
     assert.ok(
-      scanned > 950,
-      `the scan reached only ${scanned} files; it had been reaching over 950`,
+      scanned > 1_000,
+      `the scan reached only ${scanned} files, under its floor of 1,000.\n` +
+        "If files were legitimately deleted, lower the floor IN THE SAME " +
+        "CHANGE and say which files and why. If not, the walk is no longer " +
+        "reaching part of the tree -- check the skip list and the walk roots " +
+        "(src, workers, scripts) before touching this number.",
     );
     assert.ok(
-      sqlLiterals_ > 900,
-      `the scan found only ${sqlLiterals_} SQL literals; it had been finding over 900`,
+      sqlLiterals_ > 990,
+      `the scan found only ${sqlLiterals_} SQL literals, under its floor of 990.\n` +
+        "A deletion that removes SQL lowers this legitimately -- restate the " +
+        "floor in the same change, naming the deletion. What it must not mean " +
+        "is that SQL stopped being RECOGNISED: if the count fell without code " +
+        "being removed, suspect SQL_SHAPED or the interpolation stripping in " +
+        "sqlLiteralList, because that silently narrows what every rule below " +
+        "ever sees.",
     );
     assert.deepEqual(
       offenders,
@@ -610,6 +667,17 @@ describe("store-neutral SQL", () => {
         functionOffences([`the ${name}(x) helper returns a label`]),
         [],
         `${name} fires on prose, which would make this gate noise`,
+      );
+      // ...and inside a KEYWORD-LESS SQL FRAGMENT, which is the blind spot
+      // the statement-keyword-only predicate had. SQL here is composed, so
+      // `CASE WHEN typeof(x)='text' THEN CAST(x AS BLOB) END` is a real
+      // statement's real fragment with no SELECT in sight.
+      assert.equal(
+        functionOffences([
+          `CASE WHEN ${name}(col)='text' THEN CAST(col AS BLOB) END AS v`,
+        ]).length,
+        1,
+        `${name} is invisible inside a composed SQL fragment`,
       );
     }
   });
