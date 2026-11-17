@@ -14,6 +14,7 @@ import {
   type SqliteMetricScalar,
 } from "./sqlite-metric-value.ts";
 import { createSqliteSum } from "./sqlite-sum.ts";
+import { isPgExceptionalTextKey } from "./pg-sql.ts";
 
 interface Part {
   kind: number;
@@ -247,7 +248,7 @@ export function createPgNeuronSummaryStore(
     },
     async nominatorCounts(hotkeys) {
       const unique = [...new Set(hotkeys)];
-      const exceptional = unique.some((key) => /\0|[\uD800-\uDFFF]/u.test(key));
+      const exceptional = unique.some(isPgExceptionalTextKey);
       const rows = await runtime.read.query<{
         hotkey?: string;
         ordinal?: number;
