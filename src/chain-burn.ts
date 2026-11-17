@@ -30,6 +30,7 @@ import {
   rpcUrlForNetwork,
 } from "./chain-network.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 
@@ -100,11 +101,6 @@ function decodeLeU16(hex: unknown): number | null {
   return parseInt(hex.slice(4, 6), 16) * 256 + parseInt(hex.slice(2, 4), 16);
 }
 
-/** BigInt rao -> Number TAO, divided in BigInt space first to avoid float loss. */
-function raoToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
-
 export const CHAIN_BURN_FIELD_SOURCES = {
   burn_tao: { kind: "measured", storage: "SubtensorModule.Burn" },
   subnet_count: { kind: "measured", storage: "SubtensorModule.TotalNetworks" },
@@ -151,7 +147,7 @@ export function buildChainBurn(
       if (netuid === null) continue;
       const rao = decodeLeU64(entry[1]);
       if (rao === null) continue;
-      rows.push({ netuid, burn_tao: raoToTao(rao) });
+      rows.push({ netuid, burn_tao: raoBigToTao(rao) });
     }
   }
   // Cheapest first: the ranking answers "where should I register", so the useful end

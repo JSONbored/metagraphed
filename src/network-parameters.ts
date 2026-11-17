@@ -38,6 +38,7 @@ import {
   networkKvKey,
   rpcUrlForNetwork,
 } from "./chain-network.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 // Logical retry seconds; physical KV expiration is at least 60 seconds.
 export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10;
@@ -143,13 +144,6 @@ export function decodeLeU64(hex: unknown): bigint | null {
     value = (value << 8n) | BigInt(parseInt(hex.slice(i, i + 2), 16));
   }
   return value;
-}
-
-// BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss (mirrors subnet-burn.ts's / subnet-recycled.ts's
-// identical conversion).
-function raoToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
 // U64F64 fixed-point ratio (0..u64::MAX representing 0.0..1.0) -> a plain
@@ -565,7 +559,7 @@ async function loadNetworkParametersSnapshot(
 
   const taoWeight = taoWeightBits != null ? u64f64ToFloat(taoWeightBits) : null;
   const stakeThresholdTao =
-    stakeThresholdRao != null ? raoToTao(stakeThresholdRao) : null;
+    stakeThresholdRao != null ? raoBigToTao(stakeThresholdRao) : null;
   const pendingChildKeyCooldownBlocks =
     pendingChildKeyCooldownBits != null
       ? Number(pendingChildKeyCooldownBits)
@@ -646,7 +640,7 @@ async function loadNetworkParametersSnapshot(
     stake_threshold_tao: stakeThresholdTao,
     pending_childkey_cooldown_blocks: pendingChildKeyCooldownBlocks,
     total_issuance_tao:
-      totalIssuanceRao != null ? raoToTao(totalIssuanceRao) : null,
+      totalIssuanceRao != null ? raoBigToTao(totalIssuanceRao) : null,
     block_emission_tao: emission?.tao_per_block ?? null,
     block_emission_halvings: emission?.halvings ?? null,
     emission_gate_bar: emissionGateBar,

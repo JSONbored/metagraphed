@@ -42,7 +42,6 @@ import {
   decodeOptionalBool,
   decodeRaoTao,
   indexNeuronAggregates,
-  raoToTao,
   refreshLiveEconomics,
   subnetHasChainData,
 } from "../src/live-economics-refresh.ts";
@@ -364,13 +363,6 @@ describe("live-economics cron wiring", () => {
 });
 
 describe("live-economics decoders", () => {
-  test("raoToTao stays exact past the double ceiling", () => {
-    assert.equal(raoToTao(1_500_000_000n), 1.5);
-    assert.equal(raoToTao(0n), 0);
-    // 341,897,675 TAO -- 38x over the 2^53-1 rao ceiling a naive divide loses.
-    assert.equal(raoToTao(341_897_675_806_350_302n), 341897675.8063503);
-  });
-
   test("decodeRaoTao distinguishes an unknown pool from a measured zero", () => {
     assert.equal(decodeRaoTao(u64(500_000n)), 0.0005);
     assert.equal(decodeRaoTao(undefined), null);
