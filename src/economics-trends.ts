@@ -58,8 +58,15 @@ export async function loadEconomicsTrends({
   params.push(ECONOMICS_TRENDS_ROW_CAP);
   const rows = await storeAll(db, sql, params);
   // Hitting the LIMIT means the oldest snapshot_date is truncated mid-day;
-  // flag it so buildEconomicsTrends drops that partial day (the pre-elimination
-  // contract, mirroring loadSubnetConcentrationHistory).
+  // flag it so buildEconomicsTrends drops that partial day. The same contract
+  // holds for the concentration-history read in workers/data-api.ts, which
+  // passes `capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP` to
+  // buildConcentrationHistory for exactly this reason. (This note used to
+  // point at the loader that first carried the contract, which was the
+  // pre-#4909 D1 store-query path and retired unreachable in #13240. Naming a
+  // retired symbol here would only recreate the dangling pointer that
+  // retirement left behind: prose has no compiler, so a comment naming a dead
+  // function reads as a reference and fails nothing when the function goes.)
   const data = buildEconomicsTrends(rows, {
     window: windowLabel,
     capped: rows.length >= ECONOMICS_TRENDS_ROW_CAP,
