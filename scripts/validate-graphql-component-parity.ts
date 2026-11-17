@@ -772,6 +772,39 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     );
     for (const key of report.stale) console.error(`  - ${key}`);
   }
-  if (report.violations.length || report.stale.length) process.exit(1);
+  // THE REACH, ASSERTED -- not merely printed, which is what it was.
+  //
+  // This gate counted its comparisons and reported them, then exited on
+  // violations alone, so zero comparisons printed "0 mirror type(s)" and
+  // PASSED. Found alongside the same gap in validate-graphql-tier-parity:
+  // when #13251 broke the shared `Mirrors GET` read, this gate did fail --
+  // but only because its DECLARED entries went stale as a side effect. With
+  // no declared entries it would have passed over an empty comparison, and a
+  // gate that cannot tell "nothing diverges" from "I compared nothing" is not
+  // reporting on the schema.
+  //
+  // Floors follow validate-graphql-route-parity's `comparedPairs < 155`
+  // precedent. Measured at 540 mirror types and 4,036 fields; 400 and 3,000
+  // leave room for a sizeable retirement -- a whole family of types leaving
+  // is tens, not hundreds -- while refusing the collapse a broken description
+  // read, an unparsed SDL or an empty registry produces.
+  if (report.comparedTypes < 400 || report.comparedFields < 3_000) {
+    console.error(
+      `\nOnly ${report.comparedTypes} type(s) and ${report.comparedFields} field(s) ` +
+        "compared, under floors of 400 and 3,000 -- this gate is not reaching " +
+        "the schema, so its silence means nothing.\n" +
+        "If types were legitimately retired, lower the floors IN THE SAME " +
+        "CHANGE and name them. Otherwise suspect the `Mirrors GET` read " +
+        "(scripts/lib/graphql-mirrors.ts), the SDL parse, or the component " +
+        "registry -- any of those going blank lands here.",
+    );
+  }
+  if (
+    report.violations.length ||
+    report.stale.length ||
+    report.comparedTypes < 400 ||
+    report.comparedFields < 3_000
+  )
+    process.exit(1);
   console.log("graphql-component-parity: OK");
 }
