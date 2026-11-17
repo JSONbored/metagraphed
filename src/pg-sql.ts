@@ -254,3 +254,32 @@ export function createPgQuestionMarkRunner(
   return (text: string, params: unknown[] = []) =>
     sql.unsafe(toPositionalPlaceholders(text), params);
 }
+
+/**
+ * A text key PostgreSQL cannot carry in a `text` parameter: NUL or a lone
+ * surrogate, both of which strict-UTF-8 `text` rejects.
+ *
+ * THE PROTOCOL, here because it is one contract and was four copies: bind such
+ * a key as `bytea` (`Buffer.from(key)`) and compare the column through
+ * `convert_to(column,'UTF8')`. `pgTextKeyMatch` builds that pair; the array
+ * (`unnest($1::bytea[])`) and statement-rewrite forms are shaped differently
+ * and call this predicate instead.
+ */
+export function isPgExceptionalTextKey(key: string): boolean {
+  return /\0|[\uD800-\uDFFF]/u.test(key);
+}
+
+/** Predicate and bind value for one text key. `placeholder` is the caller's
+ * own `$n`: numbering belongs to whoever accumulates the values array. */
+export function pgTextKeyMatch(
+  column: string,
+  key: string,
+  placeholder: string,
+): { predicate: string; value: string | Buffer } {
+  return isPgExceptionalTextKey(key)
+    ? {
+        predicate: `convert_to(${column},'UTF8')=${placeholder}::bytea`,
+        value: Buffer.from(key),
+      }
+    : { predicate: `${column}=${placeholder}::text`, value: key };
+}

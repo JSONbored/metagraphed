@@ -13,6 +13,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
+  isPgExceptionalTextKey,
+  pgTextKeyMatch,
   createPgQuestionMarkRunner,
   createPgSql,
   pgStatementText,
@@ -491,5 +493,62 @@ describe("createPgQuestionMarkRunner", () => {
     );
     await run("SELECT 1", []);
     assert.deepEqual(calls[0]!.values, []);
+  });
+});
+
+// The PostgreSQL-untypable text key, and the protocol for comparing one.
+//
+// Four native read paths each carried their own copy of this detection, three
+// naming the result `exceptional`. The call sites live behind the pinned
+// document decoder and so only execute in CI's image; the extracted logic is
+// testable here, which is where it belongs.
+describe("isPgExceptionalTextKey", () => {
+  test("NUL and lone surrogates are exceptional", () => {
+    assert.equal(isPgExceptionalTextKey("a\u0000b"), true);
+    // A high surrogate with no low one, and a low with no high: neither is
+    // valid UTF-8, which is what `text` demands.
+    assert.equal(isPgExceptionalTextKey("a\uD800b"), true);
+    assert.equal(isPgExceptionalTextKey("a\uDFFFb"), true);
+  });
+
+  test("ordinary keys, including non-ASCII and real pairs, are not", () => {
+    // The negative cases carry the weight: a detector that flags everything
+    // would send every key down the bytea path and still pass a positive test.
+    assert.equal(isPgExceptionalTextKey("5GrwvaEF5zXb26Fz9rcQpDWS57Ct"), false);
+    assert.equal(isPgExceptionalTextKey(""), false);
+    assert.equal(isPgExceptionalTextKey("validator-ü-名"), false);
+    // A WELL-FORMED surrogate pair is one emoji, not a lone surrogate, and
+    // `text` carries it fine -- the regex must not fire on the pair.
+    assert.equal(isPgExceptionalTextKey("ok-\u{1F600}"), false);
+  });
+});
+
+describe("pgTextKeyMatch", () => {
+  test("an ordinary key compares as text and binds the string", () => {
+    const match = pgTextKeyMatch("m.hotkey", "5Grwva", "$3");
+    assert.equal(match.predicate, "m.hotkey=$3::text");
+    assert.equal(match.value, "5Grwva");
+  });
+
+  test("an exceptional key compares through convert_to and binds bytea", () => {
+    const match = pgTextKeyMatch("m.hotkey", "a\u0000b", "$1");
+    assert.equal(match.predicate, "convert_to(m.hotkey,'UTF8')=$1::bytea");
+    assert.ok(Buffer.isBuffer(match.value));
+    // Round-trips: the bytes are the key's UTF-8, so the comparison is exact
+    // rather than a lossy rendering of it.
+    assert.equal((match.value as Buffer).toString("utf8"), "a\u0000b");
+  });
+
+  test("the column and placeholder are the caller's, not invented", () => {
+    // Placeholder numbering belongs to whoever accumulates the values array,
+    // so this must thread both through untouched.
+    assert.equal(
+      pgTextKeyMatch("c.hotkey", "k", "$12").predicate,
+      "c.hotkey=$12::text",
+    );
+    assert.equal(
+      pgTextKeyMatch("account", "a\uD800", "$2").predicate,
+      "convert_to(account,'UTF8')=$2::bytea",
+    );
   });
 });

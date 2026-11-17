@@ -11,6 +11,7 @@ import {
   sqliteMetricWireValue,
   type SqliteMetricScalar,
 } from "./sqlite-metric-value.ts";
+import { pgTextKeyMatch } from "./pg-sql.ts";
 
 interface Part {
   kind: number;
@@ -83,11 +84,13 @@ export function createPgNeuronViewStore(
         predicates.push(
           `(${[...new Set(hotkeys)]
             .map((key) => {
-              const exceptional = /\0|[\uD800-\uDFFF]/u.test(key);
-              values.push(exceptional ? Buffer.from(key) : key);
-              return exceptional
-                ? `convert_to(m.hotkey,'UTF8')=$${values.length}::bytea`
-                : `m.hotkey=$${values.length}::text`;
+              const match = pgTextKeyMatch(
+                "m.hotkey",
+                key,
+                `$${values.length + 1}`,
+              );
+              values.push(match.value);
+              return match.predicate;
             })
             .join(" OR ")})`,
         );

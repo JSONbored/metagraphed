@@ -336,11 +336,25 @@ describe("data-api's bundle boundary", () => {
     // OUT, for 4,954,520. A ratchet that only ever rises stops measuring
     // anything, so a deletion lowers it: 2,480 source bytes of margin, below
     // where this slice started.
+    // The PostgreSQL-untypable text key gains one owner, +1,164 source bytes
+    // over e38f3c723, for 4,957,734. Four native read paths each carried their
+    // own copy of the detection (`/\0|[\uD800-\uDFFF]/u`, three of them
+    // naming the result `exceptional`) and two carried their own copy of the
+    // protocol that follows from it -- bind `bytea`, compare through
+    // `convert_to(column,'UTF8')`. src/pg-sql.ts now owns both; the four sites
+    // shed their copies, which is why the net is under a third of what the
+    // helpers and their comment weigh.
+    //
+    // This one RISES, where #13240's retirement lowered it, and the trade is
+    // worth naming: the alternative to the comment is deleting the knowledge
+    // to save bytes, which is how four undocumented copies happened. A
+    // contract about data PostgreSQL cannot store is the wrong place to
+    // economise. Keep 2,512 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_957_000,
+      firstParty < 4_960_400,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

@@ -6,6 +6,7 @@ import type {
 import type { ValidatorHistoryStore } from "./validator-history-store.ts";
 import { createSqliteSum } from "./sqlite-sum.ts";
 import { sqliteMetricWireValue } from "./sqlite-metric-value.ts";
+import { pgTextKeyMatch } from "./pg-sql.ts";
 
 export interface ValidatorHistoryLimits {
   maxSourceRows?: number;
@@ -104,15 +105,9 @@ export function createPgValidatorHistoryStore(
       }
       return runtime.transaction(
         async (scope) => {
-          const exceptional = /\0|[\uD800-\uDFFF]/u.test(hotkey);
-          const baseValues: unknown[] = [
-            exceptional ? Buffer.from(hotkey) : hotkey,
-          ];
-          const basePredicates = [
-            exceptional
-              ? "convert_to(m.hotkey,'UTF8')=$1::bytea"
-              : "m.hotkey=$1::text",
-          ];
+          const match = pgTextKeyMatch("m.hotkey", hotkey, "$1");
+          const baseValues: unknown[] = [match.value];
+          const basePredicates = [match.predicate];
           if (cutoff !== null) {
             baseValues.push(cutoff);
             basePredicates.push(

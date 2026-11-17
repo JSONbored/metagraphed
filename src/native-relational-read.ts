@@ -4,6 +4,7 @@ import {
   toPositionalPlaceholders,
   type PgSql,
 } from "./pg-sql.ts";
+import { isPgExceptionalTextKey } from "./pg-sql.ts";
 
 const families = new Set([
   "surface_status",
@@ -70,7 +71,7 @@ export function selectedNativeRelationalSql(
     if (accountPredicate.test(statement)) {
       if (typeof parameters[0] !== "string")
         throw new TypeError("Native account identity must be text");
-      if (/\0|[\uD800-\uDFFF]/u.test(parameters[0])) {
+      if (isPgExceptionalTextKey(parameters[0])) {
         statement = statement.replace(
           /\bWHERE account = \$1\b/,
           "WHERE convert_to(account,'UTF8') = $1::bytea",
