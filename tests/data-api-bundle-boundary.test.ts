@@ -317,18 +317,21 @@ describe("data-api's bundle boundary", () => {
     // definition instead of asking a store to answer the question. The
     // remaining 2,450 bytes are the watchdog's and loader's own native arms
     // and prose. Keep 2,491 source bytes of margin.
-    // The #9792 anchored-window repair adds 2,281 source bytes over
-    // a6b3f7a6c, for 4,960,990: readAnchoredWindow and its reasoning in
-    // src/iso-date-window.ts, which three readers now share in place of the
-    // SQLite-only `date(MAX(snapshot_date), ?)` each carried. Nothing new
-    // enters the graph -- all four modules were already in it, and the three
-    // readers each shed their own copy of the bounds SQL. Keep 2,510 source
-    // bytes of margin.
+    // The #9792 anchored-window repair adds 1,425 source bytes over
+    // a6b3f7a6c, for 4,960,134: readAnchoredWindow and its reasoning in
+    // src/iso-date-window.ts, which FOUR readers now share -- the three that
+    // still carried the SQLite-only `date(MAX(snapshot_date), ?)`, plus
+    // workers/data-api.ts's neuronDailyWindowBounds, which had reached the
+    // same answer by a second copy of the algorithm and now delegates. That
+    // delegation is why the net is under half the helper's own size: the
+    // worker sheds four hand-spelled statements and the three readers shed
+    // their bounds SQL. Nothing new enters the graph; all five modules were
+    // already in it. Keep 2,566 source bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_963_500,
+      firstParty < 4_962_700,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

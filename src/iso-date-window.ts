@@ -55,7 +55,21 @@ export function shiftIsoDate(date: unknown, days: number): string | null {
   return new Date(ms + Math.trunc(days) * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** The loosest shape the three anchored readers' runners share. */
+/**
+ * The two aggregate columns an anchored-window read returns.
+ *
+ * A `type` and not an `interface` so it stays assignable to the
+ * `Record<string, unknown>` rows the readers' own runners produce, which is
+ * what lets one runner shape serve both them and a typed `sql.unsafe` call.
+ * Both optional: a store that returns no row for a bare aggregate is a case
+ * `readAnchoredWindow` handles rather than assumes away.
+ */
+export type AnchoredWindowRow = {
+  start_date?: string | null;
+  end_date?: string | null;
+};
+
+/** The loosest shape the anchored readers' runners share. */
 export type WindowRunner = (
   sql: string,
   params: unknown[],
