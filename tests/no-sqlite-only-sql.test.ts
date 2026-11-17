@@ -71,7 +71,27 @@ const SQLITE_ONLY: [RegExp, string][] = [
     /\bjson_extract\s*\(/i,
     "json_extract() — Postgres uses ->> / jsonb_extract_path_text",
   ],
-  [/\bjson_each\s*\(/i, "json_each() — Postgres uses jsonb_array_elements"],
+  // json_each is NOT SQLite-only: Postgres has json_each(json) too, and over
+  // the json type it is the only iterator that keeps a payload's duplicate
+  // keys and their order (the jsonb forms dedupe), which is exactly what the
+  // native readings of the decoder's receipts depend on (#13019). So the rule
+  // matches the HAZARD rather than the function name.
+  //
+  // The hazard is the #10179 shape: json_each over a TEXT column with no
+  // cast. SQLite accepts it, Postgres answers `function json_each(text) does
+  // not exist` at runtime, and the reader's own catch renders that as an
+  // empty trail. An explicit `::json` in the argument is what distinguishes
+  // the two -- SQLite has no `::` cast, so that spelling can never be the
+  // SQLite-only form.
+  //
+  // `::json` is required with a word boundary, not as a prefix: json_each on
+  // a `::jsonb` value is a THIRD broken shape (Postgres has jsonb_each for
+  // that, not json_each), so it must keep failing this rule rather than be
+  // exempted by a cast that merely starts the same way.
+  [
+    /\bjson_each\s*\((?![^()\n]*::json\b)/i,
+    "json_each() on a value with no explicit ::json cast — SQLite accepts a TEXT argument and Postgres does not (use ::json, which keeps duplicate keys where the jsonb forms drop them)",
+  ],
   // BOOLEAN ARITHMETIC. SQLite has no boolean type, so `n + (a > b)` adds 1 or
   // 0; Postgres answers `operator does not exist: integer + boolean`.
   //
@@ -251,6 +271,25 @@ describe("store-neutral SQL", () => {
         ),
       ),
       "the date() rule is matching prose",
+    );
+  });
+
+  test("the json_each rule still catches the uncast read, and the ::json forms it must not", () => {
+    // Same proof obligation as the two rules above: narrowing json_each to
+    // the uncast argument is only safe if the uncast argument still fails.
+    const caught = (sql: string) =>
+      SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(sql)));
+    assert.ok(
+      caught("`SELECT value FROM json_each(axon_values) WHERE key = ?`"),
+      "the scanner no longer recognises json_each over an uncast TEXT column",
+    );
+    assert.ok(
+      caught("`CROSS JOIN LATERAL json_each(p.payload_json::jsonb) j`"),
+      "json_each over ::jsonb is being exempted by a prefix match; Postgres has jsonb_each for that argument, and the jsonb forms drop the duplicate keys this payload carries",
+    );
+    assert.ok(
+      !caught("`CROSS JOIN LATERAL json_each(p.payload_json::json) j`"),
+      "the portable ::json form is being reported as SQLite-only",
     );
   });
 });

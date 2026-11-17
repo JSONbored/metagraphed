@@ -67,14 +67,21 @@ import { axonAddressSql, ROUTABLE_AXON_SQL } from "./axon-routable.ts";
  * `split_part(prev_axon, ':', 1)`, which reads an IPv6 announcement's first hex
  * group as the whole address and merges unrelated hosts into one (#11379).
  */
-export function axonSequenceSql(extraWhere = ""): string {
+export function axonSequenceSql(
+  extraWhere = "",
+  source = "neuron_daily",
+): string {
+  // `source` is a fixed relation name or a parenthesised readings subquery
+  // producing (netuid, uid, snapshot_date, hotkey, axon) -- the native store
+  // (src/axon-transition-pg.ts) supplies its tagged-schema readings here so
+  // the sequence, loss predicate and address split stay THIS one definition.
   return (
     "SELECT netuid, uid, snapshot_date, hotkey, axon, " +
     `(${ROUTABLE_AXON_SQL}) AS routable, ` +
     `LAG(${ROUTABLE_AXON_SQL}) OVER w AS prev_routable, ` +
     "LAG(hotkey) OVER w AS prev_hotkey, " +
     `LAG(${axonAddressSql("axon")}) OVER w AS prev_address ` +
-    "FROM neuron_daily WHERE snapshot_date >= ?" +
+    `FROM ${source} WHERE snapshot_date >= ?` +
     (extraWhere ? ` AND ${extraWhere}` : "") +
     " WINDOW w AS (PARTITION BY netuid, uid ORDER BY snapshot_date)"
   );
