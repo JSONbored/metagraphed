@@ -54,3 +54,73 @@ export function shiftIsoDate(date: unknown, days: number): string | null {
   if (!Number.isFinite(days)) return null;
   return new Date(ms + Math.trunc(days) * DAY_MS).toISOString().slice(0, 10);
 }
+
+/** The loosest shape the three anchored readers' runners share. */
+export type WindowRunner = (
+  sql: string,
+  params: unknown[],
+) => Promise<Array<Record<string, unknown>>>;
+
+/**
+ * The stored window for a neuron_daily reader, anchored on the newest row the
+ * table actually HAS -- without a date function in the SQL.
+ *
+ * This is the conversion the module above was written for and the three
+ * readers never received (#9792/#9798): `chain-turnover`, `movers` and
+ * `turnover` each still asked for
+ * `snapshot_date >= (SELECT date(MAX(snapshot_date), ?) ...)`, which is
+ * SQLite's two-argument `date()` and does not exist in Postgres at any arity.
+ * On a Postgres runner the subquery yielded nothing, `>=` matched nothing, and
+ * the route answered a schema-stable 200 with zero rows -- the one shape that
+ * reads as "no data yet". Shared here so the three cannot drift apart again,
+ * and so it matches what `createPgNeuronDailyViewStore.window` already does
+ * natively.
+ *
+ * Two reads rather than one, deliberately: the anchor has to be KNOWN before
+ * the cutoff can be bound. `MAX(snapshot_date)` over the whole (optionally
+ * subnet-scoped) relation is the same value the old outer MAX returned, since
+ * the global maximum always satisfies its own cutoff.
+ *
+ * `days` null means the whole retained range, which needs no cutoff and stays
+ * one read.
+ */
+export async function readAnchoredWindow(
+  runner: WindowRunner,
+  days: number | null,
+  netuid?: number,
+): Promise<{ startDate: string | null; endDate: string | null }> {
+  const scope = netuid === undefined ? "" : " WHERE netuid = ?";
+  const scopeParams = netuid === undefined ? [] : [netuid];
+  if (days === null) {
+    const all = await runner(
+      "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date" +
+        ` FROM neuron_daily${scope}`,
+      scopeParams,
+    );
+    return {
+      startDate: (all?.[0]?.start_date as string | null) ?? null,
+      endDate: (all?.[0]?.end_date as string | null) ?? null,
+    };
+  }
+  const anchor = await runner(
+    `SELECT MAX(snapshot_date) AS end_date FROM neuron_daily${scope}`,
+    scopeParams,
+  );
+  const endDate = (anchor?.[0]?.end_date as string | null) ?? null;
+  const cutoff = shiftIsoDate(endDate, -days);
+  // A null anchor is an empty (or subnet-less) relation, and a null cutoff is
+  // a stored value that is not a date. Either way there is no window to
+  // report, and inventing one would be the confident answer this whole module
+  // exists to stop.
+  if (endDate === null || cutoff === null)
+    return { startDate: null, endDate: null };
+  const start = await runner(
+    "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE" +
+      `${netuid === undefined ? "" : " netuid = ? AND"} snapshot_date >= ?`,
+    [...scopeParams, cutoff],
+  );
+  return {
+    startDate: (start?.[0]?.start_date as string | null) ?? null,
+    endDate,
+  };
+}

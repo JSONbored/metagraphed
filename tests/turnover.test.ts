@@ -474,6 +474,21 @@ describe("turnover loaders", () => {
       for (const [pattern, rows] of Object.entries(rowsBySql)) {
         if (new RegExp(pattern).test(sql)) return rows;
       }
+      // The anchored window is TWO reads when a cutoff applies -- MAX first,
+      // then MIN with the cutoff bound as a date, because
+      // `date(MAX(snapshot_date), ?)` is SQLite's alone and answered zero
+      // rows on a Postgres runner (#9792/#9798). The fixtures below still
+      // describe one boundary pair, so this projects each read out of it
+      // rather than making every test spell the split.
+      const bounds = Object.entries(rowsBySql).find(([pattern]) =>
+        /MIN\\\(snapshot_date/.test(pattern),
+      )?.[1][0];
+      if (bounds) {
+        if (/MAX\(snapshot_date\) AS end_date FROM/.test(sql))
+          return [{ end_date: bounds.end_date }];
+        if (/MIN\(snapshot_date\) AS start_date FROM/.test(sql))
+          return [{ start_date: bounds.start_date }];
+      }
       return [];
     };
   }
@@ -599,10 +614,13 @@ describe("turnover loaders", () => {
       9,
       { windowLabel: "30d", windowDays: 30 },
     )) as Row;
-    assert.match(captures.sql[0], /date\(MAX\(snapshot_date\), \?\)/);
-    assert.equal(captures.params[0][0], 9);
-    assert.equal(captures.params[0][1], "-30 days");
-    assert.equal(captures.params[0][2], 9);
+    // No date function anywhere for two dialects to disagree about, and the
+    // cutoff is 30 days before the STORE's newest day (2026-01-31) -- five
+    // months behind the faked wall clock, which is the whole point.
+    for (const sql of captures.sql) assert.doesNotMatch(sql, /\bdate\s*\(/i);
+    assert.match(captures.sql[0], /MAX\(snapshot_date\) AS end_date/);
+    assert.deepEqual(captures.params[0], [9]);
+    assert.deepEqual(captures.params[1], [9, "2026-01-01"]);
     assert.equal(data.start_date, "2026-01-01");
     assert.equal(data.end_date, "2026-01-31");
     assert.equal(data.comparable, true);

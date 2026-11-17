@@ -4,6 +4,7 @@ import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
 // Shared with the turnover family rather than reimplemented: same rule, one
 // definition, so the truncation contract cannot drift between routes.
 import { windowCoverage } from "./turnover.ts";
+import { readAnchoredWindow } from "./iso-date-window.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 import {
   round9OrZero,
@@ -368,17 +369,12 @@ export async function loadSubnetMovers(
 ): Promise<Row> {
   const days =
     MOVERS_WINDOWS[windowLabel] ?? MOVERS_WINDOWS[DEFAULT_MOVERS_WINDOW];
-  // Anchor the window to the newest STORED snapshot (date() relative to MAX(snapshot_date)),
-  // not the worker's wall clock, so a lagging, restored, or historical D1 store still compares
-  // its real boundary snapshots instead of returning empty when the data trails "now".
-  const bounds = await runner(
-    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date " +
-      "FROM neuron_daily " +
-      "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
-    [`-${days} days`],
-  );
-  const startDate = bounds?.[0]?.start_date ?? null;
-  const endDate = bounds?.[0]?.end_date ?? null;
+  // Anchor the window to the newest STORED snapshot, not the worker's wall
+  // clock, so a lagging, restored, or historical store still compares its real
+  // boundary snapshots instead of returning empty when the data trails "now".
+  // The anchor is read and shifted in TypeScript: the `date(MAX(...), ?)` this
+  // used to ask is SQLite's alone and answered zero rows on Postgres (#9792).
+  const { startDate, endDate } = await readAnchoredWindow(runner, days);
   let startRows: Row[] = [];
   let endRows: Row[] = [];
   if (startDate != null && endDate != null && startDate !== endDate) {

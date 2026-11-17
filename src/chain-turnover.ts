@@ -19,6 +19,7 @@ import {
 // answer the same question at different scopes, and a second copy of the
 // truncation rule would be free to drift from the one the schema documents.
 import { windowCoverage } from "./turnover.ts";
+import { readAnchoredWindow } from "./iso-date-window.ts";
 export { CHAIN_TURNOVER_LIMIT_DEFAULT, CHAIN_TURNOVER_LIMIT_MAX };
 
 // The neuron_daily columns the handler reads — its store read contract. `hotkey` is public
@@ -360,14 +361,7 @@ export async function loadChainTurnover(
     ? windowLabel
     : DEFAULT_CHAIN_TURNOVER_WINDOW;
   const days = CHAIN_TURNOVER_WINDOWS[normalizedLabel];
-  const bounds = await runner(
-    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date " +
-      "FROM neuron_daily " +
-      "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
-    [`-${days} days`],
-  );
-  const startDate = (bounds?.[0]?.start_date as string | null) ?? null;
-  const endDate = (bounds?.[0]?.end_date as string | null) ?? null;
+  const { startDate, endDate } = await readAnchoredWindow(runner, days);
   let rows: Array<Record<string, unknown>> = [];
   if (startDate != null && endDate != null && startDate !== endDate) {
     rows = await runner(

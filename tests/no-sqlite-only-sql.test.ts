@@ -56,9 +56,19 @@ const SQLITE_ONLY: [RegExp, string][] = [
   // statement that broke was built by interpolation -- `'-${days} days'` -- so
   // the character after the sign in SOURCE is `$`, not a digit. Requiring a
   // digit here would pass the scanner on exactly the file it was extended for.
+  //
+  // `date(MAX(snapshot_date), ?)` -- the shape that sat in three live readers
+  // unseen -- needed TWO widenings here, and the pattern above missed it on
+  // both counts. Its modifier is a BOUND PLACEHOLDER, so there is no quote
+  // and no sign in SOURCE to match; and its first argument is a NESTED CALL,
+  // whose `(` the old `[^()]*` could not cross, so the comma was never
+  // reached either. Postgres has no two-argument date() at any arity, so a
+  // second argument of any kind is SQLite-only -- the modifier shapes are
+  // enumerated only to keep English prose like "date (`2026-06-01`, a whole
+  // UTC day)" out, and neither a nested call nor a `?` is ever that prose.
   [
-    /\bdate\s*\([^()]*,\s*'(?:[+-]|now|unixepoch|localtime|utc|start of|weekday)/i,
-    "date(x, modifier) — SQLite date arithmetic; compute the cutoff in JS and bind or inline a YYYY-MM-DD literal",
+    /\bdate\s*\((?:[^()]|\([^()]*\))*,\s*(?:'(?:[+-]|now|unixepoch|localtime|utc|start of|weekday)|\?|\$\d)/i,
+    "date(x, modifier) — SQLite date arithmetic; Postgres has no two-argument date(). Read the anchor date, shift it in JS (shiftIsoDate), and bind a YYYY-MM-DD literal",
   ],
   [/\bLIMIT\s+\d+\s*,\s*\d+/i, "LIMIT a, b — Postgres needs LIMIT b OFFSET a"],
   [/\bPRAGMA\b/i, "PRAGMA — SQLite only"],
@@ -271,6 +281,38 @@ describe("store-neutral SQL", () => {
         ),
       ),
       "the date() rule is matching prose",
+    );
+    // The two shapes that got past the rule for months, byte for byte from
+    // src/chain-turnover.ts, src/movers.ts and src/turnover.ts: a BOUND
+    // PLACEHOLDER modifier (no quote, no sign in source) behind a NESTED CALL
+    // (whose `(` the old `[^()]*` could not cross to reach the comma).
+    assert.ok(
+      SQLITE_ONLY.some(([p]) =>
+        p.test(
+          sqlLiterals(
+            '"WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)"',
+          ),
+        ),
+      ),
+      "the scanner no longer recognises date(MAX(x), ?) -- the shape that answered zero rows on Postgres in three readers (#9792)",
+    );
+    assert.ok(
+      SQLITE_ONLY.some(([p]) =>
+        p.test(sqlLiterals('"SELECT date(MAX(day), $2) FROM t"')),
+      ),
+      "the numbered-placeholder form is being missed",
+    );
+    // And the conversion those three received must NOT trip it: the anchor is
+    // read, shifted in TypeScript, and bound as a literal.
+    assert.ok(
+      !SQLITE_ONLY.some(([p]) =>
+        p.test(
+          sqlLiterals(
+            '"SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ?"',
+          ),
+        ),
+      ),
+      "the dialect-neutral anchored window is being reported as SQLite-only",
     );
   });
 
