@@ -82,6 +82,16 @@ describe("raoBigToTao", () => {
     assert.equal(raoBigToTao(1n), 1e-9);
   });
 
+  test("stays exact 38x past the double ceiling", () => {
+    // Carried here from tests/live-economics-refresh.test.ts, which asserted
+    // this property against a private copy of the conversion (#13248). The
+    // value is production-derived -- 341,897,675 TAO, 38x over the 2^53-1 rao
+    // ceiling a naive divide loses -- so it is kept rather than dropped as a
+    // duplicate of the case below.
+    assert.equal(raoBigToTao(1_500_000_000n), 1.5);
+    assert.equal(raoBigToTao(341_897_675_806_350_302n), 341897675.8063503);
+  });
+
   test("keeps precision where a direct Number(rao) / 1e9 loses it", () => {
     // 10,000,000.123456789 TAO. This is a REALISTIC magnitude, not a synthetic
     // one: total issuance is ~11.2M TAO, so a network-wide sum reaches here.

@@ -15,7 +15,7 @@ import { chainRpc } from "./chain-rpc.ts";
 import { accountIdFromSs58 } from "./finney-ss58.ts";
 export { isFinneySs58Address } from "./finney-ss58.ts";
 import type { FieldSources } from "./field-provenance.ts";
-import { RAO_PER_TAO } from "./lib/rao.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 import {
   type ChainNetworkId,
   networkKvKey,
@@ -212,10 +212,9 @@ async function loadAccountBalanceSnapshot(
     );
     const totalRao = accountInfoTotalRao(result);
     if (totalRao != null) {
-      // Sum in BigInt rao space, then divide once — avoids float precision loss
-      // on large on-chain balances before converting the remainder to TAO.
-      balanceTao =
-        Number(totalRao / RAO_PER_TAO) + Number(totalRao % RAO_PER_TAO) / 1e9;
+      // Sum in BigInt rao space, then convert once -- avoids float precision
+      // loss on large on-chain balances.
+      balanceTao = raoBigToTao(totalRao);
       rpcOk = true;
     }
   } catch {

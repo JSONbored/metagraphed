@@ -71,13 +71,8 @@ function decodeLeU64(hex: unknown): bigint | null {
   return value;
 }
 
-// BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss (mirrors subnet-recycled.ts's identical conversion).
-function raoToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
-
 import type { FieldSources } from "./field-provenance.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 
@@ -144,7 +139,7 @@ async function loadSubnetBurnSnapshot(
       const raw = chainRpcResult(await rpcResp.json());
       const rao = decodeLeU64(raw);
       if (rao != null) {
-        burnTao = raoToTao(rao);
+        burnTao = raoBigToTao(rao);
         rpcOk = true;
       } else if (raw === null) {
         // Genuinely unset storage reads as a real zero, not a failure —

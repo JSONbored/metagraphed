@@ -65,6 +65,7 @@ import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { readStore } from "./read-store.ts";
 import { selectedNeuronAggregateStore } from "./neuron-aggregate-store.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 type Row = Record<string, unknown>;
 
@@ -180,14 +181,6 @@ export const ECONOMICS_STORAGE_VALUES = {
 type MapName = keyof typeof ECONOMICS_STORAGE_MAPS;
 type StorageMaps = Record<MapName, Map<number, string>>;
 
-/** BigInt rao -> Number TAO, split in BigInt space so the integer part stays
- * exact (the network-wide sums are far past 2^53 at rao precision). Mirrors
- * the private helper of the same name in src/network-parameters.ts and the
- * `rao_to_tao_exact` the Python capture used. */
-export function raoToTao(rao: bigint): number {
-  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
-}
-
 /** A u64 rao map entry as TAO. `absentAsZero` distinguishes the two real
  * cases: a pool reserve that is simply not there is unknown (null), while a
  * disabled subnet's emission channel is a measured zero -- 57 subnets read 0
@@ -198,7 +191,7 @@ export function decodeRaoTao(
 ): number | null {
   const rao = decodeLeU64(raw);
   if (rao === null) return absentAsZero ? 0 : null;
-  return raoToTao(rao);
+  return raoBigToTao(rao);
 }
 
 /** A little-endian unsigned integer of `byteLen` bytes as a Number. Used for
@@ -282,7 +275,7 @@ export function decodeMovingPrice(raw: string | undefined): {
   return {
     // Truncate to rao in BigInt space, matching the Balance the SDK path
     // produced, rather than publishing a float with sub-rao digits.
-    alpha_price_tao: raoToTao((bits * 1_000_000_000n) >> 32n),
+    alpha_price_tao: raoBigToTao((bits * 1_000_000_000n) >> 32n),
     moving_price_pinned: u96f32U128ToFloat(bits),
   };
 }
@@ -382,7 +375,7 @@ export function buildSubnetEconomics(
     registration_allowed: registrationAllowed,
     registration_cost_tao: decodeRaoTao(get("registration_cost")),
     subnet_volume_tao:
-      subnetVolumeRao === null ? null : raoToTao(subnetVolumeRao),
+      subnetVolumeRao === null ? null : raoBigToTao(subnetVolumeRao),
     tao_in_pool_tao: decodeRaoTao(get("tao_in_pool")),
     total_stake_alpha: neurons?.total_stake_alpha ?? null,
     validator_count: validatorCount,
@@ -569,7 +562,7 @@ export async function refreshLiveEconomics(
           : {
               block: blockNumber,
               block_hash: blockHash,
-              total_issuance_tao: raoToTao(totalIssuance),
+              total_issuance_tao: raoBigToTao(totalIssuance),
               emission_gate_bar:
                 gateBar === null ? null : u64f64U128ToFloat(gateBar),
               emission_bar_quantile:

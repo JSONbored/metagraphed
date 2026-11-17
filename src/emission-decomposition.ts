@@ -31,6 +31,7 @@ import {
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
 import { RAO_PER_TAO } from "./lib/rao.ts";
+import { raoBigToTao } from "./lib/rao.ts";
 
 /** Rao per TAO. */
 /**
@@ -195,13 +196,6 @@ export interface EmissionDecomposition {
 const numberOrNull = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
-/** rao -> TAO without a float multiply on the way in. */
-function raoToTao(rao: bigint): number {
-  const whole = rao / RAO_PER_TAO;
-  const frac = rao % RAO_PER_TAO;
-  return Number(whole) + Number(frac) / 1e9;
-}
-
 export function buildEmissionDecomposition(input: {
   subnets: readonly EconomicsPipelineRow[];
   chainState: DecompositionChainState;
@@ -277,9 +271,9 @@ export function buildEmissionDecomposition(input: {
       final_share: stages.final_share,
       gate_delta: stages.gate_delta,
       distance_to_bar: stages.distance_to_bar,
-      tao_in_emission: taoInRao === null ? null : raoToTao(taoInRao),
-      excess_tao: excessRao === null ? null : raoToTao(excessRao),
-      tao_total: totalRao === null ? null : raoToTao(totalRao),
+      tao_in_emission: taoInRao === null ? null : raoBigToTao(taoInRao),
+      excess_tao: excessRao === null ? null : raoBigToTao(excessRao),
+      tao_total: totalRao === null ? null : raoBigToTao(totalRao),
       // Zero intake is a real state (a deeply gated or disabled subnet), and
       // 0/0 is not a fraction -- null rather than NaN.
       liquidity_fraction:
@@ -324,9 +318,9 @@ export function buildEmissionDecomposition(input: {
     aggregate: {
       eligible_count: reconstruction.eligible_count,
       disabled_count: reconstruction.disabled_count,
-      tao_in_emission: raoToTao(sumTaoInRao),
-      excess_tao: raoToTao(sumExcessRao),
-      tao_total: raoToTao(sumTotalRao),
+      tao_in_emission: raoBigToTao(sumTaoInRao),
+      excess_tao: raoBigToTao(sumExcessRao),
+      tao_total: raoBigToTao(sumTotalRao),
       liquidity_fraction:
         sumTotalRao === 0n ? null : Number(sumTaoInRao) / Number(sumTotalRao),
       total_final_share: totalFinalShare,
