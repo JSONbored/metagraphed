@@ -35,8 +35,6 @@ const SQLITE_ONLY: [RegExp, string][] = [
     "INSERT OR ... — use ON CONFLICT ... DO UPDATE/DO NOTHING",
   ],
   [/\bAUTOINCREMENT\b/i, "AUTOINCREMENT — Postgres uses GENERATED/serial"],
-  [/\bstrftime\s*\(/i, "strftime() — Postgres uses to_char/date_trunc"],
-  [/\bjulianday\s*\(/i, "julianday() — no Postgres equivalent"],
   [/\bdatetime\s*\(\s*'now'/i, "datetime('now') — Postgres uses now()"],
   // TWO-ARGUMENT date(), which is the one that got through (#10179).
   //
@@ -77,10 +75,6 @@ const SQLITE_ONLY: [RegExp, string][] = [
   // holding JSON, the reader wraps its own read in a catch, and a thrown
   // "function json_extract does not exist" renders as "nothing has changed
   // here" -- a real answer for a stable subnet, so indistinguishable.
-  [
-    /\bjson_extract\s*\(/i,
-    "json_extract() — Postgres uses ->> / jsonb_extract_path_text",
-  ],
   // json_each is NOT SQLite-only: Postgres has json_each(json) too, and over
   // the json type it is the only iterator that keeps a payload's duplicate
   // keys and their order (the jsonb forms dedupe), which is exactly what the
@@ -101,27 +95,6 @@ const SQLITE_ONLY: [RegExp, string][] = [
   [
     /\bjson_each\s*\((?![^()\n]*::json\b)/i,
     "json_each() on a value with no explicit ::json cast — SQLite accepts a TEXT argument and Postgres does not (use ::json, which keeps duplicate keys where the jsonb forms drop them)",
-  ],
-  // The three remaining constructs #9798 named for this scan and never got.
-  // None appears in a scanned file today -- every current use of INSTR is
-  // inside the D1-owning modules skipped below -- so these are here to stop a
-  // REINTRODUCTION, which is the job the scan was asked to do. Each has a
-  // portable spelling that both engines accept, so there is no reason to
-  // reach for the SQLite one.
-  //
-  // `||` was on that list too and is deliberately NOT here: both engines
-  // concatenate strings with it, and the real divergence is only in NULL and
-  // numeric coercion, which this scanner cannot tell apart from the thousands
-  // of legitimate uses in this tree. A rule that cannot distinguish them
-  // would be noise, and noise is how a gate stops being read.
-  [/\bIFNULL\s*\(/i, "IFNULL() — both engines have COALESCE()"],
-  [
-    /\bGROUP_CONCAT\s*\(/i,
-    "GROUP_CONCAT() — Postgres uses string_agg(value, separator); note SQLite's default separator is ',' and string_agg has no default",
-  ],
-  [
-    /\bINSTR\s*\(/i,
-    "INSTR(haystack, needle) — Postgres uses strpos(), whose arguments are in the SAME order; both are 1-based and return 0 when absent",
   ],
   // BOOLEAN ARITHMETIC. SQLite has no boolean type, so `n + (a > b)` adds 1 or
   // 0; Postgres answers `operator does not exist: integer + boolean`.
@@ -152,6 +125,126 @@ const SQLITE_ONLY: [RegExp, string][] = [
   ],
 ];
 
+/**
+ * DERIVED, not collected: functions SQLite provides that Postgres does not.
+ *
+ * The rules above grew one incident at a time, each matching the SHAPE that
+ * burned us, and #9798 is what that costs. Its scan was asked to catch "the
+ * next one" and could not see the three statements it was written for, because
+ * `date(MAX(snapshot_date), ?)` differed from the remembered shape in two
+ * incidental ways -- a bound placeholder where the memory had a quoted
+ * modifier, a nested call where it had a bare column. A green run then means
+ * "nothing matched the shapes we remember", which reads identically to
+ * "nothing is wrong" and is how three modules kept a dialect-incompatible call
+ * behind a passing gate for months.
+ *
+ * So the unit here is the FUNCTION, which is the thing that actually does or
+ * does not exist in Postgres, and every call of one is flagged whatever its
+ * arguments look like. A new evasion has to invent a new function name rather
+ * than a new argument shape.
+ *
+ * The value is the portable spelling, because a refusal that does not say what
+ * to write instead gets worked around.
+ */
+const SQLITE_ONLY_FUNCTIONS: Readonly<Record<string, string>> = {
+  julianday: "no Postgres equivalent; compute from a timestamp difference",
+  strftime: "to_char() / date_trunc()",
+  unixepoch: "extract(epoch from ...)",
+  ifnull: "COALESCE(), which both engines have",
+  group_concat:
+    "string_agg(value, separator) -- note SQLite defaults the separator to ',' and string_agg has no default",
+  instr: "strpos(), same argument order, also 1-based and 0 when absent",
+  json_extract: "->> / #>> / jsonb_extract_path_text",
+  json_quote: "to_jsonb()",
+  json_group_array: "json_agg() / jsonb_agg()",
+  json_group_object: "json_object_agg()",
+  json_patch: "|| on jsonb, or jsonb_set() for one path",
+  json_insert: "jsonb_set(..., create_if_missing => true)",
+  json_set: "jsonb_set()",
+  json_replace: "jsonb_set(..., create_if_missing => false)",
+  json_remove: "- / #- on jsonb",
+  json_type: "json_typeof() / jsonb_typeof()",
+  json_valid: "no direct equivalent; validate before storing",
+  printf: "format()",
+  randomblob: "gen_random_bytes()",
+  zeroblob: "repeat()::bytea or decode()",
+  unhex: "decode(value, 'hex')",
+  soundex: "no Postgres equivalent without fuzzystrmatch",
+  last_insert_rowid: "INSERT ... RETURNING",
+  total_changes: "no Postgres equivalent",
+  sqlite_version: "version()",
+  sqlite_source_id: "version()",
+  load_extension: "never reachable from a query in Postgres",
+  likelihood: "no planner hint of this shape in Postgres",
+  likely: "no planner hint of this shape in Postgres",
+  unlikely: "no planner hint of this shape in Postgres",
+  iif: "CASE WHEN ... THEN ... ELSE ... END",
+  glob: "LIKE / SIMILAR TO / ~ (GLOB is also an operator -- see the rules above)",
+  unicode: "ascii() for the first character",
+};
+
+/**
+ * The same derivation for names that are ALSO ordinary English or JavaScript.
+ *
+ * `typeof(`, `quote(`, `changes(` and `hex(` appear in this tree inside string
+ * literals that are prose or code, not SQL, so flagging them everywhere would
+ * be noise -- and noise is how a gate stops being read. They are therefore
+ * checked only in literals that actually look like SQL, which is a narrowing
+ * of WHERE to look and never of what counts as a violation.
+ */
+const SQLITE_ONLY_IN_SQL_CONTEXT: Readonly<Record<string, string>> = {
+  typeof: "pg_typeof()",
+  quote: "quote_literal() / quote_ident()",
+  changes: "no Postgres equivalent; use INSERT ... RETURNING or ROW_COUNT",
+  hex: "encode(value, 'hex')",
+  char: "chr(), one code point at a time",
+  raise: "RAISE in PL/pgSQL, never in a plain statement",
+};
+
+/** A literal is SQL if it names a statement or clause keyword. */
+const SQL_SHAPED =
+  /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|CREATE\s+(TABLE|INDEX|VIEW)|ALTER\s+TABLE|WITH\s+\w+\s+AS|FROM\s+\w|WHERE\s+\w|GROUP\s+BY|ORDER\s+BY|ON\s+CONFLICT)\b/i;
+
+/**
+ * Each string literal separately, with `${...}` replaced by a placeholder.
+ *
+ * Per-literal because the SQL-context tier needs to know which literal a hit
+ * is in. Interpolations are stripped because their CONTENTS are TypeScript:
+ * `app.${quote(daily)}` is a call to this repo's own `quote` helper, and
+ * reading it as SQLite's `quote()` is a false positive that would have had to
+ * be silenced by deleting the rule.
+ */
+function sqlLiteralList(source: string): string[] {
+  const withoutComments = source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, " ")
+    .replace(/([^:])\/\/.*$/gm, "$1 ");
+  return [
+    ...withoutComments.matchAll(
+      /"([^"\\]*(?:\\.[^"\\]*)*)"|`([^`]*)`|'([^'\\]*(?:\\.[^'\\]*)*)'/g,
+    ),
+  ].map((m) => (m[1] ?? m[2] ?? m[3] ?? "").replace(/\$\{[^}]*\}/g, " ? "));
+}
+
+/** Every offending function call in one file's literals. */
+function functionOffences(literals: readonly string[]): string[] {
+  const out: string[] = [];
+  const joined = literals.join("\n");
+  for (const [name, portable] of Object.entries(SQLITE_ONLY_FUNCTIONS)) {
+    const hit = new RegExp(`\\b${name}\\s*\\(`, "i").exec(joined);
+    if (hit)
+      out.push(`${hit[0].trim()} — ${name}() is SQLite's; use ${portable}`);
+  }
+  for (const [name, portable] of Object.entries(SQLITE_ONLY_IN_SQL_CONTEXT)) {
+    const pattern = new RegExp(`\\b${name}\\s*\\(`, "i");
+    const inSql = literals.some(
+      (literal) => SQL_SHAPED.test(literal) && pattern.test(literal),
+    );
+    if (inSql) out.push(`${name}( — ${name}() is SQLite's; use ${portable}`);
+  }
+  return out;
+}
+
 /** SQL lives in string literals; the prose around it does not. Scanning raw
  *  source reports every one of these from the comments that EXPLAIN them --
  *  including this repo's own notes about the bug above. */
@@ -180,6 +273,8 @@ function walk(dir: string): string[] {
 describe("store-neutral SQL", () => {
   test("no file that can reach either store uses SQLite-only syntax", () => {
     const offenders: string[] = [];
+    let scanned = 0;
+    let sqlLiterals_ = 0;
     // Everything shipped, AND scripts/ (#10179).
     //
     // scripts/ was outside this walk, which is half of why
@@ -229,15 +324,45 @@ describe("store-neutral SQL", () => {
           // Dedicated D1 binding and credential; never accepts a generic
           // store runner. Native receiver tests cover atomic source selection.
           "src/retained-blocks-sync.ts",
+          // Takes a `Pick<D1Database, "prepare" | "batch">` -- a D1 binding,
+          // structurally, never a generic store runner. Found by the function
+          // derivation below, which flagged its `hex(data)`: correct about the
+          // function and wrong about the file, so the file is declared here
+          // rather than the rule weakened.
+          "src/raw-capture-d1.ts",
+          // Runs through `d1AdminBatch` on a maintainer's D1 management
+          // credential -- the same posture as the native D1 migration runner,
+          // as its own header says. Its `changes()` was the derivation's other
+          // find.
+          "scripts/review-treasury-readings.ts",
         ].includes(file)
       )
         continue;
-      const sql = sqlLiterals(readFileSync(file, "utf8"));
+      scanned += 1;
+      const literals = sqlLiteralList(readFileSync(file, "utf8"));
+      sqlLiterals_ += literals.filter((literal) =>
+        SQL_SHAPED.test(literal),
+      ).length;
+      const sql = literals.join("\n");
       for (const [pattern, why] of SQLITE_ONLY) {
         const hit = pattern.exec(sql);
         if (hit) offenders.push(`${file}: ${hit[0].trim()} — ${why}`);
       }
+      for (const offence of functionOffences(literals))
+        offenders.push(`${file}: ${offence}`);
     }
+    // THE REACH, STATED. A gap in this scan used to pass silently; now it has
+    // to move a number somebody reads. These are floors, not equalities, so
+    // ordinary growth does not fail the build -- but a drop means the scan
+    // stopped looking somewhere, which is exactly the failure #9798 had.
+    assert.ok(
+      scanned > 950,
+      `the scan reached only ${scanned} files; it had been reaching over 950`,
+    );
+    assert.ok(
+      sqlLiterals_ > 900,
+      `the scan found only ${sqlLiterals_} SQL literals; it had been finding over 900`,
+    );
     assert.deepEqual(
       offenders,
       [],
@@ -337,29 +462,78 @@ describe("store-neutral SQL", () => {
     );
   });
 
-  test("the three constructs #9798 named are recognised, and their portable forms are not", () => {
-    // These guard against reintroduction rather than against anything in the
-    // tree, so without this test a green run above would say nothing at all
-    // about whether they work.
-    const caught = (sql: string) =>
-      SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(sql)));
-    for (const [sqliteOnly, portable] of [
-      [
-        "`SELECT IFNULL(stake_tao, 0) FROM neuron_daily`",
-        "`SELECT COALESCE(stake_tao, 0) FROM neuron_daily`",
-      ],
-      [
-        "`SELECT GROUP_CONCAT(hotkey) FROM neuron_daily`",
-        "`SELECT string_agg(hotkey, ',') FROM neuron_daily`",
-      ],
-      [
-        "`SELECT INSTR(axon, ':') FROM neuron_daily`",
-        "`SELECT strpos(axon, ':') FROM neuron_daily`",
-      ],
-    ] as [string, string][]) {
-      assert.ok(caught(sqliteOnly), `not recognised: ${sqliteOnly}`);
-      assert.ok(!caught(portable), `portable form rejected: ${portable}`);
+  test("every function in the derivation is provably caught, and the count is stated", () => {
+    // THE COVERAGE NUMBER #9798 DID NOT HAVE. An inventory nothing exercises
+    // is the same trap one layer up: it would look like 39 functions guarded
+    // while a typo in any name guarded none of them. So every entry has to
+    // catch a call, and the totals are asserted, which means the next gap
+    // moves a number instead of passing silently.
+    const names = Object.keys(SQLITE_ONLY_FUNCTIONS);
+    const contextNames = Object.keys(SQLITE_ONLY_IN_SQL_CONTEXT);
+    assert.equal(names.length, 33, "derived function count changed");
+    assert.equal(contextNames.length, 6, "SQL-context function count changed");
+    for (const name of names) {
+      const offences = functionOffences([`SELECT ${name}(col) FROM t`]);
+      assert.equal(
+        offences.length,
+        1,
+        `${name} is in the inventory but catches nothing`,
+      );
+      assert.match(offences[0]!, /use \S/, `${name} names no portable form`);
     }
+    for (const name of contextNames) {
+      assert.equal(
+        functionOffences([`SELECT ${name}(col) FROM t`]).length,
+        1,
+        `${name} is not caught inside SQL`,
+      );
+      // ...and deliberately NOT outside SQL, which is the whole reason this
+      // tier exists: `typeof(x)` in a quoted snippet of TypeScript is not a
+      // dialect fault.
+      assert.deepEqual(
+        functionOffences([`the ${name}(x) helper returns a label`]),
+        [],
+        `${name} fires on prose, which would make this gate noise`,
+      );
+    }
+  });
+
+  test("the two shapes that evaded the date() rule for months", () => {
+    // NAMED, because they are the regression cases this gate was missing: the
+    // scan #9798 added was green on all three statements it was written for.
+    // Byte for byte from src/chain-turnover.ts, src/movers.ts and
+    // src/turnover.ts.
+    // Wrapped in backticks because `sqlLiterals` extracts SQL FROM SOURCE,
+    // which is how the real scan sees it -- testing the bare string would
+    // skip the extraction step the hit has to survive.
+    const caught = (sql: string) =>
+      SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(`\`${sql}\``))) ||
+      functionOffences([sql]).length > 0;
+
+    // 1. A BOUND PLACEHOLDER where the rule expected a quoted modifier.
+    assert.ok(
+      caught(
+        "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
+      ),
+      "the placeholder-modifier shape is unrecognised again",
+    );
+    assert.ok(
+      caught("SELECT date(MAX(day), $2) FROM t"),
+      "the numbered-placeholder shape is unrecognised again",
+    );
+    // 2. A NESTED CALL as the first argument, whose paren the rule's
+    //    character class could not cross to reach the comma.
+    assert.ok(
+      caught("SELECT date(COALESCE(day, other), '-30 days') FROM t"),
+      "a nested first argument hides the modifier again",
+    );
+    // And the conversion those three received must stay clean.
+    assert.ok(
+      !caught(
+        "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ?",
+      ),
+      "the dialect-neutral anchored window is being reported as SQLite-only",
+    );
   });
 
   test("the json_each rule still catches the uncast read, and the ::json forms it must not", () => {
