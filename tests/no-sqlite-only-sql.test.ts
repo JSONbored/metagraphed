@@ -421,13 +421,32 @@ describe("store-neutral SQL", () => {
     // to move a number somebody reads. These are floors, not equalities, so
     // ordinary growth does not fail the build -- but a drop means the scan
     // stopped looking somewhere, which is exactly the failure #9798 had.
+    //
+    // MEASURED 2026-11-16 at 1,022 files and 1,018 SQL literals, against
+    // floors of 950 and 900. The slack is deliberate and it is there for
+    // DELETIONS: retiring the four unreachable neuron_daily loaders (#13240)
+    // cost five SQL literals on its own. A floor with no slack would have
+    // turned that legitimate retirement into a red build reading "the scan
+    // stopped looking", which is this guard's own failure mode wearing the
+    // other coat -- so the messages below say how to tell the two apart
+    // rather than just reporting the number.
     assert.ok(
       scanned > 950,
-      `the scan reached only ${scanned} files; it had been reaching over 950`,
+      `the scan reached only ${scanned} files, under its floor of 950.\n` +
+        "If files were legitimately deleted, lower the floor IN THE SAME " +
+        "CHANGE and say which files and why. If not, the walk is no longer " +
+        "reaching part of the tree -- check the skip list and the walk roots " +
+        "(src, workers, scripts) before touching this number.",
     );
     assert.ok(
       sqlLiterals_ > 900,
-      `the scan found only ${sqlLiterals_} SQL literals; it had been finding over 900`,
+      `the scan found only ${sqlLiterals_} SQL literals, under its floor of 900.\n` +
+        "A deletion that removes SQL lowers this legitimately -- restate the " +
+        "floor in the same change, naming the deletion. What it must not mean " +
+        "is that SQL stopped being RECOGNISED: if the count fell without code " +
+        "being removed, suspect SQL_SHAPED or the interpolation stripping in " +
+        "sqlLiteralList, because that silently narrows what every rule below " +
+        "ever sees.",
     );
     assert.deepEqual(
       offenders,
