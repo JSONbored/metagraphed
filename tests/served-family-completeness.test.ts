@@ -104,9 +104,15 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
         file: "schemas-src/routes/subnet-services.ts",
         symbol: "SubnetServices",
       },
-      // gamma_events is served through the account events feed, not its own
-      // route -- src/account-events.ts reads it into the feed contract.
-      { file: "src/account-events.ts", symbol: "gamma_events" },
+      // app.gamma_events has NO READER YET, and this entry used to claim one.
+      // What exists today is forward compatibility: src/account-events.ts
+      // names the Gamma event kinds so `?kind=` accepts them the day the
+      // producer emits them, while the events themselves land raw-only in
+      // chain_detail_chain_events and the structured decode into this table
+      // lands with the engine (#13164). So the anchor is one of those kind
+      // constants -- real code, and an honest description of the surface that
+      // is actually in place.
+      { file: "src/account-events.ts", symbol: '"GammaMinted"' },
     ],
   },
   "0048_tao_usd_oracle.sql": {
@@ -134,7 +140,11 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
         file: "schemas-src/routes/subnet-limit-orders.ts",
         symbol: "LimitOrders",
       },
-      { file: "src/account-events.ts", symbol: "limit_order_events" },
+      // Same as 0047's gamma_events: app.limit_order_events has no reader
+      // yet. OrderExecuted is named for `?kind=` forward compatibility (it has
+      // 8.4M blocks of live raw history), and the structured decode into this
+      // table lands with the engine (#13165).
+      { file: "src/account-events.ts", symbol: '"OrderExecuted"' },
     ],
   },
   "0051_evm_associations.sql": {
@@ -144,7 +154,13 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
         file: "schemas-src/routes/network-singletons.ts",
         symbol: "EvmAssociationSchema",
       },
-      { file: "schemas-src/mcp-tools/evm.ts", symbol: "evm" },
+      // A real exported schema, not the bare token "evm": that matched only
+      // this file's own header comment, even though the MCP surface is
+      // genuinely here.
+      {
+        file: "schemas-src/mcp-tools/evm.ts",
+        symbol: "GetEvmAddressMappingInputSchema",
+      },
       { file: "src/pg-evm-associations.ts", symbol: "evm_associations" },
     ],
   },
@@ -228,6 +244,14 @@ const PRE_GATE_BACKLOG: readonly string[] = [
   "0036_usage_row_identity_activate.sql",
 ];
 
+/** Comments are prose, and prose cannot serve a table. */
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, " ")
+    .replace(/([^:])\/\/.*$/gm, "$1 ");
+}
+
 function createdTables(sql: string): string[] {
   return [
     ...sql.matchAll(
@@ -275,9 +299,30 @@ test("every serving-schema family declares its contract surface or sits in the s
         failures.push(`${file}: anchor file missing: ${anchor.file}`);
         continue;
       }
-      if (!readFileSync(anchor.file, "utf8").includes(anchor.symbol)) {
+      // CODE, NOT PROSE. A plain `includes` over the whole file let a COMMENT
+      // satisfy an anchor, and that is not a hypothetical: this gate declared
+      // "gamma_events is served through the account events feed --
+      // src/account-events.ts reads it into the feed contract", and the only
+      // occurrence of `gamma_events` in that file was the comment saying the
+      // opposite ("these land raw-only in chain_detail_chain_events today, and
+      // the structured decode ... lands with the engine"). Same for
+      // limit_order_events. So this file's own header -- written because "a
+      // stale answer to exactly that question was asserted on the record" --
+      // was asserting two surfaces that do not exist, satisfied by the prose
+      // denying them.
+      //
+      // Prose has no compiler: a comment naming a symbol reads as a reference
+      // and fails nothing when the symbol never arrives. Comments are
+      // therefore stripped before the anchor is looked for.
+      if (
+        !stripComments(readFileSync(anchor.file, "utf8")).includes(
+          anchor.symbol,
+        )
+      ) {
         failures.push(
-          `${file}: anchor symbol "${anchor.symbol}" not found in ${anchor.file}`,
+          `${file}: anchor symbol "${anchor.symbol}" not found in ${anchor.file}'s CODE` +
+            " (a comment mentioning it does not count -- anchor a real symbol," +
+            " or declare the surface as pending rather than served)",
         );
       }
     }
