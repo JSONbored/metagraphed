@@ -54,3 +54,97 @@ export function shiftIsoDate(date: unknown, days: number): string | null {
   if (!Number.isFinite(days)) return null;
   return new Date(ms + Math.trunc(days) * DAY_MS).toISOString().slice(0, 10);
 }
+
+/**
+ * The two aggregate columns an anchored-window read returns.
+ *
+ * A `type` and not an `interface` so it stays assignable to the
+ * `Record<string, unknown>` rows the readers' own runners produce, which is
+ * what lets one runner shape serve both them and a typed `sql.unsafe` call.
+ * Both optional: a store that returns no row for a bare aggregate is a case
+ * `readAnchoredWindow` handles rather than assumes away.
+ */
+export type AnchoredWindowRow = {
+  start_date?: string | null;
+  end_date?: string | null;
+};
+
+/** The loosest shape the anchored readers' runners share. */
+export type WindowRunner = (
+  sql: string,
+  params: unknown[],
+) => Promise<Array<Record<string, unknown>>>;
+
+/**
+ * The stored window for a neuron_daily reader, anchored on the newest row the
+ * table actually HAS -- without a date function in the SQL.
+ *
+ * This is the conversion the module above was written for and the three
+ * readers never received (#9792/#9798): `chain-turnover`, `movers` and
+ * `turnover` each still asked for
+ * `snapshot_date >= (SELECT date(MAX(snapshot_date), ?) ...)`, which is
+ * SQLite's two-argument `date()` and does not exist in Postgres at any arity.
+ * On a Postgres runner the subquery yielded nothing, `>=` matched nothing, and
+ * the route answered a schema-stable 200 with zero rows -- the one shape that
+ * reads as "no data yet". Shared here so the three cannot drift apart again,
+ * and so it matches what `createPgNeuronDailyViewStore.window` already does
+ * natively.
+ *
+ * Two reads rather than one, deliberately: the anchor has to be KNOWN before
+ * the cutoff can be bound. `MAX(snapshot_date)` over the whole (optionally
+ * subnet-scoped) relation is the same value the old outer MAX returned, since
+ * the global maximum always satisfies its own cutoff.
+ *
+ * `days` null means the whole retained range, which needs no cutoff and stays
+ * one read.
+ */
+export async function readAnchoredWindow(
+  runner: WindowRunner,
+  days: number | null,
+  netuid?: number,
+): Promise<{ startDate: string | null; endDate: string | null }> {
+  const scope = netuid === undefined ? "" : " WHERE netuid = ?";
+  const scopeParams = netuid === undefined ? [] : [netuid];
+  if (days === null) {
+    const all = await runner(
+      "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date" +
+        ` FROM neuron_daily${scope}`,
+      scopeParams,
+    );
+    return {
+      startDate: (all?.[0]?.start_date as string | null) ?? null,
+      endDate: (all?.[0]?.end_date as string | null) ?? null,
+    };
+  }
+  const anchor = await runner(
+    `SELECT MAX(snapshot_date) AS end_date FROM neuron_daily${scope}`,
+    scopeParams,
+  );
+  const endDate = (anchor?.[0]?.end_date as string | null) ?? null;
+  // An empty (or subnet-less) relation has no window at all, and no second
+  // read is worth spending on it.
+  if (endDate === null) return { startDate: null, endDate: null };
+  // A NON-ISO stored anchor yields no cutoff, and then the window is the whole
+  // range rather than nothing. That is the source behaviour, shared by
+  // `createPgNeuronDailyViewStore.window` and pinned as parity between the two
+  // in tests/pg-neuron-daily-view.pg18.ts -- a refusal here instead looks like
+  // an empty store to every caller, which is the #9792 shape this module
+  // exists to prevent, not a safer answer. Worth noting rather than changing
+  // unilaterally: a caller asking for 7 days gets everything in this case, and
+  // narrowing that is a decision for all three components at once.
+  const cutoff = shiftIsoDate(endDate, -days);
+  const start = await runner(
+    "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily" +
+      (netuid === undefined && cutoff === null
+        ? ""
+        : ` WHERE${netuid === undefined ? "" : " netuid = ?"}` +
+          (cutoff === null
+            ? ""
+            : `${netuid === undefined ? "" : " AND"} snapshot_date >= ?`)),
+    [...scopeParams, ...(cutoff === null ? [] : [cutoff])],
+  );
+  return {
+    startDate: (start?.[0]?.start_date as string | null) ?? null,
+    endDate,
+  };
+}

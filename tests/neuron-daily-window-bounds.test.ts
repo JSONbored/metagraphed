@@ -19,19 +19,28 @@ import { neuronDailyWindowBounds } from "../workers/data-api.ts";
 type Call = { text: string; values: unknown[] };
 
 /**
- * A tagged-template `sql` that records what it was asked, and answers from a
- * queue. Deliberately does not parse SQL -- the assertions here are about the
+ * A `sql` that records what it was asked, and answers from a queue.
+ * Deliberately does not parse SQL -- the assertions here are about the
  * statement TEXT and the bound values, which is exactly what a real database
  * cannot tell you (it would happily run either dialect's own spelling).
+ *
+ * BOTH entry points record, because `neuronDailyWindowBounds` now delegates to
+ * `readAnchoredWindow` through `unsafe` rather than keeping a second copy of
+ * the algorithm (#9798). A double that only watched the tagged template would
+ * have gone silently green over a helper it never saw -- so it is wired here
+ * instead of stubbed, and the statements below carry `$n` placeholders because
+ * that is what the engine actually receives.
  */
 function fakeSql(responses: Record<string, unknown>[][]) {
   const calls: Call[] = [];
   const queue = [...responses];
-  const sql = (strings: TemplateStringsArray, ...values: unknown[]) => {
-    calls.push({ text: strings.join("?").replace(/\s+/g, " ").trim(), values });
+  const record = (text: string, values: unknown[]) => {
+    calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
     return Promise.resolve(queue.shift() ?? []);
   };
-  sql.unsafe = () => Promise.resolve([]);
+  const sql = (strings: TemplateStringsArray, ...values: unknown[]) =>
+    record(strings.join("?"), values);
+  sql.unsafe = (text: string, values: unknown[] = []) => record(text, values);
   return { sql: sql as never, calls };
 }
 
@@ -49,7 +58,7 @@ describe("neuronDailyWindowBounds", () => {
     assert.equal(calls.length, 2);
     // The boundary is a BOUND VALUE, computed here: 2026-08-07 minus 30 days.
     assert.deepEqual(calls[1]!.values, ["2026-07-08"]);
-    assert.match(calls[1]!.text, /snapshot_date >= \?/);
+    assert.match(calls[1]!.text, /snapshot_date >= \$1/);
   });
 
   test("per-netuid, windowed: scopes BOTH statements to the netuid", async () => {
@@ -61,7 +70,7 @@ describe("neuronDailyWindowBounds", () => {
     assert.equal(bounds.startDate, "2026-08-01");
     // The max must be the NETUID's max, not the table's -- a chain-wide max
     // would shift the window off a subnet that stopped reporting days ago.
-    assert.match(calls[0]!.text, /WHERE netuid = \?/);
+    assert.match(calls[0]!.text, /WHERE netuid = \$1/);
     assert.deepEqual(calls[0]!.values, [7]);
     assert.deepEqual(calls[1]!.values, [7, "2026-07-31"]);
   });
@@ -70,24 +79,32 @@ describe("neuronDailyWindowBounds", () => {
     // `all` in HISTORY_WINDOW_DAYS. There is nothing to shift, so the start is the
     // slice's own minimum and no cutoff is bound -- binding null here would
     // match nothing, which is the #9792 failure wearing a different hat.
+    // ONE read now, not two. The two-step exists only because a cutoff has to
+    // be bound after the anchor is known; with no cutoff there is nothing to
+    // wait for, so both aggregates come back together. The property this test
+    // is about is unchanged and still asserted: no cutoff is bound.
     const perNetuid = fakeSql([
-      [{ end_date: "2026-08-07" }],
-      [{ start_date: "2025-01-01" }],
+      [{ start_date: "2025-01-01", end_date: "2026-08-07" }],
     ]);
-    await neuronDailyWindowBounds(perNetuid.sql, null, 7);
-    assert.deepEqual(perNetuid.calls[1]!.values, [7]);
-    assert.doesNotMatch(perNetuid.calls[1]!.text, /snapshot_date >= /);
+    assert.deepEqual(await neuronDailyWindowBounds(perNetuid.sql, null, 7), {
+      startDate: "2025-01-01",
+      endDate: "2026-08-07",
+    });
+    assert.equal(perNetuid.calls.length, 1);
+    assert.deepEqual(perNetuid.calls[0]!.values, [7]);
+    assert.doesNotMatch(perNetuid.calls[0]!.text, /snapshot_date >= /);
 
     const chainWide = fakeSql([
-      [{ end_date: "2026-08-07" }],
-      [{ start_date: "2024-06-01" }],
+      [{ start_date: "2024-06-01", end_date: "2026-08-07" }],
     ]);
     const bounds = await neuronDailyWindowBounds(chainWide.sql, null);
     assert.deepEqual(bounds, {
       startDate: "2024-06-01",
       endDate: "2026-08-07",
     });
-    assert.deepEqual(chainWide.calls[1]!.values, []);
+    assert.equal(chainWide.calls.length, 1);
+    assert.deepEqual(chainWide.calls[0]!.values, []);
+    assert.doesNotMatch(chainWide.calls[0]!.text, /snapshot_date >= /);
   });
 
   test("an empty table returns nulls and never issues the second query", async () => {

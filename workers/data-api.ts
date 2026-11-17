@@ -435,7 +435,10 @@ function windowCutoffDate(
 
 // #9798: window boundaries computed here rather than in SQL, so no dialect
 // function survives into a query two stores have to agree about.
-import { shiftIsoDate } from "../src/iso-date-window.ts";
+import {
+  readAnchoredWindow,
+  type AnchoredWindowRow,
+} from "../src/iso-date-window.ts";
 import { isPublicWebhookUrl, timingSafeEqual } from "../src/webhooks.ts";
 // #8385: shape-check push key material at intake (see that module).
 import { isValidPushKeyMaterial } from "../src/web-push.ts";
@@ -555,7 +558,11 @@ import { MCP_TIERED_RATE_LIMIT } from "../src/api-tiers.ts";
 // this file used to declare a structurally identical local pair (`D1Sql`)
 // so routes could move between stores unchanged; with one store left, the
 // duplicate is gone and the import is the contract.
-import { createPgSql, type PgSql } from "../src/pg-sql.ts";
+import {
+  createPgSql,
+  toPositionalPlaceholders,
+  type PgSql,
+} from "../src/pg-sql.ts";
 import { neonWriteRunner } from "../src/neon-write-buffer.ts";
 import type { ChainAlertTriggers } from "../generated/db/types.ts";
 import { FEATURED_HOTKEY_SET } from "../generated/featured-validators.ts";
@@ -7227,40 +7234,19 @@ export async function neuronDailyWindowBounds(
   days: number | null,
   netuid: number | null = null,
 ): Promise<{ startDate: string | null; endDate: string | null }> {
-  const maxRows =
-    netuid == null
-      ? await sql<{
-          end_date: NeuronDaily["snapshot_date"] | null;
-        }>`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily`
-      : await sql<{
-          end_date: NeuronDaily["snapshot_date"] | null;
-        }>`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ${netuid}`;
-  const endDate = (maxRows[0]?.end_date ?? null) as string | null;
-  if (endDate == null) return { startDate: null, endDate: null };
-
-  // A null window means "everything", so there is no cutoff to bind and the
-  // start is the table's own minimum.
-  const cutoff = days == null ? null : shiftIsoDate(endDate, -days);
-  const minRows =
-    netuid == null
-      ? cutoff == null
-        ? await sql<{
-            start_date: NeuronDaily["snapshot_date"] | null;
-          }>`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily`
-        : await sql<{
-            start_date: NeuronDaily["snapshot_date"] | null;
-          }>`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE snapshot_date >= ${cutoff}`
-      : cutoff == null
-        ? await sql<{
-            start_date: NeuronDaily["snapshot_date"] | null;
-          }>`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid}`
-        : await sql<{
-            start_date: NeuronDaily["snapshot_date"] | null;
-          }>`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}`;
-  return {
-    startDate: (minRows[0]?.start_date ?? null) as string | null,
-    endDate,
-  };
+  // ONE definition of this question, in src/iso-date-window.ts. It was two:
+  // the same anchor-read/shift/bind algorithm lived here and, in the three
+  // extracted loaders, as the SQLite-only `date(MAX(snapshot_date), ?)` they
+  // were supposed to have lost (#9798). This delegates rather than keeping a
+  // second copy -- `unsafe` is the dynamic-text escape hatch PgSql has always
+  // carried, and the shared helper's statements use the `?` convention every
+  // runner here shares.
+  return readAnchoredWindow(
+    (text, values) =>
+      sql.unsafe<AnchoredWindowRow>(toPositionalPlaceholders(text), values),
+    days,
+    netuid ?? undefined,
+  );
 }
 
 /**

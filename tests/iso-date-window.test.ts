@@ -7,8 +7,10 @@
 // rows. Doing the shift here is what removes the dialect from the question, so
 // the arithmetic is worth pinning on its own.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
-import { shiftIsoDate } from "../src/iso-date-window.ts";
+import { PGlite } from "@electric-sql/pglite";
+import { afterAll, beforeAll, describe, test } from "vitest";
+import { shiftIsoDate, readAnchoredWindow } from "../src/iso-date-window.ts";
+import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 
 describe("shiftIsoDate", () => {
   test("shifts backwards, which is the only direction the routes use", () => {
@@ -69,5 +71,221 @@ describe("shiftIsoDate", () => {
     assert.equal(shiftIsoDate("2026-08-07", Number.NaN), null);
     assert.equal(shiftIsoDate("2026-08-07", Number.POSITIVE_INFINITY), null);
     assert.equal(shiftIsoDate("2026-08-07", Number.NEGATIVE_INFINITY), null);
+  });
+});
+
+describe("readAnchoredWindow", () => {
+  // The conversion the three neuron_daily readers never received (#9792/#9798).
+  // What matters is that no statement carries a date function and that the
+  // cutoff is anchored on the STORE's newest day rather than the wall clock.
+  const capturing = (answers: (sql: string) => Record<string, unknown>[]) => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    return {
+      calls,
+      runner: async (sql: string, params: unknown[]) => {
+        calls.push({ sql, params });
+        return answers(sql);
+      },
+    };
+  };
+
+  test("reads the anchor, shifts it in TypeScript, and binds a date literal", async () => {
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "2026-01-31" }]
+        : [{ start_date: "2026-01-24" }],
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 7), {
+      startDate: "2026-01-24",
+      endDate: "2026-01-31",
+    });
+    assert.equal(calls.length, 2);
+    for (const call of calls) assert.doesNotMatch(call.sql, /\bdate\s*\(/i);
+    assert.deepEqual(calls[0].params, []);
+    assert.deepEqual(calls[1].params, ["2026-01-24"]);
+  });
+
+  test("a subnet scope binds the netuid on both reads", async () => {
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "2026-06-30" }]
+        : [{ start_date: "2026-06-01" }],
+    );
+    await readAnchoredWindow(runner, 30, 9);
+    assert.deepEqual(calls[0].params, [9]);
+    assert.deepEqual(calls[1].params, [9, "2026-05-31"]);
+    assert.match(calls[1].sql, /netuid = \? AND snapshot_date >= \?/);
+  });
+
+  test("the whole retained range needs no cutoff and stays one read", async () => {
+    const { calls, runner } = capturing(() => [
+      { start_date: "2026-01-01", end_date: "2026-06-30" },
+    ]);
+    assert.deepEqual(await readAnchoredWindow(runner, null, 9), {
+      startDate: "2026-01-01",
+      endDate: "2026-06-30",
+    });
+    assert.equal(calls.length, 1);
+    assert.doesNotMatch(calls[0].sql, /snapshot_date >=/);
+  });
+
+  test("the all window over an empty relation is two nulls, not one read's worth of guesses", async () => {
+    // The windowed path already pins "a store that returns no row degrades to
+    // a null start"; the all window reads BOTH aggregates in one statement and
+    // so has its own version of that arm. An empty relation answers a bare
+    // aggregate with a row of nulls, and a store that answers with no row at
+    // all has to reach the same place.
+    for (const rows of [[{ start_date: null, end_date: null }], []]) {
+      const { calls, runner } = capturing(() => rows);
+      assert.deepEqual(await readAnchoredWindow(runner, null), {
+        startDate: null,
+        endDate: null,
+      });
+      assert.equal(calls.length, 1);
+    }
+  });
+
+  test("a cold store reports no window instead of computing from a null anchor", async () => {
+    // The old subquery's NULL made `>=` match nothing; this must reach the
+    // same "unknown window" answer without ever binding "Invalid Date".
+    const { calls, runner } = capturing(() => [{ end_date: null }]);
+    assert.deepEqual(await readAnchoredWindow(runner, 30), {
+      startDate: null,
+      endDate: null,
+    });
+    assert.equal(calls.length, 1, "no cutoff read against a null anchor");
+  });
+
+  test("a non-ISO stored anchor falls back to the whole range, as the source does", async () => {
+    // There is no cutoff to compute from a non-date, and the answer is the
+    // whole range rather than nothing: `createPgNeuronDailyViewStore.window`
+    // does the same, and tests/pg-neuron-daily-view.pg18.ts asserts the two
+    // agree. Refusing here instead would present a populated store as empty,
+    // which is the #9792 shape, not a safer answer.
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "not-a-day" }]
+        : [{ start_date: "2026-01-01" }],
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 30), {
+      startDate: "2026-01-01",
+      endDate: "not-a-day",
+    });
+    assert.equal(calls.length, 2);
+    // No cutoff is bound, and none is spelled.
+    assert.deepEqual(calls[1]!.params, []);
+    assert.doesNotMatch(calls[1]!.sql, /snapshot_date >=/);
+  });
+
+  test("a non-ISO anchor keeps its subnet scope", async () => {
+    // The scope and the cutoff are separate clauses, so dropping one must not
+    // drop the other -- an unscoped MIN here would report another subnet's
+    // oldest day as this one's window start.
+    const { calls, runner } = capturing((sql) =>
+      /MAX\(snapshot_date\) AS end_date/.test(sql)
+        ? [{ end_date: "not-a-day" }]
+        : [{ start_date: "2026-02-02" }],
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 30, 9), {
+      startDate: "2026-02-02",
+      endDate: "not-a-day",
+    });
+    assert.deepEqual(calls[1]!.params, [9]);
+    assert.match(calls[1]!.sql, /WHERE netuid = \?/);
+    assert.doesNotMatch(calls[1]!.sql, /snapshot_date >=/);
+  });
+});
+
+// Executed on a REAL Postgres engine, because the whole failure this repairs
+// was a statement that parsed everywhere and ran on only one engine. A stubbed
+// runner proves the shape; only an engine proves the dialect. The relation is
+// created here rather than applied from migrations/postgres because
+// `neuron_daily` is the portable (Neon) view's name and has no composed-tree
+// definition -- what is under test is that these statements RUN, not the
+// column set.
+describe("readAnchoredWindow on a real Postgres engine", () => {
+  let db: PGlite;
+  const runner = async (sql: string, params: unknown[]) =>
+    (
+      await db.query<Record<string, unknown>>(
+        toPositionalPlaceholders(sql),
+        params,
+      )
+    ).rows;
+
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(
+      `CREATE TABLE neuron_daily(netuid bigint NOT NULL, snapshot_date text NOT NULL,
+         uid bigint NOT NULL, PRIMARY KEY (netuid, snapshot_date, uid))`,
+    );
+    for (const day of ["2026-01-01", "2026-01-15", "2026-01-31"])
+      for (const netuid of [7, 9])
+        await db.query(
+          "INSERT INTO neuron_daily(netuid,snapshot_date,uid) VALUES ($1,$2,0)",
+          [netuid, day],
+        );
+  });
+  afterAll(() => db.close());
+
+  test("the statement that used to answer zero rows now answers the window", async () => {
+    // The pre-#9798 form for this exact question was
+    //   WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)
+    // which Postgres refuses outright -- proven below -- so the subquery
+    // yielded nothing and `>=` matched nothing.
+    assert.deepEqual(await readAnchoredWindow(runner, 30), {
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+    });
+    // A 7-day window anchored on the stored MAX cuts off at 2026-01-24, and
+    // the only stored day at or after that is the newest one.
+    assert.deepEqual(await readAnchoredWindow(runner, 7), {
+      startDate: "2026-01-31",
+      endDate: "2026-01-31",
+    });
+  });
+
+  test("the subnet scope and the all window both execute", async () => {
+    assert.deepEqual(await readAnchoredWindow(runner, 30, 9), {
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+    });
+    assert.deepEqual(await readAnchoredWindow(runner, null, 7), {
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+    });
+    // A subnet with no rows is an empty window, not an error.
+    assert.deepEqual(await readAnchoredWindow(runner, 30, 404), {
+      startDate: null,
+      endDate: null,
+    });
+  });
+
+  test("a non-ISO stored day keeps the window whole, on the engine", async () => {
+    // The parity tests/pg-neuron-daily-view.pg18.ts asserts between this and
+    // the native view store's window(). That leg needs CI's pinned SQLite to
+    // run at all, so the behaviour is pinned here too rather than only there.
+    await db.query(
+      "INSERT INTO neuron_daily(netuid,snapshot_date,uid) VALUES (7,'invalid-day',1)",
+    );
+    assert.deepEqual(await readAnchoredWindow(runner, 7, 7), {
+      startDate: "2026-01-01",
+      endDate: "invalid-day",
+    });
+    await db.query(
+      "DELETE FROM neuron_daily WHERE snapshot_date='invalid-day'",
+    );
+  });
+
+  test("the idiom this replaced is genuinely rejected by the engine", async () => {
+    // The negative half of the proof: without it, the test above only shows
+    // that some statement works, not that the old one did not.
+    await assert.rejects(
+      db.query(
+        "SELECT MIN(snapshot_date) AS start_date FROM neuron_daily" +
+          " WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), '-30 days') FROM neuron_daily)",
+      ),
+      /date/,
+    );
   });
 });

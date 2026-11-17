@@ -521,16 +521,38 @@ describe("movers neurons sort", () => {
 });
 
 describe("loadSubnetMovers", () => {
+  /**
+   * A runner that answers the anchored-window two-step, then the aggregate.
+   *
+   * MAX first, then MIN with the cutoff BOUND AS A DATE: the
+   * `date(MAX(snapshot_date), '-N days')` this used to ask is SQLite's alone
+   * and answered zero rows on a Postgres runner, which is how /subnets/movers
+   * went 5 -> 0 (#9792/#9798). The anchoring these tests pin is now proven by
+   * that bound cutoff -- an ISO date computed from the stored MAX -- instead
+   * of by a modifier string only one engine understood.
+   */
+  function anchoredRunner(
+    bounds: { start: string | null; end: string | null },
+    rows: Row[],
+  ) {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    const runner = async (sql: string, params: unknown[]): Promise<Row[]> => {
+      calls.push({ sql, params });
+      if (/MAX\(snapshot_date\) AS end_date/.test(sql))
+        return [{ end_date: bounds.end }];
+      if (/MIN\(snapshot_date\) AS start_date/.test(sql))
+        return [{ start_date: bounds.start }];
+      return rows;
+    };
+    return { calls, runner };
+  }
+
   test("resolves global boundary dates then reads the cross-subnet aggregate", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    const calls: { sql: string; params: unknown[] }[] = [];
-    const runner = async (sql: string, params: unknown[]) => {
-      calls.push({ sql, params });
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
-      }
-      return [
+    const { calls, runner } = anchoredRunner(
+      { start: "2026-05-31", end: "2026-06-30" },
+      [
         agg(1, "2026-05-31", {
           neurons: 10,
           validators: 3,
@@ -543,18 +565,19 @@ describe("loadSubnetMovers", () => {
           stake: 250,
           emission: 9,
         }),
-      ];
-    };
+      ],
+    );
     const data = (await loadSubnetMovers(runner, {
       windowLabel: "30d",
       sort: "stake",
     })) as Row;
-    assert.equal(calls.length, 2);
-    assert.match(calls[0].sql, /MIN\(snapshot_date\)/);
-    assert.match(calls[0].sql, /date\(MAX\(snapshot_date\), \?\)/); // anchored to stored MAX, not now
-    assert.equal(calls[0].params[0], "-30 days");
-    assert.match(calls[1].sql, /GROUP BY netuid, snapshot_date/);
-    assert.deepEqual(calls[1].params, ["2026-05-31", "2026-06-30"]);
+    assert.equal(calls.length, 3);
+    // No date function left in any statement for two dialects to disagree about.
+    for (const call of calls) assert.doesNotMatch(call.sql, /\bdate\s*\(/i);
+    assert.match(calls[0].sql, /MAX\(snapshot_date\) AS end_date/);
+    assert.deepEqual(calls[1].params, ["2026-05-31"]); // 30 days before the stored MAX
+    assert.match(calls[2].sql, /GROUP BY netuid, snapshot_date/);
+    assert.deepEqual(calls[2].params, ["2026-05-31", "2026-06-30"]);
     assert.equal(data.window, "30d");
     assert.equal(data.start_date, "2026-05-31");
     assert.equal(data.end_date, "2026-06-30");
@@ -564,11 +587,9 @@ describe("loadSubnetMovers", () => {
   });
 
   test("sort=neurons ranks by neuron-count delta through the public loader path", async () => {
-    const runner = async (sql: string) => {
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
-      }
-      return [
+    const { runner } = anchoredRunner(
+      { start: "2026-05-31", end: "2026-06-30" },
+      [
         agg(1, "2026-05-31", {
           neurons: 10,
           validators: 2,
@@ -593,8 +614,8 @@ describe("loadSubnetMovers", () => {
           stake: 50,
           emission: 3,
         }),
-      ];
-    };
+      ],
+    );
     const data = (await loadSubnetMovers(runner, {
       windowLabel: "30d",
       sort: "neurons",
@@ -612,32 +633,24 @@ describe("loadSubnetMovers", () => {
   });
 
   test("defaults to the 30d window + stake sort", async () => {
-    let boundsCutoff;
-    const runner = async (sql: string, params: unknown[]) => {
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        boundsCutoff = params[0];
-        return [{ start_date: null, end_date: null }];
-      }
-      return [];
-    };
+    // A cold store has no anchor to shift, so the window is reported unknown
+    // and the second read never happens.
+    const { calls, runner } = anchoredRunner({ start: null, end: null }, []);
     const data = await loadSubnetMovers(runner, {});
     assert.equal(data.window, DEFAULT_MOVERS_WINDOW);
     assert.equal(data.sort, DEFAULT_MOVERS_SORT);
-    assert.equal(typeof boundsCutoff, "string");
+    assert.equal(calls.length, 1);
     assert.deepEqual(data.movers, []);
   });
 
   test("a single available snapshot (start === end) skips the read and returns empty", async () => {
-    const calls: string[] = [];
-    const runner = async (sql: string) => {
-      calls.push(sql);
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        return [{ start_date: "2026-06-30", end_date: "2026-06-30" }];
-      }
-      return [];
-    };
+    const { calls, runner } = anchoredRunner(
+      { start: "2026-06-30", end: "2026-06-30" },
+      [],
+    );
     const data = await loadSubnetMovers(runner, { windowLabel: "7d" });
-    assert.equal(calls.length, 1); // no second (aggregate) query
+    assert.equal(calls.length, 2); // the window's two reads, no aggregate query
+    assert.deepEqual(calls[1].params, ["2026-06-23"]); // 7 days before MAX
     assert.deepEqual(data.movers, []);
     assert.equal(data.start_date, "2026-06-30");
   });
@@ -647,13 +660,9 @@ describe("loadSubnetMovers", () => {
     // window would return empty. The loader must still compare the stored boundary snapshots.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T12:00:00.000Z"));
-    let boundsParam;
-    const runner = async (sql: string, params: unknown[]) => {
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        boundsParam = params[0];
-        return [{ start_date: "2026-01-01", end_date: "2026-01-31" }];
-      }
-      return [
+    const { calls, runner } = anchoredRunner(
+      { start: "2026-01-01", end: "2026-01-31" },
+      [
         agg(1, "2026-01-01", {
           neurons: 10,
           validators: 3,
@@ -666,10 +675,12 @@ describe("loadSubnetMovers", () => {
           stake: 250,
           emission: 9,
         }),
-      ];
-    };
+      ],
+    );
     const data = (await loadSubnetMovers(runner, { windowLabel: "7d" })) as Row;
-    assert.equal(boundsParam, "-7 days"); // cutoff computed in SQL relative to MAX(snapshot_date)
+    // The cutoff is 7 days before the STORE's newest day (2026-01-31), five
+    // months behind the faked wall clock -- which is the whole point.
+    assert.deepEqual(calls[1].params, ["2026-01-24"]);
     assert.equal(data.start_date, "2026-01-01");
     assert.equal(data.end_date, "2026-01-31");
     assert.equal(data.subnet_count, 1);
@@ -678,23 +689,23 @@ describe("loadSubnetMovers", () => {
   });
 
   test("an unknown window label falls back to the 30d window", async () => {
-    let boundsParam;
-    const runner = async (sql: string, params: unknown[]) => {
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        boundsParam = params[0];
-        return [{ start_date: null, end_date: null }];
-      }
-      return [];
-    };
+    const { calls, runner } = anchoredRunner(
+      { start: "2026-05-31", end: "2026-06-30" },
+      [],
+    );
     await loadSubnetMovers(runner, { windowLabel: "bogus" });
-    assert.equal(boundsParam, "-30 days");
+    // The 30d fallback is visible in the bound cutoff, not in a modifier.
+    assert.deepEqual(calls[1].params, ["2026-05-31"]);
   });
 
   test("a non-array aggregate result degrades to an empty leaderboard", async () => {
+    // The window still answers; only the aggregate read is malformed, which
+    // is why this one builds its own runner rather than using the helper.
     const runner = (async (sql: string) => {
-      if (/MIN\(snapshot_date\)/.test(sql)) {
-        return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
-      }
+      if (/MAX\(snapshot_date\) AS end_date/.test(sql))
+        return [{ end_date: "2026-06-30" }];
+      if (/MIN\(snapshot_date\) AS start_date/.test(sql))
+        return [{ start_date: "2026-05-31" }];
       return null; // malformed aggregate read
     }) as unknown as Parameters<typeof loadSubnetMovers>[0];
     const data = await loadSubnetMovers(runner, { windowLabel: "30d" });

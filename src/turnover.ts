@@ -1,4 +1,5 @@
 import { roundBelowOne } from "./lib/stats.ts";
+import { readAnchoredWindow } from "./iso-date-window.ts";
 // Validator-set & registration turnover (churn) for one subnet: how much its
 // validator set and neuron population rotate between two dated snapshots of the
 // neuron_daily rollup (start vs end of a window). Pure + exported for unit tests;
@@ -398,21 +399,17 @@ async function loadTurnoverBoundaryRows(
   netuid: number,
   { windowDays }: { windowDays?: number | null },
 ): Promise<{ startDate: string | null; endDate: string | null; rows: Row[] }> {
-  let boundsSql =
-    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
-  const boundsParams: unknown[] = [netuid];
-  if (windowDays != null) {
-    // Anchor the window to the newest stored snapshot for this subnet, not the
-    // worker wall clock — a lagging/restored D1 store still compares its real
-    // boundary days instead of returning comparable:false. Mirrors
-    // loadChainTurnover / loadSubnetMovers (#3024).
-    boundsSql +=
-      " AND snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily WHERE netuid = ?)";
-    boundsParams.push(`-${windowDays} days`, netuid);
-  }
-  const bounds = await runner(boundsSql, boundsParams);
-  const startDate = (bounds[0]?.start_date as string | undefined) ?? null;
-  const endDate = (bounds[0]?.end_date as string | undefined) ?? null;
+  // Anchor the window to the newest stored snapshot for this subnet, not the
+  // worker wall clock — a lagging/restored store still compares its real
+  // boundary days instead of returning comparable:false. Mirrors
+  // loadChainTurnover / loadSubnetMovers (#3024). The anchor is read and
+  // shifted in TypeScript: the `date(MAX(...), ?)` this used to ask is
+  // SQLite's alone and answered zero rows on Postgres (#9792).
+  const { startDate, endDate } = await readAnchoredWindow(
+    runner,
+    windowDays ?? null,
+    netuid,
+  );
   const rows =
     startDate == null || endDate == null
       ? []
