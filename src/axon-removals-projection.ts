@@ -9,13 +9,14 @@ import {
   type NeuronAxonDayRow,
   isoDaysAgo,
 } from "./axon-removal-derivation.ts";
+import { ISO_DAY } from "./iso-date-window.ts";
 
 export const AXON_REMOVAL_PROJECTION_KEY = "derived/axon-removals/v1.json";
 // The existing projection tick runs every thirty minutes. One missed tick is
 // not hidden: after forty-five minutes the original source reader takes over.
 export const AXON_REMOVAL_PROJECTION_MAX_AGE_MS = 45 * 60_000;
 export const AXON_PROJECTION_LOOKBACK_DAYS = 31;
-const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const DateSchema = z.string().regex(ISO_DAY);
 const ProjectionSchema = z.strictObject({
   version: z.literal(1),
   generatedAt: z.number().int().positive(),

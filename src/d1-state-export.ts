@@ -9,16 +9,14 @@ import { handleRootBasketExport } from "./root-basket-export.ts";
 import { handleSyncDeadLetterExport } from "./sync-dead-letter-export.ts";
 import { selectedD1Store, type D1StoreBinding } from "./d1-store.ts";
 import { selectedNativeStateExport } from "./native-state-export.ts";
+import { ISO_DAY } from "./iso-date-window.ts";
 const scalar = z.union([z.string().max(2048), z.number().safe()]);
 export const RequestSchema = z
   .object({
     table: z.string(),
     kind: z.enum(["schema", "revision", "days", "rows"]),
     columns: z.array(z.string()).min(1).max(64).optional(),
-    day: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
+    day: z.string().regex(ISO_DAY).optional(),
     watermark: z.array(z.string()).min(1).max(4).optional(),
     since: z.array(scalar).min(1).max(4).optional(),
     cursor: z.array(scalar).min(1).max(4).optional(),

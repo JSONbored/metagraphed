@@ -10,6 +10,7 @@ import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { safeBlockNumber, safeSs58Literal } from "./history-readers.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
 import { loadIndexedAccountHistoryRows } from "./account-history-indexed.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 
 type Row = Record<string, unknown>;
 
@@ -31,12 +32,12 @@ const CURSOR_DAY_SLACK = 512;
 function toDayString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const day = value.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+  return isIsoDay(day) ? day : null;
 }
 
 /** Midnight UTC for a `YYYY-MM-DD`, or null when it is not a real date. */
 function dayStartMs(day: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if (!isIsoDay(day)) return null;
   const ms = Date.parse(`${day}T00:00:00.000Z`);
   return Number.isSafeInteger(ms) ? ms : null;
 }

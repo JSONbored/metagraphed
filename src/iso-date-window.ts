@@ -25,8 +25,32 @@
 /** Milliseconds in a day. Snapshot dates are whole days, so this never straddles a DST change. */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `YYYY-MM-DD`, the stored shape of every `snapshot_date` in the neurons family. */
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * `YYYY-MM-DD`, the stored shape of every `snapshot_date` in the neurons
+ * family. Exported for the callers that need the RegExp itself -- a zod
+ * `.regex()` and `workers/request-params.ts`'s DAY_PATTERN -- while everything
+ * asking a yes/no question uses `isIsoDay` below.
+ */
+export const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Is this string a stored day?
+ *
+ * Exported because the identical literal was written out in seven other
+ * modules, each asking this exact question of a `snapshot_date` or a `day`.
+ * They cannot drift while they are byte-identical, but they are also the only
+ * places that DON'T carry the caveat below, and that is the real cost of a
+ * copy: the knowledge lives with one of them.
+ *
+ * SHAPE, NOT CALENDAR. This counts digits. `2026-13-01` and `2026-01-32` pass
+ * it and only fail later (`Date.parse` returns NaN for both); `2026-02-31`
+ * passes and silently rolls over to March 3rd if a caller parses it. A caller
+ * that needs a real date must parse, not just match -- `shiftIsoDate` below
+ * does exactly that, and its NaN guard is a backstop for precisely this.
+ */
+export function isIsoDay(value: unknown): value is string {
+  return typeof value === "string" && ISO_DAY.test(value);
+}
 
 /**
  * Shift an ISO `YYYY-MM-DD` date by a whole number of days.
@@ -44,7 +68,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * for half the world.
  */
 export function shiftIsoDate(date: unknown, days: number): string | null {
-  if (typeof date !== "string" || !ISO_DATE.test(date)) return null;
+  if (typeof date !== "string" || !ISO_DAY.test(date)) return null;
   const ms = Date.parse(`${date}T00:00:00Z`);
   // NOT unreachable: the regex counts digits, not calendars, so "2026-13-01"
   // and "2026-01-32" reach here and Date.parse returns NaN for both. (It does

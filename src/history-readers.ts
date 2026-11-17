@@ -1,4 +1,5 @@
 import type { TelemetryEnv } from "./usage-telemetry.ts";
+import { isIsoDay } from "./iso-date-window.ts";
 /** Native historical storage selection shared by reader entry points. */
 export interface HistoryReadEnv extends TelemetryEnv {
   D1_STATE?: unknown;
@@ -72,7 +73,7 @@ export function safeHexLiteral(value: unknown): string | null {
 export function safeIsoDate(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const day = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if (!isIsoDay(day)) return null;
   const parsed = new Date(`${day}T00:00:00Z`);
   if (!Number.isFinite(parsed.getTime())) return null;
   // Date rolls an out-of-range component over (Feb 31 -> Mar 3) rather than
