@@ -119,22 +119,27 @@ export function stripJsonComments(value: string): string {
  * triggers block -- "no crons declared" and "I could not read the crons" are
  * different facts, and only one of them should read as a missing schedule.
  */
+/** A JSON object, narrowed so its members can be read without an assertion. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** Narrows to `string[]`, so a caller returning it needs no assertion. */
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((e) => typeof e === "string");
+}
+
 export function declaredCrons(source: string): readonly string[] {
   const config: unknown = JSON.parse(stripJsonComments(source));
-  const triggers =
-    config && typeof config === "object" && "triggers" in config
-      ? (config as { triggers?: unknown }).triggers
-      : undefined;
-  const crons =
-    triggers && typeof triggers === "object" && "crons" in triggers
-      ? (triggers as { crons?: unknown }).crons
-      : undefined;
+  const triggers = isRecord(config) ? config.triggers : undefined;
+  const crons = isRecord(triggers) ? triggers.crons : undefined;
   if (!Array.isArray(crons))
     throw new TypeError("wrangler.jsonc has no triggers.crons array");
-  const bad = crons.filter((entry) => typeof entry !== "string");
-  if (bad.length > 0)
+  if (!isStringArray(crons)) {
+    const bad = crons.filter((entry) => typeof entry !== "string").length;
     throw new TypeError(
-      `wrangler.jsonc triggers.crons holds ${bad.length} non-string entr${bad.length === 1 ? "y" : "ies"}`,
+      `wrangler.jsonc triggers.crons holds ${bad} non-string entr${bad === 1 ? "y" : "ies"}`,
     );
-  return crons as string[];
+  }
+  return crons;
 }
